@@ -24,6 +24,8 @@ From your spawn prompt:
 - Spike ID (e.g., `ass-041`)
 - SCOPE.md path
 - *(Optional)* Prior findings paths — FINDINGS.md from upstream dependency spikes
+- *(Optional)* `Your questions:` — explicit list of Goal questions assigned to you in a dual-track run. If present, answer **only those questions**. Do not answer questions assigned to the external track.
+- *(Optional)* `SYNTHESIS` mode — if your spawn prompt says "SYNTHESIS", you receive two track findings files instead of a SCOPE.md investigation task. See synthesis mode below.
 
 ---
 
@@ -79,9 +81,32 @@ Do not declare `validated` confidence without actually validating. Do not spend 
 
 ---
 
+## Synthesis Mode
+
+When spawned with `SYNTHESIS` in the prompt, you do **no investigation**. You receive:
+- `SCOPE.md` — for Goal questions and structure
+- `FINDINGS-INTERNAL.md` — internal track output
+- `FINDINGS-EXTERNAL.md` — external track output
+
+Read both. Write `FINDINGS.md` by:
+1. For each Goal question in SCOPE.md: pull the answer from whichever track covered it
+2. If both tracks touched the same question: merge the evidence, surface any tension explicitly
+3. Merge Unanswered Questions and Out-of-Scope Discoveries from both files (deduplicate)
+4. Write one unified Recommendations Summary
+
+Do not re-investigate. Do not spawn sub-agents. Do not add new findings beyond what the two track files contain.
+
+---
+
 ## Step 4 — Write FINDINGS.md
 
-Write to `product/research/{ass-NNN}/FINDINGS.md`.
+**In dual-track mode** (when `Your questions:` was specified): write to `product/research/{ass-NNN}/FINDINGS-INTERNAL.md`, not `FINDINGS.md`.
+
+**In synthesis mode**: write to `product/research/{ass-NNN}/FINDINGS.md`.
+
+**In single-track mode**: write to `product/research/{ass-NNN}/FINDINGS.md`.
+
+Standard path: `product/research/{ass-NNN}/FINDINGS.md`.
 
 ```markdown
 # FINDINGS: {Spike Title}
@@ -162,4 +187,4 @@ If research surfaces what looks like a reusable pattern or architectural lesson:
 - [ ] Confidence level matches what was required in SCOPE.md
 - [ ] Out-of-Scope Discoveries listed but not pursued
 - [ ] No Unimatrix writes were made
-- [ ] FINDINGS.md written to `product/research/{ass-NNN}/FINDINGS.md`
+- [ ] Written to correct output file: `FINDINGS-INTERNAL.md` (dual-track), `FINDINGS.md` (synthesis or single-track)

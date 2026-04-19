@@ -391,9 +391,11 @@ Full research scope: `product/research/ass-029/SCOPE.md`.
 ---
 
 ## Wave 2 — Deployment
-*Estimated: 3 weeks. Can run in parallel with Wave 1 and 1A after Wave 0.*
+*Planning in progress. See `product/WAVE2-ROADMAP.md` for the full Wave 2 planning document, updated goal statements, and research spike prerequisite list (ASS-041 through ASS-047).*
 
-Wave 2 delivers containerization, HTTP transport, multi-project routing, and OAuth. These are independent of the intelligence pipeline — they are the delivery infrastructure that makes Unimatrix accessible beyond a single developer workspace. Wave 1A should reach WA-4 (proactive delivery) before Wave 2 deployment. WA-3 is deferred — W1-5 behavioral signals are sufficient for initial W3-1 training.
+*Original design notes below remain as detailed specification reference. Goal statements and scope are being revised by the Wave 2 research spikes.*
+
+Wave 2 delivers containerization, HTTPS transport, multi-project routing, OAuth, and the enterprise admin console. These are independent of the intelligence pipeline — they are the delivery infrastructure that makes Unimatrix accessible beyond a single developer workspace. Wave 1A is complete. The Wave 2 enterprise tier ships as BSL-1.1; the OSS STDIO tier remains MIT/Apache.
 
 ### W2-1: Container Packaging
 **Business outcome**: Knowledge survives infrastructure changes — production-grade deployment with clean backup, recovery, and standard container lifecycle.

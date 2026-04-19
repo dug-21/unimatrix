@@ -1,0 +1,47 @@
+{
+  "_comment": "IMPORTANT: --provider codex-cli is REQUIRED on all hook commands. Without it, events are mislabeled as claude-code in Unimatrix source_domain attribution. Live Codex CLI MCP hook support is currently non-functional due to Codex upstream bug #16732. This configuration file is provided for forward-compatibility only. When bug #16732 is resolved, these hooks will fire for MCP tool calls without any further changes to this file.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__unimatrix__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook PreToolUse --provider codex-cli"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__unimatrix__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook PostToolUse --provider codex-cli"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook SessionStart --provider codex-cli"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook Stop --provider codex-cli"
+          }
+        ]
+      }
+    ]
+  }
+}

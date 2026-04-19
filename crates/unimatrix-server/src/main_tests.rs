@@ -22,7 +22,7 @@ fn test_no_subcommand_defaults_to_bridge_mode() {
 fn test_hook_subcommand_parsed() {
     let cli = Cli::try_parse_from(["unimatrix", "hook", "SessionStart"]).unwrap();
     match cli.command {
-        Some(Command::Hook { event }) => assert_eq!(event, "SessionStart"),
+        Some(Command::Hook { event, .. }) => assert_eq!(event, "SessionStart"),
         other => panic!("expected Hook, got {other:?}"),
     }
 }

@@ -55,17 +55,134 @@ const TOOL_RESULT_SNIPPET_BYTES: usize = 300;
 /// Key-param truncation budget for tool compact representation (OQ-3).
 const TOOL_KEY_PARAM_BYTES: usize = 120;
 
+/// Map any event name (Gemini-specific or canonical) to its canonical Unimatrix name.
+///
+/// Returns a `&'static str` literal. Unknown event names return `"__unknown__"`.
+/// Used in the hint path (when `--provider` is supplied) and as a building block for
+/// `normalize_event_name`.
+fn map_to_canonical(event: &str) -> &'static str {
+    match event {
+        // Gemini-unique names → canonical Claude Code equivalents
+        "BeforeTool" => "PreToolUse",
+        "AfterTool" => "PostToolUse",
+        "SessionEnd" => "Stop",
+        // Canonical / shared names (Claude Code, Codex) — return static literals
+        "PreToolUse" => "PreToolUse",
+        "PostToolUse" => "PostToolUse",
+        "SessionStart" => "SessionStart",
+        "Stop" => "Stop",
+        "TaskCompleted" => "TaskCompleted",
+        "Ping" => "Ping",
+        "UserPromptSubmit" => "UserPromptSubmit",
+        "PreCompact" => "PreCompact",
+        "PostToolUseFailure" => "PostToolUseFailure",
+        "SubagentStart" => "SubagentStart",
+        "SubagentStop" => "SubagentStop",
+        // Unknown event name — caller detects this sentinel and uses raw event string
+        _ => "__unknown__",
+    }
+}
+
+/// Translate a provider-specific event name to its canonical Unimatrix name and infer
+/// the originating provider (inference path only — no `provider_hint` parameter).
+///
+/// Returns `(canonical_name, provider)` as `(&'static str, &'static str)` pairs.
+/// Called ONLY when `--provider` is absent. Pure synchronous, no I/O, no allocations.
+///
+/// - Gemini-unique names (`BeforeTool`, `AfterTool`, `SessionEnd`) infer `"gemini-cli"`.
+/// - All known Claude Code / Codex names infer `"claude-code"` (backward compatible).
+/// - Unknown names return `("__unknown__", "unknown")` sentinel — caller substitutes
+///   the raw event string (NFR-01).
+pub fn normalize_event_name(event: &str) -> (&'static str, &'static str) {
+    match event {
+        // Gemini-unique names — unambiguous provider inference
+        "BeforeTool" => ("PreToolUse", "gemini-cli"),
+        "AfterTool" => ("PostToolUse", "gemini-cli"),
+        "SessionEnd" => ("Stop", "gemini-cli"),
+        // Canonical Claude Code names — pass through, default to "claude-code"
+        "PreToolUse" => ("PreToolUse", "claude-code"),
+        "PostToolUse" => ("PostToolUse", "claude-code"),
+        "SessionStart" => ("SessionStart", "claude-code"),
+        "Stop" => ("Stop", "claude-code"),
+        "TaskCompleted" => ("TaskCompleted", "claude-code"),
+        "Ping" => ("Ping", "claude-code"),
+        "UserPromptSubmit" => ("UserPromptSubmit", "claude-code"),
+        "PreCompact" => ("PreCompact", "claude-code"),
+        "PostToolUseFailure" => ("PostToolUseFailure", "claude-code"),
+        "SubagentStart" => ("SubagentStart", "claude-code"),
+        "SubagentStop" => ("SubagentStop", "claude-code"),
+        // Unknown event: sentinel return. Caller checks for "__unknown__" and substitutes
+        // the raw event string to preserve the unrecognized name in the DB hook column.
+        _ => ("__unknown__", "unknown"),
+    }
+}
+
 /// Run the hook subcommand.
 ///
 /// This is the entry point from `main()` for the `hook` subcommand.
 /// No tokio runtime is initialized. Returns `Ok(())` for all expected
 /// conditions -- exit code is always 0 per FR-03.7.
-pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(
+    event: String,
+    provider: Option<String>,
+    project_dir: Option<PathBuf>,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Read stdin
     let stdin_content = read_stdin();
 
     // Step 2: Parse hook input (defensive -- ADR-006)
-    let hook_input = parse_hook_input(&stdin_content);
+    let mut hook_input = parse_hook_input(&stdin_content);
+
+    // Step 2b: Normalize event name and set provider on hook_input (ADR-001, ADR-002 vnc-013).
+    //
+    // Two paths depending on whether --provider was supplied:
+    //
+    //   Hint path  (provider.is_some()): caller already knows the provider.
+    //              Call map_to_canonical() for the event name only.
+    //              Use the CLI flag value directly for hook_input.provider,
+    //              but only if it is a recognized provider name.
+    //
+    //   Inference path (provider.is_none()): call normalize_event_name() which
+    //              infers both the canonical name and the provider from the event string.
+
+    // Allowlist validation: unknown --provider values are logged and treated as None
+    // so the inference path runs instead (security gate F-01).
+    const KNOWN_PROVIDERS: &[&str] = &["claude-code", "gemini-cli", "codex-cli"];
+    let provider = match &provider {
+        Some(p) if KNOWN_PROVIDERS.contains(&p.as_str()) => provider,
+        Some(p) => {
+            eprintln!(
+                "[unimatrix] warning: unknown --provider value {:?}; ignoring",
+                p
+            );
+            None
+        }
+        None => None,
+    };
+
+    let (canonical_name, provider_str): (&'static str, &'static str) = if provider.is_some() {
+        (map_to_canonical(&event), "")
+    } else {
+        normalize_event_name(&event)
+    };
+
+    // Set provider on hook_input BEFORE build_request():
+    hook_input.provider = if let Some(ref hint) = provider {
+        // Hint path: use the CLI --provider value (already validated above).
+        Some(hint.clone())
+    } else {
+        // Inference path: use what normalize_event_name returned.
+        // "unknown" is valid — still Some so ImplantEvent.provider is always Some.
+        Some(provider_str.to_string())
+    };
+
+    // Resolve the actual event string to pass to build_request():
+    // If normalize returned "__unknown__", use the raw event to preserve the unrecognized name.
+    let effective_event: String = if canonical_name == "__unknown__" {
+        event.clone()
+    } else {
+        canonical_name.to_string()
+    };
 
     // Step 3: Determine working directory and detect project root
     let cwd = resolve_cwd(&hook_input, project_dir.as_deref());
@@ -79,14 +196,17 @@ pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn st
         .join(&project_hash)
         .join("unimatrix.sock");
 
-    // Step 5: Build request from event + input
-    let request = build_request(&event, &hook_input);
+    // Step 5: Build request from CANONICAL event + input (with provider set)
+    let request = build_request(&effective_event, &hook_input);
 
     // Step 5b: SubagentStart fallback — Claude Code does not send prompt_snippet in the
     // SubagentStart payload, so build_request always returns RecordEvent for this event.
     // Derive a query from the transcript tail (which contains the Task spawn description
     // as the most recent ToolPair entry) with agent_type as role.
-    let request = if event == "SubagentStart" && matches!(request, HookRequest::RecordEvent { .. })
+    // After normalization, Gemini has no SubagentStart equivalent; this check correctly
+    // fires only for Claude Code SubagentStart events.
+    let request = if effective_event == "SubagentStart"
+        && matches!(request, HookRequest::RecordEvent { .. })
     {
         let role = hook_input
             .extra
@@ -234,6 +354,8 @@ fn parse_hook_input(raw: &str) -> HookInput {
                 cwd: None,
                 transcript_path: None,
                 prompt: None,
+                provider: None,
+                mcp_context: None,
                 extra: serde_json::Value::Null,
             }
         }
@@ -329,6 +451,14 @@ fn extract_event_topic_signal(event: &str, input: &HookInput) -> Option<String> 
 
 /// Build a `HookRequest` from the event name and parsed input.
 fn build_request(event: &str, input: &HookInput) -> HookRequest {
+    // Normalization contract: provider-specific names must not reach this function.
+    // If this fires in debug builds, normalize_event_name() was not called before build_request().
+    // Compiled out in release builds — zero production cost (ADR-001 vnc-013, pseudocode decision).
+    debug_assert!(
+        !matches!(event, "BeforeTool" | "AfterTool" | "SessionEnd"),
+        "provider-specific event name reached build_request() without normalization: {event}"
+    );
+
     // Resolve session_id with fallback to parent PID
     let session_id = input
         .session_id
@@ -404,6 +534,32 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
 
         // col-009: Intercept PostToolUse for rework tracking
         "PostToolUse" => {
+            // Rework detection is Claude Code-only (ADR-005 vnc-013).
+            // Gate: skip rework path for all non-claude-code providers.
+            // Gemini AfterTool (canonicalized to PostToolUse) covers MCP tool calls only
+            // (filtered by .gemini/settings.json matcher) and must never enter is_rework_eligible_tool().
+            // Codex PostToolUse is also excluded — rework tool names (Bash, Edit, Write, MultiEdit)
+            // are Claude Code-specific.
+            // hook_input.provider is always Some at this point (set by run() step 2b).
+            let provider_val = input.provider.as_deref().unwrap_or("claude-code");
+
+            if provider_val != "claude-code" {
+                // Non-Claude-Code provider: emit generic RecordEvent with canonical name.
+                // topic_signal still extracted for knowledge attribution.
+                let topic_signal = extract_event_topic_signal("PostToolUse", input);
+                return HookRequest::RecordEvent {
+                    event: ImplantEvent {
+                        event_type: "PostToolUse".to_string(),
+                        session_id,
+                        timestamp: now_secs(),
+                        payload: input.extra.clone(),
+                        topic_signal,
+                        provider: input.provider.clone(),
+                    },
+                };
+            }
+
+            // Existing rework detection logic (Claude Code only):
             let tool_name = input
                 .extra
                 .get("tool_name")
@@ -423,6 +579,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         timestamp: now_secs(),
                         payload: input.extra.clone(),
                         topic_signal,
+                        provider: input.provider.clone(),
                     },
                 };
             }
@@ -438,6 +595,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             timestamp: now_secs(),
                             payload: input.extra.clone(),
                             topic_signal,
+                            provider: input.provider.clone(),
                         },
                     };
                 }
@@ -455,6 +613,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             "tool_response": input.extra.get("tool_response"),
                         }),
                         topic_signal: topic_signal.clone(),
+                        provider: input.provider.clone(),
                     })
                     .collect();
                 return HookRequest::RecordEvents { events };
@@ -481,6 +640,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         "tool_response": input.extra.get("tool_response"),
                     }),
                     topic_signal,
+                    provider: input.provider.clone(),
                 },
             }
         }
@@ -507,12 +667,41 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     timestamp: now_secs(),
                     payload: input.extra.clone(),
                     topic_signal,
+                    provider: input.provider.clone(),
                 },
             }
         }
 
-        // col-022: Intercept PreToolUse for context_cycle tool calls
-        "PreToolUse" => build_cycle_event_or_fallthrough(event, session_id, input),
+        // col-022: Intercept PreToolUse for context_cycle tool calls.
+        // mcp_context promotion adapter (SR-08, R-01 mitigation, ADR-003 vnc-013):
+        // Gemini BeforeTool places tool_name in mcp_context.tool_name (bare: "context_cycle").
+        // build_cycle_event_or_fallthrough() reads input.extra["tool_name"].
+        // Promote bare name to extra["tool_name"] so interception logic finds it.
+        // We clone the input when mcp_context.tool_name is present; use original otherwise
+        // (zero-copy for Claude Code, which lacks mcp_context).
+        // CRITICAL: pass the clone (not original) to build_cycle_event_or_fallthrough() —
+        // passing original makes the promotion a no-op (R-01 failure mode).
+        "PreToolUse" => {
+            if let Some(bare_name) = input
+                .mcp_context
+                .as_ref()
+                .and_then(|v| v.as_object())
+                .and_then(|obj| obj.get("tool_name"))
+                .and_then(|v| v.as_str())
+            {
+                // mcp_context.tool_name present (Gemini payload) — promote to extra["tool_name"].
+                let mut input_clone = input.clone();
+                // Ensure extra is an Object so indexing works.
+                if !input_clone.extra.is_object() {
+                    input_clone.extra = serde_json::Value::Object(serde_json::Map::new());
+                }
+                input_clone.extra["tool_name"] = serde_json::Value::String(bare_name.to_string());
+                build_cycle_event_or_fallthrough(event, session_id, &input_clone)
+            } else {
+                // No mcp_context.tool_name (Claude Code / Codex) — use original unchanged.
+                build_cycle_event_or_fallthrough(event, session_id, input)
+            }
+        }
 
         // crt-027 WA-4a: Route SubagentStart to ContextSearch when prompt_snippet is present
         // (forward-compat only — Claude Code does not currently send this field).
@@ -566,18 +755,13 @@ fn build_cycle_event_or_fallthrough(
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    // Match by "context_cycle" substring in tool_name.
-    // Claude Code sends tool_name as "mcp__unimatrix__context_cycle"
-    // (server prefix + tool name). Use .contains("context_cycle") to match
-    // regardless of prefix format.
-    if !tool_name.contains("context_cycle") {
-        return generic_record_event(event, session_id, input);
-    }
-
-    // R-09 mitigation: verify the prefix contains "unimatrix" to avoid
-    // matching a tool from a different MCP server named "context_cycle".
-    // If tool_name is exactly "context_cycle" (no prefix), allow it (direct MCP call).
-    if tool_name != "context_cycle" && !tool_name.contains("unimatrix") {
+    // Match exactly against the two known forms of the context_cycle tool name
+    // (security gate F-02: closes injection surface opened by mcp_context promotion):
+    //   - "context_cycle"                     bare name (Gemini after mcp_context promotion)
+    //   - "mcp__unimatrix__context_cycle"     prefixed name (Claude Code)
+    // Substring matching (.contains) was replaced with equality to prevent a crafted
+    // tool name such as "evil_context_cycle_bypass" from passing this guard.
+    if tool_name != "context_cycle" && tool_name != "mcp__unimatrix__context_cycle" {
         return generic_record_event(event, session_id, input);
     }
 
@@ -683,6 +867,7 @@ fn build_cycle_event_or_fallthrough(
             timestamp: now_secs(),
             payload,
             topic_signal,
+            provider: input.provider.clone(),
         },
     }
 }
@@ -699,6 +884,7 @@ fn generic_record_event(event: &str, session_id: String, input: &HookInput) -> H
             timestamp: now_secs(),
             payload: input.extra.clone(),
             topic_signal,
+            provider: input.provider.clone(),
         },
     }
 }
@@ -1282,6 +1468,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra: serde_json::Value::Null,
         }
     }
@@ -1551,6 +1739,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra,
         }
     }
@@ -1721,6 +1911,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra: serde_json::Value::Null,
         };
         let req = build_request("PostToolUse", &input);
@@ -1737,6 +1929,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra,
         }
     }
@@ -1843,6 +2037,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra: serde_json::Value::Null,
         };
         let req = build_request("PostToolUseFailure", &input);
@@ -2633,6 +2829,8 @@ mod tests {
             cwd: Some("/workspace".to_string()),
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra,
         }
     }
@@ -2739,6 +2937,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra,
         }
     }
@@ -4009,5 +4209,620 @@ mod tests {
         let (_tmp, path) = make_jsonl_file(&lines);
         let result = extract_transcript_block(&path);
         assert!(result.is_none());
+    }
+
+    // -- vnc-013: normalize_event_name tests (AC-01, AC-17, AC-18) --
+
+    /// AC-01: Gemini-unique names infer gemini-cli and map to canonical names.
+    #[test]
+    fn test_normalize_event_name_gemini_unique_names() {
+        let cases = [
+            ("BeforeTool", ("PreToolUse", "gemini-cli")),
+            ("AfterTool", ("PostToolUse", "gemini-cli")),
+            ("SessionEnd", ("Stop", "gemini-cli")),
+        ];
+        for (input_event, (expected_canonical, expected_provider)) in &cases {
+            let (canonical, provider) = normalize_event_name(input_event);
+            assert_eq!(
+                canonical, *expected_canonical,
+                "normalize_event_name({input_event}) canonical mismatch"
+            );
+            assert_eq!(
+                provider, *expected_provider,
+                "normalize_event_name({input_event}) provider mismatch"
+            );
+        }
+    }
+
+    /// AC-01, AC-18: All Claude Code event names return themselves as canonical and infer claude-code.
+    #[test]
+    fn test_normalize_event_name_claude_code_passthrough() {
+        let claude_code_events = [
+            "PreToolUse",
+            "PostToolUse",
+            "SessionStart",
+            "Stop",
+            "SubagentStart",
+            "SubagentStop",
+            "PreCompact",
+            "UserPromptSubmit",
+            "PostToolUseFailure",
+            "TaskCompleted",
+            "Ping",
+        ];
+        for event in &claude_code_events {
+            let (canonical, provider) = normalize_event_name(event);
+            assert_eq!(
+                canonical, *event,
+                "normalize_event_name({event}) must return itself as canonical"
+            );
+            assert_eq!(
+                provider, "claude-code",
+                "normalize_event_name({event}) must infer claude-code"
+            );
+        }
+    }
+
+    /// AC-01: Unknown event name returns ("__unknown__", "unknown") sentinel.
+    #[test]
+    fn test_normalize_event_name_unknown_fallback() {
+        let (canonical, provider) = normalize_event_name("CompletelyUnknownEvent");
+        assert_eq!(canonical, "__unknown__");
+        assert_eq!(provider, "unknown");
+    }
+
+    /// AC-01: Category 2 events (cycle_start, etc.) are NOT inputs to normalize_event_name;
+    /// they fall to the unknown arm.
+    #[test]
+    fn test_normalize_event_name_category2_passthrough() {
+        for event in &["cycle_start", "cycle_stop", "cycle_phase_end"] {
+            let (canonical, provider) = normalize_event_name(event);
+            assert_eq!(
+                canonical, "__unknown__",
+                "Category 2 event {event} is not a normalize_event_name input; must return __unknown__"
+            );
+            assert_eq!(
+                provider, "unknown",
+                "Category 2 event {event} is not a normalize_event_name input; must return unknown"
+            );
+        }
+    }
+
+    // -- vnc-013: map_to_canonical tests --
+
+    /// map_to_canonical maps Gemini-unique names to canonical equivalents.
+    #[test]
+    fn test_map_to_canonical_gemini_names() {
+        assert_eq!(map_to_canonical("BeforeTool"), "PreToolUse");
+        assert_eq!(map_to_canonical("AfterTool"), "PostToolUse");
+        assert_eq!(map_to_canonical("SessionEnd"), "Stop");
+    }
+
+    /// map_to_canonical passes through already-canonical names as static literals.
+    #[test]
+    fn test_map_to_canonical_passthrough() {
+        assert_eq!(map_to_canonical("PreToolUse"), "PreToolUse");
+        assert_eq!(map_to_canonical("PostToolUse"), "PostToolUse");
+        assert_eq!(map_to_canonical("SessionStart"), "SessionStart");
+        assert_eq!(map_to_canonical("Stop"), "Stop");
+        assert_eq!(map_to_canonical("Ping"), "Ping");
+    }
+
+    /// map_to_canonical returns "__unknown__" for unrecognized names.
+    #[test]
+    fn test_map_to_canonical_unknown() {
+        assert_eq!(map_to_canonical("FutureThing"), "__unknown__");
+    }
+
+    // -- vnc-013: mcp_context promotion tests (AC-14, R-01) --
+
+    /// AC-14, R-01 scenario 1: Gemini BeforeTool with context_cycle produces cycle_start.
+    /// The mcp_context.tool_name "context_cycle" must be promoted to extra["tool_name"]
+    /// so build_cycle_event_or_fallthrough() intercepts it.
+    #[test]
+    fn test_gemini_mcp_context_tool_name_promotion() {
+        let mut input = test_input();
+        input.hook_event_name = "PreToolUse".to_string();
+        input.session_id = Some("sess-gemini-1".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        input.mcp_context = Some(serde_json::json!({
+            "server_name": "unimatrix",
+            "tool_name": "context_cycle",
+            "url": "http://localhost:3000"
+        }));
+        input.extra = serde_json::json!({
+            "tool_input": { "type": "start", "topic": "vnc-013" }
+        });
+
+        let req = build_request("PreToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.event_type, "cycle_start",
+                    "Promotion failed: mcp_context.tool_name was not promoted to extra[tool_name]"
+                );
+                assert!(
+                    event.payload.get("feature_cycle").is_some(),
+                    "feature_cycle must be present in cycle_start payload"
+                );
+            }
+            _ => panic!("expected RecordEvent with cycle_start, got {req:?}"),
+        }
+    }
+
+    /// AC-14, R-01 scenario 2: Gemini BeforeTool with non-cycle tool falls through to generic.
+    #[test]
+    fn test_gemini_before_tool_non_cycle_fallthrough() {
+        let mut input = test_input();
+        input.hook_event_name = "PreToolUse".to_string();
+        input.session_id = Some("sess-gemini-2".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        input.mcp_context = Some(serde_json::json!({
+            "tool_name": "context_search",
+            "server_name": "unimatrix"
+        }));
+        input.extra = serde_json::json!({
+            "tool_input": { "query": "test query" }
+        });
+
+        let req = build_request("PreToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.event_type, "PreToolUse",
+                    "Non-cycle tool must not produce cycle_start"
+                );
+            }
+            _ => panic!("expected generic RecordEvent, got {req:?}"),
+        }
+    }
+
+    /// AC-14, R-01 scenario 3: mcp_context present but missing tool_name key — no panic.
+    #[test]
+    fn test_mcp_context_missing_tool_name_degrades_gracefully() {
+        let mut input = test_input();
+        input.hook_event_name = "PreToolUse".to_string();
+        input.session_id = Some("sess-gemini-3".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        input.mcp_context = Some(serde_json::json!({
+            "server_name": "unimatrix",
+            "url": "http://localhost:3000"
+            // no "tool_name" key
+        }));
+        input.extra = serde_json::json!({});
+
+        let req = build_request("PreToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected RecordEvent fallthrough, got {req:?}"),
+        }
+    }
+
+    /// mcp_context is non-object (bad value) — as_object() returns None, skip promotion, no panic.
+    #[test]
+    fn test_mcp_context_non_object_degrades_gracefully() {
+        let mut input = test_input();
+        input.hook_event_name = "PreToolUse".to_string();
+        input.session_id = Some("sess-gemini-4".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        input.mcp_context = Some(serde_json::Value::String("bad".to_string()));
+        input.extra = serde_json::json!({});
+
+        let req = build_request("PreToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+            }
+            _ => panic!("expected RecordEvent fallthrough for non-object mcp_context"),
+        }
+    }
+
+    // -- vnc-013: rework detection gate tests (AC-04, AC-12, R-05) --
+
+    /// AC-04, AC-12, R-05 scenario 1: Gemini AfterTool (as canonical PostToolUse) skips rework path.
+    /// Even with a normally rework-eligible tool name, the provider gate fires first.
+    #[test]
+    fn test_gemini_after_tool_skips_rework_path() {
+        let mut input = test_input();
+        input.session_id = Some("sess-gemini".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        input.extra = serde_json::json!({ "tool_name": "Bash" }); // rework-eligible tool name
+
+        let req = build_request("PostToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PostToolUse");
+                assert_eq!(event.provider, Some("gemini-cli".to_string()));
+                assert_ne!(
+                    event.event_type, "post_tool_use_rework_candidate",
+                    "rework gate must block gemini-cli"
+                );
+            }
+            HookRequest::RecordEvents { .. } => {
+                panic!("MultiEdit path entered — rework gate failed for gemini-cli")
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    /// R-05 scenario 2: Codex PostToolUse skips rework path.
+    #[test]
+    fn test_codex_post_tool_use_skips_rework_path() {
+        let mut input = test_input();
+        input.session_id = Some("sess-codex".to_string());
+        input.provider = Some("codex-cli".to_string());
+        input.extra = serde_json::json!({ "tool_name": "Edit" }); // rework-eligible tool name
+
+        let req = build_request("PostToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PostToolUse");
+                assert_ne!(
+                    event.event_type, "post_tool_use_rework_candidate",
+                    "rework gate must block codex-cli"
+                );
+            }
+            _ => panic!("expected RecordEvent, rework gate must block codex"),
+        }
+    }
+
+    /// R-05 scenario 3 (over-block guard): Claude Code PostToolUse must still enter rework path.
+    #[test]
+    fn test_claude_code_post_tool_use_enters_rework_path() {
+        let mut input = test_input();
+        input.session_id = Some("sess-claude".to_string());
+        input.provider = Some("claude-code".to_string());
+        input.extra = serde_json::json!({ "tool_name": "Bash", "exit_code": 1 });
+
+        let req = build_request("PostToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.event_type, "post_tool_use_rework_candidate",
+                    "claude-code Bash with failure must enter rework path"
+                );
+            }
+            _ => panic!("expected rework candidate for claude-code Bash with failure"),
+        }
+    }
+
+    // -- vnc-013: provider propagation tests (AC-05, R-02) --
+
+    /// AC-17: Codex provider hint threads through to ImplantEvent.provider.
+    #[test]
+    fn test_run_codex_provider_hint() {
+        // Simulate run() hint path: provider already set on hook_input before build_request().
+        let mut input = test_input();
+        input.session_id = Some("sess-codex".to_string());
+        input.provider = Some("codex-cli".to_string());
+
+        let req = build_request("PreToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.provider,
+                    Some("codex-cli".to_string()),
+                    "hint path must set provider = codex-cli on ImplantEvent"
+                );
+            }
+            _ => panic!("expected RecordEvent for PreToolUse"),
+        }
+    }
+
+    /// AC-05, R-02 scenario 1: provider propagates into RecordEvent for canonical event types.
+    #[test]
+    fn test_implant_event_provider_set_for_record_event_variants() {
+        let canonical_events = [
+            "PreToolUse",
+            "PostToolUseFailure",
+            "SubagentStop",
+            "TaskCompleted",
+        ];
+
+        for event in &canonical_events {
+            let mut input = test_input();
+            input.provider = Some("gemini-cli".to_string());
+            input.session_id = Some("sess-1".to_string());
+
+            let req = build_request(event, &input);
+            if let HookRequest::RecordEvent { event: ie } = req {
+                assert_eq!(
+                    ie.provider,
+                    Some("gemini-cli".to_string()),
+                    "build_request({event}) must thread provider into ImplantEvent"
+                );
+            }
+            // Non-RecordEvent variants (SessionRegister, etc.) are skipped
+        }
+    }
+
+    /// AC-05, R-02 scenario 2: cycle_start event carries provider from normalization.
+    #[test]
+    fn test_cycle_event_provider_propagated() {
+        let mut input = test_input();
+        input.session_id = Some("sess-gemini".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        input.mcp_context = Some(serde_json::json!({ "tool_name": "context_cycle" }));
+        input.extra = serde_json::json!({ "tool_input": { "type": "start", "topic": "vnc-013" } });
+
+        let req = build_request("PreToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "cycle_start");
+                assert_eq!(
+                    event.provider,
+                    Some("gemini-cli".to_string()),
+                    "cycle_start event must carry provider from normalization"
+                );
+            }
+            _ => panic!("expected cycle_start RecordEvent"),
+        }
+    }
+
+    // -- vnc-013: Gemini dispatch tests (AC-01, R-08) --
+
+    /// R-08 scenario 2: Gemini SessionEnd normalized to Stop produces SessionClose.
+    #[test]
+    fn test_gemini_session_end_produces_session_close() {
+        // "SessionEnd" is normalized to "Stop" before build_request() is called.
+        // This test verifies the normalized "Stop" arm produces SessionClose for gemini provider.
+        let mut input = test_input();
+        input.session_id = Some("sess-gemini".to_string());
+        input.provider = Some("gemini-cli".to_string());
+
+        let req = build_request("Stop", &input);
+
+        match req {
+            HookRequest::SessionClose { session_id, .. } => {
+                assert_eq!(session_id, "sess-gemini");
+            }
+            _ => panic!("expected SessionClose for normalized Stop"),
+        }
+    }
+
+    // -- vnc-013: PostToolUseFailure path unchanged (AC-16, R-07) --
+
+    /// AC-16, R-07 scenario 3: PostToolUseFailure events are NOT affected by rework gate.
+    #[test]
+    fn test_post_tool_use_failure_arm_unchanged() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.extra = serde_json::json!({ "tool_name": "Bash", "error": "file not found" });
+
+        let req = build_request("PostToolUseFailure", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.event_type, "PostToolUseFailure",
+                    "PostToolUseFailure must NOT be normalized to PostToolUse (ADR-003 col-027)"
+                );
+            }
+            _ => panic!("expected RecordEvent with PostToolUseFailure"),
+        }
+    }
+
+    // -- vnc-013: topic signal for Gemini AfterTool response degradation (R-11) --
+
+    /// R-11 scenario 1: Gemini AfterTool without tool_response field doesn't panic.
+    #[test]
+    fn test_gemini_after_tool_response_fields_degrade_gracefully() {
+        let mut input = test_input();
+        input.session_id = Some("sess-gemini".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        // No tool_response field — Gemini may use a different field name
+        input.extra = serde_json::json!({
+            "tool_name": "context_search",
+            "tool_output": "some result"
+        });
+
+        let req = build_request("PostToolUse", &input);
+
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PostToolUse");
+                // No assertion on response fields — will be absent, which is acceptable
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    // -- vnc-013: debug_assert fires on provider-specific names (normalization contract) --
+
+    /// The debug_assert in build_request() must fire for provider-specific event names
+    /// that should have been normalized before reaching it.
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic(
+        expected = "provider-specific event name reached build_request() without normalization"
+    )]
+    fn test_build_request_debug_assert_fires_for_before_tool() {
+        let input = test_input();
+        // Directly call build_request with "BeforeTool" (should have been normalized).
+        // In debug builds, the debug_assert! fires before any match arm is reached.
+        let _ = build_request("BeforeTool", &input);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic(
+        expected = "provider-specific event name reached build_request() without normalization"
+    )]
+    fn test_build_request_debug_assert_fires_for_after_tool() {
+        let input = test_input();
+        let _ = build_request("AfterTool", &input);
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic(
+        expected = "provider-specific event name reached build_request() without normalization"
+    )]
+    fn test_build_request_debug_assert_fires_for_session_end() {
+        let input = test_input();
+        let _ = build_request("SessionEnd", &input);
+    }
+
+    // -- vnc-013: AC-11 topic_signal extraction on Gemini BeforeTool normalized to PreToolUse --
+
+    /// AC-11: When Gemini fires BeforeTool, normalize_event_name maps it to ("PreToolUse",
+    /// "gemini-cli"). The normalized PreToolUse path calls extract_event_topic_signal() which
+    /// reads extra["tool_input"] and returns a meaningful topic signal when a feature path is
+    /// present. This test verifies that the resulting ImplantEvent has non-empty topic_signal.
+    ///
+    /// Gemini's BeforeTool payload places tool_input as a top-level field in extra (ASS-049).
+    /// After normalize_event_name + build_request("PreToolUse", ...) the RecordEvent must carry
+    /// topic_signal extracted from that tool_input content.
+    #[test]
+    fn test_gemini_before_tool_topic_signal_extraction() {
+        // Step 1: Verify normalize_event_name maps "BeforeTool" correctly (inference path).
+        let (canonical, inferred_provider) = normalize_event_name("BeforeTool");
+        assert_eq!(canonical, "PreToolUse");
+        assert_eq!(inferred_provider, "gemini-cli");
+
+        // Step 2: Simulate the post-normalization state — provider and canonical name are set.
+        // Gemini BeforeTool payload: tool_input at top level in extra (ASS-049).
+        // Include a feature path so extract_event_topic_signal returns a meaningful value.
+        let mut input = test_input();
+        input.session_id = Some("sess-gemini-ac11".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        input.extra = serde_json::json!({
+            "tool_name": "Read",
+            "tool_input": "reading product/features/vnc-013/SCOPE.md for context"
+        });
+
+        // Step 3: Verify extract_event_topic_signal returns a meaningful signal.
+        let topic_signal = extract_event_topic_signal("PreToolUse", &input);
+        assert!(
+            topic_signal.is_some(),
+            "extract_event_topic_signal must return Some when tool_input contains a feature path; got None"
+        );
+        let signal_val = topic_signal.unwrap();
+        assert!(
+            !signal_val.is_empty(),
+            "topic_signal must be non-empty; got empty string"
+        );
+        // The feature path "vnc-013" in tool_input must be extracted as the topic signal.
+        assert_eq!(
+            signal_val, "vnc-013",
+            "topic_signal must be 'vnc-013' from the feature path in tool_input"
+        );
+
+        // Step 4: Verify the full path through build_request produces the same topic_signal
+        // on the ImplantEvent (non-cycle tool falls through to generic_record_event).
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+                assert_eq!(
+                    event.provider,
+                    Some("gemini-cli".to_string()),
+                    "ImplantEvent.provider must be gemini-cli"
+                );
+                assert!(
+                    event.topic_signal.is_some(),
+                    "ImplantEvent.topic_signal must be Some after Gemini BeforeTool normalization"
+                );
+                assert_eq!(
+                    event.topic_signal.as_deref(),
+                    Some("vnc-013"),
+                    "ImplantEvent.topic_signal must match the feature path extracted from tool_input"
+                );
+            }
+            _ => panic!("expected RecordEvent for normalized Gemini BeforeTool, got {req:?}"),
+        }
+    }
+
+    // -- vnc-013: AC-20 provider hint precedence on SessionStart --
+
+    /// AC-20: When `--provider codex-cli` is passed for a "SessionStart" event (which shares
+    /// the same name as Claude Code), the hint path (map_to_canonical) is used rather than
+    /// normalize_event_name (inference path). The resulting hook_input.provider must be
+    /// "codex-cli", not "claude-code".
+    ///
+    /// SessionStart produces HookRequest::SessionRegister which carries no provider field —
+    /// provider is set on hook_input.provider BEFORE build_request() in run(). This test
+    /// verifies the normalization boundary:
+    ///   - Hint path: map_to_canonical("SessionStart") → "SessionStart"; provider from CLI flag.
+    ///   - Inference path: normalize_event_name("SessionStart") → ("SessionStart", "claude-code").
+    ///
+    /// The test also verifies that build_request routes SessionStart to SessionRegister correctly
+    /// in both cases (no mismatch from normalization functions returning wrong canonical name).
+    #[test]
+    fn test_run_session_start_provider_hint_precedence() {
+        // Case 1: hint path — Some("codex-cli") must take precedence over inference.
+        // In run(): provider.is_some() → call map_to_canonical (not normalize_event_name).
+        // hook_input.provider is set to Some(hint.clone()) = Some("codex-cli").
+        let canonical_hint = map_to_canonical("SessionStart");
+        assert_eq!(
+            canonical_hint, "SessionStart",
+            "map_to_canonical(SessionStart) must return SessionStart (hint path canonical name)"
+        );
+
+        // Simulate what run() does for the hint path:
+        // hook_input.provider = Some("codex-cli") — set from CLI flag directly.
+        let mut input_hint = test_input();
+        input_hint.session_id = Some("sess-codex".to_string());
+        input_hint.provider = Some("codex-cli".to_string());
+
+        // build_request routes "SessionStart" → SessionRegister (correct arm).
+        let req_hint = build_request(canonical_hint, &input_hint);
+        assert!(
+            matches!(req_hint, HookRequest::SessionRegister { .. }),
+            "hint path: build_request(SessionStart) with codex-cli provider must produce SessionRegister, got {req_hint:?}"
+        );
+        // Provider is on hook_input, not SessionRegister — confirm it was set correctly.
+        assert_eq!(
+            input_hint.provider.as_deref(),
+            Some("codex-cli"),
+            "hint path: hook_input.provider must be codex-cli when --provider codex-cli is supplied"
+        );
+
+        // Case 2: inference path — normalize_event_name("SessionStart") →
+        // ("SessionStart", "claude-code"). Provider must default to "claude-code".
+        let (canonical_infer, inferred_provider) = normalize_event_name("SessionStart");
+        assert_eq!(
+            canonical_infer, "SessionStart",
+            "inference path: normalize_event_name(SessionStart) canonical must be SessionStart"
+        );
+        assert_eq!(
+            inferred_provider, "claude-code",
+            "inference path: SessionStart without hint must infer provider=claude-code, not codex-cli"
+        );
+
+        // Simulate what run() does for the inference path:
+        // hook_input.provider = Some("claude-code") — from normalize_event_name result.
+        let mut input_infer = test_input();
+        input_infer.session_id = Some("sess-cc".to_string());
+        input_infer.provider = Some(inferred_provider.to_string());
+
+        let req_infer = build_request(canonical_infer, &input_infer);
+        assert!(
+            matches!(req_infer, HookRequest::SessionRegister { .. }),
+            "inference path: build_request(SessionStart) must produce SessionRegister, got {req_infer:?}"
+        );
+        assert_eq!(
+            input_infer.provider.as_deref(),
+            Some("claude-code"),
+            "inference path: hook_input.provider must be claude-code when no --provider hint is supplied"
+        );
+
+        // Case 3: provider disambiguation — codex-cli hint vs claude-code inference for same event.
+        // Verify codex-cli != claude-code (the core AC-20 invariant).
+        assert_ne!(
+            input_hint.provider, input_infer.provider,
+            "AC-20 invariant: hint Some(codex-cli) and inference Some(claude-code) must differ for SessionStart"
+        );
     }
 }

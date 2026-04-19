@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "matcher": "mcp_unimatrix_.*",
+            "command": "unimatrix hook BeforeTool --provider gemini-cli"
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "matcher": "mcp_unimatrix_.*",
+            "command": "unimatrix hook AfterTool --provider gemini-cli"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook SessionStart --provider gemini-cli"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook SessionEnd --provider gemini-cli"
+          }
+        ]
+      }
+    ]
+  }
+}

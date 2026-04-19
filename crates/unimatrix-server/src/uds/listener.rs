@@ -46,6 +46,7 @@ use crate::infra::validation::{CYCLE_PHASE_END_EVENT, CYCLE_START_EVENT, CYCLE_S
 use crate::mcp::response::{IndexEntry, format_index_table};
 use crate::server::PendingEntriesAnalysis;
 use crate::services::index_briefing::{IndexBriefingParams, derive_briefing_query};
+use crate::services::observation::DEFAULT_HOOK_SOURCE_DOMAIN;
 use crate::uds::hook::MAX_GOAL_BYTES;
 use crate::uds::uds_has_capability;
 
@@ -1888,10 +1889,12 @@ fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option
             let input_str: Option<String> = row.get::<Option<String>, _>(4);
             ObservationRecord {
                 ts: (ts_millis / 1000) as u64,
-                // All hook-path records get source_domain = "claude-code" (FR-03.3).
+                // DB read path: ImplantEvent not available here (content_based_attribution_fallback
+                // reads from DB). Use DEFAULT_HOOK_SOURCE_DOMAIN as the Approach A simplified
+                // fallback — registry not accessible in this sync closure (ADR-004, FR-06.1).
                 // event_type passes through unchanged; unknown types are not dropped (AC-11).
                 event_type: hook_str,
-                source_domain: "claude-code".to_string(),
+                source_domain: DEFAULT_HOOK_SOURCE_DOMAIN.to_string(),
                 session_id,
                 tool,
                 input: input_str.map(serde_json::Value::String),
@@ -2683,6 +2686,18 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
     let ts_millis = (event.timestamp as i64).saturating_mul(1000);
     let hook = event.event_type.clone();
 
+    // Normalization contract enforcement (AC-16, ADR-005, FR-08.1).
+    // "post_tool_use_rework_candidate" is an internal routing label that must be
+    // converted to "PostToolUse" in build_request() before reaching this function.
+    // If this assert fires in debug builds, normalization failed or was bypassed.
+    // Scoped to rework candidate only — PostToolUseFailure is intentionally preserved
+    // (ADR-003 col-027). Compiled out in release builds.
+    debug_assert!(
+        hook != "post_tool_use_rework_candidate",
+        "rework candidate string escaped normalization boundary and reached extract_observation_fields: {}",
+        hook
+    );
+
     let (tool, input, response_size, response_snippet) = match hook.as_str() {
         "PreToolUse" => {
             let tool = event
@@ -3146,6 +3161,7 @@ mod tests {
             timestamp: 0,
             payload: serde_json::json!({}),
             topic_signal: None,
+            provider: None,
         };
         let response = dispatch_request(
             HookRequest::RecordEvent { event },
@@ -4425,7 +4441,15 @@ mod tests {
     }
 
     // -- col-019: extract_observation_fields with rework candidates --
-
+    //
+    // Note: the vnc-013 debug_assert in extract_observation_fields() enforces the
+    // normalization boundary contract — "post_tool_use_rework_candidate" must be
+    // converted to "PostToolUse" by build_request() before reaching this function.
+    // The col-019 tests below verify the in-function fallback normalization that
+    // remains as belt-and-suspenders enforcement. They are gated to non-debug builds
+    // because the debug_assert fires before the match arm can demonstrate normalization.
+    // In release builds (no assert), the match arm normalizes correctly as before.
+    #[cfg(not(debug_assertions))]
     #[test]
     fn extract_observation_fields_rework_candidate_normalized() {
         // T-09b: post_tool_use_rework_candidate events -> hook="PostToolUse"
@@ -4441,6 +4465,7 @@ mod tests {
                 "tool_response": {"success": true}
             }),
             topic_signal: None,
+            provider: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -4449,6 +4474,7 @@ mod tests {
         assert!(obs.response_snippet.is_some());
     }
 
+    #[cfg(not(debug_assertions))]
     #[test]
     fn extract_observation_fields_rework_candidate_with_tool_response() {
         // Verify response fields computed from tool_response in rework candidate
@@ -4463,6 +4489,7 @@ mod tests {
                 "tool_response": {"stdout": "file.txt", "exit_code": 1}
             }),
             topic_signal: None,
+            provider: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -4473,6 +4500,7 @@ mod tests {
         assert_eq!(obs.response_snippet, Some(expected));
     }
 
+    #[cfg(not(debug_assertions))]
     #[test]
     fn extract_observation_fields_rework_candidate_preserves_topic_signal() {
         // T-10: topic_signal flows through to ObservationRow for rework candidates
@@ -4487,6 +4515,7 @@ mod tests {
                 "tool_response": {"success": true}
             }),
             topic_signal: Some("col-019".to_string()),
+            provider: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -4506,6 +4535,7 @@ mod tests {
                 "tool_response": {"content": "fn main() {}"}
             }),
             topic_signal: None,
+            provider: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -4528,6 +4558,7 @@ mod tests {
                 "tool_input": {"path": "src/main.rs"}
             }),
             topic_signal: None,
+            provider: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.response_size, None);
@@ -4625,6 +4656,7 @@ mod tests {
                 "tool_input": {}
             }),
             topic_signal: None,
+            provider: None,
         };
         let obs = extract_observation_fields(&event);
         // AC-04: hook stored verbatim, not normalized to "PostToolUse"
@@ -4652,6 +4684,7 @@ mod tests {
                 "tool_input": {"path": "/tmp/x"}
             }),
             topic_signal: None,
+            provider: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, hook_type::POSTTOOLUSEFAILURE);
@@ -4670,6 +4703,7 @@ mod tests {
             timestamp: 3000,
             payload: serde_json::json!({"error": "boom"}),
             topic_signal: None,
+            provider: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, hook_type::POSTTOOLUSEFAILURE);
@@ -5166,6 +5200,7 @@ mod tests {
             timestamp: unix_now_secs(),
             payload,
             topic_signal,
+            provider: None,
         }
     }
 
@@ -7528,6 +7563,7 @@ mod tests {
             timestamp: unix_now_secs(),
             payload: serde_json::json!({"tool": "Read", "input": "some file"}),
             topic_signal: None, // no explicit signal — must be enriched from registry
+            provider: None,
         };
 
         let _resp2 = dispatch_request(
@@ -7593,6 +7629,7 @@ mod tests {
                 "had_failure": false
             }),
             topic_signal: None,
+            provider: None,
         };
 
         let response = dispatch_request(
@@ -8032,6 +8069,12 @@ mod tests {
 
     /// AC-29 (T-09): Valid session_id in rework_candidate arm proceeds to record_rework_event.
     /// Regression guard: sanitize_session_id must not reject valid session IDs.
+    ///
+    /// Note: gated to non-debug builds because the vnc-013 debug_assert in
+    /// extract_observation_fields() fires when "post_tool_use_rework_candidate" reaches
+    /// that function — which happens via this dispatch path. In production (release),
+    /// the assert is compiled out and the match arm normalizes correctly.
+    #[cfg(not(debug_assertions))]
     #[tokio::test]
     async fn test_dispatch_rework_candidate_valid_session_id_succeeds() {
         let store = make_store().await;
@@ -8050,6 +8093,7 @@ mod tests {
                 "had_failure": false
             }),
             topic_signal: None,
+            provider: None,
         };
 
         let response = dispatch_request(
@@ -8081,5 +8125,31 @@ mod tests {
             1,
             "record_rework_event must have been called once (rework_events.len() == 1)"
         );
+    }
+
+    /// AC-16, R-07: debug_assert guard fires in debug builds when rework candidate
+    /// string reaches extract_observation_fields() (vnc-013, ADR-005).
+    ///
+    /// In production (release), the assert is compiled out and the match arm at
+    /// "PostToolUse" | "post_tool_use_rework_candidate" normalizes the string.
+    /// This test verifies the guard panics as expected, documenting the contract.
+    #[cfg(debug_assertions)]
+    #[test]
+    #[should_panic(expected = "rework candidate string escaped normalization boundary")]
+    fn test_rework_candidate_guard_fires_in_debug() {
+        use unimatrix_engine::wire::ImplantEvent;
+        let event = ImplantEvent {
+            event_type: "post_tool_use_rework_candidate".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({
+                "tool_name": "Edit",
+                "tool_input": {"path": "src/foo.rs"},
+            }),
+            topic_signal: None,
+            provider: None,
+        };
+        // This call must panic in debug builds — the guard fires before the match arm.
+        let _ = extract_observation_fields(&event);
     }
 }

@@ -29,6 +29,7 @@ Built for agentic software delivery. Configurable for any workflow-centric domai
 ### Install via npm
 
 > **Platform: Linux x64 and arm64 only.** macOS and Windows are not supported via npm.
+> **Hook providers: Claude Code (full), Gemini CLI (v0.31+), and Codex CLI (config ready; live MCP hook testing blocked by Codex upstream bug #16732)**
 
 **Prerequisites — both required before installing:**
 - Node.js >= 18
@@ -160,7 +161,9 @@ All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. 
 
 ### Hook-Driven Invisible Delivery (Cortical Implant)
 
-Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — this combined with a `context_briefing` call on the outset, provides agents with an index of the most relevant artifacts to their goal and task. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. **No guidance is better than misdirection**. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.  Hooks provide the telemetry necessary for Unimatrix to learn.
+Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — this combined with a `context_briefing` call on the outset, provides agents with an index of the most relevant artifacts to their goal and task. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. **No guidance is better than misdirection**. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC. Hooks provide the telemetry necessary for Unimatrix to learn.
+
+Multi-provider hook support: Gemini CLI events (`BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary — no downstream code sees provider-specific strings. Codex CLI uses the same event names as Claude Code; the `--provider codex-cli` flag on the `unimatrix hook` subcommand disambiguates attribution. Reference configurations are provided at `.gemini/settings.json` and `.codex/hooks.json`. Codex live MCP hook support is pending resolution of Codex upstream bug #16732.
 
 ### Cycle Review Analysis
 
@@ -179,6 +182,8 @@ After each `context_store`, a background scan checks the new entry against its t
 ### Domain-Agnostic Observation Pipeline
 
 Every detection rule carries a `source_domain` guard — a rule fires only for events from its declared domain, never cross-contaminating signals from unrelated systems. Domain packs are registered via `[[observation.domain_packs]]` entries in `config.toml`, specifying the source domain, event types, and applicable knowledge categories. The built-in "claude-code" domain pack is always active and requires no configuration — it covers all Claude Code lifecycle hook events out of the box. Any domain's event stream connects to the learning layer by registering a domain pack; no code changes are required. `source_domain` is validated at both ingest and registration: values must match `^[a-z0-9_-]{1,64}$`. Reference: W1-5, col-023.
+
+Provider identity (`"claude-code"`, `"gemini-cli"`, `"codex-cli"`) is derived from the `--provider` flag or inferred from the hook event name at the ingest boundary and carried through as `source_domain` on observation records. Gemini CLI events with unique names (`BeforeTool`, `AfterTool`, `SessionEnd`) are unambiguously identified without a flag; Codex CLI requires `--provider codex-cli` because it shares event names with Claude Code.
 
 ### Correction Chains with Audit Trails
 
@@ -411,7 +416,7 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `serve --daemon` | Start the MCP server as a detached background daemon. Daemonizes (fork/setsid), binds the MCP UDS socket (`unimatrix-mcp.sock`) and hook IPC socket, starts the background tick loop, and exits the launcher process. Fails non-zero if a healthy daemon is already running. Linux and macOS only. | `--daemon` |
 | `serve --stdio` | Start the MCP server in foreground stdio mode. Identical in behavior to the pre-daemon default — the server runs until stdin closes, then performs graceful shutdown and exits. Use for development and testing. | `--stdio` |
 | `stop` | Send SIGTERM to the running daemon and wait for it to exit (up to 10 seconds). Exits 0 on success, non-zero if no daemon is running or the PID file is absent/stale. | None |
-| `hook <EVENT>` | Handle a Claude Code lifecycle hook event. Reads JSON from stdin, connects to the running server via UDS. Designed for use in `.claude/settings.json` hook configuration, not direct user invocation. | Event name as positional arg. |
+| `hook <EVENT>` | Handle a lifecycle hook event from Claude Code, Gemini CLI, or Codex CLI. Reads JSON from stdin, connects to the running server via UDS. Provider-specific event names (e.g., Gemini's `BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary. Designed for use in hook configuration files, not direct user invocation. | Event name as positional arg. `--provider <name>` (`claude-code` \| `gemini-cli` \| `codex-cli`) — required for Codex (shares event names with Claude Code); optional for Gemini (inferred from event name); omit for Claude Code (backward-compatible default). |
 | `export` | Export the knowledge base to JSONL format. No running server required. | `--output <PATH>` (defaults to stdout) |
 | `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
