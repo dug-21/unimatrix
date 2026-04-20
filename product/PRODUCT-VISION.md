@@ -4,13 +4,9 @@
 
 ## Vision
 
-Unimatrix is a workflow-aware, self-learning knowledge engine built for agentic
-software delivery. It captures the knowledge that emerges from doing work —
-decisions, patterns, lessons, conventions — and makes it trustworthy, retrievable,
-and continuously improving. As agents move through delivery cycles, Unimatrix learns
-what matters at each phase and delivers the right knowledge dynamically, before
-agents need to ask for it. Knowledge retention becomes a first-class citizen of the
-delivery process, not a side effect.
+Unimatrix is a workflow-aware, self-learning knowledge engine built for agentic workflows such as software delivery. It makes knowledge curation a first-class activity in the workflow itself — not a side effect. Agents search, store, and correct knowledge entries as a normal part of doing work: decisions get attributed, lessons get captured, patterns get refined. Unimatrix makes that knowledge trustworthy, consistent, and — as it learns from actual usage — continuously more relevant.
+
+Two surfaces, both driven by the same engine: agents retrieve knowledge on demand (search, lookup, get), and Unimatrix delivers it proactively — phase-conditioned injections and briefings that surface what matters before agents need to ask. The combination of explicit curation and self-improving delivery is what makes it distinct.
 
 Unimatrix is not an orchestration engine. It does not coordinate agents, schedule
 work, or manage workflows. It is a knowledge engine that understands workflow context
