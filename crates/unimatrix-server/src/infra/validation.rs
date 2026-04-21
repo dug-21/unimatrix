@@ -181,7 +181,21 @@ pub fn validate_lookup_params(params: &LookupParams) -> Result<(), ServerError> 
 }
 
 /// Validate context_store parameters.
-pub fn validate_store_params(params: &StoreParams) -> Result<(), ServerError> {
+pub fn validate_store_params(
+    params: &StoreParams,
+    max_content_bytes: usize,
+) -> Result<(), ServerError> {
+    // O(1) byte check before O(n) char scan — common rejection exits early
+    let byte_len = params.content.len();
+    if byte_len > max_content_bytes {
+        return Err(ServerError::InvalidInput {
+            field: "content".to_string(),
+            reason: format!(
+                "Content exceeds configured maximum of {max_content_bytes} bytes \
+                 (received {byte_len} bytes). Consider breaking this into multiple focused entries."
+            ),
+        });
+    }
     if let Some(title) = &params.title {
         validate_string_field("title", title, MAX_TITLE_LEN, true)?;
     }
@@ -205,8 +219,22 @@ pub fn validate_get_params(params: &GetParams) -> Result<(), ServerError> {
 }
 
 /// Validate context_correct parameters.
-pub fn validate_correct_params(params: &CorrectParams) -> Result<(), ServerError> {
+pub fn validate_correct_params(
+    params: &CorrectParams,
+    max_content_bytes: usize,
+) -> Result<(), ServerError> {
     validated_id(params.original_id)?;
+    // O(1) byte check before O(n) char scan — common rejection exits early
+    let byte_len = params.content.len();
+    if byte_len > max_content_bytes {
+        return Err(ServerError::InvalidInput {
+            field: "content".to_string(),
+            reason: format!(
+                "Content exceeds configured maximum of {max_content_bytes} bytes \
+                 (received {byte_len} bytes). Consider breaking this into multiple focused entries."
+            ),
+        });
+    }
     validate_string_field("content", &params.content, MAX_CONTENT_LEN, true)?;
     if let Some(reason) = &params.reason {
         validate_string_field("reason", reason, MAX_REASON_LEN, true)?;
@@ -816,7 +844,7 @@ mod tests {
             feature_cycle: None,
             session_id: None,
         };
-        assert!(validate_store_params(&params).is_ok());
+        assert!(validate_store_params(&params, 50_000).is_ok());
     }
 
     #[test]
@@ -833,7 +861,7 @@ mod tests {
             feature_cycle: Some("col-001".to_string()),
             session_id: None,
         };
-        assert!(validate_store_params(&params).is_ok());
+        assert!(validate_store_params(&params, 50_000).is_ok());
     }
 
     #[test]
@@ -850,7 +878,7 @@ mod tests {
             feature_cycle: Some("a".repeat(129)),
             session_id: None,
         };
-        assert!(validate_store_params(&params).is_err());
+        assert!(validate_store_params(&params, 50_000).is_err());
     }
 
     #[test]
@@ -867,7 +895,117 @@ mod tests {
             feature_cycle: Some("a".repeat(128)),
             session_id: None,
         };
-        assert!(validate_store_params(&params).is_ok());
+        assert!(validate_store_params(&params, 50_000).is_ok());
+    }
+
+    // -- #561: byte-limit tests for validate_store_params --
+
+    #[test]
+    fn test_validate_store_params_content_byte_limit() {
+        // 8001 ASCII bytes, passes 50,000 char check → must fail byte limit of 8000
+        let params_over = StoreParams {
+            content: "a".repeat(8001),
+            topic: "t".to_string(),
+            category: "convention".to_string(),
+            tags: None,
+            title: None,
+            source: None,
+            agent_id: None,
+            format: None,
+            feature_cycle: None,
+            session_id: None,
+        };
+        let err = validate_store_params(&params_over, 8_000).unwrap_err();
+        let reason = match &err {
+            ServerError::InvalidInput { reason, .. } => reason.clone(),
+            _ => panic!("expected InvalidInput, got {err:?}"),
+        };
+        assert!(
+            reason.contains("configured maximum of 8000 bytes"),
+            "error must mention configured maximum of 8000 bytes; got: {reason}"
+        );
+        assert!(
+            reason.contains("received 8001 bytes"),
+            "error must mention received 8001 bytes; got: {reason}"
+        );
+
+        // 8000 bytes → must pass
+        let params_at = StoreParams {
+            content: "a".repeat(8000),
+            topic: "t".to_string(),
+            category: "convention".to_string(),
+            tags: None,
+            title: None,
+            source: None,
+            agent_id: None,
+            format: None,
+            feature_cycle: None,
+            session_id: None,
+        };
+        assert!(validate_store_params(&params_at, 8_000).is_ok());
+
+        // "🟩".repeat(2001) → 8004 bytes, only 2001 chars (well under 50,000) → must fail
+        // This is the critical multibyte correctness case.
+        let params_multibyte_over = StoreParams {
+            content: "🟩".repeat(2001),
+            topic: "t".to_string(),
+            category: "convention".to_string(),
+            tags: None,
+            title: None,
+            source: None,
+            agent_id: None,
+            format: None,
+            feature_cycle: None,
+            session_id: None,
+        };
+        assert_eq!("🟩".repeat(2001).len(), 8004, "each 🟩 is 4 bytes");
+        assert!(validate_store_params(&params_multibyte_over, 8_000).is_err());
+
+        // "🟩".repeat(2000) → 8000 bytes → must pass
+        let params_multibyte_at = StoreParams {
+            content: "🟩".repeat(2000),
+            topic: "t".to_string(),
+            category: "convention".to_string(),
+            tags: None,
+            title: None,
+            source: None,
+            agent_id: None,
+            format: None,
+            feature_cycle: None,
+            session_id: None,
+        };
+        assert_eq!("🟩".repeat(2000).len(), 8000, "each 🟩 is 4 bytes");
+        assert!(validate_store_params(&params_multibyte_at, 8_000).is_ok());
+    }
+
+    #[test]
+    fn test_validate_store_params_byte_check_fires_before_char_check() {
+        // Content that is over byte limit but under char limit — byte error must fire.
+        // 8001 ASCII bytes = 8001 chars (well under MAX_CONTENT_LEN=50000).
+        // With limit=8000, byte check fires first and returns byte error, not char error.
+        let params = StoreParams {
+            content: "a".repeat(8001),
+            topic: "t".to_string(),
+            category: "convention".to_string(),
+            tags: None,
+            title: None,
+            source: None,
+            agent_id: None,
+            format: None,
+            feature_cycle: None,
+            session_id: None,
+        };
+        let err = validate_store_params(&params, 8_000).unwrap_err();
+        match err {
+            ServerError::InvalidInput { field, reason } => {
+                assert_eq!(field, "content");
+                assert!(
+                    reason.contains("configured maximum"),
+                    "byte error must mention 'configured maximum'; got: {reason}"
+                );
+            }
+            _ => panic!("expected InvalidInput"),
+        }
     }
 
     #[test]
@@ -898,7 +1036,7 @@ mod tests {
             agent_id: None,
             format: None,
         };
-        assert!(validate_correct_params(&params).is_ok());
+        assert!(validate_correct_params(&params, 50_000).is_ok());
     }
 
     #[test]
@@ -914,7 +1052,7 @@ mod tests {
             agent_id: Some("agent".to_string()),
             format: Some("json".to_string()),
         };
-        assert!(validate_correct_params(&params).is_ok());
+        assert!(validate_correct_params(&params, 50_000).is_ok());
     }
 
     #[test]
@@ -930,7 +1068,7 @@ mod tests {
             agent_id: None,
             format: None,
         };
-        assert!(validate_correct_params(&params).is_err());
+        assert!(validate_correct_params(&params, 50_000).is_err());
     }
 
     #[test]
@@ -946,7 +1084,7 @@ mod tests {
             agent_id: None,
             format: None,
         };
-        assert!(validate_correct_params(&params).is_err());
+        assert!(validate_correct_params(&params, 50_000).is_err());
     }
 
     #[test]
@@ -962,7 +1100,7 @@ mod tests {
             agent_id: None,
             format: None,
         };
-        assert!(validate_correct_params(&params).is_err());
+        assert!(validate_correct_params(&params, 50_000).is_err());
     }
 
     #[test]
@@ -978,7 +1116,107 @@ mod tests {
             agent_id: None,
             format: None,
         };
-        assert!(validate_correct_params(&params).is_ok());
+        assert!(validate_correct_params(&params, 50_000).is_ok());
+    }
+
+    // -- #561: byte-limit tests for validate_correct_params --
+
+    #[test]
+    fn test_validate_correct_params_content_byte_limit() {
+        // 8001 ASCII bytes → must fail byte limit of 8000
+        let params_over = CorrectParams {
+            original_id: 1,
+            content: "a".repeat(8001),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        let err = validate_correct_params(&params_over, 8_000).unwrap_err();
+        let reason = match &err {
+            ServerError::InvalidInput { reason, .. } => reason.clone(),
+            _ => panic!("expected InvalidInput, got {err:?}"),
+        };
+        assert!(
+            reason.contains("configured maximum of 8000 bytes"),
+            "error must mention configured maximum of 8000 bytes; got: {reason}"
+        );
+        assert!(
+            reason.contains("received 8001 bytes"),
+            "error must mention received 8001 bytes; got: {reason}"
+        );
+
+        // 8000 bytes → must pass
+        let params_at = CorrectParams {
+            original_id: 1,
+            content: "a".repeat(8000),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_correct_params(&params_at, 8_000).is_ok());
+
+        // "🟩".repeat(2001) → 8004 bytes, only 2001 chars → must fail
+        let params_multibyte_over = CorrectParams {
+            original_id: 1,
+            content: "🟩".repeat(2001),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_correct_params(&params_multibyte_over, 8_000).is_err());
+
+        // "🟩".repeat(2000) → 8000 bytes → must pass
+        let params_multibyte_at = CorrectParams {
+            original_id: 1,
+            content: "🟩".repeat(2000),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        assert!(validate_correct_params(&params_multibyte_at, 8_000).is_ok());
+    }
+
+    #[test]
+    fn test_validate_correct_params_byte_check_fires_before_char_check() {
+        // Content over byte limit but under char limit — byte error must fire.
+        let params = CorrectParams {
+            original_id: 1,
+            content: "a".repeat(8001),
+            reason: None,
+            topic: None,
+            category: None,
+            tags: None,
+            title: None,
+            agent_id: None,
+            format: None,
+        };
+        let err = validate_correct_params(&params, 8_000).unwrap_err();
+        match err {
+            ServerError::InvalidInput { field, reason } => {
+                assert_eq!(field, "content");
+                assert!(
+                    reason.contains("configured maximum"),
+                    "byte error must mention 'configured maximum'; got: {reason}"
+                );
+            }
+            _ => panic!("expected InvalidInput"),
+        }
     }
 
     // -- vnc-003: validate_deprecate_params --
