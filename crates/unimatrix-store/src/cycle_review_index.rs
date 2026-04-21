@@ -89,6 +89,20 @@ pub struct CycleReviewRecord {
     pub first_computed_at: i64,
 }
 
+/// Store-local projection from ENTRIES for curation snapshot computation.
+///
+/// Produced by `get_curation_snapshot()` and mapped to `CurationSnapshot`
+/// by the server layer. Fields use `i64` because SQLite COUNT/SUM returns
+/// `i64`; the server layer clamps negatives to zero before converting to `u32`.
+#[derive(Debug, Clone)]
+pub struct CurationSnapshotRow {
+    pub corrections_agent: i64,
+    pub corrections_human: i64,
+    pub corrections_system: i64,
+    pub deprecations_total: i64,
+    pub orphan_deprecations: i64,
+}
+
 /// Slim projection from `cycle_review_index` for baseline computation.
 ///
 /// Produced by `get_curation_baseline_window()`. `schema_version` is included
@@ -282,6 +296,97 @@ impl SqlxStore {
         }
 
         Ok(())
+    }
+
+    /// Query ENTRIES to compute curation counts for a single feature cycle.
+    ///
+    /// Issues three read-only SELECT queries via `read_pool()` — correct pool for
+    /// read-only workloads (fixes GH #535 write_pool_server() misuse).
+    ///
+    /// # Queries
+    /// 1. Corrections by trust_source bucket, scoped to `feature_cycle`.
+    /// 2. All deprecations in `[cycle_start_ts, review_ts]` window.
+    /// 3. Orphan deprecations (status=1 AND superseded_by IS NULL) in the same window.
+    ///
+    /// Returns `CurationSnapshotRow` with raw i64 counts. The server layer
+    /// maps to `CurationSnapshot` (u32 fields) after clamping negatives to zero.
+    pub async fn get_curation_snapshot(
+        &self,
+        feature_cycle: &str,
+        cycle_start_ts: i64,
+        review_ts: i64,
+    ) -> Result<CurationSnapshotRow> {
+        // Query 1: corrections by trust_source bucket, scoped to this feature_cycle.
+        //
+        // An entry "corrects" when `supersedes IS NOT NULL`.
+        // ADR-002 bucketing:
+        //   trust_source = 'agent'                  → corrections_agent
+        //   trust_source IN ('human','privileged')  → corrections_human
+        //   everything else                          → corrections_system (informational)
+        //
+        // Uses SUM(CASE WHEN ...) for broad SQLite compatibility rather than FILTER.
+        // No AUDIT_LOG join (ADR-003).
+        let corrections_row = sqlx::query(
+            "SELECT
+               SUM(CASE WHEN trust_source = 'agent' THEN 1 ELSE 0 END),
+               SUM(CASE WHEN trust_source IN ('human', 'privileged') THEN 1 ELSE 0 END),
+               SUM(CASE WHEN trust_source NOT IN ('agent', 'human', 'privileged') THEN 1 ELSE 0 END)
+             FROM entries
+             WHERE feature_cycle = ?1
+               AND supersedes IS NOT NULL",
+        )
+        .bind(feature_cycle)
+        .fetch_one(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        let corrections_agent: i64 = corrections_row.get::<Option<i64>, _>(0).unwrap_or(0);
+        let corrections_human: i64 = corrections_row.get::<Option<i64>, _>(1).unwrap_or(0);
+        let corrections_system: i64 = corrections_row.get::<Option<i64>, _>(2).unwrap_or(0);
+
+        // Query 2: all deprecations in the cycle window (orphan + chain-deprecated).
+        //
+        // Attribution: entries.updated_at within [cycle_start_ts, review_ts].
+        // SQLite stores Status as INTEGER: Active=0, Deprecated=1, Proposed=2, Quarantined=3.
+        let deprecations_total_row = sqlx::query(
+            "SELECT COUNT(*) FROM entries
+             WHERE status = 1
+               AND updated_at >= ?1
+               AND updated_at <= ?2",
+        )
+        .bind(cycle_start_ts)
+        .bind(review_ts)
+        .fetch_one(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        let deprecations_total: i64 = deprecations_total_row.get::<i64, _>(0);
+
+        // Query 3: orphan deprecations in the cycle window.
+        //
+        // Orphan = status=1 (Deprecated) AND superseded_by IS NULL AND updated_at in window.
+        let orphan_row = sqlx::query(
+            "SELECT COUNT(*) FROM entries
+             WHERE status = 1
+               AND superseded_by IS NULL
+               AND updated_at >= ?1
+               AND updated_at <= ?2",
+        )
+        .bind(cycle_start_ts)
+        .bind(review_ts)
+        .fetch_one(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        let orphan_deprecations: i64 = orphan_row.get::<i64, _>(0);
+
+        Ok(CurationSnapshotRow {
+            corrections_agent,
+            corrections_human,
+            corrections_system,
+            deprecations_total,
+            orphan_deprecations,
+        })
     }
 
     /// Read the last `n` rows from `cycle_review_index` ordered by
@@ -1650,5 +1755,232 @@ mod tests {
             fetched.first_computed_at, 1_000,
             "concurrent force=true must never overwrite first_computed_at (serializer ensures this)"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // GH-535: get_curation_snapshot — SQL query logic via read_pool (pool fix)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_get_curation_snapshot_counts_corrections_by_trust_source() {
+        use crate::schema::{NewEntry, Status};
+        use sqlx::Row;
+
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let feature_cycle = "gh-535-correction-test";
+
+        // Insert entries with supersedes set (these are "corrections"):
+        // agent × 2, human × 1, privileged × 1 (→ human bucket), system × 1 (→ system bucket)
+        for (trust_source, count) in &[
+            ("agent", 2u32),
+            ("human", 1),
+            ("privileged", 1),
+            ("system", 1),
+        ] {
+            for _ in 0..*count {
+                let id = store
+                    .insert(NewEntry {
+                        title: format!("correction-{trust_source}"),
+                        content: "content".to_string(),
+                        topic: "test".to_string(),
+                        category: "convention".to_string(),
+                        tags: vec![],
+                        source: "test".to_string(),
+                        status: Status::Active,
+                        created_by: "test".to_string(),
+                        feature_cycle: feature_cycle.to_string(),
+                        trust_source: trust_source.to_string(),
+                    })
+                    .await
+                    .expect("insert entry");
+
+                // Set supersedes to mark as a correction
+                sqlx::query("UPDATE entries SET supersedes = 99 WHERE id = ?1")
+                    .bind(id as i64)
+                    .execute(store.write_pool_server())
+                    .await
+                    .expect("set supersedes");
+            }
+        }
+
+        // Insert one entry WITHOUT supersedes (not a correction — must not be counted)
+        store
+            .insert(NewEntry {
+                title: "no-supersedes".to_string(),
+                content: "content".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: feature_cycle.to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert non-correction");
+
+        // Insert a correction in a DIFFERENT cycle — must NOT be counted
+        let other_id = store
+            .insert(NewEntry {
+                title: "other-cycle-correction".to_string(),
+                content: "content".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Active,
+                created_by: "test".to_string(),
+                feature_cycle: "other-cycle".to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert other cycle entry");
+        sqlx::query("UPDATE entries SET supersedes = 42 WHERE id = ?1")
+            .bind(other_id as i64)
+            .execute(store.write_pool_server())
+            .await
+            .expect("set supersedes other cycle");
+
+        let now_ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        let row = store
+            .get_curation_snapshot(feature_cycle, 0, now_ts + 10)
+            .await
+            .expect("get_curation_snapshot must succeed");
+
+        assert_eq!(row.corrections_agent, 2, "agent bucket: 2 entries");
+        assert_eq!(
+            row.corrections_human, 2,
+            "human bucket: human(1) + privileged(1) = 2"
+        );
+        assert_eq!(row.corrections_system, 1, "system bucket: 1 entry");
+
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_get_curation_snapshot_counts_deprecations_and_orphans_in_window() {
+        use crate::schema::{NewEntry, Status};
+
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let feature_cycle = "gh-535-depr-test";
+        let now_ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        let cycle_start = now_ts - 1000;
+
+        // Entry A: Deprecated, superseded_by IS NOT NULL (chain-deprecated) — in window.
+        // Counts in deprecations_total but NOT in orphan_deprecations.
+        let a = store
+            .insert(NewEntry {
+                title: "chain-deprecated".to_string(),
+                content: "content".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Deprecated,
+                created_by: "test".to_string(),
+                feature_cycle: feature_cycle.to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert entry A");
+        sqlx::query("UPDATE entries SET superseded_by = 999 WHERE id = ?1")
+            .bind(a as i64)
+            .execute(store.write_pool_server())
+            .await
+            .expect("set superseded_by on A");
+
+        // Entry B: Deprecated, superseded_by IS NULL (orphan) — in window.
+        // Counts in both deprecations_total and orphan_deprecations.
+        store
+            .insert(NewEntry {
+                title: "orphan-deprecated".to_string(),
+                content: "content".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Deprecated,
+                created_by: "test".to_string(),
+                feature_cycle: feature_cycle.to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert entry B");
+
+        // Entry C: Deprecated, orphan, but updated_at BEFORE cycle_start — outside window.
+        // Must NOT be counted in either deprecations_total or orphan_deprecations.
+        let c = store
+            .insert(NewEntry {
+                title: "outside-window".to_string(),
+                content: "content".to_string(),
+                topic: "test".to_string(),
+                category: "convention".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: Status::Deprecated,
+                created_by: "test".to_string(),
+                feature_cycle: feature_cycle.to_string(),
+                trust_source: "agent".to_string(),
+            })
+            .await
+            .expect("insert entry C");
+        sqlx::query("UPDATE entries SET updated_at = ?1 WHERE id = ?2")
+            .bind(cycle_start - 10)
+            .bind(c as i64)
+            .execute(store.write_pool_server())
+            .await
+            .expect("backdate entry C");
+
+        let row = store
+            .get_curation_snapshot(feature_cycle, cycle_start, now_ts + 10)
+            .await
+            .expect("get_curation_snapshot must succeed");
+
+        assert_eq!(
+            row.deprecations_total, 2,
+            "entries A and B (both in window) must be counted"
+        );
+        assert_eq!(
+            row.orphan_deprecations, 1,
+            "only entry B (orphan, in window) must be counted"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_get_curation_snapshot_empty_store_returns_zeros() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let now_ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        let row = store
+            .get_curation_snapshot("empty-test", 0, now_ts + 10)
+            .await
+            .expect("get_curation_snapshot must succeed on empty store");
+
+        assert_eq!(row.corrections_agent, 0);
+        assert_eq!(row.corrections_human, 0);
+        assert_eq!(row.corrections_system, 0);
+        assert_eq!(row.deprecations_total, 0);
+        assert_eq!(row.orphan_deprecations, 0);
+
+        store.close().await.unwrap();
     }
 }
