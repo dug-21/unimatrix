@@ -8169,17 +8169,22 @@ mod tests {
             "expected HookResponse::Ack, got {response:?}"
         );
 
-        // Allow the fire-and-forget spawn_blocking write to complete.
-        for _ in 0..20 {
-            tokio::task::yield_now().await;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let hook: String =
-            sqlx::query_scalar("SELECT hook FROM observations WHERE session_id = 'sess-gh565'")
-                .fetch_one(store.read_pool_test())
-                .await
-                .expect("observation row must exist after RecordEvents dispatch");
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
+        let hook = loop {
+            if let Ok(h) = sqlx::query_scalar::<_, String>(
+                "SELECT hook FROM observations WHERE session_id = 'sess-gh565'",
+            )
+            .fetch_one(store.read_pool_test())
+            .await
+            {
+                break h;
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "timed out waiting for spawn_blocking DB write to complete"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        };
 
         assert_eq!(
             hook, "PostToolUse",
