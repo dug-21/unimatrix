@@ -62,7 +62,9 @@ pub use topic_deliveries::TopicDeliveryRecord;
 
 // Re-exports: sqlx backend
 pub use analytics::AnalyticsWrite;
-pub use cycle_review_index::{CurationBaselineRow, CycleReviewRecord, SUMMARY_SCHEMA_VERSION};
+pub use cycle_review_index::{
+    CurationBaselineRow, CurationSnapshotRow, CycleReviewRecord, SUMMARY_SCHEMA_VERSION,
+};
 pub use db::SqlxStore;
 pub use observations::{ObservationRow, ShadowEvalRow};
 pub use pool_config::{

@@ -14,10 +14,9 @@
 //! - SQL uses parameterized binds only — no string interpolation of user input (SEC-01).
 //! - Population stddev (divide by n, not n-1) — matches `unimatrix_observe::baseline`.
 //! - Zero-stddev and zero-denominator guards prevent NaN propagation (NFR-02).
-//! - `write_pool_server()` is used because `read_pool()` is `pub(crate)` in
-//!   `unimatrix-store` and not accessible cross-crate (entry #3028).
+//! - `compute_curation_snapshot()` delegates to `store.get_curation_snapshot()` which
+//!   uses `read_pool()` — correct pool selection for a read-only workload (fixes GH #535).
 
-use sqlx::Row;
 use unimatrix_core::CoreError;
 use unimatrix_observe::{
     CurationBaselineComparison, CurationHealthSummary, CurationSnapshot, TrendDirection,
@@ -112,9 +111,9 @@ pub struct CurationBaseline {
 
 /// Query ENTRIES to compute curation counts for a single feature cycle.
 ///
-/// Three SQL queries against ENTRIES (no AUDIT_LOG join — ADR-003).
-/// Uses `write_pool_server()` because `read_pool()` is `pub(crate)` in
-/// `unimatrix-store` and not accessible from `unimatrix-server` (entry #3028).
+/// Delegates to `store.get_curation_snapshot()` which issues three read-only
+/// SELECT queries via `read_pool()` — correct pool selection for a read-only
+/// workload (GH #535).
 ///
 /// This function MUST be called before `store_cycle_review()` acquires the write
 /// connection, so the read completes before the write begins.
@@ -129,97 +128,18 @@ pub async fn compute_curation_snapshot(
     cycle_start_ts: i64,
     review_ts: i64,
 ) -> Result<CurationSnapshot, ServiceError> {
-    let pool = store.write_pool_server();
+    let row = store
+        .get_curation_snapshot(feature_cycle, cycle_start_ts, review_ts)
+        .await
+        .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
 
-    // Query 1: corrections by trust_source bucket, scoped to this feature_cycle.
-    //
-    // An entry "corrects" when `supersedes IS NOT NULL`.
-    // ADR-002 bucketing:
-    //   trust_source = 'agent'                  → corrections_agent
-    //   trust_source IN ('human','privileged')  → corrections_human
-    //   everything else                          → corrections_system (informational)
-    //
-    // Uses SUM(CASE WHEN ...) for broad SQLite compatibility rather than FILTER.
-    // No AUDIT_LOG join (ADR-003).
-    let corrections_row = sqlx::query(
-        "SELECT
-           SUM(CASE WHEN trust_source = 'agent' THEN 1 ELSE 0 END),
-           SUM(CASE WHEN trust_source IN ('human', 'privileged') THEN 1 ELSE 0 END),
-           SUM(CASE WHEN trust_source NOT IN ('agent', 'human', 'privileged') THEN 1 ELSE 0 END)
-         FROM entries
-         WHERE feature_cycle = ?1
-           AND supersedes IS NOT NULL",
-    )
-    .bind(feature_cycle)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| {
-        ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Database(
-            e.into(),
-        )))
-    })?;
-
-    let corrections_agent: u32 =
-        corrections_row.get::<Option<i64>, _>(0).unwrap_or(0).max(0) as u32;
-    let corrections_human: u32 =
-        corrections_row.get::<Option<i64>, _>(1).unwrap_or(0).max(0) as u32;
-    let corrections_system: u32 =
-        corrections_row.get::<Option<i64>, _>(2).unwrap_or(0).max(0) as u32;
+    let corrections_agent: u32 = row.corrections_agent.max(0) as u32;
+    let corrections_human: u32 = row.corrections_human.max(0) as u32;
+    let corrections_system: u32 = row.corrections_system.max(0) as u32;
     // ADR-002: total = agent + human; system is informational and excluded.
     let corrections_total: u32 = corrections_agent + corrections_human;
-
-    // Query 2: all deprecations in the cycle window (orphan + chain-deprecated).
-    //
-    // Attribution: entries.updated_at within [cycle_start_ts, review_ts].
-    // Chain-deprecated entries have superseded_by IS NOT NULL and are counted here
-    // but not in orphan_deprecations.
-    // SQLite stores Status as INTEGER: Active=0, Deprecated=1, Proposed=2, Quarantined=3.
-    // Use `status = 1` (not the string 'deprecated') to match the actual schema encoding.
-    let deprecations_total_row = sqlx::query(
-        "SELECT COUNT(*) FROM entries
-         WHERE status = 1
-           AND updated_at >= ?1
-           AND updated_at <= ?2",
-    )
-    .bind(cycle_start_ts)
-    .bind(review_ts)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| {
-        ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Database(
-            e.into(),
-        )))
-    })?;
-
-    let deprecations_total: u32 = deprecations_total_row.get::<i64, _>(0).max(0) as u32;
-
-    // Query 3: orphan deprecations in the cycle window.
-    //
-    // Orphan = status=1 (Deprecated) AND superseded_by IS NULL AND updated_at in window.
-    // Only context_deprecate produces orphans (write-path analysis, ADR-003).
-    // context_correct and lesson-learned always set superseded_by IS NOT NULL.
-    //
-    // Fallback note: if cycle_start_ts = 0 (no cycle_start event), the window becomes
-    // [0, review_ts] — all history is in scope, over-counting orphans. The caller logs
-    // a warning when cycle_start_ts = 0. This function executes the query as-is.
-    let orphan_row = sqlx::query(
-        "SELECT COUNT(*) FROM entries
-         WHERE status = 1
-           AND superseded_by IS NULL
-           AND updated_at >= ?1
-           AND updated_at <= ?2",
-    )
-    .bind(cycle_start_ts)
-    .bind(review_ts)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| {
-        ServiceError::Core(CoreError::Store(unimatrix_store::StoreError::Database(
-            e.into(),
-        )))
-    })?;
-
-    let orphan_deprecations: u32 = orphan_row.get::<i64, _>(0).max(0) as u32;
+    let deprecations_total: u32 = row.deprecations_total.max(0) as u32;
+    let orphan_deprecations: u32 = row.orphan_deprecations.max(0) as u32;
 
     Ok(CurationSnapshot {
         corrections_total,
