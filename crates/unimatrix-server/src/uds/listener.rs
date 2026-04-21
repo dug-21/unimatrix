@@ -2686,18 +2686,6 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
     let ts_millis = (event.timestamp as i64).saturating_mul(1000);
     let hook = event.event_type.clone();
 
-    // Normalization contract enforcement (AC-16, ADR-005, FR-08.1).
-    // "post_tool_use_rework_candidate" is an internal routing label that must be
-    // converted to "PostToolUse" in build_request() before reaching this function.
-    // If this assert fires in debug builds, normalization failed or was bypassed.
-    // Scoped to rework candidate only — PostToolUseFailure is intentionally preserved
-    // (ADR-003 col-027). Compiled out in release builds.
-    debug_assert!(
-        hook != "post_tool_use_rework_candidate",
-        "rework candidate string escaped normalization boundary and reached extract_observation_fields: {}",
-        hook
-    );
-
     let (tool, input, response_size, response_snippet) = match hook.as_str() {
         "PreToolUse" => {
             let tool = event
@@ -2770,6 +2758,11 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
     } else {
         hook
     };
+    assert_ne!(
+        hook, "post_tool_use_rework_candidate",
+        "BUG: normalization failed, hook={}",
+        hook
+    );
 
     ObservationRow {
         session_id,
@@ -4441,15 +4434,6 @@ mod tests {
     }
 
     // -- col-019: extract_observation_fields with rework candidates --
-    //
-    // Note: the vnc-013 debug_assert in extract_observation_fields() enforces the
-    // normalization boundary contract — "post_tool_use_rework_candidate" must be
-    // converted to "PostToolUse" by build_request() before reaching this function.
-    // The col-019 tests below verify the in-function fallback normalization that
-    // remains as belt-and-suspenders enforcement. They are gated to non-debug builds
-    // because the debug_assert fires before the match arm can demonstrate normalization.
-    // In release builds (no assert), the match arm normalizes correctly as before.
-    #[cfg(not(debug_assertions))]
     #[test]
     fn extract_observation_fields_rework_candidate_normalized() {
         // T-09b: post_tool_use_rework_candidate events -> hook="PostToolUse"
@@ -4474,7 +4458,6 @@ mod tests {
         assert!(obs.response_snippet.is_some());
     }
 
-    #[cfg(not(debug_assertions))]
     #[test]
     fn extract_observation_fields_rework_candidate_with_tool_response() {
         // Verify response fields computed from tool_response in rework candidate
@@ -4500,7 +4483,6 @@ mod tests {
         assert_eq!(obs.response_snippet, Some(expected));
     }
 
-    #[cfg(not(debug_assertions))]
     #[test]
     fn extract_observation_fields_rework_candidate_preserves_topic_signal() {
         // T-10: topic_signal flows through to ObservationRow for rework candidates
@@ -8069,12 +8051,6 @@ mod tests {
 
     /// AC-29 (T-09): Valid session_id in rework_candidate arm proceeds to record_rework_event.
     /// Regression guard: sanitize_session_id must not reject valid session IDs.
-    ///
-    /// Note: gated to non-debug builds because the vnc-013 debug_assert in
-    /// extract_observation_fields() fires when "post_tool_use_rework_candidate" reaches
-    /// that function — which happens via this dispatch path. In production (release),
-    /// the assert is compiled out and the match arm normalizes correctly.
-    #[cfg(not(debug_assertions))]
     #[tokio::test]
     async fn test_dispatch_rework_candidate_valid_session_id_succeeds() {
         let store = make_store().await;
@@ -8127,16 +8103,10 @@ mod tests {
         );
     }
 
-    /// AC-16, R-07: debug_assert guard fires in debug builds when rework candidate
-    /// string reaches extract_observation_fields() (vnc-013, ADR-005).
-    ///
-    /// In production (release), the assert is compiled out and the match arm at
-    /// "PostToolUse" | "post_tool_use_rework_candidate" normalizes the string.
-    /// This test verifies the guard panics as expected, documenting the contract.
-    #[cfg(debug_assertions)]
+    /// AC-16, R-07 (converted): rework candidate is normalized to PostToolUse by
+    /// extract_observation_fields() regardless of build mode (GH #565).
     #[test]
-    #[should_panic(expected = "rework candidate string escaped normalization boundary")]
-    fn test_rework_candidate_guard_fires_in_debug() {
+    fn test_rework_candidate_normalizes_to_post_tool_use() {
         use unimatrix_engine::wire::ImplantEvent;
         let event = ImplantEvent {
             event_type: "post_tool_use_rework_candidate".to_string(),
@@ -8149,7 +8119,71 @@ mod tests {
             topic_signal: None,
             provider: None,
         };
-        // This call must panic in debug builds — the guard fires before the match arm.
-        let _ = extract_observation_fields(&event);
+        let obs = extract_observation_fields(&event);
+        assert_eq!(obs.hook, "PostToolUse");
+    }
+
+    /// GH #565: RecordEvents batch path writes hook="PostToolUse" for rework candidates.
+    ///
+    /// End-to-end: dispatch_request → extract_observation_fields → insert_observations_batch
+    /// → observations table. Verifies normalization survives the full write path.
+    #[tokio::test]
+    async fn test_record_events_rework_candidate_written_as_post_tool_use() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        registry.register_session("sess-gh565", None, None);
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let event = ImplantEvent {
+            event_type: "post_tool_use_rework_candidate".to_string(),
+            session_id: "sess-gh565".to_string(),
+            timestamp: unix_now_secs(),
+            payload: serde_json::json!({
+                "tool_name": "Edit",
+                "tool_input": {"path": "src/foo.rs"},
+                "tool_response": {"success": true}
+            }),
+            topic_signal: None,
+            provider: None,
+        };
+
+        let response = dispatch_request(
+            HookRequest::RecordEvents {
+                events: vec![event],
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        assert!(
+            matches!(response, HookResponse::Ack),
+            "expected HookResponse::Ack, got {response:?}"
+        );
+
+        // Allow the fire-and-forget spawn_blocking write to complete.
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        let hook: String =
+            sqlx::query_scalar("SELECT hook FROM observations WHERE session_id = 'sess-gh565'")
+                .fetch_one(store.read_pool_test())
+                .await
+                .expect("observation row must exist after RecordEvents dispatch");
+
+        assert_eq!(
+            hook, "PostToolUse",
+            "rework candidate must be written as PostToolUse, got={hook}"
+        );
     }
 }
