@@ -80,6 +80,8 @@ pub struct UnimatrixConfig {
     pub observation: ObservationConfig,
     #[serde(default)]
     pub retention: RetentionConfig,
+    #[serde(default)]
+    pub store: StoreConfig,
     // CycleConfig is intentionally absent (ADR-004: stub removed, rename is hardcoded).
 }
 
@@ -1570,6 +1572,60 @@ impl RetentionConfig {
 }
 
 // ---------------------------------------------------------------------------
+// StoreConfig (#561)
+// ---------------------------------------------------------------------------
+
+/// `[store]` section — write-path limits for knowledge entry storage.
+///
+/// All fields have compiled defaults via `#[serde(default)]` so an absent
+/// `[store]` block in config.toml applies defaults without error.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct StoreConfig {
+    /// Maximum byte length for `content` on context_store and context_correct calls.
+    ///
+    /// Enforced as a byte check (O(1)) before the character count check (O(n)).
+    /// Applies to both the MCP write path and the UDS path via validation.rs.
+    ///
+    /// Range: [1_000, 1_048_576]. Default: 8_000.
+    pub max_content_bytes: usize,
+}
+
+fn default_max_content_bytes() -> usize {
+    8_000
+}
+
+impl Default for StoreConfig {
+    fn default() -> Self {
+        StoreConfig {
+            max_content_bytes: default_max_content_bytes(),
+        }
+    }
+}
+
+impl StoreConfig {
+    /// Validate all StoreConfig fields against their documented ranges.
+    ///
+    /// Called during server startup alongside InferenceConfig::validate()
+    /// and RetentionConfig::validate(). An out-of-range value aborts startup
+    /// with a structured error naming the field.
+    ///
+    /// Checks:
+    ///   - max_content_bytes in [1_000, 1_048_576]
+    pub fn validate(&self, path: &Path) -> Result<(), ConfigError> {
+        if self.max_content_bytes < 1_000 || self.max_content_bytes > 1_048_576 {
+            return Err(ConfigError::StoreFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_content_bytes",
+                value: self.max_content_bytes.to_string(),
+                reason: "must be in range [1000, 1048576]",
+            });
+        }
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Preset enum
 // ---------------------------------------------------------------------------
 
@@ -1737,6 +1793,16 @@ pub enum ConfigError {
         /// Actual value that failed (displayed to operator).
         value: String,
         /// Human-readable valid range, e.g. "must be in range [1, 10000]".
+        reason: &'static str,
+    },
+    /// A `[store]` config field is outside its valid range (#561).
+    StoreFieldOutOfRange {
+        path: PathBuf,
+        /// Field name, e.g. "max_content_bytes".
+        field: &'static str,
+        /// Actual value that failed (displayed to operator).
+        value: String,
+        /// Human-readable valid range, e.g. "must be in range [1000, 1048576]".
         reason: &'static str,
     },
 }
@@ -1968,6 +2034,19 @@ impl fmt::Display for ConfigError {
             } => write!(
                 f,
                 "config error in {}: [retention] field '{}' = '{}' is invalid: {}",
+                path.display(),
+                field,
+                value,
+                reason
+            ),
+            ConfigError::StoreFieldOutOfRange {
+                path,
+                field,
+                value,
+                reason,
+            } => write!(
+                f,
+                "config error in {}: [store] field '{}' = '{}' is invalid: {}",
                 path.display(),
                 field,
                 value,
@@ -2247,6 +2326,9 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
 
     // --- Validate [retention] fields (crt-036) ---
     config.retention.validate(path)?;
+
+    // --- Validate [store] fields (#561) ---
+    config.store.validate(path)?;
 
     Ok(())
 }
@@ -2863,6 +2945,15 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.retention.max_cycles_per_tick
             } else {
                 global.retention.max_cycles_per_tick
+            },
+        },
+        // #561: per-field project-wins merge for store config
+        store: StoreConfig {
+            max_content_bytes: if project.store.max_content_bytes != default.store.max_content_bytes
+            {
+                project.store.max_content_bytes
+            } else {
+                global.store.max_content_bytes
             },
         },
     }
@@ -7285,6 +7376,89 @@ max_cycles_per_tick = 20
         assert!(
             matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
             "must be RetentionFieldOutOfRange variant; got: {err:?}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // #561: StoreConfig validation tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_store_config_default_is_8000() {
+        let cfg = StoreConfig::default();
+        assert_eq!(cfg.max_content_bytes, 8_000);
+    }
+
+    #[test]
+    fn test_store_config_validate_below_min_fails() {
+        let cfg = StoreConfig {
+            max_content_bytes: 999,
+        };
+        let err = cfg.validate(Path::new("config.toml")).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ConfigError::StoreFieldOutOfRange {
+                    field: "max_content_bytes",
+                    ..
+                }
+            ),
+            "must be StoreFieldOutOfRange for max_content_bytes; got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_store_config_validate_above_max_fails() {
+        let cfg = StoreConfig {
+            max_content_bytes: 1_048_577,
+        };
+        let err = cfg.validate(Path::new("config.toml")).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ConfigError::StoreFieldOutOfRange {
+                    field: "max_content_bytes",
+                    ..
+                }
+            ),
+            "must be StoreFieldOutOfRange for max_content_bytes; got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_store_config_validate_at_min_passes() {
+        let cfg = StoreConfig {
+            max_content_bytes: 1_000,
+        };
+        assert!(cfg.validate(Path::new("config.toml")).is_ok());
+    }
+
+    #[test]
+    fn test_store_config_validate_at_default_passes() {
+        let cfg = StoreConfig {
+            max_content_bytes: 8_000,
+        };
+        assert!(cfg.validate(Path::new("config.toml")).is_ok());
+    }
+
+    #[test]
+    fn test_store_config_validate_at_max_passes() {
+        let cfg = StoreConfig {
+            max_content_bytes: 1_048_576,
+        };
+        assert!(cfg.validate(Path::new("config.toml")).is_ok());
+    }
+
+    #[test]
+    fn test_store_config_validate_called_by_validate_config() {
+        // validate_config must propagate StoreConfig validation errors.
+        let mut config = UnimatrixConfig::default();
+        config.store.max_content_bytes = 999;
+        let err = validate_config(&config, Path::new("/fake"))
+            .expect_err("validate_config must reject store.max_content_bytes = 999");
+        assert!(
+            matches!(err, ConfigError::StoreFieldOutOfRange { .. }),
+            "must be StoreFieldOutOfRange variant; got: {err:?}"
         );
     }
 

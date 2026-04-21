@@ -565,7 +565,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_store",
-        description = "Store a new context entry. Use to record patterns, conventions, architectural decisions, or other reusable knowledge discovered during work."
+        description = "Store a new context entry. Use to record patterns, conventions, architectural decisions, or other reusable knowledge discovered during work. Entries should be focused and specific — a single decision, pattern, or lesson. Content is subject to a configured size limit; an error is returned if exceeded."
     )]
     async fn context_store(
         &self,
@@ -578,7 +578,8 @@ impl UnimatrixServer {
         self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 2. Validation
-        validate_store_params(&params).map_err(rmcp::ErrorData::from)?;
+        validate_store_params(&params, self.store_config.max_content_bytes)
+            .map_err(rmcp::ErrorData::from)?;
 
         // 3. Category validation
         self.categories
@@ -793,7 +794,8 @@ impl UnimatrixServer {
         self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 2. Validation (includes original_id range check)
-        validate_correct_params(&params).map_err(rmcp::ErrorData::from)?;
+        validate_correct_params(&params, self.store_config.max_content_bytes)
+            .map_err(rmcp::ErrorData::from)?;
 
         // 3. Extract validated original_id (range already checked by validate_correct_params)
         let original_id = params.original_id as u64;
@@ -921,7 +923,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_status",
-        description = "Get the health status of the knowledge base. Shows entry counts, category/topic distributions, correction chains, and security metrics. Requires Read capability."
+        description = "Get the health status of the knowledge base. Shows entry counts, category/topic distributions, correction chains, and security metrics. Requires Read capability. Response size scales with corpus size; format: json responses may be large on large corpora."
     )]
     async fn context_status(
         &self,

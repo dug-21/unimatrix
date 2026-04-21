@@ -120,6 +120,19 @@ audit_log_retention_days = 180
 max_cycles_per_tick = 10
 
 # =============================================================================
+# [store] — Write-path limits for knowledge entry storage
+# =============================================================================
+
+[store]
+# Maximum byte length for content on context_store and context_correct calls.
+# The limit is byte-based (UTF-8), not character-based — multibyte characters
+# (e.g., emoji, CJK) count toward this limit by their byte width, not character count.
+# Entries should be focused and specific; large content should be split into
+# multiple targeted entries.
+# Range: [1000, 1048576]. Default: 8000
+# max_content_bytes = 8000
+
+# =============================================================================
 # [observation] — Domain pack registration
 # =============================================================================
 

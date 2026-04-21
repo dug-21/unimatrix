@@ -704,6 +704,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.observation_registry = Arc::clone(&observation_registry);
     // crt-046: thread inference config for goal-cluster blending weights in context_briefing.
     server.inference_config = Arc::clone(&inference_config);
+    // #561: thread store config for content byte limit enforcement.
+    server.store_config = Arc::new(config.store.clone());
 
     // Extract state handles before services is moved.
     let confidence_state_handle = services.confidence_state_handle();
@@ -1101,6 +1103,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.observation_registry = Arc::clone(&observation_registry);
     // crt-046: thread inference config for goal-cluster blending weights in context_briefing.
     server.inference_config = Arc::clone(&inference_config);
+    // #561: thread store config for content byte limit enforcement.
+    server.store_config = Arc::new(config.store.clone());
 
     // crt-019: extract ConfidenceStateHandle before services is moved.
     let confidence_state_handle = services.confidence_state_handle();

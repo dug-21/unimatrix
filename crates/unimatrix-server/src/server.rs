@@ -19,7 +19,7 @@ use crate::background::TickMetadata;
 use crate::error::ServerError;
 use crate::infra::audit::{AuditEvent, AuditLog};
 use crate::infra::categories::CategoryAllowlist;
-use crate::infra::config::InferenceConfig;
+use crate::infra::config::{InferenceConfig, StoreConfig};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::registry::{AgentRegistry, TrustLevel};
 use crate::infra::session::SessionRegistry;
@@ -236,6 +236,10 @@ pub struct UnimatrixServer {
     /// the context_briefing handler. Initialized to default in `new()` (for tests).
     /// Overwritten from `main.rs` with the startup-resolved config (daemon/stdio paths).
     pub inference_config: Arc<InferenceConfig>,
+    /// #561: store config snapshot for content byte limit enforcement in
+    /// validate_store_params and validate_correct_params. Initialized to default
+    /// in `new()` (for tests). Overwritten from `main.rs` with the startup config.
+    pub store_config: Arc<StoreConfig>,
 }
 
 impl UnimatrixServer {
@@ -333,6 +337,8 @@ impl UnimatrixServer {
             observation_registry: Arc::new(DomainPackRegistry::with_builtin_claude_code()),
             // crt-046: default for test server; overwritten in main.rs daemon/stdio paths.
             inference_config: Arc::new(InferenceConfig::default()),
+            // #561: default for test server; overwritten in main.rs daemon/stdio paths.
+            store_config: Arc::new(StoreConfig::default()),
         }
     }
 
