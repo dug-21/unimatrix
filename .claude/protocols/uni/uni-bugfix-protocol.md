@@ -406,7 +406,7 @@ Human action required: Review PR and approve merge.
 ```
 
 On human approval to merge, the Bugfix Manager:
-1. Merges the PR with `gh pr merge --rebase` (if human requests it)
+1. Merges the PR with `gh pr merge --squash --delete-branch` (if human requests it) — squash preferred: one commit = one revert target if backout is needed
 2. Closes the GH Issue with reference to the PR (if applicable)
 
 ---
