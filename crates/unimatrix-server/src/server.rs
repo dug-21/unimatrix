@@ -3192,6 +3192,7 @@ mod tests {
 
         // Build a ClientInfo (implements ClientHandler) with the given name.
         let client_info = rmcp::model::ClientInfo {
+            meta: None,
             protocol_version: ProtocolVersion::LATEST,
             capabilities: ClientCapabilities::default(),
             client_info: Implementation {
@@ -3206,7 +3207,7 @@ mod tests {
             let _ = server.serve(server_transport).await;
         });
         let client_task = tokio::spawn(async move {
-            let _ = rmcp::service::serve_client(client_info, client_transport).await;
+            let _ = rmcp::serve_client(client_info, client_transport).await;
         });
 
         // Give handshake time to complete then cancel.
