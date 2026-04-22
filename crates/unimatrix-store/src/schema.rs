@@ -275,6 +275,22 @@ pub enum Capability {
     SessionWrite = 4,
 }
 
+impl Capability {
+    /// Returns the canonical lowercase string for `AuditEvent.capability_used`.
+    ///
+    /// Exhaustive match — no wildcard arm. Adding a new `Capability` variant
+    /// without updating this method produces a compile error (ADR-006, SR-05).
+    pub fn as_audit_str(&self) -> &'static str {
+        match self {
+            Capability::Read => "read",
+            Capability::Write => "write",
+            Capability::Search => "search",
+            Capability::Admin => "admin",
+            Capability::SessionWrite => "session_write",
+        }
+    }
+}
+
 impl TryFrom<u8> for Capability {
     type Error = StoreError;
 
@@ -346,7 +362,7 @@ pub struct AuditEvent {
     pub event_id: u64,
     /// Unix timestamp in seconds (assigned by log_event).
     pub timestamp: u64,
-    /// MCP session identifier.
+    /// MCP session identifier (agent-declared, mcp::-prefixed). Never the rmcp Mcp-Session-Id UUID.
     pub session_id: String,
     /// Agent that made the request.
     pub agent_id: String,
@@ -358,6 +374,40 @@ pub struct AuditEvent {
     pub outcome: Outcome,
     /// Human-readable detail.
     pub detail: String,
+    // -- vnc-014 / ASS-050 additions --
+    /// Credential type used for this request. Sentinel: "none" (code), SQL DEFAULT 'none'.
+    /// Values: "none" (stdio/vnc-014), "static_token" (W2-2), "jwt" (W2-3).
+    #[serde(default)]
+    pub credential_type: String,
+    /// Capability gate evaluated for this tool call. Sentinel: "" (no gate).
+    #[serde(default)]
+    pub capability_used: String,
+    /// Transport-attested client identity (clientInfo.name). Non-spoofable. Sentinel: "".
+    #[serde(default)]
+    pub agent_attribution: String,
+    /// JSON object with additional attribution context. Sentinel: "{}". Never empty string.
+    #[serde(default)]
+    pub metadata: String,
+}
+
+impl Default for AuditEvent {
+    fn default() -> Self {
+        AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: String::new(),
+            operation: String::new(),
+            target_ids: Vec::new(),
+            outcome: Outcome::Success,
+            detail: String::new(),
+            // vnc-014 sentinels (differ from #[serde(default)] empty-string defaults):
+            credential_type: "none".to_string(),
+            capability_used: String::new(),
+            agent_attribution: String::new(),
+            metadata: "{}".to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
