@@ -788,16 +788,22 @@ pub(crate) async fn create_tables_if_needed(
     .execute(&mut *conn)
     .await?;
 
+    // vnc-014 / ASS-050: audit_log with four new attribution columns (12 columns total).
+    // DDL is byte-semantically identical to the v24→v25 migration block (R-11 mitigation).
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS audit_log (
-            event_id   INTEGER PRIMARY KEY,
-            timestamp  INTEGER NOT NULL,
-            session_id TEXT    NOT NULL,
-            agent_id   TEXT    NOT NULL,
-            operation  TEXT    NOT NULL,
-            target_ids TEXT    NOT NULL DEFAULT '[]',
-            outcome    INTEGER NOT NULL,
-            detail     TEXT    NOT NULL DEFAULT ''
+            event_id          INTEGER PRIMARY KEY,
+            timestamp         INTEGER NOT NULL,
+            session_id        TEXT    NOT NULL,
+            agent_id          TEXT    NOT NULL,
+            operation         TEXT    NOT NULL,
+            target_ids        TEXT    NOT NULL DEFAULT '[]',
+            outcome           INTEGER NOT NULL,
+            detail            TEXT    NOT NULL DEFAULT '',
+            credential_type   TEXT    NOT NULL DEFAULT 'none',
+            capability_used   TEXT    NOT NULL DEFAULT '',
+            agent_attribution TEXT    NOT NULL DEFAULT '',
+            metadata          TEXT    NOT NULL DEFAULT '{}'
         )",
     )
     .execute(&mut *conn)
@@ -809,6 +815,30 @@ pub(crate) async fn create_tables_if_needed(
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_log_timestamp ON audit_log(timestamp)")
         .execute(&mut *conn)
         .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_log_session   ON audit_log(session_id)")
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_log_cred      ON audit_log(credential_type)")
+        .execute(&mut *conn)
+        .await?;
+
+    // Append-only DDL triggers — prevent UPDATE and DELETE on audit_log.
+    // These match the triggers installed by the v24→v25 migration (R-11 mitigation).
+    sqlx::query(
+        "CREATE TRIGGER IF NOT EXISTS audit_log_no_update
+         BEFORE UPDATE ON audit_log
+         BEGIN SELECT RAISE(ABORT, 'audit_log is append-only: UPDATE not permitted'); END",
+    )
+    .execute(&mut *conn)
+    .await?;
+
+    sqlx::query(
+        "CREATE TRIGGER IF NOT EXISTS audit_log_no_delete
+         BEFORE DELETE ON audit_log
+         BEGIN SELECT RAISE(ABORT, 'audit_log is append-only: DELETE not permitted'); END",
+    )
+    .execute(&mut *conn)
+    .await?;
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS observations (

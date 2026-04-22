@@ -377,7 +377,10 @@ async fn test_fresh_db_creates_schema_v24() {
         .await
         .expect("open fresh store");
 
-    assert_eq!(read_schema_version(&store).await, 24);
+    assert!(
+        read_schema_version(&store).await >= 24,
+        "schema_version must be >= 24 on fresh db"
+    );
 
     // All seven new columns must be present on a fresh database.
     for col in &[
@@ -416,7 +419,10 @@ async fn test_v23_to_v24_migration_adds_all_seven_columns() {
         .await
         .expect("open after v23→v24 migration");
 
-    assert_eq!(read_schema_version(&store).await, 24);
+    assert!(
+        read_schema_version(&store).await >= 24,
+        "schema_version must be >= 24 after v23→v24 migration"
+    );
 
     // Each of the seven new columns must be present.
     for col in &[
@@ -562,7 +568,10 @@ async fn test_v24_migration_idempotent_when_some_columns_pre_exist() {
         );
     }
 
-    assert_eq!(read_schema_version(&store).await, 24);
+    assert!(
+        read_schema_version(&store).await >= 24,
+        "schema_version must be >= 24 after partial-recovery migration"
+    );
 
     store.close().await.unwrap();
 }

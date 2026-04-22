@@ -1015,14 +1015,15 @@ async fn test_sql_analytics_query() {
 // Updated to 22 for crt-046 (goal_clusters table + idx_goal_clusters_created_at).
 // Updated to 23 for bugfix-509 (compound idx_entry_tags_tag_entry_id index).
 // Updated to 24 for crt-047 (curation health metrics columns on cycle_review_index).
+// Updated to 25 for vnc-014 (ASS-050 audit_log four-column migration + append-only triggers).
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 24,
-        "schema version must be 24 after crt-047 (was 23 after bugfix-509)"
+        version, 25,
+        "schema version must be 25 after vnc-014 (was 24 after crt-047)"
     );
     store.close().await.unwrap();
 }
@@ -1371,6 +1372,132 @@ async fn test_create_tables_idempotent() {
         "query_log should still have 10 columns after re-open" // col-028: phase added
     );
     store2.close().await.unwrap();
+}
+
+// === SCHEMA DDL: audit_log (vnc-014 / ASS-050) ===
+
+/// MIG-V25-PARITY-01: audit_log column count is 12 after vnc-014 (R-11 cascade).
+///
+/// Validates that create_tables_if_needed() creates audit_log with all 12 columns
+/// (8 original + 4 new from ASS-050). Fails if db.rs DDL is not updated.
+#[tokio::test]
+async fn test_audit_log_column_count_is_12() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let col_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('audit_log')")
+        .fetch_one(store.read_pool_test())
+        .await
+        .unwrap();
+
+    assert_eq!(
+        col_count, 12,
+        "audit_log must have 12 columns after vnc-014 / ASS-050 (8 original + 4 new)"
+    );
+    store.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_audit_log_new_columns_present_and_correct() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    use sqlx::Row;
+    // pragma_table_info returns: cid, name, type, notnull, dflt_value, pk
+    let rows = sqlx::query(
+        "SELECT name, type, \"notnull\", dflt_value \
+         FROM pragma_table_info('audit_log') ORDER BY cid",
+    )
+    .fetch_all(store.read_pool_test())
+    .await
+    .unwrap();
+
+    let col_map: std::collections::HashMap<String, (String, i64, Option<String>)> = rows
+        .iter()
+        .map(|r| {
+            (
+                r.try_get::<String, _>(0).unwrap(),
+                (
+                    r.try_get::<String, _>(1).unwrap(),
+                    r.try_get::<i64, _>(2).unwrap(),
+                    r.try_get::<Option<String>, _>(3).unwrap(),
+                ),
+            )
+        })
+        .collect();
+
+    // credential_type: TEXT NOT NULL DEFAULT 'none'
+    let (typ, notnull, dflt) = col_map
+        .get("credential_type")
+        .expect("credential_type must exist");
+    assert_eq!(typ, "TEXT", "credential_type must be TEXT");
+    assert_eq!(*notnull, 1, "credential_type must be NOT NULL");
+    assert_eq!(
+        dflt.as_deref(),
+        Some("'none'"),
+        "credential_type must default to 'none'"
+    );
+
+    // capability_used: TEXT NOT NULL DEFAULT ''
+    let (typ, notnull, dflt) = col_map
+        .get("capability_used")
+        .expect("capability_used must exist");
+    assert_eq!(typ, "TEXT", "capability_used must be TEXT");
+    assert_eq!(*notnull, 1, "capability_used must be NOT NULL");
+    assert_eq!(
+        dflt.as_deref(),
+        Some("''"),
+        "capability_used must default to ''"
+    );
+
+    // agent_attribution: TEXT NOT NULL DEFAULT ''
+    let (typ, notnull, dflt) = col_map
+        .get("agent_attribution")
+        .expect("agent_attribution must exist");
+    assert_eq!(typ, "TEXT", "agent_attribution must be TEXT");
+    assert_eq!(*notnull, 1, "agent_attribution must be NOT NULL");
+    assert_eq!(
+        dflt.as_deref(),
+        Some("''"),
+        "agent_attribution must default to ''"
+    );
+
+    // metadata: TEXT NOT NULL DEFAULT '{}'
+    let (typ, notnull, dflt) = col_map.get("metadata").expect("metadata must exist");
+    assert_eq!(typ, "TEXT", "metadata must be TEXT");
+    assert_eq!(*notnull, 1, "metadata must be NOT NULL");
+    assert_eq!(
+        dflt.as_deref(),
+        Some("'{}'"),
+        "metadata must default to '{{}}'"
+    );
+
+    store.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_audit_log_append_only_triggers_exist() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let trigger_names: Vec<String> = sqlx::query_scalar(
+        "SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name='audit_log' ORDER BY name",
+    )
+    .fetch_all(store.read_pool_test())
+    .await
+    .unwrap();
+
+    assert!(
+        trigger_names.contains(&"audit_log_no_delete".to_string()),
+        "audit_log_no_delete trigger must exist; found: {:?}",
+        trigger_names
+    );
+    assert!(
+        trigger_names.contains(&"audit_log_no_update".to_string()),
+        "audit_log_no_update trigger must exist; found: {:?}",
+        trigger_names
+    );
+    store.close().await.unwrap();
 }
 
 // === SCHEMA DDL: cycle_review_index (crt-033) ===

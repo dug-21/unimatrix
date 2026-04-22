@@ -15,11 +15,10 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 23 to 24 by crt-047 (curation health metrics —
-/// seven new columns on cycle_review_index: corrections_total, corrections_agent,
-/// corrections_human, corrections_system, deprecations_total, orphan_deprecations,
-/// first_computed_at).
-pub const CURRENT_SCHEMA_VERSION: u64 = 24;
+/// Current schema version. Incremented from 24 to 25 by vnc-014 (ASS-050 audit_log migration —
+/// four new columns on audit_log: credential_type, capability_used, agent_attribution, metadata;
+/// two new indexes; two append-only DDL triggers).
+pub const CURRENT_SCHEMA_VERSION: u64 = 25;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -1109,6 +1108,153 @@ async fn run_main_migrations(
         // Bumping here ensures that a subsequent migration block (if added later)
         // observes the correct intermediate version.
         sqlx::query("UPDATE counters SET value = 24 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // v24 → v25: four-column audit_log migration + append-only triggers (vnc-014 / ASS-050).
+    //
+    // ADR-004 ordering rule: ALL four pragma_table_info pre-checks run BEFORE any ALTER TABLE.
+    // This ensures that a partially-applied state (crash after ALTER-N but before version bump)
+    // is correctly recovered on retry — already-present columns are skipped, missing ones added.
+    //
+    // Indexes and triggers use IF NOT EXISTS: inherently idempotent, no pre-check required.
+    if current_version < 25 {
+        // --- Pre-flight phase: all four column checks before any ALTER ---
+
+        let has_credential_type: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('audit_log')
+             WHERE name = 'credential_type'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|c| c > 0)
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        let has_capability_used: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('audit_log')
+             WHERE name = 'capability_used'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|c| c > 0)
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        let has_agent_attribution: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('audit_log')
+             WHERE name = 'agent_attribution'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|c| c > 0)
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        let has_metadata: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('audit_log')
+             WHERE name = 'metadata'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|c| c > 0)
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // --- ALTER TABLE phase: execute only for absent columns ---
+
+        if !has_credential_type {
+            sqlx::query(
+                "ALTER TABLE audit_log ADD COLUMN credential_type TEXT NOT NULL DEFAULT 'none'",
+            )
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+        }
+
+        if !has_capability_used {
+            sqlx::query(
+                "ALTER TABLE audit_log ADD COLUMN capability_used TEXT NOT NULL DEFAULT ''",
+            )
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+        }
+
+        if !has_agent_attribution {
+            sqlx::query(
+                "ALTER TABLE audit_log ADD COLUMN agent_attribution TEXT NOT NULL DEFAULT ''",
+            )
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+        }
+
+        if !has_metadata {
+            sqlx::query("ALTER TABLE audit_log ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'")
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+        }
+
+        // --- Indexes: IF NOT EXISTS is inherently idempotent ---
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_log_session ON audit_log(session_id)")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_audit_log_cred ON audit_log(credential_type)")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+
+        // --- Append-only DDL triggers: IF NOT EXISTS is inherently idempotent ---
+
+        sqlx::query(
+            "CREATE TRIGGER IF NOT EXISTS audit_log_no_update
+             BEFORE UPDATE ON audit_log
+             BEGIN SELECT RAISE(ABORT, 'audit_log is append-only: UPDATE not permitted'); END",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query(
+            "CREATE TRIGGER IF NOT EXISTS audit_log_no_delete
+             BEFORE DELETE ON audit_log
+             BEGIN SELECT RAISE(ABORT, 'audit_log is append-only: DELETE not permitted'); END",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Bump schema_version to 25 within the transaction.
+        sqlx::query("UPDATE counters SET value = 25 WHERE name = 'schema_version'")
             .execute(&mut **txn)
             .await
             .map_err(|e| StoreError::Migration {
