@@ -24,6 +24,7 @@ unimatrix-adapt = { path = "../unimatrix-adapt" }
 unimatrix-observe = { path = "../unimatrix-observe" }
 unimatrix-learn = { path = "../unimatrix-learn" }
 
+http = "1"
 nix = { version = "0.31", features = ["user", "process"] }
 fs2 = "0.4"
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "macros"] }
