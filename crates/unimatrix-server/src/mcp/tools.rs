@@ -1643,16 +1643,22 @@ impl UnimatrixServer {
     async fn context_cycle_review(
         &self,
         Parameters(params): Parameters<RetrospectiveParams>,
+        request_context: rmcp::service::RequestContext<rmcp::RoleServer>,
     ) -> Result<CallToolResult, rmcp::model::ErrorData> {
         use crate::error::{ERROR_INVALID_PARAMS, ERROR_NO_OBSERVATION_DATA, ServerError};
         use crate::mcp::response::format_retrospective_markdown;
         use crate::mcp::response::format_retrospective_report;
 
-        // 1. Identity resolution (no format param on this handler)
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .await
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + audit context (vnc-014: Seam 2)
+        let ctx = self
+            .build_context_with_external_identity(
+                &params.agent_id,
+                &params.format,
+                &None,
+                &request_context,
+                None,
+            )
+            .await?;
 
         // 2. Validation
         crate::infra::validation::validate_retrospective_params(&params)
@@ -1794,11 +1800,16 @@ impl UnimatrixServer {
                     match check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION) {
                         Ok((report, _advisory)) => {
                             // 11. Audit
+                            let metadata_json =
+                                match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
+                                    Some(ct) => serde_json::json!({"client_type": ct}).to_string(),
+                                    None => "{}".to_string(),
+                                };
                             self.audit_fire_and_forget(AuditEvent {
                                 event_id: 0,
                                 timestamp: 0,
-                                session_id: String::new(),
-                                agent_id: identity.agent_id.clone(),
+                                session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
+                                agent_id: ctx.agent_id.clone(),
                                 operation: "context_cycle_review".to_string(),
                                 target_ids: vec![],
                                 outcome: Outcome::Success,
@@ -1806,7 +1817,10 @@ impl UnimatrixServer {
                                     "retrospective for {} (purged signals path)",
                                     feature_cycle
                                 ),
-                                ..AuditEvent::default()
+                                credential_type: "none".to_string(),
+                                capability_used: Capability::Read.as_audit_str().to_string(),
+                                agent_attribution: ctx.client_type.clone().unwrap_or_default(),
+                                metadata: metadata_json,
                             });
                             let fmt = params.format.as_deref().unwrap_or("markdown");
                             return dispatch_review_with_advisory(
@@ -2573,16 +2587,23 @@ impl UnimatrixServer {
         // -----------------------------------------------------------------------
         if let Some((memo_report, advisory)) = memo_hit {
             // 11. Audit (cache-hit path label)
+            let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
+                Some(ct) => serde_json::json!({"client_type": ct}).to_string(),
+                None => "{}".to_string(),
+            };
             self.audit_fire_and_forget(AuditEvent {
                 event_id: 0,
                 timestamp: 0,
-                session_id: String::new(),
-                agent_id: identity.agent_id,
+                session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
+                agent_id: ctx.agent_id.clone(),
                 operation: "context_cycle_review".to_string(),
                 target_ids: vec![],
                 outcome: Outcome::Success,
                 detail: format!("retrospective for {} (memoization hit)", feature_cycle),
-                ..AuditEvent::default()
+                credential_type: "none".to_string(),
+                capability_used: Capability::Read.as_audit_str().to_string(),
+                agent_attribution: ctx.client_type.clone().unwrap_or_default(),
+                metadata: metadata_json,
             });
             let fmt = params.format.as_deref().unwrap_or("markdown");
             return dispatch_review_with_advisory_and_parse_failures(
@@ -2595,16 +2616,23 @@ impl UnimatrixServer {
         }
 
         // 11. Audit (full pipeline path)
+        let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
+            Some(ct) => serde_json::json!({"client_type": ct}).to_string(),
+            None => "{}".to_string(),
+        };
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
-            session_id: String::new(),
-            agent_id: identity.agent_id,
+            session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
+            agent_id: ctx.agent_id.clone(),
             operation: "context_cycle_review".to_string(),
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: format!("retrospective for {}", feature_cycle),
-            ..AuditEvent::default()
+            credential_type: "none".to_string(),
+            capability_used: Capability::Read.as_audit_str().to_string(),
+            agent_attribution: ctx.client_type.clone().unwrap_or_default(),
+            metadata: metadata_json,
         });
 
         // 12. vnc-011: Dispatch to format-specific output path (full pipeline result).
@@ -2689,16 +2717,21 @@ impl UnimatrixServer {
     async fn context_cycle(
         &self,
         Parameters(params): Parameters<CycleParams>,
+        request_context: rmcp::service::RequestContext<rmcp::RoleServer>,
     ) -> Result<CallToolResult, rmcp::model::ErrorData> {
-        // 1. Identity resolution
-        let identity = self
-            .resolve_agent(&params.agent_id)
-            .await
-            .map_err(rmcp::ErrorData::from)?;
+        // 1. Identity + audit context (vnc-014: Seam 2)
+        let ctx = self
+            .build_context_with_external_identity(
+                &params.agent_id,
+                &params.format,
+                &None,
+                &request_context,
+                None,
+            )
+            .await?;
 
         // 2. Capability check -- SessionWrite maps to Write capability
-        self.require_cap(&identity.agent_id, Capability::Write)
-            .await?;
+        self.require_cap(&ctx.agent_id, Capability::Write).await?;
 
         // 3. Validation via shared validate_cycle_params (ADR-004, C-02)
         let validated = match validate_cycle_params(
@@ -2790,11 +2823,15 @@ impl UnimatrixServer {
         };
 
         // 5. Audit log (fire-and-forget)
+        let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
+            Some(ct) => serde_json::json!({"client_type": ct}).to_string(),
+            None => "{}".to_string(),
+        };
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
-            session_id: String::new(),
-            agent_id: identity.agent_id.clone(),
+            session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
+            agent_id: ctx.agent_id.clone(),
             operation: "context_cycle".to_string(),
             target_ids: vec![],
             outcome: Outcome::Success,
@@ -2808,7 +2845,10 @@ impl UnimatrixServer {
                     ""
                 }
             ),
-            ..AuditEvent::default()
+            credential_type: "none".to_string(),
+            capability_used: Capability::Write.as_audit_str().to_string(),
+            agent_attribution: ctx.client_type.clone().unwrap_or_default(),
+            metadata: metadata_json,
         });
 
         // 6. Return acknowledgment
