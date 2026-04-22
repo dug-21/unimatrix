@@ -171,6 +171,7 @@ impl StoreService {
                             "near-duplicate detected: entry #{} at {:.2} similarity",
                             existing.id, top.similarity
                         ),
+                        ..AuditEvent::default()
                     });
                     return Ok(InsertResult {
                         entry: existing,
@@ -192,6 +193,7 @@ impl StoreService {
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: format!("stored entry: {}", entry.title),
+            ..AuditEvent::default()
         };
 
         let data_id = self.vector_index.allocate_data_id();

@@ -92,6 +92,7 @@ impl StoreService {
             target_ids: vec![original_id, new_correction.id],
             outcome: Outcome::Success,
             detail: format!("corrected entry #{original_id}"),
+            ..AuditEvent::default()
         };
         {
             let audit = Arc::clone(&self.audit);

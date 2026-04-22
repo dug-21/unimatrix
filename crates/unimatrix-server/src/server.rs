@@ -406,6 +406,7 @@ impl UnimatrixServer {
             format,
             audit_ctx,
             caller_id,
+            client_type: None,
         })
     }
 

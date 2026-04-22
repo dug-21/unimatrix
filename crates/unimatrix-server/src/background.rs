@@ -1203,6 +1203,7 @@ fn emit_tick_skipped_audit(audit_log: &Arc<AuditLog>, error_reason: String) {
         target_ids: vec![],
         outcome: Outcome::Error,
         detail: format!("background tick compute_report failed: {}", error_reason),
+        ..AuditEvent::default()
     };
 
     // Fire-and-forget — GH #308: log_event() used block_in_place which starved
@@ -1258,6 +1259,7 @@ fn emit_auto_quarantine_audit(
         target_ids: vec![entry_id],
         outcome: Outcome::Success,
         detail,
+        ..AuditEvent::default()
     };
 
     // Fire-and-forget — GH #308: same write-pool starvation fix as emit_tick_skipped_audit.
@@ -2274,6 +2276,7 @@ mod tests {
                     outcome: Outcome::try_from(row.get::<i64, _>(6) as u8)
                         .unwrap_or(Outcome::Error),
                     detail: row.get::<String, _>(7),
+                    ..unimatrix_store::AuditEvent::default()
                 })
             })
             .collect()

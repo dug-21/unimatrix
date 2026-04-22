@@ -233,6 +233,7 @@ impl SecurityGateway {
                         "search query scan warning: {} ({})",
                         warning.category, warning.description
                     ),
+                    ..AuditEvent::default()
                 });
 
                 Ok(Some(warning))

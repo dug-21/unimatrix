@@ -529,6 +529,7 @@ impl UnimatrixServer {
             target_ids: target_ids.clone(),
             outcome: Outcome::Success,
             detail: format!("returned {result_count} results"),
+            ..AuditEvent::default()
         });
 
         // 6. Usage recording (fire-and-forget via UsageService)
@@ -746,6 +747,7 @@ impl UnimatrixServer {
             target_ids: vec![id],
             outcome: Outcome::Success,
             detail: format!("retrieved entry #{id}"),
+            ..AuditEvent::default()
         });
 
         // 6. Usage recording (fire-and-forget via UsageService)
@@ -904,6 +906,7 @@ impl UnimatrixServer {
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: String::new(),
+            ..AuditEvent::default()
         };
         let deprecated = self
             .deprecate_with_audit(entry_id, params.reason.clone(), audit_event)
@@ -990,6 +993,7 @@ impl UnimatrixServer {
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: "status report generated".to_string(),
+            ..AuditEvent::default()
         });
 
         // 6. Format response
@@ -1312,6 +1316,7 @@ impl UnimatrixServer {
                     "index briefing: query derived, {} entries returned",
                     entries.len()
                 ),
+                ..AuditEvent::default()
             });
 
             // 12. Usage recording (fire-and-forget via UsageService)
@@ -1388,6 +1393,7 @@ impl UnimatrixServer {
                     target_ids: vec![],
                     outcome: Outcome::Success,
                     detail: String::new(),
+                    ..AuditEvent::default()
                 };
                 let updated = self
                     .quarantine_with_audit(entry_id, params.reason.clone(), audit_event)
@@ -1422,6 +1428,7 @@ impl UnimatrixServer {
                     target_ids: vec![],
                     outcome: Outcome::Success,
                     detail: String::new(),
+                    ..AuditEvent::default()
                 };
                 let updated = self
                     .restore_with_audit(entry_id, params.reason.clone(), audit_event)
@@ -1500,6 +1507,7 @@ impl UnimatrixServer {
             target_ids: vec![],
             outcome: Outcome::Success,
             detail,
+            ..AuditEvent::default()
         });
 
         Ok(response)
@@ -1675,6 +1683,7 @@ impl UnimatrixServer {
                                     "retrospective for {} (purged signals path)",
                                     feature_cycle
                                 ),
+                                ..AuditEvent::default()
                             });
                             let fmt = params.format.as_deref().unwrap_or("markdown");
                             return dispatch_review_with_advisory(
@@ -2450,6 +2459,7 @@ impl UnimatrixServer {
                 target_ids: vec![],
                 outcome: Outcome::Success,
                 detail: format!("retrospective for {} (memoization hit)", feature_cycle),
+                ..AuditEvent::default()
             });
             let fmt = params.format.as_deref().unwrap_or("markdown");
             return dispatch_review_with_advisory_and_parse_failures(
@@ -2471,6 +2481,7 @@ impl UnimatrixServer {
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: format!("retrospective for {}", feature_cycle),
+            ..AuditEvent::default()
         });
 
         // 12. vnc-011: Dispatch to format-specific output path (full pipeline result).
@@ -2674,6 +2685,7 @@ impl UnimatrixServer {
                     ""
                 }
             ),
+            ..AuditEvent::default()
         });
 
         // 6. Return acknowledgment
@@ -3098,6 +3110,7 @@ async fn write_lesson_learned(
         target_ids: vec![],
         outcome: Outcome::Success,
         detail: format!("auto-persist lesson-learned for {}", feature_cycle),
+        ..AuditEvent::default()
     };
 
     let (new_id, _record) = server

@@ -1364,6 +1364,7 @@ impl SearchService {
             target_ids,
             outcome: Outcome::Success,
             detail: format!("returned {} results", entries.len()),
+            ..AuditEvent::default()
         });
 
         Ok(SearchResults {
