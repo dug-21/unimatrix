@@ -10,7 +10,7 @@ use crate::services::{AuditContext, CallerId};
 
 /// Pre-validated context available to every MCP tool handler.
 ///
-/// Constructed via `UnimatrixServer::build_context()`.
+/// Constructed via `UnimatrixServer::build_context_with_external_identity()`.
 /// Capability checking is a separate `UnimatrixServer::require_cap()` call
 /// because different tools require different capabilities.
 pub(crate) struct ToolContext {
@@ -24,4 +24,13 @@ pub(crate) struct ToolContext {
     pub audit_ctx: AuditContext,
     /// Typed caller identity for rate limiting.
     pub caller_id: CallerId,
+    /// Transport-attested client name from MCP initialize handshake.
+    ///
+    /// Populated from `client_type_map` keyed on the rmcp session ID.
+    /// `None` when no entry exists (no `initialize` called, or stdio with no
+    /// registered client name).
+    ///
+    /// Used to populate `AuditEvent.agent_attribution` and `AuditEvent.metadata`.
+    /// MUST NOT be confused with `agent_id` (which is agent-declared, spoofable).
+    pub client_type: Option<String>,
 }
