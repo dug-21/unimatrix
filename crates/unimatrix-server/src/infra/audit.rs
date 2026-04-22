@@ -103,6 +103,7 @@ mod tests {
             target_ids: vec![],
             outcome: Outcome::NotImplemented,
             detail: "stub".to_string(),
+            ..AuditEvent::default()
         }
     }
 

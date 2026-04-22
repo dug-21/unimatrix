@@ -633,6 +633,7 @@ mod tests {
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: "test detail".to_string(),
+            ..AuditEvent::default()
         });
     }
 

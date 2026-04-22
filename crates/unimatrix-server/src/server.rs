@@ -1431,6 +1431,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: "test insert".to_string(),
+            ..crate::infra::audit::AuditEvent::default()
         };
 
         let embedding = vec![0.1; 384];
@@ -1493,6 +1494,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: String::new(),
+            ..crate::infra::audit::AuditEvent::default()
         };
         server
             .deprecate_with_audit(id, None, audit_event)
@@ -1533,6 +1535,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: String::new(),
+            ..crate::infra::audit::AuditEvent::default()
         }
     }
 
@@ -1761,6 +1764,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: String::new(),
+            ..crate::infra::audit::AuditEvent::default()
         };
 
         let result = server
@@ -1877,6 +1881,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: String::new(),
+            ..crate::infra::audit::AuditEvent::default()
         };
         server
             .deprecate_with_audit(id, None, audit_event)
@@ -2354,6 +2359,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: "test".to_string(),
+            ..crate::infra::audit::AuditEvent::default()
         };
 
         let (_id, record) = server
@@ -2394,6 +2400,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: "test".to_string(),
+            ..crate::infra::audit::AuditEvent::default()
         };
 
         let (id, record) = server
@@ -2433,6 +2440,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: "test".to_string(),
+            ..crate::infra::audit::AuditEvent::default()
         };
         let (original_id, _) = server
             .insert_with_audit(entry, embedding, audit)
@@ -2462,6 +2470,7 @@ mod tests {
             target_ids: vec![],
             outcome: crate::infra::audit::Outcome::Success,
             detail: "correction".to_string(),
+            ..crate::infra::audit::AuditEvent::default()
         };
         let (_deprecated, new_correction) = server
             .correct_with_audit(
@@ -2929,6 +2938,7 @@ mod tests {
                         target_ids: vec![],
                         outcome: crate::infra::audit::Outcome::Success,
                         detail: format!("gh308-regression-{i}"),
+                        ..crate::infra::audit::AuditEvent::default()
                     };
                     timeout(
                         Duration::from_secs(10),
