@@ -502,19 +502,17 @@ impl UnimatrixServer {
             .map_err(rmcp::ErrorData::from)
     }
 
-    /// Fire-and-forget audit event via `spawn_blocking`.
+    /// Fire-and-forget audit event via `tokio::spawn` + `log_event_async`.
     ///
-    /// Replaces direct `self.audit.log_event()` calls which would block the
-    /// async runtime thread on `store.lock_conn()` (#176).
+    /// The JoinHandle is intentionally dropped — audit writes in-flight at runtime
+    /// shutdown may be silently lost. Acceptable for observability logging (#579).
     pub(crate) fn audit_fire_and_forget(&self, event: AuditEvent) {
-        if tokio::runtime::Handle::try_current().is_ok() {
-            let audit = Arc::clone(&self.audit);
-            let _ = tokio::task::spawn_blocking(move || {
-                let _ = audit.log_event(event);
-            });
-        } else {
-            let _ = self.audit.log_event(event);
-        }
+        let audit = Arc::clone(&self.audit);
+        tokio::spawn(async move {
+            if let Err(e) = audit.log_event_async(event).await {
+                tracing::warn!(error = %e, "audit_fire_and_forget: write failed");
+            }
+        });
     }
 
     /// Insert a new entry and write an audit event.
@@ -3113,6 +3111,61 @@ mod tests {
         .await
         .expect("restore_with_audit timed out — GH #308 regression")
         .expect("restore_with_audit returned error");
+    }
+
+    // -- GH #579 regression: audit_fire_and_forget must persist events --
+
+    /// Regression test for GH #579: `audit_fire_and_forget` must actually write
+    /// audit events. The original bug used `spawn_blocking` + `log_event`, which
+    /// called `block_in_place` from a blocking thread — an illegal combination that
+    /// panicked and discarded the write. This test would fail with the old code
+    /// because no event would ever appear in the audit log.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_audit_fire_and_forget_persists_event() {
+        let server = make_server().await;
+
+        let event = crate::infra::audit::AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id: String::new(),
+            agent_id: "test-agent".to_string(),
+            operation: "context_store".to_string(),
+            target_ids: vec![],
+            outcome: crate::infra::audit::Outcome::Success,
+            detail: "gh579-regression".to_string(),
+            ..crate::infra::audit::AuditEvent::default()
+        };
+
+        server.audit_fire_and_forget(event);
+
+        // Poll until the event appears in the audit log (deadline: 5 s).
+        // A single yield_now is insufficient because the spawned task must
+        // acquire a write pool connection, which may take more than one
+        // scheduler pass under concurrent test load.
+        let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_secs(5);
+        let mut found = false;
+        while tokio::time::Instant::now() < deadline {
+            let rows: Vec<String> = sqlx::query_scalar(
+                "SELECT detail FROM audit_log \
+                 WHERE agent_id = 'test-agent' AND detail = 'gh579-regression'",
+            )
+            .fetch_all(server.store.read_pool_test())
+            .await
+            .expect("audit_log query failed");
+
+            if !rows.is_empty() {
+                found = true;
+                break;
+            }
+
+            tokio::task::yield_now().await;
+        }
+
+        assert!(
+            found,
+            "GH #579 regression: audit_fire_and_forget must persist the event within 5 s; \
+             found 0 rows. spawn_blocking + block_in_place would produce 0."
+        );
     }
 
     // -- vnc-012 AC-10: schema snapshot — #[schemars(with = "T")] preserves type: integer --
