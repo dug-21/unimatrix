@@ -437,7 +437,7 @@ Unimatrix is a 9-crate Rust workspace that ships as a single binary.
 
 ### Storage
 
-SQLite local database (`unimatrix.db`). 21 tables. Schema version 18. Zero cloud dependency — all data stays on your machine.
+SQLite local database (`unimatrix.db`). 21 tables. Schema version 25. Zero cloud dependency — all data stays on your machine.
 
 ### Vector Search
 
@@ -466,7 +466,7 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
   config.toml                # Global config (optional — see Configuration section)
 ~/.unimatrix/{project-hash}/
   config.toml                # Per-project config override (optional)
-  unimatrix.db               # SQLite knowledge database (schema v18)
+  unimatrix.db               # SQLite knowledge database (schema v25)
   unimatrix.pid              # PID file with flock advisory lock
   unimatrix.sock             # Unix domain socket for hook IPC
   unimatrix-mcp.sock         # Unix domain socket for MCP sessions (daemon mode)
@@ -509,7 +509,7 @@ Every write operation (`context_store`, `context_correct`) scans content for inj
 
 ### Audit Trail
 
-Append-only audit log records every operation with agent identity (who performed the action), session context (which session, feature cycle), and operation outcome (success/failure).
+Append-only audit log records every operation with agent identity (who performed the action), session context (which session, feature cycle), and operation outcome (success/failure). Each audit row carries four additional compliance columns: `credential_type` (how the caller authenticated — `"none"` for stdio, `"static_token"` for HTTP bearer, `"jwt"` for enterprise JWT), `capability_used` (the capability gate evaluated for the tool call), `agent_attribution` (transport-attested client identity sourced from `clientInfo.name` at the MCP `initialize` handshake — not the spoofable agent-declared `agent_id`), and `metadata` (a JSON object carrying `client_type` and extensible for future keys). Append-only enforcement is maintained by DDL triggers on the `audit_log` table: UPDATE and DELETE operations are rejected at the database level.
 
 ### Hash-Chained Corrections
 
