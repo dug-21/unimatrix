@@ -233,6 +233,7 @@ impl SecurityGateway {
                         "search query scan warning: {} ({})",
                         warning.category, warning.description
                     ),
+                    ..AuditEvent::default()
                 });
 
                 Ok(Some(warning))
@@ -632,6 +633,7 @@ mod tests {
             target_ids: vec![],
             outcome: Outcome::Success,
             detail: "test detail".to_string(),
+            ..AuditEvent::default()
         });
     }
 

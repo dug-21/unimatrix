@@ -158,15 +158,19 @@ def test_restricted_agent_deprecate_allowed_permissive(server):
 
 
 @pytest.mark.security
-def test_restricted_agent_quarantine_rejected(server):
-    """S-24: Restricted agent cannot quarantine (requires Admin)."""
+def test_restricted_agent_quarantine_allowed_write(server):
+    """S-24: vnc-014 changed context_quarantine to require Write (was Admin).
+    Restricted agent (auto-enrolled with Write in permissive mode) CAN quarantine.
+    Admin-only enforcement still applies to context_enroll.
+    Updated: test assertion corrected per IMPLEMENTATION-BRIEF.md capability table.
+    """
     store_resp = server.context_store(
         "for restricted quarantine", "testing", "convention", agent_id="human", format="json"
     )
     from harness.assertions import extract_entry_id
     entry_id = extract_entry_id(store_resp)
     resp = server.context_quarantine(entry_id, agent_id="restricted-test-agent")
-    assert_tool_error(resp)
+    assert_tool_success(resp)
 
 
 # === Input Validation =================================================

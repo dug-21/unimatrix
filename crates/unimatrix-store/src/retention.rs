@@ -256,31 +256,25 @@ impl SqlxStore {
         })
     }
 
-    /// Delete audit_log rows older than retention_days.
+    /// Time-based audit log GC — deferred (append-only model).
     ///
-    /// audit_log.timestamp is stored in Unix seconds (not milliseconds).
-    /// Cutoff: strftime('%s', 'now') - retention_days * 86400 (also in seconds).
-    /// Uses idx_audit_log_timestamp index for performance.
+    /// The audit_log table is protected by BEFORE DELETE triggers installed in
+    /// schema v25 (vnc-014 / ASS-050). Any DELETE statement will be rejected by
+    /// the trigger with ABORT. Time-based GC is therefore not possible without a
+    /// DROP+recreate strategy.
     ///
-    /// Returns the number of rows deleted.
-    /// Runs as a single independent DELETE (no transaction needed — single statement).
+    /// Retention policy for audit_log is deferred to a future feature.
+    /// This method is retained as a no-op to preserve the call signature used
+    /// by callers in services/status.rs.
+    ///
+    /// Returns Ok(0) — no rows deleted.
     pub async fn gc_audit_log(&self, retention_days: u32) -> Result<u64> {
-        let mut conn = self
-            .write_pool_server()
-            .acquire()
-            .await
-            .map_err(|e| StoreError::Database(e.into()))?;
-
-        let result = sqlx::query(
-            "DELETE FROM audit_log \
-             WHERE timestamp < (strftime('%s', 'now') - ?1 * 86400)",
-        )
-        .bind(retention_days as i64)
-        .execute(&mut *conn)
-        .await
-        .map_err(|e| StoreError::Database(e.into()))?;
-
-        Ok(result.rows_affected())
+        tracing::warn!(
+            retention_days,
+            "gc_audit_log is a no-op: audit_log is append-only (vnc-014). \
+             Time-based GC deferred to future retention policy feature."
+        );
+        Ok(0)
     }
 }
 
@@ -932,11 +926,15 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // test_gc_audit_log_retention_boundary (AC-09)
+    // test_gc_audit_log_noop (replaces AC-09 retention_boundary test)
+    //
+    // gc_audit_log() is a no-op since vnc-014: the audit_log table is
+    // append-only (schema v25 BEFORE DELETE trigger). The function returns
+    // Ok(0) without deleting any rows regardless of retention_days.
     // -----------------------------------------------------------------------
 
     #[tokio::test]
-    async fn test_gc_audit_log_retention_boundary() {
+    async fn test_gc_audit_log_noop() {
         let dir = tempfile::TempDir::new().expect("tempdir");
         let store = open_test_store(&dir).await;
 
@@ -945,7 +943,7 @@ mod tests {
             .unwrap_or_default()
             .as_secs() as i64;
 
-        // Insert audit_log rows directly with known timestamps.
+        // Insert audit_log rows with timestamps that the old GC would have deleted.
         let insert_audit = |timestamp: i64| {
             let store_ref = &store;
             async move {
@@ -969,55 +967,23 @@ mod tests {
             }
         };
 
-        let ts_200d = now - (200 * 86400); // R1: 200 days ago — must be deleted
-        let ts_100d = now - (100 * 86400); // R2: 100 days ago — must be preserved
-        let ts_1d = now - 86400; // R3: yesterday — must be preserved
+        let ts_200d = now - (200 * 86400); // old row — would have been GC'd before vnc-014
+        let ts_1d = now - 86400; // recent row
 
         insert_audit(ts_200d).await;
-        insert_audit(ts_100d).await;
         insert_audit(ts_1d).await;
 
-        // Verify 3 rows before GC.
         let before = count_table(&store, "audit_log").await;
-        assert_eq!(before, 3, "3 audit_log rows before GC");
+        assert_eq!(before, 2, "2 audit_log rows before gc_audit_log call");
 
-        let deleted = store
-            .gc_audit_log(180)
-            .await
-            .expect("gc_audit_log must not error");
+        // gc_audit_log is a no-op — returns Ok(0), deletes nothing.
+        let result = store.gc_audit_log(1).await;
+        assert!(result.is_ok(), "gc_audit_log must not error: {result:?}");
+        assert_eq!(result.unwrap(), 0, "gc_audit_log must return 0 (no-op)");
 
-        assert_eq!(deleted, 1, "exactly 1 row deleted (200-day-old row R1)");
-
-        // Verify R2 and R3 still present.
+        // Both rows must still be present — no rows deleted.
         let after = count_table(&store, "audit_log").await;
-        assert_eq!(after, 2, "2 audit_log rows remain after GC");
-
-        // Verify the remaining rows are the preserved ones.
-        {
-            let mut conn = store.write_pool_server().acquire().await.expect("acquire");
-            let count_200d: i64 =
-                sqlx::query_scalar("SELECT COUNT(*) FROM audit_log WHERE timestamp = ?1")
-                    .bind(ts_200d)
-                    .fetch_one(&mut *conn)
-                    .await
-                    .expect("count");
-            let count_100d: i64 =
-                sqlx::query_scalar("SELECT COUNT(*) FROM audit_log WHERE timestamp = ?1")
-                    .bind(ts_100d)
-                    .fetch_one(&mut *conn)
-                    .await
-                    .expect("count");
-            let count_1d: i64 =
-                sqlx::query_scalar("SELECT COUNT(*) FROM audit_log WHERE timestamp = ?1")
-                    .bind(ts_1d)
-                    .fetch_one(&mut *conn)
-                    .await
-                    .expect("count");
-
-            assert_eq!(count_200d, 0, "R1 (200-day-old) must be deleted");
-            assert_eq!(count_100d, 1, "R2 (100-day-old) must be preserved");
-            assert_eq!(count_1d, 1, "R3 (1-day-old) must be preserved");
-        }
+        assert_eq!(after, 2, "both audit_log rows must be preserved (no-op)");
 
         store.close().await.unwrap();
     }
@@ -1398,11 +1364,14 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Edge case: gc_audit_log with epoch timestamp (timestamp = 0)
+    // Edge case: gc_audit_log with epoch timestamp row — no-op preserves it
+    //
+    // Previously this test verified the epoch row was deleted. Since vnc-014
+    // gc_audit_log() is a no-op: the row is preserved, Ok(0) is returned.
     // -----------------------------------------------------------------------
 
     #[tokio::test]
-    async fn test_gc_audit_log_epoch_row_deleted() {
+    async fn test_gc_audit_log_epoch_row_preserved() {
         let dir = tempfile::TempDir::new().expect("tempdir");
         let store = open_test_store(&dir).await;
 
@@ -1421,15 +1390,14 @@ mod tests {
             .expect("insert epoch audit_log");
         }
 
-        let deleted = store
-            .gc_audit_log(1)
-            .await
-            .expect("gc_audit_log must not error");
+        // gc_audit_log is a no-op — returns Ok(0), epoch row is NOT deleted.
+        let result = store.gc_audit_log(1).await;
+        assert!(result.is_ok(), "gc_audit_log must not error: {result:?}");
+        assert_eq!(result.unwrap(), 0, "gc_audit_log must return 0 (no-op)");
 
-        assert_eq!(
-            deleted, 1,
-            "epoch timestamp row must be deleted by any positive retention_days"
-        );
+        // Epoch row must still be present.
+        let count = count_table(&store, "audit_log").await;
+        assert_eq!(count, 1, "epoch audit_log row must be preserved (no-op)");
 
         store.close().await.unwrap();
     }

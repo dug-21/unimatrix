@@ -223,12 +223,21 @@ class UnimatrixClient:
 
     # -- MCP Lifecycle -------------------------------------------------
 
-    def initialize(self, timeout: float | None = None) -> MCPResponse:
+    def initialize(
+        self,
+        timeout: float | None = None,
+        client_name: str = "unimatrix-test-harness",
+    ) -> MCPResponse:
         """Complete MCP initialize handshake.
 
         1. Send initialize request with client capabilities
         2. Receive initialize response with server capabilities
         3. Send initialized notification
+
+        Args:
+            timeout: Override per-call timeout.
+            client_name: clientInfo.name to send in initialize (vnc-014: used to test
+                         agent_attribution capture). Defaults to "unimatrix-test-harness".
         """
         response = self._call(
             "initialize",
@@ -236,7 +245,7 @@ class UnimatrixClient:
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
                 "clientInfo": {
-                    "name": "unimatrix-test-harness",
+                    "name": client_name,
                     "version": "1.0.0",
                 },
             },

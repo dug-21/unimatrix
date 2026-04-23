@@ -485,4 +485,49 @@ mod tests {
             .unwrap();
         assert_eq!(record.capabilities, vec![Capability::Read]);
     }
+
+    // --- CAP-U-01 through CAP-U-06: Capability::as_audit_str() (ADR-006, AC-11, R-09) ---
+
+    /// CAP-U-01: Read variant returns "read".
+    #[test]
+    fn test_capability_as_audit_str_read_returns_read() {
+        assert_eq!(Capability::Read.as_audit_str(), "read");
+    }
+
+    /// CAP-U-02: Write variant returns "write".
+    #[test]
+    fn test_capability_as_audit_str_write_returns_write() {
+        assert_eq!(Capability::Write.as_audit_str(), "write");
+    }
+
+    /// CAP-U-03: Search variant returns "search".
+    #[test]
+    fn test_capability_as_audit_str_search_returns_search() {
+        assert_eq!(Capability::Search.as_audit_str(), "search");
+    }
+
+    /// CAP-U-04: Admin variant returns "admin".
+    #[test]
+    fn test_capability_as_audit_str_admin_returns_admin() {
+        assert_eq!(Capability::Admin.as_audit_str(), "admin");
+    }
+
+    /// CAP-U-05: SessionWrite variant returns "session_write".
+    #[test]
+    fn test_capability_as_audit_str_session_write_returns_session_write() {
+        assert_eq!(Capability::SessionWrite.as_audit_str(), "session_write");
+    }
+
+    /// CAP-U-06: Return type is &'static str — verify all arms return string literals
+    /// (no heap allocation; confirmed by type system at compile time).
+    #[test]
+    fn test_capability_as_audit_str_returns_static_str() {
+        // Binding to &'static str is the compile-time proof; this test won't compile
+        // if any arm returns a non-static reference.
+        let _read: &'static str = Capability::Read.as_audit_str();
+        let _write: &'static str = Capability::Write.as_audit_str();
+        let _search: &'static str = Capability::Search.as_audit_str();
+        let _admin: &'static str = Capability::Admin.as_audit_str();
+        let _session_write: &'static str = Capability::SessionWrite.as_audit_str();
+    }
 }

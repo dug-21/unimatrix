@@ -410,6 +410,7 @@ async fn handle_connection(
                     target_ids: vec![],
                     outcome: Outcome::Error,
                     detail: error_msg,
+                    ..AuditEvent::default()
                 };
                 if let Err(write_err) = audit_log.log_event(event) {
                     tracing::warn!(error = %write_err, "failed to write auth failure audit");

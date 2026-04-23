@@ -228,6 +228,7 @@ def test_interleaved_store_and_search(server):
         server.context_search(f"interleaved entry {i}", k=2)
 
 
+@pytest.mark.xfail(reason="Pre-existing: GH#576 — content size cap of 8000 bytes (fix #561) now rejects 50KB content; test predates the cap")
 def test_very_long_content(server):
     """E-15: Near-boundary-length content."""
     content = load_large_content(50000)  # 50KB

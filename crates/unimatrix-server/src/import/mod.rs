@@ -238,17 +238,20 @@ async fn check_preflight(
     Ok(())
 }
 
-/// Drop all data from 8 importable tables + vector_map.
+/// Drop all data from importable tables (excludes audit_log).
 ///
 /// Uses DELETE (not DROP TABLE) to preserve schema.
 /// FK-dependent tables deleted first, then parent tables.
+///
+/// audit_log is excluded: append-only triggers (vnc-014 / ASS-050 schema v25)
+/// reject DELETE statements. Audit history is preserved across import resets
+/// per ADR-005. See retention.rs gc_audit_log for the GC deferral note.
 async fn drop_all_data(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
     sqlx::query(
         "DELETE FROM entry_tags;
          DELETE FROM co_access;
          DELETE FROM feature_entries;
          DELETE FROM outcome_index;
-         DELETE FROM audit_log;
          DELETE FROM agent_registry;
          DELETE FROM vector_map;
          DELETE FROM entries;
