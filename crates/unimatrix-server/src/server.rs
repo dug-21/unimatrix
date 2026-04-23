@@ -1073,9 +1073,9 @@ impl rmcp::ServerHandler for UnimatrixServer {
                 .lock()
                 .unwrap_or_else(|e| e.into_inner());
 
-            // If stdio key "" is being overwritten, emit a debug log (FR-02, C-02).
+            // If stdio key "" is being overwritten, emit a warn log (FR-02, C-02, R-10).
             if session_key.is_empty() && map.contains_key("") {
-                tracing::debug!(
+                tracing::warn!(
                     existing = map.get("").map(String::as_str).unwrap_or(""),
                     new = %truncated,
                     "stdio client_type_map entry overwritten (reconnect or second initialize)"

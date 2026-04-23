@@ -1453,7 +1453,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+        self.require_cap(&ctx.agent_id, Capability::Admin).await?;
 
         // 2. Validation
         validate_quarantine_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -1497,7 +1497,7 @@ impl UnimatrixServer {
                     outcome: Outcome::Success,
                     detail: String::new(),
                     credential_type: "none".to_string(),
-                    capability_used: Capability::Write.as_audit_str().to_string(),
+                    capability_used: Capability::Admin.as_audit_str().to_string(),
                     agent_attribution: ctx.client_type.clone().unwrap_or_default(),
                     metadata: metadata_json.clone(),
                 };
@@ -1535,7 +1535,7 @@ impl UnimatrixServer {
                     outcome: Outcome::Success,
                     detail: String::new(),
                     credential_type: "none".to_string(),
-                    capability_used: Capability::Write.as_audit_str().to_string(),
+                    capability_used: Capability::Admin.as_audit_str().to_string(),
                     agent_attribution: ctx.client_type.clone().unwrap_or_default(),
                     metadata: metadata_json,
                 };
@@ -8075,14 +8075,14 @@ mod vnc014_audit_field_tests {
     #[test]
     fn test_tool_u04_capability_used_write_tools() {
         assert_eq!(Capability::Write.as_audit_str(), "write");
-        // context_store, context_correct, context_deprecate, context_quarantine, context_cycle
+        // context_store, context_correct, context_deprecate, context_cycle
         assert_eq!(Capability::Write.as_audit_str().to_string(), "write");
     }
 
     #[test]
     fn test_tool_u04_capability_used_admin_tools() {
         assert_eq!(Capability::Admin.as_audit_str(), "admin");
-        // context_enroll
+        // context_enroll, context_quarantine
         assert_eq!(Capability::Admin.as_audit_str().to_string(), "admin");
     }
 
