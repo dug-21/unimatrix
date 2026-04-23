@@ -3,6 +3,8 @@
 > Gate: 3b (Code Review)
 > Date: 2026-04-22
 > Result: REWORKABLE FAIL
+> Iteration 2 Date: 2026-04-23
+> Iteration 2 Result: PASS
 
 ## Summary
 
@@ -155,3 +157,36 @@ All 8 implementation agent reports (server, tools, migration, audit-event, capab
   - Topic: validation, Category: lesson-learned
   - Tags: gate-3b, gate-failure, mcp, seam-migration, rework, vnc-014
   - Content: Gate 3b caught that context_cycle_review and context_cycle were excluded from the build_context → build_context_with_external_identity Seam 2 migration. Both are #[tool]-annotated handlers that can receive RequestContext<RoleServer> via FromContextPart. Root cause: handlers with multiple internal code paths (cache-hit, full-pipeline, error) were underestimated as migration effort and skipped. Takeaway: gate-3b validators must verify each named tool handler has exactly one build_context_with_external_identity call — counting total call sites is insufficient when handlers branch internally.
+
+---
+
+## Iteration 2 — Recheck (2026-04-23)
+
+**Scope**: Verify rework committed after iteration 1 REWORKABLE FAIL. Checked only the previously failing items.
+
+### FR-04 / FR-09: context_cycle and context_cycle_review migrated to Seam 2
+
+**Status**: PASS
+
+`context_cycle_review` (tools.rs:1643): now declares `request_context: rmcp::service::RequestContext<rmcp::RoleServer>` parameter and calls `build_context_with_external_identity` at line 1654. All three `AuditEvent` construction sites within the handler have explicit 4-field population:
+
+- Purged-signals path (line 1808): `credential_type: "none"`, `capability_used: Capability::Read.as_audit_str().to_string()`, `agent_attribution: ctx.client_type.clone().unwrap_or_default()`, `metadata: metadata_json` from `ctx.client_type`.
+- Cache-hit / memoization path (line 2594): same 4-field explicit population.
+- Full-pipeline path (line 2623): same 4-field explicit population.
+
+`context_cycle` (tools.rs:2717): now declares `request_context: rmcp::service::RequestContext<rmcp::RoleServer>` parameter and calls `build_context_with_external_identity` at line 2724. The single `AuditEvent` site (line 2830) has explicit 4-field population with `Capability::Write.as_audit_str()` for `capability_used`, `ctx.client_type.clone().unwrap_or_default()` for `agent_attribution`, and `metadata_json` from `ctx.client_type`.
+
+`write_lesson_learned` helper (line 3267): retains `..AuditEvent::default()` — correct, this is a background non-`#[tool]` site with no `RequestContext` available.
+
+No `..AuditEvent::default()` present in any `#[tool]`-annotated handler's `AuditEvent` construction.
+
+### Iteration 1 warnings — still acceptable
+
+- `context_lookup` using `Capability::Read` vs "search" in domain model: unchanged, documented deviation, WARN retained.
+- Architect agent report missing Knowledge Stewardship section: informational WARN, not a code issue, retained.
+
+### Test Suite
+
+`cargo test --workspace`: all crates pass, zero failures across all test result lines.
+
+**Iteration 2 Result: PASS**
