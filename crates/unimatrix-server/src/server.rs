@@ -508,7 +508,7 @@ impl UnimatrixServer {
     /// shutdown may be silently lost. Acceptable for observability logging (#579).
     pub(crate) fn audit_fire_and_forget(&self, event: AuditEvent) {
         let audit = Arc::clone(&self.audit);
-        let _ = tokio::spawn(async move {
+        tokio::spawn(async move {
             if let Err(e) = audit.log_event_async(event).await {
                 tracing::warn!(error = %e, "audit_fire_and_forget: write failed");
             }
