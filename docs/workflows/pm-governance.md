@@ -2,18 +2,21 @@
 
 This diagram shows the human-driven governance layer that wraps the automated swarm sessions. Understanding this layer explains how the project stays on-vision, how workflow problems get fixed, and why protocol changes are intentionally slow.
 
+> [!NOTE]
+> **uni-zero is pair programming for product vision.** It is not a report generator or an advisory tool you query and dismiss. It is a collaborative, iterative thinking partner: you bring a half-formed idea, a concern, a strategic question, or a draft roadmap — uni-zero pushes back, surfaces implications, proposes alternatives, and helps you sharpen the thinking before any feature work begins. Sessions are conversational and can span multiple rounds. The output is a clearer vision, a scoped research spike, a GitHub Issue, or a refined roadmap — not a document summary.
+
 ---
 
 ## The Governance Loop
 
 ```mermaid
 flowchart TD
-    UNIZERO(["/uni-zero — Vision Guide Session\nHuman-driven, conversational\nRuns before new features begin"])
+    UNIZERO(["/uni-zero — Collaborative Vision Session\nConversational pair programming\nfor product direction and scope"])
 
-    subgraph UNIZERO_DOES [What uni-zero does]
+    subgraph UNIZERO_DOES [What uni-zero does — iteratively, with the human]
         UZ1[Maintains PRODUCT-VISION.md]
         UZ2[Maintains Unimatrix vision entries\nso agents always brief from current vision]
-        UZ3[Reviews roadmap position\nand feature ordering]
+        UZ3[Challenges assumptions and\nsharpens roadmap thinking]
         UZ4[Scopes research spikes\nfor unknown questions]
         UZ5[Creates GitHub Issues\nfor approved work items]
     end

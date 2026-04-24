@@ -55,7 +55,7 @@ flowchart TD
     START([Phase 2a begins]) --> PAR
 
     subgraph PAR [Phase 2a — Parallel Spawn, one message]
-        ARCH[Architect\n- Reads SCOPE.md + Scope Risk Assessment\n- Writes ARCHITECTURE.md\n- Writes ADR-NNN files\n- Stores each ADR in Unimatrix immediately]
+        ARCH[Architect\n- Reads SCOPE.md + Scope Risk Assessment\n- Identifies ALL impacted components\n- Writes ARCHITECTURE.md\n- Writes ADR-NNN files\n- Stores each ADR in Unimatrix immediately]
         SPEC[Specification Writer\n- Reads SCOPE.md + Scope Risk Assessment\n- Writes SPECIFICATION.md\n- Acceptance criteria + domain models]
     end
 
@@ -73,6 +73,19 @@ flowchart TD
     style SYNTH fill:#d4edda
     style CYCLE_D fill:#fff3cd
 ```
+
+---
+
+## Artifact Strategy: Files vs. Unimatrix
+
+> [!NOTE]
+> **Two-tier artifact model**: All design artifacts are written as Markdown files in `product/features/{feature-id}/` — these drive the feature workflow (agents read them, gates validate them, humans review them). Unimatrix stores a parallel layer of knowledge that future agents across *any* feature can retrieve by semantic search: ADRs, patterns, conventions, and lessons. Files are workflow artifacts; Unimatrix is the living knowledge base.
+
+| Artifact | Where it lives | Why |
+|----------|---------------|-----|
+| SCOPE.md, ARCHITECTURE.md, SPECIFICATION.md, etc. | `product/features/{id}/` as Markdown files | Drives this feature's workflow; reviewed by humans and gates |
+| Each ADR | Both: file in `architecture/` + Unimatrix entry | File for human review; Unimatrix entry so delivery agents find decisions by search without reading every file |
+| Patterns, conventions, lessons | Unimatrix only | Accumulated knowledge reusable across all future features — not tied to one feature's directory |
 
 ---
 

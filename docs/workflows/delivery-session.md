@@ -134,7 +134,13 @@ Before spawning any implementation agents, the Delivery Leader reads the IMPLEME
 - **Wave 1**: Components with no dependencies on other components in this feature — all run in parallel.
 - **Wave 2+**: Components that depend on Wave 1 outputs — run after Wave 1 is committed.
 
-Each rust-dev agent receives only its own component's pseudocode and test plan. Agents do not run integration tests — that is Stage 3c.
+> [!NOTE]
+> **Context window management**: Each rust-dev agent receives the full Architecture and Specification (so it understands the whole system) plus only *its own component's* pseudocode and test plan. Agents are not given every component's pseudocode — this is intentional. It prevents context overflow and keeps each agent focused on its specific implementation contract. The component breakdown produced by the Architect in Session 1 directly determines how implementation work is partitioned here.
+
+> [!NOTE]
+> **Artifact strategy in Delivery**: Pseudocode, test plans, gate reports, and the risk coverage report are written as Markdown files in `product/features/{id}/`. Reusable patterns, updated procedures, and lessons discovered during implementation are stored in Unimatrix by the retro session after merge — not during delivery itself.
+
+Agents do not run integration tests — that is Stage 3c.
 
 ---
 
