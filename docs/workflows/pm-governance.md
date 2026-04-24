@@ -22,17 +22,17 @@ flowchart TD
     end
 
     UNIZERO --> UNIZERO_DOES
-    UNIZERO_DOES --> SCOPECHECK{Is the feature\nscoped and approved?}
+    UNIZERO_DOES --> SCOPECHECK{Is the feature\nscoped and approved?\nconsults /uni-zero}
     SCOPECHECK -->|No — explore more| UNIZERO
     SCOPECHECK -->|Yes — SCOPE.md exists\nand human approves| DESIGN
 
     DESIGN[Design Session\nSee design-session.md\nProduces 8 artifacts + GitHub Issue]
-    DESIGN --> HUMANREVIEW{Human reviews\ndesign artifacts\nand alignment report}
+    DESIGN --> HUMANREVIEW{Human reviews\ndesign artifacts\nand alignment report\nconsults /uni-zero}
     HUMANREVIEW -->|Variances require changes| UNIZERO
     HUMANREVIEW -->|Approved — proceed| DELIVERY
 
     DELIVERY[Delivery Session\nSee delivery-session.md\nImplements, tests, opens PR]
-    DELIVERY --> PRREVIEW{Human reviews PR\nand security findings}
+    DELIVERY --> PRREVIEW{Human reviews PR\nand security findings\nconsults /uni-zero}
     PRREVIEW -->|Blocking findings| FIX[Address blocking items\nvia bugfix protocol]
     FIX --> PRREVIEW
     PRREVIEW -->|Approved| MERGE[Merge PR\ngh pr merge --squash --delete-branch]
@@ -47,7 +47,7 @@ flowchart TD
         R1 --> R2 --> R3 --> R4
     end
 
-    RETRO --> HUMANRETRO{Human reviews\nretro findings}
+    RETRO --> HUMANRETRO{Human reviews\nretro findings\nconsults /uni-zero}
     HUMANRETRO -->|No protocol changes needed| NEXTFEATURE([Next feature — back to uni-zero])
     HUMANRETRO -->|Protocol improvement identified| PROTOUPDATE
 

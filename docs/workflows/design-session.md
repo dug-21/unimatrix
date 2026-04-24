@@ -15,7 +15,7 @@ flowchart TD
     INIT[Design Leader reads protocol\nCalls context_cycle start\nUnimatrix: session opens]
 
     INIT --> P1[Phase 1: Researcher explores\nproblem space and writes SCOPE.md]
-    P1 --> APPROVE{Human reviews\nSCOPE.md}
+    P1 --> APPROVE{Human reviews\nSCOPE.md\nconsults /uni-zero}
     APPROVE -->|Rejected — revise| P1
     APPROVE -->|Approved| P1B
 
@@ -31,7 +31,7 @@ flowchart TD
     P2C --> P2D[Unimatrix: phase-end design-review → spec\nNote: cycle stays open for Session 2]
     P2D --> RETURN([Human receives all 8 artifacts\nand GitHub Issue URL])
 
-    RETURN --> DECIDE{Human decision}
+    RETURN --> DECIDE{Human decision\nconsults /uni-zero}
     DECIDE -->|Proceed| SESS2([Start Delivery Session])
     DECIDE -->|Revise scope| P1
     DECIDE -->|Defer| HOLD([Feature parked])
