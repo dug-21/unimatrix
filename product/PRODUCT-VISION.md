@@ -57,9 +57,9 @@ Before the roadmap, a clear-eyed list of where Unimatrix has strayed from its do
 | Gap | Severity | Status |
 |-----|----------|--------|
 | Auto-enroll gives read access to any unknown process | High | Configurable via `PERMISSIVE_AUTO_ENROLL`; W2-3 OAuth closes it fully |
-| agent_id per-call model: friction, unreliable, spoofable | High | W2-3 OAuth path |
-| No token-based client identity for STDIO | High | W2-3 JWT path |
-| No path to OAuth for centralized deployment | Medium | W2-3 |
+| agent_id per-call model: friction, unreliable, spoofable | High | **Partially resolved** — vnc-014 adds non-spoofable `agent_attribution` (from `clientInfo.name`) alongside spoofable `agent_id`; full OAuth in enterprise private repo |
+| No token-based client identity for HTTP | High | W2-2 static bearer token (personal cloud); JWT/OAuth in enterprise private repo |
+| No path to OAuth for centralized deployment | Medium | Enterprise private repo |
 
 ### Scalability & Architecture
 | Gap | Severity | Status |
@@ -386,12 +386,12 @@ Full research scope: `product/research/ass-029/SCOPE.md`.
 
 ---
 
-## Wave 2 — Deployment
-*Planning in progress. See `product/WAVE2-ROADMAP.md` for the full Wave 2 planning document, updated goal statements, and research spike prerequisite list (ASS-041 through ASS-047).*
+## Wave 2 — Personal Cloud Delivery
+*See `product/WAVE2-ROADMAP.md` for the authoritative Wave 2 planning document, updated goal statements, and research spike prerequisite list (ASS-041 through ASS-053).*
 
-*Original design notes below remain as detailed specification reference. Goal statements and scope are being revised by the Wave 2 research spikes.*
+*Original design notes below remain as historical reference. Active scope and delivery items are maintained in WAVE2-ROADMAP.md.*
 
-Wave 2 delivers containerization, HTTPS transport, multi-project routing, OAuth, and the enterprise admin console. These are independent of the intelligence pipeline — they are the delivery infrastructure that makes Unimatrix accessible beyond a single developer workspace. Wave 1A is complete. The Wave 2 enterprise tier ships as BSL-1.1; the OSS STDIO tier remains MIT/Apache.
+Wave 2 delivers a complete, deployable personal Unimatrix cloud: containerized, HTTPS-accessible, multi-LLM compatible (Claude Code, Codex CLI, Gemini CLI), with a static bearer token security model an individual developer can operate without friction. All core crates are MIT/Apache 2.0 (confirmed ASS-045 — no BSL). Enterprise delivery — OAuth 2.1, three-role RBAC, structured compliance audit log, control plane — ships from a separate private repository after Wave 2 completes. Wave 1A is complete. Wave 2 research spikes ASS-041 through ASS-053 feed the delivery items.
 
 ### W2-1: Container Packaging
 **Business outcome**: Knowledge survives infrastructure changes — production-grade deployment with clean backup, recovery, and standard container lifecycle.
@@ -674,10 +674,10 @@ The integrity chain is the product's defensible moat. The roadmap is designed ar
 
 **After Wave 2**:
 - Any domain deploys with a config file (SRE, environmental, research, legal)
-- External systems integrate via HTTP without being Claude Code plugins
-- Multi-project routing — project knowledge + organization-tier conventions served together
-- OAuth-gated access for team deployments
-- Container deployment with clean backup/recovery
+- Any LLM client (Claude Code, Codex CLI, Gemini CLI) integrates via HTTPS — same tool API, same behavioral contract
+- Static bearer token auth — zero enrollment friction for individual developers
+- Container deployment with clean backup/recovery and named volume isolation
+- Enterprise OAuth 2.1 + three-role RBAC available in the private repository tier
 
 **After Wave 3**:
 - Confidence weights, candidate ranking, and proactive delivery all adapt automatically per deployment
@@ -736,7 +736,7 @@ Mitigations: per-agent vote-rate limiting (max 10 votes/agent/hour); implicit tr
 `content_hash` and `previous_hash` on every entry — never skipped, backdated, or made optional. Includes synthesized entries (W3-2), auto-extracted entries, and any entry produced by background maintenance.
 
 **2. Audit log is append-only and complete.**
-Every operation that changes `knowledge.db` state produces an AUDIT_LOG entry with `agent_id`, `session_id`, `operation`, `target_ids`, and `outcome`. The analytics write queue must not become an audit bypass.
+Every operation that changes `knowledge.db` state produces an AUDIT_LOG entry with `agent_id`, `session_id`, `operation`, `target_ids`, `outcome`, `credential_type`, `capability_used`, `agent_attribution`, and `metadata` (schema v25 — vnc-014). Append-only semantics are enforced by DDL `BEFORE UPDATE`/`BEFORE DELETE` triggers at the SQLite layer — not convention. The analytics write queue must not become an audit bypass.
 
 **3. Capability checks are enforced at the service layer, not the transport layer.**
 Whether the caller arrives via UDS, stdio, HTTP bearer token, or OAuth JWT, capability checks happen in the service layer after identity resolution. Transport authentication is a precondition, not a substitute.
