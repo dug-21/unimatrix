@@ -70,7 +70,7 @@ Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 
 ---
 
-### W2-3: Security Model — OSS Foundation (🔬 ASS-050 — IN PROGRESS)
+### W2-3: Security Model — OSS Foundation (🔬 ASS-050 — COMPLETE)
 **Goal**: Correct the security model for the personal cloud tier. Revise the current `agent_id`-per-call model (designed around a now-invalid assumption about subagent session isolation) to match the actual personal cloud identity model. Lay the extension surface that the enterprise private repository will build OAuth 2.1 + three-role RBAC on top of.
 
 **Personal cloud identity model**:
@@ -90,7 +90,7 @@ Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 - Startup plugin registration pattern for enterprise auth injection.
 - Audit log schema designed now to carry `session_id`, `credential_type`, `capability_used`, `agent_attribution`, and extensible `metadata` JSON for future AI governance attributes — immutable decision, get it right in Wave 2.
 
-**Resolved by ASS-050**: Full implementation audit, interface signatures, audit log schema recommendation, don't-foreclose constraints for future session-pinned identity and behavioral provenance analysis.
+**Resolved by ASS-050**: Full implementation audit confirms no reconstruction needed. `BearerValidator` + `StaticTokenAuth` trait signatures specified. `audit_log` schema migration (4 new columns + append-only triggers) designed and classified. Seam map identifies 5 injectable identity seams — Seams 1 and 2 are low-cost additive now, high-cost retrofit later. Don't-foreclose list (7 invariants) documented as code review gates. OQ-01 and OQ-03 resolved via rmcp 0.16 source read: `clientInfo.name` accessible via `ctx.peer.peer_info()` (not extensions); rmcp session UUID accessible via `extensions.get::<Parts>()` + `Mcp-Session-Id` header — server-assigned, non-spoofable, no upstream changes needed. vnc-014 is fully unblocked.
 
 ---
 
@@ -102,16 +102,17 @@ Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 | Issue | Type | Description |
 |-------|------|-------------|
 | [#558](https://github.com/dug-21/unimatrix/issues/558) | Bug | Tool description fixes — NLI language in `context_briefing`, hook-path framing in `context_cycle` | ✅ COMPLETE |
-| [#559](https://github.com/dug-21/unimatrix/issues/559) | Feature | vnc-013: Canonical event normalization — Gemini `BeforeTool`/`AfterTool`/`SessionEnd` → canonical names |
+| [#559](https://github.com/dug-21/unimatrix/issues/559) | Feature | vnc-013: Canonical event normalization — Gemini `BeforeTool`/`AfterTool`/`SessionEnd` → canonical names — **blocked on ASS-051** |
 | [#560](https://github.com/dug-21/unimatrix/issues/560) | Feature | Server-side session attribution via `clientInfo.name` + `Mcp-Session-Id` |
-| [#561](https://github.com/dug-21/unimatrix/issues/561) | Feature | Byte-based content size enforcement (`context_store` cap, `context_status format:json` documentation) |
+| [#561](https://github.com/dug-21/unimatrix/issues/561) | Feature | Byte-based content size enforcement (`context_store` cap, `context_status format:json` documentation) | ✅ COMPLETE |
+| [#574](https://github.com/dug-21/unimatrix/issues/574) | Bug | `context_cycle` must write `cycle_events` + `sessions.feature_cycle` via MCP handler, not hook path — prerequisite for Codex/Gemini behavioral provenance |
 
 **Deferred** (post-Wave 2):
 - Provider-neutral eval corpus (20–40 hand-authored scenarios, no harness code changes)
 - Gemini MRR baseline (after schema fixes land)
 - Zed (revisit when zed-industries/zed#34719 resolves — no native HTTP transport today)
 
-**Critical open issue**: Codex #5619 — Codex sends `protocolVersion: "2025-06-18"` but may expect `2024-11-05` response semantics. Verify rmcp `protocolVersion` declaration before any Codex Wave 2 testing.
+**Codex #5619 — RESOLVED (not a Unimatrix issue)**: rmcp 0.16.0 explicitly pins `LATEST = 2025-03-26` (`ProtocolVersion::LATEST` in `model.rs`). The negotiation logic responds with `min(client, server)` — so Codex's `2025-06-18` request receives a `2025-03-26` response. The #5619 bug is specific to a `2025-06-18 → 2024-11-05` response mismatch; Unimatrix sidesteps it entirely. Remaining Codex blocker: #16732 (MCP tool call hooks don't fire — upstream).
 
 **Resolved by ASS-049**: Client capability matrix, tool description risk, `clientInfo.name` attribution, injection size analysis, HTTP auth confirmation per client.
 
@@ -142,7 +143,11 @@ Wave 2 delivers the OSS extension surface (W2-3 / ASS-050) that the enterprise p
 | ASS-046 | GGUF Feasibility | Not started | W2-5 go/no-go |
 | ASS-047 | Core Scalability Strategy | **COMPLETE** | W2-2 (connection limits) |
 | ASS-049 | Multi-LLM MCP Client Compatibility | **COMPLETE** | W2-4 |
-| ASS-050 | Security Model Review — OSS + Enterprise Foundation | **IN PROGRESS** | W2-3 |
+| ASS-050 | Security Model Review — OSS + Enterprise Foundation | **COMPLETE** | W2-3 |
+| ASS-051 | Hook Event Canonical Naming Strategy | Not started | vnc-013 (#559) naming decision — blocking |
+| ASS-052 | RuVector Component Re-evaluation | **COMPLETE** | W3-1 (negative result — no adoption) |
+| ASS-053 | REST API Connectivity + Admin Plane Decoupling Seams | Not started | W2-3, enterprise |
+| ASS-055 | ADR DependsOn Graph Relationship (`context_relate`) | **COMPLETE** | crt-NNN (Wave 2), enterprise audit graph |
 
 ### ASS-041 Findings Summary — Transport + Auth Stack
 rmcp 0.16 `transport-streamable-http-server` is production-ready. Tower middleware for auth. `rustls 0.23` for TLS. `subtle::ConstantTimeEq` for token validation. `Authorization: Bearer` header confirmed for Claude Code HTTP transport. `claude mcp add -H` workaround required for anthropics/claude-code#28293.
@@ -153,23 +158,38 @@ MIT/Apache 2.0 on all core crates. No BSL (creates OSPO procurement friction). D
 ### ASS-047 Findings Summary — Scalability
 Write ceiling: ~200 integrity writes/sec (single `write_pool` connection, SQLite WAL). Defensible at 20 concurrent agents at normal usage. Per-repo in-memory envelope: 3–5 MB (small), 30–50 MB (medium). Personal cloud (single-user) operates well within these limits. PostgreSQL upgrade trigger: >50 agents or >300 audit writes/sec sustained.
 
+### ASS-050 Findings Summary — Security Model Review
+Current `agent_id`-per-call model is security-through-obscurity (STDIO) and no security at all (HTTPS). Path forward does not require reconstruction — three changes: (1) additive `BearerValidator` tower middleware with `StaticTokenAuth` OSS impl, (2) one schema migration adding 4 fields to `audit_log` (`credential_type`, `capability_used`, `agent_attribution`, `metadata`) plus append-only DDL triggers, (3) non-breaking `build_context_with_external_identity()` overload in `server.rs`. `agent_id` tool param is reclassified as persona metadata; `AgentRegistry` retained for attribution analytics. Zero-enrollment-friction confirmed: bearer token = full access, no `context_enroll` required. Audit log migration is a one-way decision — must land before any Wave 2 auth feature. Enterprise extension surface (`BearerValidator` trait, `EnterpriseAuditWriter` trait) fully specified; enterprise binary swaps in `JwtBearerAuth` without touching OSS code. Seven behavioral provenance invariants documented as code review gates.
+
+**CORRECTION (2026-04-22)**: ASS-050 Seam 5 analysis contained an error. `cycle_events.cycle_id` is the feature identifier (`topic` / `feature_cycle`, e.g. `"crt-027"`) — not the MCP session ID. The behavioral provenance chain is two hops: `audit_log.session_id → sessions.session_id → sessions.feature_cycle = cycle_events.cycle_id`. The `audit_log.session_id` fix must use agent-declared session_id (from `ToolContext.audit_ctx.session_id`), not the rmcp UUID. The rmcp UUID is the `client_type_map` key (vnc-014). Additionally, `context_cycle` MCP handler does not write to `cycle_events` or `sessions.feature_cycle` — both are hook-path only, breaking provenance for non-Claude-Code clients. Issue #574 tracks the fix. ASS-050 FINDINGS.md corrected in place.
+
 ### ASS-049 Findings Summary — Multi-LLM Compatibility
-Codex CLI and Gemini CLI confirmed as primary Wave 2 targets. `Authorization: Bearer` static token forwarding confirmed for both. Gemini JSON Schema blockers identified (inline `$defs`, union types). Codex #5619 (protocolVersion) requires verification before Codex testing. `clientInfo.name` available as agent attribution source across providers.
+Codex CLI and Gemini CLI confirmed as primary Wave 2 targets. `Authorization: Bearer` static token forwarding confirmed for both. Gemini JSON Schema blockers identified (inline `$defs`, union types). Codex #5619 (protocolVersion) **closed** — rmcp 0.16.0 declares `2025-03-26`, sidesteps the bug. Sole remaining Codex blocker: upstream #16732 (MCP tool call hooks). `clientInfo.name` available as agent attribution source across providers.
+
+### ASS-055 Findings Summary — ADR DependsOn Graph Relationship
+Retain `Prerequisite` RelationType (no rename). Store A→B (A is prerequisite of B). PPR reverse-walk already correctly surfaces A when B is seeded — confirmed by existing tests `test_prerequisite_incoming_direction` and `test_prerequisite_wrong_direction_does_not_propagate`. graph_expand gap accepted (PPR compensates). Write path: add `depends_on: Option<Vec<u64>>` to both `context_store` and `context_correct` — no new MCP tool (stays at 12), GRAPH_EDGES-only, no schema migration (stays at v25). Reference implementation: `write_graph_edge` in `nli_detection.rs:78–118`. No edge auto-transfer on supersession — add `stale_dependency_edges` count to `context_status` and a `DependencyOnDeprecated` detection rule to `context_cycle_review`. Security: Write cap + source-entry ownership validation (caller must match `created_by` of source_id) + confidence floor on source. Blast radius: ~4 files changed, ~7 benefit for free, 6 new tests. Effort: 2–3 days. **Go, Wave 2.** Dependency is the only named relationship in the vision not yet modeled.
+
+### ASS-052 Findings Summary — RuVector Re-evaluation
+All four evaluated mechanisms rejected: GNN integration (same PPR feedback loop as ASS-031, no HNSW wiring path), graph-based retrieval (Unimatrix PPR expander strictly surpasses ruvector-graph), HNSW replacement (same underlying library; Unimatrix VectorIndex superior), EWC (uncertain applicability — folded into W3-1 training harness comparison scope). No ruvector components adopted. W3-1 proceeds on existing Unimatrix graph and HNSW foundations.
 
 ---
 
 ## Dependency Map
 
 ```
+ASS-053: REST API + Admin Seams ─ depends on ASS-050 ────────► W2-3 (REST path + admin decoupling)
+ASS-051: Hook Event Naming ─── Not started ──────────────────► vnc-013 (#559) naming decision — BLOCKING
 ASS-050: Security Model Review ─────────────────────────────► W2-3 (extension surface spec)
 ASS-041: Transport ─── COMPLETE ────────────────────────────► W2-2 (HTTPS + static token)
 ASS-045: Licensing ─── COMPLETE ────────────────────────────► W2-0 (MIT/Apache confirmed)
 ASS-047: Scalability ─ COMPLETE ────────────────────────────► W2-2 (connection limits)
 ASS-049: Multi-LLM ─── COMPLETE ────────────────────────────► W2-4 (delivery scope confirmed)
+ASS-052: RuVector ──── COMPLETE (negative) ──────────────────► W3-1 (no adoption)
 
 ASS-043 ──────────────────────────────────────────────────── ► W2-1 (packaging decisions)
 ASS-046 ──────────────────────────────────────────────────── ► W2-5 go/no-go
 
+vnc-013 (#559) blocked on ASS-051: canonical name strategy must resolve before delivery begins
 W2-3 unblocks: W2-2 delivery (auth middleware placement confirmed)
 W2-2 + W2-4 can ship concurrently (shared HTTPS transport layer)
 W2-1 wraps W2-2 + W2-3 (container packaging after server complete)
