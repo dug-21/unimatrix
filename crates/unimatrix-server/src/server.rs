@@ -376,12 +376,13 @@ impl UnimatrixServer {
     /// in vnc-014 — the W2-3 activation wires a bearer-validated identity here).
     ///
     /// Capability checking is separate via `require_cap()` (ADR-002).
-    /// Session ID is validated (S3) and prefixed with "mcp::" when present.
+    /// Session ID is validated (S3) and stored raw (no transport prefix) in `AuditContext`.
     ///
-    /// SESSION ID NAMESPACE (Unimatrix #4363): `AuditEvent.session_id` MUST come from
-    /// `ctx.audit_ctx.session_id` (the agent-declared `mcp::`-prefixed parameter).
+    /// SESSION ID NAMESPACE (Unimatrix #4388): `AuditEvent.session_id` MUST come from
+    /// `ctx.audit_ctx.session_id` (the agent-declared raw parameter — no `mcp::` prefix).
     /// The `Mcp-Session-Id` UUID is the `client_type_map` lookup key only — it must
-    /// never surface in audit records.
+    /// never surface in audit records. Raw storage enables direct equality join to
+    /// `sessions.session_id` (GH #582 Defect 3).
     ///
     /// Uses `spawn_blocking` internally to keep Store mutex off the async runtime (#176).
     pub(crate) async fn build_context_with_external_identity(
