@@ -81,20 +81,12 @@ pub(crate) enum CallerId {
 // ---------------------------------------------------------------------------
 
 /// Prefix a raw session ID with transport identifier.
+///
+/// Retained for UDS path and future transport prefixing needs.
+/// Not used on the MCP write path (GH #582 Defect 3).
+#[allow(dead_code)]
 pub(crate) fn prefix_session_id(transport: &str, raw: &str) -> String {
     format!("{transport}::{raw}")
-}
-
-/// Strip transport prefix from a prefixed session ID.
-///
-/// Returns the raw ID after the first `::` delimiter.
-/// If no prefix found, returns the input unchanged.
-#[allow(dead_code)]
-pub(crate) fn strip_session_prefix(prefixed: &str) -> &str {
-    match prefixed.find("::") {
-        Some(pos) => &prefixed[pos + 2..],
-        None => prefixed,
-    }
 }
 
 // ---------------------------------------------------------------------------

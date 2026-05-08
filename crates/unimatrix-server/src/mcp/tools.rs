@@ -541,7 +541,7 @@ impl UnimatrixServer {
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
-            session_id: String::new(),
+            session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
             agent_id: ctx.agent_id.clone(),
             operation: "context_lookup".to_string(),
             target_ids: target_ids.clone(),
@@ -780,7 +780,7 @@ impl UnimatrixServer {
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
-            session_id: String::new(),
+            session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
             agent_id: ctx.agent_id.clone(),
             operation: "context_get".to_string(),
             target_ids: vec![id],
@@ -960,7 +960,7 @@ impl UnimatrixServer {
         let audit_event = AuditEvent {
             event_id: 0,
             timestamp: 0,
-            session_id: String::new(),
+            session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
             agent_id: ctx.agent_id,
             operation: "context_deprecate".to_string(),
             target_ids: vec![],
@@ -1061,7 +1061,7 @@ impl UnimatrixServer {
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
-            session_id: String::new(),
+            session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
             agent_id: ctx.agent_id,
             operation: "context_status".to_string(),
             target_ids: vec![],
@@ -1395,7 +1395,7 @@ impl UnimatrixServer {
             self.audit_fire_and_forget(AuditEvent {
                 event_id: 0,
                 timestamp: 0,
-                session_id: String::new(),
+                session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
                 agent_id: ctx.agent_id.clone(),
                 operation: "context_briefing".to_string(),
                 target_ids: entry_ids.clone(),
@@ -1490,7 +1490,7 @@ impl UnimatrixServer {
                 let audit_event = AuditEvent {
                     event_id: 0,
                     timestamp: 0,
-                    session_id: String::new(),
+                    session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
                     agent_id: ctx.agent_id.clone(),
                     operation: "context_quarantine".to_string(),
                     target_ids: vec![],
@@ -1528,7 +1528,7 @@ impl UnimatrixServer {
                 let audit_event = AuditEvent {
                     event_id: 0,
                     timestamp: 0,
-                    session_id: String::new(),
+                    session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
                     agent_id: ctx.agent_id.clone(),
                     operation: "context_quarantine".to_string(),
                     target_ids: vec![],
@@ -1621,7 +1621,7 @@ impl UnimatrixServer {
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
-            session_id: String::new(),
+            session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
             agent_id: ctx.agent_id.clone(),
             operation: "context_enroll".to_string(),
             target_ids: vec![],
@@ -2039,8 +2039,11 @@ impl UnimatrixServer {
                 let server = self.clone();
                 let report_for_ll = report.clone();
                 let fc_for_ll = feature_cycle.clone();
+                let session_id_for_ll = ctx.audit_ctx.session_id.clone().unwrap_or_default();
                 tokio::spawn(async move {
-                    if let Err(e) = write_lesson_learned(&server, &report_for_ll, &fc_for_ll).await
+                    if let Err(e) =
+                        write_lesson_learned(&server, &report_for_ll, &fc_for_ll, session_id_for_ll)
+                            .await
                     {
                         tracing::warn!("lesson-learned write failed for {}: {}", fc_for_ll, e);
                     }
@@ -3159,6 +3162,7 @@ async fn write_lesson_learned(
     server: &UnimatrixServer,
     report: &unimatrix_observe::RetrospectiveReport,
     feature_cycle: &str,
+    session_id: String,
 ) -> Result<(), crate::error::ServerError> {
     use unimatrix_core::Status;
 
@@ -3264,16 +3268,21 @@ async fn write_lesson_learned(
     };
 
     // 6. Insert via insert_with_audit (ADR-002: atomic ENTRIES + VECTOR_MAP + HNSW + audit)
+    // N1: session_id set explicitly from the threaded parameter — do NOT rely on
+    // ..AuditEvent::default() to fill it (default produces String::new(), GH #582).
     let audit_event = AuditEvent {
         event_id: 0,
         timestamp: 0,
-        session_id: String::new(),
+        session_id,
         agent_id: "cortical-implant".to_string(),
         operation: "context_cycle_review/lesson-learned".to_string(),
         target_ids: vec![],
         outcome: Outcome::Success,
         detail: format!("auto-persist lesson-learned for {}", feature_cycle),
-        ..AuditEvent::default()
+        credential_type: "none".to_string(),
+        capability_used: "write".to_string(),
+        agent_attribution: String::new(),
+        metadata: "{}".to_string(),
     };
 
     let (new_id, _record) = server
