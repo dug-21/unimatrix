@@ -13,6 +13,18 @@ use sqlx::{Executor, Sqlite, SqliteConnection};
 use crate::error::{Result, StoreError};
 
 // ---------------------------------------------------------------------------
+// Well-known counter name constants
+// ---------------------------------------------------------------------------
+
+/// Counter name for the audit log event ID sequence.
+///
+/// Live databases use `"next_audit_id"`. Code that formerly used
+/// `"next_audit_event_id"` (introduced by nxs-011, fixed by #587) caused
+/// UNIQUE constraint failures because the phantom counter row started at 0
+/// while the live table had rows with event_id > 0.
+pub const AUDIT_EVENT_COUNTER: &str = "next_audit_id";
+
+// ---------------------------------------------------------------------------
 // Public counter helpers (async)
 // ---------------------------------------------------------------------------
 

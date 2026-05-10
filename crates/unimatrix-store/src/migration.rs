@@ -15,10 +15,12 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 24 to 25 by vnc-014 (ASS-050 audit_log migration —
-/// four new columns on audit_log: credential_type, capability_used, agent_attribution, metadata;
-/// two new indexes; two append-only DDL triggers).
-pub const CURRENT_SCHEMA_VERSION: u64 = 25;
+/// Current schema version. Incremented from 25 to 26 by bugfix-587 (audit counter rename:
+/// `next_audit_event_id` → `next_audit_id`). The v25→v26 migration deletes the phantom
+/// `next_audit_event_id` row (seeded at 0 by the buggy nxs-011 code path) and inserts the
+/// correct `next_audit_id` row seeded from MAX(audit_log.event_id) so that the counter
+/// continues from the highest known event_id in live databases.
+pub const CURRENT_SCHEMA_VERSION: u64 = 26;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -1255,6 +1257,56 @@ async fn run_main_migrations(
 
         // Bump schema_version to 25 within the transaction.
         sqlx::query("UPDATE counters SET value = 25 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // v25 → v26: rename audit counter from `next_audit_event_id` to `next_audit_id` (#587).
+    //
+    // Root cause: nxs-011 (ff66537e) renamed the counter name string in code from
+    // `next_audit_id` to `next_audit_event_id` but left live counters under the old name.
+    // The #586 atomic fix was applied on top of the wrong name, so every new audit write
+    // returned event_id=1 and collided.
+    //
+    // This migration:
+    //   1. Deletes the phantom `next_audit_event_id` row (value=0, introduced by the bug).
+    //   2. Inserts `next_audit_id` seeded from MAX(audit_log.event_id) so that the
+    //      counter continues from the highest known event_id in live databases.
+    //      On a fresh database with zero audit rows, COALESCE(..., 0) returns 0, so
+    //      the first call to next_counter("next_audit_id") returns 1 (seed + increment).
+    //
+    // Idempotency:
+    //   - DELETE is a no-op if `next_audit_event_id` is already absent.
+    //   - INSERT OR IGNORE is a no-op if `next_audit_id` already exists.
+    //
+    // Both statements run inside the outer transaction from migrate_if_needed(); if either
+    // fails the transaction rolls back and schema_version stays at 25 (ADR-003).
+    if current_version < 26 {
+        // Step 1: Remove the phantom phantom counter row (no-op if already absent).
+        sqlx::query("DELETE FROM counters WHERE name = 'next_audit_event_id'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+
+        // Step 2: Ensure `next_audit_id` exists, seeded from the current max event_id.
+        // COALESCE handles an empty audit_log table (MAX returns NULL → 0).
+        // INSERT OR IGNORE: if the row already exists (unlikely but possible), skip.
+        sqlx::query(
+            "INSERT OR IGNORE INTO counters (name, value)
+             SELECT 'next_audit_id', COALESCE((SELECT MAX(event_id) FROM audit_log), 0)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query("UPDATE counters SET value = 26 WHERE name = 'schema_version'")
             .execute(&mut **txn)
             .await
             .map_err(|e| StoreError::Migration {

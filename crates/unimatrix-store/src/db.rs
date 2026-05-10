@@ -1024,7 +1024,8 @@ pub(crate) async fn create_tables_if_needed(
     sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('next_log_id', 0)")
         .execute(&mut *conn)
         .await?;
-    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('next_audit_event_id', 0)")
+    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES (?1, 0)")
+        .bind(crate::counters::AUDIT_EVENT_COUNTER)
         .execute(&mut *conn)
         .await?;
 
