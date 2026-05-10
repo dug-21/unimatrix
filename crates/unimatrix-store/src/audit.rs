@@ -13,8 +13,9 @@ use crate::schema::{AuditEvent, Outcome};
 impl SqlxStore {
     /// Append an audit event to the audit_log table.
     ///
-    /// Assigns `event_id` (monotonically increasing via `next_audit_event_id` counter)
-    /// and `timestamp` (current unix seconds). Returns the assigned event_id.
+    /// Assigns `event_id` (monotonically increasing via the `AUDIT_EVENT_COUNTER`
+    /// counter, `"next_audit_id"`) and `timestamp` (current unix seconds).
+    /// Returns the assigned event_id.
     pub async fn log_audit_event(&self, event: AuditEvent) -> Result<u64> {
         let pool = self.write_pool_server();
         let mut txn = pool
@@ -22,7 +23,7 @@ impl SqlxStore {
             .await
             .map_err(|e| StoreError::Database(e.into()))?;
 
-        let id = counters::next_counter(&mut txn, "next_audit_event_id").await?;
+        let id = counters::next_counter(&mut txn, counters::AUDIT_EVENT_COUNTER).await?;
 
         let target_ids_json = serde_json::to_string(&event.target_ids)
             .map_err(|e| StoreError::Serialization(e.to_string()))?;
@@ -380,6 +381,78 @@ mod tests {
             parsed.get("b").is_none(),
             "JSON injection must not create extra keys"
         );
+    }
+
+    // -- AE-I-07: counter upgrade continuity — counter name regression guard (#587) --
+    //
+    // This test detects the bug where `next_counter` is called with the wrong name
+    // ("next_audit_event_id" instead of "next_audit_id"). Simulates a live database
+    // that already has audit_log rows and a correctly-seeded `next_audit_id` counter.
+    // A log_audit_event call must return event_id = N+1 (not 1) and must not conflict.
+    //
+    // If someone renames AUDIT_EVENT_COUNTER back to "next_audit_event_id" this test
+    // will fail with a UNIQUE constraint error because the counter starts at 0 while
+    // the seeded rows occupy event_id 1..=N.
+    #[tokio::test]
+    async fn test_audit_counter_upgrade_continuity() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        let n: i64 = 5;
+
+        // Step 1: Insert N rows directly into audit_log with event_id 1..=N.
+        // Bypass log_audit_event to simulate a live database state where rows
+        // already exist with the correct event_ids.
+        for i in 1..=n {
+            sqlx::query(
+                "INSERT INTO audit_log
+                     (event_id, timestamp, session_id, agent_id, operation,
+                      target_ids, outcome, detail,
+                      credential_type, capability_used, agent_attribution, metadata)
+                 VALUES (?1, ?2, 'sess-upgrade', 'agent-upgrade', 'context_store',
+                         '[]', 0, 'seeded row', 'none', '', '', '{}')",
+            )
+            .bind(i)
+            .bind(1_700_000_000_i64 + i)
+            .execute(store.write_pool_server())
+            .await
+            .expect("seed audit_log row");
+        }
+
+        // Step 2: Set the `next_audit_id` counter to N (simulating a live DB where
+        // the counter matches the highest event_id written so far).
+        sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('next_audit_id', ?1)")
+            .bind(n)
+            .execute(store.write_pool_server())
+            .await
+            .expect("seed next_audit_id counter");
+
+        // Step 3: Call log_audit_event — must return N+1 and must not conflict.
+        let event = AuditEvent {
+            operation: "context_search".to_string(),
+            metadata: "{}".to_string(),
+            ..AuditEvent::default()
+        };
+
+        let returned_id = store
+            .log_audit_event(event)
+            .await
+            .expect("log_audit_event must not fail with UNIQUE constraint error");
+
+        assert_eq!(
+            returned_id,
+            (n + 1) as u64,
+            "event_id must be N+1={}, not 1 (counter name regression)",
+            n + 1
+        );
+
+        // Step 4: Verify the row is stored with the expected event_id.
+        let stored = store
+            .read_audit_event(returned_id)
+            .await
+            .expect("read must succeed")
+            .expect("event must be present");
+        assert_eq!(stored.event_id, (n + 1) as u64);
     }
 
     // -- AE-I-06: empty clientInfo.name → metadata = "{}" --

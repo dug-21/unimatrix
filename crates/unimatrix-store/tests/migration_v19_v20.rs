@@ -302,7 +302,7 @@ async fn create_v19_database(path: &Path) {
         "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
         "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
         "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
-        "INSERT INTO counters (name, value) VALUES ('next_audit_event_id', 0)",
+        "INSERT INTO counters (name, value) VALUES ('next_audit_id', 0)",
     ] {
         sqlx::query(seed)
             .execute(&mut conn)

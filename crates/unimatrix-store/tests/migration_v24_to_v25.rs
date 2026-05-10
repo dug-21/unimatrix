@@ -324,7 +324,7 @@ async fn create_v24_database(path: &Path, seed_rows: bool) {
         "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
         "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
         "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
-        "INSERT INTO counters (name, value) VALUES ('next_audit_event_id', 0)",
+        "INSERT INTO counters (name, value) VALUES ('next_audit_id', 0)",
     ] {
         sqlx::query(seed)
             .execute(&mut conn)
@@ -399,7 +399,10 @@ async fn test_fresh_db_creates_schema_v25() {
         .await
         .expect("open fresh store");
 
-    assert_eq!(read_schema_version(&store).await, 25);
+    assert!(
+        read_schema_version(&store).await >= 25,
+        "schema_version must be >= 25 on fresh db"
+    );
 
     // All four new columns must be present on a fresh database.
     for col in &[
@@ -461,7 +464,10 @@ async fn test_v24_to_v25_migration_adds_all_four_columns() {
         .await
         .expect("open after v24→v25 migration");
 
-    assert_eq!(read_schema_version(&store).await, 25);
+    assert!(
+        read_schema_version(&store).await >= 25,
+        "schema_version must be >= 25 after v24→v25+ migration"
+    );
 
     // 12 columns total.
     let col_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('audit_log')")
@@ -579,7 +585,11 @@ async fn test_v25_migration_idempotent() {
     let store = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("first open");
-    assert_eq!(read_schema_version(&store).await, 25);
+    let first_version = read_schema_version(&store).await;
+    assert!(
+        first_version >= 25,
+        "schema_version must be >= 25 after first open, got {first_version}"
+    );
     store.close().await.unwrap();
 
     // Second open must be a no-op.
@@ -588,8 +598,8 @@ async fn test_v25_migration_idempotent() {
         .expect("second open must not error");
     assert_eq!(
         read_schema_version(&store2).await,
-        25,
-        "schema_version must remain 25 on re-open"
+        first_version,
+        "schema_version must not change on re-open"
     );
 
     let col_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('audit_log')")
@@ -634,7 +644,10 @@ async fn test_v25_migration_idempotent_one_column_pre_exists() {
         .await
         .expect("column count");
     assert_eq!(col_count, 12, "12 columns after partial-recovery migration");
-    assert_eq!(read_schema_version(&store).await, 25);
+    assert!(
+        read_schema_version(&store).await >= 25,
+        "schema_version must be >= 25 after partial-recovery migration"
+    );
 
     store.close().await.unwrap();
 }
@@ -672,7 +685,10 @@ async fn test_v25_migration_idempotent_all_columns_pre_exist() {
         .await
         .expect("column count");
     assert_eq!(col_count, 12, "12 columns after all-pre-exist recovery");
-    assert_eq!(read_schema_version(&store).await, 25);
+    assert!(
+        read_schema_version(&store).await >= 25,
+        "schema_version must be >= 25 after all-columns-pre-exist recovery"
+    );
 
     store.close().await.unwrap();
 }
@@ -703,7 +719,10 @@ async fn test_v25_migration_row_count_unchanged() {
         .expect("entries count");
     assert_eq!(entries_count, 3, "entries must have 3 rows (unchanged)");
 
-    assert_eq!(read_schema_version(&store).await, 25);
+    assert!(
+        read_schema_version(&store).await >= 25,
+        "schema_version must be >= 25 after migration"
+    );
 
     store.close().await.unwrap();
 }
@@ -927,7 +946,10 @@ async fn test_v25_migration_empty_audit_log_succeeds() {
     .expect("triggers");
     assert_eq!(trigger_names.len(), 2, "both triggers must exist");
 
-    assert_eq!(read_schema_version(&store).await, 25);
+    assert!(
+        read_schema_version(&store).await >= 25,
+        "schema_version must be >= 25 after empty-audit-log migration"
+    );
 
     store.close().await.unwrap();
 }

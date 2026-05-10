@@ -1016,14 +1016,15 @@ async fn test_sql_analytics_query() {
 // Updated to 23 for bugfix-509 (compound idx_entry_tags_tag_entry_id index).
 // Updated to 24 for crt-047 (curation health metrics columns on cycle_review_index).
 // Updated to 25 for vnc-014 (ASS-050 audit_log four-column migration + append-only triggers).
+// Updated to 26 for bugfix-587 (audit counter rename: next_audit_event_id → next_audit_id).
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 25,
-        "schema version must be 25 after vnc-014 (was 24 after crt-047)"
+        version, 26,
+        "schema version must be 26 after bugfix-587 (was 25 after vnc-014)"
     );
     store.close().await.unwrap();
 }
@@ -1098,7 +1099,10 @@ async fn test_read_counter() {
     assert!(version >= 9, "schema_version should be >= 9, got {version}");
 
     let next = store.read_counter("next_entry_id").await.unwrap();
-    assert_eq!(next, 0, "next_entry_id seeds at 0; first next_counter call returns 1");
+    assert_eq!(
+        next, 0,
+        "next_entry_id seeds at 0; first next_counter call returns 1"
+    );
 
     let missing = store.read_counter("nonexistent").await.unwrap();
     assert_eq!(missing, 0);

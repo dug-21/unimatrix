@@ -27,7 +27,7 @@ impl AuditLog {
     ///
     /// The caller provides all fields except `event_id` and `timestamp`,
     /// which are set by this method. The event_id is monotonically increasing
-    /// using counters["next_audit_event_id"].
+    /// using the `"next_audit_id"` counter (see `counters::AUDIT_EVENT_COUNTER`).
     pub fn log_event(&self, event: AuditEvent) -> Result<(), ServerError> {
         block_sync(self.store.log_audit_event(event))
             .map(|_| ())
