@@ -1098,7 +1098,7 @@ async fn test_read_counter() {
     assert!(version >= 9, "schema_version should be >= 9, got {version}");
 
     let next = store.read_counter("next_entry_id").await.unwrap();
-    assert_eq!(next, 1);
+    assert_eq!(next, 0, "next_entry_id seeds at 0; first next_counter call returns 1");
 
     let missing = store.read_counter("nonexistent").await.unwrap();
     assert_eq!(missing, 0);
