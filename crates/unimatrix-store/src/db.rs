@@ -1015,7 +1015,7 @@ pub(crate) async fn create_tables_if_needed(
         .bind(crate::migration::CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut *conn)
         .await?;
-    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 1)")
+    sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('next_entry_id', 0)")
         .execute(&mut *conn)
         .await?;
     sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('next_signal_id', 0)")
@@ -1163,7 +1163,10 @@ mod tests {
             .await
             .expect("query next_entry_id");
 
-        assert_eq!(v, 1, "next_entry_id should initialize to 1");
+        assert_eq!(
+            v, 0,
+            "next_entry_id should initialize to 0 (first next_counter call returns 1)"
+        );
         store.close().await.unwrap();
     }
 

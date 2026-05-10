@@ -219,6 +219,28 @@ mod tests {
         assert!(cfg.validate().is_ok(), "expected Ok for write_max=2");
     }
 
+    /// Regression guard (bugfix-584): write_max_connections=2 must remain valid
+    /// after the atomic counter fix.
+    ///
+    /// Before bugfix-584, pool serialization (write_max=1) was the only thing
+    /// preventing the audit_log UNIQUE constraint race. The atomic upsert fix makes
+    /// the code correct at write_max=2. This test documents that invariant: if
+    /// someone later lowers the hard cap to 1 thinking correctness requires it,
+    /// this test will fail and force them to re-examine the decision.
+    #[test]
+    fn test_pool_config_write_max_2_is_valid() {
+        let cfg = PoolConfig {
+            read_max_connections: 4,
+            write_max_connections: 2,
+            read_acquire_timeout: Duration::from_secs(1),
+            write_acquire_timeout: Duration::from_secs(2),
+        };
+        assert!(
+            cfg.validate().is_ok(),
+            "write_max_connections=2 must be valid: atomic counter fix (bugfix-584) makes code correct at this pool size"
+        );
+    }
+
     #[test]
     fn test_pool_config_validate_write_max_1_accepted() {
         let cfg = PoolConfig {

@@ -22,9 +22,7 @@ impl SqlxStore {
             .await
             .map_err(|e| StoreError::Database(e.into()))?;
 
-        let current_id = counters::read_counter(&mut *txn, "next_audit_event_id").await?;
-        let id = if current_id == 0 { 1 } else { current_id };
-        counters::set_counter(&mut *txn, "next_audit_event_id", id + 1).await?;
+        let id = counters::next_counter(&mut txn, "next_audit_event_id").await?;
 
         let target_ids_json = serde_json::to_string(&event.target_ids)
             .map_err(|e| StoreError::Serialization(e.to_string()))?;
