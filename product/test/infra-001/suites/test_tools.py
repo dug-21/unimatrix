@@ -774,20 +774,21 @@ def test_restore_quarantined(server):
     assert_tool_success(restore_resp)
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#580 — context_quarantine still requires Admin; Write capability change not yet applied to tools.rs:1456")
-def test_quarantine_requires_write(server):
-    """T-78: vnc-014 changed context_quarantine to require Write (was Admin).
-    Auto-enrolled agents get Write in permissive mode, so they can now quarantine.
-    Updated: test assertion corrected per IMPLEMENTATION-BRIEF.md capability table.
+def test_quarantine_requires_admin_rejects_write_agent(server):
+    """T-78: context_quarantine requires Admin. Write-level agents are rejected.
+    See Unimatrix ADR #4413 and GH #580.
     """
     store_resp = server.context_store(
-        "admin quarantine test", "testing", "convention", agent_id="human", format="json"
+        "quarantine admin gate test", "testing", "convention",
+        agent_id="human", format="json"
     )
     entry_id = extract_entry_id(store_resp)
+
+    # unknown-restricted-agent auto-enrolls with Write in permissive mode — not Admin
     q_resp = server.context_quarantine(
         entry_id, agent_id="unknown-restricted-agent"
     )
-    assert_tool_success(q_resp)
+    assert_tool_error(q_resp, "lacks")
 
 
 def test_quarantine_all_formats(server):
