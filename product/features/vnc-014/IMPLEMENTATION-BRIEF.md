@@ -170,8 +170,8 @@ pub struct UnimatrixServer {
 |----------------------|-----------------|-------|
 | `Capability::Search` | `"search"` | `context_search`, `context_lookup`, `context_briefing` |
 | `Capability::Read` | `"read"` | `context_get`, `context_status`, `context_retrospective` |
-| `Capability::Write` | `"write"` | `context_store`, `context_correct`, `context_deprecate`, `context_quarantine`, `context_cycle` |
-| `Capability::Admin` | `"admin"` | `context_enroll` |
+| `Capability::Write` | `"write"` | `context_store`, `context_correct`, `context_deprecate`, `context_cycle` |
+| `Capability::Admin` | `"admin"` | `context_enroll`, `context_quarantine` |
 
 ---
 

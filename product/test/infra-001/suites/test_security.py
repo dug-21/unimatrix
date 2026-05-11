@@ -158,19 +158,34 @@ def test_restricted_agent_deprecate_allowed_permissive(server):
 
 
 @pytest.mark.security
-@pytest.mark.xfail(reason="Pre-existing: GH#589 — restricted agent still requires Admin for context_quarantine despite vnc-014 capability downgrade")
-def test_restricted_agent_quarantine_allowed_write(server):
-    """S-24: vnc-014 changed context_quarantine to require Write (was Admin).
-    Restricted agent (auto-enrolled with Write in permissive mode) CAN quarantine.
-    Admin-only enforcement still applies to context_enroll.
-    Updated: test assertion corrected per IMPLEMENTATION-BRIEF.md capability table.
+def test_restricted_agent_quarantine_rejected_requires_admin(server):
+    """S-24: context_quarantine requires Admin (not Write).
+    Restricted agent (auto-enrolled with Write in permissive mode) cannot quarantine.
+    context_quarantine and context_enroll are the two Admin-only tools by design.
+    See Unimatrix ADR #4413 and GH #589.
     """
     store_resp = server.context_store(
-        "for restricted quarantine", "testing", "convention", agent_id="human", format="json"
+        "for restricted quarantine", "testing", "convention",
+        agent_id="human", format="json"
     )
-    from harness.assertions import extract_entry_id
     entry_id = extract_entry_id(store_resp)
+
     resp = server.context_quarantine(entry_id, agent_id="restricted-test-agent")
+    assert_tool_error(resp, "lacks")
+
+
+@pytest.mark.security
+def test_admin_agent_quarantine_allowed(server):
+    """S-24b: Admin agent CAN quarantine. Confirms Admin gate is enforcement, not lockout.
+    See Unimatrix ADR #4413.
+    """
+    store_resp = server.context_store(
+        "for admin quarantine", "testing", "convention",
+        agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+
+    resp = server.context_quarantine(entry_id, agent_id="human")
     assert_tool_success(resp)
 
 
