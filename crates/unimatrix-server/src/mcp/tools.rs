@@ -167,6 +167,10 @@ pub struct EdgeParams {
     pub target_id: u64,
     /// New target for redirect mode. Required for redirect; rejected for add/remove.
     pub new_target_id: Option<u64>,
+    /// Agent making the request (used for capability enforcement and audit).
+    pub agent_id: Option<String>,
+    /// Response format: summary, markdown, or json.
+    pub format: Option<String>,
 }
 
 /// Parameters for getting an entry by ID.
@@ -2920,7 +2924,13 @@ impl UnimatrixServer {
 
         // ── Step 1: Capability gate ───────────────────────────────────────────
         let ctx = self
-            .build_context_with_external_identity(&None, &None, &None, &request_context, None)
+            .build_context_with_external_identity(
+                &params.agent_id,
+                &params.format,
+                &None,
+                &request_context,
+                None,
+            )
             .await?;
         self.require_cap(&ctx.agent_id, Capability::Write).await?;
 

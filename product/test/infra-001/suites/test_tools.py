@@ -3044,3 +3044,577 @@ def test_special_chars_client_name_no_crash(tmp_path):
     finally:
         client.shutdown()
 
+
+# === vnc-015: context_edge tool (13th tool) and edges param ============
+#
+# AC-01, AC-02, AC-05, AC-06, AC-07, AC-08, AC-09, AC-10, AC-15, AC-18,
+# AC-19, AC-20, AC-21, AC-22, AC-23, AC-24, AC-25, AC-26
+# R-01, R-02, R-03, R-04, R-05, R-06, R-07, R-08, R-09, R-10, R-13, R-14
+
+
+def _query_graph_edges(server, source_id, target_id, relation_type):
+    """Direct SQLite query of GRAPH_EDGES for a specific triplet.
+
+    Returns count (0 or 1). Uses sqlite3 against the server's DB file.
+    """
+    import hashlib
+    import os
+    import sqlite3
+
+    canonical = os.path.realpath(server.project_dir)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    db_path = os.path.join(os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges "
+            "WHERE source_id=? AND target_id=? AND relation_type=?",
+            (source_id, target_id, relation_type),
+        )
+        return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _store_two_entries(server):
+    """Store two distinctly different entries and return (id_a, id_b).
+
+    Uses distinct content (different topics, categories, and semantic content)
+    to avoid duplicate detection interfering with edge tests.
+    """
+    import uuid
+    uid = uuid.uuid4().hex[:8]
+    resp_a = server.context_store(
+        f"vnc015 edge source {uid}: database indexing architecture decision record",
+        "architecture", "decision", agent_id="human", format="json"
+    )
+    id_a = extract_entry_id(resp_a)
+    resp_b = server.context_store(
+        f"vnc015 edge target {uid}: deployment runbook and operational monitoring procedures",
+        "operations", "convention", agent_id="human", format="json"
+    )
+    id_b = extract_entry_id(resp_b)
+    return id_a, id_b
+
+
+# --- AC-19: context_edge tool registered as 13th tool -----------------
+
+
+def test_context_edge_tool_registered(server):
+    """AC-19: context_edge is the 13th MCP tool with correct parameter schema."""
+    resp = server.list_tools()
+    result = resp.result
+    tools = result.get("tools", [])
+    assert len(tools) == 13, f"Expected 13 tools, got {len(tools)}"
+    names = [t["name"] for t in tools]
+    assert "context_edge" in names, f"context_edge not in tools: {names}"
+    edge_tool = next(t for t in tools if t["name"] == "context_edge")
+    schema = edge_tool.get("inputSchema", {})
+    props = schema.get("properties", {})
+    assert "mode" in props, "context_edge schema missing 'mode'"
+    assert "source_id" in props, "context_edge schema missing 'source_id'"
+    assert "edge_type" in props, "context_edge schema missing 'edge_type'"
+    assert "target_id" in props, "context_edge schema missing 'target_id'"
+    assert "new_target_id" in props, "context_edge schema missing 'new_target_id'"
+    required = schema.get("required", [])
+    assert "new_target_id" not in required, "new_target_id must be optional"
+
+
+# --- AC-01: context_store backward compatible without edges param ------
+
+
+def test_store_without_edges_backward_compatible(server):
+    """AC-01: context_store without edges param is identical to pre-vnc-015 behavior."""
+    resp = server.context_store(
+        "backward compat test content", "testing", "convention", agent_id="human", format="json"
+    )
+    assert_tool_success(resp)
+
+
+# --- AC-05, AC-18: context_store with edges writes graph rows ----------
+
+
+def test_store_with_edges_writes_graph_rows(server):
+    """AC-05, AC-18: Store entry with edges; confirm GRAPH_EDGES row written with source=agent."""
+    # Store target entry first
+    id_a, _ = _store_two_entries(server)
+    # Store source entry with edge to target
+    resp = server.context_store(
+        "source entry with Supports edge",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+        edges=[{"edge_type": "Supports", "target_id": id_a}],
+    )
+    id_src = extract_entry_id(resp)
+    assert id_src is not None
+
+    count = _query_graph_edges(server, id_src, id_a, "Supports")
+    assert count == 1, f"Expected 1 GRAPH_EDGES row, got {count}"
+
+
+# --- AC-06, R-04: Contradicts edge is bidirectional -------------------
+
+
+def test_store_with_edges_contradicts_bidirectional(server):
+    """AC-06, R-04: Store with Contradicts edge; both directions written in GRAPH_EDGES."""
+    id_a, _ = _store_two_entries(server)
+    resp = server.context_store(
+        "contradicts source entry",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+        edges=[{"edge_type": "Contradicts", "target_id": id_a}],
+    )
+    id_src = extract_entry_id(resp)
+
+    fwd = _query_graph_edges(server, id_src, id_a, "Contradicts")
+    rev = _query_graph_edges(server, id_a, id_src, "Contradicts")
+    assert fwd == 1, f"Forward Contradicts row missing (src={id_src}, tgt={id_a})"
+    assert rev == 1, f"Reverse Contradicts row missing (tgt={id_a}, src={id_src})"
+
+
+# --- AC-07: Target validation (TargetNotFound, TargetQuarantined, deprecated ok) ---
+
+
+def test_store_with_edges_target_not_found_fails_call(server):
+    """AC-07: Non-existent target_id causes the entire call to fail; no entry written."""
+    import sqlite3, hashlib, os
+
+    # Count entries before the failing call
+    canonical = os.path.realpath(server.project_dir)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    db_path = os.path.join(os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+    def entry_count():
+        conn = sqlite3.connect(db_path)
+        try:
+            return conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+        finally:
+            conn.close()
+
+    count_before = entry_count()
+
+    resp = server.context_store(
+        "this should fail due to missing target vnc015 test",
+        "testing",
+        "convention",
+        agent_id="human",
+        edges=[{"edge_type": "Supports", "target_id": 999999}],
+    )
+    assert_tool_error(resp)
+
+    count_after = entry_count()
+    assert count_after == count_before, (
+        f"Expected no new entry after failed call (count was {count_before}, now {count_after})"
+    )
+
+
+def test_store_with_edges_quarantined_target_fails_call(admin_server):
+    """AC-07: Quarantined target_id causes the call to fail; no entry written."""
+    # Store target and quarantine it
+    resp_t = admin_server.context_store(
+        "target to quarantine for edge test", "testing", "convention", agent_id="human", format="json"
+    )
+    id_t = extract_entry_id(resp_t)
+    admin_server.context_quarantine(id_t, reason="edge test isolation", agent_id="human")
+
+    resp = admin_server.context_store(
+        "this should fail due to quarantined target",
+        "testing",
+        "convention",
+        agent_id="human",
+        edges=[{"edge_type": "Supports", "target_id": id_t}],
+    )
+    assert_tool_error(resp)
+
+
+def test_store_with_edges_deprecated_target_succeeds(server):
+    """AC-07: Deprecated target_id is allowed; edge row written."""
+    # Store original and correct it to create a deprecated entry
+    resp_orig = server.context_store(
+        "original entry to be deprecated", "testing", "convention", agent_id="human", format="json"
+    )
+    id_orig = extract_entry_id(resp_orig)
+    resp_corr = server.context_correct(
+        id_orig, "corrected version of the entry", agent_id="human", format="json"
+    )
+    id_orig_deprecated = id_orig  # original is now deprecated
+
+    # Store new entry targeting the deprecated original
+    resp = server.context_store(
+        "entry pointing to deprecated target",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+        edges=[{"edge_type": "Prerequisite", "target_id": id_orig_deprecated}],
+    )
+    assert_tool_success(resp)
+    id_src = extract_entry_id(resp)
+    count = _query_graph_edges(server, id_src, id_orig_deprecated, "Prerequisite")
+    assert count == 1, "Expected edge to deprecated target to be written"
+
+
+# --- AC-09, R-12: Duplicate entry skips edge writes ------------------
+
+
+def test_store_with_edges_duplicate_skips_edge_writes(server):
+    """AC-09, R-12: Duplicate content with edges: duplicate response returned, no new edge rows."""
+    id_a, _ = _store_two_entries(server)
+
+    # First store succeeds
+    resp1 = server.context_store(
+        "duplicate detection content vnc015 unique XYZ987",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    id_src = extract_entry_id(resp1)
+
+    # Second store (same content) with edges
+    resp2 = server.context_store(
+        "duplicate detection content vnc015 unique XYZ987",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+        edges=[{"edge_type": "Supports", "target_id": id_a}],
+    )
+    # Should get duplicate response, not error
+    result = assert_tool_success(resp2)
+    # Verify no edge was written (duplicate guard fired before edges)
+    count = _query_graph_edges(server, id_src, id_a, "Supports")
+    assert count == 0, f"Expected 0 edge rows for duplicate, got {count}"
+
+
+# --- AC-10, R-03: INSERT OR IGNORE idempotency ----------------------
+
+
+def test_store_with_edges_idempotent_reassertion(server):
+    """AC-10, R-03: Re-asserting the same edge twice produces exactly 1 row (INSERT OR IGNORE)."""
+    id_a, id_b = _store_two_entries(server)
+
+    # Add via context_edge twice
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    resp2 = server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    assert_tool_success(resp2)
+
+    count = _query_graph_edges(server, id_a, id_b, "Supports")
+    assert count == 1, f"Expected exactly 1 row after idempotent re-assertion, got {count}"
+
+
+def test_context_edge_add_contradicts_idempotent(server):
+    """R-03: Re-asserting Contradicts via context_edge add: exactly 2 rows (not 4)."""
+    id_a, id_b = _store_two_entries(server)
+
+    server.context_edge("add", id_a, "Contradicts", id_b, agent_id="human")
+    resp2 = server.context_edge("add", id_a, "Contradicts", id_b, agent_id="human")
+    assert_tool_success(resp2)
+
+    fwd = _query_graph_edges(server, id_a, id_b, "Contradicts")
+    rev = _query_graph_edges(server, id_b, id_a, "Contradicts")
+    assert fwd == 1, f"Expected 1 forward row, got {fwd}"
+    assert rev == 1, f"Expected 1 reverse row, got {rev}"
+    assert fwd + rev == 2, f"Expected 2 total rows, got {fwd + rev} (not 4)"
+
+
+# --- AC-02: context_correct with edges attaches to new entry ---------
+
+
+def test_correct_with_edges_attaches_to_new_entry(server):
+    """AC-02: Edges from context_correct attach to the new (corrected) entry, not the deprecated original."""
+    id_a, id_b = _store_two_entries(server)
+
+    resp_corr = server.context_correct(
+        id_a,
+        "corrected content with edge",
+        agent_id="human",
+        format="json",
+        edges=[{"edge_type": "Supports", "target_id": id_b}],
+    )
+    assert_tool_success(resp_corr)
+    id_new = extract_entry_id(resp_corr)
+
+    # Edge must reference the NEW entry, not the deprecated original
+    count_new = _query_graph_edges(server, id_new, id_b, "Supports")
+    count_orig = _query_graph_edges(server, id_a, id_b, "Supports")
+    assert count_new == 1, f"Expected edge on corrected entry {id_new}, got count={count_new}"
+    assert count_orig == 0, f"Expected NO edge on deprecated entry {id_a}, got count={count_orig}"
+
+
+# --- AC-21, AC-15, R-06: Capability enforcement ----------------------
+
+
+def test_context_edge_requires_write_capability(server):
+    """AC-21, R-06: Agent without Capability::Write is rejected by context_edge."""
+    server.context_enroll(
+        "read-only-agent-vnc015", "restricted", ["read", "search"], agent_id="human"
+    )
+    id_a, id_b = _store_two_entries(server)
+    resp = server.context_edge("add", id_a, "Supports", id_b, agent_id="read-only-agent-vnc015")
+    assert_tool_error(resp)
+
+
+# --- AC-22: No ownership check --------------------------------------
+
+
+def test_context_edge_no_ownership_check(server):
+    """AC-22: Agent B can operate on Agent A's entry — no OwnershipViolation."""
+    server.context_enroll("agent-b-vnc015", "standard", ["read", "write", "search"], agent_id="human")
+    id_a, id_b = _store_two_entries(server)
+    # id_a was stored by "human"; agent-b-vnc015 can still add an edge to it
+    resp = server.context_edge("add", id_a, "Supports", id_b, agent_id="agent-b-vnc015")
+    assert_tool_success(resp)
+    count = _query_graph_edges(server, id_a, id_b, "Supports")
+    assert count == 1, "Expected edge to be written despite different creator"
+
+
+# --- AC-23, R-06: SourceFrozen on quarantined/deprecated source ------
+
+
+def test_context_edge_source_frozen_quarantined(admin_server):
+    """AC-23, R-06: Quarantined source causes SourceFrozen; GRAPH_EDGES unchanged."""
+    id_a, id_b = _store_two_entries(admin_server)
+    admin_server.context_quarantine(id_a, reason="freeze for edge test", agent_id="human")
+
+    resp = admin_server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    assert_tool_error(resp, "frozen")
+
+    count = _query_graph_edges(admin_server, id_a, id_b, "Supports")
+    assert count == 0, "Expected no edge written for quarantined source"
+
+
+def test_context_edge_source_frozen_deprecated(server):
+    """AC-23, R-06: Deprecated source causes SourceFrozen; no mutation."""
+    id_a, id_b = _store_two_entries(server)
+    # Deprecate id_a by correcting it
+    server.context_correct(id_a, "deprecated version", agent_id="human")
+    # id_a is now deprecated
+
+    resp = server.context_edge("redirect", id_a, "Supports", id_b, new_target_id=id_b, agent_id="human")
+    assert_tool_error(resp, "frozen")
+
+
+# --- AC-24: context_edge add mode -----------------------------------
+
+
+def test_context_edge_add_basic(server):
+    """AC-24: context_edge add mode writes edge row."""
+    id_a, id_b = _store_two_entries(server)
+    resp = server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    assert_tool_success(resp)
+    count = _query_graph_edges(server, id_a, id_b, "Supports")
+    assert count == 1, f"Expected 1 edge row, got {count}"
+
+
+def test_context_edge_add_contradicts_bidirectional(server):
+    """AC-24, R-04: context_edge add Contradicts writes both directions."""
+    id_a, id_b = _store_two_entries(server)
+    resp = server.context_edge("add", id_a, "Contradicts", id_b, agent_id="human")
+    assert_tool_success(resp)
+
+    fwd = _query_graph_edges(server, id_a, id_b, "Contradicts")
+    rev = _query_graph_edges(server, id_b, id_a, "Contradicts")
+    assert fwd == 1, f"Forward Contradicts row missing"
+    assert rev == 1, f"Reverse Contradicts row missing"
+
+
+def test_context_edge_add_target_not_found(server):
+    """AC-24: Non-existent target causes TargetNotFound error."""
+    id_a, _ = _store_two_entries(server)
+    resp = server.context_edge("add", id_a, "Supports", 999999, agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_context_edge_add_quarantined_target_rejected(admin_server):
+    """AC-24: Quarantined target causes TargetQuarantined error."""
+    id_a, id_b = _store_two_entries(admin_server)
+    admin_server.context_quarantine(id_b, reason="quarantine for edge target test", agent_id="human")
+
+    resp = admin_server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_context_edge_add_deprecated_target_succeeds(server):
+    """AC-24: Deprecated target is allowed; edge row written."""
+    id_a, id_b = _store_two_entries(server)
+    # Deprecate id_b
+    server.context_correct(id_b, "deprecated version of beta", agent_id="human")
+
+    resp = server.context_edge("add", id_a, "Prerequisite", id_b, agent_id="human")
+    assert_tool_success(resp)
+    count = _query_graph_edges(server, id_a, id_b, "Prerequisite")
+    assert count == 1, "Expected edge to deprecated target to be written"
+
+
+def test_context_edge_add_self_referential_rejected(server):
+    """AC-08: source_id == target_id causes SelfReferential error."""
+    id_a, _ = _store_two_entries(server)
+    resp = server.context_edge("add", id_a, "Supports", id_a, agent_id="human")
+    assert_tool_error(resp)
+    count = _query_graph_edges(server, id_a, id_a, "Supports")
+    assert count == 0, "Expected no self-referential row written"
+
+
+def test_context_edge_add_unknown_edge_type_rejected(server):
+    """AC-24: Unknown edge_type causes UnknownType error."""
+    id_a, id_b = _store_two_entries(server)
+    resp = server.context_edge("add", id_a, "BogusEdgeType", id_b, agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_context_edge_add_new_target_id_rejected(server):
+    """R-13: new_target_id on add mode causes an error."""
+    id_a, id_b = _store_two_entries(server)
+    resp = server.context_edge("add", id_a, "Supports", id_b, new_target_id=id_b, agent_id="human")
+    assert_tool_error(resp)
+
+
+# --- AC-25: context_edge remove mode --------------------------------
+
+
+def test_context_edge_remove_basic(server):
+    """AC-25: remove mode deletes the specified edge row."""
+    id_a, id_b = _store_two_entries(server)
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    assert _query_graph_edges(server, id_a, id_b, "Supports") == 1
+
+    resp = server.context_edge("remove", id_a, "Supports", id_b, agent_id="human")
+    assert_tool_success(resp)
+    assert _query_graph_edges(server, id_a, id_b, "Supports") == 0, "Expected row deleted"
+
+
+def test_context_edge_remove_contradicts_both_directions(server):
+    """AC-25, R-04: remove Contradicts deletes both (A,B) and (B,A) rows."""
+    id_a, id_b = _store_two_entries(server)
+    server.context_edge("add", id_a, "Contradicts", id_b, agent_id="human")
+    assert _query_graph_edges(server, id_a, id_b, "Contradicts") == 1
+    assert _query_graph_edges(server, id_b, id_a, "Contradicts") == 1
+
+    resp = server.context_edge("remove", id_a, "Contradicts", id_b, agent_id="human")
+    assert_tool_success(resp)
+    fwd = _query_graph_edges(server, id_a, id_b, "Contradicts")
+    rev = _query_graph_edges(server, id_b, id_a, "Contradicts")
+    assert fwd == 0, f"Forward Contradicts row not deleted"
+    assert rev == 0, f"Reverse Contradicts row not deleted"
+
+
+def test_context_edge_remove_idempotent_non_existent(server):
+    """AC-25: remove of non-existent edge returns success (idempotent)."""
+    id_a, id_b = _store_two_entries(server)
+    # No edge exists between a and b
+    resp = server.context_edge("remove", id_a, "Supports", id_b, agent_id="human")
+    assert_tool_success(resp)
+    # Call again — still success
+    resp2 = server.context_edge("remove", id_a, "Supports", id_b, agent_id="human")
+    assert_tool_success(resp2)
+
+
+def test_context_edge_remove_new_target_id_rejected(server):
+    """R-13: new_target_id on remove mode causes an error."""
+    id_a, id_b = _store_two_entries(server)
+    resp = server.context_edge("remove", id_a, "Supports", id_b, new_target_id=id_b, agent_id="human")
+    assert_tool_error(resp)
+
+
+# --- AC-26: context_edge redirect mode ------------------------------
+
+
+def test_context_edge_redirect_basic(server):
+    """AC-26, R-05: redirect atomically removes A->B and inserts A->B'."""
+    id_a, id_b = _store_two_entries(server)
+    resp_c = server.context_store(
+        "third entry C for redirect", "testing", "convention", agent_id="human", format="json"
+    )
+    id_c = extract_entry_id(resp_c)
+
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    assert _query_graph_edges(server, id_a, id_b, "Supports") == 1
+
+    resp = server.context_edge("redirect", id_a, "Supports", id_b, new_target_id=id_c, agent_id="human")
+    assert_tool_success(resp)
+
+    old_count = _query_graph_edges(server, id_a, id_b, "Supports")
+    new_count = _query_graph_edges(server, id_a, id_c, "Supports")
+    assert old_count == 0, "Old edge A->B must be gone after redirect"
+    assert new_count == 1, "New edge A->C must be present after redirect"
+
+
+def test_context_edge_redirect_contradicts_all_four_rows(server):
+    """AC-26, R-02: redirect Contradicts atomically updates all 4 direction rows."""
+    id_a, id_b = _store_two_entries(server)
+    resp_c = server.context_store(
+        "entry C for contradicts redirect", "testing", "convention", agent_id="human", format="json"
+    )
+    id_c = extract_entry_id(resp_c)
+
+    server.context_edge("add", id_a, "Contradicts", id_b, agent_id="human")
+    assert _query_graph_edges(server, id_a, id_b, "Contradicts") == 1
+    assert _query_graph_edges(server, id_b, id_a, "Contradicts") == 1
+
+    resp = server.context_edge("redirect", id_a, "Contradicts", id_b, new_target_id=id_c, agent_id="human")
+    assert_tool_success(resp)
+
+    # All 4 row assertions in one block (R-02 Coverage Requirement)
+    ab_gone = _query_graph_edges(server, id_a, id_b, "Contradicts")
+    ba_gone = _query_graph_edges(server, id_b, id_a, "Contradicts")
+    ac_present = _query_graph_edges(server, id_a, id_c, "Contradicts")
+    ca_present = _query_graph_edges(server, id_c, id_a, "Contradicts")
+    assert ab_gone == 0, "A->B Contradicts must be gone"
+    assert ba_gone == 0, "B->A Contradicts must be gone"
+    assert ac_present == 1, "A->C Contradicts must be present"
+    assert ca_present == 1, "C->A Contradicts must be present"
+
+
+def test_context_edge_redirect_rollback_on_bad_new_target(server):
+    """AC-26, R-05: redirect to non-existent new_target; original edge survives (ROLLBACK)."""
+    id_a, id_b = _store_two_entries(server)
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    assert _query_graph_edges(server, id_a, id_b, "Supports") == 1
+
+    resp = server.context_edge("redirect", id_a, "Supports", id_b, new_target_id=999999, agent_id="human")
+    assert_tool_error(resp)
+
+    # Original edge must survive — ROLLBACK confirmed
+    surviving = _query_graph_edges(server, id_a, id_b, "Supports")
+    assert surviving == 1, f"Original edge must survive failed redirect, got count={surviving}"
+
+
+def test_context_edge_redirect_requires_new_target_id(server):
+    """AC-26: redirect mode without new_target_id causes an error."""
+    id_a, id_b = _store_two_entries(server)
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    resp = server.call_tool(
+        "context_edge",
+        {"mode": "redirect", "source_id": id_a, "edge_type": "Supports", "target_id": id_b, "agent_id": "human"},
+    )
+    assert_tool_error(resp)
+
+
+def test_context_edge_invalid_mode_rejected(server):
+    """context_edge rejects unknown mode values."""
+    id_a, id_b = _store_two_entries(server)
+    resp = server.call_tool(
+        "context_edge",
+        {"mode": "delete", "source_id": id_a, "edge_type": "Supports", "target_id": id_b, "agent_id": "human"},
+    )
+    assert_tool_error(resp)
+
+
+# --- AC-20: context_edge has no side effects -------------------------
+
+
+def test_context_edge_no_embedding_or_confidence_side_effects(server):
+    """AC-20: context_edge is a pure graph operation — no embedding/confidence triggered."""
+    id_a, id_b = _store_two_entries(server)
+    resp = server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    assert_tool_success(resp)
+    # Confirm server is still responsive and no crash
+    status_resp = server.context_status(agent_id="human", format="json")
+    assert_tool_success(status_resp)
+

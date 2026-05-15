@@ -139,6 +139,11 @@ pub struct StatusReport {
     /// `None` when no qualifying rows exist in `cycle_review_index`
     /// (i.e., no cycles have been reviewed since crt-047 deployment, or window is empty).
     pub curation_health: Option<unimatrix_observe::CurationHealthSummary>,
+    /// Count of `Prerequisite` edges whose source entry is `Deprecated` (vnc-015, AC-11).
+    ///
+    /// Populated from `GraphCohesionMetrics.stale_dependency_edges`. Zero when no
+    /// stale Prerequisite edges exist, or when `compute_graph_cohesion_metrics()` fails.
+    pub stale_dependency_edges: u64,
 }
 
 impl Default for StatusReport {
@@ -197,6 +202,7 @@ impl Default for StatusReport {
             category_lifecycle: Vec::new(),
             pending_cycle_reviews: Vec::new(),
             curation_health: None,
+            stale_dependency_edges: 0,
         }
     }
 }
@@ -872,6 +878,8 @@ struct StatusReportJson {
     /// Absent from JSON when None (no qualifying window rows).
     #[serde(skip_serializing_if = "Option::is_none")]
     curation_health: Option<unimatrix_observe::CurationHealthSummary>,
+    /// Count of Prerequisite edges whose source entry is Deprecated (vnc-015, AC-11).
+    stale_dependency_edges: u64,
 }
 
 #[derive(Serialize)]
@@ -1701,6 +1709,8 @@ impl From<&StatusReport> for StatusReportJson {
             pending_cycle_reviews: r.pending_cycle_reviews.clone(),
             // crt-047: curation health aggregate — absent when None.
             curation_health: r.curation_health.clone(),
+            // vnc-015, AC-11: stale Prerequisite edges (source is Deprecated).
+            stale_dependency_edges: r.stale_dependency_edges,
         }
     }
 }
