@@ -260,6 +260,65 @@ impl DetectionRule for PostDeliveryIssuesRule {
     }
 }
 
+// -- Rule 6: DependencyOnDeprecatedRule (vnc-015, ADR-004) --
+
+/// Fires a Warning finding for each stale Prerequisite edge whose source entry is Deprecated.
+///
+/// Store access happens in `context_cycle_review` before `default_rules()` is called.
+/// The handler pre-queries stale Prerequisite pairs and passes them at construction time
+/// (ADR-004: constructor injection, matching PhaseDurationOutlierRule precedent).
+/// `detect()` is synchronous — no I/O, no async.
+// CALLERS: tools.rs context_cycle_review handler must pass stale_edges
+pub(crate) struct DependencyOnDeprecatedRule {
+    /// (source_id, target_id) pairs of stale Prerequisite edges.
+    /// source_id is the Deprecated entry; target_id is the entry it depends on.
+    stale_edge_pairs: Vec<(u64, u64)>,
+}
+
+impl DependencyOnDeprecatedRule {
+    pub fn new(stale_edge_pairs: Vec<(u64, u64)>) -> Self {
+        DependencyOnDeprecatedRule { stale_edge_pairs }
+    }
+}
+
+impl DetectionRule for DependencyOnDeprecatedRule {
+    fn name(&self) -> &str {
+        "dependency_on_deprecated"
+    }
+
+    fn category(&self) -> HotspotCategory {
+        HotspotCategory::Scope
+    }
+
+    fn detect(&self, _records: &[ObservationRecord]) -> Vec<HotspotFinding> {
+        // INVARIANT: Must be synchronous. No await, no I/O, no blocking calls.
+        // All data needed was injected at construction time.
+
+        // Fast path: no stale edges → no findings; prevents false positives.
+        if self.stale_edge_pairs.is_empty() {
+            return vec![];
+        }
+
+        // Emit one finding per stale (source_id, target_id) pair.
+        self.stale_edge_pairs
+            .iter()
+            .map(|(source_id, target_id)| HotspotFinding {
+                category: HotspotCategory::Scope,
+                severity: Severity::Warning,
+                rule_name: "dependency_on_deprecated".to_string(),
+                claim: format!(
+                    "Entry {source_id} has a Prerequisite edge to entry {target_id} \
+                     which is Deprecated. \
+                     Consider updating the dependency to the successor entry or removing the stale edge."
+                ),
+                measured: 1.0,
+                threshold: 0.0,
+                evidence: vec![],
+            })
+            .collect()
+    }
+}
+
 // -- Rule 5: PhaseDurationOutlierRule (FR-04.5, ADR-001) --
 
 pub(crate) struct PhaseDurationOutlierRule {
@@ -587,6 +646,63 @@ mod tests {
     fn test_post_delivery_issues_empty() {
         let rule = PostDeliveryIssuesRule;
         assert!(rule.detect(&[]).is_empty());
+    }
+
+    // -- DependencyOnDeprecatedRule --
+
+    #[test]
+    fn test_dependency_on_deprecated_rule_new_constructs() {
+        let _rule = DependencyOnDeprecatedRule::new(vec![(1, 2), (3, 4)]);
+        // No panic; struct created successfully.
+    }
+
+    #[test]
+    fn test_dependency_on_deprecated_rule_detect_fires_on_match() {
+        let rule = DependencyOnDeprecatedRule::new(vec![(42u64, 99u64)]);
+        let findings = rule.detect(&[]);
+        assert_eq!(findings.len(), 1);
+        let f = &findings[0];
+        assert_eq!(f.severity, Severity::Warning);
+        assert_eq!(f.rule_name, "dependency_on_deprecated");
+        assert_eq!(f.category, HotspotCategory::Scope);
+        assert!(f.claim.contains("42"));
+        assert!(f.claim.contains("99"));
+    }
+
+    #[test]
+    fn test_dependency_on_deprecated_rule_empty_stale_edges_no_findings() {
+        let rule = DependencyOnDeprecatedRule::new(vec![]);
+        // Even with records, no false positives when stale_edges is empty.
+        let records = vec![make_write_rs(1000, "/tmp/foo.rs")];
+        assert!(rule.detect(&records).is_empty());
+    }
+
+    #[test]
+    fn test_dependency_on_deprecated_rule_no_records_still_fires() {
+        // detect() is driven by stale_edge_pairs, not records — fires even with empty records.
+        let rule = DependencyOnDeprecatedRule::new(vec![(42u64, 99u64)]);
+        let findings = rule.detect(&[]);
+        assert_eq!(findings.len(), 1);
+    }
+
+    #[test]
+    fn test_dependency_on_deprecated_rule_multiple_stale_pairs() {
+        let rule = DependencyOnDeprecatedRule::new(vec![(1u64, 2u64), (3u64, 4u64), (5u64, 6u64)]);
+        let findings = rule.detect(&[]);
+        assert_eq!(findings.len(), 3, "one finding per stale pair");
+        assert!(findings.iter().all(|f| f.severity == Severity::Warning));
+        assert!(
+            findings
+                .iter()
+                .all(|f| f.rule_name == "dependency_on_deprecated")
+        );
+    }
+
+    #[test]
+    fn test_dependency_on_deprecated_rule_name_and_category() {
+        let rule = DependencyOnDeprecatedRule::new(vec![]);
+        assert_eq!(rule.name(), "dependency_on_deprecated");
+        assert_eq!(rule.category(), HotspotCategory::Scope);
     }
 
     // -- PhaseDurationOutlierRule --

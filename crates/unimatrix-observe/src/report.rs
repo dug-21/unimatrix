@@ -650,7 +650,7 @@ mod tests {
         use crate::extraction::recurring_friction::remediation_for_rule;
         use crate::types::{EvidenceRecord, HotspotFinding, Severity};
 
-        let rules = detection::default_rules(None);
+        let rules = detection::default_rules(None, vec![]);
 
         for rule in &rules {
             let name = rule.name();

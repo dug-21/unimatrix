@@ -35,11 +35,20 @@ pub fn detect_hotspots(
     findings
 }
 
-/// Return the default set of detection rules (22 total).
+/// Return the default set of detection rules (23 total).
 ///
 /// The `history` parameter provides historical MetricVectors for the
 /// PhaseDurationOutlierRule (ADR-001: constructor injection).
-pub fn default_rules(history: Option<&[MetricVector]>) -> Vec<Box<dyn DetectionRule>> {
+///
+/// The `stale_edges` parameter provides pre-queried stale Prerequisite edge pairs
+/// (source_id, target_id) for DependencyOnDeprecatedRule (ADR-004: constructor injection).
+/// Pass `vec![]` in unit-test contexts where no store data is available.
+///
+/// CALLERS: tools.rs context_cycle_review handler must pass stale_edges
+pub fn default_rules(
+    history: Option<&[MetricVector]>,
+    stale_edges: Vec<(u64, u64)>,
+) -> Vec<Box<dyn DetectionRule>> {
     vec![
         // Friction (5)
         Box::new(friction::OrphanedCallsRule),
@@ -61,12 +70,14 @@ pub fn default_rules(history: Option<&[MetricVector]>) -> Vec<Box<dyn DetectionR
         Box::new(agent::MutationSpreadRule),
         Box::new(agent::CompileCyclesRule),
         Box::new(agent::EditBloatRule),
-        // Scope (5)
+        // Scope (6)
         Box::new(scope::SourceFileCountRule),
         Box::new(scope::DesignArtifactCountRule),
         Box::new(scope::AdrCountRule),
         Box::new(scope::PostDeliveryIssuesRule),
         Box::new(scope::PhaseDurationOutlierRule::new(history)),
+        // Rule 23 (vnc-015): ADR-004 constructor injection
+        Box::new(scope::DependencyOnDeprecatedRule::new(stale_edges)),
     ]
 }
 
@@ -220,7 +231,7 @@ mod tests {
             make_bash_with_input(20000, "sleep 5"),
         ];
 
-        let rules = default_rules(None);
+        let rules = default_rules(None, vec![]);
         let findings = detect_hotspots(&records, &rules);
         assert!(
             findings.len() >= 3,
@@ -264,22 +275,22 @@ mod tests {
     // -- default_rules --
 
     #[test]
-    fn test_default_rules_has_22_rules() {
-        let rules = default_rules(None);
-        assert_eq!(rules.len(), 22);
+    fn test_default_rules_has_23_rules() {
+        let rules = default_rules(None, vec![]);
+        assert_eq!(rules.len(), 23);
     }
 
     #[test]
     fn test_default_rules_contains_tool_failure_hotspot() {
         // T-FM-19: ToolFailureRule must be registered by name (R-13)
-        let rules = default_rules(None);
+        let rules = default_rules(None, vec![]);
         let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
         assert!(names.contains(&"tool_failure_hotspot"));
     }
 
     #[test]
     fn test_default_rules_names() {
-        let rules = default_rules(None);
+        let rules = default_rules(None, vec![]);
         let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
         assert!(names.contains(&"orphaned_calls"));
         assert!(names.contains(&"session_timeout"));
@@ -303,6 +314,41 @@ mod tests {
         assert!(names.contains(&"post_delivery_issues"));
         assert!(names.contains(&"phase_duration_outlier"));
         assert!(names.contains(&"tool_failure_hotspot"));
+        assert!(names.contains(&"dependency_on_deprecated"));
+    }
+
+    #[test]
+    fn test_default_rules_dependency_on_deprecated_is_registered() {
+        let rules = default_rules(None, vec![]);
+        let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
+        assert!(
+            names.contains(&"dependency_on_deprecated"),
+            "DependencyOnDeprecatedRule must be registered"
+        );
+    }
+
+    #[test]
+    fn test_default_rules_signature_accepts_stale_edges() {
+        // Compile-time and runtime check: second parameter is forwarded correctly.
+        let rules = default_rules(None, vec![(1u64, 2u64), (3u64, 4u64)]);
+        assert_eq!(rules.len(), 23);
+    }
+
+    #[test]
+    fn test_default_rules_stale_edges_forwarded_to_rule() {
+        // Confirm stale_edges parameter is actually forwarded to DependencyOnDeprecatedRule.
+        let rules = default_rules(None, vec![(42u64, 99u64)]);
+        let dep_rule = rules
+            .iter()
+            .find(|r| r.name() == "dependency_on_deprecated")
+            .expect("dependency_on_deprecated rule must exist");
+        let findings = dep_rule.detect(&[]);
+        assert_eq!(
+            findings.len(),
+            1,
+            "stale pair (42,99) must produce one finding"
+        );
+        assert_eq!(findings[0].rule_name, "dependency_on_deprecated");
     }
 
     #[test]
@@ -328,8 +374,8 @@ mod tests {
             })
             .collect();
 
-        let rules = default_rules(Some(&mvs));
-        assert_eq!(rules.len(), 22);
+        let rules = default_rules(Some(&mvs), vec![]);
+        assert_eq!(rules.len(), 23);
     }
 
     // -- Helper tests --
