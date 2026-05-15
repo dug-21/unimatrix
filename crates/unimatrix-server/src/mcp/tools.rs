@@ -106,6 +106,20 @@ pub struct LookupParams {
     pub session_id: Option<String>,
 }
 
+/// A single typed edge to declare when storing or correcting an entry.
+///
+/// Validated by `edge_write::validate_and_write_edges` before any write.
+/// `edge_type` is case-sensitive and must match a `RelationType::from_str()` variant.
+/// `target_id` must not equal the resolved source entry ID (self-ref check).
+#[derive(Debug, Clone, PartialEq, Deserialize, JsonSchema)]
+pub struct EdgeInput {
+    /// Edge type string (e.g., "Supports", "Prerequisite", "Contradicts").
+    /// Must parse via `RelationType::from_str()`; case-sensitive.
+    pub edge_type: String,
+    /// Target entry ID. Must not equal source entry ID.
+    pub target_id: u64,
+}
+
 /// Parameters for storing a new entry.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct StoreParams {
@@ -130,6 +144,11 @@ pub struct StoreParams {
     /// Optional session ID (provided by hooks, not agent-reported).
     #[serde(default)]
     pub session_id: Option<String>,
+    /// Optional typed edges to declare at store time (vnc-015).
+    /// Omitting this field is backward-compatible (AC-01). An empty vec produces
+    /// no edge writes. Validated pre-insert; any failure aborts the entire call.
+    #[serde(default)]
+    pub edges: Option<Vec<EdgeInput>>,
 }
 
 /// Parameters for getting an entry by ID.
@@ -175,6 +194,11 @@ pub struct CorrectParams {
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+    /// Optional typed edges to attach to the corrected (new) entry (vnc-015).
+    /// Edges reference the new entry's ID — not the deprecated original's ID (AC-02).
+    /// Omitting this field is backward-compatible.
+    #[serde(default)]
+    pub edges: Option<Vec<EdgeInput>>,
 }
 
 /// Parameters for deprecating an entry.
@@ -637,6 +661,48 @@ impl UnimatrixServer {
         let feature_cycle_from_session: Option<String> =
             session_state.and_then(|s| s.feature.clone());
 
+        // 3c. Phase A — pre-insert edge validation (vnc-015).
+        //
+        // Validates all edges before the entry insert so that unknown types or
+        // missing/quarantined targets abort the entire call with no state written.
+        // Self-ref check is deferred to Phase B because source_id is not yet known
+        // (auto-increment is assigned by the DB on insert).
+        //
+        // ADR-001: validate-first pipeline.
+        // ADR-002: any validation failure fails the entire call.
+        let edges_slice = params.edges.as_deref().unwrap_or(&[]);
+        if !edges_slice.is_empty() {
+            use unimatrix_engine::graph::RelationType;
+            for edge in edges_slice {
+                // Type resolution (pure — no DB)
+                if RelationType::from_str(&edge.edge_type).is_none() {
+                    return Err(rmcp::ErrorData::invalid_params(
+                        format!("unknown edge type '{}'", edge.edge_type),
+                        None,
+                    ));
+                }
+                // Target validation (1 DB read via read_pool)
+                match self.entry_store.get(edge.target_id).await {
+                    Ok(entry) if entry.status == unimatrix_core::Status::Quarantined => {
+                        return Err(rmcp::ErrorData::invalid_params(
+                            format!(
+                                "target entry {} is quarantined and cannot be referenced",
+                                edge.target_id
+                            ),
+                            None,
+                        ));
+                    }
+                    Ok(_) => {} // Active or Deprecated — allowed
+                    Err(_) => {
+                        return Err(rmcp::ErrorData::invalid_params(
+                            format!("target entry {} does not exist", edge.target_id),
+                            None,
+                        ));
+                    }
+                }
+            }
+        }
+
         // 4. Build title (transport-specific default)
         let title = params
             .title
@@ -683,6 +749,34 @@ impl UnimatrixServer {
                 similarity,
                 ctx.format,
             ));
+        }
+
+        // 7b. Phase B — edge writes (vnc-015).
+        //
+        // Edges attach to the new entry's assigned ID. Called after the duplicate guard:
+        // duplicate entries never get edge writes (AC-09).
+        // Phase A already validated types and targets before the insert, so
+        // validate_and_write_edges performs self-ref check + writes.
+        // Infrastructure write failures are logged inside write_graph_edge and
+        // not rolled back — entry stays, edges silently absent (ADR-003).
+        if !edges_slice.is_empty() {
+            let source_id = insert_result.entry.id;
+            let created_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            if let Err(e) = crate::mcp::edge_write::validate_and_write_edges(
+                &self.entry_store,
+                source_id,
+                edges_slice,
+                created_at,
+            )
+            .await
+            {
+                // Self-ref is the only validation error possible here (type + target already
+                // checked pre-insert). Return error to caller — entry is written but no edges.
+                return Err(rmcp::ErrorData::invalid_params(e.to_string(), None));
+            }
         }
 
         // crt-026: Accumulate category histogram for session affinity boost (WA-2).
@@ -866,6 +960,42 @@ impl UnimatrixServer {
                 .map_err(rmcp::ErrorData::from)?;
         }
 
+        // 5b. Phase A — pre-correction edge validation (vnc-015).
+        //
+        // Validate edge types and targets before the correction so any failure
+        // aborts the call with no state written (ADR-001, ADR-002).
+        // Self-ref check is deferred to Phase B (corrected entry ID not yet known).
+        let correct_edges_slice = params.edges.as_deref().unwrap_or(&[]);
+        if !correct_edges_slice.is_empty() {
+            use unimatrix_engine::graph::RelationType;
+            for edge in correct_edges_slice {
+                if RelationType::from_str(&edge.edge_type).is_none() {
+                    return Err(rmcp::ErrorData::invalid_params(
+                        format!("unknown edge type '{}'", edge.edge_type),
+                        None,
+                    ));
+                }
+                match self.entry_store.get(edge.target_id).await {
+                    Ok(entry) if entry.status == unimatrix_core::Status::Quarantined => {
+                        return Err(rmcp::ErrorData::invalid_params(
+                            format!(
+                                "target entry {} is quarantined and cannot be referenced",
+                                edge.target_id
+                            ),
+                            None,
+                        ));
+                    }
+                    Ok(_) => {}
+                    Err(_) => {
+                        return Err(rmcp::ErrorData::invalid_params(
+                            format!("target entry {} does not exist", edge.target_id),
+                            None,
+                        ));
+                    }
+                }
+            }
+        }
+
         // 6. Build title (inherit from original if not provided)
         let title = params.title.unwrap_or_else(|| original.title.clone());
 
@@ -896,6 +1026,29 @@ impl UnimatrixServer {
             )
             .await
             .map_err(rmcp::ErrorData::from)?;
+
+        // 8b. Phase B — edge writes on corrected entry (vnc-015).
+        //
+        // Edges attach to the NEW (corrected) entry's ID — NOT the deprecated original (AC-02).
+        // Phase A validated types and targets before correction. validate_and_write_edges
+        // performs self-ref check + writes. Infrastructure failures are logged, not rolled back.
+        if !correct_edges_slice.is_empty() {
+            let corrected_source_id = correct_result.corrected_entry.id;
+            let created_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            if let Err(e) = crate::mcp::edge_write::validate_and_write_edges(
+                &self.entry_store,
+                corrected_source_id,
+                correct_edges_slice,
+                created_at,
+            )
+            .await
+            {
+                return Err(rmcp::ErrorData::invalid_params(e.to_string(), None));
+            }
+        }
 
         // 9. Confidence for both entries (fire-and-forget, via ConfidenceService)
         self.services.confidence.recompute(&[
@@ -1985,7 +2138,10 @@ impl UnimatrixServer {
             } else {
                 Some(history.as_slice())
             };
-            let rules = unimatrix_observe::default_rules(history_slice);
+            // vnc-015: default_rules gains stale_edges parameter (DependencyOnDeprecatedRule).
+            // The stale-edge pre-query for context_cycle_review belongs to Component 8
+            // (context_edge handler). For now, pass vec![] — no stale edges queried here yet.
+            let rules = unimatrix_observe::default_rules(history_slice, vec![]);
             let hotspots = unimatrix_observe::detect_hotspots(&attributed, &rules);
 
             let now = std::time::SystemTime::now()
@@ -4059,6 +4215,55 @@ mod tests {
     fn test_correct_params_missing_content() {
         let json = r#"{"original_id": 42}"#;
         assert!(serde_json::from_str::<CorrectParams>(json).is_err());
+    }
+
+    // -- vnc-015: EdgeInput / StoreParams edges / CorrectParams edges --
+
+    #[test]
+    fn test_edge_input_deserializes_valid_json() {
+        let json = r#"{"edge_type": "Supports", "target_id": 42}"#;
+        let edge: EdgeInput = serde_json::from_str(json).unwrap();
+        assert_eq!(edge.edge_type, "Supports");
+        assert_eq!(edge.target_id, 42);
+    }
+
+    #[test]
+    fn test_store_params_edges_field_defaults_to_none() {
+        // Omitting edges is backward-compatible (AC-01)
+        let json = r#"{"content": "test", "topic": "t", "category": "convention"}"#;
+        let params: StoreParams = serde_json::from_str(json).unwrap();
+        assert!(params.edges.is_none());
+    }
+
+    #[test]
+    fn test_correct_params_edges_field_defaults_to_none() {
+        // Omitting edges is backward-compatible (AC-02)
+        let json = r#"{"original_id": 1, "content": "corrected"}"#;
+        let params: CorrectParams = serde_json::from_str(json).unwrap();
+        assert!(params.edges.is_none());
+    }
+
+    #[test]
+    fn test_store_params_accepts_edges_vec() {
+        let json = r#"{
+            "content": "c",
+            "topic": "t",
+            "category": "convention",
+            "edges": [{"edge_type": "Supports", "target_id": 5}]
+        }"#;
+        let params: StoreParams = serde_json::from_str(json).unwrap();
+        let edges = params.edges.unwrap();
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].edge_type, "Supports");
+        assert_eq!(edges[0].target_id, 5);
+    }
+
+    #[test]
+    fn test_store_params_accepts_empty_edges_vec() {
+        let json = r#"{"content": "c", "topic": "t", "category": "convention", "edges": []}"#;
+        let params: StoreParams = serde_json::from_str(json).unwrap();
+        // Some([]) — not None — treated as no edges in handler, not None
+        assert_eq!(params.edges, Some(vec![]));
     }
 
     // -- vnc-003: DeprecateParams --
