@@ -3096,8 +3096,12 @@ impl UnimatrixServer {
             }
 
             "redirect" => {
-                // unwrap is safe: validated as Some(new_target) in Step 7 above
-                let new_target = params.new_target_id.unwrap();
+                let new_target = params.new_target_id.ok_or_else(|| {
+                    rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                        field: "new_target_id".to_string(),
+                        reason: "required for redirect mode".to_string(),
+                    })
+                })?;
 
                 // RAII transaction — atomically removes old edge and inserts new (R-05, lesson #2269)
                 // Contradicts: redirect_graph_edge handles all 4 rows atomically (ADR-009)
