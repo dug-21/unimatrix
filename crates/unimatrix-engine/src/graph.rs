@@ -69,7 +69,7 @@ pub enum GraphError {
 
 // -- Typed edge classification --
 
-/// Six edge types covering the full relationship taxonomy.
+/// Sixteen edge types covering the full relationship taxonomy (6 existing + 10 new in vnc-015).
 ///
 /// Stored as strings in GRAPH_EDGES — NOT integer discriminants.
 /// String encoding allows extension without schema migration or GNN retraining.
@@ -77,8 +77,14 @@ pub enum GraphError {
 /// `Prerequisite` is reserved for W3-1; no write path exists in crt-021.
 /// `Informs` bridges empirical knowledge (lesson-learned, pattern) from earlier feature
 /// cycles to normative knowledge (decision, convention) in later cycles (crt-037).
+///
+/// The 10 new variants (vnc-015) cover SDLC goal-tracing and research domain semantics.
+/// All new variants are write-only in this feature except `RelatedTo` which is also added
+/// to PPR and graph_expand positive types. `Advances` and `Motivates` are deferred to Phase 2
+/// for directed-edge PPR semantics (ADR-006).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RelationType {
+    // ── Existing 6 (UNCHANGED) ───────────────────────────────────────────────
     Supersedes,
     Contradicts,
     Supports,
@@ -87,18 +93,56 @@ pub enum RelationType {
     /// Empirical→normative cross-feature bridge; positive PPR (crt-037).
     /// `graph_penalty` and `find_terminal_active` do NOT traverse Informs edges (SR-01).
     Informs,
+    // ── 10 New Variants (vnc-015) ────────────────────────────────────────────
+    // SDLC goal-tracing
+    /// Source advances or contributes toward target goal/objective.
+    /// Write-only in vnc-015; PPR semantics deferred to Phase 2 (ADR-006).
+    Advances,
+    /// Source is the motivation or rationale behind target decision.
+    /// Write-only in vnc-015; PPR semantics deferred to Phase 2 (ADR-006).
+    Motivates,
+    // Research domain
+    /// Source cites or references target as a primary source.
+    Cites,
+    /// Source makes or contains the target claim.
+    Asserts,
+    /// Source mentions target entity.
+    Mentions,
+    /// Source provides evidence contradicting or falsifying target.
+    Refutes,
+    /// Source tests or experimentally evaluates target thesis/claim.
+    Tests,
+    /// Source is derived from or originated in target.
+    DerivedFrom,
+    /// Source concerns or governs target entity/concept.
+    About,
+    // General fallback — the only new PPR-positive variant (ADR-006)
+    /// Weak semantic relatedness; no more specific type available. Added to PPR/BFS (ADR-006).
+    RelatedTo,
 }
 
 impl RelationType {
     /// Returns the canonical string representation stored in GRAPH_EDGES.
     pub fn as_str(&self) -> &'static str {
         match self {
-            RelationType::Supersedes => "Supersedes",
-            RelationType::Contradicts => "Contradicts",
-            RelationType::Supports => "Supports",
-            RelationType::CoAccess => "CoAccess",
-            RelationType::Prerequisite => "Prerequisite",
-            RelationType::Informs => "Informs",
+            // Existing 6 variants (UNCHANGED)
+            Self::Supersedes => "Supersedes",
+            Self::Contradicts => "Contradicts",
+            Self::Supports => "Supports",
+            Self::CoAccess => "CoAccess",
+            Self::Prerequisite => "Prerequisite",
+            Self::Informs => "Informs",
+            // 10 new variants (vnc-015)
+            Self::Advances => "Advances",
+            Self::Motivates => "Motivates",
+            Self::Cites => "Cites",
+            Self::Asserts => "Asserts",
+            Self::Mentions => "Mentions",
+            Self::Refutes => "Refutes",
+            Self::Tests => "Tests",
+            Self::DerivedFrom => "DerivedFrom",
+            Self::About => "About",
+            Self::RelatedTo => "RelatedTo",
         }
     }
 
@@ -106,15 +150,32 @@ impl RelationType {
     ///
     /// Note: This method intentionally has the same name as `std::str::FromStr::from_str` per
     /// the architecture integration surface (ARCHITECTURE.md §Integration Surface).
+    ///
+    /// CRITICAL (ADR-007, R-01): All named arms MUST appear before the wildcard `_ => None`.
+    /// A variant added after the wildcard compiles but silently returns None — edges written with
+    /// that type are silently dropped by `build_typed_relation_graph` Pass 2b (R-10 guard).
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
+            // Existing 6 variants (UNCHANGED)
             "Supersedes" => Some(RelationType::Supersedes),
             "Contradicts" => Some(RelationType::Contradicts),
             "Supports" => Some(RelationType::Supports),
             "CoAccess" => Some(RelationType::CoAccess),
             "Prerequisite" => Some(RelationType::Prerequisite),
             "Informs" => Some(RelationType::Informs),
+            // 10 new variants (vnc-015) — all BEFORE the wildcard arm
+            "Advances" => Some(RelationType::Advances),
+            "Motivates" => Some(RelationType::Motivates),
+            "Cites" => Some(RelationType::Cites),
+            "Asserts" => Some(RelationType::Asserts),
+            "Mentions" => Some(RelationType::Mentions),
+            "Refutes" => Some(RelationType::Refutes),
+            "Tests" => Some(RelationType::Tests),
+            "DerivedFrom" => Some(RelationType::DerivedFrom),
+            "About" => Some(RelationType::About),
+            "RelatedTo" => Some(RelationType::RelatedTo),
+            // Wildcard MUST remain last — see critical note above (ADR-007)
             _ => None,
         }
     }
