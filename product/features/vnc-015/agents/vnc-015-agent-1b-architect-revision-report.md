@@ -76,3 +76,11 @@ Changes:
 3. Tool count test: identify which test asserts exactly 12 MCP tools → update to 13
 4. redirect_graph_edge transaction API: confirm write_pool_server() exposes begin() or
    equivalent; this is the first transactional write in edge_write.rs
+
+## Knowledge Stewardship
+
+- Stored:
+  - ADR-002 supersession: context_correct #4419 → new entry #4426 (edge-write-failure-posture: confidence floor dropped, target validation added)
+  - ADR-009 context_edge tool design: context_store → new entry #4427
+  - ADR-010 target validation query pattern: context_store → new entry #4428
+- Queried: context_search for existing edge-write and MCP tool patterns prior to revision
