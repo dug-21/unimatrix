@@ -72,8 +72,6 @@ impl Display for EdgeValidationError {
 ///
 /// A zero-row DELETE is NOT an error (idempotent). Only a pool/SQL failure
 /// produces this variant.
-// Used by context_edge handler (Component 8 — not yet implemented).
-#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum EdgeDeleteError {
     StoreError(StoreError),
@@ -91,8 +89,6 @@ impl Display for EdgeDeleteError {
 ///
 /// On any SQL or transaction error the `sqlx::Transaction` is dropped, which
 /// triggers an automatic ROLLBACK (lesson #2269 — RAII transaction pattern).
-// Used by context_edge handler (Component 8 — not yet implemented).
-#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum EdgeRedirectError {
     /// `new_target_id` does not exist.
@@ -125,7 +121,10 @@ impl Display for EdgeRedirectError {
 /// - `Deprecated` → allowed (DependencyOnDeprecated rule surfaces these)
 /// - `Quarantined` → `Err(TargetQuarantined)`
 /// - Not found / store error → `Err(TargetNotFound)`
-async fn validate_target(store: &Store, target_id: u64) -> Result<(), EdgeValidationError> {
+pub(crate) async fn validate_target(
+    store: &Store,
+    target_id: u64,
+) -> Result<(), EdgeValidationError> {
     match store.get(target_id).await {
         Ok(entry) => {
             if entry.status == Status::Quarantined {
@@ -236,8 +235,6 @@ pub(crate) async fn validate_and_write_edges(
 /// Idempotent: zero rows affected is success (AC-25, NFR-03).
 ///
 /// For `Contradicts`, both directions are deleted in sequence before returning.
-// Used by context_edge handler (Component 8 — not yet implemented).
-#[allow(dead_code)]
 pub(crate) async fn delete_graph_edge(
     store: &Store,
     source_id: u64,
@@ -300,8 +297,6 @@ pub(crate) async fn delete_graph_edge(
 /// Target validation for `new_target_id` (existence + quarantine check) MUST be
 /// performed by the caller **before** invoking this function. This function trusts
 /// the validated caller and performs no re-validation.
-// Used by context_edge handler (Component 8 — not yet implemented).
-#[allow(dead_code)]
 pub(crate) async fn redirect_graph_edge(
     store: &Store,
     source_id: u64,
