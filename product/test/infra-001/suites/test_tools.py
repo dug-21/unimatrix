@@ -3618,3 +3618,221 @@ def test_context_edge_no_embedding_or_confidence_side_effects(server):
     status_resp = server.context_status(agent_id="human", format="json")
     assert_tool_success(status_resp)
 
+
+# === vnc-016: DependencyOnDeprecated end-to-end detection test ===========
+#
+# AC-01, AC-02, AC-03, AC-07, AC-08, AC-09 (Rust layer), AC-12
+# R-01, R-02, R-03, R-04, R-06, R-07, R-08
+
+
+def test_dependency_on_deprecated_e2e(server):
+    """AC-01, AC-02, AC-03, AC-07, AC-12.
+
+    Positive path: verify DependencyOnDeprecatedRule fires end-to-end when a
+    Restricted+Write agent stores entry A tagged to a feature cycle, a Prerequisite
+    edge exists A->B, and A is subsequently deprecated.
+
+    force=True is mandatory (C-02) -- omitting it causes the handler to return a
+    cached result, bypassing the detection pipeline and making this test vacuously pass.
+    """
+    # -- Step 1: unique cycle ID, bound once at the top ---------------------
+    # Single binding used for ALL setup and assertion calls (C-03, R-07).
+    cycle_id = f"vnc016-{uuid.uuid4().hex[:8]}"
+
+    # -- Step 2: unique agent ID --------------------------------------------
+    # Unique per invocation to prevent cross-test agent-state interference (NFR-05).
+    test_agent_id = f"vnc016-agent-{uuid.uuid4().hex[:8]}"
+
+    # -- Step 3: enroll Restricted+Write agent ------------------------------
+    # human has Admin capability (bootstrap default); required for context_enroll.
+    # The enrolled agent is the realistic production case: Restricted trust +
+    # explicit Write. The old gate silently dropped feature_entries for this agent.
+    # The fixed gate (write_capable=True) allows it through.
+    enroll_resp = server.context_enroll(
+        test_agent_id,
+        trust_level="restricted",
+        capabilities=["write", "read"],
+        agent_id="human",
+    )
+    assert_tool_success(enroll_resp)
+
+    # -- Step 4: store entry A with feature_cycle, using the enrolled agent -
+    # CRITICAL (C-01): feature_cycle MUST be passed here. record_feature_entries
+    # runs only at context_store time; there is no back-fill path. Omitting
+    # feature_cycle leaves feature_entries empty and the test vacuously passes.
+    # CRITICAL (C-01b): MUST use test_agent_id (Restricted+Write), NOT "human"
+    # (Privileged). Using "human" exercises a path that always passed the old
+    # gate and provides no regression signal.
+    resp_a = server.context_store(
+        "vnc016 prerequisite source: ADR establishing the indexing strategy -- now deprecated",
+        "architecture",
+        "decision",
+        feature_cycle=cycle_id,
+        agent_id=test_agent_id,
+        format="json",
+    )
+    assert_tool_success(resp_a)
+    id_a = extract_entry_id(resp_a)
+
+    # -- Step 5: store entry B (target of the Prerequisite edge) ------------
+    # B is Active; it does not need to be in feature_entries.
+    resp_b = server.context_store(
+        "vnc016 prerequisite target: operational runbook that depends on the deprecated ADR",
+        "operations",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(resp_b)
+    id_b = extract_entry_id(resp_b)
+
+    # -- Step 6: add Prerequisite edge A->B ---------------------------------
+    # relation_type MUST be exactly 'Prerequisite' (case-sensitive SQL literal).
+    edge_resp = server.context_edge("add", id_a, "Prerequisite", id_b, agent_id="human")
+    assert_tool_success(edge_resp)
+
+    # -- Step 7: deprecate entry A via context_correct ----------------------
+    # Sets entries.status = 1 for id_a, making the Prerequisite edge stale.
+    # context_correct does NOT need feature_cycle (C-06); the SQL query joins on
+    # source entry A's membership in feature_entries, established in step 4.
+    correct_resp = server.context_correct(
+        id_a,
+        "vnc016 corrected: updated ADR replacing the deprecated indexing strategy",
+        agent_id="human",
+    )
+    assert_tool_success(correct_resp)
+
+    # -- Step 8: seed observation data for cycle_id -------------------------
+    # context_cycle_review requires observation rows to produce a detection report.
+    # Without them it takes the empty-cycle early-exit path and returns an
+    # acknowledgment string (no hotspots key). MUST use the identical cycle_id
+    # bound in step 1 (C-03). num_records=20 is sufficient (C-04).
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, [cycle_id], num_records=20)
+
+    # -- Step 9: call context_cycle_review with force=True ------------------
+    # force=True is MANDATORY (C-02, AC-07). Without it, a cached result from a
+    # prior run may be returned, bypassing the detection pipeline entirely (R-02).
+    # format="json" is required for structured assertion.
+    resp = server.context_cycle_review(
+        cycle_id,
+        agent_id="human",
+        format="json",
+        force=True,
+        timeout=30.0,
+    )
+
+    # -- Assertions ----------------------------------------------------------
+    # (a) Response must be a successful tool call result (not an MCP error).
+    assert_tool_success(resp)
+
+    # (b) Response text must parse as valid JSON.
+    result_text = get_result_text(resp)
+    data = _json.loads(result_text)
+
+    # (c) Top-level 'hotspots' key must be present. Its absence means the response
+    # is the empty-cycle acknowledgment path, not a RetrospectiveReport. Check
+    # that _seed_observation_sql received the correct cycle_id if this fails.
+    assert "hotspots" in data, (
+        f"'hotspots' key absent from context_cycle_review response -- likely "
+        f"empty-cycle early-exit path. Keys present: {list(data.keys())}. "
+        f"Response: {result_text[:500]}"
+    )
+
+    # (d) At least one hotspot must have rule_name == "dependency_on_deprecated".
+    # Exact string matches DependencyOnDeprecatedRule::name() in scope.rs:286.
+    # Test fails here if: (1) SQL fix not applied (read.rs:1618), (2) usage gate
+    # not fixed (usage.rs), (3) feature_cycle omitted at store time (C-01), or
+    # (4) wrong agent used at store time (C-01b).
+    rule_names = [h["rule_name"] for h in data["hotspots"]]
+    assert any(rn == "dependency_on_deprecated" for rn in rule_names), (
+        f"'dependency_on_deprecated' not found in hotspots. "
+        f"rule_names present: {rule_names}. "
+        f"Failure causes: (1) SQL fix not applied in read.rs:1618, "
+        f"(2) usage gate not fixed in usage.rs, "
+        f"(3) feature_cycle omitted at store time, "
+        f"(4) wrong agent_id (not test_agent_id) at store time."
+    )
+
+
+def test_dependency_on_deprecated_no_finding_without_stale_edge(server):
+    """AC-08, R-04, R-08.
+
+    Negative path: verify DependencyOnDeprecatedRule does NOT fire when no stale
+    Prerequisite edge exists for the cycle. Guards against an always-fires
+    implementation.
+
+    force=True is mandatory (C-02) -- same reason as positive test.
+    Assertion uses rule_name check, not total hotspot absence (R-08): other rules
+    may legitimately fire; asserting total absence causes false failures.
+    """
+    # -- Step 1: unique cycle ID with distinct prefix -----------------------
+    # "vnc016neg-" prefix distinguishes negative-path cycle from positive (C-05).
+    # Independent cycle ID prevents cross-test interference (NFR-05).
+    cycle_id = f"vnc016neg-{uuid.uuid4().hex[:8]}"
+
+    # -- Step 2: store two entries without stale conditions -----------------
+    # Neither entry is deprecated. No Prerequisite edge is added between them.
+    # Using "human" is acceptable here -- the goal is no-stale-edge, not gate fix.
+    resp_c = server.context_store(
+        "vnc016 negative test entry C: active convention with no stale edge",
+        "architecture",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(resp_c)
+
+    resp_d = server.context_store(
+        "vnc016 negative test entry D: active convention target with no edge pointing to it",
+        "operations",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(resp_d)
+
+    # No context_edge call. No context_correct call.
+    # The scenario has no stale Prerequisite edge for this cycle.
+
+    # -- Step 3: seed observation data for cycle_id -------------------------
+    # Same requirement as positive test: need observations or the review returns
+    # the empty-cycle acknowledgment path, not a detection report.
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, [cycle_id], num_records=20)
+
+    # -- Step 4: call context_cycle_review with force=True ------------------
+    # force=True is MANDATORY (C-02). Same requirement as positive test.
+    resp = server.context_cycle_review(
+        cycle_id,
+        agent_id="human",
+        format="json",
+        force=True,
+        timeout=30.0,
+    )
+
+    # -- Assertions ----------------------------------------------------------
+    # (a) Response must be successful.
+    assert_tool_success(resp)
+
+    # (b) Parse JSON.
+    result_text = get_result_text(resp)
+    data = _json.loads(result_text)
+
+    # (c) hotspots key must be present (confirms detection pipeline ran, not early-exit).
+    assert "hotspots" in data, (
+        f"'hotspots' key absent from negative-path context_cycle_review response. "
+        f"Keys present: {list(data.keys())}. "
+        f"Response: {result_text[:500]}"
+    )
+
+    # (d) MUST NOT contain 'dependency_on_deprecated' (R-08).
+    # Assert on rule_name specifically, NOT on hotspots being empty: other rules
+    # may legitimately fire on these entries; asserting total absence produces
+    # false failures when other rules fire.
+    assert not any(h["rule_name"] == "dependency_on_deprecated" for h in data["hotspots"]), (
+        f"'dependency_on_deprecated' unexpectedly present in hotspots when no stale "
+        f"edge exists. rule_names: {[h['rule_name'] for h in data['hotspots']]}. "
+        f"This indicates an always-fires implementation or cross-test cycle contamination."
+    )
+
