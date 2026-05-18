@@ -1615,7 +1615,7 @@ impl SqlxStore {
              JOIN feature_entries fe ON fe.entry_id = ge.source_id \
              WHERE ge.relation_type = 'Prerequisite' \
                AND e.status = 1 \
-               AND fe.feature_cycle = ?1",
+               AND fe.feature_id = ?1",
         )
         .bind(feature_cycle)
         .fetch_all(self.read_pool())
