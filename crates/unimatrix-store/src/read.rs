@@ -1671,6 +1671,63 @@ impl SqlxStore {
             })
             .collect()
     }
+
+    /// Return all `graph_edges` rows pointing at `target_id`, excluding `Supersedes`
+    /// relation types.
+    ///
+    /// Used by `context_correct`'s auto-redirect loop (vnc-017) to discover stale
+    /// incoming edges before redirecting them to the new active entry.
+    ///
+    /// # Supersedes exclusion
+    /// `Supersedes` rows are excluded at the SQL level (ADR-002 vnc-017). They are
+    /// derived from `entries.supersedes` and are rebuilt by the graph tick automatically.
+    /// Redirecting them would assert incorrect semantic claims (e.g. C supersedes B
+    /// when only C superseded A). Future callers that require Supersedes rows must
+    /// issue a separate query.
+    ///
+    /// # Pool
+    /// Uses `read_pool()`. Both `read_pool()` and `write_pool_server()` currently alias
+    /// the same underlying pool (`db.rs:294`); use canonical accessor name per C-07.
+    ///
+    /// # Index
+    /// `idx_graph_edges_target_id` covers `WHERE target_id = ?` efficiently (migration v12→v13).
+    pub async fn query_incoming_edges(&self, target_id: u64) -> Result<Vec<IncomingEdgeRow>> {
+        let rows = sqlx::query(
+            "SELECT source_id, relation_type, created_at \
+             FROM graph_edges \
+             WHERE target_id = ?1 \
+               AND relation_type != 'Supersedes'
+               -- Supersedes rows are derived from entries.supersedes; redirecting them would
+               -- assert incorrect semantic claims (e.g. C supersedes B when only C superseded A).
+               -- They are rebuilt by the graph tick automatically on the next cycle. ADR-002 vnc-017.",
+        )
+        // SQLite stores IDs as i64 (BIGINT); cast u64 → i64 for binding, matching the
+        // pattern used throughout read.rs (query_graph_edges, query_stale_prerequisite_edges_for_cycle).
+        .bind(target_id as i64)
+        // read_pool() and write_pool_server() currently alias the same underlying pool (db.rs:294).
+        // Use canonical accessor name per C-07 vnc-017.
+        .fetch_all(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                Ok(IncomingEdgeRow {
+                    source_id: row
+                        .try_get::<i64, _>("source_id")
+                        .map_err(|e| StoreError::Database(e.into()))?
+                        as u64,
+                    relation_type: row
+                        .try_get("relation_type")
+                        .map_err(|e| StoreError::Database(e.into()))?,
+                    created_at: row
+                        .try_get::<i64, _>("created_at")
+                        .map_err(|e| StoreError::Database(e.into()))?
+                        as u64,
+                })
+            })
+            .collect::<Result<Vec<_>>>()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1714,6 +1771,20 @@ pub struct ContradictEdgeRow {
     /// Raw JSON metadata blob, e.g. `{"nli_entailment": 0.1, "nli_contradiction": 0.92}`.
     /// `None` when the column is NULL (pre-crt-023 edges).
     pub metadata: Option<String>,
+}
+
+/// One incoming `graph_edges` row returned by `query_incoming_edges` (vnc-017).
+///
+/// `target_id` is the query parameter and is implicit; it is not included in the struct.
+/// `Supersedes` rows are excluded at the SQL level — see `query_incoming_edges` doc.
+#[derive(Debug, Clone)]
+pub struct IncomingEdgeRow {
+    /// Entry ID of the source (the entry that declared an edge toward the queried target).
+    pub source_id: u64,
+    /// Relation type string as stored (e.g. `"Prerequisite"`, `"Contradicts"`, `"Informs"`).
+    pub relation_type: String,
+    /// Unix timestamp (seconds) when the edge was created.
+    pub created_at: u64,
 }
 
 // ---------------------------------------------------------------------------
@@ -3460,6 +3531,235 @@ mod tests {
         assert!(
             result.unwrap().is_empty(),
             "expected empty result when no feature_entries row exists for cycle"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // query_incoming_edges tests (vnc-017 AC-05, R-02, R-03, R-07)
+    // -----------------------------------------------------------------------
+
+    /// Insert rows into graph_edges using only the columns needed for
+    /// query_incoming_edges tests. Other columns use schema defaults.
+    async fn insert_graph_edge_minimal(
+        pool: &sqlx::sqlite::SqlitePool,
+        source_id: i64,
+        target_id: i64,
+        relation_type: &str,
+        created_at: i64,
+    ) {
+        sqlx::query(
+            "INSERT INTO graph_edges \
+                 (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) \
+             VALUES (?1, ?2, ?3, 1.0, ?4, 'agent', 'manual', 0)",
+        )
+        .bind(source_id)
+        .bind(target_id)
+        .bind(relation_type)
+        .bind(created_at)
+        .execute(pool)
+        .await
+        .expect("insert graph_edge");
+    }
+
+    /// AC-05: Exact rows returned for seeded data; noise row excluded.
+    ///
+    /// Seeds 3 rows pointing at target_id=99 (Prerequisite, Contradicts, Prerequisite)
+    /// and 1 row pointing at a different target (77). Asserts exactly 3 rows are
+    /// returned with correct field values; the target=77 row is absent.
+    #[tokio::test]
+    async fn test_query_incoming_edges_returns_matching_rows_only() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        insert_graph_edge_minimal(&store.write_pool, 10, 99, "Prerequisite", 1000).await;
+        insert_graph_edge_minimal(&store.write_pool, 20, 99, "Contradicts", 2000).await;
+        insert_graph_edge_minimal(&store.write_pool, 30, 99, "Prerequisite", 3000).await;
+        // Noise: different target_id — must not appear in results.
+        insert_graph_edge_minimal(&store.write_pool, 40, 77, "Prerequisite", 4000).await;
+
+        let rows = store
+            .query_incoming_edges(99)
+            .await
+            .expect("query_incoming_edges");
+
+        assert_eq!(rows.len(), 3, "expected exactly 3 rows for target_id=99");
+
+        let r10 = rows
+            .iter()
+            .find(|r| r.source_id == 10)
+            .expect("source_id=10");
+        assert_eq!(r10.relation_type, "Prerequisite");
+        assert_eq!(r10.created_at, 1000);
+
+        let r20 = rows
+            .iter()
+            .find(|r| r.source_id == 20)
+            .expect("source_id=20");
+        assert_eq!(r20.relation_type, "Contradicts");
+        assert_eq!(r20.created_at, 2000);
+
+        let r30 = rows
+            .iter()
+            .find(|r| r.source_id == 30)
+            .expect("source_id=30");
+        assert_eq!(r30.relation_type, "Prerequisite");
+        assert_eq!(r30.created_at, 3000);
+
+        // Noise row must not be present.
+        assert!(
+            rows.iter().all(|r| r.source_id != 40),
+            "noise row (target_id=77) must not be returned"
+        );
+    }
+
+    /// R-02 (Critical): Supersedes-only rows return an empty vec.
+    ///
+    /// Structural proof that exclusion is at the SQL level, not the loop level:
+    /// if `query_incoming_edges` returned 2 rows and the caller filtered them,
+    /// the SQL WHERE clause would be absent (ADR-002 vnc-017 violation).
+    #[tokio::test]
+    async fn test_query_incoming_edges_excludes_supersedes_at_sql_level() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        insert_graph_edge_minimal(&store.write_pool, 10, 99, "Supersedes", 1000).await;
+        insert_graph_edge_minimal(&store.write_pool, 20, 99, "Supersedes", 2000).await;
+
+        let rows = store
+            .query_incoming_edges(99)
+            .await
+            .expect("query_incoming_edges");
+
+        assert!(
+            rows.is_empty(),
+            "Supersedes rows must be excluded at SQL level; expected empty vec, got {} rows",
+            rows.len()
+        );
+    }
+
+    /// R-03: High-cardinality filter correctness.
+    ///
+    /// Seeds 1000 noise rows (target_id=NOISE) and 3 signal rows (target_id=42).
+    /// Asserts exactly 3 rows are returned — validates correct WHERE-bind wiring
+    /// and index coverage at non-trivial cardinality.
+    #[tokio::test]
+    async fn test_query_incoming_edges_high_cardinality_filters_correctly() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        // 1000 noise rows pointing at a different target.
+        for i in 0i64..1000 {
+            // Use source_id values 1000+ to avoid collision with signal rows.
+            insert_graph_edge_minimal(
+                &store.write_pool,
+                1000 + i,
+                9999, // noise target
+                "Informs",
+                i,
+            )
+            .await;
+        }
+
+        // 3 signal rows pointing at target_id=42.
+        insert_graph_edge_minimal(&store.write_pool, 1, 42, "Prerequisite", 100).await;
+        insert_graph_edge_minimal(&store.write_pool, 2, 42, "Contradicts", 200).await;
+        insert_graph_edge_minimal(&store.write_pool, 3, 42, "Prerequisite", 300).await;
+
+        let rows = store
+            .query_incoming_edges(42)
+            .await
+            .expect("query_incoming_edges");
+
+        assert_eq!(
+            rows.len(),
+            3,
+            "expected exactly 3 rows; 1000 noise rows must be filtered out"
+        );
+        let source_ids: Vec<u64> = rows.iter().map(|r| r.source_id).collect();
+        assert!(source_ids.contains(&1), "source_id=1 must be present");
+        assert!(source_ids.contains(&2), "source_id=2 must be present");
+        assert!(source_ids.contains(&3), "source_id=3 must be present");
+    }
+
+    /// R-07 / AC-11: Supersedes-only path returns empty vec (no error).
+    ///
+    /// Variant of R-02 with a single Supersedes row — asserts that Ok(vec![])
+    /// is returned, not an error.
+    #[tokio::test]
+    async fn test_query_incoming_edges_supersedes_only_returns_empty() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        insert_graph_edge_minimal(&store.write_pool, 10, 99, "Supersedes", 1000).await;
+
+        let rows = store
+            .query_incoming_edges(99)
+            .await
+            .expect("query_incoming_edges");
+
+        assert!(
+            rows.is_empty(),
+            "single Supersedes row must yield empty result"
+        );
+    }
+
+    /// Empty target: zero rows returns Ok(vec![]).
+    #[tokio::test]
+    async fn test_query_incoming_edges_no_rows_returns_empty() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        // No rows seeded.
+        let rows = store
+            .query_incoming_edges(99)
+            .await
+            .expect("query_incoming_edges");
+
+        assert!(rows.is_empty(), "no seeded rows must yield empty result");
+    }
+
+    /// Mixed Supersedes and non-Supersedes: only non-Supersedes rows returned.
+    ///
+    /// Seeds 3 rows for target_id=99: one Supersedes and two others.
+    /// Asserts exactly 2 rows returned, Supersedes source excluded.
+    #[tokio::test]
+    async fn test_query_incoming_edges_mixed_excludes_supersedes_only() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        create_graph_edges_table(&store.write_pool).await;
+
+        insert_graph_edge_minimal(&store.write_pool, 10, 99, "Supersedes", 1000).await;
+        insert_graph_edge_minimal(&store.write_pool, 20, 99, "Prerequisite", 2000).await;
+        insert_graph_edge_minimal(&store.write_pool, 30, 99, "Contradicts", 3000).await;
+
+        let rows = store
+            .query_incoming_edges(99)
+            .await
+            .expect("query_incoming_edges");
+
+        assert_eq!(
+            rows.len(),
+            2,
+            "expected 2 rows; Supersedes row must be excluded"
+        );
+
+        let source_ids: Vec<u64> = rows.iter().map(|r| r.source_id).collect();
+        assert!(
+            !source_ids.contains(&10),
+            "source_id=10 (Supersedes) must not be present"
+        );
+        assert!(
+            source_ids.contains(&20),
+            "source_id=20 (Prerequisite) must be present"
+        );
+        assert!(
+            source_ids.contains(&30),
+            "source_id=30 (Contradicts) must be present"
         );
     }
 }
