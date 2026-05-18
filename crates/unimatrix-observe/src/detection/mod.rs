@@ -1,6 +1,6 @@
 //! Hotspot detection framework with extensible rule trait.
 //!
-//! Ships 22 rules across 4 categories: agent (7), friction (5), session (5), scope (5).
+//! Ships 23 rules across 4 categories: agent (7), friction (5), session (5), scope (6).
 
 pub mod agent;
 pub mod friction;
