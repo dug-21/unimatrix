@@ -1615,7 +1615,7 @@ impl SqlxStore {
              JOIN feature_entries fe ON fe.entry_id = ge.source_id \
              WHERE ge.relation_type = 'Prerequisite' \
                AND e.status = 1 \
-               AND fe.feature_cycle = ?1",
+               AND fe.feature_id = ?1",
         )
         .bind(feature_cycle)
         .fetch_all(self.read_pool())
@@ -3316,6 +3316,150 @@ mod tests {
             rows.len(),
             0,
             "entry C with no Contradicts edges must return 0 rows"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // query_stale_prerequisite_edges_for_cycle tests (vnc-016 AC-09)
+    // -----------------------------------------------------------------------
+
+    /// Positive path: a Deprecated source entry registered to the cycle with a
+    /// Prerequisite edge to an Active target must be returned as a (source, target) pair.
+    #[tokio::test]
+    async fn test_query_stale_prerequisite_edges_for_cycle_returns_pair() {
+        // -- Setup -----------------------------------------------------------
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        let cycle = "vnc016-test-cycle";
+
+        // Seed entry A: Deprecated (status = 1). Capture auto-assigned id via RETURNING.
+        let id_a: i64 = sqlx::query_scalar(
+            "INSERT INTO entries \
+                 (title, content, topic, category, source, status, created_at, updated_at) \
+             VALUES ('entry-a', 'content-a', 'test', 'pattern', '', 1, 0, 0) \
+             RETURNING id",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("insert entry A");
+
+        // Seed entry B: Active (status = 0) — target of the Prerequisite edge.
+        let id_b: i64 = sqlx::query_scalar(
+            "INSERT INTO entries \
+                 (title, content, topic, category, source, status, created_at, updated_at) \
+             VALUES ('entry-b', 'content-b', 'test', 'pattern', '', 0, 0, 0) \
+             RETURNING id",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("insert entry B");
+
+        // Seed feature_entries: associate entry A with the test cycle.
+        // Column is 'feature_id' (not 'feature_cycle') — this is the fix target.
+        sqlx::query(
+            "INSERT INTO feature_entries (feature_id, entry_id, phase) VALUES (?1, ?2, NULL)",
+        )
+        .bind(cycle)
+        .bind(id_a)
+        .execute(&store.write_pool)
+        .await
+        .expect("insert feature_entries row");
+
+        // Seed graph_edges: Prerequisite edge from A (source) to B (target).
+        sqlx::query(
+            "INSERT INTO graph_edges \
+                 (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) \
+             VALUES (?1, ?2, 'Prerequisite', 1.0, 0, 'test', 'test', 0)",
+        )
+        .bind(id_a)
+        .bind(id_b)
+        .execute(&store.write_pool)
+        .await
+        .expect("insert graph_edges row");
+
+        // -- Exercise --------------------------------------------------------
+        let result = store.query_stale_prerequisite_edges_for_cycle(cycle).await;
+
+        // -- Assert ----------------------------------------------------------
+        // (a) Must not be an error — if this fails, the SQL column name is wrong.
+        assert!(result.is_ok(), "expected Ok, got: {:?}", result.err());
+
+        let pairs = result.unwrap();
+
+        // (b) Must contain exactly one pair.
+        assert_eq!(
+            pairs.len(),
+            1,
+            "expected exactly 1 stale edge pair, got: {:?}",
+            pairs
+        );
+
+        // (c) Must contain the exact (A, B) pair in source/target order.
+        assert_eq!(
+            pairs[0],
+            (id_a as u64, id_b as u64),
+            "expected pair ({id_a}, {id_b}), got: {:?}",
+            pairs[0]
+        );
+    }
+
+    /// Negative companion: when no feature_entries row exists for the cycle, the JOIN
+    /// must produce an empty result — even if matching graph_edges rows exist globally.
+    #[tokio::test]
+    async fn test_query_stale_prerequisite_edges_for_cycle_empty_without_feature_entry() {
+        // -- Setup -----------------------------------------------------------
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        let cycle = "vnc016-absent-cycle";
+
+        // Seed entry A: Deprecated (status = 1).
+        let id_a: i64 = sqlx::query_scalar(
+            "INSERT INTO entries \
+                 (title, content, topic, category, source, status, created_at, updated_at) \
+             VALUES ('entry-a-neg', 'content', 'test', 'pattern', '', 1, 0, 0) \
+             RETURNING id",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("insert entry A neg");
+
+        // Seed entry B: Active (status = 0).
+        let id_b: i64 = sqlx::query_scalar(
+            "INSERT INTO entries \
+                 (title, content, topic, category, source, status, created_at, updated_at) \
+             VALUES ('entry-b-neg', 'content', 'test', 'pattern', '', 0, 0, 0) \
+             RETURNING id",
+        )
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("insert entry B neg");
+
+        // Seed graph_edges: Prerequisite edge A -> B — intentionally present.
+        // NO feature_entries row is inserted for any cycle. This validates the JOIN
+        // on feature_entries as the scoping mechanism.
+        sqlx::query(
+            "INSERT INTO graph_edges \
+                 (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) \
+             VALUES (?1, ?2, 'Prerequisite', 1.0, 0, 'test', 'test', 0)",
+        )
+        .bind(id_a)
+        .bind(id_b)
+        .execute(&store.write_pool)
+        .await
+        .expect("insert graph_edges row neg");
+
+        // -- Exercise --------------------------------------------------------
+        let result = store.query_stale_prerequisite_edges_for_cycle(cycle).await;
+
+        // -- Assert ----------------------------------------------------------
+        // Must return Ok — verifies the query runs without error when no rows match.
+        assert!(result.is_ok(), "expected Ok, got: {:?}", result.err());
+
+        // Must return empty — the JOIN on feature_entries filters out all edges
+        // whose source is not registered to this cycle.
+        assert!(
+            result.unwrap().is_empty(),
+            "expected empty result when no feature_entries row exists for cycle"
         );
     }
 }

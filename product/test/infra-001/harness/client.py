@@ -392,6 +392,7 @@ class UnimatrixClient:
         agent_id: str | None = None,
         format: str | None = None,
         edges: list[dict] | None = None,
+        feature_cycle: str | None = None,
         timeout: float | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {
@@ -411,6 +412,8 @@ class UnimatrixClient:
             args["format"] = format
         if edges is not None:
             args["edges"] = edges
+        if feature_cycle is not None:
+            args["feature_cycle"] = feature_cycle
         return self.call_tool("context_store", args, timeout=timeout)
 
     def context_search(

@@ -478,6 +478,7 @@ impl UnimatrixServer {
                 trust_level: Some(ctx.trust_level),
                 access_weight: 1,
                 current_phase: current_phase.clone(), // col-028: phase captured above (C-04)
+                write_capable: false, // context_search does not write feature_entries
             },
         );
 
@@ -613,7 +614,8 @@ impl UnimatrixServer {
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
                 access_weight: 2,
-                current_phase, // col-028: phase captured above
+                current_phase,        // col-028: phase captured above
+                write_capable: false, // context_lookup does not write feature_entries
             },
         );
 
@@ -831,6 +833,7 @@ impl UnimatrixServer {
                     trust_level: Some(ctx.trust_level),
                     access_weight: 1,
                     current_phase: current_phase.clone(),
+                    write_capable: true, // require_cap(Write) already passed; always true here
                 },
             );
         }
@@ -925,8 +928,9 @@ impl UnimatrixServer {
                 helpful: params.helpful.or(Some(true)),
                 feature_cycle: params.feature.clone(),
                 trust_level: Some(ctx.trust_level),
-                access_weight: 2, // col-028: was 1; deliberate full-content read
-                current_phase,    // col-028: phase captured above
+                access_weight: 2,     // col-028: was 1; deliberate full-content read
+                current_phase,        // col-028: phase captured above
+                write_capable: false, // context_get does not write feature_entries
             },
         );
 
@@ -1599,6 +1603,7 @@ impl UnimatrixServer {
                     trust_level: Some(ctx.trust_level),
                     access_weight: 0, // col-028: was 1; offer-only, not explicit read
                     current_phase,    // col-028: phase captured above
+                    write_capable: false, // context_briefing does not write feature_entries
                 },
             );
 
