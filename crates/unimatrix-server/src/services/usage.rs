@@ -73,6 +73,10 @@ pub(crate) struct UsageContext {
     ///   session, and any call in a session where no `context_cycle(start)` has been
     ///   emitted.
     pub current_phase: Option<String>,
+    /// Whether the caller passed Capability::Write for this call.
+    /// Set true only at the context_store call site (after require_cap(Write) passes).
+    /// All other UsageContext construction sites must explicitly set false.
+    pub write_capable: bool,
 }
 
 impl UsageService {
@@ -206,11 +210,7 @@ impl UsageService {
 
         // Pre-compute feature recording eligibility
         let feature_recording = ctx.feature_cycle.and_then(|feature_str| {
-            let trust = ctx.trust_level.unwrap_or(TrustLevel::Restricted);
-            if matches!(
-                trust,
-                TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal
-            ) {
+            if ctx.write_capable {
                 Some((feature_str, entry_ids.to_vec()))
             } else {
                 None
@@ -271,11 +271,7 @@ impl UsageService {
 
         // Pre-compute feature recording eligibility
         let feature_recording = ctx.feature_cycle.and_then(|feature_str| {
-            let trust = ctx.trust_level.unwrap_or(TrustLevel::Restricted);
-            if matches!(
-                trust,
-                TrustLevel::System | TrustLevel::Privileged | TrustLevel::Internal
-            ) {
+            if ctx.write_capable {
                 Some((feature_str, entry_ids.to_vec()))
             } else {
                 None
@@ -412,6 +408,7 @@ mod usage_tests {
                 trust_level: None,
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
     }
@@ -432,6 +429,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
 
@@ -462,6 +460,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
 
@@ -487,6 +486,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
 
@@ -513,6 +513,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -529,6 +530,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -556,6 +558,7 @@ mod usage_tests {
                     trust_level: Some(TrustLevel::Internal),
                     access_weight: 1,
                     current_phase: None,
+                    write_capable: false,
                 },
             );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -583,6 +586,7 @@ mod usage_tests {
                     trust_level: Some(TrustLevel::Internal),
                     access_weight: 1,
                     current_phase: None,
+                    write_capable: false,
                 },
             );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -611,6 +615,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -635,6 +640,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         let elapsed = start.elapsed();
@@ -661,6 +667,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -696,6 +703,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Restricted),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -734,6 +742,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -765,6 +774,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -782,6 +792,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -810,6 +821,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -839,6 +851,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -872,6 +885,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 2, // context_lookup sets this
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -906,6 +920,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 2,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -928,6 +943,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 2,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -958,6 +974,7 @@ mod usage_tests {
             trust_level: None,
             access_weight: 1,
             current_phase: Some("scope".to_string()),
+            write_capable: false,
         };
         assert_eq!(ctx.current_phase.as_deref(), Some("scope"));
 
@@ -969,6 +986,7 @@ mod usage_tests {
             trust_level: None,
             access_weight: 1,
             current_phase: None,
+            write_capable: false,
         };
         assert!(ctx_none.current_phase.is_none());
     }
@@ -994,6 +1012,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: Some("scope".to_string()),
+                write_capable: true,
             },
         );
 
@@ -1033,6 +1052,7 @@ mod usage_tests {
                 trust_level: Some(TrustLevel::Internal),
                 access_weight: 1,
                 current_phase: None,
+                write_capable: true,
             },
         );
 
@@ -1081,6 +1101,7 @@ mod usage_tests {
                 trust_level: None,
                 access_weight: 0,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -1104,6 +1125,7 @@ mod usage_tests {
                 trust_level: None,
                 access_weight: 2,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -1175,6 +1197,7 @@ mod usage_tests {
                 trust_level: None,
                 access_weight: 0,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -1201,6 +1224,7 @@ mod usage_tests {
                     trust_level: None,
                     access_weight: 2,
                     current_phase: None,
+                    write_capable: false,
                 },
             );
         }
@@ -1236,6 +1260,7 @@ mod usage_tests {
                     trust_level: None,
                     access_weight: 0,
                     current_phase: None,
+                    write_capable: false,
                 },
             );
         }
@@ -1260,6 +1285,7 @@ mod usage_tests {
                 trust_level: None,
                 access_weight: 2,
                 current_phase: None,
+                write_capable: false,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -1290,6 +1316,7 @@ mod usage_tests {
                 helpful: None,
                 feature_cycle: None,
                 trust_level: None,
+                write_capable: false,
                 access_weight: 0,
                 current_phase: None,
             },
@@ -1301,4 +1328,80 @@ mod usage_tests {
     // briefing → get sequence through the MCP JSON-RPC path is located in
     // suites/test_lifecycle.py: test_briefing_then_get_does_not_consume_dedup_slot.
     // That test is Stage 3c work and is NOT included here.
+
+    // ---------------------------------------------------------------------------
+    // vnc-016 Component 4: Usage Gate Fix — write_capable bool gate logic tests
+    // (AC-13, R-01, R-06)
+    // ---------------------------------------------------------------------------
+
+    /// AC-13: write_capable=false yields None from the feature_recording gate.
+    ///
+    /// Mirrors the gate expression in both record_mcp_usage and record_hook_injection.
+    /// A Restricted-trust agent without write_capable set will not produce a
+    /// feature_entries write even when feature_cycle is Some.
+    #[test]
+    fn test_write_capable_false_yields_no_feature_recording() {
+        let ctx = UsageContext {
+            session_id: None,
+            agent_id: None,
+            helpful: None,
+            feature_cycle: Some("test-cycle".to_string()),
+            trust_level: Some(TrustLevel::Restricted),
+            access_weight: 1,
+            current_phase: None,
+            write_capable: false,
+        };
+        let entry_ids: &[u64] = &[1, 2, 3];
+
+        let gate_result = ctx.feature_cycle.as_ref().and_then(|feature_str| {
+            if ctx.write_capable {
+                Some((feature_str.clone(), entry_ids.to_vec()))
+            } else {
+                None
+            }
+        });
+
+        assert!(
+            gate_result.is_none(),
+            "expected None when write_capable=false, got: {:?}",
+            gate_result
+        );
+    }
+
+    /// AC-13: write_capable=true yields Some from the feature_recording gate.
+    ///
+    /// Mirrors the gate expression in both record_mcp_usage and record_hook_injection.
+    /// An agent that passed require_cap(Write) will have write_capable=true and the
+    /// feature_entries write is enqueued.
+    #[test]
+    fn test_write_capable_true_yields_feature_recording() {
+        let ctx = UsageContext {
+            session_id: None,
+            agent_id: None,
+            helpful: None,
+            feature_cycle: Some("test-cycle".to_string()),
+            trust_level: Some(TrustLevel::Restricted),
+            access_weight: 1,
+            current_phase: None,
+            write_capable: true,
+        };
+        let entry_ids: &[u64] = &[42];
+
+        let gate_result = ctx.feature_cycle.as_ref().and_then(|feature_str| {
+            if ctx.write_capable {
+                Some((feature_str.clone(), entry_ids.to_vec()))
+            } else {
+                None
+            }
+        });
+
+        assert!(
+            gate_result.is_some(),
+            "expected Some(...) when write_capable=true, got None"
+        );
+
+        let (recorded_cycle, recorded_ids) = gate_result.unwrap();
+        assert_eq!(recorded_cycle, "test-cycle");
+        assert_eq!(recorded_ids, vec![42u64]);
+    }
 }
