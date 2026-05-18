@@ -9528,4 +9528,83 @@ mod redirect_loop_tests {
             "edge must point at direct_new_id (no find_terminal_active traversal)"
         );
     }
+
+    // ---- AC-04: correction succeeds when redirect_graph_edge returns Err ----
+
+    /// AC-04: run_redirect_loop returns Some(rs) with failed==1, redirected==0 when
+    /// redirect_graph_edge encounters a SQL infrastructure failure.
+    ///
+    /// Technique: seed entry A and edge C→A, then rename `graph_edges` to
+    /// `graph_edges_broken` and replace it with a read-only VIEW that delegates
+    /// SELECTs to the renamed table. query_incoming_edges (SELECT) succeeds via the
+    /// view; redirect_graph_edge (DELETE + INSERT) fails because SQLite disallows
+    /// DML against a plain view without INSTEAD OF triggers.
+    ///
+    /// This validates ADR-003: redirect failures are logged and counted (failed++),
+    /// never propagated back to the correction caller.
+    #[tokio::test]
+    async fn test_redirect_loop_correction_succeeds_when_redirect_fails() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "ac04a").await;
+
+        // Insert source entry C (Active — passes source-validation guard).
+        let src_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("ac04c", "decision").build())
+            .await
+            .expect("insert source entry");
+
+        // Seed edge C → A (Prerequisite — not Supersedes, so query_incoming_edges returns it).
+        insert_edge(&store, src_id, original_id, "Prerequisite").await;
+
+        // new_entry_id: insert a placeholder Active entry (simulates the corrected entry).
+        let new_entry_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("ac04b", "decision").build())
+            .await
+            .expect("insert new entry placeholder");
+
+        // ── Corrupt the write path while preserving the read path ──────────────
+        // Rename the real table so the edge row survives but DML fails on the view.
+        // query_incoming_edges SELECTs from `graph_edges` (via read_pool) → hits the view → Ok.
+        // redirect_graph_edge issues DELETE + INSERT on `graph_edges` (via write_pool_server) →
+        // SQLite returns "cannot modify view" → EdgeRedirectError::TransactionError.
+        sqlx::query("ALTER TABLE graph_edges RENAME TO graph_edges_broken")
+            .execute(store.write_pool_server())
+            .await
+            .expect("rename graph_edges");
+        sqlx::query(
+            "CREATE VIEW graph_edges AS \
+             SELECT source_id, target_id, relation_type, weight, created_at, \
+                    created_by, source, bootstrap_only, metadata \
+             FROM graph_edges_broken",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .expect("create read-only view");
+
+        // ── Call run_redirect_loop ─────────────────────────────────────────────
+        // Must return Some(rs) — not None, not a panic, not a propagated Err.
+        let result = run_redirect_loop(&store, original_id, new_entry_id).await;
+        let rs = result.expect(
+            "AC-04: run_redirect_loop must return Some(rs) even when redirect_graph_edge fails; \
+             correction posture is warn+continue, not abort",
+        );
+
+        // ── Assertions ────────────────────────────────────────────────────────
+        assert_eq!(
+            rs.failed, 1,
+            "AC-04: failed must be 1 when redirect_graph_edge returns Err"
+        );
+        assert_eq!(
+            rs.redirected, 0,
+            "AC-04: redirected must be 0 when redirect_graph_edge returns Err"
+        );
+        assert_eq!(
+            rs.skipped, 0,
+            "AC-04: skipped must be 0 (source is Active, not Quarantined/Deprecated)"
+        );
+        assert_eq!(
+            rs.found, 1,
+            "AC-04: found must be 1 (one incoming edge was processed)"
+        );
+    }
 }
