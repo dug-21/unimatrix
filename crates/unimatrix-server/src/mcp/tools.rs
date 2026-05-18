@@ -29,13 +29,19 @@ use crate::infra::validation::{
 use crate::mcp::response::{
     format_correct_success, format_deprecate_success, format_duplicate_found,
     format_enroll_success, format_index_table, format_lookup_results, format_quarantine_success,
-    format_restore_success, format_search_results, format_single_entry, format_status_report,
-    format_store_success, format_store_success_with_note,
+    format_redirect_summary, format_restore_success, format_search_results, format_single_entry,
+    format_status_report, format_store_success, format_store_success_with_note,
 };
 use crate::server::UnimatrixServer;
 use crate::services::ServiceSearchParams;
 use crate::services::usage::{AccessSource, UsageContext};
 use crate::uds::hook::MAX_GOAL_BYTES;
+
+/// Maximum incoming edges to auto-redirect per context_correct call (SR-01 ceiling).
+/// Entries with more than this many incoming edges emit tracing::warn! and redirect
+/// only the first REDIRECT_CEILING rows. See ADR-004 vnc-017.
+// pub(super) so the sibling test module can reference it via use super::REDIRECT_CEILING.
+pub(super) const REDIRECT_CEILING: usize = 50;
 
 /// Parameters for semantic search.
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -1076,18 +1082,48 @@ impl UnimatrixServer {
             }
         }
 
+        // 8c. Auto-redirect incoming edges (vnc-017).
+        //
+        // NOTE: read_pool() and write_pool_server() currently alias the same pool
+        // (db.rs:294). Canonical accessor names used per C-07 vnc-017.
+        let redirect_summary = run_redirect_loop(
+            &self.entry_store,
+            original_id,
+            correct_result.corrected_entry.id,
+        )
+        .await;
+
         // 9. Confidence for both entries (fire-and-forget, via ConfidenceService)
         self.services.confidence.recompute(&[
             correct_result.corrected_entry.id,
             correct_result.deprecated_original.id,
         ]);
 
-        // 10. Format response
-        Ok(format_correct_success(
+        // 10. Format response (optional redirect summary appended when found > 0)
+        let mut result = format_correct_success(
             &correct_result.deprecated_original,
             &correct_result.corrected_entry,
             ctx.format,
-        ))
+        );
+        if let Some(rs) = redirect_summary {
+            if let Some(summary_text) = format_redirect_summary(
+                rs.found,
+                rs.skipped,
+                rs.redirected,
+                rs.failed,
+                rs.truncated,
+                rs.total_raw,
+            ) {
+                // Append redirect summary line to the first content item's text.
+                if let Some(first) = result.content.first_mut() {
+                    if let rmcp::model::RawContent::Text(ref mut t) = first.raw {
+                        t.text.push('\n');
+                        t.text.push_str(&summary_text);
+                    }
+                }
+            }
+        }
+        Ok(result)
     }
 
     #[tool(
@@ -4360,6 +4396,186 @@ fn compute_phase_stats(
     }
 
     result
+}
+
+// ---------------------------------------------------------------------------
+// vnc-017: redirect_loop helpers
+// ---------------------------------------------------------------------------
+
+/// Accumulator returned by `run_redirect_loop` (vnc-017).
+///
+/// - `found`:      non-Supersedes rows processed (after ceiling cap)
+/// - `skipped`:    edges whose source was Quarantined or Deprecated (not counted as failure)
+/// - `redirected`: edges where `redirect_graph_edge` returned `Ok(())`
+/// - `failed`:     edges where `redirect_graph_edge` returned `Err(_)`
+/// - `truncated`:  true when the raw row count exceeded `REDIRECT_CEILING`
+/// - `total_raw`:  raw incoming count before ceiling truncation
+// pub(super) for test accessibility — non-exported outside this crate module.
+#[derive(Debug)]
+pub(super) struct RedirectSummary {
+    found: usize,
+    skipped: usize,
+    redirected: usize,
+    failed: usize,
+    truncated: bool,
+    total_raw: usize,
+}
+
+/// Execute the auto-redirect loop for incoming edges on `original_id` (step 8c, vnc-017).
+///
+/// Called after `correct_entry` commits (step 8) and Phase B edge writes (step 8b),
+/// before confidence recompute (step 9). The correction transaction has already committed;
+/// this function only redirects stale incoming edges and never aborts the correction.
+///
+/// Returns `None` when:
+/// - `query_incoming_edges` fails (logs warn; correction already succeeded)
+/// - zero non-Supersedes incoming edges exist (AC-11 / ADR-004)
+///
+/// Returns `Some(RedirectSummary)` when one or more edges were found and processed.
+// pub(super) for test accessibility — not exported outside this crate module.
+pub(super) async fn run_redirect_loop(
+    store: &unimatrix_core::Store,
+    original_id: u64,
+    new_entry_id: u64,
+) -> Option<RedirectSummary> {
+    use unimatrix_core::Status;
+
+    // NOTE: read_pool() and write_pool_server() currently alias the same pool
+    // (db.rs:294). Use canonical accessor names per C-07 vnc-017.
+    let incoming = match store.query_incoming_edges(original_id).await {
+        Err(e) => {
+            // query_incoming_edges SQL failure: log warn, skip loop entirely.
+            // Correction has already committed; do not propagate this error.
+            tracing::warn!(
+                entry_id = original_id,
+                error = %e,
+                "vnc-017: query_incoming_edges failed; skipping auto-redirect"
+            );
+            return None;
+        }
+        Ok(rows) if rows.is_empty() => {
+            // Zero-edge path: no summary, no log (FR-13, ADR-004).
+            return None;
+        }
+        Ok(rows) => rows,
+    };
+
+    // ── Ceiling check (ADR-004 SR-01) ──────────────────────────────────────
+    let total_raw = incoming.len();
+    let truncated = total_raw > REDIRECT_CEILING;
+    if truncated {
+        tracing::warn!(
+            entry_id = original_id,
+            total_found = total_raw,
+            ceiling = REDIRECT_CEILING,
+            "vnc-017: incoming edge fan-in exceeds ceiling; \
+             redirecting only first {} of {} edges",
+            REDIRECT_CEILING,
+            total_raw
+        );
+    }
+    let edges_to_process = if truncated {
+        &incoming[..REDIRECT_CEILING]
+    } else {
+        &incoming[..]
+    };
+
+    // ── Per-edge loop ───────────────────────────────────────────────────────
+    let mut skipped: usize = 0;
+    let mut redirected: usize = 0;
+    let mut failed: usize = 0;
+
+    // new_entry_id is always correct_result.corrected_entry.id —
+    // terminal-active by definition (ADR-001 vnc-017). No find_terminal_active.
+    // No TypedGraphState read lock (NFR-05).
+
+    for edge in edges_to_process {
+        // Source-validation guard (FR-06, ADR-003 SR-06).
+        // Skip Quarantined or Deprecated sources without incrementing failed.
+        match store.get(edge.source_id).await {
+            Ok(src) if src.status == Status::Quarantined || src.status == Status::Deprecated => {
+                tracing::warn!(
+                    source_id = edge.source_id,
+                    relation_type = %edge.relation_type,
+                    status = ?src.status,
+                    "vnc-017: skipping incoming edge from invalid source \
+                     (quarantined or deprecated)"
+                );
+                skipped += 1;
+                continue;
+            }
+            Ok(_) => {
+                // Source is Active (or other valid status): proceed.
+            }
+            Err(e) => {
+                // Source lookup failed (entry deleted? pool error?).
+                // Treat as skipped (source unverifiable) — do not count as failed.
+                tracing::warn!(
+                    source_id = edge.source_id,
+                    error = %e,
+                    "vnc-017: source entry lookup failed; skipping edge"
+                );
+                skipped += 1;
+                continue;
+            }
+        }
+
+        // Call redirect_graph_edge — one RAII transaction per edge (NFR-03).
+        // Caller contract satisfied: new_entry_id is a freshly inserted Active entry.
+        // No re-validation of new_entry_id needed (ADR-001, ADR-003).
+        match crate::mcp::edge_write::redirect_graph_edge(
+            store,
+            edge.source_id,
+            original_id,
+            new_entry_id,
+            &edge.relation_type,
+            edge.created_at,
+        )
+        .await
+        {
+            Ok(()) => {
+                // Covers both: physical move AND UNIQUE-conflict idempotent ignore.
+                // Both count as success (ADR-003 return contract table).
+                redirected += 1;
+            }
+            Err(e) => {
+                // SQL infrastructure failure — warn and continue (ADR-003).
+                tracing::warn!(
+                    source_id = edge.source_id,
+                    target_old = original_id,
+                    target_new = new_entry_id,
+                    relation_type = %edge.relation_type,
+                    error = %e,
+                    "vnc-017: redirect_graph_edge failed; edge left pointing at \
+                     deprecated entry"
+                );
+                failed += 1;
+            }
+        }
+    }
+
+    // Summary info log (FR-09) — emitted once after loop, only when found > 0.
+    let found = edges_to_process.len();
+    tracing::info!(
+        entry_id = original_id,
+        new_entry_id = new_entry_id,
+        found = found,
+        redirected = redirected,
+        skipped = skipped,
+        failed = failed,
+        truncated = truncated,
+        total_raw = total_raw,
+        "vnc-017: auto-redirect loop complete"
+    );
+
+    Some(RedirectSummary {
+        found,
+        skipped,
+        redirected,
+        failed,
+        truncated,
+        total_raw,
+    })
 }
 
 #[cfg(test)]
@@ -8751,4 +8967,565 @@ mod vnc014_audit_field_tests {
     // Verified by successful compilation above — if build_context were present,
     // the tools.rs migration would be incomplete and the compiler would have already failed
     // (old signature has 3 params; new signature has 5 — the types differ).
+}
+
+// vnc-017: redirect_loop unit tests.
+// Placed in a separate module to access module-private helpers (run_redirect_loop,
+// REDIRECT_CEILING, RedirectSummary) directly by path — Rust glob imports exclude
+// pub(super) items, so explicit module-scope access is required.
+#[cfg(test)]
+mod redirect_loop_tests {
+    use crate::mcp::tools::{REDIRECT_CEILING, run_redirect_loop};
+
+    /// Open a test store and insert a basic Active entry. Returns (store, entry_id).
+    async fn open_store_and_insert_active(
+        dir: &tempfile::TempDir,
+        topic: &str,
+    ) -> (std::sync::Arc<unimatrix_store::SqlxStore>, u64) {
+        let path = dir.path().join(format!("{topic}.db"));
+        let store = std::sync::Arc::new(
+            unimatrix_store::SqlxStore::open(&path, unimatrix_store::PoolConfig::default())
+                .await
+                .expect("open test store"),
+        );
+        let entry_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new(topic, "decision").build())
+            .await
+            .expect("insert active entry");
+        (store, entry_id)
+    }
+
+    /// Insert a graph_edge row using write_pool_server() accessor.
+    async fn insert_edge(
+        store: &unimatrix_store::SqlxStore,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+    ) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges \
+             (source_id, target_id, relation_type, weight, created_at, created_by, source, \
+              bootstrap_only, metadata) \
+             VALUES (?1, ?2, ?3, 1.0, ?4, 'agent', 'agent', 0, '')",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .bind(now as i64)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert edge");
+    }
+
+    /// Insert a graph_edge with explicit created_at using write_pool_server().
+    async fn insert_edge_at(
+        store: &unimatrix_store::SqlxStore,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+        created_at: u64,
+    ) {
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges \
+             (source_id, target_id, relation_type, weight, created_at, created_by, source, \
+              bootstrap_only, metadata) \
+             VALUES (?1, ?2, ?3, 1.0, ?4, 'agent', 'agent', 0, '')",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .bind(created_at as i64)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert edge at");
+    }
+
+    /// Check if a graph_edge row exists by (source_id, target_id, relation_type).
+    async fn edge_exists(
+        store: &unimatrix_store::SqlxStore,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+    ) -> bool {
+        let pool = store.write_pool_server();
+        let row = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM graph_edges \
+             WHERE source_id = ?1 AND target_id = ?2 AND relation_type = ?3",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .fetch_one(pool)
+        .await
+        .expect("edge_exists query");
+        row > 0
+    }
+
+    /// Count non-Supersedes edges pointing at a target.
+    async fn count_non_supersedes_incoming(
+        store: &unimatrix_store::SqlxStore,
+        target_id: u64,
+    ) -> usize {
+        let pool = store.write_pool_server();
+        let row = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM graph_edges \
+             WHERE target_id = ?1 AND relation_type != 'Supersedes'",
+        )
+        .bind(target_id as i64)
+        .fetch_one(pool)
+        .await
+        .expect("count_non_supersedes_incoming");
+        row as usize
+    }
+
+    /// Perform a store-level correction (no ONNX: uses dummy data_id=0, embedding_dim=0).
+    async fn do_correct_entry(
+        store: &unimatrix_store::SqlxStore,
+        original_id: u64,
+        new_content: &str,
+    ) -> (unimatrix_store::EntryRecord, unimatrix_store::EntryRecord) {
+        let original = store.get(original_id).await.expect("get original");
+        let correction = unimatrix_store::NewEntry {
+            title: original.title.clone(),
+            content: new_content.to_string(),
+            topic: original.topic.clone(),
+            category: original.category.clone(),
+            tags: original.tags.clone(),
+            source: original.source.clone(),
+            status: unimatrix_core::Status::Active,
+            created_by: "test-agent".to_string(),
+            feature_cycle: original.feature_cycle.clone(),
+            trust_source: "test".to_string(),
+        };
+        store
+            .correct_entry(original_id, correction, 0, 0)
+            .await
+            .expect("correct_entry")
+    }
+
+    // ---- AC-11: Zero incoming edges — no return value, no log ----
+
+    /// AC-11: When no non-Supersedes incoming edges exist, run_redirect_loop returns None.
+    #[tokio::test]
+    async fn test_redirect_loop_no_incoming_edges_returns_none() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "ac11").await;
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected content").await;
+
+        let result = run_redirect_loop(&store, original_id, new_entry.id).await;
+        assert!(
+            result.is_none(),
+            "expected None when no non-Supersedes incoming edges; got {:?}",
+            result
+        );
+    }
+
+    // ---- AC-14: End-to-end redirect via in-memory SQLite ----
+
+    /// AC-14: Edge pointing at original_id is redirected to new_entry.id after loop.
+    #[tokio::test]
+    async fn test_redirect_loop_end_to_end_moves_edge_to_new_target() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "ac14a").await;
+
+        // Insert a source entry (C) that will have an edge to original.
+        let src_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("ac14b", "decision").build())
+            .await
+            .expect("insert source");
+
+        insert_edge(&store, src_id, original_id, "Prerequisite").await;
+
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = new_entry.id;
+
+        let result = run_redirect_loop(&store, original_id, new_id).await;
+        let rs = result.expect("expected Some(RedirectSummary)");
+        assert_eq!(rs.found, 1);
+        assert_eq!(rs.redirected, 1);
+        assert_eq!(rs.skipped, 0);
+        assert_eq!(rs.failed, 0);
+
+        // Edge must now point at new_id, not original_id.
+        assert!(
+            edge_exists(&store, src_id, new_id, "Prerequisite").await,
+            "edge must be redirected to new entry"
+        );
+    }
+
+    // ---- AC-08: Quarantined source — skipped, not failed ----
+
+    /// AC-08: Quarantined source entry causes the edge to be skipped (skipped++, failed==0).
+    #[tokio::test]
+    async fn test_redirect_loop_quarantined_source_skipped_not_failed() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "ac08q").await;
+
+        // Insert quarantined source entry.
+        let src_id = store
+            .insert(
+                unimatrix_store::test_helpers::TestEntry::new("ac08q-src", "decision")
+                    .with_status(unimatrix_core::Status::Quarantined)
+                    .build(),
+            )
+            .await
+            .expect("insert quarantined source");
+
+        insert_edge(&store, src_id, original_id, "Contradicts").await;
+
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = new_entry.id;
+
+        let rs = run_redirect_loop(&store, original_id, new_id)
+            .await
+            .expect("expected Some(RedirectSummary)");
+        assert_eq!(rs.skipped, 1, "quarantined source must increment skipped");
+        assert_eq!(rs.failed, 0, "quarantined source must NOT increment failed");
+        assert_eq!(rs.redirected, 0);
+
+        // Edge must remain pointing at original_id (unchanged).
+        assert!(
+            edge_exists(&store, src_id, original_id, "Contradicts").await,
+            "edge must remain unchanged for quarantined source"
+        );
+        assert!(
+            !edge_exists(&store, src_id, new_id, "Contradicts").await,
+            "no new edge must be inserted for quarantined source"
+        );
+    }
+
+    // ---- R-06: Deprecated source — skipped, not failed ----
+
+    /// R-06: Deprecated source entry causes the edge to be skipped (skipped++, failed==0).
+    #[tokio::test]
+    async fn test_redirect_loop_deprecated_source_skipped_not_failed() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "r06d").await;
+
+        // Insert deprecated source entry.
+        let src_id = store
+            .insert(
+                unimatrix_store::test_helpers::TestEntry::new("r06d-src", "decision")
+                    .with_status(unimatrix_core::Status::Deprecated)
+                    .build(),
+            )
+            .await
+            .expect("insert deprecated source");
+
+        insert_edge(&store, src_id, original_id, "Prerequisite").await;
+
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected").await;
+
+        let rs = run_redirect_loop(&store, original_id, new_entry.id)
+            .await
+            .expect("expected Some(RedirectSummary)");
+        assert_eq!(rs.skipped, 1, "deprecated source must increment skipped");
+        assert_eq!(rs.failed, 0, "deprecated source must NOT increment failed");
+        assert_eq!(rs.redirected, 0);
+
+        // Edge must remain unchanged.
+        assert!(
+            edge_exists(&store, src_id, original_id, "Prerequisite").await,
+            "edge must remain unchanged for deprecated source"
+        );
+    }
+
+    // ---- AC-09 / R-09: UNIQUE conflict counts as success ----
+
+    /// AC-09: When the new edge already exists (UNIQUE conflict), redirect_graph_edge
+    /// returns Ok(()) and redirected++, failed==0.
+    #[tokio::test]
+    async fn test_redirect_loop_unique_conflict_counts_as_success() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "ac09a").await;
+
+        let src_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("ac09b", "decision").build())
+            .await
+            .expect("insert source");
+
+        // Pre-insert the new_entry manually so we can pre-create the edge.
+        let new_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("ac09c", "decision").build())
+            .await
+            .expect("insert placeholder new entry");
+
+        // Old edge: C → original_id (will be redirected).
+        insert_edge(&store, src_id, original_id, "Prerequisite").await;
+        // Pre-existing edge: C → new_id (conflict case).
+        insert_edge(&store, src_id, new_id, "Prerequisite").await;
+
+        // Correct original_id (but note: correct_entry requires original_id to be Active;
+        // since we inserted new_id directly, use run_redirect_loop with new_id directly).
+        let rs = run_redirect_loop(&store, original_id, new_id)
+            .await
+            .expect("expected Some(RedirectSummary)");
+        assert_eq!(
+            rs.redirected, 1,
+            "UNIQUE conflict must count as success (redirected++)"
+        );
+        assert_eq!(rs.failed, 0, "UNIQUE conflict must NOT increment failed");
+        assert_eq!(rs.skipped, 0);
+
+        // Exactly one row C → new_id must exist (no duplicate).
+        let count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM graph_edges \
+             WHERE source_id = ?1 AND target_id = ?2 AND relation_type = 'Prerequisite'",
+        )
+        .bind(src_id as i64)
+        .bind(new_id as i64)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("count");
+        assert_eq!(
+            count, 1,
+            "exactly one row must exist after idempotent redirect"
+        );
+    }
+
+    // ---- R-06: Mixed Active+Quarantined fan-in ----
+
+    /// R-06 variant: Mixed-status fan-in — valid source redirects, invalid skipped.
+    #[tokio::test]
+    async fn test_redirect_loop_mixed_status_redirects_valid_skips_invalid() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "r06m").await;
+
+        let src_valid = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("r06m-v", "decision").build())
+            .await
+            .expect("insert valid source");
+
+        let src_bad = store
+            .insert(
+                unimatrix_store::test_helpers::TestEntry::new("r06m-b", "decision")
+                    .with_status(unimatrix_core::Status::Quarantined)
+                    .build(),
+            )
+            .await
+            .expect("insert quarantined source");
+
+        // Contradicts edges (bidirectional on redirect).
+        insert_edge(&store, src_valid, original_id, "Contradicts").await;
+        insert_edge(&store, src_bad, original_id, "Contradicts").await;
+
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = new_entry.id;
+
+        let rs = run_redirect_loop(&store, original_id, new_id)
+            .await
+            .expect("expected Some(RedirectSummary)");
+        assert_eq!(rs.redirected, 1, "valid source must be redirected");
+        assert_eq!(rs.skipped, 1, "quarantined source must be skipped");
+        assert_eq!(rs.failed, 0);
+
+        // Valid source: Contradicts is bidirectional — both directions must exist.
+        assert!(
+            edge_exists(&store, src_valid, new_id, "Contradicts").await,
+            "forward Contradicts (src_valid → new_id) must exist"
+        );
+        assert!(
+            edge_exists(&store, new_id, src_valid, "Contradicts").await,
+            "reverse Contradicts (new_id → src_valid) must exist"
+        );
+
+        // Quarantined source: edge must remain pointing at original_id.
+        assert!(
+            edge_exists(&store, src_bad, original_id, "Contradicts").await,
+            "quarantined source edge must remain at original_id"
+        );
+        assert!(
+            !edge_exists(&store, src_bad, new_id, "Contradicts").await,
+            "no new edge for quarantined source"
+        );
+    }
+
+    // ---- R-05: Fan-in ceiling (55 edges → truncate at 50) ----
+
+    /// R-05: When 55 incoming edges exist, exactly 50 are redirected; 5 remain at original.
+    #[tokio::test]
+    async fn test_redirect_loop_ceiling_truncates_at_50_and_warns() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "r05-55").await;
+
+        // Insert 55 source entries (all Active) and edges to original.
+        for i in 0u64..55 {
+            let src_id = store
+                .insert(
+                    unimatrix_store::test_helpers::TestEntry::new(
+                        &format!("r05-src-{i}"),
+                        "decision",
+                    )
+                    .build(),
+                )
+                .await
+                .expect("insert source");
+            insert_edge_at(&store, src_id, original_id, "Prerequisite", 1000 + i).await;
+        }
+
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = new_entry.id;
+
+        let rs = run_redirect_loop(&store, original_id, new_id)
+            .await
+            .expect("expected Some(RedirectSummary)");
+        assert_eq!(
+            rs.found, 50,
+            "found must equal REDIRECT_CEILING (50 after cap)"
+        );
+        assert_eq!(rs.redirected, 50, "exactly 50 edges must be redirected");
+        assert_eq!(rs.failed, 0);
+        assert!(rs.truncated, "truncated must be true");
+        assert_eq!(rs.total_raw, 55, "total_raw must be 55 (pre-cap count)");
+
+        // Exactly 50 edges at new_id; 5 edges still at original_id.
+        let redirected_count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM graph_edges WHERE target_id = ?1 AND relation_type != 'Supersedes'",
+        )
+        .bind(new_id as i64)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("count redirected");
+        assert_eq!(
+            redirected_count, 50,
+            "exactly 50 edges must point at new_id"
+        );
+
+        let remaining_count = count_non_supersedes_incoming(&store, original_id).await;
+        assert_eq!(
+            remaining_count, 5,
+            "exactly 5 edges must remain at original_id"
+        );
+    }
+
+    // ---- R-05 variant: Exactly 50 edges — no truncation ----
+
+    /// R-05 variant: Exactly 50 incoming edges → all redirected, no truncation warn.
+    #[tokio::test]
+    async fn test_redirect_loop_exactly_at_ceiling_no_truncation() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "r05-50").await;
+
+        for i in 0u64..50 {
+            let src_id = store
+                .insert(
+                    unimatrix_store::test_helpers::TestEntry::new(
+                        &format!("r05e-src-{i}"),
+                        "decision",
+                    )
+                    .build(),
+                )
+                .await
+                .expect("insert source");
+            insert_edge_at(&store, src_id, original_id, "Prerequisite", 1000 + i).await;
+        }
+
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = new_entry.id;
+
+        let rs = run_redirect_loop(&store, original_id, new_id)
+            .await
+            .expect("expected Some(RedirectSummary)");
+        assert_eq!(rs.found, 50);
+        assert_eq!(rs.redirected, 50);
+        assert!(
+            !rs.truncated,
+            "truncated must be false for exactly 50 edges"
+        );
+        assert_eq!(rs.total_raw, 50);
+
+        let remaining = count_non_supersedes_incoming(&store, original_id).await;
+        assert_eq!(remaining, 0, "no edges must remain at original_id");
+    }
+
+    // ---- R-10: Phase B + redirect loop — no duplicate rows ----
+
+    /// R-10: INSERT OR IGNORE inside redirect_graph_edge absorbs the duplicate silently
+    /// when Phase B and the redirect loop both attempt to write the same edge.
+    #[tokio::test]
+    async fn test_redirect_loop_idempotent_with_pre_existing_edge() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "r10a").await;
+
+        let src_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("r10b", "decision").build())
+            .await
+            .expect("insert source");
+
+        insert_edge(&store, src_id, original_id, "Prerequisite").await;
+
+        let new_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("r10c", "decision").build())
+            .await
+            .expect("insert new target");
+
+        // Pre-insert the new edge (simulates Phase B already writing src→new_id).
+        insert_edge(&store, src_id, new_id, "Prerequisite").await;
+
+        // Now run the redirect loop; it will encounter UNIQUE conflict → INSERT OR IGNORE.
+        let rs = run_redirect_loop(&store, original_id, new_id)
+            .await
+            .expect("expected Some(RedirectSummary)");
+        assert_eq!(
+            rs.redirected, 1,
+            "UNIQUE conflict must still count as redirected"
+        );
+        assert_eq!(rs.failed, 0);
+
+        // Exactly one row must exist for (src_id, new_id, Prerequisite).
+        let count = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM graph_edges \
+             WHERE source_id = ?1 AND target_id = ?2 AND relation_type = 'Prerequisite'",
+        )
+        .bind(src_id as i64)
+        .bind(new_id as i64)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("count");
+        assert_eq!(count, 1, "exactly one row must exist — no duplicate (R-10)");
+    }
+
+    // ---- R-01 / AC-03: Structural — new_entry_id is always the direct target ----
+
+    /// R-01 / AC-03: Structural test confirming REDIRECT_CEILING constant value.
+    #[test]
+    fn test_redirect_ceiling_constant_is_50() {
+        assert_eq!(
+            REDIRECT_CEILING, 50,
+            "REDIRECT_CEILING must equal 50 (ADR-004)"
+        );
+    }
+
+    /// AC-03 structural: run_redirect_loop uses new_entry_id directly (no chain traversal).
+    /// After correct(A → B), an edge E → A is redirected to E → B, not to any further hop.
+    #[tokio::test]
+    async fn test_redirect_loop_targets_new_entry_not_chain_traversal() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "ac03a").await;
+
+        let src_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new("ac03b", "decision").build())
+            .await
+            .expect("insert source");
+
+        insert_edge(&store, src_id, original_id, "Informs").await;
+
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected").await;
+        let direct_new_id = new_entry.id;
+
+        let rs = run_redirect_loop(&store, original_id, direct_new_id)
+            .await
+            .expect("expected Some");
+        assert_eq!(rs.redirected, 1);
+
+        // Edge points at direct_new_id, not any further-hop entry.
+        assert!(
+            edge_exists(&store, src_id, direct_new_id, "Informs").await,
+            "edge must point at direct_new_id (no find_terminal_active traversal)"
+        );
+    }
 }
