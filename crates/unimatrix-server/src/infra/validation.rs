@@ -843,6 +843,7 @@ mod tests {
             format: None,
             feature_cycle: None,
             session_id: None,
+            edges: None,
         };
         assert!(validate_store_params(&params, 50_000).is_ok());
     }
@@ -860,6 +861,7 @@ mod tests {
             format: Some("json".to_string()),
             feature_cycle: Some("col-001".to_string()),
             session_id: None,
+            edges: None,
         };
         assert!(validate_store_params(&params, 50_000).is_ok());
     }
@@ -877,6 +879,7 @@ mod tests {
             format: None,
             feature_cycle: Some("a".repeat(129)),
             session_id: None,
+            edges: None,
         };
         assert!(validate_store_params(&params, 50_000).is_err());
     }
@@ -894,6 +897,7 @@ mod tests {
             format: None,
             feature_cycle: Some("a".repeat(128)),
             session_id: None,
+            edges: None,
         };
         assert!(validate_store_params(&params, 50_000).is_ok());
     }
@@ -914,6 +918,7 @@ mod tests {
             format: None,
             feature_cycle: None,
             session_id: None,
+            edges: None,
         };
         let err = validate_store_params(&params_over, 8_000).unwrap_err();
         let reason = match &err {
@@ -941,6 +946,7 @@ mod tests {
             format: None,
             feature_cycle: None,
             session_id: None,
+            edges: None,
         };
         assert!(validate_store_params(&params_at, 8_000).is_ok());
 
@@ -957,6 +963,7 @@ mod tests {
             format: None,
             feature_cycle: None,
             session_id: None,
+            edges: None,
         };
         assert_eq!("🟩".repeat(2001).len(), 8004, "each 🟩 is 4 bytes");
         assert!(validate_store_params(&params_multibyte_over, 8_000).is_err());
@@ -973,6 +980,7 @@ mod tests {
             format: None,
             feature_cycle: None,
             session_id: None,
+            edges: None,
         };
         assert_eq!("🟩".repeat(2000).len(), 8000, "each 🟩 is 4 bytes");
         assert!(validate_store_params(&params_multibyte_at, 8_000).is_ok());
@@ -994,6 +1002,7 @@ mod tests {
             format: None,
             feature_cycle: None,
             session_id: None,
+            edges: None,
         };
         let err = validate_store_params(&params, 8_000).unwrap_err();
         match err {
@@ -1035,6 +1044,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         assert!(validate_correct_params(&params, 50_000).is_ok());
     }
@@ -1051,6 +1061,7 @@ mod tests {
             title: Some("New Title".to_string()),
             agent_id: Some("agent".to_string()),
             format: Some("json".to_string()),
+            edges: None,
         };
         assert!(validate_correct_params(&params, 50_000).is_ok());
     }
@@ -1067,6 +1078,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         assert!(validate_correct_params(&params, 50_000).is_err());
     }
@@ -1083,6 +1095,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         assert!(validate_correct_params(&params, 50_000).is_err());
     }
@@ -1099,6 +1112,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         assert!(validate_correct_params(&params, 50_000).is_err());
     }
@@ -1115,6 +1129,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         assert!(validate_correct_params(&params, 50_000).is_ok());
     }
@@ -1134,6 +1149,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         let err = validate_correct_params(&params_over, 8_000).unwrap_err();
         let reason = match &err {
@@ -1160,6 +1176,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         assert!(validate_correct_params(&params_at, 8_000).is_ok());
 
@@ -1174,6 +1191,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         assert!(validate_correct_params(&params_multibyte_over, 8_000).is_err());
 
@@ -1188,6 +1206,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         assert!(validate_correct_params(&params_multibyte_at, 8_000).is_ok());
     }
@@ -1205,6 +1224,7 @@ mod tests {
             title: None,
             agent_id: None,
             format: None,
+            edges: None,
         };
         let err = validate_correct_params(&params, 8_000).unwrap_err();
         match err {

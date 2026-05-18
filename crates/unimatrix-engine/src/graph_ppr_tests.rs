@@ -857,3 +857,151 @@ fn test_direction_outgoing_required_for_informs_mass_flow() {
         scores.get(&100).copied().unwrap_or(0.0)
     );
 }
+
+// ---- vnc-015: RelatedTo positive type (ADR-006, R-11, AC-17) ----
+
+/// test_ppr_positive_types_include_related_to (R-11, AC-17):
+/// RelatedTo edge must propagate PPR mass.
+///
+/// Graph: A (id=200) → B (id=201) via RelatedTo, plus reverse edge.
+/// Seed: B. After PPR, A must receive positive mass (RelatedTo is a positive type).
+#[test]
+fn test_ppr_positive_types_include_related_to() {
+    // Both directions so A can accumulate from B's seed score (pattern from entry #3896).
+    let graph = make_graph_with_edges(&[
+        (200, 201, RelationType::RelatedTo, 1.0),
+        (201, 200, RelationType::RelatedTo, 1.0),
+    ]);
+
+    let seed_scores: HashMap<u64, f64> = [(201u64, 1.0)].into_iter().collect();
+    let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
+
+    assert!(
+        scores.get(&200).copied().unwrap_or(0.0) > 0.0,
+        "A (id=200) must receive non-zero PPR mass via RelatedTo edge when B (id=201) is seeded. \
+         score[200]={:.6}. RelatedTo must be in the positive type set (ADR-006).",
+        scores.get(&200).copied().unwrap_or(0.0)
+    );
+}
+
+/// test_ppr_related_to_weight_equals_existing_positive_types (R-11, ADR-006):
+/// RelatedTo gets equal weight to the existing 4 positive types.
+///
+/// Two-node graphs: one with Supports edge (A→B + reverse), one with RelatedTo edge (C→D + reverse).
+/// Same edge weight. Seed the target in each. Scores must be equal.
+#[test]
+fn test_ppr_related_to_weight_equals_existing_positive_types() {
+    let graph_supports = make_graph_with_edges(&[
+        (210, 211, RelationType::Supports, 1.0),
+        (211, 210, RelationType::Supports, 1.0),
+    ]);
+    let graph_related = make_graph_with_edges(&[
+        (212, 213, RelationType::RelatedTo, 1.0),
+        (213, 212, RelationType::RelatedTo, 1.0),
+    ]);
+
+    let seed_supports: HashMap<u64, f64> = [(211u64, 1.0)].into_iter().collect();
+    let seed_related: HashMap<u64, f64> = [(213u64, 1.0)].into_iter().collect();
+
+    let scores_supports = personalized_pagerank(&graph_supports, &seed_supports, 0.85, 20);
+    let scores_related = personalized_pagerank(&graph_related, &seed_related, 0.85, 20);
+
+    let score_a = scores_supports.get(&210).copied().unwrap_or(0.0);
+    let score_c = scores_related.get(&212).copied().unwrap_or(0.0);
+
+    assert!(
+        score_a > 0.0,
+        "Supports: node 210 must receive non-zero PPR mass"
+    );
+    assert!(
+        score_c > 0.0,
+        "RelatedTo: node 212 must receive non-zero PPR mass"
+    );
+
+    // Equal weight: scores should be identical (same topology, same edge weight).
+    assert!(
+        (score_a - score_c).abs() < 1e-9,
+        "RelatedTo and Supports with equal weights must produce identical PPR mass. \
+         score_supports={score_a:.9}, score_related={score_c:.9}. ADR-006 requires equal weight."
+    );
+}
+
+/// test_ppr_advances_is_write_only_no_ppr_flow (R-11, AC-17 negative, ADR-006):
+/// Advances edges must NOT propagate PPR mass (write-only, Phase 2 deferral).
+#[test]
+fn test_ppr_advances_is_write_only_no_ppr_flow() {
+    let graph = make_graph_with_edges(&[(220, 221, RelationType::Advances, 1.0)]);
+
+    let seed_scores: HashMap<u64, f64> = [(220u64, 1.0)].into_iter().collect();
+    let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
+
+    assert_eq!(
+        scores.get(&221).copied().unwrap_or(0.0),
+        0.0,
+        "Advances (id=221) must receive ZERO PPR mass — Advances is write-only until Phase 2 (ADR-006). \
+         score[221]={:.6}. If non-zero, Advances was incorrectly added to the positive type set.",
+        scores.get(&221).copied().unwrap_or(0.0)
+    );
+}
+
+/// test_ppr_motivates_is_write_only_no_ppr_flow (R-11, AC-17 negative, ADR-006):
+/// Motivates edges must NOT propagate PPR mass (write-only, Phase 2 deferral).
+#[test]
+fn test_ppr_motivates_is_write_only_no_ppr_flow() {
+    let graph = make_graph_with_edges(&[(230, 231, RelationType::Motivates, 1.0)]);
+
+    let seed_scores: HashMap<u64, f64> = [(230u64, 1.0)].into_iter().collect();
+    let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
+
+    assert_eq!(
+        scores.get(&231).copied().unwrap_or(0.0),
+        0.0,
+        "Motivates (id=231) must receive ZERO PPR mass — Motivates is write-only until Phase 2 (ADR-006). \
+         score[231]={:.6}. If non-zero, Motivates was incorrectly added to the positive type set.",
+        scores.get(&231).copied().unwrap_or(0.0)
+    );
+}
+
+/// test_ppr_existing_positive_types_still_flow (AC-04 regression):
+/// Adding RelatedTo must not regress the 4 existing positive types.
+#[test]
+fn test_ppr_existing_positive_types_still_flow() {
+    // Each existing positive type in its own two-node graph (+ reverse edge), seed target.
+    let pairs: &[(RelationType, u64, u64)] = &[
+        (RelationType::Supports, 240, 241),
+        (RelationType::CoAccess, 242, 243),
+        (RelationType::Prerequisite, 244, 245),
+        (RelationType::Informs, 246, 247),
+    ];
+
+    for (rel, src, tgt) in pairs {
+        let graph = make_graph_with_edges(&[(*src, *tgt, *rel, 1.0), (*tgt, *src, *rel, 1.0)]);
+        let seed_scores: HashMap<u64, f64> = [(*tgt, 1.0)].into_iter().collect();
+        let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
+
+        assert!(
+            scores.get(src).copied().unwrap_or(0.0) > 0.0,
+            "Existing positive type {:?}: node {src} must still receive non-zero PPR mass \
+             after adding RelatedTo (regression check, AC-04). score[{src}]={:.6}",
+            rel,
+            scores.get(src).copied().unwrap_or(0.0)
+        );
+    }
+}
+
+/// positive_out_degree_weight includes RelatedTo edge weight (AC-06 equivalent for vnc-015).
+///
+/// Node X with exactly one outgoing RelatedTo edge at weight 0.5. Must return 0.5, not 0.0.
+#[test]
+fn test_positive_out_degree_weight_includes_related_to_edge() {
+    use super::positive_out_degree_weight_pub_for_test as positive_out_degree_weight;
+
+    let graph = make_graph_with_edges(&[(250, 251, RelationType::RelatedTo, 0.5)]);
+    let x_idx = *graph.node_index.get(&250).expect("node 250 must exist");
+    let result = positive_out_degree_weight(&graph, x_idx);
+
+    assert!(
+        (result - 0.5_f64).abs() < 1e-6,
+        "positive_out_degree_weight for node with only RelatedTo edge must return 0.5, got {result}"
+    );
+}

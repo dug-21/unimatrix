@@ -1307,3 +1307,370 @@ fn test_informs_edge_weight_preserved() {
         "Informs edge weight must be preserved as-is"
     );
 }
+
+// ============================================================
+// vnc-015: RelationType enum extension — 10 new variants
+// ============================================================
+//
+// SR-01 mitigation (ADR-007): per-variant individual round-trip tests (AC-03, R-01).
+// Each test name is individually addressable — no omnibus test covers all 10.
+
+// -- Per-variant round-trip tests (AC-03, R-01) --
+
+#[test]
+fn test_relation_type_advances_roundtrip() {
+    let v = RelationType::Advances;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_cites_roundtrip() {
+    let v = RelationType::Cites;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_asserts_roundtrip() {
+    let v = RelationType::Asserts;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_mentions_roundtrip() {
+    let v = RelationType::Mentions;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_refutes_roundtrip() {
+    let v = RelationType::Refutes;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_tests_roundtrip() {
+    let v = RelationType::Tests;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_derived_from_roundtrip() {
+    let v = RelationType::DerivedFrom;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_motivates_roundtrip() {
+    let v = RelationType::Motivates;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_about_roundtrip() {
+    let v = RelationType::About;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+#[test]
+fn test_relation_type_related_to_roundtrip() {
+    let v = RelationType::RelatedTo;
+    assert_eq!(RelationType::from_str(v.as_str()), Some(v));
+}
+
+// -- Total variant count: 16 (6 existing + 10 new) --
+//
+// Exhaustive match used — compiler enforces completeness; this test catches
+// count drift without requiring enum iteration infrastructure.
+
+#[test]
+fn test_relation_type_total_variant_count() {
+    // Exhaustive match: compiler error if any variant is added/removed without updating this count.
+    let all_variants = [
+        RelationType::Supersedes,
+        RelationType::Contradicts,
+        RelationType::Supports,
+        RelationType::CoAccess,
+        RelationType::Prerequisite,
+        RelationType::Informs,
+        RelationType::Advances,
+        RelationType::Motivates,
+        RelationType::Cites,
+        RelationType::Asserts,
+        RelationType::Mentions,
+        RelationType::Refutes,
+        RelationType::Tests,
+        RelationType::DerivedFrom,
+        RelationType::About,
+        RelationType::RelatedTo,
+    ];
+    assert_eq!(
+        all_variants.len(),
+        16,
+        "RelationType must have exactly 16 variants (6 existing + 10 new in vnc-015)"
+    );
+}
+
+// -- Existing variants unchanged (AC-04) --
+
+#[test]
+fn test_relation_type_existing_variants_unchanged() {
+    assert_eq!(
+        RelationType::from_str("Supersedes"),
+        Some(RelationType::Supersedes)
+    );
+    assert_eq!(
+        RelationType::from_str("Contradicts"),
+        Some(RelationType::Contradicts)
+    );
+    assert_eq!(
+        RelationType::from_str("Supports"),
+        Some(RelationType::Supports)
+    );
+    assert_eq!(
+        RelationType::from_str("CoAccess"),
+        Some(RelationType::CoAccess)
+    );
+    assert_eq!(
+        RelationType::from_str("Prerequisite"),
+        Some(RelationType::Prerequisite)
+    );
+    assert_eq!(
+        RelationType::from_str("Informs"),
+        Some(RelationType::Informs)
+    );
+}
+
+// -- Unknown string returns None; case-sensitivity confirmed --
+
+#[test]
+fn test_relation_type_unknown_string_returns_none() {
+    assert_eq!(RelationType::from_str("UnknownType"), None);
+    assert_eq!(RelationType::from_str(""), None);
+    // Case-sensitivity checks for new variants (ADR-007)
+    assert_eq!(RelationType::from_str("relatedto"), None);
+    assert_eq!(RelationType::from_str("RELATEDTO"), None);
+    assert_eq!(RelationType::from_str("advances"), None);
+    assert_eq!(RelationType::from_str("cites"), None);
+    assert_eq!(RelationType::from_str("derivedFrom"), None);
+    assert_eq!(RelationType::from_str("derived_from"), None);
+}
+
+// -- as_str() case preservation: exact string form required (ADR-007) --
+
+#[test]
+fn test_relation_type_as_str_case_preserved() {
+    // All 10 new variants must return their exact case-preserving string form.
+    assert_eq!(RelationType::Advances.as_str(), "Advances");
+    assert_eq!(RelationType::Cites.as_str(), "Cites");
+    assert_eq!(RelationType::Asserts.as_str(), "Asserts");
+    assert_eq!(RelationType::Mentions.as_str(), "Mentions");
+    assert_eq!(RelationType::Refutes.as_str(), "Refutes");
+    assert_eq!(RelationType::Tests.as_str(), "Tests");
+    assert_eq!(RelationType::DerivedFrom.as_str(), "DerivedFrom");
+    assert_eq!(RelationType::Motivates.as_str(), "Motivates");
+    assert_eq!(RelationType::About.as_str(), "About");
+    assert_eq!(RelationType::RelatedTo.as_str(), "RelatedTo");
+}
+
+// ============================================================
+// Pass 2b survival tests (AC-14, R-01, ADR-007)
+//
+// Each test inserts a GRAPH_EDGES row with the variant's string and verifies
+// that build_typed_relation_graph does NOT silently drop it (R-10 guard).
+// A missing from_str() arm causes edge_count == 0 instead of 1.
+// ============================================================
+
+#[test]
+fn test_build_typed_graph_advances_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Advances", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "Advances edge must survive Pass 2b; from_str(\"Advances\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_cites_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Cites", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "Cites edge must survive Pass 2b; from_str(\"Cites\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_asserts_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Asserts", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "Asserts edge must survive Pass 2b; from_str(\"Asserts\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_mentions_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Mentions", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "Mentions edge must survive Pass 2b; from_str(\"Mentions\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_refutes_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Refutes", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "Refutes edge must survive Pass 2b; from_str(\"Refutes\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_tests_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Tests", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "Tests edge must survive Pass 2b; from_str(\"Tests\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_derived_from_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "DerivedFrom", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "DerivedFrom edge must survive Pass 2b; from_str(\"DerivedFrom\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_motivates_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "Motivates", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "Motivates edge must survive Pass 2b; from_str(\"Motivates\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_about_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "About", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "About edge must survive Pass 2b; from_str(\"About\") must return Some"
+    );
+}
+
+#[test]
+fn test_build_typed_graph_related_to_survives_pass2b() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "RelatedTo", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        1,
+        "RelatedTo edge must survive Pass 2b; from_str(\"RelatedTo\") must return Some"
+    );
+}
+
+// -- Existing variants unaffected by enum extension (AC-04 regression) --
+
+#[test]
+fn test_build_typed_graph_existing_variants_unaffected() {
+    // One entry pair per existing variant, all must survive Pass 2b.
+    // Each variant gets unique source/target IDs to avoid node-index collision.
+    let entries: Vec<_> = (1u64..=12)
+        .map(|i| make_entry(i, Status::Active, None, None))
+        .collect();
+    let existing_variants = [
+        ("Contradicts", 1u64, 2u64),
+        ("Supports", 3, 4),
+        ("CoAccess", 5, 6),
+        ("Prerequisite", 7, 8),
+        ("Informs", 9, 10),
+    ];
+    let rows: Vec<_> = existing_variants
+        .iter()
+        .map(|(t, s, tgt)| make_edge_row(*s, *tgt, t, 1.0, false))
+        .collect();
+    let g = build_typed_relation_graph(&entries, &rows).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        5,
+        "all 5 non-Supersedes existing variants must survive Pass 2b unchanged"
+    );
+}
+
+// -- Unknown string correctly dropped by R-10 guard --
+
+#[test]
+fn test_build_typed_graph_unknown_string_dropped() {
+    let entries = vec![
+        make_entry(1, Status::Active, None, None),
+        make_entry(2, Status::Active, None, None),
+    ];
+    let row = make_edge_row(1, 2, "BogusType", 1.0, false);
+    let g = build_typed_relation_graph(&entries, &[row]).unwrap();
+    assert_eq!(
+        g.inner.edge_count(),
+        0,
+        "unknown relation_type must be dropped by R-10 guard; edge_count must be 0"
+    );
+}

@@ -1129,6 +1129,26 @@ impl SqlxStore {
         // (defensive; the UNION approach ensures connected <= active).
         let isolated = (active as u64).saturating_sub(connected as u64);
 
+        // --- Query 3: stale dependency edges (vnc-015) ---
+        // Counts Prerequisite edges where the source entry is Deprecated (status=1).
+        // Hardcoded string literals — no format-string interpolation (SQL injection guard).
+        let stale_row = sqlx::query(
+            "SELECT COUNT(*) \
+             FROM graph_edges ge \
+             JOIN entries e ON e.id = ge.source_id \
+             WHERE ge.relation_type = 'Prerequisite' \
+               AND e.status = 1",
+        )
+        .fetch_one(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        let stale_count: i64 = stale_row
+            .try_get::<i64, _>(0)
+            .map_err(|e| StoreError::Database(e.into()))?;
+        // COUNT(*) is non-negative; max(0) cast is defensive against any unexpected negative.
+        let stale_dependency_edges: u64 = stale_count.max(0) as u64;
+
         Ok(GraphCohesionMetrics {
             connectivity_rate,
             isolated_entry_count: isolated,
@@ -1136,6 +1156,7 @@ impl SqlxStore {
             supports_edge_count: supports_count as u64,
             mean_entry_degree,
             inferred_edge_count: inferred_count as u64,
+            stale_dependency_edges,
         })
     }
 
@@ -1526,10 +1547,14 @@ impl SqlxStore {
         &self,
         entry_id: u64,
     ) -> Result<Vec<ContradictEdgeRow>> {
+        // Bidirectional OR clause: returns Contradicts edges where the entry appears on
+        // EITHER side (source or target). This handles both pre-vnc-015 unidirectional
+        // NLI-written rows (direction was detection-order-dependent) and post-vnc-015
+        // bidirectional rows (both A→B and B→A stored). See vnc-015 Component 7.
         let rows = sqlx::query(
             "SELECT id, source_id, target_id, source, bootstrap_only, metadata \
              FROM graph_edges \
-             WHERE target_id = ?1 AND relation_type = 'Contradicts'",
+             WHERE (source_id = ?1 OR target_id = ?1) AND relation_type = 'Contradicts'",
         )
         .bind(entry_id as i64)
         .fetch_all(self.read_pool())
@@ -1565,6 +1590,47 @@ impl SqlxStore {
                     bootstrap_only,
                     metadata,
                 })
+            })
+            .collect::<Result<Vec<_>>>()
+    }
+
+    /// Query stale Prerequisite edge pairs for a given feature cycle (vnc-015).
+    ///
+    /// Returns `(source_id, target_id)` pairs for GRAPH_EDGES rows where:
+    /// - `relation_type = 'Prerequisite'`
+    /// - The source entry is Deprecated (`status = 1`)
+    /// - The source entry belongs to the given `feature_cycle`
+    ///
+    /// Used by `context_cycle_review` to build the injection vector for
+    /// `DependencyOnDeprecatedRule::new()`. This is a scoped variant of the global
+    /// `stale_dependency_edges` count in `compute_graph_cohesion_metrics()`.
+    pub async fn query_stale_prerequisite_edges_for_cycle(
+        &self,
+        feature_cycle: &str,
+    ) -> Result<Vec<(u64, u64)>> {
+        let rows = sqlx::query(
+            "SELECT ge.source_id, ge.target_id \
+             FROM graph_edges ge \
+             JOIN entries e ON e.id = ge.source_id \
+             JOIN feature_entries fe ON fe.entry_id = ge.source_id \
+             WHERE ge.relation_type = 'Prerequisite' \
+               AND e.status = 1 \
+               AND fe.feature_cycle = ?1",
+        )
+        .bind(feature_cycle)
+        .fetch_all(self.read_pool())
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        rows.into_iter()
+            .map(|row| {
+                let source_id =
+                    row.try_get::<i64, _>(0)
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                let target_id =
+                    row.try_get::<i64, _>(1)
+                        .map_err(|e| StoreError::Database(e.into()))? as u64;
+                Ok((source_id, target_id))
             })
             .collect::<Result<Vec<_>>>()
     }
@@ -1776,6 +1842,10 @@ pub struct GraphCohesionMetrics {
     ///
     /// Returns `0` when no non-bootstrap non-co_access edges exist.
     pub inferred_edge_count: u64,
+    /// Count of GRAPH_EDGES rows where `relation_type = 'Prerequisite'` and the source
+    /// entry has `status = 1` (Deprecated). Signals declared dependencies that may need
+    /// review. Zero when no stale dependency edges exist (vnc-015).
+    pub stale_dependency_edges: u64,
 }
 
 /// Raw effectiveness data aggregated by SQL (crt-018: ADR-001).
@@ -2929,6 +2999,323 @@ mod tests {
         assert!(
             !pairs.contains(&(10u64, 20u64)),
             "(10, 20) must NOT be present — no normalization applied"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // stale_dependency_edges tests (vnc-015, Component 5)
+    // AC-11, R-14: Prerequisite edges with deprecated source counted correctly.
+    // ---------------------------------------------------------------------------
+
+    /// R-14: zero stale edges when no GRAPH_EDGES rows exist.
+    #[tokio::test]
+    async fn test_stale_dependency_edges_zero_when_no_edges() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(
+            m.stale_dependency_edges, 0,
+            "no edges → stale_dependency_edges must be 0"
+        );
+    }
+
+    /// R-14 correctness: Prerequisite edge with ACTIVE source (status=0) must NOT be counted.
+    /// This is the critical filter-direction check — status=1 only, not status=0.
+    #[tokio::test]
+    async fn test_stale_dependency_edges_zero_when_no_deprecated_sources() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await; // Active (status=0)
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await; // Active
+        insert_test_edge(&store.write_pool, 1, 2, "Prerequisite", "agent", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(
+            m.stale_dependency_edges, 0,
+            "active source must not be counted — status filter must be 1 (Deprecated), not 0"
+        );
+    }
+
+    /// R-14: Prerequisite edge with deprecated source (status=1) must be counted as 1.
+    #[tokio::test]
+    async fn test_stale_dependency_edges_counts_deprecated_source() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 1).await; // Deprecated (status=1)
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await; // Active target
+        insert_test_edge(&store.write_pool, 1, 2, "Prerequisite", "agent", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(
+            m.stale_dependency_edges, 1,
+            "deprecated source Prerequisite edge must count as 1"
+        );
+    }
+
+    /// R-14: three Prerequisite edges all with deprecated sources → count is 3.
+    #[tokio::test]
+    async fn test_stale_dependency_edges_counts_multiple() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        // 3 deprecated sources + 3 active targets
+        for i in 1u64..=3 {
+            insert_test_entry(&store.write_pool, i, "decision", 1).await; // Deprecated
+        }
+        for i in 4u64..=6 {
+            insert_test_entry(&store.write_pool, i, "pattern", 0).await; // Active
+        }
+        insert_test_edge(&store.write_pool, 1, 4, "Prerequisite", "agent", 0).await;
+        insert_test_edge(&store.write_pool, 2, 5, "Prerequisite", "agent", 0).await;
+        insert_test_edge(&store.write_pool, 3, 6, "Prerequisite", "agent", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(
+            m.stale_dependency_edges, 3,
+            "three deprecated-source Prerequisite edges must count as 3"
+        );
+    }
+
+    /// R-14: only Prerequisite relation type counts — Supports and Advances with deprecated
+    /// sources must be excluded.
+    #[tokio::test]
+    async fn test_stale_dependency_edges_prerequisite_only_not_other_types() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        // 3 deprecated sources
+        insert_test_entry(&store.write_pool, 1, "decision", 1).await; // A: deprecated
+        insert_test_entry(&store.write_pool, 2, "decision", 1).await; // C: deprecated
+        insert_test_entry(&store.write_pool, 3, "decision", 1).await; // E: deprecated
+        // 3 active targets
+        insert_test_entry(&store.write_pool, 4, "pattern", 0).await; // B
+        insert_test_entry(&store.write_pool, 5, "pattern", 0).await; // D
+        insert_test_entry(&store.write_pool, 6, "pattern", 0).await; // F
+        // Only the Prerequisite edge should count
+        insert_test_edge(&store.write_pool, 1, 4, "Prerequisite", "agent", 0).await;
+        // Advances and Supports with deprecated sources — must NOT be counted
+        insert_test_edge(&store.write_pool, 2, 5, "Advances", "agent", 0).await;
+        insert_test_edge(&store.write_pool, 3, 6, "Supports", "nli", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(
+            m.stale_dependency_edges, 1,
+            "only the Prerequisite edge must count; Advances and Supports must be excluded"
+        );
+    }
+
+    /// Quarantined source (status=2) must NOT be counted — only Deprecated (status=1).
+    #[tokio::test]
+    async fn test_stale_dependency_edges_quarantined_source_not_counted() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 2).await; // Quarantined (status=2)
+        insert_test_entry(&store.write_pool, 2, "pattern", 0).await; // Active target
+        insert_test_edge(&store.write_pool, 1, 2, "Prerequisite", "agent", 0).await;
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(
+            m.stale_dependency_edges, 0,
+            "quarantined source (status=2) must not count — only Deprecated (status=1)"
+        );
+    }
+
+    /// Mixed active + deprecated sources: only the deprecated-source Prerequisite edge counts.
+    #[tokio::test]
+    async fn test_stale_dependency_edges_active_deprecated_mix() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 1, "decision", 0).await; // A: Active
+        insert_test_entry(&store.write_pool, 2, "decision", 1).await; // C: Deprecated
+        insert_test_entry(&store.write_pool, 3, "pattern", 0).await; // B: Active target
+        insert_test_entry(&store.write_pool, 4, "pattern", 0).await; // D: Active target
+        insert_test_edge(&store.write_pool, 1, 3, "Prerequisite", "agent", 0).await; // Active→B: not counted
+        insert_test_edge(&store.write_pool, 2, 4, "Prerequisite", "agent", 0).await; // Deprecated→D: counted
+
+        let m = store
+            .compute_graph_cohesion_metrics()
+            .await
+            .expect("metrics");
+
+        assert_eq!(
+            m.stale_dependency_edges, 1,
+            "only the deprecated-source edge must count; active-source edge must not"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // query_contradicts_edges_for_entry bidirectional fix tests (vnc-015, Component 7)
+    // AC-16, R-07: bidirectional OR clause handles both pre- and post-vnc-015 data.
+    // ---------------------------------------------------------------------------
+
+    /// AC-16: source direction returned when querying by source entry id.
+    /// Simulates pre-vnc-015 unidirectional data (only A→B stored).
+    #[tokio::test]
+    async fn test_query_contradicts_returns_source_direction() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await; // A
+        insert_test_entry(&store.write_pool, 20, "pattern", 0).await; // B
+        // Single unidirectional row A→B (pre-vnc-015 style)
+        insert_test_edge(&store.write_pool, 10, 20, "Contradicts", "nli", 0).await;
+
+        let rows = store
+            .query_contradicts_edges_for_entry(10)
+            .await
+            .expect("query_contradicts_edges_for_entry");
+
+        assert_eq!(
+            rows.len(),
+            1,
+            "querying from source A must return 1 row (A→B via OR clause source branch)"
+        );
+        assert_eq!(rows[0].source_id, 10);
+        assert_eq!(rows[0].target_id, 20);
+    }
+
+    /// AC-16, R-07 transition compatibility: target direction returned when querying by target
+    /// entry id. Pre-vnc-015 data has only A→B — querying from B must find the row via the
+    /// OR clause target branch.
+    #[tokio::test]
+    async fn test_query_contradicts_returns_target_direction() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await; // A
+        insert_test_entry(&store.write_pool, 20, "pattern", 0).await; // B
+        // Only A→B — no B→A row (pre-vnc-015 unidirectional)
+        insert_test_edge(&store.write_pool, 10, 20, "Contradicts", "nli", 0).await;
+
+        let rows = store
+            .query_contradicts_edges_for_entry(20)
+            .await
+            .expect("query_contradicts_edges_for_entry");
+
+        assert_eq!(
+            rows.len(),
+            1,
+            "querying from target B must return 1 row (A→B via OR clause target branch)"
+        );
+        assert_eq!(rows[0].source_id, 10);
+        assert_eq!(rows[0].target_id, 20);
+    }
+
+    /// AC-16, R-07: post-vnc-015 bidirectional data — both A→B and B→A stored.
+    /// Querying from either endpoint must return 2 rows.
+    #[tokio::test]
+    async fn test_query_contradicts_bidirectional_post_vnc015() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await; // A
+        insert_test_entry(&store.write_pool, 20, "pattern", 0).await; // B
+        // Both directions stored (post-vnc-015 write path)
+        insert_test_edge(&store.write_pool, 10, 20, "Contradicts", "agent", 0).await;
+        insert_test_edge(&store.write_pool, 20, 10, "Contradicts", "agent", 0).await;
+
+        let rows_a = store
+            .query_contradicts_edges_for_entry(10)
+            .await
+            .expect("query from A");
+
+        assert_eq!(
+            rows_a.len(),
+            2,
+            "post-vnc-015 bidirectional: querying A must return 2 rows"
+        );
+    }
+
+    /// R-07: both endpoints of a bidirectional pair return the same 2-row set.
+    #[tokio::test]
+    async fn test_query_contradicts_both_endpoints_return_same_rows() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await; // A
+        insert_test_entry(&store.write_pool, 20, "pattern", 0).await; // B
+        insert_test_edge(&store.write_pool, 10, 20, "Contradicts", "agent", 0).await;
+        insert_test_edge(&store.write_pool, 20, 10, "Contradicts", "agent", 0).await;
+
+        let rows_a = store
+            .query_contradicts_edges_for_entry(10)
+            .await
+            .expect("query from A");
+        let rows_b = store
+            .query_contradicts_edges_for_entry(20)
+            .await
+            .expect("query from B");
+
+        assert_eq!(rows_a.len(), 2, "A must return 2 rows");
+        assert_eq!(rows_b.len(), 2, "B must return 2 rows");
+    }
+
+    /// OR clause must preserve the `relation_type = 'Contradicts'` filter — Supports edges
+    /// involving the same entries must not appear in results.
+    #[tokio::test]
+    async fn test_query_contradicts_only_contradicts_relation_type() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await; // A
+        insert_test_entry(&store.write_pool, 20, "pattern", 0).await; // B
+        insert_test_edge(&store.write_pool, 10, 20, "Contradicts", "nli", 0).await;
+        insert_test_edge(&store.write_pool, 10, 20, "Supports", "nli", 0).await;
+        insert_test_edge(&store.write_pool, 20, 10, "Supports", "nli", 0).await;
+
+        let rows = store
+            .query_contradicts_edges_for_entry(10)
+            .await
+            .expect("query_contradicts_edges_for_entry");
+
+        assert_eq!(
+            rows.len(),
+            1,
+            "only the Contradicts row must be returned; Supports rows must be excluded"
+        );
+        assert_eq!(rows[0].source_id, 10);
+        assert_eq!(rows[0].target_id, 20);
+    }
+
+    /// Entry that appears in no Contradicts edge must return 0 rows.
+    #[tokio::test]
+    async fn test_query_contradicts_no_results_for_unrelated_entry() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+        insert_test_entry(&store.write_pool, 10, "decision", 0).await; // A
+        insert_test_entry(&store.write_pool, 20, "pattern", 0).await; // B
+        insert_test_entry(&store.write_pool, 30, "convention", 0).await; // C: unrelated
+        insert_test_edge(&store.write_pool, 10, 20, "Contradicts", "nli", 0).await;
+
+        let rows = store
+            .query_contradicts_edges_for_entry(30)
+            .await
+            .expect("query_contradicts_edges_for_entry");
+
+        assert_eq!(
+            rows.len(),
+            0,
+            "entry C with no Contradicts edges must return 0 rows"
         );
     }
 }

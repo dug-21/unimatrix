@@ -2739,3 +2739,158 @@ def test_phase_freq_rebuild_null_feature_cycle(server):
         "context_search must return results even when PhaseFreqTable is cold-start. "
         "AC-15: NULL feature_cycle sessions must not break search path."
     )
+
+
+# === vnc-015: Edge lifecycle flows =====================================
+
+
+def _compute_db_path_vnc015(project_dir):
+    """Compute server's SQLite DB path from project directory (SHA256 hash prefix)."""
+    import hashlib
+    import os
+    canonical = os.path.realpath(project_dir)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return os.path.join(os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+
+def _query_graph_edges_lc(project_dir, source_id, target_id, relation_type):
+    """Query GRAPH_EDGES for a specific triplet; returns count."""
+    import sqlite3
+    db_path = _compute_db_path_vnc015(project_dir)
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges "
+            "WHERE source_id=? AND target_id=? AND relation_type=?",
+            (source_id, target_id, relation_type),
+        )
+        return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
+def test_stale_dependency_appears_in_context_status(server):
+    """AC-11: context_status includes stale_dependency_edges when a Prerequisite edge has a deprecated source.
+
+    Flow: store A and B → add Prerequisite edge A→B → deprecate A via context_correct →
+    call context_status with format=json → assert stale_dependency_edges >= 1.
+    """
+    resp_a = server.context_store(
+        "vnc015 stale edge source: ADR about database indexing strategy for search performance",
+        "architecture", "decision",
+        agent_id="human", format="json"
+    )
+    id_a = extract_entry_id(resp_a)
+
+    resp_b = server.context_store(
+        "vnc015 stale edge target: operational runbook for deploying the vector index service",
+        "operations", "convention",
+        agent_id="human", format="json"
+    )
+    id_b = extract_entry_id(resp_b)
+
+    # Add Prerequisite edge A→B
+    edge_resp = server.context_edge("add", id_a, "Prerequisite", id_b, agent_id="human")
+    assert_tool_success(edge_resp)
+
+    # Deprecate A by correcting it
+    server.context_correct(id_a, "corrected version of A — now A is deprecated", agent_id="human")
+
+    # context_status must report at least 1 stale_dependency_edge
+    status_resp = server.context_status(agent_id="human", format="json")
+    status = parse_status_report(status_resp)
+
+    # Navigate to the stale_dependency_edges field
+    graph_health = status.get("graph_health", status)
+    stale = graph_health.get("stale_dependency_edges")
+    if stale is None:
+        # Try top-level as fallback
+        stale = status.get("stale_dependency_edges")
+    assert stale is not None, (
+        f"stale_dependency_edges field missing from context_status response. "
+        f"Keys: {list(status.keys())}"
+    )
+    assert stale >= 1, (
+        f"Expected stale_dependency_edges >= 1 after deprecating prerequisite source, got {stale}"
+    )
+
+
+def test_contradicts_query_bidirectional(server):
+    """AC-16, R-07: query_contradicts_edges_for_entry returns edge for both A and B after bidirectional write.
+
+    This validates the OR-clause fix — both the source and target side of a Contradicts edge
+    must be returned when querying from either endpoint.
+
+    Verification is via direct GRAPH_EDGES query confirming both rows are present.
+    """
+    resp_a = server.context_store(
+        "vnc015 contradicts query test: claim A — the cache layer reduces latency by 40 percent",
+        "architecture", "decision",
+        agent_id="human", format="json"
+    )
+    id_a = extract_entry_id(resp_a)
+
+    resp_b = server.context_store(
+        "vnc015 contradicts query test: claim B — direct database calls are preferable to caching in this workload",
+        "architecture", "lesson-learned",
+        agent_id="human", format="json"
+    )
+    id_b = extract_entry_id(resp_b)
+
+    # Write bidirectional Contradicts via context_edge (both rows written)
+    edge_resp = server.context_edge("add", id_a, "Contradicts", id_b, agent_id="human")
+    assert_tool_success(edge_resp)
+
+    # Verify both direction rows exist in GRAPH_EDGES
+    fwd = _query_graph_edges_lc(server.project_dir, id_a, id_b, "Contradicts")
+    rev = _query_graph_edges_lc(server.project_dir, id_b, id_a, "Contradicts")
+    assert fwd == 1, f"Forward Contradicts row missing (A={id_a} -> B={id_b})"
+    assert rev == 1, f"Reverse Contradicts row missing (B={id_b} -> A={id_a})"
+
+
+def test_edge_survives_server_restart(tmp_path):
+    """AC-01 persistence: Edge written before server shutdown is present after restart.
+
+    Uses a persistent project_dir so the DB survives across two UnimatrixClient instances.
+    """
+    from harness.client import UnimatrixClient
+    from harness.conftest import get_binary_path
+
+    binary = get_binary_path()
+    project_dir = str(tmp_path)
+
+    # --- Session 1: Write the edge ---
+    client1 = UnimatrixClient(binary, project_dir=project_dir)
+    client1.initialize()
+    client1.wait_until_ready()
+
+    resp_a = client1.context_store(
+        "vnc015 restart edge test: software architecture decision record for persistence layer selection",
+        "architecture", "decision",
+        agent_id="human", format="json"
+    )
+    id_a = extract_entry_id(resp_a)
+
+    resp_b = client1.context_store(
+        "vnc015 restart edge test: operational runbook for backup and recovery procedures",
+        "operations", "convention",
+        agent_id="human", format="json"
+    )
+    id_b = extract_entry_id(resp_b)
+
+    client1.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    client1.shutdown()
+
+    # --- Session 2: Verify edge survives ---
+    count_before_restart = _query_graph_edges_lc(project_dir, id_a, id_b, "Supports")
+    assert count_before_restart == 1, "Edge must be persisted before restart check"
+
+    client2 = UnimatrixClient(binary, project_dir=project_dir)
+    client2.initialize()
+    client2.wait_until_ready()
+    client2.shutdown()
+
+    count_after_restart = _query_graph_edges_lc(project_dir, id_a, id_b, "Supports")
+    assert count_after_restart == 1, (
+        f"Edge must survive server restart; got count={count_after_restart}"
+    )

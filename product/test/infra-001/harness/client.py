@@ -391,6 +391,7 @@ class UnimatrixClient:
         source: str | None = None,
         agent_id: str | None = None,
         format: str | None = None,
+        edges: list[dict] | None = None,
         timeout: float | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {
@@ -408,6 +409,8 @@ class UnimatrixClient:
             args["agent_id"] = agent_id
         if format is not None:
             args["format"] = format
+        if edges is not None:
+            args["edges"] = edges
         return self.call_tool("context_store", args, timeout=timeout)
 
     def context_search(
@@ -512,6 +515,7 @@ class UnimatrixClient:
         title: str | None = None,
         agent_id: str | None = None,
         format: str | None = None,
+        edges: list[dict] | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {"original_id": original_id, "content": content}
         if reason is not None:
@@ -528,6 +532,8 @@ class UnimatrixClient:
             args["agent_id"] = agent_id
         if format is not None:
             args["format"] = format
+        if edges is not None:
+            args["edges"] = edges
         return self.call_tool("context_correct", args)
 
     def context_deprecate(
@@ -683,3 +689,30 @@ class UnimatrixClient:
         if format is not None:
             args["format"] = format
         return self.call_tool("context_cycle", args, timeout=timeout)
+
+    def context_edge(
+        self,
+        mode: str,
+        source_id: int,
+        edge_type: str,
+        target_id: int,
+        *,
+        new_target_id: int | None = None,
+        agent_id: str | None = None,
+        format: str | None = None,
+        timeout: float | None = None,
+    ) -> MCPResponse:
+        """vnc-015: 13th MCP tool — standalone edge lifecycle management."""
+        args: dict[str, Any] = {
+            "mode": mode,
+            "source_id": source_id,
+            "edge_type": edge_type,
+            "target_id": target_id,
+        }
+        if new_target_id is not None:
+            args["new_target_id"] = new_target_id
+        if agent_id is not None:
+            args["agent_id"] = agent_id
+        if format is not None:
+            args["format"] = format
+        return self.call_tool("context_edge", args, timeout=timeout)

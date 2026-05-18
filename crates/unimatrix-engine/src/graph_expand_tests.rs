@@ -413,3 +413,91 @@ fn test_graph_expand_s8_coaccess_unidirectional_from_higher_id_misses() {
          without the crt-035 promotion tick adding the reverse direction"
     );
 }
+
+// ---- vnc-015: RelatedTo positive BFS type (ADR-006, AC-17, R-11) ----
+
+/// test_graph_expand_related_to_in_positive_bfs (AC-17):
+/// RelatedTo edges must be traversed by graph_expand.
+///
+/// Graph: A (1) → B (2) → C (3) via RelatedTo. Seed: A. Both B and C must be reachable.
+#[test]
+fn test_graph_expand_related_to_in_positive_bfs() {
+    let graph = make_graph_with_edges(&[
+        (1, 2, RelationType::RelatedTo, 1.0),
+        (2, 3, RelationType::RelatedTo, 1.0),
+    ]);
+    let result = graph_expand(&graph, &[1], 2, 200);
+    assert!(
+        result.contains(&2),
+        "B (id=2) must be reachable from A (id=1) via RelatedTo edge (hop 1)"
+    );
+    assert!(
+        result.contains(&3),
+        "C (id=3) must be reachable from A (id=1) via two RelatedTo hops (depth=2)"
+    );
+}
+
+/// test_graph_expand_related_to_unidirectional_fixture (AC-17, pattern #4066):
+/// Confirms directionality — reverse edge does not traverse without explicit back-edge.
+///
+/// Graph: A (1) → B (2) via RelatedTo ONLY. Seed: B.
+/// A must NOT be reachable (incoming edge to B, not outgoing from B).
+#[test]
+fn test_graph_expand_related_to_unidirectional_fixture() {
+    let graph = make_graph_with_edges(&[(1, 2, RelationType::RelatedTo, 1.0)]);
+    let result = graph_expand(&graph, &[2], 2, 200);
+    assert!(
+        result.is_empty(),
+        "A (id=1) must NOT be reachable from B (id=2) via single-direction RelatedTo edge \
+         (pattern #4066: unidirectional fixture confirms direction contract)"
+    );
+}
+
+/// test_graph_expand_advances_not_in_positive_bfs (R-11, AC-17 negative, ADR-006):
+/// Advances edges must NOT cause BFS expansion (write-only, Phase 2 deferral).
+#[test]
+fn test_graph_expand_advances_not_in_positive_bfs() {
+    let graph = make_graph_with_edges(&[(1, 2, RelationType::Advances, 1.0)]);
+    let result = graph_expand(&graph, &[1], 2, 200);
+    assert!(
+        result.is_empty(),
+        "Advances edges must NOT cause BFS expansion — Advances is write-only until Phase 2 (ADR-006). \
+         B (id=2) must not appear in result."
+    );
+}
+
+/// test_graph_expand_motivates_not_in_positive_bfs (R-11, AC-17 negative, ADR-006):
+/// Motivates edges must NOT cause BFS expansion (write-only, Phase 2 deferral).
+#[test]
+fn test_graph_expand_motivates_not_in_positive_bfs() {
+    let graph = make_graph_with_edges(&[(1, 2, RelationType::Motivates, 1.0)]);
+    let result = graph_expand(&graph, &[1], 2, 200);
+    assert!(
+        result.is_empty(),
+        "Motivates edges must NOT cause BFS expansion — Motivates is write-only until Phase 2 (ADR-006). \
+         B (id=2) must not appear in result."
+    );
+}
+
+/// test_graph_expand_existing_positive_types_still_expand (AC-04 regression):
+/// Adding RelatedTo to the positive BFS set must not regress the 4 existing positive types.
+#[test]
+fn test_graph_expand_existing_positive_types_still_expand() {
+    let pairs: &[(RelationType, u64, u64)] = &[
+        (RelationType::Supports, 10, 11),
+        (RelationType::CoAccess, 12, 13),
+        (RelationType::Prerequisite, 14, 15),
+        (RelationType::Informs, 16, 17),
+    ];
+
+    for (rel, src, tgt) in pairs {
+        let graph = make_graph_with_edges(&[(*src, *tgt, *rel, 1.0)]);
+        let result = graph_expand(&graph, &[*src], 1, 200);
+        assert!(
+            result.contains(tgt),
+            "Existing positive type {:?}: target {tgt} must still be reachable after adding RelatedTo \
+             (regression check, AC-04).",
+            rel
+        );
+    }
+}

@@ -4,6 +4,7 @@
 //! and ToolContext for handler ceremony reduction.
 
 pub(crate) mod context;
+pub(crate) mod edge_write;
 pub mod identity;
 pub mod knowledge_reuse;
 pub mod response;

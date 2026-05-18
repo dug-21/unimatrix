@@ -643,6 +643,7 @@ mod tests {
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
+            stale_dependency_edges: 0,         // vnc-015
         }
     }
 
@@ -737,6 +738,7 @@ mod tests {
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
+            stale_dependency_edges: 0,         // vnc-015
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -998,6 +1000,7 @@ mod tests {
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
+            stale_dependency_edges: 0,         // vnc-015
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1077,6 +1080,7 @@ mod tests {
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
+            stale_dependency_edges: 0,         // vnc-015
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1158,6 +1162,7 @@ mod tests {
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
+            stale_dependency_edges: 0,         // vnc-015
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1231,6 +1236,7 @@ mod tests {
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
+            stale_dependency_edges: 0,         // vnc-015
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1308,6 +1314,7 @@ mod tests {
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
+            stale_dependency_edges: 0,         // vnc-015
         }
     }
 
@@ -1451,6 +1458,7 @@ mod tests {
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
+            stale_dependency_edges: 0,         // vnc-015
         }
     }
 

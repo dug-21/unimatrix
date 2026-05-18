@@ -106,6 +106,20 @@ pub struct LookupParams {
     pub session_id: Option<String>,
 }
 
+/// A single typed edge to declare when storing or correcting an entry.
+///
+/// Validated by `edge_write::validate_and_write_edges` before any write.
+/// `edge_type` is case-sensitive and must match a `RelationType::from_str()` variant.
+/// `target_id` must not equal the resolved source entry ID (self-ref check).
+#[derive(Debug, Clone, PartialEq, Deserialize, JsonSchema)]
+pub struct EdgeInput {
+    /// Edge type string (e.g., "Supports", "Prerequisite", "Contradicts").
+    /// Must parse via `RelationType::from_str()`; case-sensitive.
+    pub edge_type: String,
+    /// Target entry ID. Must not equal source entry ID.
+    pub target_id: u64,
+}
+
 /// Parameters for storing a new entry.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct StoreParams {
@@ -130,6 +144,33 @@ pub struct StoreParams {
     /// Optional session ID (provided by hooks, not agent-reported).
     #[serde(default)]
     pub session_id: Option<String>,
+    /// Optional typed edges to declare at store time (vnc-015).
+    /// Omitting this field is backward-compatible (AC-01). An empty vec produces
+    /// no edge writes. Validated pre-insert; any failure aborts the entire call.
+    #[serde(default)]
+    pub edges: Option<Vec<EdgeInput>>,
+}
+
+/// Parameters for the context_edge tool — standalone edge lifecycle management.
+///
+/// `mode` must be one of: `"add"`, `"remove"`, `"redirect"`.
+/// `new_target_id` is required for redirect and rejected for add/remove.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct EdgeParams {
+    /// Edge operation: "add", "remove", or "redirect".
+    pub mode: String,
+    /// Source entry ID (must be Active and not Quarantined or Deprecated).
+    pub source_id: u64,
+    /// Edge type (e.g., "Supports", "Prerequisite", "Contradicts"). Case-sensitive.
+    pub edge_type: String,
+    /// Target entry ID. Must not equal source_id.
+    pub target_id: u64,
+    /// New target for redirect mode. Required for redirect; rejected for add/remove.
+    pub new_target_id: Option<u64>,
+    /// Agent making the request (used for capability enforcement and audit).
+    pub agent_id: Option<String>,
+    /// Response format: summary, markdown, or json.
+    pub format: Option<String>,
 }
 
 /// Parameters for getting an entry by ID.
@@ -175,6 +216,11 @@ pub struct CorrectParams {
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+    /// Optional typed edges to attach to the corrected (new) entry (vnc-015).
+    /// Edges reference the new entry's ID — not the deprecated original's ID (AC-02).
+    /// Omitting this field is backward-compatible.
+    #[serde(default)]
+    pub edges: Option<Vec<EdgeInput>>,
 }
 
 /// Parameters for deprecating an entry.
@@ -637,6 +683,48 @@ impl UnimatrixServer {
         let feature_cycle_from_session: Option<String> =
             session_state.and_then(|s| s.feature.clone());
 
+        // 3c. Phase A — pre-insert edge validation (vnc-015).
+        //
+        // Validates all edges before the entry insert so that unknown types or
+        // missing/quarantined targets abort the entire call with no state written.
+        // Self-ref check is deferred to Phase B because source_id is not yet known
+        // (auto-increment is assigned by the DB on insert).
+        //
+        // ADR-001: validate-first pipeline.
+        // ADR-002: any validation failure fails the entire call.
+        let edges_slice = params.edges.as_deref().unwrap_or(&[]);
+        if !edges_slice.is_empty() {
+            use unimatrix_engine::graph::RelationType;
+            for edge in edges_slice {
+                // Type resolution (pure — no DB)
+                if RelationType::from_str(&edge.edge_type).is_none() {
+                    return Err(rmcp::ErrorData::invalid_params(
+                        format!("unknown edge type '{}'", edge.edge_type),
+                        None,
+                    ));
+                }
+                // Target validation (1 DB read via read_pool)
+                match self.entry_store.get(edge.target_id).await {
+                    Ok(entry) if entry.status == unimatrix_core::Status::Quarantined => {
+                        return Err(rmcp::ErrorData::invalid_params(
+                            format!(
+                                "target entry {} is quarantined and cannot be referenced",
+                                edge.target_id
+                            ),
+                            None,
+                        ));
+                    }
+                    Ok(_) => {} // Active or Deprecated — allowed
+                    Err(_) => {
+                        return Err(rmcp::ErrorData::invalid_params(
+                            format!("target entry {} does not exist", edge.target_id),
+                            None,
+                        ));
+                    }
+                }
+            }
+        }
+
         // 4. Build title (transport-specific default)
         let title = params
             .title
@@ -683,6 +771,34 @@ impl UnimatrixServer {
                 similarity,
                 ctx.format,
             ));
+        }
+
+        // 7b. Phase B — edge writes (vnc-015).
+        //
+        // Edges attach to the new entry's assigned ID. Called after the duplicate guard:
+        // duplicate entries never get edge writes (AC-09).
+        // Phase A already validated types and targets before the insert, so
+        // validate_and_write_edges performs self-ref check + writes.
+        // Infrastructure write failures are logged inside write_graph_edge and
+        // not rolled back — entry stays, edges silently absent (ADR-003).
+        if !edges_slice.is_empty() {
+            let source_id = insert_result.entry.id;
+            let created_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            if let Err(e) = crate::mcp::edge_write::validate_and_write_edges(
+                &self.entry_store,
+                source_id,
+                edges_slice,
+                created_at,
+            )
+            .await
+            {
+                // Self-ref is the only validation error possible here (type + target already
+                // checked pre-insert). Return error to caller — entry is written but no edges.
+                return Err(rmcp::ErrorData::invalid_params(e.to_string(), None));
+            }
         }
 
         // crt-026: Accumulate category histogram for session affinity boost (WA-2).
@@ -866,6 +982,42 @@ impl UnimatrixServer {
                 .map_err(rmcp::ErrorData::from)?;
         }
 
+        // 5b. Phase A — pre-correction edge validation (vnc-015).
+        //
+        // Validate edge types and targets before the correction so any failure
+        // aborts the call with no state written (ADR-001, ADR-002).
+        // Self-ref check is deferred to Phase B (corrected entry ID not yet known).
+        let correct_edges_slice = params.edges.as_deref().unwrap_or(&[]);
+        if !correct_edges_slice.is_empty() {
+            use unimatrix_engine::graph::RelationType;
+            for edge in correct_edges_slice {
+                if RelationType::from_str(&edge.edge_type).is_none() {
+                    return Err(rmcp::ErrorData::invalid_params(
+                        format!("unknown edge type '{}'", edge.edge_type),
+                        None,
+                    ));
+                }
+                match self.entry_store.get(edge.target_id).await {
+                    Ok(entry) if entry.status == unimatrix_core::Status::Quarantined => {
+                        return Err(rmcp::ErrorData::invalid_params(
+                            format!(
+                                "target entry {} is quarantined and cannot be referenced",
+                                edge.target_id
+                            ),
+                            None,
+                        ));
+                    }
+                    Ok(_) => {}
+                    Err(_) => {
+                        return Err(rmcp::ErrorData::invalid_params(
+                            format!("target entry {} does not exist", edge.target_id),
+                            None,
+                        ));
+                    }
+                }
+            }
+        }
+
         // 6. Build title (inherit from original if not provided)
         let title = params.title.unwrap_or_else(|| original.title.clone());
 
@@ -896,6 +1048,29 @@ impl UnimatrixServer {
             )
             .await
             .map_err(rmcp::ErrorData::from)?;
+
+        // 8b. Phase B — edge writes on corrected entry (vnc-015).
+        //
+        // Edges attach to the NEW (corrected) entry's ID — NOT the deprecated original (AC-02).
+        // Phase A validated types and targets before correction. validate_and_write_edges
+        // performs self-ref check + writes. Infrastructure failures are logged, not rolled back.
+        if !correct_edges_slice.is_empty() {
+            let corrected_source_id = correct_result.corrected_entry.id;
+            let created_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            if let Err(e) = crate::mcp::edge_write::validate_and_write_edges(
+                &self.entry_store,
+                corrected_source_id,
+                correct_edges_slice,
+                created_at,
+            )
+            .await
+            {
+                return Err(rmcp::ErrorData::invalid_params(e.to_string(), None));
+            }
+        }
 
         // 9. Confidence for both entries (fire-and-forget, via ConfidenceService)
         self.services.confidence.recompute(&[
@@ -1985,7 +2160,22 @@ impl UnimatrixServer {
             } else {
                 Some(history.as_slice())
             };
-            let rules = unimatrix_observe::default_rules(history_slice);
+            // vnc-015: pre-query stale Prerequisite edges for the current cycle's entries
+            // and inject them into DependencyOnDeprecatedRule via default_rules() (ADR-004).
+            let stale_edge_pairs = self
+                .store
+                .query_stale_prerequisite_edges_for_cycle(&feature_cycle)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        feature_cycle = %feature_cycle,
+                        error = %e,
+                        "context_cycle_review: query_stale_prerequisite_edges_for_cycle failed — \
+                         proceeding with empty stale edge list"
+                    );
+                    vec![]
+                });
+            let rules = unimatrix_observe::default_rules(history_slice, stale_edge_pairs);
             let hotspots = unimatrix_observe::detect_hotspots(&attributed, &rules);
 
             let now = std::time::SystemTime::now()
@@ -2706,6 +2896,255 @@ impl UnimatrixServer {
                     None,
                 ))
             }
+        }
+    }
+
+    // -- vnc-015: context_edge --
+
+    #[tool(
+        name = "context_edge",
+        description = "Add, remove, or redirect a typed graph edge on an existing entry. \
+            Supports modes: 'add' (idempotent INSERT OR IGNORE), 'remove' (idempotent DELETE), \
+            'redirect' (atomic DELETE old + INSERT new). Pure graph operation — no embedding, \
+            confidence, or duplicate side effects. Requires Write capability. \
+            Source entry must be Active (not Quarantined or Deprecated). \
+            Bidirectional Contradicts edges are handled automatically."
+    )]
+    async fn context_edge(
+        &self,
+        Parameters(params): Parameters<EdgeParams>,
+        request_context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<CallToolResult, rmcp::ErrorData> {
+        use crate::mcp::edge_write::{
+            EDGE_SOURCE_AGENT, EdgeValidationError, delete_graph_edge, redirect_graph_edge,
+            validate_target,
+        };
+        use crate::services::nli_detection::write_graph_edge;
+        use unimatrix_engine::graph::RelationType;
+
+        // ── Step 1: Capability gate ───────────────────────────────────────────
+        let ctx = self
+            .build_context_with_external_identity(
+                &params.agent_id,
+                &params.format,
+                &None,
+                &request_context,
+                None,
+            )
+            .await?;
+        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+
+        // ── Step 2: Source fetch ──────────────────────────────────────────────
+        let source_entry = self.entry_store.get(params.source_id).await.map_err(|_| {
+            rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                field: "source_id".to_string(),
+                reason: format!("source entry {} does not exist", params.source_id),
+            })
+        })?;
+
+        // ── Step 3: Source status — SourceFrozen gate ─────────────────────────
+        // Use Status enum — NOT integer literals (R-06, OQ-3)
+        if source_entry.status == unimatrix_core::Status::Quarantined
+            || source_entry.status == unimatrix_core::Status::Deprecated
+        {
+            return Err(rmcp::ErrorData::from(
+                crate::error::ServerError::InvalidInput {
+                    field: "source_id".to_string(),
+                    reason: format!(
+                        "source entry {} is frozen (quarantined or deprecated)",
+                        params.source_id
+                    ),
+                },
+            ));
+        }
+
+        // ── Step 4: Self-referential check ────────────────────────────────────
+        if params.source_id == params.target_id {
+            return Err(rmcp::ErrorData::from(
+                crate::error::ServerError::InvalidInput {
+                    field: "target_id".to_string(),
+                    reason: format!(
+                        "self-referential edge rejected: source_id equals target_id ({})",
+                        params.source_id
+                    ),
+                },
+            ));
+        }
+        // For redirect mode: also check source_id != new_target_id
+        if params.mode == "redirect" {
+            if let Some(new_id) = params.new_target_id {
+                if params.source_id == new_id {
+                    return Err(rmcp::ErrorData::from(
+                        crate::error::ServerError::InvalidInput {
+                            field: "new_target_id".to_string(),
+                            reason: format!(
+                                "self-referential edge rejected: source_id equals new_target_id ({})",
+                                params.source_id
+                            ),
+                        },
+                    ));
+                }
+            }
+        }
+
+        // ── Step 5: new_target_id presence check (R-13) ──────────────────────
+        // Reject before edge type and target validation for the most actionable error.
+        if (params.mode == "add" || params.mode == "remove") && params.new_target_id.is_some() {
+            return Err(rmcp::ErrorData::from(
+                crate::error::ServerError::InvalidInput {
+                    field: "new_target_id".to_string(),
+                    reason: format!("new_target_id is not valid for mode '{}'", params.mode),
+                },
+            ));
+        }
+
+        // ── Step 6: Edge type resolution ──────────────────────────────────────
+        let rel_type = RelationType::from_str(&params.edge_type).ok_or_else(|| {
+            rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                field: "edge_type".to_string(),
+                reason: format!("unknown edge type '{}'", params.edge_type),
+            })
+        })?;
+
+        // ── Step 7: Target validation ─────────────────────────────────────────
+        // add/remove: validate target_id; redirect: validate new_target_id only
+        // (old target_id need not exist — DELETE is idempotent on missing rows)
+        let convert_validation_err = |e: EdgeValidationError| {
+            rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                field: "target_id".to_string(),
+                reason: e.to_string(),
+            })
+        };
+
+        if params.mode == "add" || params.mode == "remove" {
+            validate_target(&self.entry_store, params.target_id)
+                .await
+                .map_err(convert_validation_err)?;
+        } else if params.mode == "redirect" {
+            let new_target = params.new_target_id.ok_or_else(|| {
+                rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                    field: "new_target_id".to_string(),
+                    reason: "new_target_id is required for redirect mode".to_string(),
+                })
+            })?;
+            validate_target(&self.entry_store, new_target)
+                .await
+                .map_err(|e| {
+                    rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                        field: "new_target_id".to_string(),
+                        reason: e.to_string(),
+                    })
+                })?;
+        }
+
+        // ── Mode dispatch ─────────────────────────────────────────────────────
+        let created_at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+
+        match params.mode.as_str() {
+            "add" => {
+                // ── THREE-CASE CONTRACT FOR write_graph_edge (Pattern #4041) ──
+                // write_graph_edge returns bool, NOT Result<bool, _>:
+                //   true  → row inserted (rows_affected = 1)
+                //   false → INSERT OR IGNORE hit UNIQUE — idempotent, not an error
+                //   false (from Err) → SQL error logged inside write_graph_edge; not surfaced
+                // Never treat false as a hard failure.
+                let _inserted = write_graph_edge(
+                    &self.entry_store,
+                    params.source_id,
+                    params.target_id,
+                    rel_type.as_str(),
+                    1.0,
+                    created_at,
+                    EDGE_SOURCE_AGENT,
+                    "",
+                )
+                .await;
+
+                // Bidirectional Contradicts: write reverse direction before returning (AC-06)
+                if rel_type == RelationType::Contradicts {
+                    let _rev = write_graph_edge(
+                        &self.entry_store,
+                        params.target_id,
+                        params.source_id,
+                        "Contradicts",
+                        1.0,
+                        created_at,
+                        EDGE_SOURCE_AGENT,
+                        "",
+                    )
+                    .await;
+                }
+
+                Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                    "edge added".to_string(),
+                )]))
+            }
+
+            "remove" => {
+                // Idempotent: 0-row DELETE is success (AC-25)
+                // Contradicts: delete_graph_edge handles both directions internally
+                delete_graph_edge(
+                    &self.entry_store,
+                    params.source_id,
+                    params.target_id,
+                    rel_type.as_str(),
+                )
+                .await
+                .map_err(|e| {
+                    rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                        field: "source_id".to_string(),
+                        reason: e.to_string(),
+                    })
+                })?;
+
+                Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                    "edge removed".to_string(),
+                )]))
+            }
+
+            "redirect" => {
+                let new_target = params.new_target_id.ok_or_else(|| {
+                    rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                        field: "new_target_id".to_string(),
+                        reason: "required for redirect mode".to_string(),
+                    })
+                })?;
+
+                // RAII transaction — atomically removes old edge and inserts new (R-05, lesson #2269)
+                // Contradicts: redirect_graph_edge handles all 4 rows atomically (ADR-009)
+                redirect_graph_edge(
+                    &self.entry_store,
+                    params.source_id,
+                    params.target_id,
+                    new_target,
+                    rel_type.as_str(),
+                    created_at,
+                )
+                .await
+                .map_err(|e| {
+                    rmcp::ErrorData::from(crate::error::ServerError::InvalidInput {
+                        field: "source_id".to_string(),
+                        reason: e.to_string(),
+                    })
+                })?;
+
+                Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                    "edge redirected".to_string(),
+                )]))
+            }
+
+            _ => Err(rmcp::ErrorData::from(
+                crate::error::ServerError::InvalidInput {
+                    field: "mode".to_string(),
+                    reason: format!(
+                        "mode must be one of: add, remove, redirect (got '{}')",
+                        params.mode
+                    ),
+                },
+            )),
         }
     }
 
@@ -4059,6 +4498,107 @@ mod tests {
     fn test_correct_params_missing_content() {
         let json = r#"{"original_id": 42}"#;
         assert!(serde_json::from_str::<CorrectParams>(json).is_err());
+    }
+
+    // -- vnc-015: EdgeInput / StoreParams edges / CorrectParams edges --
+
+    #[test]
+    fn test_edge_input_deserializes_valid_json() {
+        let json = r#"{"edge_type": "Supports", "target_id": 42}"#;
+        let edge: EdgeInput = serde_json::from_str(json).unwrap();
+        assert_eq!(edge.edge_type, "Supports");
+        assert_eq!(edge.target_id, 42);
+    }
+
+    #[test]
+    fn test_store_params_edges_field_defaults_to_none() {
+        // Omitting edges is backward-compatible (AC-01)
+        let json = r#"{"content": "test", "topic": "t", "category": "convention"}"#;
+        let params: StoreParams = serde_json::from_str(json).unwrap();
+        assert!(params.edges.is_none());
+    }
+
+    #[test]
+    fn test_correct_params_edges_field_defaults_to_none() {
+        // Omitting edges is backward-compatible (AC-02)
+        let json = r#"{"original_id": 1, "content": "corrected"}"#;
+        let params: CorrectParams = serde_json::from_str(json).unwrap();
+        assert!(params.edges.is_none());
+    }
+
+    #[test]
+    fn test_store_params_accepts_edges_vec() {
+        let json = r#"{
+            "content": "c",
+            "topic": "t",
+            "category": "convention",
+            "edges": [{"edge_type": "Supports", "target_id": 5}]
+        }"#;
+        let params: StoreParams = serde_json::from_str(json).unwrap();
+        let edges = params.edges.unwrap();
+        assert_eq!(edges.len(), 1);
+        assert_eq!(edges[0].edge_type, "Supports");
+        assert_eq!(edges[0].target_id, 5);
+    }
+
+    #[test]
+    fn test_store_params_accepts_empty_edges_vec() {
+        let json = r#"{"content": "c", "topic": "t", "category": "convention", "edges": []}"#;
+        let params: StoreParams = serde_json::from_str(json).unwrap();
+        // Some([]) — not None — treated as no edges in handler, not None
+        assert_eq!(params.edges, Some(vec![]));
+    }
+
+    // -- vnc-015: EdgeParams (context_edge wire struct) --
+
+    #[test]
+    fn test_edge_params_deserializes_valid_add() {
+        let json = r#"{"mode": "add", "source_id": 1, "edge_type": "Supports", "target_id": 2}"#;
+        let params: EdgeParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.mode, "add");
+        assert_eq!(params.source_id, 1);
+        assert_eq!(params.edge_type, "Supports");
+        assert_eq!(params.target_id, 2);
+        assert!(params.new_target_id.is_none());
+    }
+
+    #[test]
+    fn test_edge_params_deserializes_valid_redirect() {
+        let json = r#"{"mode": "redirect", "source_id": 1, "edge_type": "Prerequisite", "target_id": 2, "new_target_id": 3}"#;
+        let params: EdgeParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.mode, "redirect");
+        assert_eq!(params.new_target_id, Some(3));
+    }
+
+    #[test]
+    fn test_edge_params_mode_strings_accepted() {
+        // "add", "remove", "redirect" are all valid mode values (handler dispatches on them)
+        for mode in &["add", "remove", "redirect"] {
+            let json = format!(
+                r#"{{"mode": "{mode}", "source_id": 1, "edge_type": "Supports", "target_id": 2}}"#
+            );
+            let params: EdgeParams = serde_json::from_str(&json).unwrap();
+            assert_eq!(&params.mode, mode);
+        }
+    }
+
+    #[test]
+    fn test_edge_params_new_target_id_defaults_to_none() {
+        let json = r#"{"mode": "remove", "source_id": 5, "edge_type": "Informs", "target_id": 10}"#;
+        let params: EdgeParams = serde_json::from_str(json).unwrap();
+        assert!(params.new_target_id.is_none());
+    }
+
+    #[test]
+    fn test_edge_params_missing_required_source_id_rejected() {
+        let json = r#"{"mode": "add", "edge_type": "Supports", "target_id": 2}"#;
+        assert!(serde_json::from_str::<EdgeParams>(json).is_err());
+    }
+
+    #[test]
+    fn test_edge_params_missing_required_target_id_rejected() {
+        let json = r#"{"mode": "add", "source_id": 1, "edge_type": "Supports"}"#;
+        assert!(serde_json::from_str::<EdgeParams>(json).is_err());
     }
 
     // -- vnc-003: DeprecateParams --
