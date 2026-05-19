@@ -9,8 +9,8 @@
 //! - All traversal via `edges_of_type()` exclusively — no `.edges_directed()` calls (AC-16, SR-01).
 //! - Tests live in `graph_expand_tests.rs` if inline tests push file over 500 lines (NFR-09).
 //!
-//! vnc-015: `RelatedTo` added to positive BFS set (ADR-006). `Advances` and `Motivates` are
-//! intentionally NOT in the positive BFS set — write-only until Phase 2.
+//! vnc-015: `RelatedTo` added to positive BFS set (ADR-006).
+//! vnc-018: `Advances` and `Motivates` added to positive BFS type set (ADR-006 vnc-018).
 //!
 //! ## Caller Quarantine Obligation (FR-06)
 //!
@@ -45,11 +45,11 @@ use crate::graph::{RelationType, TypedRelationGraph};
 /// Expand a seed set via BFS over positive edges in the `TypedRelationGraph`.
 ///
 /// Returns the set of entry IDs reachable from `seed_ids` within `depth` hops via
-/// positive edge types (`CoAccess`, `Supports`, `Informs`, `Prerequisite`, `RelatedTo`),
-/// excluding the seeds themselves, capped at `max_candidates`.
+/// positive edge types (`CoAccess`, `Supports`, `Informs`, `Prerequisite`, `RelatedTo`,
+/// `Advances`, `Motivates`), excluding the seeds themselves, capped at `max_candidates`.
 ///
-/// vnc-015 (ADR-006): `RelatedTo` added as fifth positive type. `Advances` and `Motivates`
-/// are intentionally absent — write-only until Phase 2.
+/// vnc-015 (ADR-006): `RelatedTo` added as fifth positive type.
+/// vnc-018 (ADR-006): `Advances` and `Motivates` added as sixth and seventh positive types.
 ///
 /// ## Behavioral Contract
 ///
@@ -119,12 +119,12 @@ pub fn graph_expand(
         let can_expand_further = current_depth < depth;
 
         // Traverse all positive edge types from this node (Outgoing direction).
-        // Five separate edges_of_type calls (SR-01: no .edges_directed() allowed, AC-16).
+        // Seven separate edges_of_type calls (SR-01: no .edges_directed() allowed, AC-16).
         // Process neighbors in SORTED NODE-ID ORDER for determinism (NFR-04, ADR-004 crt-030).
         //
-        // Positive types: CoAccess, Supports, Informs, Prerequisite, RelatedTo (vnc-015, ADR-006).
+        // Positive types: CoAccess, Supports, Informs, Prerequisite, RelatedTo (vnc-015, ADR-006),
+        //                 Advances, Motivates (vnc-018, ADR-006).
         // Excluded types: Supersedes (structural chain), Contradicts (negative signal).
-        // NOTE: Advances and Motivates are intentionally absent — write-only until Phase 2 (ADR-006).
         let mut neighbors: Vec<u64> = Vec::new();
 
         for edge_ref in graph.edges_of_type(node_idx, RelationType::CoAccess, Direction::Outgoing) {
@@ -144,6 +144,14 @@ pub fn graph_expand(
         for edge_ref in graph.edges_of_type(node_idx, RelationType::RelatedTo, Direction::Outgoing)
         {
             // vnc-015 (ADR-006): RelatedTo added to positive BFS set at equal weight.
+            neighbors.push(graph.inner[edge_ref.target()]);
+        }
+        // vnc-018 (ADR-006): Advances and Motivates added to positive BFS type set.
+        for edge_ref in graph.edges_of_type(node_idx, RelationType::Advances, Direction::Outgoing) {
+            neighbors.push(graph.inner[edge_ref.target()]);
+        }
+        for edge_ref in graph.edges_of_type(node_idx, RelationType::Motivates, Direction::Outgoing)
+        {
             neighbors.push(graph.inner[edge_ref.target()]);
         }
 
