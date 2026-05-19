@@ -94,3 +94,30 @@ the weight per individual edge for nodes that had many other positive edges. Thi
 expected and correct behavior (normalization prevents high-degree nodes from
 dominating mass flow). The eval harness (W1-3) can measure the effect on a real
 query set if the team wants quantitative confirmation before shipping.
+
+---
+
+### Reversal — Pre-Merge (vnc-018, 2026-05-19)
+
+**Decision reversed.** The promotion of `Advances` and `Motivates` to the PPR and BFS
+positive type sets was reverted before this branch was merged to main.
+
+**Authoritative reference**: vnc-015 ADR-006 (Unimatrix entry #4429) remains the
+binding decision. The original deferral rationale — that directed-edge authority
+semantics for `Advances` and `Motivates` require further analysis before these types
+carry PPR mass — was not yet resolved by vnc-018. Unimatrix entry #4480 (which
+recorded the vnc-018 promotion) was superseded by entry #4496, which restores the
+write-only status.
+
+**What was reverted**:
+- `edges_of_type(Advances/Motivates)` blocks removed from `personalized_pagerank`
+  and `positive_out_degree_weight` in `graph_ppr.rs`.
+- `edges_of_type(Advances/Motivates)` blocks removed from `graph_expand` in
+  `graph_expand.rs`.
+- 5 positive tests removed from `graph_ppr_tests.rs`; 2 original write-only negative
+  tests restored verbatim.
+- 3 positive tests removed from `graph_expand_tests.rs`; 2 original write-only
+  negative tests restored verbatim.
+
+**Approved by**: product owner. The vnc-015 deferral rationale stands until a
+dedicated analysis spike (Phase 2) resolves the authority-semantics question.

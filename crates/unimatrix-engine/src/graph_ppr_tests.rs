@@ -926,116 +926,39 @@ fn test_ppr_related_to_weight_equals_existing_positive_types() {
     );
 }
 
-// ---- vnc-018: Advances and Motivates positive type (ADR-006, AC-17) ----
-
-/// test_ppr_positive_types_include_advances_and_motivates (AC-17, R-09):
-/// Advances and Motivates edges must propagate PPR mass (vnc-018, ADR-006).
-///
-/// positive_out_degree_weight must return > 0 when the only outgoing edges are
-/// Advances and Motivates — proving both types contribute to the normalization denominator.
+/// test_ppr_advances_is_write_only_no_ppr_flow (R-11, AC-17 negative, ADR-006):
+/// Advances edges must NOT propagate PPR mass (write-only, Phase 2 deferral).
 #[test]
-fn test_ppr_positive_types_include_advances_and_motivates() {
-    use super::positive_out_degree_weight_pub_for_test as positive_out_degree_weight;
-
-    // Node X (id=220) → Y (id=221) via Advances only.
+fn test_ppr_advances_is_write_only_no_ppr_flow() {
     let graph = make_graph_with_edges(&[(220, 221, RelationType::Advances, 1.0)]);
-    let x_idx = *graph.node_index.get(&220).expect("node 220 must exist");
-    let weight_advances = positive_out_degree_weight(&graph, x_idx);
-
-    assert!(
-        weight_advances > 0.0,
-        "positive_out_degree_weight must include Advances edge weight; got {weight_advances}"
-    );
-
-    // Add a Motivates edge: X (id=220) → Z (id=222) via Motivates.
-    let graph2 = make_graph_with_edges(&[
-        (220, 221, RelationType::Advances, 1.0),
-        (220, 222, RelationType::Motivates, 1.0),
-    ]);
-    let x_idx2 = *graph2.node_index.get(&220).expect("node 220 must exist");
-    let weight_both = positive_out_degree_weight(&graph2, x_idx2);
-
-    assert!(
-        weight_both >= weight_advances,
-        "Motivates must add to positive out-degree weight; with_both={weight_both}, advances_only={weight_advances}"
-    );
-}
-
-/// test_ppr_personalized_pagerank_includes_advances_motivates (AC-17):
-/// PPR mass flows through Advances and Motivates edges after vnc-018 promotion.
-///
-/// Three-node graph: X→Y (Advances), Y→Z (Motivates). Seed: {X}.
-/// Z must receive non-zero score — proves both types propagate mass transitively.
-#[test]
-fn test_ppr_personalized_pagerank_includes_advances_motivates() {
-    // Both forward and backward edges required per pattern #3896 so that the source
-    // node can accumulate from the target's seed score. Here we seed X, and want Z to
-    // score > 0. We need the reverse path so X accumulates from Y, Y from Z.
-    // Build: X→Y (Advances), Y→X (Advances), Y→Z (Motivates), Z→Y (Motivates).
-    let graph = make_graph_with_edges(&[
-        (220, 221, RelationType::Advances, 1.0),
-        (221, 220, RelationType::Advances, 1.0),
-        (221, 222, RelationType::Motivates, 1.0),
-        (222, 221, RelationType::Motivates, 1.0),
-    ]);
 
     let seed_scores: HashMap<u64, f64> = [(220u64, 1.0)].into_iter().collect();
     let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
 
-    assert!(
-        scores.get(&221).copied().unwrap_or(0.0) > 0.0,
-        "Y (id=221) must receive non-zero PPR mass via Advances edge when X (id=220) is seeded. \
-         score[221]={:.6}.",
+    assert_eq!(
+        scores.get(&221).copied().unwrap_or(0.0),
+        0.0,
+        "Advances (id=221) must receive ZERO PPR mass — Advances is write-only until Phase 2 (ADR-006). \
+         score[221]={:.6}. If non-zero, Advances was incorrectly added to the positive type set.",
         scores.get(&221).copied().unwrap_or(0.0)
     );
-    assert!(
-        scores.get(&222).copied().unwrap_or(0.0) > 0.0,
-        "Z (id=222) must receive non-zero PPR mass via Motivates edge. \
-         score[222]={:.6}.",
-        scores.get(&222).copied().unwrap_or(0.0)
-    );
 }
 
-/// test_ppr_advances_propagates_ppr_flow (AC-17, vnc-018):
-/// Advances edge mass flows to source when target is seeded (reverse-walk PPR).
+/// test_ppr_motivates_is_write_only_no_ppr_flow (R-11, AC-17 negative, ADR-006):
+/// Motivates edges must NOT propagate PPR mass (write-only, Phase 2 deferral).
 #[test]
-fn test_ppr_advances_propagates_ppr_flow() {
-    // A (id=220) → B (id=221) via Advances. Seed: B.
-    // A accumulates from B's seed score (A points to seeded B via Outgoing traversal).
-    let graph = make_graph_with_edges(&[
-        (220, 221, RelationType::Advances, 1.0),
-        (221, 220, RelationType::Advances, 1.0),
-    ]);
+fn test_ppr_motivates_is_write_only_no_ppr_flow() {
+    let graph = make_graph_with_edges(&[(230, 231, RelationType::Motivates, 1.0)]);
 
-    let seed_scores: HashMap<u64, f64> = [(221u64, 1.0)].into_iter().collect();
+    let seed_scores: HashMap<u64, f64> = [(230u64, 1.0)].into_iter().collect();
     let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
 
-    assert!(
-        scores.get(&220).copied().unwrap_or(0.0) > 0.0,
-        "A (id=220) must receive non-zero PPR mass via Advances edge when B (id=221) is seeded. \
-         score[220]={:.6}. Advances must be in the positive type set (vnc-018, ADR-006).",
-        scores.get(&220).copied().unwrap_or(0.0)
-    );
-}
-
-/// test_ppr_motivates_propagates_ppr_flow (AC-17, vnc-018):
-/// Motivates edge mass flows to source when target is seeded (reverse-walk PPR).
-#[test]
-fn test_ppr_motivates_propagates_ppr_flow() {
-    // A (id=230) → B (id=231) via Motivates. Seed: B.
-    let graph = make_graph_with_edges(&[
-        (230, 231, RelationType::Motivates, 1.0),
-        (231, 230, RelationType::Motivates, 1.0),
-    ]);
-
-    let seed_scores: HashMap<u64, f64> = [(231u64, 1.0)].into_iter().collect();
-    let scores = personalized_pagerank(&graph, &seed_scores, 0.85, 20);
-
-    assert!(
-        scores.get(&230).copied().unwrap_or(0.0) > 0.0,
-        "A (id=230) must receive non-zero PPR mass via Motivates edge when B (id=231) is seeded. \
-         score[230]={:.6}. Motivates must be in the positive type set (vnc-018, ADR-006).",
-        scores.get(&230).copied().unwrap_or(0.0)
+    assert_eq!(
+        scores.get(&231).copied().unwrap_or(0.0),
+        0.0,
+        "Motivates (id=231) must receive ZERO PPR mass — Motivates is write-only until Phase 2 (ADR-006). \
+         score[231]={:.6}. If non-zero, Motivates was incorrectly added to the positive type set.",
+        scores.get(&231).copied().unwrap_or(0.0)
     );
 }
 

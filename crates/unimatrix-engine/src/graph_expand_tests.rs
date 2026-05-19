@@ -453,55 +453,29 @@ fn test_graph_expand_related_to_unidirectional_fixture() {
     );
 }
 
-// ---- vnc-018: Advances and Motivates in positive BFS set (AC-18, ADR-006) ----
-
-/// test_graph_expand_follows_advances_edges (AC-18, vnc-018):
-/// Advances edges must be followed by BFS expansion after vnc-018 promotion.
+/// test_graph_expand_advances_not_in_positive_bfs (R-11, AC-17 negative, ADR-006):
+/// Advances edges must NOT cause BFS expansion (write-only, Phase 2 deferral).
 #[test]
-fn test_graph_expand_follows_advances_edges() {
-    let graph = make_graph_with_edges(&[(100, 101, RelationType::Advances, 1.0)]);
-    let result = graph_expand(&graph, &[100], 2, 200);
+fn test_graph_expand_advances_not_in_positive_bfs() {
+    let graph = make_graph_with_edges(&[(1, 2, RelationType::Advances, 1.0)]);
+    let result = graph_expand(&graph, &[1], 2, 200);
     assert!(
-        result.contains(&101),
-        "Advances edge (100→101) must be followed in BFS expansion (vnc-018, ADR-006). \
-         Entry 101 must appear in result."
+        result.is_empty(),
+        "Advances edges must NOT cause BFS expansion — Advances is write-only until Phase 2 (ADR-006). \
+         B (id=2) must not appear in result."
     );
 }
 
-/// test_graph_expand_follows_motivates_edges (AC-18, vnc-018):
-/// Motivates edges must be followed by BFS expansion after vnc-018 promotion.
+/// test_graph_expand_motivates_not_in_positive_bfs (R-11, AC-17 negative, ADR-006):
+/// Motivates edges must NOT cause BFS expansion (write-only, Phase 2 deferral).
 #[test]
-fn test_graph_expand_follows_motivates_edges() {
-    let graph = make_graph_with_edges(&[(100, 102, RelationType::Motivates, 1.0)]);
-    let result = graph_expand(&graph, &[100], 2, 200);
+fn test_graph_expand_motivates_not_in_positive_bfs() {
+    let graph = make_graph_with_edges(&[(1, 2, RelationType::Motivates, 1.0)]);
+    let result = graph_expand(&graph, &[1], 2, 200);
     assert!(
-        result.contains(&102),
-        "Motivates edge (100→102) must be followed in BFS expansion (vnc-018, ADR-006). \
-         Entry 102 must appear in result."
-    );
-}
-
-/// test_graph_expand_both_types_traversed_in_single_call (AC-18, vnc-018):
-/// Both Advances and Motivates are traversed in a single graph_expand call.
-///
-/// X→Y (Advances), X→Z (Motivates). Seed: X.
-/// Both Y and Z must appear — proving both types are iterated in the same call.
-#[test]
-fn test_graph_expand_both_types_traversed_in_single_call() {
-    let graph = make_graph_with_edges(&[
-        (100, 101, RelationType::Advances, 1.0),
-        (100, 102, RelationType::Motivates, 1.0),
-    ]);
-    let result = graph_expand(&graph, &[100], 1, 200);
-    assert!(
-        result.contains(&101),
-        "Y (id=101) must be reachable via Advances edge from X (id=100). \
-         result={result:?}"
-    );
-    assert!(
-        result.contains(&102),
-        "Z (id=102) must be reachable via Motivates edge from X (id=100). \
-         result={result:?}"
+        result.is_empty(),
+        "Motivates edges must NOT cause BFS expansion — Motivates is write-only until Phase 2 (ADR-006). \
+         B (id=2) must not appear in result."
     );
 }
 

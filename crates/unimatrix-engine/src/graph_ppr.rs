@@ -1,5 +1,5 @@
 //! Personalized PageRank over positive edges
-//! (Supports, CoAccess, Prerequisite, Informs, RelatedTo, Advances, Motivates).
+//! (Supports, CoAccess, Prerequisite, Informs, RelatedTo).
 //!
 //! This module is declared as a submodule of `graph.rs` via `#[path = "graph_ppr.rs"]`
 //! and re-exported from there. It does NOT appear in `lib.rs` (ADR-001, SR-01 boundary).
@@ -10,7 +10,9 @@
 //! - Tests live in `graph_ppr_tests.rs` (overflow split per C-09 / NFR-08).
 //!
 //! vnc-015: `RelatedTo` added to positive type set (ADR-006).
-//! vnc-018: `Advances` and `Motivates` added to positive type set (ADR-006 vnc-018).
+//! `Advances` and `Motivates` remain write-only until Phase 2 (vnc-015 ADR-006, entry #4429).
+//! vnc-018 promotion of these types was reversed before merge — directed-edge authority
+//! semantics require further analysis per the original deferral rationale (entry #4496).
 
 use std::collections::HashMap;
 
@@ -21,12 +23,12 @@ use petgraph::visit::EdgeRef;
 use crate::graph::{RelationType, TypedRelationGraph};
 
 /// Compute Personalized PageRank over positive edges
-/// (Supports, CoAccess, Prerequisite, Informs, RelatedTo, Advances, Motivates).
+/// (Supports, CoAccess, Prerequisite, Informs, RelatedTo).
 ///
 /// SR-01 constrains `graph_penalty` and `find_terminal_active` to Supersedes-only
 /// traversal; it does not restrict new retrieval functions from using other edge types.
-/// PPR uses Supports, CoAccess, Prerequisite, Informs, RelatedTo (vnc-015, ADR-006),
-/// Advances, and Motivates (vnc-018, ADR-006).
+/// PPR uses Supports, CoAccess, Prerequisite, Informs, RelatedTo (vnc-015, ADR-006).
+/// Advances and Motivates remain write-only until Phase 2 (vnc-015 ADR-006, entry #4429).
 ///
 /// `seed_scores` must be pre-normalized to sum 1.0 (caller responsibility).
 /// The function does NOT re-normalize internally.
@@ -92,11 +94,10 @@ pub fn personalized_pagerank(
             //           (current_scores[v] * edge_weight(node_id, v) / positive_out_degree(node_id))
             //
             // Traverse Direction::Outgoing on this node to reach targets v such that node_id → v.
-            // Seven separate edges_of_type calls (AC-02 — no .edges_directed() allowed).
+            // Five separate edges_of_type calls (AC-02 — no .edges_directed() allowed).
             // Fourth call: RelationType::Informs (crt-037).
             // Fifth call: RelationType::RelatedTo (vnc-015, ADR-006).
-            // Sixth call: RelationType::Advances (vnc-018, ADR-006).
-            // Seventh call: RelationType::Motivates (vnc-018, ADR-006).
+            // Advances and Motivates excluded — write-only until Phase 2 (entry #4429).
             //
             // This formulation surfaces nodes that point to highly-scored seeds:
             // if node_id→v and v is a seed, node_id gains mass proportional to v's score.
@@ -136,20 +137,7 @@ pub fn personalized_pagerank(
                     neighbor_contribution +=
                         outgoing_contribution(&current_scores, &edge_ref, out_degree, graph);
                 }
-                // vnc-018 (ADR-006): Advances and Motivates added to positive type set.
-                // Removed "write-only until Phase 2" restriction.
-                for edge_ref in
-                    graph.edges_of_type(node_idx, RelationType::Advances, Direction::Outgoing)
-                {
-                    neighbor_contribution +=
-                        outgoing_contribution(&current_scores, &edge_ref, out_degree, graph);
-                }
-                for edge_ref in
-                    graph.edges_of_type(node_idx, RelationType::Motivates, Direction::Outgoing)
-                {
-                    neighbor_contribution +=
-                        outgoing_contribution(&current_scores, &edge_ref, out_degree, graph);
-                }
+                // Advances and Motivates excluded — write-only until Phase 2 (entry #4429).
             }
 
             next_scores.insert(node_id, teleport + alpha * neighbor_contribution);
@@ -192,22 +180,21 @@ fn outgoing_contribution(
 
 /// Compute the sum of outgoing positive edge weights from a node.
 ///
-/// Positive types: Supports, CoAccess, Prerequisite, Informs, RelatedTo, Advances, Motivates.
+/// Positive types: Supports, CoAccess, Prerequisite, Informs, RelatedTo.
+/// Advances and Motivates are excluded — write-only until Phase 2 (entry #4429).
 ///
 /// Used for out-degree normalization in PPR. Returns 0.0 for nodes with no positive out-edges.
 /// All traversal uses `edges_of_type()` exclusively (AC-02).
 /// `Supersedes` and `Contradicts` edges are excluded by construction.
 ///
 /// vnc-015 (ADR-006): `RelatedTo` added as fifth positive type at equal weight.
-/// vnc-018 (ADR-006): `Advances` and `Motivates` added as sixth and seventh positive types.
 fn positive_out_degree_weight(graph: &TypedRelationGraph, node_idx: NodeIndex) -> f64 {
     let mut total: f64 = 0.0;
 
-    // Seven outgoing edge-type queries (AC-02: edges_of_type only).
+    // Five outgoing edge-type queries (AC-02: edges_of_type only).
     // Fourth call: RelationType::Informs (crt-037).
     // Fifth call: RelationType::RelatedTo (vnc-015, ADR-006).
-    // Sixth call: RelationType::Advances (vnc-018, ADR-006).
-    // Seventh call: RelationType::Motivates (vnc-018, ADR-006).
+    // Advances and Motivates excluded — write-only until Phase 2 (entry #4429).
     for edge_ref in graph.edges_of_type(node_idx, RelationType::Supports, Direction::Outgoing) {
         total += edge_ref.weight().weight as f64;
     }
@@ -221,13 +208,6 @@ fn positive_out_degree_weight(graph: &TypedRelationGraph, node_idx: NodeIndex) -
         total += edge_ref.weight().weight as f64;
     }
     for edge_ref in graph.edges_of_type(node_idx, RelationType::RelatedTo, Direction::Outgoing) {
-        total += edge_ref.weight().weight as f64;
-    }
-    // vnc-018 (ADR-006): Advances and Motivates added to positive out-degree weight.
-    for edge_ref in graph.edges_of_type(node_idx, RelationType::Advances, Direction::Outgoing) {
-        total += edge_ref.weight().weight as f64;
-    }
-    for edge_ref in graph.edges_of_type(node_idx, RelationType::Motivates, Direction::Outgoing) {
         total += edge_ref.weight().weight as f64;
     }
 
