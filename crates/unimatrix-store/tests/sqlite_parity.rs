@@ -1017,15 +1017,48 @@ async fn test_sql_analytics_query() {
 // Updated to 24 for crt-047 (curation health metrics columns on cycle_review_index).
 // Updated to 25 for vnc-014 (ASS-050 audit_log four-column migration + append-only triggers).
 // Updated to 26 for bugfix-587 (audit counter rename: next_audit_event_id → next_audit_id).
+// Updated to 27 for vnc-018 (four indexes for context_graph CTE and neighbor queries).
 #[tokio::test]
-async fn test_schema_version_is_14() {
+async fn test_schema_version_is_27() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 26,
-        "schema version must be 26 after bugfix-587 (was 25 after vnc-014)"
+        version, 27,
+        "schema version must be 27 after vnc-018 (was 26 after bugfix-587)"
     );
+    store.close().await.unwrap();
+}
+
+// === SCHEMA DDL: v27 indexes (vnc-018 context_graph) ===
+
+#[tokio::test]
+async fn test_v27_indexes_all_exist() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let index_names = [
+        "idx_entries_supersedes",
+        "idx_entries_superseded_by",
+        "idx_graph_edges_source_type",
+        "idx_graph_edges_target_type",
+    ];
+
+    for index_name in index_names {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='index' AND name=?",
+        )
+        .bind(index_name)
+        .fetch_one(store.read_pool_test())
+        .await
+        .unwrap();
+
+        assert!(
+            exists,
+            "Index '{index_name}' must exist after create_tables_if_needed (v27 schema)"
+        );
+    }
+
     store.close().await.unwrap();
 }
 
