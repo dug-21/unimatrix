@@ -719,3 +719,47 @@ class UnimatrixClient:
         if format is not None:
             args["format"] = format
         return self.call_tool("context_edge", args, timeout=timeout)
+
+    def context_graph(
+        self,
+        mode: str,
+        id: int,
+        *,
+        direction: str | None = None,
+        edge_types: list[str] | None = None,
+        depth: int | None = None,
+        resolve_supersessions: bool | None = None,
+        seed_ids: list[int] | None = None,
+        max_nodes: int | None = None,
+        from_id: int | None = None,
+        to_id: int | None = None,
+        agent_id: str | None = None,
+        format: str | None = None,
+        timeout: float | None = None,
+    ) -> MCPResponse:
+        """vnc-018: 14th MCP tool — graph read modes (chain, current, neighbors)."""
+        args: dict[str, Any] = {
+            "mode": mode,
+            "id": id,
+        }
+        if direction is not None:
+            args["direction"] = direction
+        if edge_types is not None:
+            args["edge_types"] = edge_types
+        if depth is not None:
+            args["depth"] = depth
+        if resolve_supersessions is not None:
+            args["resolve_supersessions"] = resolve_supersessions
+        if seed_ids is not None:
+            args["seed_ids"] = seed_ids
+        if max_nodes is not None:
+            args["max_nodes"] = max_nodes
+        if from_id is not None:
+            args["from_id"] = from_id
+        if to_id is not None:
+            args["to_id"] = to_id
+        if agent_id is not None:
+            args["agent_id"] = agent_id
+        if format is not None:
+            args["format"] = format
+        return self.call_tool("context_graph", args, timeout=timeout)
