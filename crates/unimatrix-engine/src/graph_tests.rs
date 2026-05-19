@@ -1674,3 +1674,51 @@ fn test_build_typed_graph_unknown_string_dropped() {
         "unknown relation_type must be dropped by R-10 guard; edge_count must be 0"
     );
 }
+
+// -- node_index_for accessor (ADR-008, R-07) --
+
+/// Enrolled node ID returns Some(NodeIndex). (R-07, AC-11)
+#[test]
+fn test_node_index_for_known_node_returns_index() {
+    let entries = vec![make_entry(42, Status::Active, None, None)];
+    let g = build_typed_relation_graph(&entries, &[]).unwrap();
+
+    let result = g.node_index_for(42);
+    assert!(
+        result.is_some(),
+        "node_index_for must return Some for a registered entry id"
+    );
+
+    // Confirm the returned index points to the correct node payload.
+    let idx = result.unwrap();
+    assert_eq!(
+        g.inner[idx], 42,
+        "NodeIndex must resolve to the enrolled entry id"
+    );
+}
+
+/// Absent node ID returns None. (R-07)
+#[test]
+fn test_node_index_for_unknown_node_returns_none() {
+    let entries = vec![make_entry(1, Status::Active, None, None)];
+    let g = build_typed_relation_graph(&entries, &[]).unwrap();
+
+    assert!(
+        g.node_index_for(999_999).is_none(),
+        "node_index_for must return None for an entry id not in the graph"
+    );
+}
+
+/// Empty graph returns None for any query. (R-07, boundary)
+#[test]
+fn test_node_index_for_empty_graph_returns_none() {
+    let g = TypedRelationGraph::empty();
+    assert!(
+        g.node_index_for(0).is_none(),
+        "empty graph must return None for id=0"
+    );
+    assert!(
+        g.node_index_for(u64::MAX).is_none(),
+        "empty graph must return None for id=u64::MAX"
+    );
+}

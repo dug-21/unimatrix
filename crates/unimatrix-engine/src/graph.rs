@@ -259,6 +259,18 @@ impl TypedRelationGraph {
         }
     }
 
+    /// Look up the petgraph `NodeIndex` for a given entry ID.
+    ///
+    /// Returns `None` when the entry is not present in the current tick's graph
+    /// (cold-start, unknown ID, or entry not loaded into the snapshot).
+    ///
+    /// This is the cross-crate visibility solution for BFS traversal in
+    /// `unimatrix-server` (ADR-008). The internal `node_index` field remains
+    /// `pub(crate)`; this accessor exposes only the minimum necessary surface.
+    pub fn node_index_for(&self, id: u64) -> Option<NodeIndex> {
+        self.node_index.get(&id).copied()
+    }
+
     /// Iterator over edges of the specified type from a given node in a given direction.
     ///
     /// This is the SOLE filter boundary (SR-01 mitigation). All traversal in
