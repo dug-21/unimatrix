@@ -154,7 +154,7 @@ pub(crate) async fn handle_graph(
     // Step 3: Mode dispatch.
     match params.mode.as_str() {
         "chain" => {
-            let result = graph_read_supersession::handle_chain(store, &params, id).await;
+            let result = graph_read_supersession::handle_chain(store, &params, id).await?;
             let json = serde_json::to_string(&result).map_err(|e| {
                 ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
             })?;

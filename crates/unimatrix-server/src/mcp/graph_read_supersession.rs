@@ -5,8 +5,11 @@
 //!
 //! Declared as a sub-module of `graph_read.rs` via `#[path]`.
 
+use rmcp::model::ErrorData;
 use unimatrix_core::{Status, Store};
 use unimatrix_store::{ChainDirection, query_current_terminal, query_supersession_chain};
+
+use crate::error::ERROR_INVALID_PARAMS;
 
 use super::{ChainResult, CurrentResponse, GraphParams, Truncated};
 
@@ -19,7 +22,11 @@ use super::{ChainResult, CurrentResponse, GraphParams, Truncated};
 /// Returns empty `ChainResult` for non-existent IDs — no error (AC-04).
 /// INTENTIONALLY asymmetric with `handle_current` (which returns an error).
 /// See R-21 and AC-04. Do not unify these behaviors.
-pub(super) async fn handle_chain(store: &Store, params: &GraphParams, id: u64) -> ChainResult {
+pub(super) async fn handle_chain(
+    store: &Store,
+    params: &GraphParams,
+    id: u64,
+) -> Result<ChainResult, ErrorData> {
     // Validate direction for chain mode: forward/backward/both only.
     // "incoming"/"outgoing" are neighbors-mode vocabulary.
     let direction = match params.direction.as_deref().unwrap_or("both") {
@@ -27,38 +34,34 @@ pub(super) async fn handle_chain(store: &Store, params: &GraphParams, id: u64) -
         "backward" => ChainDirection::Backward,
         "both" => ChainDirection::Both,
         other => {
-            tracing::warn!(
-                direction = %other,
-                "invalid direction for chain mode — expected forward|backward|both"
-            );
-            return ChainResult {
-                entries: vec![],
-                truncated: Truncated {
-                    forward: false,
-                    backward: false,
-                },
-            };
+            return Err(ErrorData::new(
+                ERROR_INVALID_PARAMS,
+                format!(
+                    "invalid direction '{other}' for chain mode — chain mode accepts: forward, backward, both"
+                ),
+                None,
+            ));
         }
     };
 
     // ADR-001: SQL recursive CTE path is mandatory. find_terminal_active is PROHIBITED.
     match query_supersession_chain(store.read_pool_server(), id, direction, 50).await {
-        Ok(chain_result) => ChainResult {
+        Ok(chain_result) => Ok(ChainResult {
             entries: chain_result.entries,
             truncated: Truncated {
                 forward: chain_result.forward_capped,
                 backward: chain_result.backward_capped,
             },
-        },
+        }),
         Err(e) => {
             tracing::error!(id, error = %e, "query_supersession_chain failed");
-            ChainResult {
+            Ok(ChainResult {
                 entries: vec![],
                 truncated: Truncated {
                     forward: false,
                     backward: false,
                 },
-            }
+            })
         }
     }
 }
@@ -214,7 +217,7 @@ mod tests {
             id: Some(999_999),
             ..Default::default()
         };
-        let result = handle_chain(&store_impl, &params, 999_999).await;
+        let result = handle_chain(&store_impl, &params, 999_999).await.unwrap();
 
         assert!(
             result.entries.is_empty(),
@@ -257,7 +260,7 @@ mod tests {
             direction: Some("both".to_string()),
             ..Default::default()
         };
-        let result = handle_chain(&store_impl, &params, c).await;
+        let result = handle_chain(&store_impl, &params, c).await.unwrap();
 
         assert_eq!(result.entries.len(), 5, "all 5 entries must be returned");
         let ids: Vec<u64> = result.entries.iter().map(|entry| entry.id).collect();
@@ -296,12 +299,36 @@ mod tests {
             direction: Some("forward".to_string()),
             ..Default::default()
         };
-        let result = handle_chain(&store_impl, &params, a).await;
+        let result = handle_chain(&store_impl, &params, a).await.unwrap();
 
         let ids: Vec<u64> = result.entries.iter().map(|entry| entry.id).collect();
         assert!(ids.contains(&a), "seed A must be included");
         assert!(ids.contains(&b), "B must be in forward result");
         assert!(ids.contains(&c), "C must be in forward result");
+        store_impl.close().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_handle_chain_invalid_direction_returns_error() {
+        // "incoming" is neighbors-mode vocabulary and must be rejected by chain mode
+        // with a proper error — not silently swallowed as an empty result.
+        let (store_impl, _dir) = open_test_store().await;
+
+        let params = GraphParams {
+            mode: "chain".to_string(),
+            id: Some(1),
+            direction: Some("incoming".to_string()),
+            ..Default::default()
+        };
+        let result = handle_chain(&store_impl, &params, 1).await;
+
+        assert!(result.is_err(), "invalid direction must return Err");
+        let err = result.unwrap_err();
+        let msg: &str = &err.message;
+        assert!(msg.contains("chain"), "error must mention 'chain', got: {msg}");
+        assert!(msg.contains("forward"), "error must mention 'forward', got: {msg}");
+        assert!(msg.contains("backward"), "error must mention 'backward', got: {msg}");
+        assert!(msg.contains("both"), "error must mention 'both', got: {msg}");
         store_impl.close().await.unwrap();
     }
 
