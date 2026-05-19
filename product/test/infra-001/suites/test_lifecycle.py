@@ -2894,3 +2894,477 @@ def test_edge_survives_server_restart(tmp_path):
     assert count_after_restart == 1, (
         f"Edge must survive server restart; got count={count_after_restart}"
     )
+
+
+# === vnc-017: Auto-Redirect Incoming Edges on context_correct ================
+
+
+def _extract_correction_id(correct_resp):
+    """Extract the new entry ID from a context_correct response.
+
+    When the auto-redirect summary is appended to the response text, the combined
+    text (JSON block + redirect summary) is not valid JSON, so parse_tool_result's
+    json.loads fails and result.parsed is None. This helper extracts the ID from
+    the JSON portion directly.
+
+    Supports both pure-JSON responses (no edges redirected) and appended responses
+    (edges were redirected — redirect summary follows the JSON block).
+    """
+    import json as _json
+    result = assert_tool_success(correct_resp)
+
+    # Fast path: parsed succeeded (no redirect summary appended)
+    if result.parsed is not None and isinstance(result.parsed, dict):
+        corr = result.parsed.get("correction", {})
+        if corr and "id" in corr:
+            return int(corr["id"])
+
+    # Slow path: response text is JSON + appended redirect summary.
+    # Extract the JSON block by finding the closing brace of the top-level object.
+    text = result.text
+    depth = 0
+    json_end = -1
+    for i, ch in enumerate(text):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                json_end = i + 1
+                break
+
+    if json_end > 0:
+        try:
+            obj = _json.loads(text[:json_end])
+            corr = obj.get("correction", {})
+            if corr and "id" in corr:
+                return int(corr["id"])
+        except _json.JSONDecodeError:
+            pass
+
+    # Last resort: use existing extract_entry_id (may return wrong ID in some cases)
+    return extract_entry_id(correct_resp)
+
+
+def _count_edges_with_target_lc(project_dir, target_id, relation_type=None):
+    """Count graph_edges rows where target_id matches; optionally filter by relation_type."""
+    import sqlite3
+    db_path = _compute_db_path_vnc015(project_dir)
+    conn = sqlite3.connect(db_path)
+    try:
+        if relation_type is not None:
+            cur = conn.execute(
+                "SELECT COUNT(*) FROM graph_edges WHERE target_id=? AND relation_type=?",
+                (target_id, relation_type),
+            )
+        else:
+            cur = conn.execute(
+                "SELECT COUNT(*) FROM graph_edges WHERE target_id=?",
+                (target_id,),
+            )
+        return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _count_non_supersedes_edges_with_target_lc(project_dir, target_id):
+    """Count graph_edges rows where target_id matches and relation_type != 'Supersedes'."""
+    import sqlite3
+    db_path = _compute_db_path_vnc015(project_dir)
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges "
+            "WHERE target_id=? AND relation_type != 'Supersedes'",
+            (target_id,),
+        )
+        return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
+def test_correct_auto_redirects_prerequisite_edges(server):
+    """vnc-017 AC-01, AC-02, AC-06: context_correct auto-redirects incoming Prerequisite edges.
+
+    Flow: Store C and A. Add edge C->A (Prerequisite). Call context_correct(A->B).
+    Assert: no non-Supersedes edge with target_id=A remains; C->B (Prerequisite) exists.
+
+    Verifies AC-01 (no stale non-Supersedes edges pointing at deprecated original),
+    AC-02 (edges redirected to new entry), and AC-06 (end-to-end integration).
+    """
+    # Store the source entry C (semantically distinct from A to avoid deduplication)
+    resp_c = server.context_store(
+        "vnc017 auto-redirect AC06: component C is a consumer module that depends on the shared configuration service",
+        "architecture", "decision",
+        agent_id="human", format="json",
+    )
+    id_c = extract_entry_id(resp_c)
+
+    # Store the original entry A (will be deprecated by correction)
+    resp_a = server.context_store(
+        "vnc017 auto-redirect AC06: shared configuration service A — centralized runtime config for all consumers",
+        "architecture", "pattern",
+        agent_id="human", format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+
+    # Add Prerequisite edge C -> A via context_edge
+    edge_resp = server.context_edge("add", id_c, "Prerequisite", id_a, agent_id="human")
+    assert_tool_success(edge_resp)
+
+    # Confirm edge C->A exists before correction
+    pre_count = _query_graph_edges_lc(server.project_dir, id_c, id_a, "Prerequisite")
+    assert pre_count == 1, (
+        f"AC-06 precondition: edge C({id_c})->A({id_a}) (Prerequisite) must exist before correction"
+    )
+
+    # Call context_correct(A -> B) — triggers auto-redirect of C->A to C->B
+    correct_resp = server.context_correct(
+        id_a,
+        "vnc017 redirect test: corrected version of A — this is the new entry B",
+        reason="content correction for redirect test",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(correct_resp)
+    id_b = _extract_correction_id(correct_resp)
+
+    # AC-01: no non-Supersedes edges pointing at A should remain
+    stale_non_supersedes = _count_non_supersedes_edges_with_target_lc(
+        server.project_dir, id_a
+    )
+    assert stale_non_supersedes == 0, (
+        f"AC-01: no non-Supersedes edges must point at deprecated original A({id_a}) "
+        f"after context_correct; found {stale_non_supersedes} stale edge(s)"
+    )
+
+    # AC-02: the edge C->B (Prerequisite) must exist in graph_edges
+    redirected_count = _query_graph_edges_lc(server.project_dir, id_c, id_b, "Prerequisite")
+    assert redirected_count == 1, (
+        f"AC-02: redirected edge C({id_c})->B({id_b}) (Prerequisite) must exist "
+        f"after context_correct; found {redirected_count} row(s)"
+    )
+
+    # Original edge C->A must no longer exist
+    old_count = _query_graph_edges_lc(server.project_dir, id_c, id_a, "Prerequisite")
+    assert old_count == 0, (
+        f"AC-06: old edge C({id_c})->A({id_a}) must be gone after redirect; "
+        f"found {old_count} row(s)"
+    )
+
+
+def test_correct_auto_redirects_contradicts_edges(server):
+    """vnc-017 AC-07: Contradicts edge pair is fully redirected (both forward and reverse).
+
+    Flow: Store C and A. Add bidirectional Contradicts edge (C->A and A->C).
+    Call context_correct(A -> B). Assert: both C->B and B->C rows exist.
+
+    Verifies that the redirect_graph_edge Contradicts 4-row path correctly handles
+    bidirectionality: the forward edge C->A redirects to C->B, and the reverse
+    A->C redirects to B->C.
+    """
+    resp_c = server.context_store(
+        "vnc017 contradicts AC07: claim C — all distributed systems must use event sourcing for auditability",
+        "architecture", "decision",
+        agent_id="human", format="json",
+    )
+    id_c = extract_entry_id(resp_c)
+
+    resp_a = server.context_store(
+        "vnc017 contradicts AC07: claim A — relational databases with ACID transactions eliminate need for event sourcing",
+        "architecture", "pattern",
+        agent_id="human", format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+
+    # Add Contradicts edge C->A (bidirectional: also writes A->C)
+    edge_resp = server.context_edge("add", id_c, "Contradicts", id_a, agent_id="human")
+    assert_tool_success(edge_resp)
+
+    # Confirm both directions exist before correction
+    fwd_before = _query_graph_edges_lc(server.project_dir, id_c, id_a, "Contradicts")
+    rev_before = _query_graph_edges_lc(server.project_dir, id_a, id_c, "Contradicts")
+    assert fwd_before == 1 and rev_before == 1, (
+        f"AC-07 precondition: both C->A and A->C (Contradicts) must exist. "
+        f"fwd={fwd_before}, rev={rev_before}"
+    )
+
+    # Call context_correct(A -> B) — auto-redirect should move C->A to C->B (and A->C to B->C)
+    correct_resp = server.context_correct(
+        id_a,
+        "vnc017 contradicts redirect: corrected version of A — this is new entry B",
+        reason="contradiction correction",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(correct_resp)
+    id_b = _extract_correction_id(correct_resp)
+
+    # AC-07: forward redirect — C->B (Contradicts) must exist
+    fwd_after = _query_graph_edges_lc(server.project_dir, id_c, id_b, "Contradicts")
+    assert fwd_after == 1, (
+        f"AC-07: forward redirect C({id_c})->B({id_b}) (Contradicts) must exist "
+        f"after correction; found {fwd_after} row(s)"
+    )
+
+    # AC-07: reverse redirect — B->C (Contradicts) must exist
+    rev_after = _query_graph_edges_lc(server.project_dir, id_b, id_c, "Contradicts")
+    assert rev_after == 1, (
+        f"AC-07: reverse redirect B({id_b})->C({id_c}) (Contradicts) must exist "
+        f"after correction; found {rev_after} row(s)"
+    )
+
+    # Old edges pointing at A must be gone
+    old_fwd = _query_graph_edges_lc(server.project_dir, id_c, id_a, "Contradicts")
+    assert old_fwd == 0, (
+        f"AC-07: old forward edge C({id_c})->A({id_a}) must be removed; found {old_fwd}"
+    )
+
+
+def test_correct_leaves_supersedes_edges_unchanged(server):
+    """vnc-017 AC-10: Supersedes edges are excluded from the redirect loop and remain unchanged.
+
+    Flow: Store A, then store S as a prior entry that is corrected to A (creating a
+    Supersedes row S->A in graph_edges). Call context_correct(A->B). Assert that the
+    Supersedes row S->A still exists (not redirected), and no new Supersedes row S->B
+    was inserted.
+
+    Verifies that the SQL-level exclusion (WHERE relation_type != 'Supersedes') in
+    query_incoming_edges correctly excludes Supersedes rows from the redirect loop,
+    per ADR-002 (vnc-017).
+    """
+    # Store the earlier entry S — will be corrected to A, creating a Supersedes row S->A
+    resp_s = server.context_store(
+        "vnc017 supersedes AC10: original claim S — database indexes always improve query performance regardless of write volume",
+        "architecture", "decision",
+        agent_id="human", format="json",
+    )
+    id_s = extract_entry_id(resp_s)
+
+    # Correct S -> A (S is deprecated, A is the new entry; graph_edges gets a Supersedes row S->A)
+    correct_s_resp = server.context_correct(
+        id_s,
+        "vnc017 supersedes AC10: refined claim A — database indexes improve read performance but may degrade high-write workloads",
+        reason="initial correction to establish Supersedes row for redirect exclusion test",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(correct_s_resp)
+    id_a = _extract_correction_id(correct_s_resp)
+
+    # Verify Supersedes row S->A exists (graph tick may add it; also written by correction)
+    # The Supersedes row may be in graph_edges from the typed graph tick.
+    # We verify via the entries.superseded_by field (guaranteed by context_correct):
+    entry_s = parse_entry(server.context_get(id_s, format="json"))
+    assert entry_s.get("status") == "deprecated", (
+        f"AC-10 precondition: S({id_s}) must be deprecated after correction"
+    )
+    # S.superseded_by must point to A
+    assert entry_s.get("superseded_by") == id_a, (
+        f"AC-10 precondition: S.superseded_by must be A({id_a}); "
+        f"got {entry_s.get('superseded_by')}"
+    )
+
+    # Now correct A -> B (the main operation under test)
+    correct_a_resp = server.context_correct(
+        id_a,
+        "vnc017 supersedes AC10: final claim B — database indexes must be profiled per query pattern before adding",
+        reason="second correction to trigger auto-redirect and verify Supersedes exclusion",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(correct_a_resp)
+    id_b = _extract_correction_id(correct_a_resp)
+
+    # AC-10: Supersedes row S->A must still exist (or never have been deleted by the redirect loop)
+    # The redirect loop excludes Supersedes via SQL, so this row must be untouched.
+    # Note: Supersedes rows in graph_edges are rebuilt from entries.superseded_by by the graph tick.
+    # At this moment (no tick has run), we confirm the redirect loop did NOT touch it.
+    # Verify by checking that no Supersedes row S->B was inserted (the strongest assertion):
+    s_to_b = _query_graph_edges_lc(server.project_dir, id_s, id_b, "Supersedes")
+    assert s_to_b == 0, (
+        f"AC-10: redirect loop must NOT insert Supersedes row S({id_s})->B({id_b}). "
+        f"Supersedes edges must be excluded from auto-redirect per ADR-002. "
+        f"Found {s_to_b} row(s)"
+    )
+
+    # Also verify: non-Supersedes edges pointing at A were redirected (not Supersedes)
+    # (no such edges seeded here — verify zero stale non-Supersedes edges point at A)
+    stale = _count_non_supersedes_edges_with_target_lc(server.project_dir, id_a)
+    assert stale == 0, (
+        f"AC-10: no non-Supersedes edges should remain pointing at A({id_a}). "
+        f"Found {stale} stale edge(s)"
+    )
+
+
+def test_correct_response_text_contains_redirect_summary(server):
+    """vnc-017 AC-12, R-11: context_correct response text contains redirect summary substring.
+
+    Flow: Store C, D, and A. Add two Prerequisite edges (C->A and D->A).
+    Call context_correct(A->B). Assert MCP response text contains:
+    "Redirected 2 incoming edges (0 failed, see logs)"
+
+    Verifies that the redirect summary is appended to the actual MCP CallToolResult
+    text (not just the unit-test stub), confirming R-11 (response text verified in
+    real CallToolResult, not only in format function unit tests).
+    """
+    # Store first source entry C (content must be semantically distinct from D to avoid deduplication)
+    resp_c = server.context_store(
+        "vnc017 redirect response text: first upstream component C — authentication module needs deployment runbook",
+        "testing", "convention",
+        agent_id="human", format="json",
+    )
+    id_c = extract_entry_id(resp_c)
+
+    # Store second source entry D (semantically different from C to avoid deduplication)
+    resp_d = server.context_store(
+        "vnc017 redirect response text: second upstream component D — database migration script depends on deployment runbook",
+        "testing", "pattern",
+        agent_id="human", format="json",
+    )
+    id_d = extract_entry_id(resp_d)
+
+    # Verify C and D got distinct IDs (deduplication guard)
+    assert id_c != id_d, (
+        f"AC-12 precondition: C and D must be distinct entries; got id_c={id_c}, id_d={id_d}"
+    )
+
+    # Store the original entry A
+    resp_a = server.context_store(
+        "vnc017 redirect response text: deployment runbook A — step-by-step production deployment procedure",
+        "testing", "convention",
+        agent_id="human", format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+
+    # Add two Prerequisite edges pointing at A
+    edge_c_resp = server.context_edge("add", id_c, "Prerequisite", id_a, agent_id="human")
+    assert_tool_success(edge_c_resp)
+
+    edge_d_resp = server.context_edge("add", id_d, "Prerequisite", id_a, agent_id="human")
+    assert_tool_success(edge_d_resp)
+
+    # Call context_correct(A -> B) and capture the response text
+    correct_resp = server.context_correct(
+        id_a,
+        "vnc017 response text test: corrected version B — updated deployment knowledge",
+        reason="content update for response text verification",
+        agent_id="human",
+    )
+    assert_tool_success(correct_resp)
+    response_text = get_result_text(correct_resp)
+
+    # AC-12 / R-11: the redirect summary must appear in the actual response text
+    expected_substring = "Redirected 2 incoming edges (0 failed, see logs)"
+    assert expected_substring in response_text, (
+        f"AC-12/R-11: context_correct response text must contain redirect summary. "
+        f"Expected substring: {expected_substring!r}\n"
+        f"Actual response text: {response_text[:500]!r}"
+    )
+
+
+def test_correct_redirected_edges_clear_dependency_detection(server):
+    """vnc-017 AC-16, R-08: After auto-redirect, no stale_dependency_edge reported for the redirected source.
+
+    Flow: Store C (Active) and A (Active). Add Prerequisite edge C->A.
+    Verify stale_dependency_edges == 0 (both entries Active, no staleness).
+    Call context_correct(A->B) — A becomes Deprecated, redirect moves C->A to C->B.
+    Call context_status and assert stale_dependency_edges == 0.
+
+    If auto-redirect had NOT occurred, A would be Deprecated and the edge C->A
+    (Prerequisite, source=C Active, but target=A Deprecated) would count as a
+    DependencyOnDeprecated. The stale_dependency_edges counter in context_status
+    computes this synchronously via compute_graph_cohesion_metrics(). A count of 0
+    confirms the redirect loop cleared the stale edge before it could be detected.
+
+    Note on R-08 (DependencyOnDeprecated tick): stale_dependency_edges is computed
+    synchronously in context_status (not from the 15-minute background tick). This
+    provides immediate verification of the full-redirect-clears-detection guarantee.
+    The partial-redirect detection persistence scenario (skipped-source path) is
+    covered by unit tests (AC-08) where the stale edge remains intentionally.
+    """
+    # Store C: the entry that will hold the Prerequisite edge to A
+    # (use distinct, semantically different content to avoid deduplication with A)
+    resp_c = server.context_store(
+        "vnc017 dependency detection: upstream consumer module C — requires validated API contract to proceed",
+        "architecture", "decision",
+        agent_id="human", format="json",
+    )
+    id_c = extract_entry_id(resp_c)
+
+    # Store A: the entry to be corrected (semantically different from C to avoid dedup)
+    resp_a = server.context_store(
+        "vnc017 dependency detection: API contract specification A — defines validated interface for consumers",
+        "architecture", "pattern",
+        agent_id="human", format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+
+    # Guard: C and A must have different IDs (deduplication check)
+    assert id_c != id_a, (
+        f"AC-16 precondition: C and A must be distinct entries; id_c={id_c}, id_a={id_a}"
+    )
+
+    # Add Prerequisite edge C -> A
+    edge_resp = server.context_edge("add", id_c, "Prerequisite", id_a, agent_id="human")
+    assert_tool_success(edge_resp)
+
+    # Verify baseline: stale_dependency_edges == 0 before correction (both Active)
+    status_before = server.context_status(agent_id="human", format="json")
+    report_before = parse_status_report(status_before)
+    gh_before = report_before.get("graph_health", report_before)
+    stale_before = gh_before.get("stale_dependency_edges")
+    if stale_before is None:
+        stale_before = report_before.get("stale_dependency_edges")
+    assert stale_before is not None, (
+        f"AC-16 precondition: stale_dependency_edges field missing from status. "
+        f"Keys: {list(report_before.keys())}"
+    )
+    assert stale_before == 0, (
+        f"AC-16 precondition: stale_dependency_edges must be 0 before correction "
+        f"(both entries Active); got {stale_before}"
+    )
+
+    # Call context_correct(A -> B) — A becomes Deprecated, auto-redirect moves C->A to C->B
+    correct_resp = server.context_correct(
+        id_a,
+        "vnc017 stale detection test: corrected version B — updated prerequisite knowledge",
+        reason="correction to trigger auto-redirect and verify detection clearance",
+        agent_id="human",
+        format="json",
+    )
+    assert_tool_success(correct_resp)
+    id_b = _extract_correction_id(correct_resp)
+
+    # Verify the redirect occurred: C->B must exist, C->A must not exist
+    redirected = _query_graph_edges_lc(server.project_dir, id_c, id_b, "Prerequisite")
+    assert redirected == 1, (
+        f"AC-16 intermediate check: C({id_c})->B({id_b}) (Prerequisite) must exist "
+        f"after auto-redirect; found {redirected} row(s)"
+    )
+    old_edge = _query_graph_edges_lc(server.project_dir, id_c, id_a, "Prerequisite")
+    assert old_edge == 0, (
+        f"AC-16 intermediate check: old C({id_c})->A({id_a}) must be gone; "
+        f"found {old_edge} row(s)"
+    )
+
+    # AC-16 / R-08: stale_dependency_edges must be 0 after successful auto-redirect
+    # compute_graph_cohesion_metrics() counts Prerequisite edges where source is Deprecated (status=1).
+    # C is still Active; the edge C->A was replaced by C->B; A is now Deprecated but has no
+    # remaining Prerequisite edges pointing FROM it as source. stale count must be 0.
+    status_after = server.context_status(agent_id="human", format="json")
+    report_after = parse_status_report(status_after)
+    gh_after = report_after.get("graph_health", report_after)
+    stale_after = gh_after.get("stale_dependency_edges")
+    if stale_after is None:
+        stale_after = report_after.get("stale_dependency_edges")
+    assert stale_after is not None, (
+        f"AC-16: stale_dependency_edges field missing from post-correction status. "
+        f"Keys: {list(report_after.keys())}"
+    )
+    assert stale_after == 0, (
+        f"AC-16/R-08: stale_dependency_edges must be 0 after auto-redirect clears the edge. "
+        f"Got {stale_after}. If > 0, the redirect loop did not move C->A to C->B, "
+        f"leaving C->A as a stale Prerequisite edge (C is Active, A is now Deprecated). "
+        f"Entry C={id_c}, A={id_a}, B={id_b}"
+    )

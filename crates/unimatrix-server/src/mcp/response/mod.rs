@@ -28,8 +28,9 @@ pub mod status;
 
 // Re-export entry formatting
 pub use entries::{
-    format_correct_success, format_duplicate_found, format_lookup_results, format_search_results,
-    format_single_entry, format_store_success, format_store_success_with_note,
+    format_correct_success, format_duplicate_found, format_lookup_results, format_redirect_summary,
+    format_search_results, format_single_entry, format_store_success,
+    format_store_success_with_note,
 };
 
 // Re-export mutation formatting
