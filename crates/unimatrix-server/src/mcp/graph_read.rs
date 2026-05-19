@@ -278,8 +278,7 @@ pub(crate) fn validate_no_unsupported_params(params: &GraphParams) -> Result<(),
             }
             if params.from_id.is_some() {
                 return Err(
-                    "from_id is not supported in neighbors mode — use path mode (#598)"
-                        .to_string(),
+                    "from_id is not supported in neighbors mode — use path mode (#598)".to_string(),
                 );
             }
             if params.to_id.is_some() {
@@ -585,7 +584,10 @@ mod tests {
         let entry = make_entry_for_test(42);
         let graph = build_typed_relation_graph(&[entry], &[]).expect("build graph");
         let result = graph.node_index_for(42);
-        assert!(result.is_some(), "known node 42 must return Some(NodeIndex)");
+        assert!(
+            result.is_some(),
+            "known node 42 must return Some(NodeIndex)"
+        );
     }
 
     #[test]
