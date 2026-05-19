@@ -33,8 +33,8 @@ def test_server_info(server):
     assert_tool_success(resp)
 
 
-def test_list_tools_returns_thirteen(server):
-    """P-03: tools/list returns exactly 13 context_* tools (vnc-015: +context_edge)."""
+def test_list_tools_returns_fourteen(server):
+    """P-03: tools/list returns exactly 14 context_* tools (vnc-018: +context_graph)."""
     resp = server.list_tools()
     raw = resp.result
     assert raw is not None, "tools/list should return a result"
@@ -54,6 +54,7 @@ def test_list_tools_returns_thirteen(server):
         "context_enroll",
         "context_cycle_review",
         "context_edge",
+        "context_graph",
     ])
     assert tool_names == expected, f"Expected {expected}, got {tool_names}"
 
