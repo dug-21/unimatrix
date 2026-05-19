@@ -271,6 +271,18 @@ impl TypedRelationGraph {
         self.node_index.get(&id).copied()
     }
 
+    /// Look up the entry ID (u64) stored at a `NodeIndex`.
+    ///
+    /// Companion to `node_index_for` — provides the reverse mapping needed by BFS
+    /// traversal in `unimatrix-server` to convert edge target/source `NodeIndex` values
+    /// back to entry IDs without exposing the `inner` StableGraph field (ADR-008).
+    ///
+    /// Returns `None` when the `NodeIndex` has no corresponding node (e.g., removed node
+    /// in a StableGraph or an index from a different graph instance).
+    pub fn node_id_for_index(&self, idx: NodeIndex) -> Option<u64> {
+        self.inner.node_weight(idx).copied()
+    }
+
     /// Iterator over edges of the specified type from a given node in a given direction.
     ///
     /// This is the SOLE filter boundary (SR-01 mitigation). All traversal in

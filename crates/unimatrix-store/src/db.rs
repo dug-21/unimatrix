@@ -285,6 +285,18 @@ impl SqlxStore {
         &self.write_pool
     }
 
+    /// Public read pool accessor for server-internal use (graph traversal, read-only queries).
+    ///
+    /// Exposed so that server-layer code can pass the read pool to store-layer query
+    /// functions (e.g., `query_supersession_chain`, `query_direct_neighbors`) that take
+    /// a `&SqlitePool` and must use the read pool per C-07.
+    ///
+    /// Only use this for strictly read-only SQL (SELECT). For write operations use
+    /// `enqueue_analytics` or `write_pool_server()`.
+    pub fn read_pool_server(&self) -> &SqlitePool {
+        &self.read_pool
+    }
+
     /// Public write pool accessor for server-internal use (export, import, audit, registry).
     ///
     /// Exposed so that server-layer code can issue raw sqlx queries against tables
