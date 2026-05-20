@@ -285,6 +285,18 @@ impl SqlxStore {
         &self.write_pool
     }
 
+    /// Public read pool accessor for server-internal use (graph traversal, read-only queries).
+    ///
+    /// Exposed so that server-layer code can pass the read pool to store-layer query
+    /// functions (e.g., `query_supersession_chain`, `query_direct_neighbors`) that take
+    /// a `&SqlitePool` and must use the read pool per C-07.
+    ///
+    /// Only use this for strictly read-only SQL (SELECT). For write operations use
+    /// `enqueue_analytics` or `write_pool_server()`.
+    pub fn read_pool_server(&self) -> &SqlitePool {
+        &self.read_pool
+    }
+
     /// Public write pool accessor for server-internal use (export, import, audit, registry).
     ///
     /// Exposed so that server-layer code can issue raw sqlx queries against tables
@@ -965,6 +977,26 @@ pub(crate) async fn create_tables_if_needed(
     .execute(&mut *conn)
     .await?;
 
+    // vnc-018 (v27): four indexes for context_graph CTE and neighbor queries.
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_entries_supersedes ON entries(supersedes)")
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_entries_superseded_by ON entries(superseded_by)")
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_graph_edges_source_type \
+         ON graph_edges(source_id, relation_type)",
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_graph_edges_target_type \
+         ON graph_edges(target_id, relation_type)",
+    )
+    .execute(&mut *conn)
+    .await?;
+
     // cycle_review_index: memoized RetrospectiveReport archive (crt-033).
     // No FOREIGN KEY clause — consistent with all other tables (C-09).
     sqlx::query(
@@ -1407,6 +1439,26 @@ mod tests {
         .expect("fetch bootstrap_only");
 
         assert_eq!(bootstrap_only, 0, "bootstrap_only must default to 0");
+        store.close().await.unwrap();
+    }
+
+    /// AC-19, R-05: All four v27 indexes must be present on a fresh database.
+    #[tokio::test]
+    async fn test_create_tables_creates_four_v27_indexes() {
+        let (store, _dir) = open_test_store().await;
+
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name IN (?,?,?,?)",
+        )
+        .bind("idx_entries_supersedes")
+        .bind("idx_entries_superseded_by")
+        .bind("idx_graph_edges_source_type")
+        .bind("idx_graph_edges_target_type")
+        .fetch_one(&store.write_pool)
+        .await
+        .expect("query sqlite_master");
+
+        assert_eq!(count, 4, "all four v27 indexes must be created on fresh DB");
         store.close().await.unwrap();
     }
 

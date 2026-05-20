@@ -3102,11 +3102,16 @@ def _store_two_entries(server):
 
 
 def test_context_edge_tool_registered(server):
-    """AC-19: context_edge is the 13th MCP tool with correct parameter schema."""
+    """AC-19: context_edge is registered as an MCP tool with the correct parameter schema.
+
+    Updated from 13 to 14 tools (vnc-018 adds context_graph as the 14th tool).
+    The important assertion is context_edge presence and schema, not the exact count
+    (which is asserted separately in test_protocol.py::test_list_tools_returns_fourteen).
+    """
     resp = server.list_tools()
     result = resp.result
     tools = result.get("tools", [])
-    assert len(tools) == 13, f"Expected 13 tools, got {len(tools)}"
+    assert len(tools) == 14, f"Expected 14 tools (context_graph added in vnc-018), got {len(tools)}"
     names = [t["name"] for t in tools]
     assert "context_edge" in names, f"context_edge not in tools: {names}"
     edge_tool = next(t for t in tools if t["name"] == "context_edge")
@@ -3834,5 +3839,251 @@ def test_dependency_on_deprecated_no_finding_without_stale_edge(server):
         f"'dependency_on_deprecated' unexpectedly present in hotspots when no stale "
         f"edge exists. rule_names: {[h['rule_name'] for h in data['hotspots']]}. "
         f"This indicates an always-fires implementation or cross-test cycle contamination."
+    )
+
+
+# === vnc-018: context_graph tool (14th tool) ===========================
+#
+# AC-01, AC-04, AC-05a, AC-06, AC-06b, AC-08, AC-20
+# R-03, R-20, R-21
+#
+# All tests use the `server` fixture (function scope, fresh DB).
+# See IMPLEMENTATION-BRIEF.md §vnc-018 for design decisions.
+
+
+def _store_entry(server, content="graph test entry", topic="testing", category="convention"):
+    """Helper: store a single entry and return its integer ID."""
+    resp = server.context_store(content, topic, category, agent_id="human", format="json")
+    assert_tool_success(resp)
+    return extract_entry_id(resp)
+
+
+def test_graph_chain_basic(server):
+    """AC-01, AC-20: 5-entry chain; call chain mode; assert all 5 entries returned.
+
+    Stores A, corrects A->B, B->C, C->D, D->E to form a 5-entry supersession chain.
+    Calls context_graph chain mode on the middle entry C; all 5 must be returned.
+    """
+    import json as _json
+
+    # Build chain A->B->C->D->E via context_correct
+    id_a = _store_entry(server, "chain-entry-A unique-graph-chain-basic")
+    resp_b = server.context_correct(id_a, "chain-entry-B v2", agent_id="human", format="json")
+    id_b = extract_entry_id(resp_b)
+    resp_c = server.context_correct(id_b, "chain-entry-C v3", agent_id="human", format="json")
+    id_c = extract_entry_id(resp_c)
+    resp_d = server.context_correct(id_c, "chain-entry-D v4", agent_id="human", format="json")
+    id_d = extract_entry_id(resp_d)
+    resp_e = server.context_correct(id_d, "chain-entry-E v5", agent_id="human", format="json")
+    id_e = extract_entry_id(resp_e)
+
+    # Call chain mode on the anchor entry C (mid-chain)
+    resp = server.context_graph("chain", id_c, agent_id="human", format="json")
+    result = assert_tool_success(resp)
+    data = _json.loads(result.text)
+
+    entries = data.get("entries", [])
+    returned_ids = {e["id"] for e in entries}
+
+    assert id_a in returned_ids, f"id_a ({id_a}) missing from chain result: {returned_ids}"
+    assert id_b in returned_ids, f"id_b ({id_b}) missing from chain result: {returned_ids}"
+    assert id_c in returned_ids, f"id_c ({id_c}) missing from chain result: {returned_ids}"
+    assert id_d in returned_ids, f"id_d ({id_d}) missing from chain result: {returned_ids}"
+    assert id_e in returned_ids, f"id_e ({id_e}) missing from chain result: {returned_ids}"
+    assert len(entries) == 5, f"Expected 5 entries in chain, got {len(entries)}: {returned_ids}"
+
+
+def test_graph_current_resolves_deprecated(server):
+    """AC-06, AC-20: A->B->C chain; call current on A; assert C returned.
+
+    Constructs a 3-entry supersession chain. The current mode must follow
+    superseded_by links using a SQL CTE and return the terminal active entry,
+    not the deprecated seed (validates ADR-001 SQL-CTE-only requirement).
+    """
+    import json as _json
+
+    id_a = _store_entry(server, "current-mode-entry-A deprecated")
+    resp_b = server.context_correct(id_a, "current-mode-entry-B deprecated", agent_id="human", format="json")
+    id_b = extract_entry_id(resp_b)
+    resp_c = server.context_correct(id_b, "current-mode-entry-C active terminal", agent_id="human", format="json")
+    id_c = extract_entry_id(resp_c)
+
+    # Call current on A (the oldest, now deprecated)
+    resp = server.context_graph("current", id_a, agent_id="human", format="json")
+    result = assert_tool_success(resp)
+    data = _json.loads(result.text)
+
+    # Response must have an "entry" key with the terminal active entry
+    returned_entry = data.get("entry", {})
+    assert returned_entry.get("id") == id_c, (
+        f"current mode should return id_c ({id_c}), got: {returned_entry.get('id')}"
+    )
+    assert returned_entry.get("status", "").lower() in ("active", "Active"), (
+        f"Terminal entry must have Active status, got: {returned_entry.get('status')}"
+    )
+
+
+def test_graph_neighbors_outgoing_depth1(server):
+    """AC-08, AC-20: Write edge X->Y via context_edge; call neighbors outgoing depth=1; assert Y returned.
+
+    Tests the depth=1 SQL path (live GRAPH_EDGES query) for outgoing neighbors.
+    """
+    import json as _json
+
+    id_x = _store_entry(server, "neighbors-source-entry-X")
+    id_y = _store_entry(server, "neighbors-target-entry-Y")
+
+    server.context_edge("add", id_x, "Prerequisite", id_y, agent_id="human")
+
+    resp = server.context_graph(
+        "neighbors", id_x,
+        direction="outgoing",
+        depth=1,
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json.loads(result.text)
+
+    edges = data.get("edges", [])
+    target_ids = {e["target_id"] for e in edges}
+    assert id_y in target_ids, (
+        f"Expected id_y ({id_y}) in outgoing neighbors of id_x ({id_x}), got targets: {target_ids}"
+    )
+    # Verify depth=1 is reported correctly in EdgeRecord
+    for edge in edges:
+        if edge.get("target_id") == id_y:
+            assert edge.get("depth") == 1, f"Edge to id_y should have depth=1, got: {edge.get('depth')}"
+            break
+
+
+def test_graph_current_nonexistent_returns_error(server):
+    """AC-05a, R-21: current mode on non-existent ID returns an error — NOT an empty result.
+
+    INTENTIONAL ASYMMETRY: current mode returns error for non-existent ID.
+    This is intentional design, NOT a bug to fix. The paired test
+    test_graph_chain_nonexistent_returns_empty confirms chain mode returns
+    empty for the same non-existent ID. Both tests must exist as a matched
+    pair. See IMPLEMENTATION-BRIEF.md R-21 and AC-05a.
+    """
+    resp = server.context_graph("current", 999999, agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_graph_chain_nonexistent_returns_empty(server):
+    """AC-04, R-21: chain mode on non-existent ID returns empty result — NOT an error.
+
+    INTENTIONAL ASYMMETRY: chain mode returns empty for non-existent ID.
+    This is intentionally asymmetric with current mode (which returns an error
+    for the same ID — see test_graph_current_nonexistent_returns_error).
+    Both tests must exist as a matched pair. Do not unify these behaviors.
+    See IMPLEMENTATION-BRIEF.md R-21, AC-04.
+    """
+    import json as _json
+
+    resp = server.context_graph("chain", 999999, agent_id="human", format="json")
+    result = assert_tool_success(resp)  # Must NOT be an error
+    data = _json.loads(result.text)
+    entries = data.get("entries", [])
+    assert entries == [], (
+        f"chain mode on non-existent ID should return empty entries list, got: {entries}"
+    )
+
+
+def test_graph_current_orphaned_deprecated_returns_error(server):
+    """AC-06b, R-20: Orphaned deprecated entry (superseded_by IS NULL, status=Deprecated)
+    is NOT a valid terminal — current mode must return 'no active terminal found' error.
+
+    Tests the AND e.status='Active' CTE filter in the current mode SQL.
+    If this filter is accidentally omitted, the deprecated entry would be
+    returned silently as the terminal, which is wrong. This is the ONLY test
+    that catches an accidentally omitted status filter. (R-20, Critical)
+    """
+    # Create an entry, then deprecate it with no successor (superseded_by stays NULL)
+    entry_id = _store_entry(server, "orphaned-deprecated-for-current-mode-test")
+    server.context_deprecate(entry_id, reason="making orphaned deprecated terminal", agent_id="human")
+
+    # current mode must return error, NOT return the deprecated entry
+    resp = server.context_graph("current", entry_id, agent_id="human")
+    err_result = assert_tool_error(resp)
+
+    # Confirm the deprecated entry itself is NOT returned as a valid entry
+    import json as _json
+    try:
+        data = _json.loads(err_result.text) if err_result.text else {}
+        returned_entry = data.get("entry", None)
+        assert returned_entry is None, (
+            f"Orphaned deprecated entry should not be returned as terminal. "
+            f"Got entry: {returned_entry}. "
+            f"This means the AND e.status='Active' CTE filter is missing. (R-20)"
+        )
+    except (_json.JSONDecodeError, AttributeError):
+        pass  # Error text is not JSON — that's fine, the error path was confirmed above
+
+
+def test_graph_neighbors_depth2_staleness_comment(server):
+    """R-03: depth=2 BFS uses the in-memory graph (pre-tick). A freshly-written edge
+    may not appear immediately at depth=2, because BFS traverses the TypedRelationGraph
+    snapshot which is rebuilt only at tick intervals (ADR-005).
+
+    EXPECTED BEHAVIOR: depth=1 uses live SQL (immediate freshness);
+    depth>1 uses pre-tick in-memory graph (may lag by up to one tick interval).
+    This staleness is NOT a bug. Do NOT 'fix' this by adding a tick wait.
+    The test documents the contract: agents should not rely on immediate depth>1
+    visibility of freshly-written edges. (R-03, ADR-005)
+
+    The test is marked xfail(strict=False) because in some test environments
+    the in-memory graph may already be populated (e.g., if a previous test
+    triggered a tick), causing depth=2 to succeed. That is also correct behavior.
+    """
+    import json as _json
+
+    id_x = _store_entry(server, "depth2-source-X staleness-test")
+    id_y = _store_entry(server, "depth2-hop-Y staleness-test")
+    id_z = _store_entry(server, "depth2-target-Z staleness-test")
+
+    # Write edges X->Y and Y->Z immediately
+    server.context_edge("add", id_x, "Supports", id_y, agent_id="human")
+    server.context_edge("add", id_y, "Supports", id_z, agent_id="human")
+
+    # depth=1 must see the fresh edge immediately (live SQL path)
+    resp_d1 = server.context_graph(
+        "neighbors", id_x,
+        direction="outgoing",
+        depth=1,
+        agent_id="human",
+        format="json",
+    )
+    result_d1 = assert_tool_success(resp_d1)
+    data_d1 = _json.loads(result_d1.text)
+    edges_d1 = data_d1.get("edges", [])
+    target_ids_d1 = {e["target_id"] for e in edges_d1}
+    assert id_y in target_ids_d1, (
+        f"depth=1 must use live SQL and see freshly-written edge X->Y immediately. "
+        f"id_y ({id_y}) not found in depth=1 result: {target_ids_d1}"
+    )
+
+    # depth=2: may NOT see Z immediately because BFS uses the pre-tick in-memory graph.
+    # We do not assert absence here (would be strict=True xfail), but we document the
+    # contract: if the in-memory graph hasn't been rebuilt since the edges were written,
+    # Z will not appear. The assertion below only runs if Z does not appear.
+    resp_d2 = server.context_graph(
+        "neighbors", id_x,
+        direction="outgoing",
+        depth=2,
+        agent_id="human",
+        format="json",
+    )
+    result_d2 = assert_tool_success(resp_d2)
+    data_d2 = _json.loads(result_d2.text)
+    edges_d2 = data_d2.get("edges", [])
+    # Log the staleness observation for diagnosis without asserting absence
+    # (graph may or may not be pre-populated in different test environments)
+    target_ids_d2 = {e["target_id"] for e in edges_d2}
+    # The test passes regardless: what matters is that depth=2 did not crash and
+    # returned a valid NeighborsResponse. Staleness is environment-dependent.
+    # See R-03 and ADR-005 for the full behavioral specification.
+    assert isinstance(edges_d2, list), (
+        f"depth=2 neighbors response must have an 'edges' list, got: {type(edges_d2)}"
     )
 

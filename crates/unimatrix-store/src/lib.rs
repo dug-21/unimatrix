@@ -9,6 +9,7 @@ mod schema;
 
 pub mod counters;
 mod db;
+pub mod graph_queries;
 pub mod metrics;
 pub mod migration;
 mod migration_compat;
@@ -66,6 +67,10 @@ pub use cycle_review_index::{
     CurationBaselineRow, CurationSnapshotRow, CycleReviewRecord, SUMMARY_SCHEMA_VERSION,
 };
 pub use db::SqlxStore;
+pub use graph_queries::{
+    ChainDirection, ChainQueryResult, NeighborDirection, RawEdgeRow, query_current_terminal,
+    query_direct_neighbors, query_supersession_chain,
+};
 pub use observations::{ObservationRow, ShadowEvalRow};
 pub use pool_config::{
     ANALYTICS_QUEUE_CAPACITY, PoolConfig, READ_POOL_ACQUIRE_TIMEOUT, WRITE_POOL_ACQUIRE_TIMEOUT,

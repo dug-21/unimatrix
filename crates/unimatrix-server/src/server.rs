@@ -2272,7 +2272,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            // Verify schema version is now current (26, bugfix-587 audit counter rename)
+            // Verify schema version is now current (27, vnc-018 context_graph indexes)
             let version: i64 =
                 sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
                     .fetch_one(store.read_pool_test())

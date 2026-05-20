@@ -9,8 +9,10 @@
 //! - All traversal via `edges_of_type()` exclusively — no `.edges_directed()` calls (AC-16, SR-01).
 //! - Tests live in `graph_expand_tests.rs` if inline tests push file over 500 lines (NFR-09).
 //!
-//! vnc-015: `RelatedTo` added to positive BFS set (ADR-006). `Advances` and `Motivates` are
-//! intentionally NOT in the positive BFS set — write-only until Phase 2.
+//! vnc-015: `RelatedTo` added to positive BFS set (ADR-006).
+//! `Advances` and `Motivates` remain write-only until Phase 2 (vnc-015 ADR-006, entry #4429).
+//! vnc-018 promotion of these types was reversed before merge — directed-edge authority
+//! semantics require further analysis per the original deferral rationale (entry #4496).
 //!
 //! ## Caller Quarantine Obligation (FR-06)
 //!
@@ -47,9 +49,9 @@ use crate::graph::{RelationType, TypedRelationGraph};
 /// Returns the set of entry IDs reachable from `seed_ids` within `depth` hops via
 /// positive edge types (`CoAccess`, `Supports`, `Informs`, `Prerequisite`, `RelatedTo`),
 /// excluding the seeds themselves, capped at `max_candidates`.
+/// `Advances` and `Motivates` are excluded — write-only until Phase 2 (entry #4429).
 ///
-/// vnc-015 (ADR-006): `RelatedTo` added as fifth positive type. `Advances` and `Motivates`
-/// are intentionally absent — write-only until Phase 2.
+/// vnc-015 (ADR-006): `RelatedTo` added as fifth positive type.
 ///
 /// ## Behavioral Contract
 ///
@@ -123,8 +125,8 @@ pub fn graph_expand(
         // Process neighbors in SORTED NODE-ID ORDER for determinism (NFR-04, ADR-004 crt-030).
         //
         // Positive types: CoAccess, Supports, Informs, Prerequisite, RelatedTo (vnc-015, ADR-006).
-        // Excluded types: Supersedes (structural chain), Contradicts (negative signal).
-        // NOTE: Advances and Motivates are intentionally absent — write-only until Phase 2 (ADR-006).
+        // Excluded types: Supersedes (structural chain), Contradicts (negative signal),
+        //                 Advances, Motivates (write-only until Phase 2, entry #4429).
         let mut neighbors: Vec<u64> = Vec::new();
 
         for edge_ref in graph.edges_of_type(node_idx, RelationType::CoAccess, Direction::Outgoing) {
@@ -146,6 +148,7 @@ pub fn graph_expand(
             // vnc-015 (ADR-006): RelatedTo added to positive BFS set at equal weight.
             neighbors.push(graph.inner[edge_ref.target()]);
         }
+        // Advances and Motivates excluded — write-only until Phase 2 (entry #4429).
 
         // Sort for deterministic frontier processing (NFR-04, C-09).
         // dedup removes duplicate target IDs from multi-edge pairs (different edge types,

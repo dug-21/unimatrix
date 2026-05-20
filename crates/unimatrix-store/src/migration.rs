@@ -15,12 +15,10 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 25 to 26 by bugfix-587 (audit counter rename:
-/// `next_audit_event_id` → `next_audit_id`). The v25→v26 migration deletes the phantom
-/// `next_audit_event_id` row (seeded at 0 by the buggy nxs-011 code path) and inserts the
-/// correct `next_audit_id` row seeded from MAX(audit_log.event_id) so that the counter
-/// continues from the highest known event_id in live databases.
-pub const CURRENT_SCHEMA_VERSION: u64 = 26;
+/// Current schema version. Incremented from 26 to 27 by vnc-018 (four indexes for
+/// context_graph CTE and neighbor queries: idx_entries_supersedes, idx_entries_superseded_by,
+/// idx_graph_edges_source_type, idx_graph_edges_target_type).
+pub const CURRENT_SCHEMA_VERSION: u64 = 27;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -1307,6 +1305,61 @@ async fn run_main_migrations(
         })?;
 
         sqlx::query("UPDATE counters SET value = 26 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // v26 → v27: indexes for context_graph CTE and neighbor queries (vnc-018, GH #608).
+    //
+    // Four indexes required for efficient context_graph query performance:
+    //   1. idx_entries_supersedes: forward CTE step (JOIN chain ON e.supersedes = c.id)
+    //   2. idx_entries_superseded_by: backward CTE step (JOIN chain ON e.superseded_by = c.id)
+    //   3. idx_graph_edges_source_type: outgoing neighbor queries (WHERE source_id = ? AND relation_type IN (...))
+    //   4. idx_graph_edges_target_type: incoming neighbor queries (WHERE target_id = ? AND relation_type IN (...))
+    //
+    // All four are CREATE INDEX IF NOT EXISTS — idempotent on re-run.
+    // Index-only migration: no new tables, no new columns, no data back-fill.
+    if current_version < 27 {
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_entries_supersedes ON entries(supersedes)")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_entries_superseded_by ON entries(superseded_by)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_graph_edges_source_type \
+             ON graph_edges(source_id, relation_type)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_graph_edges_target_type \
+             ON graph_edges(target_id, relation_type)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query("UPDATE counters SET value = 27 WHERE name = 'schema_version'")
             .execute(&mut **txn)
             .await
             .map_err(|e| StoreError::Migration {
