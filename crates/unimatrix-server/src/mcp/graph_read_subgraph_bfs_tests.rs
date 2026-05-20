@@ -1,0 +1,491 @@
+//! Behavioral tests for `graph_read_subgraph.rs` — require store + TypedGraphState.
+//!
+//! Covers parameter validation via handle_subgraph, BFS traversal contracts,
+//! and correctness invariants from the vnc-019 component test plan.
+//!
+//! Declared as a child module inside `graph_read_subgraph_tests.rs`.
+
+use std::sync::Arc;
+
+use unimatrix_core::{EntryRecord, Status};
+use unimatrix_engine::graph::{GraphEdgeRow, TypedRelationGraph, build_typed_relation_graph};
+use unimatrix_store::{PoolConfig, SqlxStore};
+
+use super::super::{GraphParams, handle_subgraph};
+use crate::services::typed_graph::TypedGraphState;
+
+async fn open_test_store() -> (SqlxStore, tempfile::TempDir) {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("test.db");
+    let store = SqlxStore::open(&path, PoolConfig::test_default())
+        .await
+        .expect("open test store");
+    (store, dir)
+}
+
+fn make_entry(id: u64) -> EntryRecord {
+    EntryRecord {
+        id,
+        title: format!("Entry {id}"),
+        content: String::new(),
+        topic: String::new(),
+        category: "pattern".to_string(),
+        tags: vec![],
+        source: String::new(),
+        status: Status::Active,
+        confidence: 0.5,
+        created_at: 0,
+        updated_at: 0,
+        last_accessed_at: 0,
+        access_count: 0,
+        supersedes: None,
+        superseded_by: None,
+        correction_count: 0,
+        embedding_dim: 0,
+        created_by: String::new(),
+        modified_by: String::new(),
+        content_hash: String::new(),
+        previous_hash: String::new(),
+        version: 1,
+        feature_cycle: String::new(),
+        trust_source: "agent".to_string(),
+        helpful_count: 0,
+        unhelpful_count: 0,
+        pre_quarantine_status: None,
+    }
+}
+
+fn make_supports_edge(source_id: u64, target_id: u64) -> GraphEdgeRow {
+    GraphEdgeRow {
+        source_id,
+        target_id,
+        relation_type: "Supports".to_string(),
+        weight: 1.0,
+        created_at: 0,
+        created_by: String::new(),
+        source: String::new(),
+        bootstrap_only: false,
+    }
+}
+
+fn set_test_graph(handle: &Arc<std::sync::RwLock<TypedGraphState>>, graph: TypedRelationGraph) {
+    let mut state = handle.write().expect("write lock");
+    state.typed_graph = graph;
+    state.use_fallback = false;
+}
+
+// ---------------------------------------------------------------------------
+// Section A: Parameter validation via handle_subgraph
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_validate_seed_ids_absent_returns_error() {
+    // AC-07: seed_ids absent → validation error with exact message.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: None,
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_err());
+    let msg = result.unwrap_err().message;
+    assert_eq!(
+        msg, "subgraph mode requires at least one entry ID in seed_ids",
+        "exact error message required, got: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn test_validate_seed_ids_empty_returns_error() {
+    // AC-07: seed_ids=[] → same exact error.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![]),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_err());
+    let msg = result.unwrap_err().message;
+    assert_eq!(
+        msg,
+        "subgraph mode requires at least one entry ID in seed_ids"
+    );
+}
+
+#[tokio::test]
+async fn test_validate_max_depth_zero_rejected() {
+    // AC-06: max_depth=0 is below valid range [1, 10].
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![u64::MAX]),
+        max_depth: Some(0),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_err(), "max_depth=0 must be rejected");
+    let msg = result.unwrap_err().message;
+    assert!(
+        msg.contains("max_depth") && msg.contains("1..=10"),
+        "error must state range, got: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn test_validate_max_depth_eleven_rejected() {
+    // AC-06: max_depth=11 is above valid range.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![u64::MAX]),
+        max_depth: Some(11),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_err(), "max_depth=11 must be rejected");
+    let msg = result.unwrap_err().message;
+    assert!(
+        msg.contains("max_depth") && msg.contains("11"),
+        "got: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn test_validate_max_depth_boundary_values_accepted() {
+    // AC-06: max_depth=1 and max_depth=10 are valid boundary values.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    for good in [1u8, 10u8] {
+        let params = GraphParams {
+            mode: "subgraph".to_string(),
+            seed_ids: Some(vec![u64::MAX]),
+            max_depth: Some(good),
+            ..Default::default()
+        };
+        let result = handle_subgraph(&store, &handle, &params).await;
+        assert!(
+            result.is_ok(),
+            "max_depth={good} must be accepted, got: {result:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_validate_max_nodes_above_200_rejected() {
+    // R-07: max_nodes=201 → validation error with range message and echoed value.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        max_nodes: Some(201),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_err());
+    let msg = result.unwrap_err().message;
+    assert!(
+        msg.contains("max_nodes") && msg.contains("1..=200"),
+        "error must state range 1..=200, got: {msg}"
+    );
+    assert!(
+        msg.contains("201"),
+        "error must echo bad value 201, got: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn test_validate_max_nodes_zero_rejected() {
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        max_nodes: Some(0),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_err(), "max_nodes=0 must be rejected");
+}
+
+#[tokio::test]
+async fn test_validate_unknown_edge_type_rejected() {
+    // AC-08: unrecognized edge_type → error naming the bad value.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        edge_types: Some(vec!["BogusEdgeType".to_string()]),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_err());
+    let msg = result.unwrap_err().message;
+    assert!(msg.contains("BogusEdgeType"), "got: {msg}");
+    assert!(
+        msg.contains("Supports") || msg.contains("Contradicts"),
+        "error must list recognized types, got: {msg}"
+    );
+}
+
+#[tokio::test]
+async fn test_validate_direction_forward_rejected() {
+    // direction="forward" is chain-mode; invalid for subgraph.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        direction: Some("forward".to_string()),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_err());
+    let msg = result.unwrap_err().message;
+    assert!(msg.contains("direction"), "got: {msg}");
+}
+
+// ---------------------------------------------------------------------------
+// Section B: BFS algorithm contracts
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_bfs_cold_start_empty_result() {
+    // AC-17, R-04: empty cold-start graph → Ok with empty nodes/edges.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![u64::MAX]),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "cold-start must return Ok, got: {result:?}");
+    let resp = result.unwrap();
+    assert!(resp.nodes.is_empty());
+    assert!(resp.edges.is_empty());
+    assert!(!resp.truncated);
+    assert_eq!(resp.depth_reached, 0);
+    assert_eq!(resp.seed_ids, vec![u64::MAX]);
+}
+
+#[tokio::test]
+async fn test_bfs_seed_ids_echoed_in_response() {
+    // AC-01: seed_ids in SubgraphResponse echo the input.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![10, 20, 30]),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    assert_eq!(result.unwrap().seed_ids, vec![10, 20, 30]);
+}
+
+#[tokio::test]
+async fn test_bfs_depth_reached_zero_when_no_edges() {
+    // AC-15c: no edges traversed → depth_reached=0.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![u64::MAX]),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    assert_eq!(result.unwrap().depth_reached, 0);
+}
+
+#[tokio::test]
+async fn test_bfs_traverses_supports_edge() {
+    // AC-08, R-14: absent edge_types expands to all non-Supersedes; Supports traversed.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+
+    let graph =
+        build_typed_relation_graph(&[make_entry(1), make_entry(2)], &[make_supports_edge(1, 2)])
+            .expect("build graph");
+    set_test_graph(&handle, graph);
+
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    let resp = result.unwrap();
+    assert_eq!(resp.edges.len(), 1, "one Supports edge must be discovered");
+    assert_eq!(resp.edges[0].source_id, 1);
+    assert_eq!(resp.edges[0].target_id, 2);
+    assert_eq!(resp.edges[0].relation_type, "Supports");
+}
+
+#[tokio::test]
+async fn test_bfs_edge_direction_always_outgoing() {
+    // FR-12, R-02: direction field on all returned EdgeRecords must be "outgoing".
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+
+    let graph =
+        build_typed_relation_graph(&[make_entry(1), make_entry(2)], &[make_supports_edge(1, 2)])
+            .expect("build graph");
+    set_test_graph(&handle, graph);
+
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        direction: Some("both".to_string()),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    for edge in result.unwrap().edges {
+        assert_eq!(edge.direction, "outgoing", "got: {}", edge.direction);
+    }
+}
+
+#[tokio::test]
+async fn test_bfs_two_hop_chain_depth_reached_2() {
+    // A→B→C chain; max_depth=2. Expect: 2 edges, depth_reached=2.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+
+    let graph = build_typed_relation_graph(
+        &[make_entry(1), make_entry(2), make_entry(3)],
+        &[make_supports_edge(1, 2), make_supports_edge(2, 3)],
+    )
+    .expect("build graph");
+    set_test_graph(&handle, graph);
+
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        max_depth: Some(2),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    let resp = result.unwrap();
+    assert_eq!(resp.edges.len(), 2, "A→B and B→C must be collected");
+    assert_eq!(resp.depth_reached, 2);
+    assert!(!resp.truncated);
+}
+
+#[tokio::test]
+async fn test_bfs_max_depth_one_only_direct_neighbors() {
+    // AC-15: max_depth=1 — only A→B discovered, not B→C.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+
+    let graph = build_typed_relation_graph(
+        &[make_entry(1), make_entry(2), make_entry(3)],
+        &[make_supports_edge(1, 2), make_supports_edge(2, 3)],
+    )
+    .expect("build graph");
+    set_test_graph(&handle, graph);
+
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        max_depth: Some(1),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    let resp = result.unwrap();
+    assert_eq!(resp.edges.len(), 1, "only A→B at depth=1");
+    assert_eq!(resp.depth_reached, 1);
+}
+
+#[tokio::test]
+async fn test_bfs_seed_saturation_sets_truncated() {
+    // R-03: 3 seeds with max_nodes=3 → truncated=true, BFS skipped, depth_reached=0.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+
+    let entries: Vec<_> = (1u64..=4).map(make_entry).collect();
+    let graph = build_typed_relation_graph(&entries, &[]).expect("build graph");
+    set_test_graph(&handle, graph);
+
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1, 2, 3]),
+        max_nodes: Some(3),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    let resp = result.unwrap();
+    assert!(resp.truncated, "truncated must be true");
+    assert_eq!(resp.depth_reached, 0, "BFS must not run");
+}
+
+#[tokio::test]
+async fn test_bfs_direction_both_no_duplicate_edges() {
+    // R-02, AC-12: direction="both" with seed=[A,B]; single stored A→B edge.
+    // Each canonical (source, target, rel_type) triple appears at most once.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+
+    let graph =
+        build_typed_relation_graph(&[make_entry(1), make_entry(2)], &[make_supports_edge(1, 2)])
+            .expect("build graph");
+    set_test_graph(&handle, graph);
+
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1, 2]),
+        direction: Some("both".to_string()),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    let resp = result.unwrap();
+
+    let keys: Vec<(u64, u64, String)> = resp
+        .edges
+        .iter()
+        .map(|e| (e.source_id, e.target_id, e.relation_type.clone()))
+        .collect();
+    let unique: std::collections::HashSet<_> = keys.iter().collect();
+    assert_eq!(
+        keys.len(),
+        unique.len(),
+        "no duplicate edge triples; got: {keys:?}"
+    );
+}
+
+#[tokio::test]
+async fn test_bfs_not_truncated_under_cap() {
+    // Small 2-node graph is well within max_nodes=200 default → truncated=false.
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+
+    let graph =
+        build_typed_relation_graph(&[make_entry(1), make_entry(2)], &[make_supports_edge(1, 2)])
+            .expect("build graph");
+    set_test_graph(&handle, graph);
+
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![1]),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(result.is_ok(), "got: {result:?}");
+    assert!(
+        !result.unwrap().truncated,
+        "small graph must not be truncated"
+    );
+}

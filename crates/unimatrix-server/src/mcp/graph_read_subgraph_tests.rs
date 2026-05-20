@@ -22,10 +22,18 @@ fn make_params(seed_ids: Option<Vec<u64>>) -> GraphParams {
 fn test_subgraph_params_empty_seed_ids_is_invalid() {
     // AC-01: seed_ids absent or empty must be rejected.
     let params_none = make_params(None);
-    assert!(params_none.seed_ids.is_none() || params_none.seed_ids.as_ref().map_or(true, |v| v.is_empty()));
+    assert!(
+        params_none.seed_ids.is_none()
+            || params_none.seed_ids.as_ref().map_or(true, |v| v.is_empty())
+    );
 
     let params_empty = make_params(Some(vec![]));
-    assert!(params_empty.seed_ids.as_ref().map_or(true, |v| v.is_empty()));
+    assert!(
+        params_empty
+            .seed_ids
+            .as_ref()
+            .map_or(true, |v| v.is_empty())
+    );
 }
 
 #[test]
@@ -58,3 +66,11 @@ fn test_subgraph_graphparams_mode_field() {
     let params = make_params(Some(vec![1]));
     assert_eq!(params.mode, "subgraph");
 }
+
+// ---------------------------------------------------------------------------
+// Behavioral tests — require store + TypedGraphState.
+// Declared in a child module to keep this file under 500 lines (500-line rule).
+// ---------------------------------------------------------------------------
+
+#[path = "graph_read_subgraph_bfs_tests.rs"]
+mod bfs;

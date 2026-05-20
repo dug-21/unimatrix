@@ -571,7 +571,7 @@ impl StatusService {
             category_lifecycle: Vec::new(), // populated after Phase 8 via category_allowlist
             pending_cycle_reviews: Vec::new(), // populated by Phase 7b (crt-033)
             curation_health: None,          // populated by Phase 7c (crt-047)
-            stale_dependency_edges: 0,      // populated in Phase 5 via compute_graph_cohesion_metrics (vnc-015, AC-11)
+            stale_dependency_edges: 0, // populated in Phase 5 via compute_graph_cohesion_metrics (vnc-015, AC-11)
         };
 
         // Phase 2: Contradiction scan — read from cache populated by background tick.

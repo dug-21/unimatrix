@@ -24,8 +24,8 @@ use unimatrix_engine::graph::RelationType;
 use crate::error::{ERROR_INTERNAL, ERROR_INVALID_PARAMS};
 use crate::services::typed_graph::TypedGraphState;
 
-use super::{EdgeRecord, GraphParams, SubgraphResponse};
 use super::graph_read_neighbors::{all_non_supersedes_types, follow_to_current};
+use super::{EdgeRecord, GraphParams, SubgraphResponse};
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -144,9 +144,7 @@ pub(super) async fn handle_subgraph(
 
     // Step 2: Acquire graph (lock -> clone -> release before any async work).
     let graph = {
-        let state = typed_graph_state
-            .read()
-            .unwrap_or_else(|e| e.into_inner());
+        let state = typed_graph_state.read().unwrap_or_else(|e| e.into_inner());
         state.typed_graph.clone()
     };
 
@@ -186,6 +184,15 @@ pub(super) async fn handle_subgraph(
             frontier.push_back((node_idx, effective_id, 0));
         }
         // Seeds absent from the graph are collected as nodes but skip BFS enqueue.
+    }
+
+    // Post-seed cap check: if seeds have exactly filled the cap, BFS must not run
+    // and truncated must be true (R-03, IMPLEMENTATION-BRIEF "seeds alone reach max_nodes").
+    // The per-iteration check above fires only when a NEXT seed would exceed the cap;
+    // when seeds precisely equal max_nodes, the check fires after the last seed is already
+    // added. We handle that case here.
+    if collected_node_ids.len() >= max_nodes_usize {
+        truncated = true;
     }
 
     // Step 5: BFS phase.
@@ -324,10 +331,7 @@ pub(super) async fn handle_subgraph(
 /// Uses an IN-clause with positional bindings. Returns entries in arbitrary order
 /// (matching the store's natural order, not the input slice order). Tags are loaded
 /// via a separate query per the store's ADR-006 tagging requirement.
-async fn fetch_nodes_batch(
-    store: &Store,
-    node_ids: &[u64],
-) -> Result<Vec<EntryRecord>, ErrorData> {
+async fn fetch_nodes_batch(store: &Store, node_ids: &[u64]) -> Result<Vec<EntryRecord>, ErrorData> {
     use unimatrix_store::read::{ENTRY_COLUMNS, apply_tags, entry_from_row, load_tags_for_entries};
 
     let pool = store.read_pool_server();
@@ -346,7 +350,11 @@ async fn fetch_nodes_batch(
     }
 
     let rows = query.fetch_all(pool).await.map_err(|e| {
-        ErrorData::new(ERROR_INTERNAL, format!("node batch query failed: {e}"), None)
+        ErrorData::new(
+            ERROR_INTERNAL,
+            format!("node batch query failed: {e}"),
+            None,
+        )
     })?;
 
     let mut entries: Vec<EntryRecord> = rows
@@ -395,9 +403,10 @@ async fn fetch_edge_metadata(
         query = query.bind(*src as i64).bind(*tgt as i64).bind(rel_type);
     }
 
-    let rows = query.fetch_all(pool).await.map_err(|e| {
-        ErrorData::new(ERROR_INTERNAL, format!("metadata query failed: {e}"), None)
-    })?;
+    let rows = query
+        .fetch_all(pool)
+        .await
+        .map_err(|e| ErrorData::new(ERROR_INTERNAL, format!("metadata query failed: {e}"), None))?;
 
     let mut map: HashMap<(u64, u64, String), Option<serde_json::Value>> =
         HashMap::with_capacity(rows.len());
@@ -407,8 +416,9 @@ async fn fetch_edge_metadata(
         let tgt: i64 = row.try_get("target_id").unwrap_or(0);
         let rel: String = row.try_get("relation_type").unwrap_or_default();
         let meta_text: Option<String> = row.try_get("metadata").ok().flatten();
-        let meta_value: Option<serde_json::Value> =
-            meta_text.as_deref().and_then(|s| serde_json::from_str(s).ok());
+        let meta_value: Option<serde_json::Value> = meta_text
+            .as_deref()
+            .and_then(|s| serde_json::from_str(s).ok());
         map.insert((src as u64, tgt as u64, rel), meta_value);
     }
 

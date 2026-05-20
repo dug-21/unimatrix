@@ -1,9 +1,10 @@
-//! context_graph mode handlers: chain, current, neighbors (vnc-018).
+//! context_graph mode handlers: chain, current, neighbors, subgraph (vnc-018, vnc-019).
 //!
 //! Entry point: `handle_graph` — called from `tools.rs` after capability check.
 //! Submodules:
 //! - `graph_read_supersession` — chain, current, follow_to_current
 //! - `graph_read_neighbors`    — neighbors, neighbors_sql, neighbors_bfs
+//! - `graph_read_subgraph`     — subgraph BFS traversal and metadata hydration (vnc-019)
 //!
 //! # Execution order (ARCHITECTURE.md §Component Interactions, ADR-003)
 //! 1. `require_cap(Read)` — runs in `tools.rs` BEFORE `handle_graph` is called.
@@ -34,6 +35,9 @@ mod graph_read_supersession;
 #[path = "graph_read_neighbors.rs"]
 mod graph_read_neighbors;
 
+#[path = "graph_read_subgraph.rs"]
+mod graph_read_subgraph;
+
 // ---------------------------------------------------------------------------
 // Wire types (ADR-003, ADR-004)
 // ---------------------------------------------------------------------------
@@ -62,15 +66,18 @@ pub struct GraphParams {
     /// neighbors only: resolve deprecated endpoints to active terminal (default false).
     /// Rejected on chain mode (ADR-003).
     pub resolve_supersessions: Option<bool>,
-    // -- Forward-compat fields — error on misuse in current modes (ADR-003) --
-    /// subgraph mode (#597) — not yet supported.
+    // -- Forward-compat fields — error on misuse in incompatible modes (ADR-003) --
+    /// subgraph mode: one or more entry IDs to use as BFS seeds.
     pub seed_ids: Option<Vec<u64>>,
-    /// subgraph mode (#597) — not yet supported.
+    /// subgraph mode: maximum nodes to return, 1..=200 (default 200).
     pub max_nodes: Option<u32>,
     /// path mode (#598) — not yet supported.
     pub from_id: Option<u64>,
     /// path mode (#598) — not yet supported.
     pub to_id: Option<u64>,
+    /// subgraph mode only: BFS max depth 1..=10 (default 3 when absent).
+    /// Error if passed to chain, current, or neighbors modes (ADR-001 vnc-019).
+    pub max_depth: Option<u8>,
 }
 
 /// A single typed edge from a neighbors traversal (ADR-004, vnc-018).
@@ -117,6 +124,22 @@ pub struct NeighborsResponse {
     pub edges: Vec<EdgeRecord>,
 }
 
+/// Response envelope for subgraph mode (vnc-019, ADR-001, ADR-004).
+///
+/// `direction` on every `EdgeRecord` is always `"outgoing"` — canonical stored direction
+/// (`source_id → target_id`). See FR-12, ADR-004 vnc-018.
+///
+/// `truncated: true` means the `max_nodes` cap was reached before BFS completed.
+/// `depth_reached`: actual maximum BFS depth traversed (0 when no edges discovered).
+#[derive(Debug, Clone, Serialize)]
+pub struct SubgraphResponse {
+    pub nodes: Vec<EntryRecord>,
+    pub edges: Vec<EdgeRecord>,
+    pub truncated: bool,
+    pub seed_ids: Vec<u64>,
+    pub depth_reached: u8,
+}
+
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
@@ -139,44 +162,72 @@ pub(crate) async fn handle_graph(
         return Err(ErrorData::new(ERROR_INVALID_PARAMS, msg, None));
     }
 
-    // Step 2: All three modes require an anchor ID.
-    let id = match params.id {
-        Some(id) => id,
-        None => {
-            return Err(ErrorData::new(
-                ERROR_INVALID_PARAMS,
-                "id is required for chain, current, and neighbors modes",
-                None,
-            ));
-        }
-    };
-
-    // Step 3: Mode dispatch.
+    // Step 2: Mode dispatch.
+    // NOTE: subgraph mode uses `seed_ids` rather than `id`; the id-required guard
+    // lives inside the chain/current/neighbors arm only.
     match params.mode.as_str() {
-        "chain" => {
-            let result = graph_read_supersession::handle_chain(store, &params, id).await?;
-            let json = serde_json::to_string(&result).map_err(|e| {
-                ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
-            })?;
-            Ok(CallToolResult::success(vec![rmcp::model::Content::text(
-                json,
-            )]))
-        }
-        "current" => match graph_read_supersession::handle_current(store, id).await {
-            Ok(resp) => {
-                let json = serde_json::to_string(&resp).map_err(|e| {
-                    ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
-                })?;
-                Ok(CallToolResult::success(vec![rmcp::model::Content::text(
-                    json,
-                )]))
-            }
-            Err(msg) => Err(ErrorData::new(ERROR_INVALID_PARAMS, msg, None)),
-        },
-        "neighbors" => {
-            let result =
-                graph_read_neighbors::handle_neighbors(store, typed_graph_state, &params, id)
+        "chain" | "current" | "neighbors" => {
+            // All three point-lookup modes require an anchor entry ID.
+            let id = match params.id {
+                Some(id) => id,
+                None => {
+                    return Err(ErrorData::new(
+                        ERROR_INVALID_PARAMS,
+                        "id is required for chain, current, and neighbors modes",
+                        None,
+                    ));
+                }
+            };
+
+            match params.mode.as_str() {
+                "chain" => {
+                    let result = graph_read_supersession::handle_chain(store, &params, id).await?;
+                    let json = serde_json::to_string(&result).map_err(|e| {
+                        ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
+                    })?;
+                    Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                        json,
+                    )]))
+                }
+                "current" => match graph_read_supersession::handle_current(store, id).await {
+                    Ok(resp) => {
+                        let json = serde_json::to_string(&resp).map_err(|e| {
+                            ErrorData::new(
+                                ERROR_INTERNAL,
+                                format!("serialization error: {e}"),
+                                None,
+                            )
+                        })?;
+                        Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                            json,
+                        )]))
+                    }
+                    Err(msg) => Err(ErrorData::new(ERROR_INVALID_PARAMS, msg, None)),
+                },
+                "neighbors" => {
+                    let result = graph_read_neighbors::handle_neighbors(
+                        store,
+                        typed_graph_state,
+                        &params,
+                        id,
+                    )
                     .await?;
+                    let json = serde_json::to_string(&result).map_err(|e| {
+                        ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
+                    })?;
+                    Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                        json,
+                    )]))
+                }
+                _ => unreachable!(
+                    "validate_no_unsupported_params already caught this before dispatch"
+                ),
+            }
+        }
+        "subgraph" => {
+            // subgraph mode uses seed_ids, not id. No anchor ID required.
+            let result =
+                graph_read_subgraph::handle_subgraph(store, typed_graph_state, &params).await?;
             let json = serde_json::to_string(&result).map_err(|e| {
                 ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
             })?;
@@ -201,22 +252,19 @@ pub(crate) async fn handle_graph(
 /// - Unrecognized mode (fires BEFORE any field check — R-04).
 /// - Forward-compat fields on unsupported modes (with future-mode hint).
 /// - `resolve_supersessions=Some(true)` on chain mode (semantically circular, R-08).
-///
-/// When #597 ships, add a `"subgraph"` arm permitting `seed_ids` and `max_nodes`.
+/// - `max_depth` rejected on chain/current/neighbors modes (ADR-001 vnc-019).
 pub(crate) fn validate_no_unsupported_params(params: &GraphParams) -> Result<(), String> {
     match params.mode.as_str() {
         "chain" => {
             // chain rejects all forward-compat fields AND resolve_supersessions=true.
             if params.seed_ids.is_some() {
                 return Err(
-                    "seed_ids is not supported in chain mode — use subgraph mode (#597)"
-                        .to_string(),
+                    "seed_ids is not supported in chain mode — use subgraph mode".to_string(),
                 );
             }
             if params.max_nodes.is_some() {
                 return Err(
-                    "max_nodes is not supported in chain mode — use subgraph mode (#597)"
-                        .to_string(),
+                    "max_nodes is not supported in chain mode — use subgraph mode".to_string(),
                 );
             }
             if params.from_id.is_some() {
@@ -236,19 +284,23 @@ pub(crate) fn validate_no_unsupported_params(params: &GraphParams) -> Result<(),
                     "resolve_supersessions is not applicable to chain mode — chain IS the supersession audit".to_string()
                 );
             }
+            // max_depth is subgraph-only (ADR-001 vnc-019).
+            if params.max_depth.is_some() {
+                return Err(
+                    "max_depth is not supported in chain mode — use subgraph mode".to_string(),
+                );
+            }
             Ok(())
         }
         "current" => {
             if params.seed_ids.is_some() {
                 return Err(
-                    "seed_ids is not supported in current mode — use subgraph mode (#597)"
-                        .to_string(),
+                    "seed_ids is not supported in current mode — use subgraph mode".to_string(),
                 );
             }
             if params.max_nodes.is_some() {
                 return Err(
-                    "max_nodes is not supported in current mode — use subgraph mode (#597)"
-                        .to_string(),
+                    "max_nodes is not supported in current mode — use subgraph mode".to_string(),
                 );
             }
             if params.from_id.is_some() {
@@ -261,19 +313,23 @@ pub(crate) fn validate_no_unsupported_params(params: &GraphParams) -> Result<(),
                     "to_id is not supported in current mode — use path mode (#598)".to_string(),
                 );
             }
+            // max_depth is subgraph-only (ADR-001 vnc-019).
+            if params.max_depth.is_some() {
+                return Err(
+                    "max_depth is not supported in current mode — use subgraph mode".to_string(),
+                );
+            }
             Ok(())
         }
         "neighbors" => {
             if params.seed_ids.is_some() {
                 return Err(
-                    "seed_ids is not supported in neighbors mode — use subgraph mode (#597)"
-                        .to_string(),
+                    "seed_ids is not supported in neighbors mode — use subgraph mode".to_string(),
                 );
             }
             if params.max_nodes.is_some() {
                 return Err(
-                    "max_nodes is not supported in neighbors mode — use subgraph mode (#597)"
-                        .to_string(),
+                    "max_nodes is not supported in neighbors mode — use subgraph mode".to_string(),
                 );
             }
             if params.from_id.is_some() {
@@ -286,12 +342,35 @@ pub(crate) fn validate_no_unsupported_params(params: &GraphParams) -> Result<(),
                     "to_id is not supported in neighbors mode — use path mode (#598)".to_string(),
                 );
             }
+            // max_depth is subgraph-only (ADR-001 vnc-019).
+            if params.max_depth.is_some() {
+                return Err(
+                    "max_depth is not supported in neighbors mode — use subgraph mode".to_string(),
+                );
+            }
+            Ok(())
+        }
+        // subgraph mode: permits seed_ids, max_nodes, max_depth.
+        // Rejects from_id, to_id (path mode only — preserved forward-compat guard).
+        // Range validation for max_depth/max_nodes happens inside handle_subgraph.
+        "subgraph" => {
+            if params.from_id.is_some() {
+                return Err(
+                    "from_id is not supported in subgraph mode — use path mode (#598)".to_string(),
+                );
+            }
+            if params.to_id.is_some() {
+                return Err(
+                    "to_id is not supported in subgraph mode — use path mode (#598)".to_string(),
+                );
+            }
+            // seed_ids, max_nodes, max_depth: permitted — range validation inside handle_subgraph.
             Ok(())
         }
         // _ arm fires BEFORE field checks — unrecognized mode error is the first thing
-        // callers see (R-04). When #597 ships, add "subgraph" arm that permits seed_ids/max_nodes.
+        // callers see (R-04).
         _ => Err(format!(
-            "unrecognized mode '{}' — supported modes: chain, current, neighbors",
+            "unrecognized mode '{}' — supported modes: chain, current, neighbors, subgraph",
             params.mode
         )),
     }
