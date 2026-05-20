@@ -4777,17 +4777,6 @@ def test_context_graph_filter_min_edge_count_gte2(server):
     )
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Pre-existing: GH#612 — no tick-force mechanism for path mode BFS graph rebuild. "
-        "path mode uses in-memory TypedRelationGraph rebuilt each tick (~15 min default, "
-        "30s with fast_tick_server). After writing entries and edges, the graph cache is "
-        "not yet populated. Unit tests cover the path BFS logic "
-        "(test_handle_path_1hop_from_id_not_in_hops, test_handle_path_2hop_from_id_not_in_hops). "
-        "This integration test requires a tick-force mechanism to be reliable without "
-        "a 30+ second sleep."
-    )
-)
 def test_context_graph_path_found(server):
     """AC-31 / R-12: path mode returns a 2-hop path with correct hops content.
 
@@ -4800,7 +4789,8 @@ def test_context_graph_path_found(server):
       - from_id A is NOT in the hops array
       - length == 2
 
-    XFAIL: GH#612 — graph cache rebuild requires tick interval to elapse.
+    GH#612 fixed: path mode now falls back to live SQL BFS (path_via_db) when the
+    in-memory graph is not yet populated (use_fallback=true on cold-start).
     """
     id_a = _store_vnc020_entry(
         server,
@@ -4824,8 +4814,6 @@ def test_context_graph_path_found(server):
     server.context_edge("add", id_a, "Advances", id_b, agent_id="human")
     server.context_edge("add", id_b, "Supports", id_c, agent_id="human")
 
-    # NOTE: Without a tick-force mechanism, the in-memory graph may not contain
-    # these new edges yet. This test is marked xfail for this reason (GH#612).
     resp = server.context_graph(
         "path",
         from_id=id_a,
@@ -4839,7 +4827,7 @@ def test_context_graph_path_found(server):
     data = _json_vnc020.loads(result.text)
 
     assert data.get("found") is True, (
-        f"Path A->B->C must be found; got found={data.get('found')} (graph cache may be stale)"
+        f"Path A->B->C must be found; got found={data.get('found')}"
     )
     assert data.get("from_id") == id_a, f"from_id must be {id_a}; got {data.get('from_id')}"
     assert data.get("to_id") == id_c, f"to_id must be {id_c}; got {data.get('to_id')}"
