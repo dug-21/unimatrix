@@ -4777,6 +4777,94 @@ def test_context_graph_filter_min_edge_count_gte2(server):
     )
 
 
+def test_context_graph_filter_min_age_days(server):
+    """#613 / R-06: filter mode min_age_days returns only entries older than the threshold.
+
+    Fixture: 3 "pattern" entries.
+      - id_old_1, id_old_2: created_at backdated 40 days ago (older than 30-day threshold).
+      - id_new: created_at is now (younger than 30-day threshold).
+
+    All entries have no Advances edges (max_edge_count=0 included to keep results narrow).
+
+    SQL used by filter mode: strftime('%s','now') - created_at >= min_age_days * 86400
+    i.e.  created_at <= strftime('%s','now') - min_age_days * 86400
+
+    This test backdates two entries via direct SQLite UPDATE to bypass the server API
+    (which always writes current timestamp), then calls filter mode and asserts only the
+    two old entries are returned.
+    """
+    import hashlib as _hashlib
+    import os as _os
+    import sqlite3 as _sqlite3
+    import time as _time
+
+    # ---- store 3 entries via MCP ----
+    id_old_1 = _store_vnc020_entry(
+        server,
+        "Kubernetes pod disruption budget limits voluntary disruptions during rollouts",
+        topic="k8s-reliability",
+        category="pattern",
+    )
+    id_old_2 = _store_vnc020_entry(
+        server,
+        "Terraform remote state locking prevents concurrent plan and apply conflicts",
+        topic="iac-patterns",
+        category="pattern",
+    )
+    id_new = _store_vnc020_entry(
+        server,
+        "ArgoCD GitOps sync ensures cluster state matches the git repository HEAD",
+        topic="gitops",
+        category="pattern",
+    )
+
+    # ---- backdate id_old_1 and id_old_2 to 40 days ago via direct SQL ----
+    canonical = _os.path.realpath(server.project_dir)
+    digest = _hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    db_path = _os.path.join(_os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+    forty_days_ago = int(_time.time()) - 40 * 86400
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute(
+        "UPDATE entries SET created_at = ? WHERE id IN (?, ?)",
+        (forty_days_ago, id_old_1, id_old_2),
+    )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+    # ---- call filter mode: category=pattern, min_age_days=30, max_edge_count=0, edge_types=Advances ----
+    resp = server.context_graph(
+        "filter",
+        category="pattern",
+        min_age_days=30,
+        max_edge_count=0,
+        edge_types=["Advances"],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_vnc020.loads(result.text)
+
+    assert "entries" in data, f"filter response missing 'entries': {list(data.keys())}"
+    assert "total_returned" in data, f"filter response missing 'total_returned': {list(data.keys())}"
+    returned_ids = {e["id"] for e in data["entries"]}
+
+    assert id_old_1 in returned_ids, (
+        f"Old entry (id={id_old_1}, 40 days) must appear with min_age_days=30; got: {returned_ids}"
+    )
+    assert id_old_2 in returned_ids, (
+        f"Old entry (id={id_old_2}, 40 days) must appear with min_age_days=30; got: {returned_ids}"
+    )
+    assert id_new not in returned_ids, (
+        f"New entry (id={id_new}, created now) must NOT appear with min_age_days=30; got: {returned_ids}"
+    )
+    assert data["total_returned"] == 2, (
+        f"Exactly 2 old entries must be returned; got total_returned={data['total_returned']}"
+    )
+
+
 def test_context_graph_path_found(server):
     """AC-31 / R-12: path mode returns a 2-hop path with correct hops content.
 
