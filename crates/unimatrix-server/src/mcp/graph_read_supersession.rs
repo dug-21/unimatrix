@@ -325,10 +325,22 @@ mod tests {
         assert!(result.is_err(), "invalid direction must return Err");
         let err = result.unwrap_err();
         let msg: &str = &err.message;
-        assert!(msg.contains("chain"), "error must mention 'chain', got: {msg}");
-        assert!(msg.contains("forward"), "error must mention 'forward', got: {msg}");
-        assert!(msg.contains("backward"), "error must mention 'backward', got: {msg}");
-        assert!(msg.contains("both"), "error must mention 'both', got: {msg}");
+        assert!(
+            msg.contains("chain"),
+            "error must mention 'chain', got: {msg}"
+        );
+        assert!(
+            msg.contains("forward"),
+            "error must mention 'forward', got: {msg}"
+        );
+        assert!(
+            msg.contains("backward"),
+            "error must mention 'backward', got: {msg}"
+        );
+        assert!(
+            msg.contains("both"),
+            "error must mention 'both', got: {msg}"
+        );
         store_impl.close().await.unwrap();
     }
 
