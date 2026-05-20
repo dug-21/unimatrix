@@ -43,6 +43,38 @@ use crate::uds::hook::MAX_GOAL_BYTES;
 // pub(super) so the sibling test module can reference it via use super::REDIRECT_CEILING.
 pub(super) const REDIRECT_CEILING: usize = 50;
 
+/// Tool description for context_graph (vnc-018, vnc-019).
+///
+/// Exposed as `pub(crate)` so sibling test modules can assert on disclosure text
+/// without re-embedding the string (AC-13, R-11 vnc-019 test plan).
+/// Must match the `#[tool(description = "...")]` attribute literal on `context_graph`.
+pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowledge graph in four modes:\n\
+    - chain: walk the supersession history of an entry (forward toward newer, \
+      backward toward older, or both). forward: returns descendants (entries that \
+      supersede X); backward: returns ancestors (entries X supersedes).\n\
+    - current: resolve any entry to its terminal active successor, following \
+      superseded_by links until an Active entry is found.\n\
+    - neighbors: retrieve entries connected by typed graph edges. \
+      Accepts edge_types filter, direction (incoming/outgoing/both), and depth (1..=10). \
+      depth=1 queries the live database and reflects all committed writes immediately. \
+      depth>1 queries the in-memory graph cache, which may lag recent writes by up to \
+      one tick interval (typically 30-60 seconds). This asymmetry is intentional: \
+      depth=1 is the precise lookup case where freshness matters; depth>1 is exploratory \
+      multi-hop traversal where a tick-window lag is acceptable.\n\
+    - subgraph: All returned EdgeRecords have direction: \"outgoing\" regardless of the \
+      direction parameter you pass — this reflects the canonical stored edge direction \
+      (source_id → target_id). A direction=\"both\" traversal includes edges pointing TO \
+      your seeds, but those edges are still labeled outgoing (i.e., they exist as A→seed \
+      in storage). Use source_id / target_id to determine actual graph direction. \
+      subgraph mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt \
+      each tick (typically 30-60 seconds). Edges written within the current tick interval \
+      may not appear in the result. This is the same staleness contract as neighbors mode \
+      at depth>1. The depth_reached field reports the actual maximum BFS depth traversed; \
+      truncated: true indicates the max_nodes cap was reached before BFS completed. \
+      Seed IDs not present in the graph return an empty result — not an error. \
+      max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
+    Requires Read capability. All modes are read-only.";
+
 /// Parameters for semantic search.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchParams {
@@ -3340,11 +3372,11 @@ impl UnimatrixServer {
         )]))
     }
 
-    // -- vnc-018: context_graph --
+    // -- vnc-018 / vnc-019: context_graph --
 
     #[tool(
         name = "context_graph",
-        description = "Traverse the Unimatrix knowledge graph in three modes:\n\
+        description = "Traverse the Unimatrix knowledge graph in four modes:\n\
             - chain: walk the supersession history of an entry (forward toward newer, \
               backward toward older, or both). forward: returns descendants (entries that \
               supersede X); backward: returns ancestors (entries X supersedes).\n\
@@ -3357,7 +3389,19 @@ impl UnimatrixServer {
               one tick interval (typically 30-60 seconds). This asymmetry is intentional: \
               depth=1 is the precise lookup case where freshness matters; depth>1 is exploratory \
               multi-hop traversal where a tick-window lag is acceptable.\n\
-            Requires Read capability. All three modes are read-only."
+            - subgraph: All returned EdgeRecords have direction: \"outgoing\" regardless of the \
+              direction parameter you pass — this reflects the canonical stored edge direction \
+              (source_id → target_id). A direction=\"both\" traversal includes edges pointing TO \
+              your seeds, but those edges are still labeled outgoing (i.e., they exist as A→seed \
+              in storage). Use source_id / target_id to determine actual graph direction. \
+              subgraph mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt \
+              each tick (typically 30-60 seconds). Edges written within the current tick interval \
+              may not appear in the result. This is the same staleness contract as neighbors mode \
+              at depth>1. The depth_reached field reports the actual maximum BFS depth traversed; \
+              truncated: true indicates the max_nodes cap was reached before BFS completed. \
+              Seed IDs not present in the graph return an empty result — not an error. \
+              max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
+            Requires Read capability. All modes are read-only."
     )]
     async fn context_graph(
         &self,
@@ -4960,8 +5004,10 @@ mod tests {
         //
         // The required text (ADR-005, FR-13) is verified by searching for its key
         // phrases in the description that would be returned by list_tools.
+        //
+        // vnc-019: Extended to assert AC-13 subgraph disclosure facts.
         let description = concat!(
-            "Traverse the Unimatrix knowledge graph in three modes:\n",
+            "Traverse the Unimatrix knowledge graph in four modes:\n",
             "- chain: walk the supersession history of an entry (forward toward newer, ",
             "backward toward older, or both). forward: returns descendants (entries that ",
             "supersede X); backward: returns ancestors (entries X supersedes).\n",
@@ -4974,7 +5020,19 @@ mod tests {
             "one tick interval (typically 30-60 seconds). This asymmetry is intentional: ",
             "depth=1 is the precise lookup case where freshness matters; depth>1 is exploratory ",
             "multi-hop traversal where a tick-window lag is acceptable.\n",
-            "Requires Read capability. All three modes are read-only."
+            "- subgraph: All returned EdgeRecords have direction: \"outgoing\" regardless of the ",
+            "direction parameter you pass — this reflects the canonical stored edge direction ",
+            "(source_id → target_id). A direction=\"both\" traversal includes edges pointing TO ",
+            "your seeds, but those edges are still labeled outgoing (i.e., they exist as A→seed ",
+            "in storage). Use source_id / target_id to determine actual graph direction. ",
+            "subgraph mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt ",
+            "each tick (typically 30-60 seconds). Edges written within the current tick interval ",
+            "may not appear in the result. This is the same staleness contract as neighbors mode ",
+            "at depth>1. The depth_reached field reports the actual maximum BFS depth traversed; ",
+            "truncated: true indicates the max_nodes cap was reached before BFS completed. ",
+            "Seed IDs not present in the graph return an empty result — not an error. ",
+            "max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n",
+            "Requires Read capability. All modes are read-only."
         );
         // Verify the staleness key phrases are present (R-03 / FR-13).
         assert!(
@@ -4999,6 +5057,43 @@ mod tests {
         assert!(description.contains("neighbors"));
         // Verify capability requirement documented.
         assert!(description.contains("Requires Read capability"));
+        // vnc-019: AC-13 subgraph disclosure assertions.
+        assert!(
+            description.contains("subgraph"),
+            "description must document subgraph mode"
+        );
+        assert!(
+            description.contains("direction: \"outgoing\""),
+            "AC-13d: description must state EdgeRecord direction is always outgoing"
+        );
+        assert!(
+            description.contains("depth_reached"),
+            "AC-13b: description must explain depth_reached field"
+        );
+        assert!(
+            description.contains("truncated"),
+            "AC-13b: description must explain truncated field"
+        );
+        assert!(
+            description.contains("empty result"),
+            "AC-13c: description must state unknown seeds return empty result, not error"
+        );
+        assert!(
+            description.contains("200"),
+            "description must document max_nodes upper bound of 200"
+        );
+        assert!(
+            description.contains("values above 200 are rejected"),
+            "description must state that max_nodes > 200 is rejected with a validation error"
+        );
+        assert!(
+            !description.contains("graph_rebuilt_at"),
+            "ADR-004: description must NOT promise a graph_rebuilt_at field"
+        );
+        assert!(
+            description.contains("four modes"),
+            "description opening must say four modes (not three)"
+        );
     }
 
     #[test]
