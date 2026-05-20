@@ -96,8 +96,8 @@ pub(super) async fn handle_subgraph(
     };
     let max_nodes_usize = max_nodes as usize;
 
-    // direction: default "outgoing", must be one of incoming/outgoing/both.
-    let direction_str = params.direction.as_deref().unwrap_or("outgoing");
+    // direction: default "both" (FR-05), must be one of incoming/outgoing/both.
+    let direction_str = params.direction.as_deref().unwrap_or("both");
     let petgraph_dirs: Vec<PetgraphDirection> = match direction_str {
         "incoming" => vec![PetgraphDirection::Incoming],
         "outgoing" => vec![PetgraphDirection::Outgoing],
@@ -124,11 +124,11 @@ pub(super) async fn handle_subgraph(
                         return Err(ErrorData::new(
                             ERROR_INVALID_PARAMS,
                             format!(
-                                "unknown edge_type '{}' -- valid types: \
-                                 Advances, Asserts, About, Cites, CoAccess, \
+                                "unrecognized edge_type '{}' \u{2014} recognized types: \
+                                 About, Advances, Asserts, Cites, CoAccess, \
                                  Contradicts, DerivedFrom, Informs, Mentions, \
                                  Motivates, Prerequisite, Refutes, RelatedTo, \
-                                 Supports, Tests",
+                                 Supersedes, Supports, Tests",
                                 t
                             ),
                             None,
