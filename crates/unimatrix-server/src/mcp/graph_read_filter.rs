@@ -127,7 +127,7 @@ pub(super) async fn handle_filter(
     // 4e. Optional: min_edge_count — entries with >= N outgoing edges of edge_types.
     // edge_types is guaranteed Some and non-empty when has_edge_count=true (Step 2 guard).
     if let Some(min_n) = params.min_edge_count {
-        let et = edge_types.as_ref().unwrap();
+        let et = edge_types.as_ref().expect("edge_types guaranteed non-empty by Step 2 validation");
         qb.push(
             " AND (SELECT COUNT(*) FROM graph_edges g \
              WHERE g.source_id = e.id AND g.relation_type IN (",
@@ -142,7 +142,7 @@ pub(super) async fn handle_filter(
     // Use `<= ?` unconditionally — never special-case zero.
     // Two SEPARATE subqueries when both min and max are present (R-08 — not a BETWEEN).
     if let Some(max_n) = params.max_edge_count {
-        let et = edge_types.as_ref().unwrap();
+        let et = edge_types.as_ref().expect("edge_types guaranteed non-empty by Step 2 validation");
         qb.push(
             " AND (SELECT COUNT(*) FROM graph_edges g \
              WHERE g.source_id = e.id AND g.relation_type IN (",
