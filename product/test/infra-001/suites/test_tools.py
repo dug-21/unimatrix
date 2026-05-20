@@ -4366,7 +4366,7 @@ def test_graph_subgraph_mode_listed_in_unrecognized_error(server):
 # AC-28: inverse AND semantics — 4-state fixture (R-05)
 # AC-29: filter max_edge_count=0 boundary (R-02 Critical)
 # AC-30: filter min_edge_count >= 2 (R-08)
-# AC-31: path found — marked xfail (GH#612 tick-force mechanism needed)
+# AC-31: path found (GH#612 fixed — DB-fallback BFS on cold-start)
 # AC-32: path self-loop returns not-found
 #
 # All tests use the `server` fixture (function scope, fresh DB).
