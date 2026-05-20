@@ -4780,7 +4780,7 @@ def test_context_graph_filter_min_edge_count_gte2(server):
 def test_context_graph_filter_min_age_days(server):
     """#613 / R-06: filter mode min_age_days returns only entries older than the threshold.
 
-    Fixture: 3 "goal" entries.
+    Fixture: 3 "pattern" entries.
       - id_old_1, id_old_2: created_at backdated 40 days ago (older than 30-day threshold).
       - id_new: created_at is now (younger than 30-day threshold).
 
@@ -4803,19 +4803,19 @@ def test_context_graph_filter_min_age_days(server):
         server,
         "Kubernetes pod disruption budget limits voluntary disruptions during rollouts",
         topic="k8s-reliability",
-        category="goal",
+        category="pattern",
     )
     id_old_2 = _store_vnc020_entry(
         server,
         "Terraform remote state locking prevents concurrent plan and apply conflicts",
         topic="iac-patterns",
-        category="goal",
+        category="pattern",
     )
     id_new = _store_vnc020_entry(
         server,
         "ArgoCD GitOps sync ensures cluster state matches the git repository HEAD",
         topic="gitops",
-        category="goal",
+        category="pattern",
     )
 
     # ---- backdate id_old_1 and id_old_2 to 40 days ago via direct SQL ----
@@ -4834,10 +4834,10 @@ def test_context_graph_filter_min_age_days(server):
     conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     conn.close()
 
-    # ---- call filter mode: category=goal, min_age_days=30, max_edge_count=0, edge_types=Advances ----
+    # ---- call filter mode: category=pattern, min_age_days=30, max_edge_count=0, edge_types=Advances ----
     resp = server.context_graph(
         "filter",
-        category="goal",
+        category="pattern",
         min_age_days=30,
         max_edge_count=0,
         edge_types=["Advances"],
