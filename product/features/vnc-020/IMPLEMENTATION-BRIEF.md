@@ -17,21 +17,27 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| graph_read.rs (wire types + dispatch + validation) | pseudocode/graph_read.md | test-plan/graph_read.md |
-| graph_read_inverse.rs | pseudocode/graph_read_inverse.md | test-plan/graph_read_inverse.md |
-| graph_read_filter.rs | pseudocode/graph_read_filter.md | test-plan/graph_read_filter.md |
-| graph_read_path.rs | pseudocode/graph_read_path.md | test-plan/graph_read_path.md |
-| tools.rs (tool description update) | pseudocode/tools.md | test-plan/tools.md |
+| graph_read.rs (wire types + dispatch + validation) | product/features/vnc-020/pseudocode/graph_read.md | product/features/vnc-020/test-plan/graph_read.md |
+| graph_read_inverse.rs | product/features/vnc-020/pseudocode/graph_read_inverse.md | product/features/vnc-020/test-plan/graph_read_inverse.md |
+| graph_read_filter.rs | product/features/vnc-020/pseudocode/graph_read_filter.md | product/features/vnc-020/test-plan/graph_read_filter.md |
+| graph_read_path.rs | product/features/vnc-020/pseudocode/graph_read_path.md | product/features/vnc-020/test-plan/graph_read_path.md |
+| tools.rs (tool description update) | product/features/vnc-020/pseudocode/tools.md | product/features/vnc-020/test-plan/tools.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/vnc-020/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/vnc-020/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map
-lists expected components from the architecture — actual file paths are filled during delivery.
+### Stage 3b Wave Plan
+
+| Wave | Components | Dependency |
+|------|-----------|------------|
+| Wave 1 | graph_read.rs, tools.rs | Foundation — GraphParams fields, response types, module declarations, dispatch stubs, validation expansion |
+| Wave 2 | graph_read_inverse.rs, graph_read_filter.rs, graph_read_path.rs | Parallel — depends on Wave 1 types being defined |
+
+**Wave 1 note**: Wave 1 agent must create minimal compilable stubs for the three sibling files (function signatures returning internal error) so that `#[path]` declarations and dispatch arms compile. Wave 2 agents replace the stubs with full implementations.
 
 ---
 
