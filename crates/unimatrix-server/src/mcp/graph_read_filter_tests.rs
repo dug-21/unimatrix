@@ -1,7 +1,10 @@
-//! Unit tests for `graph_read_filter.rs`.
+//! Unit tests for `graph_read_filter.rs` — behavioral and fixture tests.
 //!
 //! Extracted to a separate file to keep `graph_read_filter.rs` under the 500-line limit.
 //! Covers: AC-07 through AC-12, AC-29, AC-30, R-02, R-08, R-10, R-11, IR-04.
+//!
+//! Early-return validation tests (AC-09, AC-10, AC-11, and confidence finiteness)
+//! live in `graph_read_filter_validation_tests.rs`.
 
 use super::super::GraphParams;
 use super::*;
@@ -18,14 +21,6 @@ async fn open_test_store() -> (SqlxStore, tempfile::TempDir) {
         .await
         .expect("open test store");
     (store, dir)
-}
-
-fn filter_params(category: Option<&str>) -> GraphParams {
-    GraphParams {
-        mode: "filter".to_string(),
-        category: category.map(|s| s.to_string()),
-        ..Default::default()
-    }
 }
 
 /// Insert an entry via the standard SqlxStore API; returns the assigned ID.
@@ -62,248 +57,8 @@ async fn add_edge(store: &SqlxStore, source_id: u64, target_id: u64, rel_type: &
     .expect("insert edge");
 }
 
-// -----------------------------------------------------------------------
-// AC-10 — category required
-// -----------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_handle_filter_missing_category_returns_error() {
-    // AC-10: category=None must return exact error text.
-    let (store_impl, _dir) = open_test_store().await;
-    let params = filter_params(None);
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!(
-        err.message, "filter mode requires category",
-        "exact error text required, got: {}",
-        err.message
-    );
-    store_impl.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn test_handle_filter_empty_category_returns_error() {
-    // AC-10: category="" (empty) must return the same error.
-    let (store_impl, _dir) = open_test_store().await;
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("".to_string()),
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!(
-        err.message, "filter mode requires category",
-        "empty string must also trigger error, got: {}",
-        err.message
-    );
-    store_impl.close().await.unwrap();
-}
-
-// -----------------------------------------------------------------------
-// AC-09 — edge_types required when edge-count constraints present
-// -----------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_handle_filter_min_edge_count_without_edge_types_returns_error() {
-    // AC-09: min_edge_count present, edge_types=None → error.
-    let (store_impl, _dir) = open_test_store().await;
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        min_edge_count: Some(1),
-        edge_types: None,
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!(
-        err.message, "filter mode requires edge_types when edge_count constraints are specified",
-        "exact error text required, got: {}",
-        err.message
-    );
-    store_impl.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn test_handle_filter_min_edge_count_with_empty_edge_types_returns_error() {
-    // AC-09: min_edge_count present, edge_types=Some(vec![]) → same error.
-    let (store_impl, _dir) = open_test_store().await;
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        min_edge_count: Some(1),
-        edge_types: Some(vec![]),
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!(
-        err.message, "filter mode requires edge_types when edge_count constraints are specified",
-        "empty edge_types must trigger error, got: {}",
-        err.message
-    );
-    store_impl.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn test_handle_filter_max_edge_count_without_edge_types_returns_error() {
-    // AC-09: max_edge_count=0, edge_types=None → error.
-    let (store_impl, _dir) = open_test_store().await;
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        max_edge_count: Some(0),
-        edge_types: None,
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert_eq!(
-        err.message, "filter mode requires edge_types when edge_count constraints are specified",
-        "exact error text required, got: {}",
-        err.message
-    );
-    store_impl.close().await.unwrap();
-}
-
-// -----------------------------------------------------------------------
-// AC-11 — limit boundary validation
-// -----------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_handle_filter_limit_zero_returns_error() {
-    // AC-11: limit=0 is out of range.
-    let (store_impl, _dir) = open_test_store().await;
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        limit: Some(0),
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        err.message.contains("1..=500"),
-        "error must state range [1,500], got: {}",
-        err.message
-    );
-    assert!(
-        err.message.contains("got 0"),
-        "error must include the bad value, got: {}",
-        err.message
-    );
-    store_impl.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn test_handle_filter_limit_501_returns_error() {
-    // AC-11: limit=501 is out of range.
-    let (store_impl, _dir) = open_test_store().await;
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        limit: Some(501),
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        err.message.contains("1..=500"),
-        "error must state range [1,500], got: {}",
-        err.message
-    );
-    store_impl.close().await.unwrap();
-}
-
-#[tokio::test]
-async fn test_handle_filter_limit_default_is_100() {
-    // AC-11: limit=None → default 100; with exactly 3 entries we get 3 back.
-    let (store_impl, _dir) = open_test_store().await;
-    store_entry(&store_impl, "goal", "Goal A").await;
-    store_entry(&store_impl, "goal", "Goal B").await;
-    store_entry(&store_impl, "goal", "Goal C").await;
-
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        limit: None,
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_ok(), "expected Ok, got: {:?}", result);
-    let resp = result.unwrap();
-    // Default limit=100 means all 3 are returned.
-    assert_eq!(
-        resp.entries.len(),
-        3,
-        "expected 3 entries with default limit=100"
-    );
-    store_impl.close().await.unwrap();
-}
-
-// -----------------------------------------------------------------------
-// R-11 — category-only query (no other filters) is valid
-// -----------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_handle_filter_category_only_no_validation_error() {
-    // R-11: category-only query returns all active entries in category.
-    let (store_impl, _dir) = open_test_store().await;
-    store_entry(&store_impl, "goal", "Goal 1").await;
-    store_entry(&store_impl, "goal", "Goal 2").await;
-    store_entry(&store_impl, "goal", "Goal 3").await;
-
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(
-        result.is_ok(),
-        "category-only filter must succeed, got: {:?}",
-        result
-    );
-    let resp = result.unwrap();
-    assert_eq!(resp.entries.len(), 3);
-    assert_eq!(resp.total_returned, 3);
-    store_impl.close().await.unwrap();
-}
-
-// -----------------------------------------------------------------------
-// AC-12 — total_returned == entries.len()
-// -----------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_handle_filter_total_returned_matches_len() {
-    // AC-12: total_returned must equal entries.len() in every response.
-    let (store_impl, _dir) = open_test_store().await;
-    for i in 0..5 {
-        store_entry(&store_impl, "goal", &format!("Goal {i}")).await;
-    }
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_ok());
-    let resp = result.unwrap();
-    assert_eq!(
-        resp.total_returned,
-        resp.entries.len(),
-        "total_returned must equal entries.len()"
-    );
-    store_impl.close().await.unwrap();
-}
+// R-11 (category-only) and AC-12 (total_returned) tests live in
+// graph_read_filter_validation_tests.rs (lightweight, no edge fixtures).
 
 // -----------------------------------------------------------------------
 // R-02 — max_edge_count=0 uses <= binding, not special-cased (AC-29)
@@ -638,36 +393,6 @@ async fn test_filter_multi_type_edge_types_push_bind_pattern() {
         "entry with only RelatedTo edges must appear for max_edge_count=0 \
          filtering on Advances/Supports — got: {:?}",
         returned_ids
-    );
-    store_impl.close().await.unwrap();
-}
-
-// -----------------------------------------------------------------------
-// Unrecognized edge type
-// -----------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_filter_unrecognized_edge_type_returns_error() {
-    let (store_impl, _dir) = open_test_store().await;
-    let params = GraphParams {
-        mode: "filter".to_string(),
-        category: Some("goal".to_string()),
-        min_edge_count: Some(1),
-        edge_types: Some(vec!["BogusType".to_string()]),
-        ..Default::default()
-    };
-    let result = handle_filter(&store_impl, &params).await;
-    assert!(result.is_err());
-    let err = result.unwrap_err();
-    assert!(
-        err.message.contains("BogusType"),
-        "error must name the unrecognized type, got: {}",
-        err.message
-    );
-    assert!(
-        err.message.contains("recognized types"),
-        "error must list recognized types, got: {}",
-        err.message
     );
     store_impl.close().await.unwrap();
 }

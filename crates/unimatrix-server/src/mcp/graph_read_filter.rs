@@ -85,10 +85,31 @@ pub(super) async fn handle_filter(
         }
     };
 
-    // Step 4: Build parameterized correlated subquery SQL.
+    // Step 4: Validate confidence bounds (must be finite; NaN/±Infinity produce
+    // silent wrong results in SQLite comparisons).
+    if let Some(min_c) = params.min_confidence {
+        if !min_c.is_finite() {
+            return Err(ErrorData::new(
+                ERROR_INVALID_PARAMS,
+                "min_confidence must be a finite number",
+                None,
+            ));
+        }
+    }
+    if let Some(max_c) = params.max_confidence {
+        if !max_c.is_finite() {
+            return Err(ErrorData::new(
+                ERROR_INVALID_PARAMS,
+                "max_confidence must be a finite number",
+                None,
+            ));
+        }
+    }
+
+    // Step 5: Build parameterized correlated subquery SQL.
     // All caller values bound via push_bind — no string interpolation (ADR-007, NFR-06, SR-A).
 
-    // 4a. Base query: active entries in the specified category.
+    // 5a. Base query: active entries in the specified category.
     let mut qb: QueryBuilder<sqlx::Sqlite> = QueryBuilder::new(
         "SELECT e.id, e.title, e.content, e.topic, e.category, e.source, e.status, \
          e.confidence, e.created_at, e.updated_at, e.last_accessed_at, e.access_count, \
@@ -102,7 +123,7 @@ pub(super) async fn handle_filter(
     qb.push_bind(category);
     qb.push(" AND e.status = 0");
 
-    // 4b. Optional: min_age_days — entries created at least N days ago.
+    // 5b. Optional: min_age_days — entries created at least N days ago.
     // created_at is INTEGER (Unix epoch seconds). Use integer arithmetic, NOT datetime().
     if let Some(days) = params.min_age_days {
         // CAST(strftime('%s','now') AS INTEGER) returns current epoch as integer.
@@ -112,22 +133,24 @@ pub(super) async fn handle_filter(
         qb.push(")");
     }
 
-    // 4c. Optional: min_confidence — entries where confidence >= N.
+    // 5c. Optional: min_confidence — entries where confidence >= N.
     if let Some(min_c) = params.min_confidence {
         qb.push(" AND e.confidence >= ");
         qb.push_bind(min_c);
     }
 
-    // 4d. Optional: max_confidence — entries where confidence <= N.
+    // 5d. Optional: max_confidence — entries where confidence <= N.
     if let Some(max_c) = params.max_confidence {
         qb.push(" AND e.confidence <= ");
         qb.push_bind(max_c);
     }
 
-    // 4e. Optional: min_edge_count — entries with >= N outgoing edges of edge_types.
+    // 5e. Optional: min_edge_count — entries with >= N outgoing edges of edge_types.
     // edge_types is guaranteed Some and non-empty when has_edge_count=true (Step 2 guard).
     if let Some(min_n) = params.min_edge_count {
-        let et = edge_types.as_ref().expect("edge_types guaranteed non-empty by Step 2 validation");
+        let et = edge_types
+            .as_ref()
+            .expect("edge_types guaranteed non-empty by Step 2 validation");
         qb.push(
             " AND (SELECT COUNT(*) FROM graph_edges g \
              WHERE g.source_id = e.id AND g.relation_type IN (",
@@ -137,12 +160,14 @@ pub(super) async fn handle_filter(
         qb.push_bind(min_n as i64);
     }
 
-    // 4f. Optional: max_edge_count — entries with <= N outgoing edges of edge_types.
+    // 5f. Optional: max_edge_count — entries with <= N outgoing edges of edge_types.
     // CRITICAL: max_edge_count=0 is valid and must work correctly (R-02).
     // Use `<= ?` unconditionally — never special-case zero.
     // Two SEPARATE subqueries when both min and max are present (R-08 — not a BETWEEN).
     if let Some(max_n) = params.max_edge_count {
-        let et = edge_types.as_ref().expect("edge_types guaranteed non-empty by Step 2 validation");
+        let et = edge_types
+            .as_ref()
+            .expect("edge_types guaranteed non-empty by Step 2 validation");
         qb.push(
             " AND (SELECT COUNT(*) FROM graph_edges g \
              WHERE g.source_id = e.id AND g.relation_type IN (",
@@ -152,11 +177,11 @@ pub(super) async fn handle_filter(
         qb.push_bind(max_n as i64);
     }
 
-    // 4g. LIMIT clause.
+    // 5g. LIMIT clause.
     qb.push(" LIMIT ");
     qb.push_bind(limit as i64);
 
-    // Step 5: Execute query and hydrate EntryRecord rows.
+    // Step 6: Execute query and hydrate EntryRecord rows.
     // EntryRecord does not implement sqlx::FromRow — use entry_from_row for hydration.
     use unimatrix_store::read::{apply_tags, entry_from_row, load_tags_for_entries};
 
@@ -184,7 +209,7 @@ pub(super) async fn handle_filter(
         apply_tags(&mut entries, &tag_map);
     }
 
-    // Step 6: Return response.
+    // Step 7: Return response.
     let total_returned = entries.len();
     Ok(FilterResponse {
         entries,
@@ -243,3 +268,7 @@ fn push_relation_type_list(qb: &mut QueryBuilder<sqlx::Sqlite>, types: &[Relatio
 #[cfg(test)]
 #[path = "graph_read_filter_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "graph_read_filter_validation_tests.rs"]
+mod validation_tests;
