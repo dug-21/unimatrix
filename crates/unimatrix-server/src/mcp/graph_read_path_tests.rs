@@ -488,3 +488,10 @@ async fn test_handle_path_depth_1_misses_2hop_path() {
 
 #[path = "graph_read_path_supersession_tests.rs"]
 mod supersession;
+
+// ---------------------------------------------------------------------------
+// DB-fallback BFS tests (GH #612) — delegated to child module
+// ---------------------------------------------------------------------------
+
+#[path = "graph_read_path_db_tests.rs"]
+mod db_fallback;

@@ -4,6 +4,11 @@
 //! path-carrying BFS over the in-memory `TypedRelationGraph`. Tick-window staleness
 //! applies (same contract as neighbors depth>1 and subgraph modes — C8, ADR-006).
 //!
+//! When `use_fallback = true` (cold-start or cycle-detected), the in-memory graph is
+//! empty or stale. In that case `path_via_db()` performs BFS directly against live SQL
+//! using `query_direct_neighbors` so path mode returns correct results immediately
+//! after `context_edge add` without waiting for the next background tick (GH #612).
+//!
 //! # Key invariants
 //! - Outgoing edges only (FR-15). No `direction` parameter on path mode.
 //! - Visited set keyed on RESOLVED entry ID (not raw/deprecated) — R-03, pattern #4494.
@@ -22,12 +27,15 @@ use petgraph::visit::EdgeRef;
 use rmcp::model::ErrorData;
 use unimatrix_core::Store;
 use unimatrix_engine::graph::RelationType;
+use unimatrix_store::NeighborDirection;
 
-use crate::error::ERROR_INVALID_PARAMS;
+use crate::error::{ERROR_INTERNAL, ERROR_INVALID_PARAMS};
 use crate::services::typed_graph::TypedGraphState;
 
 use super::graph_read_neighbors::{all_non_supersedes_types, follow_to_current};
 use super::{GraphParams, PathHop, PathResponse};
+
+use unimatrix_store::query_direct_neighbors;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -35,6 +43,16 @@ use super::{GraphParams, PathHop, PathResponse};
 
 const DEFAULT_DEPTH: u8 = 5;
 const MAX_DEPTH_UPPER: u8 = 10;
+
+/// Per-node fan-out cap for DB-fallback BFS (path_via_db).
+///
+/// After each `query_direct_neighbors` call the returned Vec is truncated to
+/// this limit before enqueuing. This diverges subtly from the in-memory path,
+/// which has no per-hop fan-out cap (petgraph iterates ALL edges). Operators
+/// should be aware: extremely high-degree nodes (> MAX_DB_NEIGHBORS_PER_NODE
+/// outgoing edges of the requested type) may cause the DB path to miss routes
+/// that the in-memory BFS would find once the cache is warm.
+const MAX_DB_NEIGHBORS_PER_NODE: usize = 1000;
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -133,12 +151,32 @@ pub(super) async fn handle_path(
     // Step 7: Acquire graph snapshot (lock → clone → release) BEFORE BFS.
     // std::sync::RwLock — NOT tokio. Poison recovery via unwrap_or_else (same pattern
     // as graph_read_subgraph.rs line 147-149 and graph_read_neighbors.rs).
-    let graph = {
+    // Extract both typed_graph and use_fallback in the same lock guard, then release.
+    //
+    // `use_fallback = true` covers both cold-start (TypedGraphState::new()) and
+    // cycle-detected state (background.rs). This is not purely a cold-start path.
+    // When true the in-memory graph is empty or stale — branch to DB-backed BFS.
+    let (graph, use_fallback) = {
         let state = typed_graph_state.read().unwrap_or_else(|e| e.into_inner());
-        state.typed_graph.clone()
+        (state.typed_graph.clone(), state.use_fallback)
     };
     // Lock is now released. All subsequent BFS (including async follow_to_current calls)
     // operates on the owned snapshot clone — no lock held during async (lock discipline).
+
+    // When use_fallback=true the snapshot is empty (cold-start) or corrupt (cycle-detected).
+    // Fall back to live DB BFS so path mode works immediately after context_edge add
+    // without waiting for the next background tick (GH #612).
+    if use_fallback {
+        return path_via_db(
+            store,
+            effective_from,
+            effective_to,
+            &edge_types,
+            max_depth,
+            resolve_supersessions,
+        )
+        .await;
+    }
 
     // Step 8: Not-in-snapshot guard for effective_from.
     // Absent from snapshot is NOT an error (AC-15, FR-13).
@@ -275,6 +313,121 @@ pub(super) async fn handle_path(
     }
 
     // Frontier exhausted without finding target within depth hops.
+    Ok(PathResponse {
+        found: false,
+        from_id: effective_from,
+        to_id: effective_to,
+        hops: vec![],
+        length: 0,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// DB-fallback BFS: path_via_db
+// ---------------------------------------------------------------------------
+
+/// BFS over live SQL when `use_fallback = true` (cold-start or cycle-detected).
+///
+/// Uses `query_direct_neighbors` with `NeighborDirection::Outgoing` — the same
+/// function used by neighbors depth=1 live SQL path in `graph_read_neighbors.rs`.
+/// The index `idx_graph_edges_source_type(source_id, relation_type)` means this
+/// is not a full table scan.
+///
+/// Preserves all in-memory BFS invariants:
+/// - Visited set keyed on resolved ID (R-03, pattern #4494).
+/// - Outgoing direction only (FR-15).
+/// - max_depth enforced identically to the in-memory path.
+/// - Same PathResponse shape and hop structure.
+/// - Per-hop follow_to_current / supersession resolution mirrors the in-memory path.
+///
+/// NOTE: Fan-out is capped at MAX_DB_NEIGHBORS_PER_NODE per hop. This creates a
+/// subtle divergence from the in-memory path (no per-hop fan-out cap). Future
+/// operators should be aware: nodes with > MAX_DB_NEIGHBORS_PER_NODE outgoing
+/// edges of the requested type may have some neighbors silently skipped in DB mode.
+async fn path_via_db(
+    store: &Store,
+    effective_from: u64,
+    effective_to: u64,
+    edge_types: &[RelationType],
+    max_depth: u8,
+    resolve_supersessions: bool,
+) -> Result<PathResponse, ErrorData> {
+    let type_strs: Vec<&str> = edge_types.iter().map(|t| t.as_str()).collect();
+
+    // visited: keyed on RESOLVED entry ID (not raw) — R-03.
+    let mut visited: HashSet<u64> = HashSet::new();
+    // frontier: (current_entry_id, path_so_far, current_depth)
+    let mut frontier: VecDeque<(u64, Vec<PathHop>, u8)> = VecDeque::new();
+
+    // Seed: from_id itself is NOT added to hops (ADR-005).
+    visited.insert(effective_from);
+    frontier.push_back((effective_from, vec![], 0));
+
+    while let Some((current_id, path_so_far, current_depth)) = frontier.pop_front() {
+        if current_depth >= max_depth {
+            continue;
+        }
+
+        // Query outgoing neighbors from live DB — no full table scan (idx_graph_edges_source_type).
+        let mut raw_neighbors = query_direct_neighbors(
+            store.read_pool_server(),
+            current_id,
+            &type_strs,
+            NeighborDirection::Outgoing,
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!(current_id, error = %e, "path_via_db: query_direct_neighbors failed");
+            ErrorData::new(ERROR_INTERNAL, format!("graph query failed: {e}"), None)
+        })?;
+
+        // Fan-out cap: prevent runaway BFS on extremely high-degree nodes.
+        // Creates a subtle divergence from in-memory path (see module doc).
+        raw_neighbors.truncate(MAX_DB_NEIGHBORS_PER_NODE);
+
+        for row in raw_neighbors {
+            let raw_neighbor_id = row.target_id;
+
+            // Per-hop supersession resolution (mirrors in-memory BFS — ADR-006).
+            let effective_neighbor: u64 = if resolve_supersessions {
+                follow_to_current(store, raw_neighbor_id)
+                    .await
+                    .unwrap_or(raw_neighbor_id)
+            } else {
+                raw_neighbor_id
+            };
+
+            // Build the hop toward effective_neighbor.
+            let hop = PathHop {
+                entry_id: effective_neighbor,
+                relation_type: row.relation_type.clone(),
+            };
+
+            // Destination check.
+            if effective_neighbor == effective_to {
+                let mut full_path = path_so_far.clone();
+                full_path.push(hop);
+                let length = full_path.len() as u8;
+                return Ok(PathResponse {
+                    found: true,
+                    from_id: effective_from,
+                    to_id: effective_to,
+                    hops: full_path,
+                    length,
+                });
+            }
+
+            // Enqueue if not yet visited — CRITICAL: keyed on resolved ID (R-03).
+            if !visited.contains(&effective_neighbor) {
+                visited.insert(effective_neighbor);
+                let mut new_path = path_so_far.clone();
+                new_path.push(hop);
+                frontier.push_back((effective_neighbor, new_path, current_depth + 1));
+            }
+        }
+    }
+
+    // Frontier exhausted.
     Ok(PathResponse {
         found: false,
         from_id: effective_from,
