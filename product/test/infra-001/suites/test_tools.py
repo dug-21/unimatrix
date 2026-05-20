@@ -4359,3 +4359,538 @@ def test_graph_subgraph_mode_listed_in_unrecognized_error(server):
     )
     assert_tool_error(resp, "subgraph")
 
+
+# === vnc-020: context_graph inverse/filter/path modes ===========================
+#
+# AC-27: inverse single type (R-10 deprecated exclusion guard)
+# AC-28: inverse AND semantics — 4-state fixture (R-05)
+# AC-29: filter max_edge_count=0 boundary (R-02 Critical)
+# AC-30: filter min_edge_count >= 2 (R-08)
+# AC-31: path found — marked xfail (GH#612 tick-force mechanism needed)
+# AC-32: path self-loop returns not-found
+#
+# All tests use the `server` fixture (function scope, fresh DB).
+# New vnc-020 parameters are passed through the updated context_graph() client method.
+#
+# Category note: only the INITIAL_CATEGORIES are valid for context_store:
+#   lesson-learned, decision, convention, pattern, procedure.
+#   inverse tests use "convention" (no semantic overlap with "decision"/"pattern").
+#   filter tests use "decision" (in allowlist, distinct from "convention"/"pattern").
+#
+# Deduplication note: the server deduplicates entries with > ~0.9 semantic similarity.
+#   Content strings for different fixture entries must be semantically distinct to avoid
+#   being treated as near-duplicates. Use fully different topics/phrases per fixture entry.
+
+import json as _json_vnc020
+
+
+def _store_vnc020_entry(server, content, topic="vnc020-test", category="convention"):
+    """Helper: store a single entry and return its integer ID."""
+    resp = server.context_store(content, topic, category, agent_id="human", format="json")
+    assert_tool_success(resp)
+    return extract_entry_id(resp)
+
+
+def test_context_graph_inverse_single_type(server):
+    """AC-27 / R-10: inverse mode returns active entries missing the specified type.
+
+    Fixture: 3 entries —
+      - active convention with no incoming Cites edge        (must appear)
+      - active convention with an incoming Cites edge        (must NOT appear)
+      - deprecated convention with no incoming Cites edge    (must NOT appear — R-10 guard)
+
+    Validates: inverse mode only returns active entries (status=0), not deprecated ones.
+    """
+    # active entry with NO incoming Cites — expected in results
+    # Use highly distinct content to avoid near-duplicate deduplication
+    id_no_edge = _store_vnc020_entry(
+        server,
+        "Rust borrow checker rule: references must not outlive their owner scope",
+        topic="rust-rules",
+        category="convention",
+    )
+
+    # active entry WITH an incoming Cites edge — expected out of results
+    id_with_edge = _store_vnc020_entry(
+        server,
+        "Python asyncio event loop cannot be nested within a synchronous context",
+        topic="python-rules",
+        category="convention",
+    )
+    # donor entry (pattern category — not queried by the inverse filter on convention)
+    id_donor = _store_vnc020_entry(
+        server,
+        "cargo build releases optimized binary artifacts",
+        topic="cargo-cmds",
+        category="pattern",
+    )
+    server.context_edge("add", id_donor, "Cites", id_with_edge, agent_id="human")
+
+    # deprecated entry with NO incoming Cites — must NOT appear (R-10 status=0 guard)
+    id_pre_dep = _store_vnc020_entry(
+        server,
+        "SQL EXPLAIN ANALYZE reveals index usage in query planner",
+        topic="sql-rules",
+        category="convention",
+    )
+    # deprecate it via context_correct (old entry status becomes Deprecated)
+    server.context_correct(
+        id_pre_dep,
+        "SQL EXPLAIN ANALYZE output includes index scan cost estimates",
+        agent_id="human",
+    )
+
+    resp = server.context_graph(
+        "inverse",
+        category="convention",
+        missing_edge_types=["Cites"],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_vnc020.loads(result.text)
+
+    assert "entries" in data, f"inverse response missing 'entries': {list(data.keys())}"
+    assert "total_returned" in data, f"inverse response missing 'total_returned': {list(data.keys())}"
+    returned_ids = {e["id"] for e in data["entries"]}
+
+    assert id_no_edge in returned_ids, (
+        f"Active entry with no Cites edge (id={id_no_edge}) must be in inverse result; got: {returned_ids}"
+    )
+    assert id_with_edge not in returned_ids, (
+        f"Active entry with Cites edge (id={id_with_edge}) must NOT be in inverse result; got: {returned_ids}"
+    )
+    assert id_pre_dep not in returned_ids, (
+        f"Deprecated entry (id={id_pre_dep}) must NOT be in inverse result (R-10 status guard); got: {returned_ids}"
+    )
+    assert data["total_returned"] == len(data["entries"]), (
+        f"total_returned ({data['total_returned']}) must equal entries.len() ({len(data['entries'])})"
+    )
+
+
+def test_context_graph_inverse_and_semantics(server):
+    """AC-28 / R-05: inverse mode with two missing_edge_types uses AND semantics.
+
+    4-state fixture — the ONLY test that can distinguish AND from OR:
+      entry_a: no Cites, no Supports incoming  → must appear (missing BOTH)
+      entry_b: has Cites, no Supports incoming → must NOT appear (has Cites; AND fails)
+      entry_c: no Cites, has Supports incoming → must NOT appear (has Supports; AND fails)
+      entry_d: has Cites, has Supports incoming→ must NOT appear
+
+    If OR semantics were used, entry_b and entry_c would appear (each missing one type).
+
+    Content must be semantically distinct to avoid deduplication. Each entry uses a
+    completely different technical domain to ensure similarity < dedup threshold.
+    """
+    # Store 4 convention entries — one per distinct technical domain
+    id_a = _store_vnc020_entry(
+        server,
+        "HTTP/2 multiplexes multiple streams over a single TCP connection",
+        topic="http-protocols",
+        category="convention",
+    )
+    id_b = _store_vnc020_entry(
+        server,
+        "Kubernetes pod scheduling uses node affinity and taints",
+        topic="k8s-scheduling",
+        category="convention",
+    )
+    id_c = _store_vnc020_entry(
+        server,
+        "React hook rules require consistent call order across renders",
+        topic="react-hooks",
+        category="convention",
+    )
+    id_d = _store_vnc020_entry(
+        server,
+        "Postgres MVCC writes new row versions rather than updating in place",
+        topic="postgres-mvcc",
+        category="convention",
+    )
+
+    # Donor entries (pattern category — excluded from convention inverse query)
+    id_donor_cites = _store_vnc020_entry(
+        server,
+        "cargo-deny enforces license and vulnerability policies across dependencies",
+        topic="cargo-tools",
+        category="pattern",
+    )
+    id_donor_supports = _store_vnc020_entry(
+        server,
+        "tokio-console profiles async task scheduling and wake latency",
+        topic="async-tools",
+        category="pattern",
+    )
+
+    # entry_b has incoming Cites
+    server.context_edge("add", id_donor_cites, "Cites", id_b, agent_id="human")
+    # entry_c has incoming Supports
+    server.context_edge("add", id_donor_supports, "Supports", id_c, agent_id="human")
+    # entry_d has both
+    server.context_edge("add", id_donor_cites, "Cites", id_d, agent_id="human")
+    server.context_edge("add", id_donor_supports, "Supports", id_d, agent_id="human")
+
+    resp = server.context_graph(
+        "inverse",
+        category="convention",
+        missing_edge_types=["Cites", "Supports"],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_vnc020.loads(result.text)
+
+    returned_ids = {e["id"] for e in data["entries"]}
+
+    assert id_a in returned_ids, (
+        f"entry_a (missing both Cites and Supports) must appear; got: {returned_ids}"
+    )
+    assert id_b not in returned_ids, (
+        f"entry_b (has Cites; AND semantics means it must NOT appear); got: {returned_ids}"
+    )
+    assert id_c not in returned_ids, (
+        f"entry_c (has Supports; AND semantics means it must NOT appear); got: {returned_ids}"
+    )
+    assert id_d not in returned_ids, (
+        f"entry_d (has both types) must NOT appear; got: {returned_ids}"
+    )
+    # Note: total_returned counts all convention entries missing BOTH types.
+    # entry_a must be in the result; the count may include other entries added by other tests
+    # if they somehow share the fixture. Since this uses `server` (fresh DB), only these 4 exist.
+    assert data["total_returned"] >= 1, (
+        f"At least entry_a must be returned; got total_returned={data['total_returned']}"
+    )
+    assert id_a in returned_ids, f"entry_a must be in returned entries"
+
+
+def test_context_graph_filter_max_edge_count_zero(server):
+    """AC-29 / R-02 (Critical): filter mode max_edge_count=0 returns only zero-edge entries.
+
+    4-entry fixture with 0, 1, 2, 3 outgoing Advances edges respectively.
+    The = 0 boundary is the critical case: verifies <= ? binding with value 0
+    is not special-cased as = 0 or IS NULL.
+
+    Uses "decision" category (in INITIAL_CATEGORIES). Edge targets use "pattern" category
+    to keep the filter query result set clean. Content uses semantically distinct strings
+    to avoid near-duplicate deduplication (threshold ~0.9 similarity).
+    """
+    id_0 = server.context_store(
+        "Immutable infrastructure: servers are replaced not patched on update",
+        "infra-patterns",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_0 = extract_entry_id(id_0)
+
+    id_1 = server.context_store(
+        "Blue-green deployment: run two identical production environments switch traffic",
+        "deploy-patterns",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_1 = extract_entry_id(id_1)
+
+    id_2 = server.context_store(
+        "Canary release: route a small percentage of traffic to new version",
+        "release-patterns",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_2 = extract_entry_id(id_2)
+
+    id_3 = server.context_store(
+        "Circuit breaker: stop calling failing service after threshold exceeded",
+        "resilience-patterns",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_3 = extract_entry_id(id_3)
+
+    # Edge targets (pattern category — won't pollute the decision filter query)
+    id_target_a = _store_vnc020_entry(
+        server,
+        "Prometheus scrapes metrics via HTTP pull model from instrumented services",
+        topic="monitoring",
+        category="pattern",
+    )
+    id_target_b = _store_vnc020_entry(
+        server,
+        "Grafana renders time-series dashboards from Prometheus datasource queries",
+        topic="dashboards",
+        category="pattern",
+    )
+    id_target_c = _store_vnc020_entry(
+        server,
+        "Jaeger distributed tracing propagates context via W3C trace-context headers",
+        topic="tracing",
+        category="pattern",
+    )
+
+    # entry_1: 1 outgoing Advances edge
+    server.context_edge("add", id_1, "Advances", id_target_a, agent_id="human")
+    # entry_2: 2 outgoing Advances edges
+    server.context_edge("add", id_2, "Advances", id_target_a, agent_id="human")
+    server.context_edge("add", id_2, "Advances", id_target_b, agent_id="human")
+    # entry_3: 3 outgoing Advances edges
+    server.context_edge("add", id_3, "Advances", id_target_a, agent_id="human")
+    server.context_edge("add", id_3, "Advances", id_target_b, agent_id="human")
+    server.context_edge("add", id_3, "Advances", id_target_c, agent_id="human")
+
+    resp = server.context_graph(
+        "filter",
+        category="decision",
+        max_edge_count=0,
+        edge_types=["Advances"],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_vnc020.loads(result.text)
+
+    assert "entries" in data, f"filter response missing 'entries': {list(data.keys())}"
+    assert "total_returned" in data, f"filter response missing 'total_returned': {list(data.keys())}"
+    returned_ids = {e["id"] for e in data["entries"]}
+
+    assert id_0 in returned_ids, (
+        f"Entry with 0 Advances edges (id={id_0}) must appear in max_edge_count=0 result; got: {returned_ids}"
+    )
+    assert id_1 not in returned_ids, (
+        f"Entry with 1 Advances edge (id={id_1}) must NOT appear; got: {returned_ids}"
+    )
+    assert id_2 not in returned_ids, (
+        f"Entry with 2 Advances edges (id={id_2}) must NOT appear; got: {returned_ids}"
+    )
+    assert id_3 not in returned_ids, (
+        f"Entry with 3 Advances edges (id={id_3}) must NOT appear; got: {returned_ids}"
+    )
+    assert data["total_returned"] == 1, (
+        f"Exactly 1 entry (0-edge) must be returned; got total_returned={data['total_returned']}"
+    )
+
+
+def test_context_graph_filter_min_edge_count_gte2(server):
+    """AC-30 / R-08: filter mode min_edge_count=2 returns only entries with >= 2 outgoing edges.
+
+    4-entry fixture with 0, 1, 2, 3 outgoing Advances edges.
+    Entries with 2 and 3 must appear; 0 and 1 must not.
+
+    Uses "decision" category (in INITIAL_CATEGORIES). Edge targets use "pattern" category.
+    Content strings use entirely different domains to avoid near-duplicate deduplication.
+    """
+    id_0 = server.context_store(
+        "Event sourcing: persist domain events as the source of truth not current state",
+        "event-arch",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_0 = extract_entry_id(id_0)
+
+    id_1 = server.context_store(
+        "CQRS: separate read and write models for scalable query and command handling",
+        "cqrs-arch",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_1 = extract_entry_id(id_1)
+
+    id_2 = server.context_store(
+        "Hexagonal architecture: decouple application core from infrastructure adapters",
+        "hex-arch",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_2 = extract_entry_id(id_2)
+
+    id_3 = server.context_store(
+        "Saga pattern: coordinate distributed transactions via compensating actions",
+        "saga-arch",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_3 = extract_entry_id(id_3)
+
+    # Edge targets (pattern category)
+    id_target_a = _store_vnc020_entry(
+        server,
+        "OpenTelemetry SDK instruments libraries with spans metrics and logs",
+        topic="otel",
+        category="pattern",
+    )
+    id_target_b = _store_vnc020_entry(
+        server,
+        "eBPF programs run sandboxed inside the Linux kernel without kernel modules",
+        topic="ebpf",
+        category="pattern",
+    )
+    id_target_c = _store_vnc020_entry(
+        server,
+        "WebAssembly component model enables cross-language module composition",
+        topic="wasm",
+        category="pattern",
+    )
+
+    # id_1: 1 outgoing Advances edge
+    server.context_edge("add", id_1, "Advances", id_target_a, agent_id="human")
+    # id_2: 2 outgoing Advances edges
+    server.context_edge("add", id_2, "Advances", id_target_a, agent_id="human")
+    server.context_edge("add", id_2, "Advances", id_target_b, agent_id="human")
+    # id_3: 3 outgoing Advances edges
+    server.context_edge("add", id_3, "Advances", id_target_a, agent_id="human")
+    server.context_edge("add", id_3, "Advances", id_target_b, agent_id="human")
+    server.context_edge("add", id_3, "Advances", id_target_c, agent_id="human")
+
+    resp = server.context_graph(
+        "filter",
+        category="decision",
+        min_edge_count=2,
+        edge_types=["Advances"],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_vnc020.loads(result.text)
+
+    returned_ids = {e["id"] for e in data["entries"]}
+
+    assert id_2 in returned_ids, (
+        f"Entry with 2 Advances edges (id={id_2}) must appear in min_edge_count=2 result; got: {returned_ids}"
+    )
+    assert id_3 in returned_ids, (
+        f"Entry with 3 Advances edges (id={id_3}) must appear in min_edge_count=2 result; got: {returned_ids}"
+    )
+    assert id_0 not in returned_ids, (
+        f"Entry with 0 Advances edges (id={id_0}) must NOT appear; got: {returned_ids}"
+    )
+    assert id_1 not in returned_ids, (
+        f"Entry with 1 Advances edge (id={id_1}) must NOT appear; got: {returned_ids}"
+    )
+    assert data["total_returned"] == 2, (
+        f"Exactly 2 entries (2-edge and 3-edge) must be returned; got total_returned={data['total_returned']}"
+    )
+
+
+@pytest.mark.xfail(
+    reason=(
+        "Pre-existing: GH#612 — no tick-force mechanism for path mode BFS graph rebuild. "
+        "path mode uses in-memory TypedRelationGraph rebuilt each tick (~15 min default, "
+        "30s with fast_tick_server). After writing entries and edges, the graph cache is "
+        "not yet populated. Unit tests cover the path BFS logic "
+        "(test_handle_path_1hop_from_id_not_in_hops, test_handle_path_2hop_from_id_not_in_hops). "
+        "This integration test requires a tick-force mechanism to be reliable without "
+        "a 30+ second sleep."
+    )
+)
+def test_context_graph_path_found(server):
+    """AC-31 / R-12: path mode returns a 2-hop path with correct hops content.
+
+    Writes entries A, B, C connected by edges A-Advances->B and B-Supports->C.
+    Calls path(from_id=A, to_id=C) and asserts:
+      - found: True
+      - hops has length 2
+      - hops[0] = {entry_id: B, relation_type: "Advances"}
+      - hops[1] = {entry_id: C, relation_type: "Supports"}
+      - from_id A is NOT in the hops array
+      - length == 2
+
+    XFAIL: GH#612 — graph cache rebuild requires tick interval to elapse.
+    """
+    id_a = _store_vnc020_entry(
+        server,
+        "Rust ownership model prevents data races at compile time",
+        topic="rust-safety",
+        category="convention",
+    )
+    id_b = _store_vnc020_entry(
+        server,
+        "Linear types track resource usage ensuring exactly-once consumption",
+        topic="type-theory",
+        category="convention",
+    )
+    id_c = _store_vnc020_entry(
+        server,
+        "Affine types generalize linear types allowing zero or one use",
+        topic="type-theory-affine",
+        category="convention",
+    )
+
+    server.context_edge("add", id_a, "Advances", id_b, agent_id="human")
+    server.context_edge("add", id_b, "Supports", id_c, agent_id="human")
+
+    # NOTE: Without a tick-force mechanism, the in-memory graph may not contain
+    # these new edges yet. This test is marked xfail for this reason (GH#612).
+    resp = server.context_graph(
+        "path",
+        from_id=id_a,
+        to_id=id_c,
+        edge_types=["Advances", "Supports"],
+        depth=5,
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_vnc020.loads(result.text)
+
+    assert data.get("found") is True, (
+        f"Path A->B->C must be found; got found={data.get('found')} (graph cache may be stale)"
+    )
+    assert data.get("from_id") == id_a, f"from_id must be {id_a}; got {data.get('from_id')}"
+    assert data.get("to_id") == id_c, f"to_id must be {id_c}; got {data.get('to_id')}"
+
+    hops = data.get("hops", [])
+    assert len(hops) == 2, f"Expected 2 hops (A->B->C); got {len(hops)}: {hops}"
+    assert hops[0]["entry_id"] == id_b, f"hops[0] must be B (id={id_b}); got {hops[0]}"
+    assert hops[0]["relation_type"] == "Advances", f"hops[0] relation_type must be 'Advances'; got {hops[0]}"
+    assert hops[1]["entry_id"] == id_c, f"hops[1] must be C (id={id_c}); got {hops[1]}"
+    assert hops[1]["relation_type"] == "Supports", f"hops[1] relation_type must be 'Supports'; got {hops[1]}"
+
+    hop_ids = {h["entry_id"] for h in hops}
+    assert id_a not in hop_ids, f"from_id (A={id_a}) must NOT appear in hops; got {hop_ids}"
+    assert data.get("length") == 2, f"length must be 2; got {data.get('length')}"
+
+
+def test_context_graph_path_self_loop_returns_not_found(server):
+    """AC-32 / R-12: path mode with from_id == to_id returns found: false.
+
+    A self-path is not a meaningful traversal. BFS must NOT return
+    { found: true, hops: [], length: 0 } — the destination check fires
+    only when a neighbor is reached, never on the BFS seed itself.
+
+    Unlike AC-31, this test does NOT require a graph rebuild because the
+    expected result is found: false regardless of graph cache state.
+    The self-path check fires before BFS begins.
+    """
+    id_a = _store_vnc020_entry(
+        server,
+        "Differential privacy adds calibrated noise to queries protecting individual records",
+        topic="privacy-tech",
+        category="convention",
+    )
+
+    resp = server.context_graph(
+        "path",
+        from_id=id_a,
+        to_id=id_a,
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_vnc020.loads(result.text)
+
+    assert data.get("found") is False, (
+        f"Self-path (from_id == to_id == {id_a}) must return found: false; got found={data.get('found')}"
+    )
+    assert data.get("hops") == [], (
+        f"Self-path must return empty hops; got {data.get('hops')}"
+    )
+    assert data.get("length") == 0, (
+        f"Self-path must return length: 0; got {data.get('length')}"
+    )
+

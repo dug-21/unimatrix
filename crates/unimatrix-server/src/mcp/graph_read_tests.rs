@@ -305,3 +305,11 @@ fn test_node_index_for_unknown_node_returns_none() {
 
 #[path = "graph_read_tests_vnc019.rs"]
 mod vnc019;
+
+// -----------------------------------------------------------------------
+// vnc-020 tests (graph_read.rs changes: 8 new GraphParams fields, 3 new response types,
+// validate_no_unsupported_params expansion, 3 new dispatch arms).
+// -----------------------------------------------------------------------
+
+#[path = "graph_read_tests_vnc020.rs"]
+mod vnc020;

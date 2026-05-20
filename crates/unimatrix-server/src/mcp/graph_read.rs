@@ -1,10 +1,14 @@
-//! context_graph mode handlers: chain, current, neighbors, subgraph (vnc-018, vnc-019).
+//! context_graph mode handlers: chain, current, neighbors, subgraph (vnc-018, vnc-019),
+//! inverse, filter, path (vnc-020).
 //!
 //! Entry point: `handle_graph` — called from `tools.rs` after capability check.
 //! Submodules:
 //! - `graph_read_supersession` — chain, current, follow_to_current
 //! - `graph_read_neighbors`    — neighbors, neighbors_sql, neighbors_bfs
 //! - `graph_read_subgraph`     — subgraph BFS traversal and metadata hydration (vnc-019)
+//! - `graph_read_inverse`      — inverse antijoin SQL handler (vnc-020)
+//! - `graph_read_filter`       — filter correlated subquery handler (vnc-020)
+//! - `graph_read_path`         — path BFS shortest-path handler (vnc-020)
 //!
 //! # Execution order (ARCHITECTURE.md §Component Interactions, ADR-003)
 //! 1. `require_cap(Read)` — runs in `tools.rs` BEFORE `handle_graph` is called.
@@ -37,6 +41,18 @@ mod graph_read_neighbors;
 
 #[path = "graph_read_subgraph.rs"]
 mod graph_read_subgraph;
+
+#[path = "graph_read_inverse.rs"]
+mod graph_read_inverse;
+
+#[path = "graph_read_filter.rs"]
+mod graph_read_filter;
+
+#[path = "graph_read_path.rs"]
+mod graph_read_path;
+
+#[path = "graph_read_validation.rs"]
+mod graph_read_validation;
 
 // ---------------------------------------------------------------------------
 // Wire types (ADR-003, ADR-004)
@@ -78,6 +94,37 @@ pub struct GraphParams {
     /// subgraph mode only: BFS max depth 1..=10 (default 3 when absent).
     /// Error if passed to chain, current, or neighbors modes (ADR-001 vnc-019).
     pub max_depth: Option<u8>,
+    // -- vnc-020 fields: inverse and filter modes (ADR-002 vnc-020) --
+    /// inverse and filter: entry category filter (required for both modes).
+    /// REJECTED on all other modes.
+    #[serde(default)]
+    pub category: Option<String>,
+    /// inverse only: edge type(s) whose absence is tested (required, non-empty).
+    /// REJECTED on all other modes. Do not confuse with edge_types.
+    #[serde(default)]
+    pub missing_edge_types: Option<Vec<String>>,
+    /// inverse and filter: max entries to return (default 100, range [1, 500]).
+    /// REJECTED on all other modes.
+    #[serde(default)]
+    pub limit: Option<u32>,
+    /// filter only: entries where created_at <= (NOW - N days).
+    #[serde(default)]
+    pub min_age_days: Option<u32>,
+    /// filter only: entries where confidence >= N.
+    #[serde(default)]
+    pub min_confidence: Option<f64>,
+    /// filter only: entries where confidence <= N.
+    #[serde(default)]
+    pub max_confidence: Option<f64>,
+    /// filter only: entries with at least this many outgoing edges of edge_types.
+    /// Requires edge_types to be present and non-empty.
+    #[serde(default)]
+    pub min_edge_count: Option<u32>,
+    /// filter only: entries with at most this many outgoing edges of edge_types.
+    /// max_edge_count=0 is valid: returns entries with zero matching edges.
+    /// Requires edge_types to be present and non-empty.
+    #[serde(default)]
+    pub max_edge_count: Option<u32>,
 }
 
 /// A single typed edge from a neighbors traversal (ADR-004, vnc-018).
@@ -138,6 +185,45 @@ pub struct SubgraphResponse {
     pub truncated: bool,
     pub seed_ids: Vec<u64>,
     pub depth_reached: u8,
+}
+
+/// Response envelope for inverse mode (vnc-020).
+#[derive(Debug, Clone, Serialize)]
+pub struct InverseResponse {
+    pub entries: Vec<EntryRecord>,
+    pub total_returned: usize,
+}
+
+/// Response envelope for filter mode (vnc-020).
+#[derive(Debug, Clone, Serialize)]
+pub struct FilterResponse {
+    pub entries: Vec<EntryRecord>,
+    pub total_returned: usize,
+}
+
+/// A single hop in a path traversal result (vnc-020, ADR-005).
+///
+/// `relation_type` is never null — always one of the 16 RelationType variant name strings.
+/// `from_id` is NOT a PathHop — it is a top-level PathResponse field.
+#[derive(Debug, Clone, Serialize)]
+pub struct PathHop {
+    pub entry_id: u64,
+    pub relation_type: String,
+}
+
+/// Response envelope for path mode (vnc-020, ADR-005).
+///
+/// `found=false` when: (a) no path within depth hops, or (b) from_id/to_id absent from
+/// the current graph snapshot. Both are valid results, NOT errors (FR-13, AC-14, AC-15).
+/// `length` always equals `hops.len()`.
+/// `from_id` and `to_id` are resolved IDs when `resolve_supersessions=true` (ADR-006).
+#[derive(Debug, Clone, Serialize)]
+pub struct PathResponse {
+    pub found: bool,
+    pub from_id: u64,
+    pub to_id: u64,
+    pub hops: Vec<PathHop>,
+    pub length: u8,
 }
 
 // ---------------------------------------------------------------------------
@@ -235,6 +321,36 @@ pub(crate) async fn handle_graph(
                 json,
             )]))
         }
+        "inverse" => {
+            // Pure SQL antijoin — no graph state needed.
+            let result = graph_read_inverse::handle_inverse(store, &params).await?;
+            let json = serde_json::to_string(&result).map_err(|e| {
+                ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
+            })?;
+            Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                json,
+            )]))
+        }
+        "filter" => {
+            // Pure SQL correlated subquery — no graph state needed.
+            let result = graph_read_filter::handle_filter(store, &params).await?;
+            let json = serde_json::to_string(&result).map_err(|e| {
+                ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
+            })?;
+            Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                json,
+            )]))
+        }
+        "path" => {
+            // In-memory BFS — requires typed_graph_state.
+            let result = graph_read_path::handle_path(store, typed_graph_state, &params).await?;
+            let json = serde_json::to_string(&result).map_err(|e| {
+                ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
+            })?;
+            Ok(CallToolResult::success(vec![rmcp::model::Content::text(
+                json,
+            )]))
+        }
         // validate_no_unsupported_params already caught unrecognized modes above;
         // this arm is unreachable under normal flow but required for exhaustiveness.
         _ => unreachable!(
@@ -248,132 +364,12 @@ pub(crate) async fn handle_graph(
 // ---------------------------------------------------------------------------
 
 /// Centralized parameter validation. Called at the top of `handle_graph` before
-/// mode dispatch. This function is the single contract point for:
-/// - Unrecognized mode (fires BEFORE any field check — R-04).
-/// - Forward-compat fields on unsupported modes (with future-mode hint).
-/// - `resolve_supersessions=Some(true)` on chain mode (semantically circular, R-08).
-/// - `max_depth` rejected on chain/current/neighbors modes (ADR-001 vnc-019).
+/// mode dispatch. Delegates to `graph_read_validation` (kept separate per C5 line limit).
+///
+/// This function is the single contract point for all cross-mode rejection logic.
+/// See `graph_read_validation.rs` for the full implementation.
 pub(crate) fn validate_no_unsupported_params(params: &GraphParams) -> Result<(), String> {
-    match params.mode.as_str() {
-        "chain" => {
-            // chain rejects all forward-compat fields AND resolve_supersessions=true.
-            if params.seed_ids.is_some() {
-                return Err(
-                    "seed_ids is not supported in chain mode — use subgraph mode".to_string(),
-                );
-            }
-            if params.max_nodes.is_some() {
-                return Err(
-                    "max_nodes is not supported in chain mode — use subgraph mode".to_string(),
-                );
-            }
-            if params.from_id.is_some() {
-                return Err(
-                    "from_id is not supported in chain mode — use path mode (#598)".to_string(),
-                );
-            }
-            if params.to_id.is_some() {
-                return Err(
-                    "to_id is not supported in chain mode — use path mode (#598)".to_string(),
-                );
-            }
-            // resolve_supersessions on chain is semantically circular (FR-08, AC-15c, R-08):
-            // chain IS the supersession audit. This check must live here, not in handle_chain.
-            if params.resolve_supersessions == Some(true) {
-                return Err(
-                    "resolve_supersessions is not applicable to chain mode — chain IS the supersession audit".to_string()
-                );
-            }
-            // max_depth is subgraph-only (ADR-001 vnc-019).
-            if params.max_depth.is_some() {
-                return Err(
-                    "max_depth is not supported in chain mode — use subgraph mode".to_string(),
-                );
-            }
-            Ok(())
-        }
-        "current" => {
-            if params.seed_ids.is_some() {
-                return Err(
-                    "seed_ids is not supported in current mode — use subgraph mode".to_string(),
-                );
-            }
-            if params.max_nodes.is_some() {
-                return Err(
-                    "max_nodes is not supported in current mode — use subgraph mode".to_string(),
-                );
-            }
-            if params.from_id.is_some() {
-                return Err(
-                    "from_id is not supported in current mode — use path mode (#598)".to_string(),
-                );
-            }
-            if params.to_id.is_some() {
-                return Err(
-                    "to_id is not supported in current mode — use path mode (#598)".to_string(),
-                );
-            }
-            // max_depth is subgraph-only (ADR-001 vnc-019).
-            if params.max_depth.is_some() {
-                return Err(
-                    "max_depth is not supported in current mode — use subgraph mode".to_string(),
-                );
-            }
-            Ok(())
-        }
-        "neighbors" => {
-            if params.seed_ids.is_some() {
-                return Err(
-                    "seed_ids is not supported in neighbors mode — use subgraph mode".to_string(),
-                );
-            }
-            if params.max_nodes.is_some() {
-                return Err(
-                    "max_nodes is not supported in neighbors mode — use subgraph mode".to_string(),
-                );
-            }
-            if params.from_id.is_some() {
-                return Err(
-                    "from_id is not supported in neighbors mode — use path mode (#598)".to_string(),
-                );
-            }
-            if params.to_id.is_some() {
-                return Err(
-                    "to_id is not supported in neighbors mode — use path mode (#598)".to_string(),
-                );
-            }
-            // max_depth is subgraph-only (ADR-001 vnc-019).
-            if params.max_depth.is_some() {
-                return Err(
-                    "max_depth is not supported in neighbors mode — use subgraph mode".to_string(),
-                );
-            }
-            Ok(())
-        }
-        // subgraph mode: permits seed_ids, max_nodes, max_depth.
-        // Rejects from_id, to_id (path mode only — preserved forward-compat guard).
-        // Range validation for max_depth/max_nodes happens inside handle_subgraph.
-        "subgraph" => {
-            if params.from_id.is_some() {
-                return Err(
-                    "from_id is not supported in subgraph mode — use path mode (#598)".to_string(),
-                );
-            }
-            if params.to_id.is_some() {
-                return Err(
-                    "to_id is not supported in subgraph mode — use path mode (#598)".to_string(),
-                );
-            }
-            // seed_ids, max_nodes, max_depth: permitted — range validation inside handle_subgraph.
-            Ok(())
-        }
-        // _ arm fires BEFORE field checks — unrecognized mode error is the first thing
-        // callers see (R-04).
-        _ => Err(format!(
-            "unrecognized mode '{}' — supported modes: chain, current, neighbors, subgraph",
-            params.mode
-        )),
-    }
+    graph_read_validation::validate_no_unsupported_params(params)
 }
 
 // ---------------------------------------------------------------------------

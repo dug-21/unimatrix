@@ -734,11 +734,21 @@ class UnimatrixClient:
         max_nodes: int | None = None,
         from_id: int | None = None,
         to_id: int | None = None,
+        # vnc-020: inverse mode params
+        category: str | None = None,
+        missing_edge_types: list[str] | None = None,
+        limit: int | None = None,
+        # vnc-020: filter mode params
+        min_age_days: int | None = None,
+        min_confidence: float | None = None,
+        max_confidence: float | None = None,
+        min_edge_count: int | None = None,
+        max_edge_count: int | None = None,
         agent_id: str | None = None,
         format: str | None = None,
         timeout: float | None = None,
     ) -> MCPResponse:
-        """vnc-018/vnc-019: 14th MCP tool — graph read modes (chain, current, neighbors, subgraph)."""
+        """vnc-018/vnc-019/vnc-020: 14th MCP tool — graph read modes (chain, current, neighbors, subgraph, inverse, filter, path)."""
         args: dict[str, Any] = {"mode": mode}
         if id is not None:
             args["id"] = id
@@ -760,6 +770,22 @@ class UnimatrixClient:
             args["from_id"] = from_id
         if to_id is not None:
             args["to_id"] = to_id
+        if category is not None:
+            args["category"] = category
+        if missing_edge_types is not None:
+            args["missing_edge_types"] = missing_edge_types
+        if limit is not None:
+            args["limit"] = limit
+        if min_age_days is not None:
+            args["min_age_days"] = min_age_days
+        if min_confidence is not None:
+            args["min_confidence"] = min_confidence
+        if max_confidence is not None:
+            args["max_confidence"] = max_confidence
+        if min_edge_count is not None:
+            args["min_edge_count"] = min_edge_count
+        if max_edge_count is not None:
+            args["max_edge_count"] = max_edge_count
         if agent_id is not None:
             args["agent_id"] = agent_id
         if format is not None:

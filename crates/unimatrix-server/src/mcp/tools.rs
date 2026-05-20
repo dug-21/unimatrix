@@ -43,12 +43,12 @@ use crate::uds::hook::MAX_GOAL_BYTES;
 // pub(super) so the sibling test module can reference it via use super::REDIRECT_CEILING.
 pub(super) const REDIRECT_CEILING: usize = 50;
 
-/// Tool description for context_graph (vnc-018, vnc-019).
+/// Tool description for context_graph (vnc-018, vnc-019, vnc-020).
 ///
 /// Exposed as `pub(crate)` so sibling test modules can assert on disclosure text
-/// without re-embedding the string (AC-13, R-11 vnc-019 test plan).
+/// without re-embedding the string (AC-13, R-11 vnc-019 test plan; AC-19, R-01 vnc-020).
 /// Must match the `#[tool(description = "...")]` attribute literal on `context_graph`.
-pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowledge graph in four modes:\n\
+pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowledge graph in seven modes:\n\
     - chain: walk the supersession history of an entry (forward toward newer, \
       backward toward older, or both). forward: returns descendants (entries that \
       supersede X); backward: returns ancestors (entries X supersedes).\n\
@@ -73,6 +73,33 @@ pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowl
       truncated: true indicates the max_nodes cap was reached before BFS completed. \
       Seed IDs not present in the graph return an empty result — not an error. \
       max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
+    - inverse: Return entries of a given category that have no incoming edges of ALL \
+      the specified missing_edge_types (AND semantics — entries missing ALL listed types). \
+      Example: missing_edge_types=[\"Cites\",\"Supports\"] returns entries that have \
+      NEITHER a Cites NOR a Supports incoming edge. To find entries missing ANY one type, \
+      issue one inverse query per type. Requires category and missing_edge_types (both \
+      required, missing_edge_types must be non-empty). Optional limit (default 100, \
+      range [1,500]). Queries the live database — no staleness.\n\
+    - filter: Return entries matching a category and optional property + edge-count \
+      constraints. Required: category. Optional: limit (default 100, range [1,500]), \
+      min_age_days (created at least N days ago), min_confidence, max_confidence, \
+      min_edge_count (outgoing edges of edge_types >= N), max_edge_count (outgoing \
+      edges of edge_types <= N, use max_edge_count=0 to find entries with zero \
+      matching outgoing edges). When min_edge_count or max_edge_count is present, \
+      edge_types must also be specified. Both edge-count bounds may be combined to \
+      express a range. Queries the live database — no staleness.\n\
+    - path: Find the shortest outgoing-edge path from from_id to to_id using BFS. \
+      Required: from_id, to_id. Optional: edge_types (absent = all non-Supersedes \
+      types), depth (default 5, range [1,10]), resolve_supersessions (default false — \
+      when true, deprecated endpoints are resolved to their terminal active successors \
+      before BFS begins and deprecated intermediate nodes are resolved per-hop). \
+      path mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt \
+      each tick (typically 30-60 seconds). Edges written within the current tick \
+      interval may not appear in the result. This is the same staleness contract as \
+      neighbors mode at depth>1 and subgraph mode. If from_id or to_id is not present \
+      in the current graph snapshot, the result is { found: false } — not an error. \
+      Use resolve_supersessions=true to have deprecated endpoints resolved to their \
+      active successors before BFS begins.\n\
     Requires Read capability. All modes are read-only.";
 
 /// Parameters for semantic search.
@@ -3372,11 +3399,11 @@ impl UnimatrixServer {
         )]))
     }
 
-    // -- vnc-018 / vnc-019: context_graph --
+    // -- vnc-018 / vnc-019 / vnc-020: context_graph --
 
     #[tool(
         name = "context_graph",
-        description = "Traverse the Unimatrix knowledge graph in four modes:\n\
+        description = "Traverse the Unimatrix knowledge graph in seven modes:\n\
             - chain: walk the supersession history of an entry (forward toward newer, \
               backward toward older, or both). forward: returns descendants (entries that \
               supersede X); backward: returns ancestors (entries X supersedes).\n\
@@ -3401,6 +3428,33 @@ impl UnimatrixServer {
               truncated: true indicates the max_nodes cap was reached before BFS completed. \
               Seed IDs not present in the graph return an empty result — not an error. \
               max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
+            - inverse: Return entries of a given category that have no incoming edges of ALL \
+              the specified missing_edge_types (AND semantics — entries missing ALL listed types). \
+              Example: missing_edge_types=[\"Cites\",\"Supports\"] returns entries that have \
+              NEITHER a Cites NOR a Supports incoming edge. To find entries missing ANY one type, \
+              issue one inverse query per type. Requires category and missing_edge_types (both \
+              required, missing_edge_types must be non-empty). Optional limit (default 100, \
+              range [1,500]). Queries the live database — no staleness.\n\
+            - filter: Return entries matching a category and optional property + edge-count \
+              constraints. Required: category. Optional: limit (default 100, range [1,500]), \
+              min_age_days (created at least N days ago), min_confidence, max_confidence, \
+              min_edge_count (outgoing edges of edge_types >= N), max_edge_count (outgoing \
+              edges of edge_types <= N, use max_edge_count=0 to find entries with zero \
+              matching outgoing edges). When min_edge_count or max_edge_count is present, \
+              edge_types must also be specified. Both edge-count bounds may be combined to \
+              express a range. Queries the live database — no staleness.\n\
+            - path: Find the shortest outgoing-edge path from from_id to to_id using BFS. \
+              Required: from_id, to_id. Optional: edge_types (absent = all non-Supersedes \
+              types), depth (default 5, range [1,10]), resolve_supersessions (default false — \
+              when true, deprecated endpoints are resolved to their terminal active successors \
+              before BFS begins and deprecated intermediate nodes are resolved per-hop). \
+              path mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt \
+              each tick (typically 30-60 seconds). Edges written within the current tick \
+              interval may not appear in the result. This is the same staleness contract as \
+              neighbors mode at depth>1 and subgraph mode. If from_id or to_id is not present \
+              in the current graph snapshot, the result is { found: false } — not an error. \
+              Use resolve_supersessions=true to have deprecated endpoints resolved to their \
+              active successors before BFS begins.\n\
             Requires Read capability. All modes are read-only."
     )]
     async fn context_graph(
@@ -4998,42 +5052,12 @@ mod tests {
         // handler must contain the exact staleness documentation text mandated by
         // ARCHITECTURE.md and ADR-005.
         //
-        // This test uses the rmcp tool listing path to confirm the description text
-        // flows through to the schema. As a static-inspection fallback, we also
-        // assert on the description constant produced by the rmcp #[tool] macro.
-        //
-        // The required text (ADR-005, FR-13) is verified by searching for its key
-        // phrases in the description that would be returned by list_tools.
+        // Uses CONTEXT_GRAPH_DESCRIPTION directly — the single source of truth — so this
+        // test always reflects the live constant rather than a stale inline copy.
         //
         // vnc-019: Extended to assert AC-13 subgraph disclosure facts.
-        let description = concat!(
-            "Traverse the Unimatrix knowledge graph in four modes:\n",
-            "- chain: walk the supersession history of an entry (forward toward newer, ",
-            "backward toward older, or both). forward: returns descendants (entries that ",
-            "supersede X); backward: returns ancestors (entries X supersedes).\n",
-            "- current: resolve any entry to its terminal active successor, following ",
-            "superseded_by links until an Active entry is found.\n",
-            "- neighbors: retrieve entries connected by typed graph edges. ",
-            "Accepts edge_types filter, direction (incoming/outgoing/both), and depth (1..=10). ",
-            "depth=1 queries the live database and reflects all committed writes immediately. ",
-            "depth>1 queries the in-memory graph cache, which may lag recent writes by up to ",
-            "one tick interval (typically 30-60 seconds). This asymmetry is intentional: ",
-            "depth=1 is the precise lookup case where freshness matters; depth>1 is exploratory ",
-            "multi-hop traversal where a tick-window lag is acceptable.\n",
-            "- subgraph: All returned EdgeRecords have direction: \"outgoing\" regardless of the ",
-            "direction parameter you pass — this reflects the canonical stored edge direction ",
-            "(source_id → target_id). A direction=\"both\" traversal includes edges pointing TO ",
-            "your seeds, but those edges are still labeled outgoing (i.e., they exist as A→seed ",
-            "in storage). Use source_id / target_id to determine actual graph direction. ",
-            "subgraph mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt ",
-            "each tick (typically 30-60 seconds). Edges written within the current tick interval ",
-            "may not appear in the result. This is the same staleness contract as neighbors mode ",
-            "at depth>1. The depth_reached field reports the actual maximum BFS depth traversed; ",
-            "truncated: true indicates the max_nodes cap was reached before BFS completed. ",
-            "Seed IDs not present in the graph return an empty result — not an error. ",
-            "max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n",
-            "Requires Read capability. All modes are read-only."
-        );
+        // vnc-020: Updated from "four modes" to "seven modes".
+        let description = crate::mcp::tools::CONTEXT_GRAPH_DESCRIPTION;
         // Verify the staleness key phrases are present (R-03 / FR-13).
         assert!(
             description.contains("depth=1 queries the live database"),
@@ -5090,9 +5114,10 @@ mod tests {
             !description.contains("graph_rebuilt_at"),
             "ADR-004: description must NOT promise a graph_rebuilt_at field"
         );
+        // vnc-020: updated from "four modes" to "seven modes".
         assert!(
-            description.contains("four modes"),
-            "description opening must say four modes (not three)"
+            description.contains("seven modes"),
+            "description opening must say seven modes (vnc-020 added inverse, filter, path)"
         );
     }
 
