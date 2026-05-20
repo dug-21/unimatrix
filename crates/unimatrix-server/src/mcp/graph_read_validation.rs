@@ -195,6 +195,14 @@ fn validate_inverse_params(params: &GraphParams) -> Result<(), String> {
             "max_edge_count is not supported in inverse mode — use filter mode".to_string(),
         );
     }
+    // resolve_supersessions has no meaning in inverse mode: only active entries (status=0)
+    // are returned by definition — there are no deprecated entries to resolve.
+    if params.resolve_supersessions.is_some() {
+        return Err(
+            "resolve_supersessions has no effect in inverse mode — only active entries are returned"
+                .to_string(),
+        );
+    }
     // category, missing_edge_types, limit: accepted — range validation inside handle_inverse.
     Ok(())
 }
@@ -228,6 +236,14 @@ fn validate_filter_params(params: &GraphParams) -> Result<(), String> {
     }
     if params.max_depth.is_some() {
         return Err("max_depth is not supported in filter mode — use subgraph mode".to_string());
+    }
+    // resolve_supersessions has no meaning in filter mode: only active entries (status=0)
+    // are returned by definition — there are no deprecated entries to resolve.
+    if params.resolve_supersessions.is_some() {
+        return Err(
+            "resolve_supersessions has no effect in filter mode — only active entries are returned"
+                .to_string(),
+        );
     }
     // category, edge_types, limit, min_age_days, min_confidence, max_confidence,
     // min_edge_count, max_edge_count: accepted — range/required validation inside handle_filter.

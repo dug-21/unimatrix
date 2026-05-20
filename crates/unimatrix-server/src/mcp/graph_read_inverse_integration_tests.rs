@@ -64,6 +64,19 @@ async fn deprecate_entry(store: &SqlxStore, entry_id: u64) {
         .expect("deprecate entry");
 }
 
+/// Deprecate an entry and record it as superseded by another entry.
+/// Sets status=1 (Deprecated) and superseded_by=successor_id directly in the DB.
+async fn set_superseded_by(store: &SqlxStore, deprecated_id: u64, successor_id: u64) {
+    sqlx::query(
+        "UPDATE entries SET status = 1, superseded_by = ?1, updated_at = 1700000002 WHERE id = ?2",
+    )
+    .bind(successor_id as i64)
+    .bind(deprecated_id as i64)
+    .execute(store.write_pool_test())
+    .await
+    .expect("set superseded_by");
+}
+
 fn inverse_params(
     category: Option<&str>,
     missing_edge_types: Option<Vec<&str>>,
@@ -249,5 +262,54 @@ async fn test_handle_inverse_empty_category_in_db_returns_empty_not_error() {
         .expect("handle_inverse");
     assert_eq!(resp.entries.len(), 0);
     assert_eq!(resp.total_returned, 0);
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// #616B — Deprecated-superseded entry absent from inverse results
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_handle_inverse_deprecated_superseded_entry_absent() {
+    // #616B: A deprecated entry (even one that is part of a supersession chain)
+    // must NOT appear in inverse results. The AND e.status = 0 guard excludes
+    // all non-active entries regardless of edge presence.
+    //
+    // Fixture:
+    //   entry_a — category="source", deprecated, superseded_by entry_b
+    //   entry_b — category="source", active, has an incoming Cites edge
+    //   donor   — category="decision", active, provides the Cites edge to entry_b
+    //
+    // Expected:
+    //   entry_a absent — deprecated (status=1), excluded by status guard.
+    //   entry_b absent — active but has an incoming Cites edge, excluded by antijoin.
+    let (store, _dir) = open_test_store().await;
+
+    let donor_id = insert_entry(&store, "decision").await;
+    let id_a = insert_entry(&store, "source").await;
+    let id_b = insert_entry(&store, "source").await;
+
+    // Give entry_b an incoming Cites edge so it's excluded by the antijoin.
+    insert_edge(&store, donor_id, id_b, "Cites").await;
+
+    // Deprecate entry_a and mark it as superseded_by entry_b.
+    set_superseded_by(&store, id_a, id_b).await;
+
+    let params = inverse_params(Some("source"), Some(vec!["Cites"]), None);
+    let resp = handle_inverse(&store, &params)
+        .await
+        .expect("handle_inverse");
+
+    let ids: Vec<u64> = resp.entries.iter().map(|e| e.id).collect();
+
+    assert!(
+        !ids.contains(&id_a),
+        "deprecated-superseded entry_a must not appear (status guard); ids={ids:?}"
+    );
+    assert!(
+        !ids.contains(&id_b),
+        "active entry_b (has Cites edge) must not appear (antijoin); ids={ids:?}"
+    );
+
     store.close().await.unwrap();
 }

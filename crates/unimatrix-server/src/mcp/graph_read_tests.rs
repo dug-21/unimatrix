@@ -299,6 +299,87 @@ fn test_node_index_for_unknown_node_returns_none() {
 }
 
 // -----------------------------------------------------------------------
+// #616: resolve_supersessions rejected on inverse and filter modes
+// Only active entries are returned by both modes; the parameter has no effect.
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_validate_inverse_rejects_resolve_supersessions() {
+    // #616A: resolve_supersessions on inverse mode must return an error explaining
+    // it has no effect — inverse always returns only active (status=0) entries.
+    let params = GraphParams {
+        mode: "inverse".to_string(),
+        resolve_supersessions: Some(true),
+        ..Default::default()
+    };
+    let result = validate_no_unsupported_params(&params);
+    assert!(result.is_err());
+    let msg = result.unwrap_err();
+    assert!(
+        msg.contains("resolve_supersessions"),
+        "error must name the rejected field, got: {msg}"
+    );
+    assert!(
+        msg.contains("no effect"),
+        "error must explain 'no effect', got: {msg}"
+    );
+    assert!(
+        msg.contains("inverse"),
+        "error must name the mode, got: {msg}"
+    );
+    assert!(
+        msg.contains("only active entries are returned"),
+        "error must explain why, got: {msg}"
+    );
+}
+
+#[test]
+fn test_validate_filter_rejects_resolve_supersessions() {
+    // #616A: resolve_supersessions on filter mode must return an error explaining
+    // it has no effect — filter always returns only active (status=0) entries.
+    let params = GraphParams {
+        mode: "filter".to_string(),
+        resolve_supersessions: Some(true),
+        ..Default::default()
+    };
+    let result = validate_no_unsupported_params(&params);
+    assert!(result.is_err());
+    let msg = result.unwrap_err();
+    assert!(
+        msg.contains("resolve_supersessions"),
+        "error must name the rejected field, got: {msg}"
+    );
+    assert!(
+        msg.contains("no effect"),
+        "error must explain 'no effect', got: {msg}"
+    );
+    assert!(
+        msg.contains("filter"),
+        "error must name the mode, got: {msg}"
+    );
+    assert!(
+        msg.contains("only active entries are returned"),
+        "error must explain why, got: {msg}"
+    );
+}
+
+#[test]
+fn test_validate_inverse_resolve_supersessions_false_also_rejected() {
+    // #616A: resolve_supersessions=Some(false) must also be rejected — the parameter
+    // itself is meaningless in inverse mode regardless of its value.
+    let params = GraphParams {
+        mode: "inverse".to_string(),
+        resolve_supersessions: Some(false),
+        ..Default::default()
+    };
+    let result = validate_no_unsupported_params(&params);
+    assert!(
+        result.is_err(),
+        "resolve_supersessions=false must also be rejected on inverse, got Ok"
+    );
+}
+
+// -----------------------------------------------------------------------
 // vnc-019 tests (graph_read.rs changes: subgraph mode, max_depth, SubgraphResponse)
 // Declared in a child module to keep this file under 500 lines (500-line rule).
 // -----------------------------------------------------------------------
