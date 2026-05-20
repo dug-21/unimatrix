@@ -723,11 +723,12 @@ class UnimatrixClient:
     def context_graph(
         self,
         mode: str,
-        id: int,
+        id: int | None = None,
         *,
         direction: str | None = None,
         edge_types: list[str] | None = None,
         depth: int | None = None,
+        max_depth: int | None = None,
         resolve_supersessions: bool | None = None,
         seed_ids: list[int] | None = None,
         max_nodes: int | None = None,
@@ -737,17 +738,18 @@ class UnimatrixClient:
         format: str | None = None,
         timeout: float | None = None,
     ) -> MCPResponse:
-        """vnc-018: 14th MCP tool — graph read modes (chain, current, neighbors)."""
-        args: dict[str, Any] = {
-            "mode": mode,
-            "id": id,
-        }
+        """vnc-018/vnc-019: 14th MCP tool — graph read modes (chain, current, neighbors, subgraph)."""
+        args: dict[str, Any] = {"mode": mode}
+        if id is not None:
+            args["id"] = id
         if direction is not None:
             args["direction"] = direction
         if edge_types is not None:
             args["edge_types"] = edge_types
         if depth is not None:
             args["depth"] = depth
+        if max_depth is not None:
+            args["max_depth"] = max_depth
         if resolve_supersessions is not None:
             args["resolve_supersessions"] = resolve_supersessions
         if seed_ids is not None:

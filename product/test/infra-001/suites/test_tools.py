@@ -4087,3 +4087,275 @@ def test_graph_neighbors_depth2_staleness_comment(server):
         f"depth=2 neighbors response must have an 'edges' list, got: {type(edges_d2)}"
     )
 
+
+# === vnc-019: context_graph subgraph mode =================================
+
+import json as _json_subgraph
+
+
+def _store_subgraph_entry(server, content, topic="subgraph-test", category="pattern"):
+    """Helper: store a single entry and return its integer ID."""
+    resp = server.context_store(content, topic, category, agent_id="human", format="json")
+    assert_tool_success(resp)
+    return extract_entry_id(resp)
+
+
+def test_graph_subgraph_basic_response_shape(server):
+    """AC-01: subgraph call returns nodes, edges, truncated, seed_ids, depth_reached."""
+    id_a = _store_subgraph_entry(server, "subgraph-basic-A unique-sgbasic")
+    id_b = _store_subgraph_entry(server, "subgraph-basic-B unique-sgbasic")
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[id_a],
+        edge_types=["Supports"],
+        direction="outgoing",
+        max_depth=2,
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_subgraph.loads(result.text)
+
+    assert "nodes" in data, f"response missing 'nodes': {list(data.keys())}"
+    assert "edges" in data, f"response missing 'edges': {list(data.keys())}"
+    assert "truncated" in data, f"response missing 'truncated': {list(data.keys())}"
+    assert "seed_ids" in data, f"response missing 'seed_ids': {list(data.keys())}"
+    assert "depth_reached" in data, f"response missing 'depth_reached': {list(data.keys())}"
+    assert isinstance(data["nodes"], list), "nodes must be a list"
+    assert isinstance(data["edges"], list), "edges must be a list"
+    assert isinstance(data["truncated"], bool), "truncated must be bool"
+
+
+def test_graph_subgraph_node_shape_matches_entry_record(server):
+    """AC-02: each node is a full EntryRecord shape."""
+    id_a = _store_subgraph_entry(server, "subgraph-nodeshape unique-snodeshape")
+
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[id_a],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_subgraph.loads(result.text)
+
+    nodes = data.get("nodes", [])
+    # Seed must be in nodes (AC-04) if graph has been rebuilt; could be empty on cold start.
+    # We assert shape if any node is returned.
+    for node in nodes:
+        assert "id" in node, f"node missing 'id': {list(node.keys())}"
+        assert "title" in node, f"node missing 'title': {list(node.keys())}"
+        assert "content" in node, f"node missing 'content': {list(node.keys())}"
+        assert "category" in node, f"node missing 'category': {list(node.keys())}"
+        assert "status" in node, f"node missing 'status': {list(node.keys())}"
+
+
+def test_graph_subgraph_edge_record_fields(server):
+    """AC-03: each edge has source_id, target_id, relation_type, direction='outgoing', depth, metadata."""
+    id_a = _store_subgraph_entry(server, "subgraph-edgefields-A unique-sgef")
+    id_b = _store_subgraph_entry(server, "subgraph-edgefields-B unique-sgef")
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[id_a],
+        edge_types=["Supports"],
+        direction="outgoing",
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_subgraph.loads(result.text)
+
+    edges = data.get("edges", [])
+    for edge in edges:
+        assert "source_id" in edge, f"edge missing 'source_id': {list(edge.keys())}"
+        assert "target_id" in edge, f"edge missing 'target_id': {list(edge.keys())}"
+        assert "relation_type" in edge, f"edge missing 'relation_type': {list(edge.keys())}"
+        assert "direction" in edge, f"edge missing 'direction': {list(edge.keys())}"
+        assert "depth" in edge, f"edge missing 'depth': {list(edge.keys())}"
+        assert "metadata" in edge, f"edge missing 'metadata': {list(edge.keys())}"
+        assert edge["direction"] == "outgoing", (
+            f"direction must always be 'outgoing', got: {edge['direction']}"
+        )
+
+
+def test_graph_subgraph_empty_seed_ids_rejected(server):
+    """AC-07: seed_ids=[] → validation error with exact message."""
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[],
+        agent_id="human",
+    )
+    assert_tool_error(resp, "subgraph mode requires at least one entry ID in seed_ids")
+
+
+def test_graph_subgraph_max_depth_boundary_0_rejected(server):
+    """AC-06: max_depth=0 → validation error."""
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[1],
+        max_depth=0,
+        agent_id="human",
+    )
+    assert_tool_error(resp, "max_depth")
+
+
+def test_graph_subgraph_max_depth_boundary_11_rejected(server):
+    """AC-06: max_depth=11 → validation error."""
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[1],
+        max_depth=11,
+        agent_id="human",
+    )
+    assert_tool_error(resp, "max_depth")
+
+
+def test_graph_subgraph_max_nodes_above_200_rejected(server):
+    """R-07: max_nodes=201 → validation error naming the range."""
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[1],
+        max_nodes=201,
+        agent_id="human",
+    )
+    assert_tool_error(resp, "max_nodes")
+
+
+def test_graph_subgraph_from_id_rejected(server):
+    """R-05: from_id on subgraph mode → validation error."""
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[1],
+        from_id=1,
+        agent_id="human",
+    )
+    assert_tool_error(resp, "from_id")
+
+
+def test_graph_subgraph_unknown_edge_type_rejected(server):
+    """AC-08: edge_types=['BogusType'] → validation error naming the type."""
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[1],
+        edge_types=["BogusEdgeType"],
+        agent_id="human",
+    )
+    assert_tool_error(resp, "BogusEdgeType")
+
+
+def test_graph_subgraph_direction_both_dedup(server):
+    """AC-12: single A→B edge; call with seed=[A,B], direction='both'; len(edges)==1."""
+    id_a = _store_subgraph_entry(server, "subgraph-dedup-A unique-sgdedup")
+    id_b = _store_subgraph_entry(server, "subgraph-dedup-B unique-sgdedup")
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[id_a, id_b],
+        direction="both",
+        edge_types=["Supports"],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_subgraph.loads(result.text)
+
+    edges = data.get("edges", [])
+    # Dedup: each (source_id, target_id, relation_type) triple appears at most once.
+    triples = [(e["source_id"], e["target_id"], e["relation_type"]) for e in edges]
+    unique_triples = set(triples)
+    assert len(triples) == len(unique_triples), (
+        f"AC-12: duplicate edge triples found with direction='both': {triples}"
+    )
+
+
+def test_graph_subgraph_direction_outgoing_on_all_edge_records(server):
+    """AC-03: direction field is always 'outgoing' on all returned EdgeRecords."""
+    id_a = _store_subgraph_entry(server, "subgraph-dirout-A unique-sgdirout")
+    id_b = _store_subgraph_entry(server, "subgraph-dirout-B unique-sgdirout")
+    id_c = _store_subgraph_entry(server, "subgraph-dirout-C unique-sgdirout")
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+    server.context_edge("add", id_b, "Supports", id_c, agent_id="human")
+
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[id_a],
+        direction="both",
+        edge_types=["Supports"],
+        max_depth=2,
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_subgraph.loads(result.text)
+
+    for edge in data.get("edges", []):
+        assert edge.get("direction") == "outgoing", (
+            f"EdgeRecord.direction must always be 'outgoing', got: {edge.get('direction')}"
+        )
+
+
+def test_graph_subgraph_unknown_seed_empty_result(server):
+    """AC-17: non-existent seed → nodes=[], edges=[], truncated=false, depth_reached=0."""
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[999999999],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_subgraph.loads(result.text)
+
+    assert data.get("nodes") == [], f"unknown seed must return empty nodes: {data.get('nodes')}"
+    assert data.get("edges") == [], f"unknown seed must return empty edges: {data.get('edges')}"
+    assert data.get("truncated") is False, "unknown seed must not be truncated"
+    assert data.get("depth_reached") == 0, f"unknown seed depth_reached must be 0"
+    assert data.get("seed_ids") == [999999999], "seed_ids must echo input"
+
+
+def test_graph_subgraph_chain_mode_rejects_seed_ids(server):
+    """AC-11 / R-05 regression: mode='chain', seed_ids=[1] → validation error."""
+    resp = server.context_graph(
+        "chain",
+        id=1,
+        seed_ids=[1],
+        agent_id="human",
+    )
+    assert_tool_error(resp, "seed_ids")
+
+
+def test_graph_subgraph_chain_mode_rejects_max_depth(server):
+    """AC-16 / R-05 regression: mode='chain', max_depth=2 → error with exact message."""
+    resp = server.context_graph(
+        "chain",
+        id=1,
+        max_depth=2,
+        agent_id="human",
+    )
+    assert_tool_error(resp, "max_depth")
+
+
+def test_graph_subgraph_neighbors_mode_rejects_max_depth(server):
+    """AC-16 regression: mode='neighbors', max_depth=2 → validation error."""
+    resp = server.context_graph(
+        "neighbors",
+        id=1,
+        max_depth=2,
+        agent_id="human",
+    )
+    assert_tool_error(resp, "max_depth")
+
+
+def test_graph_subgraph_mode_listed_in_unrecognized_error(server):
+    """FR-20: unrecognized mode error lists 'subgraph' in supported modes."""
+    resp = server.context_graph(
+        "walk",
+        id=1,
+        agent_id="human",
+    )
+    assert_tool_error(resp, "subgraph")
+

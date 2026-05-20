@@ -31,7 +31,7 @@ use super::{EdgeRecord, GraphParams, NeighborsResponse};
 /// 50-hop safety cap enforced by loop bound. Returns `None` when chain exceeds 50
 /// hops, entry is an orphaned deprecated terminal, or store lookup fails.
 /// Caller uses the original ID as a fallback (ADR-005, R-10).
-async fn follow_to_current(store: &Store, id: u64) -> Option<u64> {
+pub(super) async fn follow_to_current(store: &Store, id: u64) -> Option<u64> {
     let mut current = id;
     for _ in 0..50 {
         let entry = match store.get(current).await {

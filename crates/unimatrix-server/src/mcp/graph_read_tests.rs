@@ -24,10 +24,11 @@ fn test_validate_chain_rejects_resolve_supersessions() {
 #[test]
 fn test_validate_unrecognized_mode_fires_before_field_check() {
     // R-04: unrecognized mode must fire BEFORE any field-level check.
-    // mode="subgraph" with seed_ids present must return "unrecognized mode",
+    // mode="walk" (unrecognized) with seed_ids present must return "unrecognized mode",
     // NOT "seed_ids not supported".
+    // NOTE: mode="subgraph" was used in vnc-018; it is now a recognized mode (vnc-019 R-05).
     let params = GraphParams {
-        mode: "subgraph".to_string(),
+        mode: "walk".to_string(),
         seed_ids: Some(vec![1, 2, 3]),
         ..Default::default()
     };
@@ -43,7 +44,7 @@ fn test_validate_unrecognized_mode_fires_before_field_check() {
 
 #[test]
 fn test_validate_walk_mode_error_lists_valid_modes() {
-    // AC-14: unrecognized mode error must list the supported modes.
+    // AC-14, FR-20: unrecognized mode error must list the supported modes including subgraph.
     let params = GraphParams {
         mode: "walk".to_string(),
         ..Default::default()
@@ -54,6 +55,10 @@ fn test_validate_walk_mode_error_lists_valid_modes() {
     assert!(msg.contains("chain"), "got: {msg}");
     assert!(msg.contains("current"), "got: {msg}");
     assert!(msg.contains("neighbors"), "got: {msg}");
+    assert!(
+        msg.contains("subgraph"),
+        "subgraph must be listed after vnc-019, got: {msg}"
+    );
 }
 
 #[test]
@@ -292,3 +297,11 @@ fn test_node_index_for_unknown_node_returns_none() {
     let result = graph.node_index_for(999_999);
     assert!(result.is_none(), "unknown node must return None");
 }
+
+// -----------------------------------------------------------------------
+// vnc-019 tests (graph_read.rs changes: subgraph mode, max_depth, SubgraphResponse)
+// Declared in a child module to keep this file under 500 lines (500-line rule).
+// -----------------------------------------------------------------------
+
+#[path = "graph_read_tests_vnc019.rs"]
+mod vnc019;

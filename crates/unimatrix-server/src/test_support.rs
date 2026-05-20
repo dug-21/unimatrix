@@ -196,6 +196,94 @@ impl TestHarness {
             .collect())
     }
 
+    /// Call `context_graph` through the full `handle_graph` dispatch path.
+    ///
+    /// Accepts a `serde_json::Value` representing the `GraphParams` wire object.
+    /// Deserializes it to `GraphParams`, then calls `handle_graph` directly —
+    /// exercising validation → mode dispatch → subgraph BFS → SQL reads.
+    ///
+    /// The capability check (require_cap) that normally runs in `tools.rs` is
+    /// intentionally skipped here; this helper is for topology and BFS path
+    /// testing, not auth testing. Returns the JSON response text on success,
+    /// or the `ErrorData` message on failure.
+    ///
+    /// Used by integration tests (FR-23, AC-14): exercises the full
+    /// `handle_graph` call path with a real store and graph state.
+    pub async fn call_graph(&self, params: serde_json::Value) -> Result<serde_json::Value, String> {
+        let graph_params: crate::mcp::graph_read::GraphParams =
+            serde_json::from_value(params).map_err(|e| format!("param parse error: {e}"))?;
+
+        let handle = self.layer.typed_graph_handle();
+
+        let result = crate::mcp::graph_read::handle_graph(
+            &self.store,
+            &handle,
+            graph_params,
+            &crate::mcp::context::ToolContext {
+                agent_id: "test-harness".to_string(),
+                trust_level: crate::infra::registry::TrustLevel::Internal,
+                format: crate::mcp::response::ResponseFormat::Json,
+                audit_ctx: crate::services::AuditContext {
+                    source: crate::services::AuditSource::Internal {
+                        service: "test-harness".to_string(),
+                    },
+                    caller_id: "test-harness".to_string(),
+                    session_id: None,
+                    feature_cycle: None,
+                },
+                caller_id: crate::services::CallerId::Agent("test-harness".to_string()),
+                client_type: None,
+            },
+        )
+        .await
+        .map_err(|e| e.message.to_string())?;
+
+        // Extract the text content from CallToolResult.
+        let text = result
+            .content
+            .into_iter()
+            .filter_map(|c| {
+                if let rmcp::model::RawContent::Text(t) = c.raw {
+                    Some(t.text)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        serde_json::from_str(&text).map_err(|e| format!("response parse error: {e}"))
+    }
+
+    /// Populate the in-memory TypedRelationGraph from the store's GRAPH_EDGES table.
+    ///
+    /// Calls `TypedGraphState::rebuild()` and writes the result to the shared handle.
+    /// Required before any subgraph BFS call that expects to traverse real edges.
+    pub async fn rebuild_typed_graph(&self) {
+        let new_state = crate::services::TypedGraphState::rebuild(&self.store)
+            .await
+            .expect("TypedGraphState::rebuild must succeed in test");
+        let handle = self.layer.typed_graph_handle();
+        let mut guard = handle.write().unwrap_or_else(|e| e.into_inner());
+        *guard = new_state;
+    }
+
+    /// Insert a raw graph edge into GRAPH_EDGES (bypasses business logic, for test setup).
+    pub async fn insert_graph_edge(&self, source_id: u64, target_id: u64, relation_type: &str) {
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges \
+             (source_id, target_id, relation_type, weight, created_at, \
+              created_by, source, bootstrap_only, metadata) \
+             VALUES (?1, ?2, ?3, 1.0, strftime('%s','now'), 'test', 'test', 0, '')",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .execute(self.store.write_pool_server())
+        .await
+        .expect("insert_graph_edge must succeed");
+    }
+
     /// Execute a search with explicit filter.
     pub async fn search_with_filter(
         &self,
