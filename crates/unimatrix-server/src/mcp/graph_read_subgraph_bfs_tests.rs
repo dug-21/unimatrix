@@ -68,6 +68,19 @@ fn make_supports_edge(source_id: u64, target_id: u64) -> GraphEdgeRow {
     }
 }
 
+fn make_edge(source_id: u64, target_id: u64, relation_type: &str) -> GraphEdgeRow {
+    GraphEdgeRow {
+        source_id,
+        target_id,
+        relation_type: relation_type.to_string(),
+        weight: 1.0,
+        created_at: 0,
+        created_by: String::new(),
+        source: String::new(),
+        bootstrap_only: false,
+    }
+}
+
 fn set_test_graph(handle: &Arc<std::sync::RwLock<TypedGraphState>>, graph: TypedRelationGraph) {
     let mut state = handle.write().expect("write lock");
     state.typed_graph = graph;
@@ -487,5 +500,70 @@ async fn test_bfs_not_truncated_under_cap() {
     assert!(
         !result.unwrap().truncated,
         "small graph must not be truncated"
+    );
+}
+
+#[tokio::test]
+async fn test_bfs_star_topology_near_cap_edges_within_bound() {
+    // Star topology: 1 center node connected to 199 leaf nodes via 3 relation types
+    // (Supports, Informs, RelatedTo) = 199 × 3 = 597 edges.
+    // Near ADR-003's documented ~600 typical density. Verifies:
+    //   - truncated=false (all 200 nodes fit within max_nodes=200)
+    //   - edges.len() <= MAX_EDGES_UPPER (597 << 1000, no OR-chain overflow)
+    //   - no panic from debug_assert at fetch_edge_metadata call site (#611)
+    const CENTER: u64 = 1;
+    const LEAF_COUNT: usize = 199;
+    const MAX_EDGES_UPPER: usize = 1000;
+
+    let (store, _dir) = open_test_store().await;
+    let handle = Arc::new(TypedGraphState::new_handle());
+
+    let mut entries: Vec<_> = vec![make_entry(CENTER)];
+    for leaf in 2u64..=(LEAF_COUNT as u64 + 1) {
+        entries.push(make_entry(leaf));
+    }
+
+    let mut edges: Vec<GraphEdgeRow> = Vec::with_capacity(LEAF_COUNT * 3);
+    for leaf in 2u64..=(LEAF_COUNT as u64 + 1) {
+        edges.push(make_edge(CENTER, leaf, "Supports"));
+        edges.push(make_edge(CENTER, leaf, "Informs"));
+        edges.push(make_edge(CENTER, leaf, "RelatedTo"));
+    }
+    assert_eq!(edges.len(), LEAF_COUNT * 3, "597 edges in fixture");
+
+    let graph = build_typed_relation_graph(&entries, &edges).expect("build star graph");
+    set_test_graph(&handle, graph);
+
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![CENTER]),
+        max_nodes: Some(200),
+        max_depth: Some(1),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&store, &handle, &params).await;
+    assert!(
+        result.is_ok(),
+        "star topology must succeed, got: {result:?}"
+    );
+    let resp = result.unwrap();
+
+    assert!(
+        !resp.truncated,
+        "all 200 nodes fit within max_nodes=200; truncated must be false"
+    );
+    assert!(
+        resp.edges.len() <= MAX_EDGES_UPPER,
+        "edges.len()={} must be <= MAX_EDGES_UPPER={}",
+        resp.edges.len(),
+        MAX_EDGES_UPPER
+    );
+    // 597 unique (center→leaf, rel_type) triples expected.
+    assert_eq!(
+        resp.edges.len(),
+        LEAF_COUNT * 3,
+        "expected {} edges, got {}",
+        LEAF_COUNT * 3,
+        resp.edges.len()
     );
 }
