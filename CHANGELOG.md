@@ -3,6 +3,32 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.0] - 2026-05-21
+
+### Features
+- context_graph — inverse, filter, path modes (vnc-020, #614)
+- context_graph subgraph mode — bounded multi-hop BFS (vnc-019, #597)
+- context_graph — chain, current, neighbors read modes, 14th MCP tool (vnc-018, #609)
+- auto-redirect incoming graph edges on context_correct (vnc-017, #607)
+- typed edge write path — context_edge tool + edges param + 10 new RelationType variants (vnc-015, #600)
+- audit_log 4-column migration + MCP client attribution via clientInfo.name (vnc-014, #577)
+- canonical event normalization for multi-LLM hook providers (vnc-013, #567)
+
+### Fixes
+- graph_read_subgraph: add MAX_EDGES_UPPER constant and debug_assert at fetch_edge_metadata call site (#611, #622)
+- graph: reject resolve_supersessions on inverse/filter, add coverage tests (#616, #613, #620)
+- filter: guard NaN/±Infinity on min/max_confidence before SQL (#615, #619)
+- path_via_db() DB-backed BFS fallback for cold-start graph cache (#612, #618)
+- DependencyOnDeprecated wiring defect + end-to-end integration test (vnc-016, #605)
+- context_quarantine capability corrected to Admin in spec and tests (#580, #592)
+- audit: rename counter next_audit_event_id → next_audit_id (#587, #590)
+- audit: atomic counter allocation eliminates UNIQUE constraint race (#584, #586)
+- audit: session_id linkage restored in audit_log (#582, #583)
+- audit: restore audit_log writes by fixing spawn_blocking + block_in_place panic (#579, #581)
+- validation: enforce byte-based content size cap on context_store and context_correct (#561, #573)
+- curation_health: route snapshot queries through read_pool via store layer (#535)
+- listener: remove contradictory debug_assert, ungated col-019 normalization tests (#565)
+
 ## [0.6.3] - 2026-04-09
 
 ### Fixes

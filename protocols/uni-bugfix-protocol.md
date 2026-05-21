@@ -311,7 +311,13 @@ Task(subagent_type: "uni-validator",
     - Integration smoke tests passed
     - Any xfail markers added have corresponding GH Issues
     - If bug was discovered by integration test, that test's xfail marker was removed
-    - Knowledge stewardship: investigator and rust-dev reports contain ## Knowledge Stewardship block with Queried/Stored/Declined entries
+    - Knowledge stewardship: investigator, architect, and rust-dev phase comments each contain
+      a ## Knowledge Stewardship block with Queried/Stored/Declined entries
+
+    To verify Knowledge Stewardship:
+      Run: gh issue view {issue-number} --comments
+      Read all phase comments. Verify each of the three agents has a ## Knowledge Stewardship
+      block. Missing block = REWORKABLE FAIL. Present with no reason after "nothing novel" = WARN.
 
     Bug report: {bug description}
     Root cause diagnosis: {from approved diagnosis}
@@ -406,7 +412,7 @@ Human action required: Review PR and approve merge.
 ```
 
 On human approval to merge, the Bugfix Manager:
-1. Merges the PR with `gh pr merge --rebase` (if human requests it)
+1. Merges the PR with `gh pr merge --squash --delete-branch` (if human requests it) — squash preferred: one commit = one revert target if backout is needed
 2. Closes the GH Issue with reference to the PR (if applicable)
 
 ---
@@ -539,9 +545,10 @@ Then use Unimatrix skills as applicable:
 
 ### Stewardship Compliance
 
-The bugfix gate validator checks stewardship compliance for investigator and rust-dev agents:
-- Investigator report must include `## Knowledge Stewardship` with `Queried:` and `Stored:`/`Declined:` entries
-- Rust-dev report must include `## Knowledge Stewardship` with `Queried:` and `Stored:`/`Declined:` entries
+The bugfix gate validator checks stewardship compliance for all three agents via `gh issue view --comments`:
+- Investigator phase comment must include `## Knowledge Stewardship` with `Queried:` and `Stored:`/`Declined:` entries
+- Architect phase comment must include `## Knowledge Stewardship` with `Queried:` and `Stored:`/`Declined:` entries
+- Rust-dev phase comment must include `## Knowledge Stewardship` with `Queried:` and `Stored:`/`Declined:` entries
 - Missing stewardship block = REWORKABLE FAIL
 
 All phase outputs (diagnosis, fix summary, gate results, security review) are posted as **GH Issue comments** — never written to the filesystem.
