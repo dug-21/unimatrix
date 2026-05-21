@@ -257,14 +257,20 @@ jobs:
       - name: Publish @dug-21/unimatrix-linux-arm64
         working-directory: packages/unimatrix-linux-arm64
         run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @dug-21/unimatrix-linux-x64
         working-directory: packages/unimatrix-linux-x64
         run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @dug-21/unimatrix
         working-directory: packages/unimatrix
         run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   create-release:
     needs: package-npm
