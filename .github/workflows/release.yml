@@ -259,8 +259,9 @@ jobs:
       - name: Debug OIDC environment
         run: |
           echo "npm version: $(npm --version)"
-          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL != '' }}"
-          echo "NODE_AUTH_TOKEN set: ${NODE_AUTH_TOKEN:+yes}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL: ${ACTIONS_ID_TOKEN_REQUEST_URL:+set (non-empty)}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+set (non-empty)}"
+          echo "NODE_AUTH_TOKEN: ${NODE_AUTH_TOKEN:+set (non-empty)}"
           npm config list
 
       - name: Publish @dug-21/unimatrix-linux-arm64
