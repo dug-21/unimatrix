@@ -20,7 +20,7 @@ feature, every delivery, every failure. Unimatrix was designed to manage the dyn
 layer. Every architectural pivot, every hard-won lesson, every reusable pattern is
 captured, attributed, and made available to every future agent that needs it.
 
-Built for agentic software delivery. Configurable for any workflow-centric domain — validated on agentic development and autonomous research workflows.
+Built for agentic software delivery. Configurable for any workflow-centric domain.
 
 ---
 
@@ -33,8 +33,6 @@ That foundation became a platform. A typed knowledge graph formalizes relationsh
 The intelligence pipeline is the core of the platform. It is not a retrieval engine with additive boosts. It is a session-conditioned, self-improving relevance function: given what the agent knows, what they have been doing, and where they are in their workflow, surface the right knowledge — before they ask for it. The graph, the confidence system, the observation pipeline, and the GNN are all inputs to this function. The function learns. Every session makes it better.
 
 Secured with OAuth, containerized, serving any number of repositories from a single instance. The integrity chain runs through all of it: hash-chained corrections, immutable audit log, trust-attributed provenance — tamper-evident from first write to last.
-
-Wave 1B confirms the domain-agnostic claim in practice. Research workflow validation (ASS-057) showed that the graph retrieval path operates orthogonally to vector-first search: typed-edge traversal via `context_graph` serves domains where relationships between Claims, Theses, and Findings carry as much signal as semantic similarity — without engaging the embedding pipeline and without degrading SDLC retrieval quality. The same RelationType variants serve both domains. The engine is configured, not rebuilt.
 
 ---
 
@@ -53,7 +51,7 @@ Before the roadmap, a clear-eyed list of where Unimatrix has strayed from its do
 | `context_cycle_review` tool name is SDLC-specific | Medium | **Fixed** — renamed to `context_cycle_review` |
 | HookType enum tied to Claude Code events | Medium | **Fixed** — col-023 / W1-5 (PR #332) |
 | trust_source vocabulary dev-flavored | Low | Open |
-| Observation metrics schema (bash_for_search, etc.) | Low | **Fixed** — col-023 / W1-5 (PR #332) |
+| Observation metrics schema (bash_for_search, etc.) | Low | **In progress** — W1-5 `domain_metrics_json` |
 
 ### Security
 | Gap | Severity | Status |
@@ -388,47 +386,6 @@ Full research scope: `product/research/ass-029/SCOPE.md`.
 
 ---
 
-## Wave 1B — Typed Graph Write Path + Traversal
-*Emerged from ASS-055 (ADR dependency tracking) + ASS-057 (research domain fit validation). Runs alongside Wave 2.*
-
-Opens the agent-declared typed edge write surface and adds graph traversal tooling — enabling SDLC Goal traceability, ADR dependency chains, and the research domain graph-first retrieval pattern validated in ASS-057.
-
-### W1B-1: Typed Edge Write Path — COMPLETE (`vnc-015`, PR #600)
-
-`edges: Option<Vec<EdgeInput>>` added to `context_store` and `context_correct` for inline edge declaration at entry creation/correction time. `context_edge` added as the 13th MCP tool for standalone edge lifecycle management on existing entries (add, remove, redirect modes).
-
-10 new RelationType variants: `Advances`, `Cites`, `Asserts`, `Mentions`, `Refutes`, `Tests`, `DerivedFrom`, `Motivates`, `About`, `RelatedTo`. Five serve SDLC and research identically — no domain-specific duplication. `RelatedTo` added to PPR positive types and BFS expansion. `Advances`/`Motivates` write-only in this phase — PPR expansion deferred to W1B-2.
-
-Bidirectional `Contradicts` atomicity: both direction rows written atomically before handler returns. `query_contradicts_edges_for_entry` fixed from unidirectional to bidirectional OR-clause.
-
-`stale_dependency_edges: u64` added to `context_status`. `DependencyOnDeprecated` registered as 23rd detection rule in `context_cycle_review` (constructor-injection pattern, no DetectionRule trait change).
-
-No schema migration — `GRAPH_EDGES.relation_type TEXT NOT NULL` accepts new string values immediately.
-
----
-
-### W1B-2: `context_graph` Tool — IN FLIGHT (#596–598)
-
-One MCP tool (14th) with seven modes, consolidated from eight originally-identified traversal APIs (ASS-057 Section 3):
-
-```
-context_graph(mode="neighbors",  id, edge_types, direction, depth)
-context_graph(mode="subgraph",   seed_ids, edge_types, direction, max_depth, max_nodes)
-context_graph(mode="inverse",    category, missing_edge_types, limit)
-context_graph(mode="chain",      id, direction)   — supersession chain
-context_graph(mode="current",    id)              — follow superseded_by to terminal
-context_graph(mode="path",       from_id, to_id, edge_types, max_depth)
-context_graph(mode="filter",     category, where, edge_filters, limit)
-```
-
-`resolve_supersessions` parameter implemented from day one across traversal modes. Composite GRAPH_EDGES indexes for inverse/filter query performance. `Advances`/`Motivates` added to PPR positive types (completing their write-only deferral from W1B-1).
-
-**Delivery**: Three issues in sequence — W1B-2a (#596, neighbors+subgraph), W1B-2b (#597, chain+current), W1B-2c (#598, inverse+path+filter). Plus ASS-058 (#599, graph corpus health metrics research, running in parallel).
-
-**Effort**: ~14–17 days total.
-
----
-
 ## Wave 2 — Personal Cloud Delivery
 *See `product/WAVE2-ROADMAP.md` for the authoritative Wave 2 planning document, updated goal statements, and research spike prerequisite list (ASS-041 through ASS-053).*
 
@@ -631,10 +588,6 @@ Wave 1A — Adaptive Intelligence Pipeline                                │   
   ASS-029: GNN architecture spike ──────────────────────────────────┐  │   │  │
                                                                      │  │   │  │
         ┌────────────────────────────────────────────────────────────┘  │   │  │
-        │     Wave 1B (parallel with Wave 2, after Wave 1A)
-        │       W1B-1: Typed edge write path (COMPLETE — vnc-015, PR #600)
-        │       W1B-2: context_graph tool (IN FLIGHT — #596–598)
-        │
         │     Wave 2 (parallel, after Wave 0) ◄─────────────────────────┘   │  │
         │       W2-1: Container                                              │  │
         │       W2-2: HTTP transport                                         │  │
@@ -675,8 +628,6 @@ Key sequencing rules:
 | WA-4 | Proactive delivery | ~2 days | WA-1 + WA-2 complete; cache strategy decided |
 | WA-5 | PreCompact restoration | ~1 day | Independent |
 | ASS-029 | GNN architecture spike | ~2-3 days | W1A scoped |
-| W1B-1 | Typed edge write path | **COMPLETE** (`vnc-015`, PR #600) | W1-1 + W0-3 complete |
-| W1B-2 | `context_graph` tool | ~14–17 days | W1B-1 (graph population) |
 | W2-1 | Container | ~2 days | W0 complete |
 | W2-2 | HTTP transport | ~3-4 days | W0 complete; rmcp HTTP verified |
 | W2-3 | Multi-project + OAuth | ~4-5 days | W2-2 complete |
@@ -720,11 +671,6 @@ The integrity chain is the product's defensible moat. The roadmap is designed ar
 - `context_search` re-ranking is session-conditioned — identical queries return different rankings based on session context
 - The GNN training loop has complete signal coverage: explicit votes, behavioral outcomes, and missed retrievals
 - Any domain can connect its event stream to the learning layer without code changes
-
-**After Wave 1B**:
-- Agents declare typed relationships between entries at write time — ADR dependency chains, goal traceability, lesson→decision reasoning chains
-- `context_graph` enables direct typed-edge traversal: dependency navigation, supersession chains, gap detection (entries missing expected incoming edges), and Goal → Decision → Outcome audit subgraphs in a single query
-- Research domain configuration validated on the same engine: graph-first retrieval runs orthogonally to vector search, no code changes required
 
 **After Wave 2**:
 - Any domain deploys with a config file (SRE, environmental, research, legal)
