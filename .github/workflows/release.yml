@@ -236,6 +236,9 @@ jobs:
             fi
           done
 
+      - name: Remove auth token from npmrc (OIDC trusted publishing requires no token)
+        run: sed -i '/:_authToken/d' ~/.npmrc
+
       - name: Validate versions
         run: |
           CARGO_VERSION=$(grep -A5 '^\[workspace\.package\]' Cargo.toml | grep '^version' | head -1 | sed 's/.*"\(.*\)".*/\1/')
