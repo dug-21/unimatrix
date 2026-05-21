@@ -1,7 +1,9 @@
 //! Neighbors mode handler for context_graph (vnc-018, ADR-005).
 //!
 //! depth=1 → live SQL on GRAPH_EDGES (always fresh).
-//! depth>1 → BFS over in-memory TypedRelationGraph (tick-window staleness).
+//! depth>1 → BFS over in-memory TypedRelationGraph (tick-window staleness) when warm;
+//!           falls back to live SQL via `neighbors_via_db` when `use_fallback=true`
+//!           (cold-start or cycle-detected) — GH #623.
 //!
 //! Declared as a sub-module of `graph_read.rs` via `#[path]`.
 
@@ -171,6 +173,8 @@ pub(super) async fn handle_neighbors(
         )
         .await?
     };
+    // Note: neighbors_bfs reads use_fallback inside the lock guard and delegates to
+    // neighbors_via_db when use_fallback=true (cold-start / cycle-detected) — GH #623.
 
     Ok(NeighborsResponse { edges })
 }
@@ -224,7 +228,8 @@ async fn neighbors_sql(
 /// depth>1 in-memory BFS path (ADR-005).
 ///
 /// Uses `std::sync::RwLock` (NOT tokio) — TypedGraphStateHandle is std::sync::Arc<RwLock<_>>.
-/// Graph is cloned out from under the lock before any async work (poison-recovered).
+/// Graph and use_fallback are cloned/read out from under the lock before any async work.
+/// When use_fallback=true, delegates to `neighbors_via_db` (GH #623).
 /// Visited set is `HashSet<u64>` keyed by node_id only (AC-11a, R-18).
 async fn neighbors_bfs(
     store: &Store,
@@ -237,18 +242,25 @@ async fn neighbors_bfs(
 ) -> Result<Vec<EdgeRecord>, ErrorData> {
     use petgraph::Direction;
 
-    // Acquire std::sync::RwLock and clone the graph to release the lock before async work.
-    // TypedGraphStateHandle uses std::sync::RwLock — do NOT use .read().await.
-    let graph: TypedRelationGraph = {
+    // Acquire std::sync::RwLock and clone graph + use_fallback to release the lock before
+    // async work. Extract both fields in the same lock guard (GH #623 fix).
+    let (graph, use_fallback): (TypedRelationGraph, bool) = {
         let guard = typed_graph_state.read().unwrap_or_else(|e| e.into_inner());
-        guard.typed_graph.clone()
+        (guard.typed_graph.clone(), guard.use_fallback)
     };
+
+    // When use_fallback=true (cold-start or cycle-detected), typed_graph is empty.
+    // node_index_for(id) returns None, BFS never starts, depth_reached=0 for all seeds.
+    // Delegate to live DB path instead (GH #623).
+    if use_fallback {
+        return neighbors_via_db(store, id, types, direction, depth, resolve_supersessions).await;
+    }
 
     // Find anchor node in the in-memory graph (ADR-008).
     let start_node = match graph.node_index_for(id) {
         Some(idx) => idx,
         None => {
-            // Anchor ID not in current tick's graph (cold-start or genuinely absent).
+            // Anchor ID not in current tick's graph (genuinely absent after warm start).
             // Return empty result — no error (consistent with depth=1 behavior).
             return Ok(vec![]);
         }
@@ -339,6 +351,106 @@ async fn neighbors_bfs(
                         }
                     }
                     // Already visited: skip. Shallowest depth wins (node_id keying invariant).
+                }
+            }
+        }
+    }
+
+    Ok(result_edges)
+}
+
+// ---------------------------------------------------------------------------
+// DB-fallback BFS: neighbors_via_db (GH #623)
+// ---------------------------------------------------------------------------
+
+/// Per-node fan-out cap for DB-fallback BFS (neighbors_via_db).
+///
+/// After each `query_direct_neighbors` call the returned Vec is truncated to this
+/// limit before enqueuing. Mirrors `MAX_DB_NEIGHBORS_PER_NODE` in `graph_read_path.rs`.
+const MAX_DB_NEIGHBORS_PER_NODE: usize = 1000;
+
+/// BFS over live SQL when `use_fallback = true` (cold-start or cycle-detected).
+///
+/// `direction` is forwarded from the caller as-is — never hard-coded to Outgoing
+/// (hard requirement: callers specifying direction="incoming" must get correct results).
+///
+/// Mirrors `path_via_db` in graph_read_path.rs. Key differences:
+/// - Multi-direction support (`direction` parameter forwarded).
+/// - Records both source_id/target_id and direction string on each EdgeRecord.
+/// - Visited set keyed by node_id only (AC-11a, R-18): first encounter wins.
+async fn neighbors_via_db(
+    store: &Store,
+    id: u64,
+    types: &[RelationType],
+    direction: NeighborDirection,
+    depth: u8,
+    resolve_supersessions: bool,
+) -> Result<Vec<EdgeRecord>, ErrorData> {
+    let type_strs: Vec<&str> = types.iter().map(|t| t.as_str()).collect();
+
+    let mut result_edges: Vec<EdgeRecord> = Vec::new();
+    // Visited set keyed by node_id only (AC-11a, R-18).
+    let mut visited: HashSet<u64> = HashSet::new();
+    // Queue: (current_entry_id, current_depth)
+    let mut frontier: VecDeque<(u64, u8)> = VecDeque::new();
+
+    visited.insert(id);
+    frontier.push_back((id, 0));
+
+    while let Some((current_id, current_depth)) = frontier.pop_front() {
+        if current_depth >= depth {
+            continue;
+        }
+
+        // Query live DB — direction is forwarded as-is (hard requirement).
+        let mut raw_neighbors =
+            query_direct_neighbors(store.read_pool_server(), current_id, &type_strs, direction)
+                .await
+                .map_err(|e| {
+                    tracing::error!(current_id, error = %e, "neighbors_via_db: query_direct_neighbors failed");
+                    ErrorData::new(ERROR_INTERNAL, format!("graph query failed: {e}"), None)
+                })?;
+
+        // Fan-out cap: prevent runaway BFS on high-degree nodes.
+        raw_neighbors.truncate(MAX_DB_NEIGHBORS_PER_NODE);
+
+        for row in raw_neighbors {
+            // Determine neighbor_id and direction string from the raw row.
+            let (neighbor_id, edge_dir_str, record_src, record_tgt) = if row.source_id == current_id
+            {
+                // outgoing edge: current_id → row.target_id
+                (row.target_id, "outgoing", current_id, row.target_id)
+            } else {
+                // incoming edge: row.source_id → current_id
+                (row.source_id, "incoming", row.source_id, current_id)
+            };
+
+            // Supersession resolution (ADR-005, R-10).
+            let effective_id = if resolve_supersessions {
+                follow_to_current(store, neighbor_id)
+                    .await
+                    .unwrap_or(neighbor_id)
+            } else {
+                neighbor_id
+            };
+
+            // Visited set keyed by node_id only (AC-11a, R-18).
+            if !visited.contains(&effective_id) {
+                visited.insert(effective_id);
+                let hop_depth = current_depth + 1;
+
+                result_edges.push(EdgeRecord {
+                    source_id: record_src,
+                    target_id: record_tgt,
+                    relation_type: row.relation_type.clone(),
+                    direction: edge_dir_str.to_string(),
+                    depth: hop_depth,
+                    metadata: None,
+                });
+
+                // Enqueue for further expansion if not at max depth.
+                if hop_depth < depth {
+                    frontier.push_back((effective_id, hop_depth));
                 }
             }
         }

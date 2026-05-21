@@ -567,3 +567,206 @@ async fn test_bfs_star_topology_near_cap_edges_within_bound() {
         resp.edges.len()
     );
 }
+
+// ---------------------------------------------------------------------------
+// Section C: DB-fallback (GH #623) — use_fallback=true cold-start regression
+// ---------------------------------------------------------------------------
+
+/// GH #623 regression: subgraph returns depth_reached=0 when use_fallback=true.
+///
+/// Real SqlxStore, entries A and B with A→B Supports edge in GRAPH_EDGES.
+/// TypedGraphState::new() directly (use_fallback=true, no rebuild).
+/// handle_subgraph(seed_ids=[A], max_depth=1) must return edges.len()==1
+/// and depth_reached==1.
+#[tokio::test]
+async fn test_subgraph_use_fallback_true_with_real_entries_falls_back_to_db() {
+    use unimatrix_store::NewEntry;
+
+    let (store, _dir) = open_test_store().await;
+    let store = std::sync::Arc::new(store);
+
+    // Step 1: Insert entries A and B into the real store.
+    let id_a = store
+        .insert(NewEntry {
+            title: "Entry A".to_string(),
+            content: "content-a".to_string(),
+            topic: "test".to_string(),
+            category: "pattern".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: unimatrix_store::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: "bugfix-623".to_string(),
+            trust_source: "agent".to_string(),
+        })
+        .await
+        .expect("insert A");
+
+    let id_b = store
+        .insert(NewEntry {
+            title: "Entry B".to_string(),
+            content: "content-b".to_string(),
+            topic: "test".to_string(),
+            category: "pattern".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: unimatrix_store::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: "bugfix-623".to_string(),
+            trust_source: "agent".to_string(),
+        })
+        .await
+        .expect("insert B");
+
+    // Step 2: Insert A→B Supports edge directly into GRAPH_EDGES via raw SQL.
+    // (Same pattern as crt-035 and bugfix-612 tests.)
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    sqlx::query(
+        "INSERT OR IGNORE INTO graph_edges
+             (source_id, target_id, relation_type, weight, created_at,
+              created_by, source, bootstrap_only)
+         VALUES (?1, ?2, 'Supports', 1.0, ?3, 'test', '', 0)",
+    )
+    .bind(id_a as i64)
+    .bind(id_b as i64)
+    .bind(now as i64)
+    .execute(store.write_pool_server())
+    .await
+    .expect("insert Supports edge A→B");
+
+    // Step 3: Construct TypedGraphState::new() directly — use_fallback=true, no rebuild.
+    let handle = Arc::new(std::sync::RwLock::new(TypedGraphState::new()));
+    {
+        let guard = handle.read().unwrap_or_else(|e| e.into_inner());
+        assert!(
+            guard.use_fallback,
+            "TypedGraphState::new() must have use_fallback=true"
+        );
+    }
+
+    // Step 4: Call handle_subgraph with seed_ids=[A], max_depth=1.
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![id_a]),
+        max_depth: Some(1),
+        edge_types: Some(vec!["Supports".to_string()]),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&*store, &handle, &params).await;
+    assert!(
+        result.is_ok(),
+        "DB-fallback subgraph must return Ok, got: {result:?}"
+    );
+    let resp = result.unwrap();
+
+    // Step 5: Assert edges.len()==1 and depth_reached==1.
+    assert_eq!(
+        resp.edges.len(),
+        1,
+        "DB-fallback BFS must discover the A→B Supports edge (use_fallback=true); \
+         got {} edges. This is the GH #623 regression guard.",
+        resp.edges.len()
+    );
+    assert_eq!(
+        resp.depth_reached, 1,
+        "depth_reached must be 1 when A→B edge discovered; got {}. \
+         GH #623: depth_reached=0 was the bug symptom.",
+        resp.depth_reached
+    );
+    assert_eq!(resp.edges[0].source_id, id_a, "edge source must be A");
+    assert_eq!(resp.edges[0].target_id, id_b, "edge target must be B");
+    assert_eq!(resp.edges[0].relation_type, "Supports");
+    assert!(!resp.truncated, "two-node graph must not be truncated");
+}
+
+/// GH #623 regression: direction parameter is forwarded in DB-fallback mode.
+///
+/// Verifies that direction="incoming" works correctly in cold-start state —
+/// hard requirement from the architect's blocking note.
+#[tokio::test]
+async fn test_subgraph_use_fallback_true_direction_incoming_forwarded() {
+    use unimatrix_store::NewEntry;
+
+    let (store, _dir) = open_test_store().await;
+    let store = std::sync::Arc::new(store);
+
+    let id_a = store
+        .insert(NewEntry {
+            title: "Entry A".to_string(),
+            content: "content-a".to_string(),
+            topic: "test".to_string(),
+            category: "pattern".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: unimatrix_store::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: "bugfix-623".to_string(),
+            trust_source: "agent".to_string(),
+        })
+        .await
+        .expect("insert A");
+
+    let id_b = store
+        .insert(NewEntry {
+            title: "Entry B".to_string(),
+            content: "content-b".to_string(),
+            topic: "test".to_string(),
+            category: "pattern".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: unimatrix_store::Status::Active,
+            created_by: "test".to_string(),
+            feature_cycle: "bugfix-623".to_string(),
+            trust_source: "agent".to_string(),
+        })
+        .await
+        .expect("insert B");
+
+    // Insert A→B Supports edge.
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    sqlx::query(
+        "INSERT OR IGNORE INTO graph_edges
+             (source_id, target_id, relation_type, weight, created_at,
+              created_by, source, bootstrap_only)
+         VALUES (?1, ?2, 'Supports', 1.0, ?3, 'test', '', 0)",
+    )
+    .bind(id_a as i64)
+    .bind(id_b as i64)
+    .bind(now as i64)
+    .execute(store.write_pool_server())
+    .await
+    .expect("insert Supports edge A→B");
+
+    let handle = Arc::new(std::sync::RwLock::new(TypedGraphState::new()));
+
+    // Seed on B, direction=incoming — should find A→B via the incoming traversal from B.
+    let params = GraphParams {
+        mode: "subgraph".to_string(),
+        seed_ids: Some(vec![id_b]),
+        max_depth: Some(1),
+        edge_types: Some(vec!["Supports".to_string()]),
+        direction: Some("incoming".to_string()),
+        ..Default::default()
+    };
+    let result = handle_subgraph(&*store, &handle, &params).await;
+    assert!(
+        result.is_ok(),
+        "DB-fallback subgraph (incoming) must return Ok, got: {result:?}"
+    );
+    let resp = result.unwrap();
+    // B seeded with direction=incoming — should find A as a neighbor via A→B incoming edge.
+    assert_eq!(
+        resp.edges.len(),
+        1,
+        "incoming direction must find A→B edge from B's perspective; got {} edges",
+        resp.edges.len()
+    );
+    assert_eq!(resp.depth_reached, 1, "depth_reached must be 1");
+}
