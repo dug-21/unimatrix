@@ -35,6 +35,13 @@ const DEFAULT_MAX_DEPTH: u8 = 3;
 const MAX_DEPTH_UPPER: u8 = 10;
 const MAX_NODES_UPPER: u32 = 200;
 const DEFAULT_MAX_NODES: u32 = 200;
+/// Upper bound on the number of edges passed to `fetch_edge_metadata`.
+///
+/// `fetch_edge_metadata` builds a SQL OR-chain with one `(source_id = ? AND target_id = ? AND
+/// relation_type = ?)` clause per edge. SQLite's default `SQLITE_MAX_EXPR_DEPTH` is 1000; an
+/// OR-chain of N clauses builds an expression tree roughly N levels deep. Callers must ensure
+/// `collected_edges.len() <= MAX_EDGES_UPPER` before calling `fetch_edge_metadata`.
+const MAX_EDGES_UPPER: usize = 1000;
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -289,6 +296,12 @@ pub(super) async fn handle_subgraph(
         if collected_edges.is_empty() {
             HashMap::new()
         } else {
+            debug_assert!(
+                collected_edges.len() <= MAX_EDGES_UPPER,
+                "fetch_edge_metadata: OR-chain would exceed MAX_EDGES_UPPER ({} edges, limit {})",
+                collected_edges.len(),
+                MAX_EDGES_UPPER
+            );
             fetch_edge_metadata(store, &collected_edges).await?
         };
 
@@ -378,6 +391,9 @@ async fn fetch_nodes_batch(store: &Store, node_ids: &[u64]) -> Result<Vec<EntryR
 /// Fetches metadata for all collected edges in a single OR-chain SQL query.
 ///
 /// Must only be called when `collected_edges` is non-empty (R-04).
+/// Callers must ensure `edges.len() <= MAX_EDGES_UPPER` to stay within SQLite's
+/// expression depth limit (`SQLITE_MAX_EXPR_DEPTH` ≈ 1000); a `debug_assert!`
+/// at the call site in `handle_subgraph` enforces this contract.
 /// Metadata deserialization: `serde_json::from_str(...).ok()` returns `None`
 /// on malformed JSON without panic (SEC-05).
 async fn fetch_edge_metadata(
