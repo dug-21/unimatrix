@@ -126,6 +126,8 @@ Already covered in the **MANDATORY: Before Implementing** section above. The bri
 ### After Completing
 Store implementation patterns you discovered via `/uni-store-pattern`. Focus on gotchas invisible in source code — things that compile but break at runtime, non-obvious integration requirements, crate-specific traps. Use the crate name as topic (e.g., `unimatrix-store`).
 
+**Bugfix context**: When your spawn prompt says "BUG FIX", prefer `/uni-store-lesson` (what caused this class of bug, what to watch for) or `/uni-store-procedure` (how to validate this class of fix) over `/uni-store-pattern`. A bug fix rarely surfaces a reusable implementation pattern — it more often surfaces a lesson about failure modes and detection.
+
 Examples of what to store:
 - "Don't hold `lock_conn()` across await points — deadlocks under concurrent requests"
 - "redb transactions must be committed before `TableDefinition` reference drops"

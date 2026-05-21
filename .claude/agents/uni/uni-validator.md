@@ -137,6 +137,38 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
 
 ---
 
+## Gate Bugfix: Bug Fix Validation
+
+**Check set:**
+
+1. **Root cause coverage** — Does the fix address the diagnosed root cause, not just symptoms?
+
+2. **Fix minimality** — No unrelated changes, refactors, or features included. Diff is narrow.
+
+3. **Test completeness** — New test(s) would have caught the original bug. All existing tests pass (cargo test --workspace). No new clippy warnings (cargo clippy --workspace -- -D warnings).
+
+4. **Integration smoke tests** — Smoke suite passed: `python -m pytest suites/ -v -m smoke`.
+
+5. **xfail hygiene** — Any `@pytest.mark.xfail` markers added reference a corresponding GH Issue. If the bug was discovered by an integration test, its xfail marker has been removed.
+
+6. **No unsafe additions** — No `unsafe` code, `todo!()`, `unimplemented!()`, `TODO`, or `FIXME` introduced.
+
+7. **Knowledge stewardship compliance** — All three agents fulfilled stewardship obligations.
+   Run: `gh issue view {issue-number} --comments`
+   For each of investigator, architect, and rust-dev:
+   - Phase comment contains `## Knowledge Stewardship` block
+   - Block has `Queried:` entry
+   - Block has `Stored:` or `"nothing novel to store -- {reason}"` entry
+   - Missing block = REWORKABLE FAIL. Present with no reason after "nothing novel" = WARN.
+
+**Source documents**: GH Issue comments (read via `gh issue view {issue-number} --comments`),
+changed file diffs. There are no ARCHITECTURE.md / SPECIFICATION.md for bugfix — skip Step 1
+of the standard Validation Process and go directly to the check set.
+
+**Report destination**: Post as a comment on GH Issue #{issue-number}. Write no filesystem report.
+
+---
+
 ## Validation Process
 
 For any gate:
@@ -283,4 +315,5 @@ Include in your agent report:
 - [ ] Every FAIL includes specific evidence and fix recommendation
 - [ ] Cargo output was truncated (Gate 3b only)
 - [ ] Gate result accurately reflects findings (not artificially PASS when issues exist)
+- [ ] For bugfix gate: ran `gh issue view --comments` and verified ## Knowledge Stewardship blocks for investigator, architect, and rust-dev
 - [ ] Knowledge Stewardship report block included
