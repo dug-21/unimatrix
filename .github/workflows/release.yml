@@ -256,6 +256,13 @@ jobs:
             fi
           done
 
+      - name: Debug OIDC environment
+        run: |
+          echo "npm version: $(npm --version)"
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL != '' }}"
+          echo "NODE_AUTH_TOKEN set: ${NODE_AUTH_TOKEN:+yes}"
+          npm config list
+
       - name: Publish @dug-21/unimatrix-linux-arm64
         working-directory: packages/unimatrix-linux-arm64
         run: npm publish --registry https://registry.npmjs.org --access public --provenance
