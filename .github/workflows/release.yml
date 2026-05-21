@@ -201,6 +201,9 @@ jobs:
   package-npm:
     needs: [build-linux-x64, build-linux-arm64]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -208,9 +211,6 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-
-      - name: Clear npm auth token (use OIDC trusted publishing)
-        run: npm config delete //registry.npmjs.org/:_authToken || true
 
       - uses: actions/download-artifact@v4
         with:
