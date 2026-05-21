@@ -44,6 +44,7 @@ Each message batches ALL related operations of the same type:
 - NO code changes. NO file edits outside `product/features/`
 - NO launching delivery agents (uni-rust-dev, uni-pseudocode, uni-tester)
 - Agents return: artifact paths + key decisions + open questions (NOT full file contents)
+- **Artifact hierarchy**: Architecture, Specification, and Risk Strategy are the technical ground truth. The Implementation Brief is a coordination artifact derived from them — technical decisions live in source documents, the brief routes and summarizes.
 
 ### No Git Operations in Design
 
@@ -321,6 +322,10 @@ Open questions: {list or "none"}
 
 Human action required: Review design artifacts. Then start Session 2 to deliver.
 ```
+
+**Handling human-requested changes**: If the human requests changes after reviewing artifacts:
+- **Technical changes** (architecture decisions, requirements, risk coverage) → update the relevant source document(s) first, then re-run the synthesizer to regenerate the Implementation Brief and Acceptance Map from the updated sources.
+- **Coordination changes only** (wave ordering, component naming, delivery notes) → update the Implementation Brief directly.
 
 **Session 1 ends here.** No branch, no commit, no PR — artifacts sit untracked in `product/features/{feature-id}/` until Session 2 picks them up.
 

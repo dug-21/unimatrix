@@ -42,6 +42,7 @@ Phase 4: Delivery
 - Max 2 rework iterations per gate — protects context window
 - Cargo output truncated to first error + summary line
 - The three source documents (Architecture, Specification, Risk Strategy) are sacred — all work traces back to them
+- **Artifact hierarchy**: Architecture, Specification, and Risk Strategy are the technical ground truth. The Implementation Brief is a coordination artifact — it routes and summarizes but does not override source documents. If the brief and a source document conflict, the source document is authoritative; resolve before Stage 3a begins.
 
 ---
 
@@ -281,11 +282,13 @@ Task(subagent_type: "uni-validator",
     - Does implementation align with approved Architecture?
     - Are component interfaces implemented as specified?
     - Do test cases match component test plans?
+    - Do test cases cover risks from the Risk-Based Test Strategy?
     - Does code compile? Are there stubs or placeholders?
 
     Source documents:
     - product/features/{id}/architecture/ARCHITECTURE.md
     - product/features/{id}/specification/SPECIFICATION.md
+    - product/features/{id}/RISK-TEST-STRATEGY.md
     - product/features/{id}/pseudocode/ (all files)
     - product/features/{id}/test-plan/ (all files)
 
