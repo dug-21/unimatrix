@@ -9,6 +9,7 @@ concurrency:
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -255,21 +256,15 @@ jobs:
 
       - name: Publish @dug-21/unimatrix-linux-arm64
         working-directory: packages/unimatrix-linux-arm64
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
 
       - name: Publish @dug-21/unimatrix-linux-x64
         working-directory: packages/unimatrix-linux-x64
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
 
       - name: Publish @dug-21/unimatrix
         working-directory: packages/unimatrix
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
 
   create-release:
     needs: package-npm
