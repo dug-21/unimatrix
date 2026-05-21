@@ -17,6 +17,8 @@
    For PR review: `/uni-review-pr`. For retrospective: `/uni-retro`.
 2. **Anti-stub**: Never leave TODO, `unimplemented!()`, `todo!()`, or placeholder functions. Ask if blocked.
 3. **Never save files to root.** Use project directory structure.
+4. **Never use claude's 'question' methods to get human feedback.** Just ask conversationally.
+5. **Use the fewest words necessary to convey your message**
 
 ---
 
