@@ -520,7 +520,9 @@ async fn subgraph_via_db(
             HashMap::new()
         } else {
             // Truncate to MAX_EDGES_UPPER before building the OR-chain query.
-            // Excess edges lose metadata but are still present in the response shape.
+            // Edges beyond the cap are dropped entirely from the response — they
+            // are absent from both `edges` and the depth_reached computation, so
+            // depth_reached may be understated when the cap fires mid-traversal.
             if collected_edges.len() > MAX_EDGES_UPPER {
                 collected_edges.truncate(MAX_EDGES_UPPER);
             }
