@@ -3483,7 +3483,7 @@ checksum = "39ec24b3121d976906ece63c9daad25b85969647682eee313cb5779fdd69e14e"
 
 [[package]]
 name = "unimatrix-adapt"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "bincode 2.0.1",
  "ndarray",
@@ -3497,7 +3497,7 @@ dependencies = [
 
 [[package]]
 name = "unimatrix-core"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3510,7 +3510,7 @@ dependencies = [
 
 [[package]]
 name = "unimatrix-embed"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "approx",
  "dirs",
@@ -3523,7 +3523,7 @@ dependencies = [
 
 [[package]]
 name = "unimatrix-engine"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "dirs",
  "nix 0.31.2",
@@ -3542,7 +3542,7 @@ dependencies = [
 
 [[package]]
 name = "unimatrix-learn"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "bincode 2.0.1",
  "ndarray",
@@ -3555,7 +3555,7 @@ dependencies = [
 
 [[package]]
 name = "unimatrix-observe"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "bincode 2.0.1",
  "serde",
@@ -3570,7 +3570,7 @@ dependencies = [
 
 [[package]]
 name = "unimatrix-server"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "bincode 2.0.1",
  "clap",
@@ -3610,7 +3610,7 @@ dependencies = [
 
 [[package]]
 name = "unimatrix-store"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "base64 0.22.1",
  "bincode 2.0.1",
@@ -3625,7 +3625,7 @@ dependencies = [
 
 [[package]]
 name = "unimatrix-vector"
-version = "0.6.3"
+version = "0.7.0"
 dependencies = [
  "anndists",
  "hnsw_rs",
