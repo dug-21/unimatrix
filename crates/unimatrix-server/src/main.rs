@@ -20,6 +20,7 @@ use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
 use unimatrix_server::infra::config::{
     DomainPackConfig, UnimatrixConfig, load_config, resolve_confidence_params,
+    write_default_config_if_absent,
 };
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::nli_handle::{NliConfig, NliServiceHandle};
@@ -123,8 +124,17 @@ enum Command {
 
     /// Print version and exit.
     ///
+    /// When `--project-dir` is provided, also ensures the data directory and
+    /// database exist and writes a default config.toml if absent.
+    ///
+    /// Use `--force` to overwrite an existing config.toml with the annotated defaults.
+    ///
     /// Synchronous path, no tokio runtime.
-    Version,
+    Version {
+        /// Overwrite an existing config.toml with the annotated defaults.
+        #[arg(long)]
+        force: bool,
+    },
 
     /// Download the ONNX model to cache.
     ///
@@ -267,9 +277,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 force,
             );
         }
-        Some(Command::Version) => {
+        Some(Command::Version { force }) => {
             // Sync path: NO tokio
-            return handle_version(cli.project_dir);
+            return handle_version(cli.project_dir, force);
         }
         Some(Command::ModelDownload { nli, nli_model }) => {
             // Sync path: NO tokio
@@ -1253,8 +1263,14 @@ async fn tokio_main_bridge(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 /// Print version string to stdout and exit.
 ///
 /// When `--project-dir` is provided, also pre-creates the data directory and
-/// database (used by `npx unimatrix init` to ensure DB exists before first run).
-fn handle_version(project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+/// database (used by `npx unimatrix init` to ensure DB exists before first run),
+/// then writes a default config.toml to the per-project data directory.
+///
+/// `force`: when true, overwrites an existing config.toml with the annotated defaults.
+fn handle_version(
+    project_dir: Option<PathBuf>,
+    force: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(dir) = project_dir {
         let paths = project::ensure_data_directory(Some(&dir), None)
             .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
@@ -1268,6 +1284,13 @@ fn handle_version(project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error
             ))
             .map_err(|e| ServerError::Core(CoreError::Store(e)))?;
         eprintln!("database initialized at {}", paths.db_path.display());
+
+        // Write default config.toml to the per-project data directory (#626).
+        let config_path = paths.data_dir.join("config.toml");
+        write_default_config_if_absent(&config_path, force);
+        if config_path.exists() {
+            eprintln!("config.toml at {}", config_path.display());
+        }
     }
 
     println!("unimatrix {}", env!("CARGO_PKG_VERSION"));
