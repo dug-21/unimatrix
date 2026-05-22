@@ -407,7 +407,7 @@ No schema migration — `GRAPH_EDGES.relation_type TEXT NOT NULL` accepts new st
 
 ---
 
-### W1B-2: `context_graph` Tool — IN FLIGHT (#596–598)
+### W1B-2: `context_graph` Tool — COMPLETE (`vnc-018/019/020`, PRs #609/#610/#614)
 
 One MCP tool (14th) with seven modes, consolidated from eight originally-identified traversal APIs (ASS-057 Section 3):
 
@@ -421,11 +421,17 @@ context_graph(mode="path",       from_id, to_id, edge_types, max_depth)
 context_graph(mode="filter",     category, where, edge_filters, limit)
 ```
 
-`resolve_supersessions` parameter implemented from day one across traversal modes. Composite GRAPH_EDGES indexes for inverse/filter query performance. `Advances`/`Motivates` added to PPR positive types (completing their write-only deferral from W1B-1).
+`resolve_supersessions` parameter implemented from day one across traversal modes. Composite GRAPH_EDGES indexes for inverse/filter query performance. `Advances`/`Motivates` added to PPR positive types (completing their write-only deferral from W1B-1). Schema v27 (4 traversal indexes). `reject resolve_supersessions` on inverse/filter enforced.
 
-**Delivery**: Three issues in sequence — W1B-2a (#596, neighbors+subgraph), W1B-2b (#597, chain+current), W1B-2c (#598, inverse+path+filter). Plus ASS-058 (#599, graph corpus health metrics research, running in parallel).
+Delivered in three PRs (all merged 2026-05-20): `vnc-018` PR#609 (chain/current/neighbors), `vnc-019` PR#610 (subgraph — bounded multi-hop BFS, nodes + edges returned), `vnc-020` PR#614 (inverse/filter/path).
 
-**Effort**: ~14–17 days total.
+---
+
+### W1B Companion Deliveries
+
+**`vnc-016` — `DependencyOnDeprecated` wiring fix (PR #605, 2026-05-18)**: Fixed SQL bug in `query_stale_prerequisite_edges_for_cycle` (`fe.feature_cycle` → `fe.feature_id`) that silently returned empty results via `unwrap_or_else`. Added `write_capable` field to `UsageContext` — compiler-enforced exhaustive construction prevents recurrence. End-to-end integration test added through `context_cycle_review`.
+
+**`vnc-017` — Auto-redirect incoming edges on `context_correct` (PR #607, 2026-05-19)**: On correction, all incoming non-`Supersedes` edges from the deprecated original are atomically redirected to the new terminal entry. Fan-in ceiling N=50 (warn + truncate). Ensures correction chains do not strand incoming graph relationships.
 
 ---
 
@@ -439,12 +445,11 @@ Wave 2 delivers a complete, deployable personal Unimatrix cloud: containerized, 
 ### W2-1: Container Packaging
 **Business outcome**: Knowledge survives infrastructure changes — production-grade deployment with clean backup, recovery, and standard container lifecycle.
 
-**What**: Dockerfile + docker-compose with separate named volumes:
-- `unimatrix-knowledge` — `knowledge.db` (back up frequently; integrity-critical)
-- `unimatrix-analytics` — `analytics.db` (back up less frequently; self-healing)
-- `unimatrix-shared` — models (re-downloadable), `config.toml` (mount as read-only bind)
+**What**: Dockerfile + docker-compose with two named volumes:
+- `unimatrix-data` — single SQLite database (back up frequently; integrity-critical)
+- `unimatrix-shared` — ONNX models (re-downloadable), `config.toml` (mount as read-only bind)
 
-Container is stateless except the volumes. Backup = volume snapshot of `unimatrix-knowledge`. `HEALTHCHECK` verifies daemon liveness and schema version currency.
+Container is stateless except the volumes. Backup = volume snapshot of `unimatrix-data`. `HEALTHCHECK` verifies daemon liveness and schema version currency.
 
 **Security requirements:**
 - [High] Named volumes owner-only at container build time (`chmod 0700`)
@@ -633,7 +638,8 @@ Wave 1A — Adaptive Intelligence Pipeline                                │   
         ┌────────────────────────────────────────────────────────────┘  │   │  │
         │     Wave 1B (parallel with Wave 2, after Wave 1A)
         │       W1B-1: Typed edge write path (COMPLETE — vnc-015, PR #600)
-        │       W1B-2: context_graph tool (IN FLIGHT — #596–598)
+        │       W1B-2: context_graph tool (COMPLETE — vnc-018/019/020, PRs #609/#610/#614)
+        │       W1B companion: vnc-016 DependencyOnDeprecated fix (PR #605), vnc-017 edge auto-redirect (PR #607)
         │
         │     Wave 2 (parallel, after Wave 0) ◄─────────────────────────┘   │  │
         │       W2-1: Container                                              │  │
@@ -676,7 +682,7 @@ Key sequencing rules:
 | WA-5 | PreCompact restoration | ~1 day | Independent |
 | ASS-029 | GNN architecture spike | ~2-3 days | W1A scoped |
 | W1B-1 | Typed edge write path | **COMPLETE** (`vnc-015`, PR #600) | W1-1 + W0-3 complete |
-| W1B-2 | `context_graph` tool | ~14–17 days | W1B-1 (graph population) |
+| W1B-2 | `context_graph` tool | **COMPLETE** (`vnc-018/019/020`, PRs #609/#610/#614) | — |
 | W2-1 | Container | ~2 days | W0 complete |
 | W2-2 | HTTP transport | ~3-4 days | W0 complete; rmcp HTTP verified |
 | W2-3 | Multi-project + OAuth | ~4-5 days | W2-2 complete |
