@@ -30,7 +30,7 @@ fn test_hook_subcommand_parsed() {
 #[test]
 fn test_version_subcommand_parsed() {
     let cli = Cli::try_parse_from(["unimatrix", "version"]).unwrap();
-    assert!(matches!(cli.command, Some(Command::Version)));
+    assert!(matches!(cli.command, Some(Command::Version { .. })));
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn test_import_subcommand_unchanged() {
 fn test_project_dir_flag_accepted() {
     let cli = Cli::try_parse_from(["unimatrix", "--project-dir", "/some/path", "version"]).unwrap();
     assert_eq!(cli.project_dir, Some(PathBuf::from("/some/path")));
-    assert!(matches!(cli.command, Some(Command::Version)));
+    assert!(matches!(cli.command, Some(Command::Version { .. })));
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn test_verbose_flag_accepted() {
 #[test]
 fn test_handle_version_prints_version() {
     // handle_version(None) just prints to stdout; verify it returns Ok
-    let result = handle_version(None);
+    let result = handle_version(None, false);
     assert!(result.is_ok());
 }
 

@@ -2994,6 +2994,309 @@ fn check_permissions(path: &Path) -> Result<(), ConfigError> {
 }
 
 // ---------------------------------------------------------------------------
+// Default config TOML template
+// ---------------------------------------------------------------------------
+
+/// Fully-commented TOML template written by `unimatrix version --project-dir`.
+///
+/// Every section, field, and its compiled default is documented inline.
+/// This is a static string — it is NOT serialised from `UnimatrixConfig`
+/// (structs are `Deserialize`-only per existing conventions; no `Serialize` is added).
+///
+/// Keep in sync with struct defaults. When a new field is added to any config
+/// struct, add the matching commented line here.
+pub static DEFAULT_CONFIG_TOML: &str = r#"# Unimatrix configuration file.
+# All values shown are the compiled defaults. Uncomment and edit to override.
+# File: ~/.unimatrix/{project-hash}/config.toml
+#
+# Two-level config hierarchy:
+#   ~/.unimatrix/config.toml           -- global (applies to all projects)
+#   ~/.unimatrix/{hash}/config.toml    -- per-project (overrides global)
+# Per-project values replace global values field-by-field (replace semantics).
+# List fields replace entirely — no append.
+
+# ---------------------------------------------------------------------------
+# [profile] — knowledge-lifecycle preset
+# ---------------------------------------------------------------------------
+# Named presets map to preset weight tables.
+# Valid values: "collaborative" (default), "authoritative", "operational",
+#               "empirical", "custom"
+# Use "custom" with [confidence] weights AND [knowledge] freshness_half_life_hours.
+[profile]
+# preset = "collaborative"
+
+# ---------------------------------------------------------------------------
+# [knowledge] — categories and freshness configuration
+# ---------------------------------------------------------------------------
+[knowledge]
+# Allowed entry categories. Defaults are the 5 built-in INITIAL_CATEGORIES.
+# Each entry: lowercase letters (a-z), digits (0-9), hyphens (-), underscores (_).
+# Maximum 64 entries; each at most 64 characters.
+# categories = ["decision", "convention", "pattern", "lesson-learned", "procedure"]
+
+# Categories that receive a provenance boost in search re-ranking.
+# Must be a subset of categories above.
+# boosted_categories = ["lesson-learned"]
+
+# Categories eligible for automated lifecycle management.
+# Must be a subset of categories above.
+# adaptive_categories = ["lesson-learned"]
+
+# Optional override for the freshness half-life used in confidence scoring.
+# None = use the active preset's built-in value.
+# Valid range: (0.0, 87600.0] hours (up to 10 years).
+# Required when preset = "custom".
+# freshness_half_life_hours = 8760.0
+
+# ---------------------------------------------------------------------------
+# [server] — server presentation
+# ---------------------------------------------------------------------------
+[server]
+# Custom system-level instructions presented to the LLM client.
+# Maximum 8192 bytes. Must not contain prompt injection patterns.
+# Absence uses the compiled SERVER_INSTRUCTIONS default.
+# instructions = "Your custom instructions here."
+
+# ---------------------------------------------------------------------------
+# [agents] — trust and capability defaults for auto-enrolled agents
+# ---------------------------------------------------------------------------
+[agents]
+# Default trust level for auto-enrolled agents.
+# Valid values: "permissive" (default), "strict"
+# default_trust = "permissive"
+
+# Default session capabilities for auto-enrolled agents.
+# Valid values: "Read", "Write", "Search" ("Admin" is excluded for security).
+# session_capabilities = ["Read", "Write", "Search"]
+
+# ---------------------------------------------------------------------------
+# [confidence] — custom weights (only active when preset = "custom")
+# ---------------------------------------------------------------------------
+# Ignored (with a warning) when preset != "custom".
+# When preset = "custom", all six weight fields are required and must sum to 0.92.
+[confidence]
+# [confidence.weights]
+# base  = 0.14
+# usage = 0.14
+# fresh = 0.18
+# help  = 0.14
+# corr  = 0.14
+# trust = 0.18
+
+# ---------------------------------------------------------------------------
+# [inference] — ML inference thread pool and NLI cross-encoder
+# ---------------------------------------------------------------------------
+[inference]
+# Number of rayon threads for the ML inference pool.
+# Default: (num_cpus / 2).max(4).min(8). Valid range: [1, 64].
+# When nli_enabled = true, a pool floor of 6 is applied at startup.
+# rayon_pool_size = 4
+
+# Enable the NLI cross-encoder for re-ranking (opt-in, default false).
+# When false, all search uses cosine similarity fallback.
+# nli_enabled = false
+
+# NLI model variant. Valid values: "minilm2", "minilm2-q8", "deberta", "deberta-q8".
+# nli_model_name = "minilm2-q8"
+
+# Explicit path to the NLI ONNX model file (overrides cache-dir resolution).
+# nli_model_path = "/path/to/model.onnx"
+
+# SHA-256 hash of the NLI model file (64-char lowercase hex).
+# When set, hash is verified before loading. Run `unimatrix model-download --nli` to get the hash.
+# nli_model_sha256 = ""
+
+# Candidate pool size for NLI search re-ranking. Valid range: [1, 100].
+# nli_top_k = 20
+
+# NLI entailment threshold for writing Supports edges. Valid range: (0.0, 1.0) exclusive.
+# nli_entailment_threshold = 0.6
+
+# NLI contradiction threshold for writing Contradicts edges. Valid range: (0.0, 1.0) exclusive.
+# nli_contradiction_threshold = 0.6
+
+# Per-call cap on edges written during post-store NLI. Valid range: [1, 100].
+# max_contradicts_per_tick = 10
+
+# Auto-quarantine threshold for NLI-penalized entries. Must be > nli_contradiction_threshold.
+# Valid range: (0.0, 1.0) exclusive.
+# nli_auto_quarantine_threshold = 0.85
+
+# --- Fusion weight fields (six-weight sum must be <= 1.0) ---
+# w_sim  = 0.50   # cosine similarity signal
+# w_nli  = 0.00   # NLI entailment signal
+# w_conf = 0.35   # confidence signal (Wilson score composite)
+# w_coac = 0.00   # co-access affinity signal
+# w_util = 0.00   # utility delta signal
+# w_prov = 0.00   # provenance (boosted-category) signal
+
+# Phase histogram affinity weight (additive, outside six-weight sum constraint).
+# w_phase_histogram = 0.02
+
+# Explicit phase signal weight (additive, outside six-weight sum constraint).
+# w_phase_explicit = 0.05
+
+# --- Background graph inference tick ---
+# supports_candidate_threshold = 0.5     # HNSW floor for candidate pre-filter
+# supports_edge_threshold = 0.6          # NLI entailment floor for Supports edges
+# max_graph_inference_per_tick = 100     # max candidate pairs scored per tick
+# graph_inference_k = 10                 # HNSW neighbour count for tick expansion
+
+# --- Co-access promotion ---
+# max_co_access_promotion_per_tick = 200
+
+# --- Heal pass (re-embed unembedded entries) ---
+# heal_pass_batch_size = 20
+
+# --- Phase frequency table ---
+# phase_freq_lookback_days = 30          # lookback window in days [1, 3650]
+# min_phase_session_pairs = 5            # minimum distinct (phase, session_id) pairs
+
+# --- Personalized PageRank ---
+# ppr_alpha = 0.85                       # damping factor (0.0, 1.0) exclusive
+# ppr_iterations = 20                    # power-iteration steps [1, 100]
+# ppr_inclusion_threshold = 0.05        # PPR score floor for pool injection
+# ppr_blend_weight = 0.15               # trust weight for PPR signal [0.0, 1.0]
+# ppr_max_expand = 50                    # max PPR-only entries to inject [1, 500]
+
+# --- Graph expand pool-widening (crt-042, default disabled) ---
+# ppr_expander_enabled = false           # enable Phase 0 BFS expansion
+# expansion_depth = 2                    # BFS hop depth [1, 10]
+# max_expansion_candidates = 200         # max entries added per query [1, 1000]
+
+# --- Informs edge detection ---
+# nli_informs_cosine_floor = 0.50        # cosine floor for Informs candidates
+# nli_informs_ppr_weight = 0.6           # PPR edge weight multiplier for Informs
+# supports_cosine_threshold = 0.65       # cosine threshold for Path C Supports
+
+# --- Graph enrichment (S1/S2/S8) ---
+# s2_vocabulary = []                     # structural vocabulary for S2 edge generation
+# max_s1_edges_per_tick = 200
+# max_s2_edges_per_tick = 200
+# s8_batch_interval_ticks = 10           # run S8 every N ticks
+# max_s8_pairs_per_batch = 500
+
+# --- Goal-conditioned briefing blending ---
+# goal_cluster_similarity_threshold = 0.80
+# w_goal_cluster_conf = 0.35
+# w_goal_boost = 0.25
+
+# ---------------------------------------------------------------------------
+# [retention] — activity data and audit log retention policy
+# ---------------------------------------------------------------------------
+[retention]
+# Number of completed feature cycles whose activity data is retained. Range: [1, 10000].
+# activity_detail_retention_cycles = 50
+
+# Retention window in days for audit_log rows. Range: [1, 3650].
+# audit_log_retention_days = 180
+
+# Maximum purgeable cycles to process in a single maintenance tick. Range: [1, 1000].
+# max_cycles_per_tick = 10
+
+# ---------------------------------------------------------------------------
+# [store] — write-path limits for knowledge entry storage
+# ---------------------------------------------------------------------------
+[store]
+# Maximum byte length for content on context_store and context_correct calls.
+# Range: [1000, 1048576]. Default: 8000.
+# max_content_bytes = 8000
+
+# ---------------------------------------------------------------------------
+# [[observation.domain_packs]] — additional domain packs (optional)
+# ---------------------------------------------------------------------------
+# Register additional source domains for hook-driven observation.
+# The built-in "claude-code" pack is always registered regardless of this section.
+# Each stanza requires source_domain, event_types, and categories.
+#
+# [[observation.domain_packs]]
+# source_domain = "my-domain"
+# event_types   = ["MyEvent"]
+# categories    = ["my-category"]
+"#;
+
+// ---------------------------------------------------------------------------
+// Default config write helper
+// ---------------------------------------------------------------------------
+
+/// Write `DEFAULT_CONFIG_TOML` to `path` if it does not already exist.
+///
+/// - `force = false`: atomic create-new (avoids TOCTOU). If the file already exists,
+///   returns `Ok(())` silently.
+/// - `force = true`: unconditional overwrite via `fs::write`.
+///
+/// Parent directory is created with `create_dir_all` before writing.
+/// If the parent path cannot be determined or any I/O fails, a `warn` is logged
+/// and the function returns `Ok(())` — never propagates errors to the caller.
+pub fn write_default_config_if_absent(path: &std::path::Path, force: bool) {
+    let parent = match path.parent() {
+        Some(p) => p,
+        None => {
+            tracing::warn!(
+                path = %path.display(),
+                "write_default_config_if_absent: cannot determine parent directory; skipping"
+            );
+            return;
+        }
+    };
+
+    if let Err(e) = std::fs::create_dir_all(parent) {
+        tracing::warn!(
+            path = %path.display(),
+            error = %e,
+            "write_default_config_if_absent: failed to create parent directory; skipping"
+        );
+        return;
+    }
+
+    if force {
+        match std::fs::write(path, DEFAULT_CONFIG_TOML) {
+            Ok(()) => tracing::info!(
+                path = %path.display(),
+                "default config.toml written (force)"
+            ),
+            Err(e) => tracing::warn!(
+                path = %path.display(),
+                error = %e,
+                "write_default_config_if_absent: write failed"
+            ),
+        }
+    } else {
+        use std::io::Write as _;
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)
+        {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(DEFAULT_CONFIG_TOML.as_bytes()) {
+                    tracing::warn!(
+                        path = %path.display(),
+                        error = %e,
+                        "write_default_config_if_absent: write_all failed"
+                    );
+                } else {
+                    tracing::info!(
+                        path = %path.display(),
+                        "default config.toml written"
+                    );
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                // File already present — not an error.
+            }
+            Err(e) => {
+                tracing::warn!(
+                    path = %path.display(),
+                    error = %e,
+                    "write_default_config_if_absent: open failed"
+                );
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Test-only helpers (pub(crate) so tests in this file can use them)
 // ---------------------------------------------------------------------------
 
@@ -8600,5 +8903,92 @@ nli_informs_ppr_weight = 0.4
         let mut c = InferenceConfig::default();
         c.ppr_alpha = f64::INFINITY;
         assert_validate_fails_with_field(c, "ppr_alpha");
+    }
+
+    // -----------------------------------------------------------------------
+    // write_default_config_if_absent tests (#626)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_write_default_config_creates_file_when_absent() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let config_path = dir.path().join("config.toml");
+
+        write_default_config_if_absent(&config_path, false);
+
+        assert!(config_path.exists(), "config.toml should have been created");
+
+        // Must parse as a valid UnimatrixConfig (all lines are comments so it
+        // deserializes to the compiled default without errors).
+        let content = std::fs::read_to_string(&config_path).expect("read");
+        let parsed: UnimatrixConfig =
+            toml::from_str(&content).expect("DEFAULT_CONFIG_TOML must parse");
+        // Spot-check: parsed defaults match the compiled defaults.
+        assert_eq!(parsed.store.max_content_bytes, 8_000);
+        assert_eq!(parsed.retention.audit_log_retention_days, 180);
+    }
+
+    #[test]
+    fn test_write_default_config_does_not_overwrite_without_force() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let config_path = dir.path().join("config.toml");
+        let custom_content = "# my custom config\n";
+        std::fs::write(&config_path, custom_content).expect("pre-write");
+
+        write_default_config_if_absent(&config_path, false);
+
+        let content = std::fs::read_to_string(&config_path).expect("read");
+        assert_eq!(
+            content, custom_content,
+            "existing file must not be overwritten when force=false"
+        );
+    }
+
+    #[test]
+    fn test_write_default_config_overwrites_with_force() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let config_path = dir.path().join("config.toml");
+        std::fs::write(&config_path, "# my custom config\n").expect("pre-write");
+
+        write_default_config_if_absent(&config_path, true);
+
+        let content = std::fs::read_to_string(&config_path).expect("read");
+        assert_eq!(
+            content, DEFAULT_CONFIG_TOML,
+            "force=true must overwrite with DEFAULT_CONFIG_TOML"
+        );
+    }
+
+    #[test]
+    fn test_write_default_config_succeeds_even_if_write_fails() {
+        // Use a path whose parent is a read-only directory to trigger a write failure.
+        // The function must return without panicking.
+        let dir = tempfile::tempdir().expect("tempdir");
+
+        // Make the directory read-only so any write inside will fail.
+        let ro_dir = dir.path().join("readonly");
+        std::fs::create_dir(&ro_dir).expect("mkdir");
+        let mut perms = std::fs::metadata(&ro_dir).expect("metadata").permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(0o555); // r-xr-xr-x: no write permission
+        }
+        std::fs::set_permissions(&ro_dir, perms).expect("set_permissions");
+
+        let config_path = ro_dir.join("config.toml");
+
+        // Must not panic regardless of whether the write succeeds or fails.
+        write_default_config_if_absent(&config_path, false);
+        write_default_config_if_absent(&config_path, true);
+
+        // Restore permissions so tempdir cleanup can succeed.
+        let mut perms = std::fs::metadata(&ro_dir).expect("metadata").permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(0o755);
+        }
+        std::fs::set_permissions(&ro_dir, perms).expect("restore_permissions");
     }
 }
