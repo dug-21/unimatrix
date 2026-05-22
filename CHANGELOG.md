@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.2] - 2026-05-22
+
+### Fixes
+- config: write commented default config.toml to project path on unimatrix init; add --force flag (#626)
+
 ## [0.7.1] - 2026-05-22
 
 ### Features
