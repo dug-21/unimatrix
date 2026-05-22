@@ -3,6 +3,14 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.1] - 2026-05-22
+
+### Features
+- uni-zero: upgrade orientation to load goal and feature graph by category
+
+### Fixes
+- graph: subgraph and neighbors depth>1 fall back to DB on cold-start — missing use_fallback check (#623)
+
 ## [0.7.0] - 2026-05-21
 
 ### Features
