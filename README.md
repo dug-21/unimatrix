@@ -47,6 +47,20 @@ npm install @dug-21/unimatrix
 
 The embedding model downloads automatically on first run (or via `npx unimatrix model-download`).
 
+### Container Deployment
+
+> **Platform: Linux x64 and arm64.** Multi-arch images published to GHCR on each release.
+
+```bash
+# One-command deployment with persistent data volume
+docker run -v unimatrix-data:/data ghcr.io/dug-21/unimatrix
+
+# Or via docker compose
+docker compose up
+```
+
+The container runs `unimatrix serve --foreground` as PID 1 (non-root, UID 65534). Both ONNX models (embedding + NLI) are baked into the image — no internet access required after pull. Data persists in the `unimatrix-data` named volume at `/data`. Optional config override via read-only bind mount at `/etc/unimatrix/config.toml`.
+
 ### Build from Source
 
 Prerequisites:
@@ -412,9 +426,11 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | Subcommand | Description | Key Flags |
 |------------|-------------|-----------|
 | `serve --daemon` | Start the MCP server as a detached background daemon. Daemonizes (fork/setsid), binds the MCP UDS socket (`unimatrix-mcp.sock`) and hook IPC socket, starts the background tick loop, and exits the launcher process. Fails non-zero if a healthy daemon is already running. Linux and macOS only. | `--daemon` |
+| `serve --foreground` | Start the MCP server in PID 1 foreground mode. Identical daemon functionality (UDS listener, tick loop, ML inference) without fork/setsid. SIGTERM triggers graceful shutdown. Designed for container deployment where the main process must remain PID 1. Mutually exclusive with `--daemon` and `--stdio`. | `--foreground` |
 | `serve --stdio` | Start the MCP server in foreground stdio mode. Identical in behavior to the pre-daemon default — the server runs until stdin closes, then performs graceful shutdown and exits. Use for development and testing. | `--stdio` |
 | `stop` | Send SIGTERM to the running daemon and wait for it to exit (up to 10 seconds). Exits 0 on success, non-zero if no daemon is running or the PID file is absent/stale. | None |
 | `hook <EVENT>` | Handle a lifecycle hook event from Claude Code, Gemini CLI, or Codex CLI. Reads JSON from stdin, connects to the running server via UDS. Provider-specific event names (e.g., Gemini's `BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary. Designed for use in hook configuration files, not direct user invocation. | Event name as positional arg. `--provider <name>` (`claude-code` \| `gemini-cli` \| `codex-cli`) — required for Codex (shares event names with Claude Code); optional for Gemini (inferred from event name); omit for Claude Code (backward-compatible default). |
+| `health` | Check daemon liveness by connecting to the MCP UDS socket. Exit 0 when the daemon is running and responsive, exit 1 otherwise. 5-second timeout. No output on success; brief diagnostic on stderr on failure. Used by Docker HEALTHCHECK. | None |
 | `export` | Export the knowledge base to JSONL format. No running server required. | `--output <PATH>` (defaults to stdout) |
 | `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
@@ -456,6 +472,8 @@ Single binary. The `hook` subcommand communicates with the running MCP server vi
 ### MCP Transport
 
 Daemon mode (default): Unimatrix runs as a persistent background daemon (`unimatrix serve --daemon`) that accepts MCP connections over a Unix Domain Socket (`unimatrix-mcp.sock`, 0600 permissions). Claude Code spawns a lightweight bridge process (the default `unimatrix` invocation) per session; the bridge connects stdin/stdout to the daemon's UDS socket. The daemon survives client disconnection — background tick, vector index, and all in-memory state persist across sessions. Up to 32 concurrent MCP sessions are supported.
+
+Foreground mode (container): `unimatrix serve --foreground` runs the full daemon (UDS listener, tick loop, ML inference) as PID 1 without fork/setsid. Used by the container `ENTRYPOINT`. SIGTERM triggers graceful shutdown.
 
 Stdio mode (explicit): `unimatrix serve --stdio` starts the server in foreground stdio mode. Identical to the pre-daemon behavior; use for development and testing.
 
