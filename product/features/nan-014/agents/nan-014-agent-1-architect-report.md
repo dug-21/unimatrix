@@ -48,5 +48,16 @@ Design architecture for nan-014 (Container Packaging — MIT Image).
 3. Distroless digest should be captured for reproducibility
 4. Model baking path in builder stage needs verification of exact output directory
 
+## Knowledge Stewardship
+
+Stored:
+- #4569: ADR-001 Foreground Mode as Direct tokio_main_daemon Call
+- #4570: ADR-002 ORT Supply Chain Verification via SHA-256
+- #4571: ADR-003 Health Check via UDS Socket Connect
+- #4572: ADR-004 CI Container Job Independence
+- #4573: ADR-005 Container Data Path Resolution via --project-dir /data
+- #4574: ADR-006 cargo-chef Version Pinning
+- #4575: ADR-007 PidGuard Self-PID Guard Against Container Restart Self-Termination
+
 ## Status
 Complete.
