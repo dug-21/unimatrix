@@ -5,17 +5,21 @@
 **Feeds**: W2-1 (container packaging)
 **Related open issue**: #517 (ONNX Runtime packaging decision)
 
+**Breadth**: code+ecosystem (internal build config, CI pipeline, Cargo workspace + external container ecosystem, ONNX packaging, base image landscape)
+**Approach**: evaluation
+**Confidence required**: directional
+
 ---
 
 ## Question
 
 How should the two Wave 2 containers be structured — the MIT developer cloud image and the commercial enterprise image — and what is the correct ONNX Runtime packaging approach for each?
 
-Wave 2 produces two distinct container images:
+Wave 2 introduces the evolution two distinct container images:
 
 | Image | Auth | Control plane | License | Use case |
 |-------|------|---------------|---------|----------|
-| `unimatrix` (MIT) | startup-generated static token | none | MIT | single developer, multiple machines, Codespaces |
+| `unimatrix` (MIT) | startup-generated static token | none | MIT | single developer, multiple machines, Codespaces, multiple projects |
 | `unimatrix-enterprise` (commercial) | OAuth 2.1 + RBAC | yes | commercial | multi-user, multi-agent, compliance |
 
 ---
@@ -52,6 +56,7 @@ Evaluate: can the two images share the same Dockerfile with build args, or do th
 - **Option B — System-installed ONNX Runtime**: ONNX Runtime installed in the base image. Container build links against it. Evaluate: which base image provides a compatible version, whether the version satisfies the model requirements, layer caching.
 - Evaluate specifically for the **container use case** — the STDIO dev use case may have a different answer.
 - What is the resulting container layer size difference between options? Smaller images matter for pull times and air-gap bundle size.
+- Dev Simplicity: docker run.... as a means for full operations w/out other actions is a direct value for adoption.
 
 ### 2. Base Image Selection
 - Candidates: distroless/cc, Alpine (musl), Debian slim (glibc), Ubuntu minimal.
@@ -72,11 +77,11 @@ Evaluate: can the two images share the same Dockerfile with build args, or do th
 - Single data volume (`unimatrix-data`) containing: knowledge DB(s), analytics DB(s), static token file, ONNX models
 - One volume = one `docker run` flag = lowest friction for the developer use case
 - Evaluate: is a single volume acceptable for the MIT image, or does separating the token file from the data DBs matter for this tier?
+- Project already creates hashed directories by project.. assumed this would continue to support multiple projects for both enterprise and developer cloud version.
 
 **Enterprise image** (per backup policy and compliance):
 - `unimatrix-control` — control plane DB (integrity-critical, audit log, backs up on its own policy)
-- `unimatrix-knowledge` — per-repo `knowledge.db` files (integrity-critical)
-- `unimatrix-analytics` — per-repo `analytics.db` files (self-healing, lower backup cadence)
+- `unimatrix-knowledge` — per-repo `unimatrix.db` files (integrity-critical)
 - `unimatrix-shared` — ONNX models + `config.toml` as read-only bind mount
 
 Evaluate: should `unimatrix-control` and `unimatrix-knowledge` be combined (same backup cadence) or kept separate (control plane may be on a different backup policy for SOC 2)?
@@ -100,6 +105,10 @@ Evaluate: Docker secrets, environment variables, mounted files from a secrets ma
 - Docker layer caching: `cargo chef` or equivalent to avoid full rebuild on non-dependency changes. Evaluate whether the two images can share cached layers.
 - CI/CD: should MIT and enterprise images publish on the same release tag, or on separate triggers?
 
+#### 7. Potential for future additional Inference
+- GGUF model inclusion is on the roadmap.  This or another small model type could be considered for addtinoal functionality.  Portability of shared model volume or other implications for GGUF
+
+
 ---
 
 ## Output
@@ -114,11 +123,29 @@ Evaluate: Docker secrets, environment variables, mounted files from a secrets ma
 
 ---
 
-## Constraints
+## Constraints (all Hard)
 
 - Non-root container user (non-negotiable, both images)
 - `config.toml` as read-only bind mount — never in a writable data volume (both images)
 - Air-gap deployable: no runtime internet dependencies once deployed (both images)
 - Single binary per container — one Unimatrix process, not a microservice mesh
 - MIT image must contain zero commercial code — build pipeline must enforce this at the crate boundary
-- Must support the two Linux targets the project already ships to
+- Must support two hardware architectures: x86_64 and ARM64. Linux only — which Linux base is part of the research.
+
+---
+
+## Prior Art
+
+**Codebase state:**
+- `ort = "=2.0.0-rc.9"` with `ort-sys = "=2.0.0-rc.9"`, default-features disabled (`crates/unimatrix-embed/Cargo.toml`)
+- Dynamic linking against system-installed ORT at `/usr/local/lib` via `.cargo/config.toml` (`ORT_LIB_LOCATION`, `ORT_PREFER_DYNAMIC_LINK=1`)
+- CI release builds use native runners: `ubuntu-22.04` (x64) and `ubuntu-22.04-arm` (arm64) — both glibc 2.35 baseline
+- ORT downloaded via `curl|tar` from GitHub releases in CI, copied to `/usr/local/lib/`
+- Binary stripped, RUNPATH verified, model-download smoke test in CI
+
+**Unimatrix entries (researcher should retrieve for full context):**
+- **#4274** (lesson): Release pipeline downloads ORT without SHA-256 checksum — supply chain risk. Fix: pin expected hash alongside ORT_VERSION.
+- **#4284** (lesson): Pin x64 to ubuntu-22.04 to match arm64 glibc 2.35 floor. ubuntu-latest (24.04, glibc 2.39) creates silent compatibility gap.
+- **#4554** (feature): W2-1 container packaging — named volumes, non-root user, HEALTHCHECK on liveness + schema version.
+- **#2808** (ADR-006): Lazy embedding model initialization — relevant to container startup behavior.
+- **#2804** (lesson): ONNX-backed components use feature-flagged stubs and pure function extraction.
