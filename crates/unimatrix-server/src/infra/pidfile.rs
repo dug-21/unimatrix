@@ -256,6 +256,15 @@ pub fn handle_stale_pid_file(
         None => return Ok(true), // No PID file or unreadable — nothing to do.
     };
 
+    // Self-PID guard (ADR-007): if the stale PID file references our own
+    // process, reclaim directly without any signal. This happens on container
+    // restart where PID 1 is always reused. A process cannot be "stale"
+    // relative to itself. Placed BEFORE is_process_alive to avoid self-SIGTERM.
+    if pid == std::process::id() {
+        tracing::info!(pid, "stale PID file references current process; reclaiming");
+        return Ok(true);
+    }
+
     if !is_process_alive(pid) {
         tracing::info!(
             pid,
@@ -565,5 +574,63 @@ mod tests {
         let contents = fs::read_to_string(&path).unwrap();
         let pid: u32 = contents.trim().parse().unwrap();
         assert_eq!(pid, std::process::id());
+    }
+
+    // --- Self-PID guard tests (ADR-007) ---
+
+    #[cfg(unix)]
+    #[test]
+    fn test_handle_stale_self_pid_reclaims_without_sigterm() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("self.pid");
+        // Write the current process's own PID — simulates container restart
+        // where PID 1 is reused.
+        fs::write(&path, format!("{}\n", std::process::id())).unwrap();
+
+        let result = handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        assert!(result, "self-PID should resolve as reclaimed");
+        // PID file left in place for PidGuard::acquire (#146).
+        assert!(
+            path.exists(),
+            "PID file should remain for PidGuard to reclaim"
+        );
+        // Critical: process must still be alive (no self-SIGTERM).
+        assert!(
+            is_process_alive(std::process::id()),
+            "current process must still be alive after self-PID guard"
+        );
+    }
+
+    #[test]
+    fn test_handle_stale_pid_file_other_pid_still_works() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("other.pid");
+        // Write a PID that definitely does not exist — must still go through
+        // the is_process_alive dead-process path, not the self-PID guard.
+        fs::write(&path, "4000001\n").unwrap();
+
+        let result = handle_stale_pid_file(&path, std::time::Duration::from_secs(1)).unwrap();
+        assert!(result, "dead non-self PID should resolve normally");
+        assert!(
+            path.exists(),
+            "PID file should remain for PidGuard to reclaim"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_handle_stale_self_pid_returns_reclaimed() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("self2.pid");
+        fs::write(&path, format!("{}\n", std::process::id())).unwrap();
+
+        // The return value must be Ok(true) — meaning "resolved, PidGuard can
+        // proceed to acquire". This is the same return as the dead-process path.
+        let result = handle_stale_pid_file(&path, std::time::Duration::from_secs(1));
+        assert!(result.is_ok(), "self-PID guard should not error");
+        assert!(
+            result.unwrap(),
+            "self-PID guard must return true (reclaimed)"
+        );
     }
 }
