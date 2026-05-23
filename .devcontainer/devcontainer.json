@@ -1,16 +1,18 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
   "features": {
     "ghcr.io/devcontainers/features/rust:1": {},
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers/features/python:1": {},
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "dockerDashComposeVersion": "v2",
-      "moby": true,
-      "version": "27"
+      "moby": false
     }
   },
   "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash && echo 'alias dsp=\"claude --dangerously-skip-permissions\"' >> ~/.bashrc && echo 'alias dspc=\"claude --dangerously-skip-permissions -c\"' >> ~/.bashrc",
+  "postStartCommand": ".devcontainer/setup-docker.sh",
   "customizations": {
     "vscode": {
       "extensions": [
