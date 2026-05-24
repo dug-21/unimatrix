@@ -2083,6 +2083,19 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<UnimatrixConfig, 
     // breakage if the OnceLock ever changes behavior. Do NOT remove this call.
     let _scanner = ContentScanner::global();
 
+    // Step 0: check UNIMATRIX_CONFIG env var (highest priority — container override).
+    // When set AND the file exists, load it as the override config.
+    // If the env var is set but the file does not exist, log debug and skip.
+    // If the env var is not set, skip entirely.
+    let env_config_path =
+        resolve_env_config_path(std::env::var("UNIMATRIX_CONFIG").ok().as_deref());
+    let env_config = if let Some(ref path) = env_config_path {
+        tracing::info!(path = %path.display(), "loading config from UNIMATRIX_CONFIG");
+        Some(load_single_config(path)?)
+    } else {
+        None
+    };
+
     // Step 1: load global config (~/.unimatrix/config.toml).
     let global_path = home_dir.join(".unimatrix").join("config.toml");
     let global_config = if global_path.exists() {
@@ -2106,11 +2119,54 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<UnimatrixConfig, 
     // Step 3: merge (per-project fields win over global, global wins over compiled defaults).
     let merged = merge_configs(global_config, project_config);
 
+    // Step 3b: if env_config exists, merge it ON TOP (highest priority).
+    // env_config fields win over project, global, and compiled defaults.
+    let merged = match env_config {
+        Some(env_cfg) => merge_configs(merged, env_cfg),
+        None => merged,
+    };
+
     // Step 4: post-merge validation — catches constraint violations that only appear
     // when two individually-valid configs are combined (e.g., fusion weight sum > 1.0).
-    validate_config(&merged, &global_path)?;
+    // Use the env config path for error reporting when present,
+    // otherwise fall back to global_path (existing behavior).
+    let validation_path = env_config_path.unwrap_or(global_path);
+    validate_config(&merged, &validation_path)?;
 
     Ok(merged)
+}
+
+/// Resolve a config file path from the `UNIMATRIX_CONFIG` env var value.
+///
+/// Returns `Some(path)` when the value is a non-empty string pointing to an
+/// existing regular file. Returns `None` when the value is absent, empty, or
+/// points to a path that does not exist (or is a directory).
+///
+/// This is a pure function — it takes the env var value as a parameter so it
+/// can be tested without `std::env::set_var` (which is unsafe in Rust 2024
+/// edition with `#![forbid(unsafe_code)]`).
+fn resolve_env_config_path(env_value: Option<&str>) -> Option<PathBuf> {
+    let path_str = env_value?;
+    if path_str.is_empty() {
+        tracing::debug!("UNIMATRIX_CONFIG is empty; skipping");
+        return None;
+    }
+    let path = PathBuf::from(path_str);
+    if path.is_file() {
+        Some(path)
+    } else {
+        tracing::debug!(
+            path = %path.display(),
+            "UNIMATRIX_CONFIG set but file not found; skipping"
+        );
+        None
+    }
+}
+
+/// Expose `resolve_env_config_path` for unit tests.
+#[cfg(test)]
+pub(crate) fn resolve_env_config_path_for_test(env_value: Option<&str>) -> Option<PathBuf> {
+    resolve_env_config_path(env_value)
 }
 
 /// Post-parse field validation for a single config file.
@@ -8990,5 +9046,106 @@ nli_informs_ppr_weight = 0.4
             perms.set_mode(0o755);
         }
         std::fs::set_permissions(&ro_dir, perms).expect("restore_permissions");
+    }
+
+    // -----------------------------------------------------------------------
+    // UNIMATRIX_CONFIG env var override tests (nan-014, ADR-005)
+    //
+    // Tests target resolve_env_config_path_for_test() to avoid env var
+    // mutation (forbidden by #![forbid(unsafe_code)] on std::env::set_var
+    // in Rust 2024 edition).
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_unimatrix_config_env_overrides_default() {
+        // Env var set to a valid file — returns that path.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let config_path = dir.path().join("config.toml");
+        std::fs::write(&config_path, "[profile]\npreset = \"collaborative\"\n").expect("write");
+
+        let result = resolve_env_config_path_for_test(Some(config_path.to_str().unwrap()));
+        assert_eq!(
+            result,
+            Some(config_path),
+            "UNIMATRIX_CONFIG pointing to an existing file must be returned"
+        );
+    }
+
+    #[test]
+    fn test_unimatrix_config_env_missing_file_falls_through() {
+        // Env var set to a nonexistent path — returns None (fall through).
+        let result =
+            resolve_env_config_path_for_test(Some("/tmp/nonexistent_unimatrix_config.toml"));
+        assert_eq!(
+            result, None,
+            "UNIMATRIX_CONFIG pointing to a missing file must return None"
+        );
+    }
+
+    #[test]
+    fn test_unimatrix_config_env_unset_uses_default() {
+        // Env var not set (None) — returns None.
+        let result = resolve_env_config_path_for_test(None);
+        assert_eq!(result, None, "absent UNIMATRIX_CONFIG must return None");
+    }
+
+    #[test]
+    fn test_unimatrix_config_env_empty_string_falls_through() {
+        // Env var set to empty string — treated as absent.
+        let result = resolve_env_config_path_for_test(Some(""));
+        assert_eq!(
+            result, None,
+            "empty UNIMATRIX_CONFIG must be treated as absent"
+        );
+    }
+
+    #[test]
+    fn test_unimatrix_config_env_directory_not_file_falls_through() {
+        // Env var points to a directory, not a file — returns None.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let result = resolve_env_config_path_for_test(Some(dir.path().to_str().unwrap()));
+        assert_eq!(
+            result, None,
+            "UNIMATRIX_CONFIG pointing to a directory must return None"
+        );
+    }
+
+    #[test]
+    fn test_unimatrix_config_env_precedence() {
+        // Integration test: env config merges ON TOP of global+project.
+        // env_config with preset = "operational" wins over project preset = "authoritative".
+        let _scanner = ContentScanner::global();
+
+        // Write a per-project config with preset = "authoritative".
+        let project_dir = tempfile::tempdir().expect("project_dir");
+        let project_config_path = project_dir.path().join("config.toml");
+        std::fs::write(
+            &project_config_path,
+            "[profile]\npreset = \"authoritative\"\n",
+        )
+        .expect("write project config");
+
+        // Write an env override config with preset = "operational".
+        let env_dir = tempfile::tempdir().expect("env_dir");
+        let env_config_path = env_dir.path().join("config.toml");
+        std::fs::write(&env_config_path, "[profile]\npreset = \"operational\"\n")
+            .expect("write env config");
+
+        // Manually replicate load_config merge logic with the env override
+        // (since we cannot set env vars in tests due to #![forbid(unsafe_code)]).
+        let env_cfg = load_single_config(&env_config_path).expect("load env config");
+        let project_cfg = load_single_config(&project_config_path).expect("load project config");
+        let global_cfg = UnimatrixConfig::default();
+
+        // Merge: project over global, then env over result.
+        let merged = merge_configs(global_cfg, project_cfg);
+        let merged = merge_configs(merged, env_cfg);
+        validate_config(&merged, &env_config_path).expect("validation");
+
+        assert_eq!(
+            merged.profile.preset,
+            Preset::Operational,
+            "UNIMATRIX_CONFIG preset (operational) must override per-project preset (authoritative)"
+        );
     }
 }

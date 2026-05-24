@@ -1,0 +1,57 @@
+# Build artifacts
+target/
+patches/anndists/target/
+
+# Version control
+.git/
+.gitignore
+
+# Documentation and product files
+product/
+*.md
+!README.md
+
+# Development tooling
+.claude/
+.github/
+.vscode/
+.devcontainer/
+.devcontainer.json
+.codex/
+.gemini/
+.pytest_cache/
+
+# npm packages
+packages/
+node_modules/
+package-lock.json
+
+# Environment and secrets
+.env
+.env.*
+
+# Test fixtures and data
+tests/
+test-data/
+*.snap
+*.snap.new
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Other non-essential files
+.mcp.json
+.mcp copy.json
+config.toml
+docs/
+knowledge/
+protocols/
+scripts/
+skills/
+*.jsonl

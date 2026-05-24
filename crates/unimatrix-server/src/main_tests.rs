@@ -128,7 +128,7 @@ fn test_handle_version_prints_version() {
 fn test_serve_daemon_subcommand_parsed() {
     let cli = Cli::try_parse_from(["unimatrix", "serve", "--daemon"]).unwrap();
     match cli.command {
-        Some(Command::Serve { daemon, stdio }) => {
+        Some(Command::Serve { daemon, stdio, .. }) => {
             assert!(daemon, "serve --daemon must set daemon=true");
             assert!(!stdio, "serve --daemon must not set stdio=true");
         }
@@ -142,7 +142,7 @@ fn test_serve_daemon_subcommand_parsed() {
 fn test_serve_stdio_subcommand_parsed() {
     let cli = Cli::try_parse_from(["unimatrix", "serve", "--stdio"]).unwrap();
     match cli.command {
-        Some(Command::Serve { daemon, stdio }) => {
+        Some(Command::Serve { daemon, stdio, .. }) => {
             assert!(!daemon, "serve --stdio must not set daemon=true");
             assert!(stdio, "serve --stdio must set stdio=true");
         }
@@ -155,7 +155,7 @@ fn test_serve_stdio_subcommand_parsed() {
 fn test_serve_bare_subcommand_parsed() {
     let cli = Cli::try_parse_from(["unimatrix", "serve"]).unwrap();
     match cli.command {
-        Some(Command::Serve { daemon, stdio }) => {
+        Some(Command::Serve { daemon, stdio, .. }) => {
             assert!(!daemon, "bare serve must have daemon=false");
             assert!(!stdio, "bare serve must have stdio=false");
         }
@@ -323,7 +323,7 @@ fn test_serve_daemon_with_daemon_child_flag() {
     let cli = Cli::try_parse_from(["unimatrix", "--daemon-child", "serve", "--daemon"]).unwrap();
     assert!(cli.daemon_child, "daemon_child must be true");
     match cli.command {
-        Some(Command::Serve { daemon, stdio }) => {
+        Some(Command::Serve { daemon, stdio, .. }) => {
             assert!(daemon);
             assert!(!stdio);
         }
@@ -825,6 +825,35 @@ fn test_model_download_nli_deberta_flag_parsed() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// nan-014: Health subcommand CLI parsing tests (ADR-003)
+// ---------------------------------------------------------------------------
+
+/// ADR-003: `health` subcommand is registered and parseable.
+#[test]
+fn test_health_subcommand_parsed() {
+    let cli = Cli::try_parse_from(["unimatrix", "health"]).unwrap();
+    assert!(
+        matches!(cli.command, Some(Command::Health)),
+        "expected Health variant"
+    );
+}
+
+/// ADR-003: `health` with `--project-dir` parses both flags correctly.
+#[test]
+fn test_health_with_project_dir_parsed() {
+    let cli = Cli::try_parse_from(["unimatrix", "--project-dir", "/data", "health"]).unwrap();
+    assert!(
+        matches!(cli.command, Some(Command::Health)),
+        "expected Health variant"
+    );
+    assert_eq!(
+        cli.project_dir,
+        Some(PathBuf::from("/data")),
+        "project_dir must be /data"
+    );
+}
+
 /// ADR-005: `--configs` comma-separated string splits into multiple PathBufs.
 #[test]
 fn test_eval_run_configs_comma_split() {
@@ -862,5 +891,111 @@ fn test_eval_run_configs_comma_split() {
             other => panic!("expected EvalCommand::Run, got {other:?}"),
         },
         other => panic!("expected Eval, got {other:?}"),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// nan-014: serve --foreground CLI parsing tests (ADR-001)
+// ---------------------------------------------------------------------------
+
+/// nan-014 AC: `serve --foreground` parses with foreground=true, daemon=false, stdio=false.
+#[test]
+fn test_foreground_flag_parsed() {
+    let cli = Cli::try_parse_from(["unimatrix", "serve", "--foreground"]).unwrap();
+    match cli.command {
+        Some(Command::Serve {
+            foreground,
+            daemon,
+            stdio,
+        }) => {
+            assert!(foreground, "--foreground must set foreground=true");
+            assert!(!daemon, "--foreground must not set daemon=true");
+            assert!(!stdio, "--foreground must not set stdio=true");
+        }
+        other => panic!("expected Serve, got {other:?}"),
+    }
+}
+
+/// nan-014 R-11: `--foreground --daemon` must be rejected by clap (conflicts_with_all).
+#[test]
+fn test_foreground_conflicts_with_daemon() {
+    let result = Cli::try_parse_from(["unimatrix", "serve", "--foreground", "--daemon"]);
+    assert!(result.is_err(), "--foreground and --daemon must conflict");
+}
+
+/// nan-014 R-11: `--foreground --stdio` must be rejected by clap (conflicts_with_all).
+#[test]
+fn test_foreground_conflicts_with_stdio() {
+    let result = Cli::try_parse_from(["unimatrix", "serve", "--foreground", "--stdio"]);
+    assert!(result.is_err(), "--foreground and --stdio must conflict");
+}
+
+/// nan-014 R-01: `serve --daemon` still parses correctly after adding foreground field.
+/// ANY modification to this test is a regression signal per R-01.
+#[test]
+fn test_daemon_still_works() {
+    let cli = Cli::try_parse_from(["unimatrix", "serve", "--daemon"]).unwrap();
+    match cli.command {
+        Some(Command::Serve {
+            daemon,
+            foreground,
+            stdio,
+        }) => {
+            assert!(daemon, "serve --daemon must set daemon=true");
+            assert!(!foreground, "serve --daemon must not set foreground=true");
+            assert!(!stdio, "serve --daemon must not set stdio=true");
+        }
+        other => panic!("expected Serve, got {other:?}"),
+    }
+}
+
+/// nan-014 R-01: `serve --stdio` still parses correctly after adding foreground field.
+#[test]
+fn test_stdio_still_works() {
+    let cli = Cli::try_parse_from(["unimatrix", "serve", "--stdio"]).unwrap();
+    match cli.command {
+        Some(Command::Serve {
+            daemon,
+            foreground,
+            stdio,
+        }) => {
+            assert!(!daemon, "serve --stdio must not set daemon=true");
+            assert!(!foreground, "serve --stdio must not set foreground=true");
+            assert!(stdio, "serve --stdio must set stdio=true");
+        }
+        other => panic!("expected Serve, got {other:?}"),
+    }
+}
+
+/// nan-014: bare `serve` (no flags) defaults foreground to false.
+#[test]
+fn test_serve_bare_defaults_foreground_false() {
+    let cli = Cli::try_parse_from(["unimatrix", "serve"]).unwrap();
+    match cli.command {
+        Some(Command::Serve {
+            foreground,
+            daemon,
+            stdio,
+        }) => {
+            assert!(!foreground, "bare serve must have foreground=false");
+            assert!(!daemon, "bare serve must have daemon=false");
+            assert!(!stdio, "bare serve must have stdio=false");
+        }
+        other => panic!("expected Serve, got {other:?}"),
+    }
+}
+
+/// nan-014: `--foreground` appears in `serve --help` output.
+#[test]
+fn test_foreground_appears_in_serve_help() {
+    let mut cmd = Cli::command();
+    if let Some(serve_cmd) = cmd.find_subcommand_mut("serve") {
+        let help = format!("{}", serve_cmd.render_help());
+        assert!(
+            help.contains("foreground"),
+            "`--foreground` must appear in `serve --help`; got:\n{help}"
+        );
+    } else {
+        panic!("`serve` subcommand not found in CLI");
     }
 }

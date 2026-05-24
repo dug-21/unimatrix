@@ -25,6 +25,7 @@ pub mod error;
 pub mod eval;
 pub mod export;
 pub mod format;
+pub mod health;
 pub mod import;
 pub mod infra;
 pub mod mcp;

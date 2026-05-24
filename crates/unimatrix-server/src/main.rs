@@ -159,9 +159,10 @@ enum Command {
         nli_model: Option<String>,
     },
 
-    /// Start the MCP server in daemon or stdio mode.
+    /// Start the MCP server in daemon, foreground, or stdio mode.
     ///
     /// `--daemon`: detach to background; use bridge mode (no args) for normal operation.
+    /// `--foreground`: run as PID 1 foreground process (container mode).
     /// `--stdio`: run in foreground stdio mode (pre-vnc-005 behavior; for development).
     Serve {
         /// Run as a detached background daemon.
@@ -171,7 +172,19 @@ enum Command {
         /// Run in foreground stdio mode (pre-vnc-005 default behavior).
         #[arg(long)]
         stdio: bool,
+
+        /// Run as PID 1 foreground process (container mode).
+        /// Identical to daemon but without fork/setsid.
+        #[arg(long, conflicts_with_all = ["daemon", "stdio"])]
+        foreground: bool,
     },
+
+    /// Check daemon liveness via UDS socket connect.
+    ///
+    /// Resolves ProjectPaths and attempts to connect to the MCP UDS socket.
+    /// Exit 0 = healthy, exit 1 = unhealthy. Synchronous path, no tokio runtime.
+    /// Used by Docker HEALTHCHECK directive (nan-014, ADR-003).
+    Health,
 
     /// Stop the running background daemon.
     ///
@@ -285,6 +298,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Sync path: NO tokio
             return handle_model_download(nli, nli_model);
         }
+        Some(Command::Health) => {
+            // Sync path: NO tokio (ADR-003).
+            // run() returns 0 (healthy) or 1 (unhealthy); matches run_stop pattern.
+            std::process::exit(unimatrix_server::health::run(cli.project_dir.as_deref()));
+        }
         Some(Command::Stop) => {
             // Sync path: NO tokio (ADR-006)
             // run_stop returns an exit code; we call std::process::exit here.
@@ -302,8 +320,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return unimatrix_server::eval::run_eval_command(eval_cmd, cli.project_dir.as_deref());
         }
         Some(Command::Serve {
+            foreground: true, ..
+        }) => {
+            // Foreground mode — direct tokio_main_daemon call (ADR-001).
+            // No launcher, no child spawn, no setsid. PID 1 container mode.
+            return tokio_main_daemon(cli);
+        }
+        Some(Command::Serve {
             daemon: true,
             stdio: _,
+            ..
         }) => {
             // Daemon path — launcher or child (ADR-001 / C-01).
             //
@@ -327,6 +353,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Command::Serve {
             daemon: false,
             stdio: _,
+            ..
         }) => {
             // Stdio mode: serve --stdio or bare `serve` with no flags.
             // Identical to pre-vnc-005 default behavior (R-12 regression gate).
