@@ -11,10 +11,11 @@ from typing import Any
 
 
 CATEGORIES = [
-    "outcome",
-    "lesson-learned",
-    "decision",
     "convention",
+    "decision",
+    "feature",
+    "goal",
+    "lesson-learned",
     "pattern",
     "procedure",
 ]

@@ -51,12 +51,13 @@ fn builtin_claude_code_pack() -> DomainPack {
             "SubagentStart".to_string(),
             "SubagentStop".to_string(),
         ],
-        // All 5 active INITIAL_CATEGORIES from CategoryAllowlist (C-10).
+        // All 7 active INITIAL_CATEGORIES from CategoryAllowlist (C-10).
         categories: vec![
-            "outcome".to_string(),
-            "lesson-learned".to_string(),
-            "decision".to_string(),
             "convention".to_string(),
+            "decision".to_string(),
+            "feature".to_string(),
+            "goal".to_string(),
+            "lesson-learned".to_string(),
             "pattern".to_string(),
             "procedure".to_string(),
         ],

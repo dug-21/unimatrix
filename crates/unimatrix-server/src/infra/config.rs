@@ -151,7 +151,7 @@ pub fn default_boosted_categories_set() -> HashSet<String> {
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(default)]
 pub struct KnowledgeConfig {
-    /// Allowed entry categories. Default: the 5 INITIAL_CATEGORIES.
+    /// Allowed entry categories. Default: the 7 INITIAL_CATEGORIES.
     pub categories: Vec<String>,
     /// Categories that receive a provenance boost in search re-ranking.
     /// Default (serde): `["lesson-learned"]`. Default (Rust `Default` impl): `[]`.
@@ -3085,10 +3085,10 @@ pub static DEFAULT_CONFIG_TOML: &str = r#"# Unimatrix configuration file.
 # [knowledge] — categories and freshness configuration
 # ---------------------------------------------------------------------------
 [knowledge]
-# Allowed entry categories. Defaults are the 5 built-in INITIAL_CATEGORIES.
+# Allowed entry categories. Defaults are the 7 built-in INITIAL_CATEGORIES.
 # Each entry: lowercase letters (a-z), digits (0-9), hyphens (-), underscores (_).
 # Maximum 64 entries; each at most 64 characters.
-# categories = ["decision", "convention", "pattern", "lesson-learned", "procedure"]
+# categories = ["convention", "decision", "feature", "goal", "lesson-learned", "pattern", "procedure"]
 
 # Categories that receive a provenance boost in search re-ranking.
 # Must be a subset of categories above.
