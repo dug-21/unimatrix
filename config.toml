@@ -39,7 +39,7 @@ preset = "collaborative"
 # To add custom categories, extend this list — do not remove the built-in values
 # unless you have migrated all existing entries.
 # Default: the 5 built-in categories
-categories = ["lesson-learned", "decision", "convention", "pattern", "procedure"]
+categories = ["lesson-learned", "decision", "convention", "pattern", "procedure", "goal", "feature"]
 
 # Categories that receive an additional ranking boost in search results.
 #
