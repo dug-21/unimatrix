@@ -54,3 +54,4 @@ knowledge/
 protocols/
 scripts/
 skills/
+*.jsonl

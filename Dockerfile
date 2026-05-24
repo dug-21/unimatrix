@@ -29,22 +29,9 @@ RUN cargo install cargo-chef --version ${CHEF_VERSION} --locked
 
 WORKDIR /src
 
-# Copy workspace manifests and patches for recipe extraction.
-# Patches must be present for workspace resolution.
-COPY Cargo.toml Cargo.lock ./
-COPY .cargo/config.toml .cargo/config.toml
-COPY patches/ patches/
-
-# Copy each crate's Cargo.toml (workspace members).
-COPY crates/unimatrix-adapt/Cargo.toml crates/unimatrix-adapt/Cargo.toml
-COPY crates/unimatrix-core/Cargo.toml crates/unimatrix-core/Cargo.toml
-COPY crates/unimatrix-embed/Cargo.toml crates/unimatrix-embed/Cargo.toml
-COPY crates/unimatrix-engine/Cargo.toml crates/unimatrix-engine/Cargo.toml
-COPY crates/unimatrix-learn/Cargo.toml crates/unimatrix-learn/Cargo.toml
-COPY crates/unimatrix-observe/Cargo.toml crates/unimatrix-observe/Cargo.toml
-COPY crates/unimatrix-server/Cargo.toml crates/unimatrix-server/Cargo.toml
-COPY crates/unimatrix-store/Cargo.toml crates/unimatrix-store/Cargo.toml
-COPY crates/unimatrix-vector/Cargo.toml crates/unimatrix-vector/Cargo.toml
+# cargo chef prepare runs cargo metadata, which needs full source to resolve
+# workspace members. The planner only outputs recipe.json — source isn't cached.
+COPY . .
 
 RUN cargo chef prepare --recipe-path recipe.json
 
@@ -57,6 +44,8 @@ FROM rust:${RUST_VERSION}-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     pkg-config \
+    libssl-dev \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 ARG CHEF_VERSION
@@ -108,11 +97,12 @@ RUN cargo build --release && \
 ENV HOME=/data
 RUN mkdir -p /data && \
     LD_LIBRARY_PATH=/usr/local/lib target/release/unimatrix model-download && \
-    LD_LIBRARY_PATH=/usr/local/lib target/release/unimatrix model-download --nli
+    LD_LIBRARY_PATH=/usr/local/lib target/release/unimatrix model-download --nli && \
+    rm -rf /data/.cache/huggingface
 
 # --- /data directory setup (WARN-2) ---
-# UID 65534 = nonroot user in distroless.
-RUN chown 65534:65534 /data && \
+# UID 65532 = nonroot user in distroless/cc-debian12:nonroot.
+RUN chown -R 65532:65532 /data && \
     chmod 0700 /data
 
 # =============================================================================
@@ -121,17 +111,18 @@ RUN chown 65534:65534 /data && \
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 
 # Binary.
-COPY --from=builder --chown=65534:65534 \
+COPY --from=builder --chown=65532:65532 \
     /src/target/release/unimatrix /usr/local/bin/unimatrix
 
 # ORT shared library.
 COPY --from=builder /usr/local/lib/libonnxruntime.so* /usr/local/lib/
 
-# Baked-in models (embedding + NLI).
-COPY --from=builder --chown=65534:65534 /data/.cache/ /data/.cache/
+# Baked-in models (embedding + NLI). Only copy the unimatrix model cache,
+# not the huggingface hub cache (which has duplicate blobs and symlinks).
+COPY --from=builder --chown=65532:65532 /data/.cache/unimatrix/ /data/.cache/unimatrix/
 
 # /data directory with correct ownership and permissions.
-COPY --from=builder --chown=65534:65534 /data /data
+COPY --from=builder --chown=65532:65532 /data /data
 
 # Environment (ADR-005).
 ENV HOME=/data \
@@ -144,9 +135,9 @@ VOLUME ["/data"]
 
 # Liveness probe (ADR-003).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["unimatrix", "health", "--project-dir", "/data"]
+    CMD ["unimatrix", "--project-dir", "/data", "health"]
 
 # No EXPOSE — no HTTP listener until W2-2 (C-10).
 
 ENTRYPOINT ["unimatrix"]
-CMD ["serve", "--foreground", "--project-dir", "/data"]
+CMD ["--project-dir", "/data", "serve", "--foreground"]
