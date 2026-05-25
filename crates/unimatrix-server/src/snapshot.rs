@@ -52,8 +52,29 @@ pub fn run_snapshot(
     project_dir: Option<&Path>,
     out: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    run_snapshot_inner(project_dir, out, None)
+}
+
+/// Produce a snapshot with an explicit `base_dir` for test isolation.
+///
+/// Identical to [`run_snapshot`] but routes data storage to the given `base_dir`
+/// instead of `~/.unimatrix/`. Use this in tests to avoid leaking directories
+/// into the user's home directory.
+pub fn run_snapshot_with_base(
+    project_dir: Option<&Path>,
+    out: &Path,
+    base_dir: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    run_snapshot_inner(project_dir, out, Some(base_dir))
+}
+
+fn run_snapshot_inner(
+    project_dir: Option<&Path>,
+    out: &Path,
+    base_dir: Option<&Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Resolve project paths.
-    let paths = project::ensure_data_directory(project_dir, None)?;
+    let paths = project::ensure_data_directory(project_dir, base_dir)?;
 
     // 2. Live-DB path guard (C-13, FR-04, NFR-06, ADR-001).
     let active_db = std::fs::canonicalize(&paths.db_path).map_err(|e| {
@@ -290,13 +311,18 @@ mod tests {
 
     // ---------------------------------------------------------------------------
     // Helper: resolve the db_path that ensure_data_directory will assign for a
-    // given project_dir without requiring the DB to exist. The data directory
-    // is created by ensure_data_directory; the DB file itself is NOT.
+    // given project_dir and base_dir without requiring the DB to exist. The data
+    // directory is created by ensure_data_directory; the DB file itself is NOT.
     // ---------------------------------------------------------------------------
-    fn resolve_db_path(project_dir: &Path) -> PathBuf {
-        project::ensure_data_directory(Some(project_dir), None)
-            .expect("ensure_data_directory should succeed")
-            .db_path
+    fn resolve_db_path(project_dir: &Path, base_dir: &Path) -> PathBuf {
+        let paths = project::ensure_data_directory(Some(project_dir), Some(base_dir))
+            .expect("ensure_data_directory should succeed");
+        // Meta-assertion: data_dir must live inside base_dir (GH#640 guard).
+        assert!(
+            paths.data_dir.starts_with(base_dir),
+            "data_dir must be inside base_dir to prevent home directory leaks"
+        );
+        paths.db_path
     }
 
     // ---------------------------------------------------------------------------
@@ -305,13 +331,14 @@ mod tests {
     #[test]
     fn test_snapshot_path_guard_same_path() {
         let dir = TempDir::new().unwrap();
-        // Resolve the db_path that run_snapshot will use for this project dir.
-        let db_path = resolve_db_path(dir.path());
+        let base = TempDir::new().unwrap();
+        // Resolve the db_path that run_snapshot_with_base will use for this project dir.
+        let db_path = resolve_db_path(dir.path(), base.path());
         // Create the DB file so canonicalize succeeds on the source side.
         create_stub_file(&db_path);
 
         // Pass the same path as `out` — guard must reject it.
-        let result = run_snapshot(Some(dir.path()), &db_path);
+        let result = run_snapshot_with_base(Some(dir.path()), &db_path, base.path());
         assert!(result.is_err(), "expected path guard to reject same path");
         let msg = result.unwrap_err().to_string();
         assert!(
@@ -335,14 +362,15 @@ mod tests {
     #[cfg(unix)]
     fn test_snapshot_path_guard_symlink() {
         let dir = TempDir::new().unwrap();
-        let db_path = resolve_db_path(dir.path());
+        let base = TempDir::new().unwrap();
+        let db_path = resolve_db_path(dir.path(), base.path());
         create_stub_file(&db_path);
 
         // Create a symlink in the temp dir pointing at the active DB.
         let symlink_path = dir.path().join("link.db");
         std::os::unix::fs::symlink(&db_path, &symlink_path).unwrap();
 
-        let result = run_snapshot(Some(dir.path()), &symlink_path);
+        let result = run_snapshot_with_base(Some(dir.path()), &symlink_path, base.path());
         assert!(result.is_err(), "expected symlink guard to reject");
         let msg = result.unwrap_err().to_string();
         assert!(
@@ -357,12 +385,13 @@ mod tests {
     #[test]
     fn test_snapshot_parent_dir_missing() {
         let dir = TempDir::new().unwrap();
-        let db_path = resolve_db_path(dir.path());
+        let base = TempDir::new().unwrap();
+        let db_path = resolve_db_path(dir.path(), base.path());
         create_stub_file(&db_path);
 
         // Output path whose parent does not exist.
         let missing_parent = dir.path().join("nonexistent_parent").join("snap.db");
-        let result = run_snapshot(Some(dir.path()), &missing_parent);
+        let result = run_snapshot_with_base(Some(dir.path()), &missing_parent, base.path());
         assert!(result.is_err(), "expected error for missing parent dir");
         let msg = result.unwrap_err().to_string();
         assert!(
@@ -383,9 +412,10 @@ mod tests {
         // Use a fresh temp dir — ensure_data_directory will create the data directory
         // but NOT the unimatrix.db file, so canonicalize on paths.db_path will fail.
         let dir = TempDir::new().unwrap();
+        let base = TempDir::new().unwrap();
         let out = dir.path().join("snap.db");
 
-        let result = run_snapshot(Some(dir.path()), &out);
+        let result = run_snapshot_with_base(Some(dir.path()), &out, base.path());
         assert!(
             result.is_err(),
             "expected error when source DB does not exist"

@@ -9,7 +9,7 @@ use std::path::Path;
 
 use serde_json::Value;
 use tempfile::TempDir;
-use unimatrix_server::export::run_export;
+use unimatrix_server::export::{run_export, run_export_with_base};
 use unimatrix_server::project;
 use unimatrix_store::SqlxStore;
 
@@ -17,15 +17,23 @@ use unimatrix_store::SqlxStore;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Set up a project directory and return (project_dir, db_path).
+/// Set up a project directory with an isolated base_dir and return
+/// (project_dir, base_dir, db_path).
 ///
-/// Uses `base_dir=None` so the database is resolved to `~/.unimatrix/{hash}/`,
-/// matching what `run_export` does internally. Each temp dir has a unique path
-/// hash so tests do not collide.
-fn setup_project() -> (TempDir, std::path::PathBuf) {
+/// Uses an explicit `base_dir` TempDir so the database is resolved inside a
+/// temporary directory rather than `~/.unimatrix/`. This prevents test runs
+/// from leaking orphaned hash directories into the user's home directory.
+fn setup_project() -> (TempDir, TempDir, std::path::PathBuf) {
     let project_dir = TempDir::new().expect("create project temp dir");
-    let paths = project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
-    (project_dir, paths.db_path)
+    let base_dir = TempDir::new().expect("create base temp dir");
+    let paths =
+        project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+    // Meta-assertion: data_dir must live inside base_dir (GH#640 guard).
+    assert!(
+        paths.data_dir.starts_with(base_dir.path()),
+        "data_dir must be inside base_dir to prevent home directory leaks"
+    );
+    (project_dir, base_dir, paths.db_path)
 }
 
 /// Open a SqlxStore synchronously from a db_path (for use in sync test helpers).
@@ -42,9 +50,11 @@ fn open_store(db_path: &Path) -> SqlxStore {
 }
 
 /// Run export to a buffer by writing to a file then reading it back.
-/// Returns the raw output string.
-fn run_export_to_string(project_dir: &Path, output_file: &Path) -> String {
-    run_export(Some(project_dir), Some(output_file)).expect("run_export should succeed");
+/// Returns the raw output string. Uses `run_export_with_base` to keep
+/// all test data inside `base_dir`.
+fn run_export_to_string(project_dir: &Path, base_dir: &Path, output_file: &Path) -> String {
+    run_export_with_base(Some(project_dir), Some(output_file), base_dir)
+        .expect("run_export_with_base should succeed");
     std::fs::read_to_string(output_file).expect("read output file")
 }
 
@@ -167,7 +177,7 @@ async fn populate_representative_data(pool: &sqlx::SqlitePool) {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_full_export_representative_data() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -178,7 +188,7 @@ fn test_full_export_representative_data() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     // Header present
@@ -232,14 +242,14 @@ fn test_full_export_representative_data() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_empty_database_export() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     // Just opening the store creates the schema
     let _store = open_store(&db_path);
     drop(_store);
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     // Header present with entry_count: 0
@@ -265,7 +275,7 @@ fn test_empty_database_export() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_deterministic_output() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -280,7 +290,7 @@ fn test_deterministic_output() {
     let mut outputs: Vec<String> = Vec::new();
     for i in 0..3 {
         let output_path = output_dir.path().join(format!("export_{i}.jsonl"));
-        let output = run_export_to_string(project_dir.path(), &output_path);
+        let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
         outputs.push(output);
     }
 
@@ -318,7 +328,7 @@ fn test_deterministic_output() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_excluded_tables_not_present() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -342,7 +352,7 @@ fn test_excluded_tables_not_present() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     let allowed: HashSet<&str> = [
@@ -373,7 +383,7 @@ fn test_excluded_tables_not_present() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_table_emission_order() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -384,7 +394,7 @@ fn test_table_emission_order() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     // Collect unique _table values in order of first appearance
@@ -419,7 +429,7 @@ fn test_table_emission_order() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_row_ordering_within_tables() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -463,7 +473,7 @@ fn test_row_ordering_within_tables() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     // Entries ordered by id
@@ -522,7 +532,7 @@ fn test_row_ordering_within_tables() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_output_file_path() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -535,7 +545,12 @@ fn test_output_file_path() {
     let output_path = output_dir.path().join("export.jsonl");
     assert!(!output_path.exists(), "Output file should not exist yet");
 
-    run_export(Some(project_dir.path()), Some(&output_path)).expect("export should succeed");
+    run_export_with_base(
+        Some(project_dir.path()),
+        Some(&output_path),
+        base_dir.path(),
+    )
+    .expect("export should succeed");
 
     assert!(output_path.exists(), "Output file should have been created");
     let content = std::fs::read_to_string(&output_path).unwrap();
@@ -550,7 +565,7 @@ fn test_output_file_path() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_header_validation() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -565,7 +580,7 @@ fn test_header_validation() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
     let header = &lines[0];
     let obj = header.as_object().unwrap();
@@ -592,7 +607,7 @@ fn test_header_validation() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_entries_all_26_columns() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -624,7 +639,7 @@ fn test_entries_all_26_columns() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     let entry_row = lines
@@ -671,7 +686,7 @@ fn test_entries_all_26_columns() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_null_handling_nullable_columns() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -703,7 +718,7 @@ fn test_null_handling_nullable_columns() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     // Check entry nullable fields
@@ -752,7 +767,7 @@ fn test_null_handling_nullable_columns() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_every_non_header_line_has_table() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -763,7 +778,7 @@ fn test_every_non_header_line_has_table() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     let allowed_tables: HashSet<&str> = [
@@ -799,7 +814,7 @@ fn test_every_non_header_line_has_table() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_all_8_tables_with_row_counts() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -810,7 +825,7 @@ fn test_all_8_tables_with_row_counts() {
 
     let output_dir = TempDir::new().unwrap();
     let output_path = output_dir.path().join("export.jsonl");
-    let output = run_export_to_string(project_dir.path(), &output_path);
+    let output = run_export_to_string(project_dir.path(), base_dir.path(), &output_path);
     let lines = parse_lines(&output);
 
     let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
@@ -834,12 +849,12 @@ fn test_all_8_tables_with_row_counts() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_error_on_invalid_output_path() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let _store = open_store(&db_path);
     drop(_store);
 
     let bad_path = std::path::Path::new("/nonexistent_dir_12345/export.jsonl");
-    let result = run_export(Some(project_dir.path()), Some(bad_path));
+    let result = run_export_with_base(Some(project_dir.path()), Some(bad_path), base_dir.path());
     assert!(result.is_err(), "Export to non-writable path should fail");
 }
 
@@ -868,8 +883,8 @@ fn test_error_on_nonexistent_database() {
 #[test]
 fn test_project_dir_isolation() {
     // Create two separate project dirs with different data
-    let (project_a, db_a) = setup_project();
-    let (project_b, db_b) = setup_project();
+    let (project_a, base_dir_a, db_a) = setup_project();
+    let (project_b, base_dir_b, db_b) = setup_project();
 
     // Populate A with "alpha" entry
     let store_a = open_store(&db_a);
@@ -907,7 +922,7 @@ fn test_project_dir_isolation() {
 
     // Export A
     let output_a = output_dir.path().join("export_a.jsonl");
-    let content_a = run_export_to_string(project_a.path(), &output_a);
+    let content_a = run_export_to_string(project_a.path(), base_dir_a.path(), &output_a);
     let lines_a = parse_lines(&content_a);
     let entry_a = lines_a
         .iter()
@@ -917,7 +932,7 @@ fn test_project_dir_isolation() {
 
     // Export B
     let output_b = output_dir.path().join("export_b.jsonl");
-    let content_b = run_export_to_string(project_b.path(), &output_b);
+    let content_b = run_export_to_string(project_b.path(), base_dir_b.path(), &output_b);
     let lines_b = parse_lines(&content_b);
     let entry_b = lines_b
         .iter()
@@ -931,7 +946,7 @@ fn test_project_dir_isolation() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_performance_500_entries() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -982,7 +997,12 @@ fn test_performance_500_entries() {
     let output_path = output_dir.path().join("export.jsonl");
 
     let start = std::time::Instant::now();
-    run_export(Some(project_dir.path()), Some(&output_path)).expect("export should succeed");
+    run_export_with_base(
+        Some(project_dir.path()),
+        Some(&output_path),
+        base_dir.path(),
+    )
+    .expect("export should succeed");
     let elapsed = start.elapsed();
 
     assert!(
