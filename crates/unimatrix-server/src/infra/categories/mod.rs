@@ -29,7 +29,8 @@ pub(crate) const INITIAL_CATEGORIES: [&str; 7] = [
 /// - `adaptive`:   the lifecycle policy set; consulted by `is_adaptive()` in the tick
 ///                 and by `compute_report()` for status output.
 ///
-/// Categories added at runtime via `add_category` are always pinned.
+/// `add_category` is restricted to `#[cfg(test)]` (#635). Production code seeds
+/// all categories at construction via `from_categories_with_policy`.
 /// Only categories in `adaptive_categories` of the operator config are adaptive,
 /// and this set is frozen after construction (no runtime mutation of `adaptive`).
 pub struct CategoryAllowlist {
@@ -93,12 +94,11 @@ impl CategoryAllowlist {
 
     /// Add a new category to the allowlist at runtime.
     ///
-    /// Domain pack categories registered at runtime are always pinned.
-    /// Lifecycle policy (adaptive/pinned) is config-only and frozen after startup.
-    /// Adding a category here never adds it to the adaptive set.
-    ///
-    /// To make a domain pack category adaptive, add it to `adaptive_categories`
-    /// in config.toml before startup.
+    /// Restricted to test code only (#635). Production code must seed all
+    /// categories at construction time via `from_categories_with_policy`.
+    /// Domain pack categories are filtered against the operator-configured
+    /// allowlist at startup — not added unconditionally.
+    #[cfg(test)]
     pub fn add_category(&self, category: String) {
         let mut cats = self.categories.write().unwrap_or_else(|e| e.into_inner());
         cats.insert(category);

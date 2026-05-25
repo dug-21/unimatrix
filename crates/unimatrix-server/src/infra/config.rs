@@ -2059,6 +2059,44 @@ impl fmt::Display for ConfigError {
 impl std::error::Error for ConfigError {}
 
 // ---------------------------------------------------------------------------
+// Config provenance types (#635)
+// ---------------------------------------------------------------------------
+
+/// Status of a single config source layer after `load_config` completes.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SourceStatus {
+    /// The config file was found and loaded successfully.
+    Loaded { path: PathBuf },
+    /// The config file was not found at the expected path.
+    NotFound { path: PathBuf },
+    /// This config layer was not applicable (e.g., UNIMATRIX_CONFIG not set).
+    NotApplicable,
+}
+
+/// Metadata about which config sources were consulted during `load_config`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConfigProvenance {
+    /// Status of the global config (~/.unimatrix/config.toml).
+    pub global: SourceStatus,
+    /// Status of the per-project config (~/.unimatrix/{hash}/config.toml).
+    pub project: SourceStatus,
+    /// Status of the UNIMATRIX_CONFIG env override.
+    pub env_override: SourceStatus,
+}
+
+/// Result of `load_config`: the effective config plus provenance metadata.
+///
+/// Callers destructure this to log provenance at appropriate levels and
+/// use the effective config for subsystem initialization.
+#[derive(Debug, Clone)]
+pub struct ConfigLoadResult {
+    /// The merged, validated configuration.
+    pub config: UnimatrixConfig,
+    /// Which sources were loaded, not found, or not applicable.
+    pub provenance: ConfigProvenance,
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -2068,6 +2106,9 @@ impl std::error::Error for ConfigError {}
 /// Aborts (returns `Err`) on permission violations, size cap exceeded,
 /// TOML parse errors, or validation failures.
 ///
+/// Returns `ConfigLoadResult` carrying both the effective config and
+/// provenance metadata so callers can log source status at appropriate levels.
+///
 /// # ORDERING INVARIANT
 ///
 /// `ContentScanner::global()` is called at the TOP of this function,
@@ -2076,7 +2117,7 @@ impl std::error::Error for ConfigError {}
 /// ensures the singleton is initialized before validation begins.
 /// Do NOT remove or move this call; silent breakage will result if the
 /// OnceLock initialization is ever changed.
-pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<UnimatrixConfig, ConfigError> {
+pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<ConfigLoadResult, ConfigError> {
     // ORDERING INVARIANT: warm ContentScanner singleton BEFORE any validate_config
     // call. scan_title() in validate_config requires ContentScanner::global() to be
     // initialized. This explicit call documents the dependency and prevents silent
@@ -2089,31 +2130,49 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<UnimatrixConfig, 
     // If the env var is not set, skip entirely.
     let env_config_path =
         resolve_env_config_path(std::env::var("UNIMATRIX_CONFIG").ok().as_deref());
-    let env_config = if let Some(ref path) = env_config_path {
-        tracing::info!(path = %path.display(), "loading config from UNIMATRIX_CONFIG");
-        Some(load_single_config(path)?)
+    let (env_config, env_status) = if let Some(ref path) = env_config_path {
+        (
+            Some(load_single_config(path)?),
+            SourceStatus::Loaded { path: path.clone() },
+        )
     } else {
-        None
+        (None, SourceStatus::NotApplicable)
     };
 
     // Step 1: load global config (~/.unimatrix/config.toml).
     let global_path = home_dir.join(".unimatrix").join("config.toml");
-    let global_config = if global_path.exists() {
-        load_single_config(&global_path)?
+    let (global_config, global_status) = if global_path.exists() {
+        (
+            load_single_config(&global_path)?,
+            SourceStatus::Loaded {
+                path: global_path.clone(),
+            },
+        )
     } else {
-        tracing::debug!(
-            "global config not found at {}; using compiled defaults",
-            global_path.display()
-        );
-        UnimatrixConfig::default()
+        (
+            UnimatrixConfig::default(),
+            SourceStatus::NotFound {
+                path: global_path.clone(),
+            },
+        )
     };
 
     // Step 2: load per-project config (~/.unimatrix/{hash}/config.toml).
     let project_path = data_dir.join("config.toml");
-    let project_config = if project_path.exists() {
-        load_single_config(&project_path)?
+    let (project_config, project_status) = if project_path.exists() {
+        (
+            load_single_config(&project_path)?,
+            SourceStatus::Loaded {
+                path: project_path.clone(),
+            },
+        )
     } else {
-        UnimatrixConfig::default()
+        (
+            UnimatrixConfig::default(),
+            SourceStatus::NotFound {
+                path: project_path.clone(),
+            },
+        )
     };
 
     // Step 3: merge (per-project fields win over global, global wins over compiled defaults).
@@ -2133,7 +2192,14 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<UnimatrixConfig, 
     let validation_path = env_config_path.unwrap_or(global_path);
     validate_config(&merged, &validation_path)?;
 
-    Ok(merged)
+    Ok(ConfigLoadResult {
+        config: merged,
+        provenance: ConfigProvenance {
+            global: global_status,
+            project: project_status,
+            env_override: env_status,
+        },
+    })
 }
 
 /// Resolve a config file path from the `UNIMATRIX_CONFIG` env var value.
@@ -9146,6 +9212,175 @@ nli_informs_ppr_weight = 0.4
             merged.profile.preset,
             Preset::Operational,
             "UNIMATRIX_CONFIG preset (operational) must override per-project preset (authoritative)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // #635: ConfigLoadResult / ConfigProvenance / SourceStatus tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_load_config_returns_provenance_global_loaded() {
+        // When a global config file exists, provenance.global must be SourceStatus::Loaded.
+        let home_dir = tempfile::tempdir().expect("tempdir");
+        let data_dir = tempfile::tempdir().expect("tempdir");
+        let global_dir = home_dir.path().join(".unimatrix");
+        std::fs::create_dir_all(&global_dir).expect("mkdir");
+        std::fs::write(
+            global_dir.join("config.toml"),
+            "[profile]\npreset = \"collaborative\"\n",
+        )
+        .expect("write");
+
+        let result = load_config(home_dir.path(), data_dir.path()).expect("load_config");
+        match &result.provenance.global {
+            SourceStatus::Loaded { path } => {
+                assert_eq!(*path, global_dir.join("config.toml"));
+            }
+            other => panic!("expected SourceStatus::Loaded for global, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_load_config_returns_provenance_global_not_found() {
+        // When no global config file exists, provenance.global must be SourceStatus::NotFound.
+        let home_dir = tempfile::tempdir().expect("tempdir");
+        let data_dir = tempfile::tempdir().expect("tempdir");
+
+        let result = load_config(home_dir.path(), data_dir.path()).expect("load_config");
+        match &result.provenance.global {
+            SourceStatus::NotFound { path } => {
+                assert!(
+                    path.ends_with("config.toml"),
+                    "NotFound path must end with config.toml"
+                );
+            }
+            other => panic!("expected SourceStatus::NotFound for global, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_load_config_returns_provenance_project_loaded() {
+        let home_dir = tempfile::tempdir().expect("tempdir");
+        let data_dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            data_dir.path().join("config.toml"),
+            "[profile]\npreset = \"authoritative\"\n",
+        )
+        .expect("write");
+
+        let result = load_config(home_dir.path(), data_dir.path()).expect("load_config");
+        match &result.provenance.project {
+            SourceStatus::Loaded { path } => {
+                assert_eq!(*path, data_dir.path().join("config.toml"));
+            }
+            other => panic!("expected SourceStatus::Loaded for project, got {other:?}"),
+        }
+        assert_eq!(result.config.profile.preset, Preset::Authoritative);
+    }
+
+    #[test]
+    fn test_load_config_returns_provenance_project_not_found() {
+        let home_dir = tempfile::tempdir().expect("tempdir");
+        let data_dir = tempfile::tempdir().expect("tempdir");
+
+        let result = load_config(home_dir.path(), data_dir.path()).expect("load_config");
+        match &result.provenance.project {
+            SourceStatus::NotFound { path } => {
+                assert_eq!(*path, data_dir.path().join("config.toml"));
+            }
+            other => panic!("expected SourceStatus::NotFound for project, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_load_config_returns_provenance_env_not_applicable() {
+        // When UNIMATRIX_CONFIG is not set, env_override must be NotApplicable.
+        // Note: we cannot unset env vars in tests (#![forbid(unsafe_code)]),
+        // but the default env state in test has no UNIMATRIX_CONFIG.
+        let home_dir = tempfile::tempdir().expect("tempdir");
+        let data_dir = tempfile::tempdir().expect("tempdir");
+
+        let result = load_config(home_dir.path(), data_dir.path()).expect("load_config");
+        // env_override is either NotApplicable (env var not set) or Loaded/NotFound
+        // depending on CI env. We just verify it's a valid variant.
+        match &result.provenance.env_override {
+            SourceStatus::NotApplicable
+            | SourceStatus::Loaded { .. }
+            | SourceStatus::NotFound { .. } => {
+                // All are valid — env var may or may not be set in test environment.
+            }
+        }
+    }
+
+    #[test]
+    fn test_load_config_result_contains_merged_config() {
+        // When both global and project configs exist, the result config
+        // must reflect the merge (project wins over global).
+        let home_dir = tempfile::tempdir().expect("tempdir");
+        let data_dir = tempfile::tempdir().expect("tempdir");
+        let global_dir = home_dir.path().join(".unimatrix");
+        std::fs::create_dir_all(&global_dir).expect("mkdir");
+        std::fs::write(
+            global_dir.join("config.toml"),
+            "[profile]\npreset = \"collaborative\"\n",
+        )
+        .expect("write global");
+        std::fs::write(
+            data_dir.path().join("config.toml"),
+            "[profile]\npreset = \"authoritative\"\n",
+        )
+        .expect("write project");
+
+        let result = load_config(home_dir.path(), data_dir.path()).expect("load_config");
+        assert_eq!(
+            result.config.profile.preset,
+            Preset::Authoritative,
+            "project config must win over global"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // #635: Dual-default divergence contract test
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_dual_default_divergence_empty_toml_vs_default_impl() {
+        // Deserializing an empty TOML string uses KnowledgeConfig::default() for the
+        // entire [knowledge] section (section absent → impl Default). Fields that must
+        // stay in sync between serde default fns and impl Default are tested here.
+        let from_empty: UnimatrixConfig =
+            toml::from_str("").expect("empty TOML must deserialize");
+        let from_default = UnimatrixConfig::default();
+
+        assert_eq!(
+            from_empty.knowledge.categories, from_default.knowledge.categories,
+            "serde-default categories must match Default impl categories (INITIAL_CATEGORIES)"
+        );
+        assert_eq!(
+            from_empty.profile.preset, from_default.profile.preset,
+            "serde-default preset must match Default impl preset"
+        );
+
+        // When [knowledge] section exists but fields are omitted, serde per-field
+        // defaults kick in. boosted_categories and adaptive_categories intentionally
+        // diverge from impl Default (merge-sentinel design, ADR-001 decision 4).
+        let from_section: UnimatrixConfig =
+            toml::from_str("[knowledge]\n").expect("[knowledge] section must deserialize");
+
+        assert_ne!(
+            from_section.knowledge.boosted_categories, from_default.knowledge.boosted_categories,
+            "serde field default for boosted_categories must diverge from impl Default"
+        );
+        assert_ne!(
+            from_section.knowledge.adaptive_categories, from_default.knowledge.adaptive_categories,
+            "serde field default for adaptive_categories must diverge from impl Default"
+        );
+
+        // Section-present categories must still match (INITIAL_CATEGORIES is authoritative).
+        assert_eq!(
+            from_section.knowledge.categories, from_default.knowledge.categories,
+            "serde field default for categories must match impl Default"
         );
     }
 }

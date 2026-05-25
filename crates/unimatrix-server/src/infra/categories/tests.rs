@@ -393,3 +393,89 @@ fn test_category_allowlist_poison_recovery() {
     assert!(al.validate("decision").is_ok());
     assert!(al.validate("convention").is_ok());
 }
+
+// -----------------------------------------------------------------------
+// #635: Category authority enforcement tests
+// -----------------------------------------------------------------------
+
+/// Domain pack categories not in the operator-configured allowlist must be
+/// rejected by validate(). This proves the authority boundary is enforced.
+#[test]
+fn test_domain_pack_category_rejected_when_not_in_operator_config() {
+    // Operator configures a restricted allowlist (only 2 categories).
+    let al =
+        CategoryAllowlist::from_categories(vec!["decision".to_string(), "pattern".to_string()]);
+    // Simulate domain pack categories — some overlap, some do not.
+    let pack_categories = vec![
+        "decision".to_string(),       // in allowlist
+        "pattern".to_string(),        // in allowlist
+        "lesson-learned".to_string(), // NOT in allowlist
+        "convention".to_string(),     // NOT in allowlist
+    ];
+    let mut accepted = vec![];
+    let mut rejected = vec![];
+    for cat in &pack_categories {
+        if al.validate(cat).is_ok() {
+            accepted.push(cat.clone());
+        } else {
+            rejected.push(cat.clone());
+        }
+    }
+    assert_eq!(
+        accepted,
+        vec!["decision".to_string(), "pattern".to_string()],
+        "only categories in operator config must be accepted"
+    );
+    assert_eq!(
+        rejected,
+        vec!["lesson-learned".to_string(), "convention".to_string()],
+        "categories NOT in operator config must be rejected"
+    );
+}
+
+/// When the operator configures all 7 default categories, all domain pack
+/// categories from the builtin claude-code pack should be accepted.
+#[test]
+fn test_domain_pack_categories_accepted_when_all_in_allowlist() {
+    let al = CategoryAllowlist::new(); // all 7 INITIAL_CATEGORIES
+    let builtin_pack_categories = vec![
+        "convention",
+        "decision",
+        "feature",
+        "goal",
+        "lesson-learned",
+        "pattern",
+        "procedure",
+    ];
+    for cat in builtin_pack_categories {
+        assert!(
+            al.validate(cat).is_ok(),
+            "category '{}' must be accepted when using default allowlist",
+            cat
+        );
+    }
+}
+
+/// When the operator configures an empty allowlist, ALL domain pack
+/// categories must be rejected.
+#[test]
+fn test_domain_pack_categories_all_rejected_with_empty_allowlist() {
+    let al = CategoryAllowlist::from_categories(vec![]);
+    let pack_categories = vec!["decision", "pattern", "lesson-learned"];
+    for cat in pack_categories {
+        assert!(
+            al.validate(cat).is_err(),
+            "category '{}' must be rejected with empty allowlist",
+            cat
+        );
+    }
+}
+
+/// add_category is restricted to #[cfg(test)] — verify it still works in tests.
+#[test]
+fn test_add_category_available_in_test_code() {
+    let al = CategoryAllowlist::new();
+    assert!(al.validate("test-only-cat").is_err());
+    al.add_category("test-only-cat".to_string());
+    assert!(al.validate("test-only-cat").is_ok());
+}
