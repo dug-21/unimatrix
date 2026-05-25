@@ -457,6 +457,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // To silence obs logs (default): RUST_LOG unset or RUST_LOG=info
     let default_level = if cli.verbose { "debug" } else { "info" };
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .map(|f| f.add_directive("unimatrix=info".parse().unwrap()))
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
 
     if cli.daemon_child {
@@ -844,6 +845,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // To silence obs logs (default): RUST_LOG unset or RUST_LOG=info
     let default_level = if cli.verbose { "debug" } else { "info" };
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .map(|f| f.add_directive("unimatrix=info".parse().unwrap()))
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
@@ -1208,6 +1210,7 @@ async fn tokio_main_bridge(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // To silence obs logs (default): RUST_LOG unset or RUST_LOG=info
     let default_level = if cli.verbose { "debug" } else { "info" };
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .map(|f| f.add_directive("unimatrix=info".parse().unwrap()))
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
