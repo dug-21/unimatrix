@@ -246,6 +246,14 @@ async fn populate_representative_data(pool: &sqlx::SqlitePool) {
         .execute(pool)
         .await
         .unwrap();
+    // Sync next_audit_id to match the 3 directly-inserted audit_log rows.
+    // Without this, export captures next_audit_id=0 while audit_log has
+    // event_ids 1-3, and the post-import provenance write (which now correctly
+    // uses the counter via log_audit_event) would collide at event_id=1 (GH#633).
+    sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('next_audit_id', 3)")
+        .execute(pool)
+        .await
+        .unwrap();
 }
 
 /// Parse all lines from export output string.
@@ -296,7 +304,8 @@ async fn test_round_trip_export_import_reexport() {
     let export2_path = tmp.path().join("export2.jsonl");
     let export2 = run_export_to_string(project_b.path(), base_dir_b.path(), &export2_path);
 
-    // Step 4: Compare (normalize exported_at and ignore provenance audit entry)
+    // Step 4: Compare (normalize exported_at, next_audit_id counter,
+    // and ignore provenance audit entry)
     let normalize = |s: &str| -> Vec<String> {
         let mut result: Vec<String> = Vec::new();
         for line in s.lines() {
@@ -304,10 +313,18 @@ async fn test_round_trip_export_import_reexport() {
                 continue;
             }
             let mut val: Value = serde_json::from_str(line).unwrap();
-            // Normalize exported_at in header
             if let Some(obj) = val.as_object_mut() {
+                // Normalize exported_at in header
                 if obj.contains_key("_header") {
                     obj.insert("exported_at".into(), Value::Number(0.into()));
+                }
+                // Normalize next_audit_id counter value: record_provenance
+                // increments it by 1 during import (GH#633 fix), so the
+                // re-export will have value+1. Zero it for comparison.
+                if obj.get("_table").and_then(|t| t.as_str()) == Some("counters")
+                    && obj.get("name").and_then(|n| n.as_str()) == Some("next_audit_id")
+                {
+                    obj.insert("value".into(), Value::Number(0.into()));
                 }
             }
             result.push(serde_json::to_string(&val).unwrap());
@@ -580,10 +597,21 @@ async fn test_counter_values_match_export() {
             .fetch_one(store_b.write_pool_server())
             .await
             .unwrap();
-        assert_eq!(
-            actual, *expected_value,
-            "counter '{name}' mismatch: expected {expected_value}, got {actual}"
-        );
+        // next_audit_id is incremented by 1 during import because
+        // record_provenance writes a provenance audit entry via
+        // log_audit_event (GH#633 fix).
+        if name == "next_audit_id" {
+            assert_eq!(
+                actual,
+                *expected_value + 1,
+                "counter '{name}' mismatch: expected {expected_value}+1 (provenance), got {actual}"
+            );
+        } else {
+            assert_eq!(
+                actual, *expected_value,
+                "counter '{name}' mismatch: expected {expected_value}, got {actual}"
+            );
+        }
     }
 }
 
