@@ -10,8 +10,8 @@ use std::path::Path;
 use serde_json::Value;
 use sqlx::Row as _;
 use tempfile::TempDir;
-use unimatrix_server::export::run_export;
-use unimatrix_server::import::run_import;
+use unimatrix_server::export::run_export_with_base;
+use unimatrix_server::import::run_import_with_base;
 use unimatrix_server::project;
 use unimatrix_store::{SqlxStore, compute_content_hash};
 
@@ -19,11 +19,23 @@ use unimatrix_store::{SqlxStore, compute_content_hash};
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Set up a project directory and return (project_dir, db_path).
-fn setup_project() -> (TempDir, std::path::PathBuf) {
+/// Set up a project directory with an isolated base_dir and return
+/// (project_dir, base_dir, db_path).
+///
+/// Uses an explicit `base_dir` TempDir so the database is resolved inside a
+/// temporary directory rather than `~/.unimatrix/`. This prevents test runs
+/// from leaking orphaned hash directories into the user's home directory.
+fn setup_project() -> (TempDir, TempDir, std::path::PathBuf) {
     let project_dir = TempDir::new().expect("create project temp dir");
-    let paths = project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
-    (project_dir, paths.db_path)
+    let base_dir = TempDir::new().expect("create base temp dir");
+    let paths =
+        project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path())).unwrap();
+    // Meta-assertion: data_dir must live inside base_dir (GH#640 guard).
+    assert!(
+        paths.data_dir.starts_with(base_dir.path()),
+        "data_dir must be inside base_dir to prevent home directory leaks"
+    );
+    (project_dir, base_dir, paths.db_path)
 }
 
 /// Open a SqlxStore synchronously from a db_path.
@@ -246,8 +258,10 @@ fn parse_lines(output: &str) -> Vec<Value> {
 }
 
 /// Run export to string by writing to a file then reading it back.
-fn run_export_to_string(project_dir: &Path, output_file: &Path) -> String {
-    run_export(Some(project_dir), Some(output_file)).expect("run_export should succeed");
+/// Uses `run_export_with_base` to keep all test data inside `base_dir`.
+fn run_export_to_string(project_dir: &Path, base_dir: &Path, output_file: &Path) -> String {
+    run_export_with_base(Some(project_dir), Some(output_file), base_dir)
+        .expect("run_export_with_base should succeed");
     std::fs::read_to_string(output_file).expect("read output file")
 }
 
@@ -258,28 +272,29 @@ fn run_export_to_string(project_dir: &Path, output_file: &Path) -> String {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_round_trip_export_import_reexport() {
     // Step 1: Create populated DB and export
-    let (project_a, db_a) = setup_project();
+    let (project_a, base_dir_a, db_a) = setup_project();
     let store_a = open_store(&db_a);
     populate_representative_data(store_a.write_pool_server()).await;
     store_a.close().await.unwrap();
 
     let tmp = TempDir::new().unwrap();
     let export1_path = tmp.path().join("export1.jsonl");
-    let export1 = run_export_to_string(project_a.path(), &export1_path);
+    let export1 = run_export_to_string(project_a.path(), base_dir_a.path(), &export1_path);
 
     // Step 2: Import into fresh DB
-    let (project_b, _db_b) = setup_project();
-    run_import(
+    let (project_b, base_dir_b, _db_b) = setup_project();
+    run_import_with_base(
         Some(project_b.path()),
         &export1_path,
         false, // validate hashes
         false, // not force (empty DB)
+        base_dir_b.path(),
     )
     .expect("import should succeed");
 
     // Step 3: Re-export
     let export2_path = tmp.path().join("export2.jsonl");
-    let export2 = run_export_to_string(project_b.path(), &export2_path);
+    let export2 = run_export_to_string(project_b.path(), base_dir_b.path(), &export2_path);
 
     // Step 4: Compare (normalize exported_at and ignore provenance audit entry)
     let normalize = |s: &str| -> Vec<String> {
@@ -339,7 +354,7 @@ async fn test_round_trip_export_import_reexport() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_force_import_replaces_data() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
 
@@ -371,8 +386,14 @@ async fn test_force_import_replaces_data() {
     let input_path = write_jsonl(&tmp, &lines);
 
     // Import with --force
-    run_import(Some(project_dir.path()), &input_path, true, true)
-        .expect("force import should succeed");
+    run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        true,
+        true,
+        base_dir.path(),
+    )
+    .expect("force import should succeed");
 
     // Verify only 5 entries remain
     let store = open_store(&db_path);
@@ -392,7 +413,7 @@ async fn test_force_import_replaces_data() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_import_rejected_without_force_on_nonempty() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
 
@@ -408,7 +429,13 @@ async fn test_import_rejected_without_force_on_nonempty() {
     ];
     let input_path = write_jsonl(&tmp, &lines);
 
-    let result = run_import(Some(project_dir.path()), &input_path, false, false);
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        false,
+        false,
+        base_dir.path(),
+    );
     assert!(result.is_err());
     let err = result.unwrap_err().to_string();
     assert!(err.contains("--force"), "should suggest --force: {err}");
@@ -424,7 +451,7 @@ async fn test_import_rejected_without_force_on_nonempty() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_force_on_empty_database() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
     store.close().await.unwrap();
@@ -438,7 +465,13 @@ async fn test_force_on_empty_database() {
     ];
     let input_path = write_jsonl(&tmp, &lines);
 
-    let result = run_import(Some(project_dir.path()), &input_path, false, true);
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        false,
+        true,
+        base_dir.path(),
+    );
     assert!(result.is_ok(), "force on empty should succeed: {result:?}");
 
     let store = open_store(&db_path);
@@ -455,7 +488,7 @@ async fn test_force_on_empty_database() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_counter_restoration_prevents_id_collision() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
     store.close().await.unwrap();
@@ -476,7 +509,14 @@ async fn test_counter_restoration_prevents_id_collision() {
     }
     let input_path = write_jsonl(&tmp, &lines);
 
-    run_import(Some(project_dir.path()), &input_path, false, false).expect("import should succeed");
+    run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        false,
+        false,
+        base_dir.path(),
+    )
+    .expect("import should succeed");
 
     // Verify next_entry_id is 101
     let store = open_store(&db_path);
@@ -493,7 +533,7 @@ async fn test_counter_restoration_prevents_id_collision() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_counter_values_match_export() {
-    let (project_a, db_a) = setup_project();
+    let (project_a, base_dir_a, db_a) = setup_project();
     let store_a = open_store(&db_a);
     populate_representative_data(store_a.write_pool_server()).await;
     store_a.close().await.unwrap();
@@ -501,7 +541,12 @@ async fn test_counter_values_match_export() {
     // Export
     let tmp = TempDir::new().unwrap();
     let export_path = tmp.path().join("export.jsonl");
-    run_export(Some(project_a.path()), Some(&export_path)).unwrap();
+    run_export_with_base(
+        Some(project_a.path()),
+        Some(&export_path),
+        base_dir_a.path(),
+    )
+    .unwrap();
 
     // Read exported counters
     let export_content = std::fs::read_to_string(&export_path).unwrap();
@@ -517,8 +562,15 @@ async fn test_counter_values_match_export() {
         .collect();
 
     // Import into fresh DB
-    let (project_b, db_b) = setup_project();
-    run_import(Some(project_b.path()), &export_path, false, false).expect("import should succeed");
+    let (project_b, base_dir_b, db_b) = setup_project();
+    run_import_with_base(
+        Some(project_b.path()),
+        &export_path,
+        false,
+        false,
+        base_dir_b.path(),
+    )
+    .expect("import should succeed");
 
     // Compare counters
     let store_b = open_store(&db_b);
@@ -541,7 +593,7 @@ async fn test_counter_values_match_export() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_atomicity_rollback_on_parse_failure() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
     store.close().await.unwrap();
@@ -559,7 +611,13 @@ async fn test_atomicity_rollback_on_parse_failure() {
     ];
     let input_path = write_jsonl(&tmp, &lines);
 
-    let result = run_import(Some(project_dir.path()), &input_path, true, false);
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        true,
+        false,
+        base_dir.path(),
+    );
     assert!(result.is_err());
 
     // Database should have zero entries (rolled back)
@@ -573,7 +631,7 @@ async fn test_atomicity_rollback_on_parse_failure() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_atomicity_rollback_on_fk_violation() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
     store.close().await.unwrap();
@@ -592,7 +650,13 @@ async fn test_atomicity_rollback_on_fk_violation() {
     ];
     let input_path = write_jsonl(&tmp, &lines);
 
-    let result = run_import(Some(project_dir.path()), &input_path, true, false);
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        true,
+        false,
+        base_dir.path(),
+    );
     assert!(result.is_err(), "FK violation should fail");
 }
 
@@ -602,7 +666,7 @@ async fn test_atomicity_rollback_on_fk_violation() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_skip_hash_validation_bypass() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
     store.close().await.unwrap();
@@ -623,11 +687,12 @@ async fn test_skip_hash_validation_bypass() {
     let input_path = write_jsonl(&tmp, &lines);
 
     // With --skip-hash-validation: should succeed
-    let result = run_import(
+    let result = run_import_with_base(
         Some(project_dir.path()),
         &input_path,
         true, // skip
         false,
+        base_dir.path(),
     );
     assert!(
         result.is_ok(),
@@ -637,7 +702,7 @@ async fn test_skip_hash_validation_bypass() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_hash_validation_failure_prevents_commit() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
     store.close().await.unwrap();
@@ -655,7 +720,13 @@ async fn test_hash_validation_failure_prevents_commit() {
     ];
     let input_path = write_jsonl(&tmp, &lines);
 
-    let result = run_import(Some(project_dir.path()), &input_path, false, false);
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        false,
+        false,
+        base_dir.path(),
+    );
     assert!(result.is_err());
 
     // Database should be empty (rolled back)
@@ -673,7 +744,7 @@ async fn test_hash_validation_failure_prevents_commit() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_empty_export_imports_successfully() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
     store.close().await.unwrap();
@@ -686,8 +757,14 @@ async fn test_empty_export_imports_successfully() {
     ];
     let input_path = write_jsonl(&tmp, &lines);
 
-    run_import(Some(project_dir.path()), &input_path, false, false)
-        .expect("empty import should succeed");
+    run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        false,
+        false,
+        base_dir.path(),
+    )
+    .expect("empty import should succeed");
 
     let store = open_store(&db_path);
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entries")
@@ -711,7 +788,7 @@ async fn test_empty_export_imports_successfully() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_audit_provenance_entry_written() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
     store.close().await.unwrap();
@@ -725,7 +802,14 @@ async fn test_audit_provenance_entry_written() {
     ];
     let input_path = write_jsonl(&tmp, &lines);
 
-    run_import(Some(project_dir.path()), &input_path, false, false).expect("import should succeed");
+    run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        false,
+        false,
+        base_dir.path(),
+    )
+    .expect("import should succeed");
 
     let store = open_store(&db_path);
     let provenance: String =
@@ -741,7 +825,7 @@ async fn test_audit_provenance_entry_written() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_audit_provenance_no_id_collision() {
-    let (project_a, db_a) = setup_project();
+    let (project_a, base_dir_a, db_a) = setup_project();
     let store_a = open_store(&db_a);
     populate_representative_data(store_a.write_pool_server()).await;
     store_a.close().await.unwrap();
@@ -749,11 +833,23 @@ async fn test_audit_provenance_no_id_collision() {
     // Export (includes audit_log entries with event_ids 1-3)
     let tmp = TempDir::new().unwrap();
     let export_path = tmp.path().join("export.jsonl");
-    run_export(Some(project_a.path()), Some(&export_path)).unwrap();
+    run_export_with_base(
+        Some(project_a.path()),
+        Some(&export_path),
+        base_dir_a.path(),
+    )
+    .unwrap();
 
     // Import into fresh DB
-    let (project_b, db_b) = setup_project();
-    run_import(Some(project_b.path()), &export_path, false, false).expect("import should succeed");
+    let (project_b, base_dir_b, db_b) = setup_project();
+    run_import_with_base(
+        Some(project_b.path()),
+        &export_path,
+        false,
+        false,
+        base_dir_b.path(),
+    )
+    .expect("import should succeed");
 
     // Provenance entry should have event_id > 3
     let store_b = open_store(&db_b);
@@ -774,7 +870,7 @@ async fn test_audit_provenance_no_id_collision() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_all_eight_tables_restored() {
-    let (project_a, db_a) = setup_project();
+    let (project_a, base_dir_a, db_a) = setup_project();
     let store_a = open_store(&db_a);
     populate_representative_data(store_a.write_pool_server()).await;
     store_a.close().await.unwrap();
@@ -782,11 +878,23 @@ async fn test_all_eight_tables_restored() {
     // Export
     let tmp = TempDir::new().unwrap();
     let export_path = tmp.path().join("export.jsonl");
-    run_export(Some(project_a.path()), Some(&export_path)).unwrap();
+    run_export_with_base(
+        Some(project_a.path()),
+        Some(&export_path),
+        base_dir_a.path(),
+    )
+    .unwrap();
 
     // Import into fresh DB
-    let (project_b, db_b) = setup_project();
-    run_import(Some(project_b.path()), &export_path, false, false).expect("import should succeed");
+    let (project_b, base_dir_b, db_b) = setup_project();
+    run_import_with_base(
+        Some(project_b.path()),
+        &export_path,
+        false,
+        false,
+        base_dir_b.path(),
+    )
+    .expect("import should succeed");
 
     // Verify row counts
     let store_b = open_store(&db_b);
@@ -841,7 +949,7 @@ async fn test_all_eight_tables_restored() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_entry_columns_preserved_exactly() {
-    let (project_a, db_a) = setup_project();
+    let (project_a, base_dir_a, db_a) = setup_project();
     let store_a = open_store(&db_a);
 
     // Insert entry with edge values
@@ -880,13 +988,25 @@ async fn test_entry_columns_preserved_exactly() {
     // Export
     let tmp = TempDir::new().unwrap();
     let export_path = tmp.path().join("export.jsonl");
-    run_export(Some(project_a.path()), Some(&export_path)).unwrap();
+    run_export_with_base(
+        Some(project_a.path()),
+        Some(&export_path),
+        base_dir_a.path(),
+    )
+    .unwrap();
 
     // Import into fresh DB
-    let (project_b, db_b) = setup_project();
+    let (project_b, base_dir_b, db_b) = setup_project();
     // Use skip_hash_validation because previous_hash="prev-hash" is intentionally
     // a non-matching value to test that it gets preserved exactly.
-    run_import(Some(project_b.path()), &export_path, true, false).expect("import should succeed");
+    run_import_with_base(
+        Some(project_b.path()),
+        &export_path,
+        true,
+        false,
+        base_dir_b.path(),
+    )
+    .expect("import should succeed");
 
     // Verify every column
     let store_b = open_store(&db_b);
@@ -947,7 +1067,7 @@ async fn test_entry_columns_preserved_exactly() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_force_import_counter_restoration() {
-    let (project_dir, db_path) = setup_project();
+    let (project_dir, base_dir, db_path) = setup_project();
     let store = open_store(&db_path);
     let sv = get_schema_version(&store).await;
 
@@ -978,8 +1098,14 @@ async fn test_force_import_counter_restoration() {
     }
     let input_path = write_jsonl(&tmp, &lines);
 
-    run_import(Some(project_dir.path()), &input_path, true, true)
-        .expect("force import should succeed");
+    run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        true,
+        true,
+        base_dir.path(),
+    )
+    .expect("force import should succeed");
 
     let store = open_store(&db_path);
     let next_id: i64 =

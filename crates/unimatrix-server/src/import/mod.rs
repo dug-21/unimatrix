@@ -56,6 +56,37 @@ pub fn run_import(
     skip_hash_validation: bool,
     force: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    run_import_inner(project_dir, input, skip_hash_validation, force, None)
+}
+
+/// Run the import pipeline with an explicit `base_dir` for test isolation.
+///
+/// Identical to [`run_import`] but routes data storage to the given `base_dir`
+/// instead of `~/.unimatrix/`. Use this in tests to avoid leaking directories
+/// into the user's home directory.
+pub fn run_import_with_base(
+    project_dir: Option<&Path>,
+    input: &Path,
+    skip_hash_validation: bool,
+    force: bool,
+    base_dir: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    run_import_inner(
+        project_dir,
+        input,
+        skip_hash_validation,
+        force,
+        Some(base_dir),
+    )
+}
+
+fn run_import_inner(
+    project_dir: Option<&Path>,
+    input: &Path,
+    skip_hash_validation: bool,
+    force: bool,
+    base_dir: Option<&Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
     match tokio::runtime::Handle::try_current() {
         Ok(handle) => {
             // Already inside an async runtime — use block_in_place to avoid nesting.
@@ -65,6 +96,7 @@ pub fn run_import(
                     input,
                     skip_hash_validation,
                     force,
+                    base_dir,
                 ))
             })
         }
@@ -79,6 +111,7 @@ pub fn run_import(
                 input,
                 skip_hash_validation,
                 force,
+                base_dir,
             ))
         }
     }
@@ -90,9 +123,10 @@ async fn run_import_async(
     input: &Path,
     skip_hash_validation: bool,
     force: bool,
+    base_dir: Option<&Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Phase 1: Setup
-    let paths = project::ensure_data_directory(project_dir, None)?;
+    let paths = project::ensure_data_directory(project_dir, base_dir)?;
     let store = Arc::new(
         SqlxStore::open(
             &paths.db_path,
@@ -465,15 +499,22 @@ mod tests {
     /// unimatrix-store/src/migration.rs. Update when the schema advances.
     const CURRENT_SCHEMA_VERSION: i64 = 12;
 
-    /// Create a project dir structure and return it.
+    /// Create a project dir structure with an isolated base_dir and return both.
     ///
     /// Does NOT open a SqlxStore — run_import will create and migrate the database
     /// on first use. This avoids holding a pool connection that would conflict with
     /// run_import's BEGIN IMMEDIATE when both try to write the same SQLite file.
-    fn make_project_dir() -> TempDir {
+    fn make_project_dir() -> (TempDir, TempDir) {
         let project_dir = TempDir::new().expect("create project temp dir");
-        project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
-        project_dir
+        let base_dir = TempDir::new().expect("create base temp dir");
+        let paths = project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+            .unwrap();
+        // Meta-assertion: data_dir must live inside base_dir (GH#640 guard).
+        assert!(
+            paths.data_dir.starts_with(base_dir.path()),
+            "data_dir must be inside base_dir to prevent home directory leaks"
+        );
+        (project_dir, base_dir)
     }
 
     async fn open_test_store_at(db_path: &Path) -> SqlxStore {
@@ -562,13 +603,19 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_validate_header_bad_format_version() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
         let output_dir = TempDir::new().unwrap();
         let lines = vec![make_header(sv, 2, 0)];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("2"), "should mention version 2: {err}");
@@ -577,12 +624,18 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_validate_header_future_schema_version() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let output_dir = TempDir::new().unwrap();
         let lines = vec![make_header(999, 1, 0)];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(
@@ -602,13 +655,19 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_validate_header_format_version_zero() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
         let output_dir = TempDir::new().unwrap();
         let lines = vec![make_header(sv, 0, 0)];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("0"), "should mention version 0: {err}");
@@ -618,7 +677,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_hash_validation_valid_chain() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let hash_a = compute_content_hash("Entry A", "Content A");
@@ -632,13 +691,19 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_ok(), "valid chain should pass: {result:?}");
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_hash_validation_broken_chain() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
@@ -650,7 +715,13 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("1"), "should mention entry ID: {err}");
@@ -662,7 +733,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_hash_validation_content_mismatch() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         // Build entry with wrong content_hash
@@ -679,7 +750,13 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("1"), "should mention entry ID: {err}");
@@ -688,7 +765,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_hash_validation_empty_previous_hash() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
@@ -700,7 +777,13 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(
             result.is_ok(),
             "empty previous_hash should pass: {result:?}"
@@ -709,7 +792,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_hash_validation_empty_title_edge_case() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
@@ -721,13 +804,19 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_ok(), "empty title should pass: {result:?}");
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_hash_validation_empty_both() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
@@ -739,7 +828,13 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(
             result.is_ok(),
             "empty title+content should pass: {result:?}"
@@ -750,7 +845,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_malformed_jsonl_line_with_line_number() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
@@ -764,7 +859,13 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("line 5"), "should mention line 5: {err}");
@@ -782,7 +883,7 @@ mod tests {
     /// Handle::try_current() returns Err and the new runtime path is taken.
     #[test]
     fn test_run_import_no_ambient_runtime_does_not_panic() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
@@ -796,7 +897,13 @@ mod tests {
 
         // Must not panic. The import succeeds (embedding may fail if model is
         // unavailable, but that is an Err return — not a panic).
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         // The important invariant: no panic occurred. Accept Ok or Err.
         // If the ONNX model is present this will be Ok; in CI without the model
         // it returns Err from embed_reconstruct, which is acceptable.
@@ -821,12 +928,20 @@ mod tests {
     #[test]
     fn test_empty_file_errors() {
         let project_dir = TempDir::new().expect("create project temp dir");
-        let _ = project::ensure_data_directory(Some(project_dir.path()), None).unwrap();
+        let base_dir = TempDir::new().expect("create base temp dir");
+        let _ = project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+            .unwrap();
         let output_dir = TempDir::new().unwrap();
         let path = output_dir.path().join("empty.jsonl");
         File::create(&path).unwrap();
 
-        let result = run_import(Some(project_dir.path()), &path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(
@@ -837,14 +952,20 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_header_only_file() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
         let lines = vec![make_header(sv, 1, 0)];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
         assert!(
             result.is_ok(),
             "header-only should be valid empty import: {result:?}"
@@ -855,11 +976,12 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_sql_injection_in_title() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
-        let db_path = project::ensure_data_directory(Some(project_dir.path()), None)
-            .unwrap()
-            .db_path;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
 
         let malicious_title = "'; DROP TABLE entries; --";
         let output_dir = TempDir::new().unwrap();
@@ -871,11 +993,12 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(
+        let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
             true, // skip hash -- hash won't match the SQL injection string
             false,
+            base_dir.path(),
         );
         assert!(
             result.is_ok(),
@@ -902,11 +1025,12 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_sql_injection_in_content() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
-        let db_path = project::ensure_data_directory(Some(project_dir.path()), None)
-            .unwrap()
-            .db_path;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
 
         let malicious = "Robert'); DROP TABLE entries;--";
         let output_dir = TempDir::new().unwrap();
@@ -918,7 +1042,13 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, true, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            true,
+            false,
+            base_dir.path(),
+        );
         assert!(
             result.is_ok(),
             "SQL injection in content should be safe: {result:?}"
@@ -937,7 +1067,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_duplicate_entry_ids() {
-        let project_dir = make_project_dir();
+        let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
         let output_dir = TempDir::new().unwrap();
@@ -950,7 +1080,13 @@ mod tests {
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
-        let result = run_import(Some(project_dir.path()), &input_path, true, false);
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            true,
+            false,
+            base_dir.path(),
+        );
         assert!(result.is_err(), "duplicate PK should fail");
     }
 }

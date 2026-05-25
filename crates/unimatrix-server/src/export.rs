@@ -27,8 +27,29 @@ pub fn run_export(
     project_dir: Option<&Path>,
     output: Option<&Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    run_export_inner(project_dir, output, None)
+}
+
+/// Run the export subcommand with an explicit `base_dir` for test isolation.
+///
+/// Identical to [`run_export`] but routes data storage to the given `base_dir`
+/// instead of `~/.unimatrix/`. Use this in tests to avoid leaking directories
+/// into the user's home directory.
+pub fn run_export_with_base(
+    project_dir: Option<&Path>,
+    output: Option<&Path>,
+    base_dir: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    run_export_inner(project_dir, output, Some(base_dir))
+}
+
+fn run_export_inner(
+    project_dir: Option<&Path>,
+    output: Option<&Path>,
+    base_dir: Option<&Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
     // 1. Resolve project paths
-    let paths = project::ensure_data_directory(project_dir, None)?;
+    let paths = project::ensure_data_directory(project_dir, base_dir)?;
 
     // 2. Bridge async to sync: use block_in_place when inside a tokio runtime
     //    (e.g. called from tests), otherwise create a temporary runtime.
