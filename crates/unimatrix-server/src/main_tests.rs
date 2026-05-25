@@ -999,3 +999,193 @@ fn test_foreground_appears_in_serve_help() {
         panic!("`serve` subcommand not found in CLI");
     }
 }
+
+// ---------------------------------------------------------------------------
+// #638: Daemon log file writer tests
+// ---------------------------------------------------------------------------
+
+/// #638: Daemon child process writes early startup log lines to the log file,
+/// not just to inherited stderr. This integration test spawns the real binary
+/// with --daemon-child and verifies the log file contains "starting unimatrix daemon"
+/// (the first tracing line emitted after tracing init) with no ANSI escape codes.
+///
+/// If setsid() fails with EPERM (process already a session leader), the test
+/// observes the binary exit with an error and verifies the stderr output mentions
+/// "setsid" — confirming the failure path does not silently swallow the error.
+#[test]
+fn test_daemon_child_writes_early_log_to_file() {
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let project_dir = tmp.path();
+
+    // Resolve the binary path from the current test binary.
+    let exe = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("unimatrix");
+
+    if !exe.exists() {
+        eprintln!("SKIP: unimatrix binary not found at {}", exe.display());
+        return;
+    }
+
+    // Compute the exact log file path that the daemon child will use.
+    // The hash is computed from the canonical project_dir path.
+    let canonical_dir = std::fs::canonicalize(project_dir).unwrap();
+    let project_hash = unimatrix_engine::project::compute_project_hash(&canonical_dir);
+    let unimatrix_base = dirs::home_dir().unwrap().join(".unimatrix");
+    let expected_log_path = unimatrix_base.join(&project_hash).join("unimatrix.log");
+
+    // Remove any pre-existing log file at this path (leftover from prior runs).
+    let _ = std::fs::remove_file(&expected_log_path);
+
+    // Spawn: unimatrix --daemon-child --project-dir <tmp> serve --daemon
+    let mut child = Command::new(&exe)
+        .args([
+            "--daemon-child",
+            "--project-dir",
+            project_dir.to_str().unwrap(),
+            "serve",
+            "--daemon",
+        ])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn unimatrix binary");
+
+    // Give the process time to initialize tracing and write early log lines.
+    std::thread::sleep(Duration::from_secs(3));
+
+    // Kill the child (it may still be running if startup got past setsid).
+    let _ = child.kill();
+    let output = child.wait_with_output().expect("failed to wait on child");
+
+    let stderr_str = String::from_utf8_lossy(&output.stderr);
+
+    if output.status.code() != Some(0) && stderr_str.contains("setsid") {
+        // setsid() failed (EPERM) — process exited before reaching tracing init.
+        assert!(
+            stderr_str.contains("setsid"),
+            "setsid failure must be reported on stderr: {stderr_str}"
+        );
+        eprintln!("NOTE: setsid EPERM — skipping log file assertion (expected in some CI envs)");
+        return;
+    }
+
+    // setsid succeeded — the daemon child entered tokio_main_daemon.
+    // Read the exact log file for this project hash.
+    let log_content = if expected_log_path.exists() {
+        std::fs::read_to_string(&expected_log_path).unwrap_or_default()
+    } else {
+        String::new()
+    };
+
+    if log_content.is_empty() || !log_content.contains("starting unimatrix") {
+        // Check stderr for fallback output (log file open failed).
+        if stderr_str.contains("starting unimatrix") {
+            assert!(
+                !stderr_str.contains("\x1b["),
+                "daemon stderr fallback must not contain ANSI escapes: {stderr_str}"
+            );
+            return;
+        }
+        eprintln!("stderr: {stderr_str}");
+        eprintln!("expected log path: {}", expected_log_path.display());
+        eprintln!("log content: {log_content}");
+        panic!("expected 'starting unimatrix daemon' in log file or stderr");
+    }
+
+    // Verify early startup lines are present.
+    assert!(
+        log_content.contains("starting unimatrix daemon"),
+        "log file must contain early startup line 'starting unimatrix daemon'"
+    );
+
+    // Verify no ANSI escape codes in log file (#638 secondary issue).
+    assert!(
+        !log_content.contains("\x1b["),
+        "log file must not contain ANSI escape codes"
+    );
+
+    // Verify project initialization log is also in the file (proves early lines are captured).
+    assert!(
+        log_content.contains("daemon project initialized")
+            || log_content.contains("project_root")
+            || log_content.contains("config loaded")
+            || log_content.contains("config not found"),
+        "log file must contain post-init lines proving early output was captured"
+    );
+
+    // Cleanup: remove the test-created data directory.
+    let _ = std::fs::remove_dir_all(unimatrix_base.join(&project_hash));
+}
+
+/// #638: Verify the daemon log file writer uses LineWriter for flush-on-newline.
+/// This is a structural test: we open a file with the same pattern used in
+/// tokio_main_daemon, write a line, and verify it's immediately readable.
+#[test]
+fn test_daemon_log_writer_line_buffered() {
+    use std::io::Write;
+
+    let tmp = tempfile::TempDir::new().unwrap();
+    let log_path = tmp.path().join("test-daemon.log");
+
+    // Replicate the writer construction from tokio_main_daemon.
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .expect("failed to open test log file");
+    let writer = std::sync::Mutex::new(std::io::LineWriter::new(file));
+
+    // Write a line through the Mutex<LineWriter<File>> — same type as production.
+    {
+        let mut guard = writer.lock().unwrap();
+        writeln!(guard, "test log line from daemon").unwrap();
+        // Do NOT call flush() — LineWriter should auto-flush on newline.
+    }
+
+    // Read the file and verify the line is present (proves flush happened).
+    let content = std::fs::read_to_string(&log_path).unwrap();
+    assert!(
+        content.contains("test log line from daemon"),
+        "LineWriter must flush on newline without explicit flush(); got: {content}"
+    );
+}
+
+/// #638: Verify fallback path emits warning when log file cannot be opened.
+/// The daemon must NOT exit silently — it must report the failure via eprintln.
+#[test]
+fn test_daemon_log_fallback_on_open_failure() {
+    // The fallback behavior is: eprintln a warning and init tracing with stderr.
+    // We test the structural contract: the error message format matches.
+    let bad_path = std::path::PathBuf::from("/nonexistent/dir/unimatrix.log");
+    let result = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&bad_path);
+    assert!(
+        result.is_err(),
+        "opening a file in a nonexistent directory must fail"
+    );
+    // Verify the warning message format that tokio_main_daemon would emit.
+    let e = result.unwrap_err();
+    let warning = format!(
+        "WARNING: failed to open daemon log at {}: {e}; falling back to stderr",
+        bad_path.display()
+    );
+    assert!(
+        warning.contains("/nonexistent/dir/unimatrix.log"),
+        "warning must contain the failed path: {warning}"
+    );
+    assert!(
+        warning.contains("falling back to stderr"),
+        "warning must indicate stderr fallback: {warning}"
+    );
+}

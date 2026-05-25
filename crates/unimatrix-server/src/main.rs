@@ -446,22 +446,60 @@ fn run_stop(project_dir: Option<PathBuf>) -> i32 {
 /// reachable only from the daemon token cancellation path below.
 #[tokio::main]
 async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing (daemon: log to stderr, redirected to log file by launcher).
+    // #638: Resolve project paths BEFORE tracing init so daemon-child mode can
+    // open the log file explicitly rather than relying on inherited fd 2.
+    // Foreground mode (cli.daemon_child == false) still uses stderr.
+    let paths = project::ensure_data_directory(cli.project_dir.as_deref(), None)
+        .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
+
+    // Initialize tracing.
     // RUST_LOG override: RUST_LOG=info,unimatrix_server::obs=debug enables UDS observation logs
     // To silence obs logs (default): RUST_LOG unset or RUST_LOG=info
     let default_level = if cli.verbose { "debug" } else { "info" };
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_writer(std::io::stderr)
-        .init();
+
+    if cli.daemon_child {
+        // #638: Daemon child — open log file explicitly with .with_ansi(false).
+        // This eliminates dependence on the launcher's fd 2 redirect, which is
+        // fragile on macOS with posix_spawn + setsid().
+        // LineWriter ensures each log line is flushed immediately (crash safety).
+        match std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&paths.log_path)
+        {
+            Ok(file) => {
+                let writer = std::sync::Mutex::new(std::io::LineWriter::new(file));
+                tracing_subscriber::fmt()
+                    .with_env_filter(filter)
+                    .with_writer(writer)
+                    .with_ansi(false)
+                    .init();
+            }
+            Err(e) => {
+                // MANDATORY FALLBACK: never exit silently because log file open
+                // failed — critical for container deployments (nan-014 W2-1).
+                eprintln!(
+                    "WARNING: failed to open daemon log at {}: {e}; falling back to stderr",
+                    paths.log_path.display()
+                );
+                tracing_subscriber::fmt()
+                    .with_env_filter(filter)
+                    .with_writer(std::io::stderr)
+                    .with_ansi(false)
+                    .init();
+            }
+        }
+    } else {
+        // Foreground mode (serve --foreground) — log to stderr unchanged.
+        tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .with_writer(std::io::stderr)
+            .init();
+    }
 
     tracing::info!("starting unimatrix daemon");
-
-    // Initialize project paths.
-    let paths = project::ensure_data_directory(cli.project_dir.as_deref(), None)
-        .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
 
     tracing::info!(
         project_root = %paths.project_root.display(),
