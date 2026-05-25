@@ -481,7 +481,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 cfg
             }
             Err(e) => {
-                tracing::warn!(error = %e, "config load failed; using compiled defaults");
+                tracing::error!(
+                    error = %e,
+                    "CONFIG LOAD FAILED: {e} — falling back to compiled defaults. \
+                     Review the config file for syntax errors."
+                );
                 UnimatrixConfig::default()
             }
         },
@@ -880,7 +884,11 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 cfg
             }
             Err(e) => {
-                tracing::warn!(error = %e, "config load failed; using compiled defaults");
+                tracing::error!(
+                    error = %e,
+                    "CONFIG LOAD FAILED: {e} — falling back to compiled defaults. \
+                     Review the config file for syntax errors."
+                );
                 UnimatrixConfig::default()
             }
         },

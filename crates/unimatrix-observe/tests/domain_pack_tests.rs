@@ -282,7 +282,7 @@ fn test_domain_pack_registry_no_runtime_write_path() {
     // If the above compile, the API surface is read-only as required.
 }
 
-/// T-DPR-12: CategoryAllowlist integration — built-in categories include all 5 active ones
+/// T-DPR-12: CategoryAllowlist integration — built-in categories include all 7 active ones
 #[test]
 fn test_builtin_pack_has_all_initial_categories() {
     let registry = DomainPackRegistry::with_builtin_claude_code();
@@ -290,10 +290,11 @@ fn test_builtin_pack_has_all_initial_categories() {
         .lookup("claude-code")
         .expect("claude-code must exist");
     let expected = [
-        "outcome",
-        "lesson-learned",
-        "decision",
         "convention",
+        "decision",
+        "feature",
+        "goal",
+        "lesson-learned",
         "pattern",
         "procedure",
     ];
@@ -303,7 +304,11 @@ fn test_builtin_pack_has_all_initial_categories() {
             "claude-code pack must include category '{cat}'"
         );
     }
-    // Removed in bugfix-436: duties and reference were stale categories.
+    // Retired categories must NOT be present.
+    assert!(
+        !pack.categories.contains(&"outcome".to_string()),
+        "claude-code pack must not include retired category 'outcome'"
+    );
     assert!(
         !pack.categories.contains(&"duties".to_string()),
         "claude-code pack must not include retired category 'duties'"

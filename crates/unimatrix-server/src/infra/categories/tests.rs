@@ -42,6 +42,18 @@ fn test_validate_procedure() {
 }
 
 #[test]
+fn test_validate_goal() {
+    let al = CategoryAllowlist::new();
+    assert!(al.validate("goal").is_ok());
+}
+
+#[test]
+fn test_validate_feature() {
+    let al = CategoryAllowlist::new();
+    assert!(al.validate("feature").is_ok());
+}
+
+#[test]
 fn test_validate_duties() {
     let al = CategoryAllowlist::new();
     assert!(al.validate("duties").is_err());
@@ -63,7 +75,7 @@ fn test_validate_unknown_rejected() {
             valid_categories,
         } => {
             assert_eq!(category, "unknown");
-            assert_eq!(valid_categories.len(), 5);
+            assert_eq!(valid_categories.len(), 7);
         }
         _ => panic!("expected InvalidCategory"),
     }
@@ -93,7 +105,7 @@ fn test_add_category_then_validate() {
 fn test_list_categories_sorted() {
     let al = CategoryAllowlist::new();
     let list = al.list_categories();
-    assert_eq!(list.len(), 5);
+    assert_eq!(list.len(), 7);
     // Verify sorted
     for i in 1..list.len() {
         assert!(list[i] >= list[i - 1]);
@@ -110,11 +122,13 @@ fn test_error_lists_all_valid_categories() {
         } => {
             assert!(valid_categories.contains(&"convention".to_string()));
             assert!(valid_categories.contains(&"decision".to_string()));
+            assert!(valid_categories.contains(&"feature".to_string()));
+            assert!(valid_categories.contains(&"goal".to_string()));
             assert!(valid_categories.contains(&"lesson-learned".to_string()));
-            // ADR-005: "outcome" retired — must not appear in the valid-categories list.
-            assert!(!valid_categories.contains(&"outcome".to_string()));
             assert!(valid_categories.contains(&"pattern".to_string()));
             assert!(valid_categories.contains(&"procedure".to_string()));
+            // ADR-005: "outcome" retired — must not appear in the valid-categories list.
+            assert!(!valid_categories.contains(&"outcome".to_string()));
             // Removed in bugfix-436: duties and reference were stale categories.
             assert!(!valid_categories.contains(&"duties".to_string()));
             assert!(!valid_categories.contains(&"reference".to_string()));
@@ -173,11 +187,11 @@ fn test_poison_recovery_list_categories() {
     poison_allowlist(&al);
     // list_categories() should recover and return valid data.
     let list = al.list_categories();
-    // Should have initial 5 + "pre-panic-insert" from the poisoning thread.
+    // Should have initial 7 + "pre-panic-insert" from the poisoning thread.
     // ADR-005: "outcome" is no longer a default category.
     assert!(!list.contains(&"outcome".to_string()));
     assert!(list.contains(&"convention".to_string()));
-    assert!(list.len() >= 5);
+    assert!(list.len() >= 7);
 }
 
 #[test]
@@ -304,14 +318,14 @@ fn test_from_categories_empty_list_accepts_nothing() {
 
 // --- crt-025 ADR-005: outcome category retirement tests ---
 
-/// AC-15, FR-08.2: CategoryAllowlist::new() must have exactly 5 categories.
+/// AC-15, FR-08.2: CategoryAllowlist::new() must have exactly 7 categories.
 #[test]
-fn test_category_allowlist_has_five_categories() {
+fn test_category_allowlist_has_seven_categories() {
     let al = CategoryAllowlist::new();
     assert_eq!(
         al.list_categories().len(),
-        5,
-        "INITIAL_CATEGORIES must contain exactly 5 entries after duties and reference removal"
+        7,
+        "INITIAL_CATEGORIES must contain exactly 7 entries (goal and feature added)"
     );
 }
 
@@ -336,27 +350,21 @@ fn test_outcome_category_validate_err() {
             valid_categories,
         } => {
             assert_eq!(category, "outcome");
-            assert_eq!(valid_categories.len(), 5);
+            assert_eq!(valid_categories.len(), 7);
             assert!(!valid_categories.contains(&"outcome".to_string()));
         }
         _ => panic!("expected InvalidCategory error for retired category"),
     }
 }
 
-/// R-03: All 5 remaining categories validate successfully (regression guard).
+/// R-03: All 7 categories validate successfully (regression guard).
 #[test]
-fn test_all_remaining_five_categories_valid() {
+fn test_all_remaining_categories_valid() {
     let al = CategoryAllowlist::new();
-    for cat in &[
-        "lesson-learned",
-        "decision",
-        "convention",
-        "pattern",
-        "procedure",
-    ] {
+    for cat in &INITIAL_CATEGORIES {
         assert!(
             al.validate(cat).is_ok(),
-            "category '{}' must still be valid after duties and reference removal",
+            "category '{}' must be valid (present in INITIAL_CATEGORIES)",
             cat
         );
     }

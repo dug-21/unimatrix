@@ -12,10 +12,12 @@ use std::sync::RwLock;
 
 use crate::error::ServerError;
 
-pub(crate) const INITIAL_CATEGORIES: [&str; 5] = [
-    "lesson-learned",
-    "decision",
+pub(crate) const INITIAL_CATEGORIES: [&str; 7] = [
     "convention",
+    "decision",
+    "feature",
+    "goal",
+    "lesson-learned",
     "pattern",
     "procedure",
 ];
