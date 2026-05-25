@@ -9346,28 +9346,41 @@ nli_informs_ppr_weight = 0.4
 
     #[test]
     fn test_dual_default_divergence_empty_toml_vs_default_impl() {
-        // Deserializing an empty TOML string must produce a config whose categories
-        // match the Default impl categories (INITIAL_CATEGORIES). This guards against
-        // the divergence that caused bugfix-632.
-        let from_toml: UnimatrixConfig = toml::from_str("").expect("empty TOML must deserialize");
+        // Deserializing an empty TOML string uses KnowledgeConfig::default() for the
+        // entire [knowledge] section (section absent → impl Default). Fields that must
+        // stay in sync between serde default fns and impl Default are tested here.
+        let from_empty: UnimatrixConfig =
+            toml::from_str("").expect("empty TOML must deserialize");
         let from_default = UnimatrixConfig::default();
 
-        // Categories must be identical between serde default and Rust Default impl.
         assert_eq!(
-            from_toml.knowledge.categories, from_default.knowledge.categories,
+            from_empty.knowledge.categories, from_default.knowledge.categories,
             "serde-default categories must match Default impl categories (INITIAL_CATEGORIES)"
         );
-
-        // Preset must also match.
         assert_eq!(
-            from_toml.profile.preset, from_default.profile.preset,
+            from_empty.profile.preset, from_default.profile.preset,
             "serde-default preset must match Default impl preset"
         );
 
-        // Note: boosted_categories and adaptive_categories intentionally diverge
-        // between serde default (["lesson-learned"]) and Rust Default ([]).
-        // This is by design (ADR-001 decision 4, crt-031) — the serde default
-        // represents "what an operator gets when they omit the field", while
-        // the Rust Default represents "programmatic construction".
+        // When [knowledge] section exists but fields are omitted, serde per-field
+        // defaults kick in. boosted_categories and adaptive_categories intentionally
+        // diverge from impl Default (merge-sentinel design, ADR-001 decision 4).
+        let from_section: UnimatrixConfig =
+            toml::from_str("[knowledge]\n").expect("[knowledge] section must deserialize");
+
+        assert_ne!(
+            from_section.knowledge.boosted_categories, from_default.knowledge.boosted_categories,
+            "serde field default for boosted_categories must diverge from impl Default"
+        );
+        assert_ne!(
+            from_section.knowledge.adaptive_categories, from_default.knowledge.adaptive_categories,
+            "serde field default for adaptive_categories must diverge from impl Default"
+        );
+
+        // Section-present categories must still match (INITIAL_CATEGORIES is authoritative).
+        assert_eq!(
+            from_section.knowledge.categories, from_default.knowledge.categories,
+            "serde field default for categories must match impl Default"
+        );
     }
 }

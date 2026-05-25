@@ -1202,7 +1202,7 @@ async fn tokio_main_bridge(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 ///
 /// Returns the effective config, the category allowlist (Arc-wrapped), and the
 /// domain pack registry (Arc-wrapped). Logs provenance at appropriate levels:
-/// INFO for loaded sources, DEBUG for not-found, WARN for home directory absent.
+/// INFO for loaded/global-not-found, WARN for project-not-found, WARN for home directory absent.
 fn load_config_and_build_allowlist(
     data_dir: &Path,
 ) -> Result<
@@ -1293,7 +1293,7 @@ fn log_config_provenance(provenance: &ConfigProvenance) {
             tracing::info!(path = %path.display(), "global config loaded");
         }
         SourceStatus::NotFound { path } => {
-            tracing::debug!(path = %path.display(), "global config not found; using compiled defaults");
+            tracing::info!(path = %path.display(), "global config not found; using compiled defaults");
         }
         SourceStatus::NotApplicable => {}
     }
@@ -1302,7 +1302,7 @@ fn log_config_provenance(provenance: &ConfigProvenance) {
             tracing::info!(path = %path.display(), "project config loaded");
         }
         SourceStatus::NotFound { path } => {
-            tracing::debug!(path = %path.display(), "project config not found; using compiled defaults");
+            tracing::warn!(path = %path.display(), "project config not found; using compiled defaults");
         }
         SourceStatus::NotApplicable => {}
     }
