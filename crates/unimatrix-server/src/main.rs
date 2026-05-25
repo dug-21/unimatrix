@@ -19,8 +19,8 @@ use unimatrix_server::error::ServerError;
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
 use unimatrix_server::infra::config::{
-    DomainPackConfig, UnimatrixConfig, load_config, resolve_confidence_params,
-    write_default_config_if_absent,
+    ConfigProvenance, DomainPackConfig, SourceStatus, UnimatrixConfig, load_config,
+    resolve_confidence_params, write_default_config_if_absent,
 };
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::nli_handle::{NliConfig, NliServiceHandle};
@@ -471,29 +471,9 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         "daemon project initialized"
     );
 
-    // ── dsn-001: Load external config ─────────────────────────────────────────────
-    // dirs::home_dir() returns None in rootless/container environments.
-    // When None: log a warning and proceed with compiled defaults (R-15).
-    let config = match dirs::home_dir() {
-        Some(home) => match load_config(&home, &paths.data_dir) {
-            Ok(cfg) => {
-                tracing::info!(preset = ?cfg.profile.preset, "config loaded");
-                cfg
-            }
-            Err(e) => {
-                tracing::error!(
-                    error = %e,
-                    "CONFIG LOAD FAILED: {e} — falling back to compiled defaults. \
-                     Review the config file for syntax errors."
-                );
-                UnimatrixConfig::default()
-            }
-        },
-        None => {
-            tracing::warn!("home directory not found; using compiled defaults (R-15)");
-            UnimatrixConfig::default()
-        }
-    };
+    // ── dsn-001 + #635: Load config, build allowlist, filter domain packs ──────
+    let (config, categories, observation_registry) =
+        load_config_and_build_allowlist(&paths.data_dir)?;
 
     // Resolve ConfidenceParams from preset/weights.
     let confidence_params = Arc::new(resolve_confidence_params(&config).unwrap_or_else(|e| {
@@ -503,7 +483,6 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // Extract concrete values for subsystem constructors.
     // None of these are stored as Arc<UnimatrixConfig> on any struct (ADR-002).
-    let knowledge_categories: Vec<String> = config.knowledge.categories.clone();
     let boosted_categories: HashSet<String> = config
         .knowledge
         .boosted_categories
@@ -592,34 +571,6 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
 
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
-
-    // Initialize category allowlist from config (dsn-001).
-    let adaptive_categories: Vec<String> = config.knowledge.adaptive_categories.clone();
-    let categories = Arc::new(CategoryAllowlist::from_categories_with_policy(
-        knowledge_categories,
-        adaptive_categories,
-    ));
-
-    // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
-    // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
-    let observation_registry = {
-        let packs: Vec<DomainPack> = config
-            .observation
-            .domain_packs
-            .iter()
-            .map(domain_pack_from_config)
-            .collect();
-        let reg = DomainPackRegistry::new(packs).map_err(|e| {
-            ServerError::ProjectInit(format!("domain pack registry init failed: {e}"))
-        })?;
-        // Register domain pack categories into CategoryAllowlist (IR-02 ordering).
-        for pack in reg.iter_packs() {
-            for category in &pack.categories {
-                categories.add_category(category.clone());
-            }
-        }
-        Arc::new(reg)
-    };
 
     // Initialize adaptation service (crt-006).
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
@@ -874,29 +825,9 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         "project initialized"
     );
 
-    // ── dsn-001: Load external config ─────────────────────────────────────────────
-    // dirs::home_dir() returns None in rootless/container environments.
-    // When None: log a warning and proceed with compiled defaults (R-15).
-    let config = match dirs::home_dir() {
-        Some(home) => match load_config(&home, &paths.data_dir) {
-            Ok(cfg) => {
-                tracing::info!(preset = ?cfg.profile.preset, "config loaded");
-                cfg
-            }
-            Err(e) => {
-                tracing::error!(
-                    error = %e,
-                    "CONFIG LOAD FAILED: {e} — falling back to compiled defaults. \
-                     Review the config file for syntax errors."
-                );
-                UnimatrixConfig::default()
-            }
-        },
-        None => {
-            tracing::warn!("home directory not found; using compiled defaults (R-15)");
-            UnimatrixConfig::default()
-        }
-    };
+    // ── dsn-001 + #635: Load config, build allowlist, filter domain packs ──────
+    let (config, categories, observation_registry) =
+        load_config_and_build_allowlist(&paths.data_dir)?;
 
     // Resolve ConfidenceParams from preset/weights.
     let confidence_params = Arc::new(resolve_confidence_params(&config).unwrap_or_else(|e| {
@@ -906,7 +837,6 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // Extract concrete values for subsystem constructors.
     // None of these are stored as Arc<UnimatrixConfig> on any struct (ADR-002).
-    let knowledge_categories: Vec<String> = config.knowledge.categories.clone();
     let boosted_categories: HashSet<String> = config
         .knowledge
         .boosted_categories
@@ -996,34 +926,6 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
 
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
-
-    // Initialize category allowlist from config (dsn-001).
-    let adaptive_categories: Vec<String> = config.knowledge.adaptive_categories.clone();
-    let categories = Arc::new(CategoryAllowlist::from_categories_with_policy(
-        knowledge_categories,
-        adaptive_categories,
-    ));
-
-    // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
-    // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
-    let observation_registry = {
-        let packs: Vec<DomainPack> = config
-            .observation
-            .domain_packs
-            .iter()
-            .map(domain_pack_from_config)
-            .collect();
-        let reg = DomainPackRegistry::new(packs).map_err(|e| {
-            ServerError::ProjectInit(format!("domain pack registry init failed: {e}"))
-        })?;
-        // Register domain pack categories into CategoryAllowlist (IR-02 ordering).
-        for pack in reg.iter_packs() {
-            for category in &pack.categories {
-                categories.add_category(category.clone());
-            }
-        }
-        Arc::new(reg)
-    };
 
     // Initialize adaptation service (crt-006).
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
@@ -1289,6 +1191,130 @@ async fn tokio_main_bridge(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     unimatrix_server::bridge::run_bridge(&paths).await?;
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Shared startup helper (#635)
+// ---------------------------------------------------------------------------
+
+/// Consolidated config load, provenance logging, allowlist construction, and
+/// domain pack category filtering. Called by both daemon and stdio entry points.
+///
+/// Returns the effective config, the category allowlist (Arc-wrapped), and the
+/// domain pack registry (Arc-wrapped). Logs provenance at appropriate levels:
+/// INFO for loaded sources, DEBUG for not-found, WARN for home directory absent.
+fn load_config_and_build_allowlist(
+    data_dir: &Path,
+) -> Result<
+    (
+        UnimatrixConfig,
+        Arc<CategoryAllowlist>,
+        Arc<DomainPackRegistry>,
+    ),
+    ServerError,
+> {
+    // ── dsn-001: Load external config ─────────────────────────────────────────────
+    // dirs::home_dir() returns None in rootless/container environments.
+    // When None: log a warning and proceed with compiled defaults (R-15).
+    let config = match dirs::home_dir() {
+        Some(home) => match load_config(&home, data_dir) {
+            Ok(result) => {
+                log_config_provenance(&result.provenance);
+                tracing::info!(preset = ?result.config.profile.preset, "config loaded");
+                result.config
+            }
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    "CONFIG LOAD FAILED: {e} — falling back to compiled defaults. \
+                     Review the config file for syntax errors."
+                );
+                UnimatrixConfig::default()
+            }
+        },
+        None => {
+            tracing::warn!("home directory not found; using compiled defaults (R-15)");
+            UnimatrixConfig::default()
+        }
+    };
+
+    // Initialize category allowlist from config (dsn-001).
+    let knowledge_categories: Vec<String> = config.knowledge.categories.clone();
+    let adaptive_categories: Vec<String> = config.knowledge.adaptive_categories.clone();
+    let categories = Arc::new(CategoryAllowlist::from_categories_with_policy(
+        knowledge_categories,
+        adaptive_categories,
+    ));
+
+    // Build DomainPackRegistry from [observation] config (col-023 ADR-002).
+    // The built-in claude-code pack is always loaded; TOML stanzas are merged in.
+    let observation_registry = {
+        let packs: Vec<DomainPack> = config
+            .observation
+            .domain_packs
+            .iter()
+            .map(domain_pack_from_config)
+            .collect();
+        let reg = DomainPackRegistry::new(packs).map_err(|e| {
+            ServerError::ProjectInit(format!("domain pack registry init failed: {e}"))
+        })?;
+        // Filter domain pack categories against the operator-configured allowlist (#635).
+        // Categories not in the allowlist are dropped with a warning — NOT added.
+        for pack in reg.iter_packs() {
+            for category in &pack.categories {
+                if categories.validate(category).is_err() {
+                    tracing::warn!(
+                        category = %category,
+                        domain = %pack.source_domain,
+                        "domain pack category not in operator allowlist; dropped"
+                    );
+                }
+            }
+        }
+        Arc::new(reg)
+    };
+
+    // Log effective config values for operator observability.
+    tracing::info!(
+        categories = ?config.knowledge.categories,
+        boosted_categories = ?config.knowledge.boosted_categories,
+        adaptive_categories = ?config.knowledge.adaptive_categories,
+        preset = ?config.profile.preset,
+        "effective config"
+    );
+
+    Ok((config, categories, observation_registry))
+}
+
+/// Log provenance of each config source at appropriate levels.
+fn log_config_provenance(provenance: &ConfigProvenance) {
+    match &provenance.global {
+        SourceStatus::Loaded { path } => {
+            tracing::info!(path = %path.display(), "global config loaded");
+        }
+        SourceStatus::NotFound { path } => {
+            tracing::debug!(path = %path.display(), "global config not found; using compiled defaults");
+        }
+        SourceStatus::NotApplicable => {}
+    }
+    match &provenance.project {
+        SourceStatus::Loaded { path } => {
+            tracing::info!(path = %path.display(), "project config loaded");
+        }
+        SourceStatus::NotFound { path } => {
+            tracing::debug!(path = %path.display(), "project config not found; using compiled defaults");
+        }
+        SourceStatus::NotApplicable => {}
+    }
+    match &provenance.env_override {
+        SourceStatus::Loaded { path } => {
+            tracing::info!(path = %path.display(), "env override config loaded (UNIMATRIX_CONFIG)");
+        }
+        SourceStatus::NotFound { path } => {
+            tracing::warn!(path = %path.display(), "UNIMATRIX_CONFIG set but file not found");
+        }
+        SourceStatus::NotApplicable => {}
+    }
 }
 
 // ---------------------------------------------------------------------------
