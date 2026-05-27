@@ -9349,8 +9349,7 @@ nli_informs_ppr_weight = 0.4
         // Deserializing an empty TOML string uses KnowledgeConfig::default() for the
         // entire [knowledge] section (section absent → impl Default). Fields that must
         // stay in sync between serde default fns and impl Default are tested here.
-        let from_empty: UnimatrixConfig =
-            toml::from_str("").expect("empty TOML must deserialize");
+        let from_empty: UnimatrixConfig = toml::from_str("").expect("empty TOML must deserialize");
         let from_default = UnimatrixConfig::default();
 
         assert_eq!(

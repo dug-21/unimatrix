@@ -16,12 +16,11 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use sqlx::Row;
 use sqlx::SqlitePool;
 use sqlx::sqlite::SqliteConnection;
-use unimatrix_store::{SqlxStore, compute_content_hash};
+use unimatrix_store::{AuditEvent, Outcome, SqlxStore, compute_content_hash};
 
 use crate::format::{ExportHeader, ExportRow};
 use crate::project;
@@ -223,7 +222,7 @@ async fn run_import_async(
     crate::embed_reconstruct::reconstruct_embeddings(&store, &paths.vector_dir)?;
 
     // Phase 11: Record provenance
-    record_provenance(pool, input, &counts).await?;
+    record_provenance(&store, input, &counts).await?;
 
     // Phase 12: Summary
     print_summary(&counts, skip_hash_validation);
@@ -425,21 +424,15 @@ async fn validate_hashes(conn: &mut SqliteConnection) -> Result<(), Box<dyn std:
 // ---------------------------------------------------------------------------
 
 /// Record an audit log entry documenting the import operation.
+///
+/// Uses `SqlxStore::log_audit_event()` which allocates the event_id via the
+/// atomic `next_audit_id` counter, avoiding the counter desync that occurred
+/// when this function previously computed `MAX(event_id)+1` manually (GH#633).
 async fn record_provenance(
-    pool: &SqlitePool,
+    store: &SqlxStore,
     input_path: &Path,
     counts: &ImportCounts,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let next_event_id: i64 =
-        sqlx::query_scalar::<_, i64>("SELECT COALESCE(MAX(event_id), 0) + 1 FROM audit_log")
-            .fetch_one(pool)
-            .await?;
-
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs() as i64;
-
     let detail = format!(
         "Imported from '{}': {} entries, {} tags, {} co-access pairs, {} counters",
         input_path.display(),
@@ -449,22 +442,19 @@ async fn record_provenance(
         counts.counters
     );
 
-    sqlx::query(
-        "INSERT INTO audit_log (
-            event_id, timestamp, session_id, agent_id,
-            operation, target_ids, outcome, detail
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-    )
-    .bind(next_event_id)
-    .bind(now)
-    .bind("import")
-    .bind("system")
-    .bind("import")
-    .bind("[]")
-    .bind(1i64)
-    .bind(&detail)
-    .execute(pool)
-    .await?;
+    let event = AuditEvent {
+        session_id: "import".to_string(),
+        agent_id: "system".to_string(),
+        operation: "import".to_string(),
+        outcome: Outcome::Success,
+        detail,
+        ..AuditEvent::default()
+    };
+
+    store
+        .log_audit_event(event)
+        .await
+        .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
 
     Ok(())
 }
@@ -1088,5 +1078,187 @@ mod tests {
             base_dir.path(),
         );
         assert!(result.is_err(), "duplicate PK should fail");
+    }
+
+    // --- GH#633 Regression: audit counter desync after import ---
+
+    /// Build an audit_log JSON line for export/import.
+    fn make_audit_log_line(event_id: i64, operation: &str, detail: &str) -> String {
+        serde_json::json!({
+            "_table": "audit_log",
+            "event_id": event_id,
+            "timestamp": 1700000000i64 + event_id,
+            "session_id": "pre-export-session",
+            "agent_id": "system",
+            "operation": operation,
+            "target_ids": "[]",
+            "outcome": 0,
+            "detail": detail
+        })
+        .to_string()
+    }
+
+    /// Regression test for GH#633: after export/import round-trip,
+    /// log_audit_event() must succeed multiple times without UNIQUE constraint
+    /// collisions. The bug was that record_provenance() wrote event_id via
+    /// MAX(event_id)+1, desynchronizing the next_audit_id counter permanently.
+    ///
+    /// This test imports audit_log rows with event_ids 1..=3 and a
+    /// next_audit_id counter set to 3, then calls log_audit_event() twice.
+    /// Both must succeed with monotonically increasing IDs > all imported rows
+    /// AND > the provenance record written during import.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_gh633_log_audit_event_succeeds_after_import() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 1),
+            // Counters
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            make_counter_line("next_audit_id", 3),
+            // One entry
+            make_entry_line(1, "Test entry", "Content for GH#633", ""),
+            // Three audit_log rows (event_ids 1, 2, 3)
+            make_audit_log_line(1, "context_store", "stored entry 1"),
+            make_audit_log_line(2, "context_search", "searched for test"),
+            make_audit_log_line(3, "context_store", "stored entry 2"),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_ok(), "import must succeed: {result:?}");
+
+        // Re-open the store and call log_audit_event() twice.
+        let store = open_test_store_at(&db_path).await;
+
+        let event1 = AuditEvent {
+            session_id: "post-import-session".to_string(),
+            agent_id: "test-agent".to_string(),
+            operation: "context_search".to_string(),
+            detail: "GH#633 regression call 1".to_string(),
+            ..AuditEvent::default()
+        };
+        let id1 = store
+            .log_audit_event(event1)
+            .await
+            .expect("first log_audit_event after import must succeed (GH#633)");
+
+        let event2 = AuditEvent {
+            session_id: "post-import-session".to_string(),
+            agent_id: "test-agent".to_string(),
+            operation: "context_search".to_string(),
+            detail: "GH#633 regression call 2".to_string(),
+            ..AuditEvent::default()
+        };
+        let id2 = store
+            .log_audit_event(event2)
+            .await
+            .expect("second log_audit_event after import must succeed (GH#633)");
+
+        // Monotonically increasing
+        assert!(
+            id2 > id1,
+            "event_ids must be monotonically increasing: id1={id1}, id2={id2}"
+        );
+
+        // Both IDs must be greater than the max imported audit_log event_id (3)
+        // AND greater than the provenance record written during import.
+        // The provenance record uses event_id 4 (counter was 3, incremented to 4).
+        // So the first post-import call should get 5, second 6.
+        assert!(
+            id1 > 3,
+            "post-import event_id must exceed all imported rows: id1={id1}"
+        );
+
+        // Verify the provenance record exists and has the expected event_id.
+        let provenance = store
+            .read_audit_event(4)
+            .await
+            .expect("read provenance event must succeed")
+            .expect("provenance event must exist at event_id 4");
+        assert_eq!(
+            provenance.operation, "import",
+            "provenance record must have operation='import'"
+        );
+    }
+
+    /// Complementary regression test for GH#633: verify that the provenance
+    /// record written during import uses the counter (not MAX+1), by checking
+    /// the counter value after import matches the provenance event_id.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_gh633_provenance_uses_counter_not_max_plus_one() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        // Import with next_audit_id=5 but only 2 audit_log rows (event_ids 1, 2).
+        // If record_provenance used MAX+1, it would write event_id 3.
+        // If it uses the counter, it increments 5→6 and writes event_id 6.
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 1),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            make_counter_line("next_audit_id", 5),
+            make_entry_line(1, "Test entry", "Content", ""),
+            make_audit_log_line(1, "context_store", "row 1"),
+            make_audit_log_line(2, "context_store", "row 2"),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_ok(), "import must succeed: {result:?}");
+
+        // Re-open and verify counter-based allocation.
+        let store = open_test_store_at(&db_path).await;
+
+        // The provenance record should be at event_id 6 (counter 5 → 6).
+        let provenance = store
+            .read_audit_event(6)
+            .await
+            .expect("read must succeed")
+            .expect("provenance at event_id 6 (counter-based, not MAX+1=3)");
+        assert_eq!(provenance.operation, "import");
+
+        // event_id 3 should NOT have the provenance record (that's the MAX+1 bug path).
+        let at_three = store.read_audit_event(3).await.expect("read must succeed");
+        assert!(
+            at_three.is_none(),
+            "event_id 3 must be empty — provenance must not use MAX+1"
+        );
+
+        // Subsequent log_audit_event must succeed at event_id 7.
+        let event = AuditEvent {
+            operation: "context_search".to_string(),
+            detail: "post-import check".to_string(),
+            ..AuditEvent::default()
+        };
+        let id = store
+            .log_audit_event(event)
+            .await
+            .expect("log_audit_event must succeed after import");
+        assert_eq!(id, 7, "next event_id must be 7 (counter 6 → 7)");
     }
 }
