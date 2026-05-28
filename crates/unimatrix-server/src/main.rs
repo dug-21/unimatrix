@@ -1347,19 +1347,19 @@ fn load_config_and_build_allowlist(
 fn log_config_provenance(provenance: &ConfigProvenance) {
     match &provenance.global {
         SourceStatus::Loaded { path } => {
-            tracing::info!(path = %path.display(), "global config loaded");
+            tracing::info!(path = %path.display(), "defaults config loaded (global)");
         }
         SourceStatus::NotFound { path } => {
-            tracing::info!(path = %path.display(), "global config not found; using compiled defaults");
+            tracing::info!(path = %path.display(), "defaults config not found (global); using compiled defaults");
         }
         SourceStatus::NotApplicable => {}
     }
     match &provenance.project {
         SourceStatus::Loaded { path } => {
-            tracing::info!(path = %path.display(), "project config loaded");
+            tracing::info!(path = %path.display(), "primary config loaded (per-project)");
         }
         SourceStatus::NotFound { path } => {
-            tracing::warn!(path = %path.display(), "project config not found; using compiled defaults");
+            tracing::warn!(path = %path.display(), "primary config not found (per-project); write default with 'unimatrix config'");
         }
         SourceStatus::NotApplicable => {}
     }
