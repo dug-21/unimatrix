@@ -59,7 +59,7 @@ docker run -v unimatrix-data:/data ghcr.io/dug-21/unimatrix
 docker compose up
 ```
 
-The container runs `unimatrix serve --foreground` as PID 1 (non-root, UID 65534). Both ONNX models (embedding + NLI) are baked into the image — no internet access required after pull. Data persists in the `unimatrix-data` named volume at `/data`. Optional config override via read-only bind mount at `/etc/unimatrix/config.toml`.
+The container runs `unimatrix serve --foreground` as PID 1 (non-root, UID 65534). Both ONNX models (embedding + NLI) are baked into the image — no internet access required after pull. Data persists in the `unimatrix-data` named volume at `/data`. Config lives in the data volume; customize via `unimatrix config` or set `UNIMATRIX_CONFIG` for external override.
 
 ### Build from Source
 
@@ -237,10 +237,10 @@ Per-entry utility scoring from injection logs and session outcomes. Confidence c
 
 ## Configuration
 
-Unimatrix loads configuration from two optional TOML files at server startup. When neither file is present, all compiled defaults apply and no existing behavior changes.
+Unimatrix loads configuration from up to two optional TOML files at server startup. When neither file is present, all compiled defaults apply.
 
-- `~/.unimatrix/config.toml` — global config, applies to every project on the machine.
-- `~/.unimatrix/{project-hash}/config.toml` — per-project override; values here shadow the global file, which shadows compiled defaults. List fields (`categories`, `boosted_categories`, `adaptive_categories`, `session_capabilities`) replace the global list entirely — there is no append behavior.
+- `~/.unimatrix/{project-hash}/config.toml` — **primary** (per-project). Written automatically on first run. This is the canonical config location.
+- `~/.unimatrix/config.toml` — **defaults** (global). Optional cross-project defaults; values here apply to all projects unless overridden per-project. List fields (`categories`, `boosted_categories`, `adaptive_categories`, `session_capabilities`) replace the global list entirely — there is no append behavior.
 
 Config is loaded once at startup. Changes require a server restart. A malformed file or a security validation failure aborts startup with a descriptive error.
 
