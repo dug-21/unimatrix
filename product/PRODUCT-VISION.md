@@ -445,15 +445,15 @@ Wave 2 delivers a complete, deployable personal Unimatrix cloud: containerized, 
 ### W2-1: Container Packaging
 **Business outcome**: Knowledge survives infrastructure changes — production-grade deployment with clean backup, recovery, and standard container lifecycle.
 
-**What**: Dockerfile + docker-compose with two named volumes:
-- `unimatrix-data` — single SQLite database (back up frequently; integrity-critical)
-- `unimatrix-shared` — ONNX models (re-downloadable), `config.toml` (mount as read-only bind)
+**What**: Dockerfile + docker-compose with a single named volume.
+*(Updated to reflect nan-014 shipped design.)*
+- `unimatrix-data` — databases, vector indexes, config, and logs (back up frequently; integrity-critical). ONNX models baked into the image.
 
 Container is stateless except the volumes. Backup = volume snapshot of `unimatrix-data`. `HEALTHCHECK` verifies daemon liveness and schema version currency.
 
 **Security requirements:**
 - [High] Named volumes owner-only at container build time (`chmod 0700`)
-- [Medium] `config.toml` as read-only bind mount from secrets manager, not in data volume
+- [Medium] Sensitive config values injected via `UNIMATRIX_CONFIG` env var pointing to a secrets-manager-provided path
 - [Low] Container runs as non-root (`USER unimatrix`)
 
 **Effort**: 2 days.
