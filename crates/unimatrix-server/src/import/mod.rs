@@ -1600,9 +1600,17 @@ mod tests {
         );
         assert!(result.is_ok(), "first import should succeed: {result:?}");
 
-        // Second import with --force and empty file (header only).
+        // Second import with --force and empty data (counters only).
+        // next_audit_id must be set high enough to avoid colliding with
+        // audit_log entries from the first import's record_provenance
+        // (audit_log is append-only and not cleared by drop_all_data).
         let output_dir2 = TempDir::new().unwrap();
-        let lines2 = vec![make_header(sv, 2, 0)];
+        let lines2 = vec![
+            make_header(sv, 2, 0),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 1),
+            make_counter_line("next_audit_id", 100),
+        ];
         let input_path2 = write_jsonl(&output_dir2, &lines2);
 
         let result2 = run_import_with_base(

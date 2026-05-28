@@ -600,7 +600,7 @@ fn test_header_validation() {
         "exported_at should be recent, got {exported_at} vs now {now}"
     );
     assert_eq!(obj["entry_count"].as_i64().unwrap(), 3);
-    assert_eq!(obj["format_version"].as_i64().unwrap(), 1);
+    assert_eq!(obj["format_version"].as_i64().unwrap(), 2);
     assert_eq!(obj.len(), 5, "Header should have exactly 5 keys");
 }
 
