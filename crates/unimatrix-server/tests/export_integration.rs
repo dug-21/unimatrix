@@ -53,7 +53,7 @@ fn open_store(db_path: &Path) -> SqlxStore {
 /// Returns the raw output string. Uses `run_export_with_base` to keep
 /// all test data inside `base_dir`.
 fn run_export_to_string(project_dir: &Path, base_dir: &Path, output_file: &Path) -> String {
-    run_export_with_base(Some(project_dir), Some(output_file), base_dir)
+    run_export_with_base(Some(project_dir), Some(output_file), base_dir, false, false)
         .expect("run_export_with_base should succeed");
     std::fs::read_to_string(output_file).expect("read output file")
 }
@@ -549,6 +549,8 @@ fn test_output_file_path() {
         Some(project_dir.path()),
         Some(&output_path),
         base_dir.path(),
+        false,
+        false,
     )
     .expect("export should succeed");
 
@@ -854,7 +856,13 @@ fn test_error_on_invalid_output_path() {
     drop(_store);
 
     let bad_path = std::path::Path::new("/nonexistent_dir_12345/export.jsonl");
-    let result = run_export_with_base(Some(project_dir.path()), Some(bad_path), base_dir.path());
+    let result = run_export_with_base(
+        Some(project_dir.path()),
+        Some(bad_path),
+        base_dir.path(),
+        false,
+        false,
+    );
     assert!(result.is_err(), "Export to non-writable path should fail");
 }
 
@@ -870,6 +878,8 @@ fn test_error_on_nonexistent_database() {
     let result = run_export(
         Some(std::path::Path::new("/nonexistent_path_xyz_12345")),
         Some(&output_path),
+        false,
+        false,
     );
     assert!(
         result.is_err(),
@@ -1001,6 +1011,8 @@ fn test_performance_500_entries() {
         Some(project_dir.path()),
         Some(&output_path),
         base_dir.path(),
+        false,
+        false,
     )
     .expect("export should succeed");
     let elapsed = start.elapsed();

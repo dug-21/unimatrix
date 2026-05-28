@@ -81,8 +81,39 @@ fn test_model_download_nli_model_flag_parsed() {
 fn test_export_subcommand_unchanged() {
     let cli = Cli::try_parse_from(["unimatrix", "export", "--output", "/tmp/out.json"]).unwrap();
     match cli.command {
-        Some(Command::Export { output }) => {
+        Some(Command::Export {
+            output,
+            skip_quarantined,
+            confirm,
+        }) => {
             assert_eq!(output, Some(PathBuf::from("/tmp/out.json")));
+            assert!(!skip_quarantined);
+            assert!(!confirm);
+        }
+        other => panic!("expected Export, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_export_subcommand_skip_quarantined_flags() {
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "export",
+        "--skip-quarantined",
+        "--confirm",
+        "--output",
+        "/tmp/out.json",
+    ])
+    .unwrap();
+    match cli.command {
+        Some(Command::Export {
+            output,
+            skip_quarantined,
+            confirm,
+        }) => {
+            assert_eq!(output, Some(PathBuf::from("/tmp/out.json")));
+            assert!(skip_quarantined);
+            assert!(confirm);
         }
         other => panic!("expected Export, got {other:?}"),
     }

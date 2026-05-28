@@ -268,7 +268,7 @@ fn parse_lines(output: &str) -> Vec<Value> {
 /// Run export to string by writing to a file then reading it back.
 /// Uses `run_export_with_base` to keep all test data inside `base_dir`.
 fn run_export_to_string(project_dir: &Path, base_dir: &Path, output_file: &Path) -> String {
-    run_export_with_base(Some(project_dir), Some(output_file), base_dir)
+    run_export_with_base(Some(project_dir), Some(output_file), base_dir, false, false)
         .expect("run_export_with_base should succeed");
     std::fs::read_to_string(output_file).expect("read output file")
 }
@@ -562,6 +562,8 @@ async fn test_counter_values_match_export() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        false,
+        false,
     )
     .unwrap();
 
@@ -865,6 +867,8 @@ async fn test_audit_provenance_no_id_collision() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        false,
+        false,
     )
     .unwrap();
 
@@ -910,6 +914,8 @@ async fn test_all_eight_tables_restored() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        false,
+        false,
     )
     .unwrap();
 
@@ -1020,6 +1026,8 @@ async fn test_entry_columns_preserved_exactly() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        false,
+        false,
     )
     .unwrap();
 

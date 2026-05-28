@@ -2197,4 +2197,449 @@ line3', NULL, NULL, NULL, NULL)",
         export_cycle_events(pool, &mut buf).await.unwrap();
         assert!(buf.is_empty());
     }
+
+    // -----------------------------------------------------------------------
+    // nxs-012: skip-quarantined unit tests (C5)
+    // -----------------------------------------------------------------------
+
+    /// Helper: insert an entry with a specific id and status.
+    /// Uses only the required columns and lets NOT NULL DEFAULT columns
+    /// get their defaults automatically.
+    async fn insert_entry_with_status(pool: &SqlitePool, id: i64, status: i64) {
+        sqlx::query(
+            "INSERT INTO entries (
+                id, title, content, topic, category, source, status, confidence,
+                created_at, updated_at
+            ) VALUES (
+                ?1, 'entry', 'content', 'topic', 'pattern', 'test', ?2, 0.9,
+                1700000000, 1700000001
+            )",
+        )
+        .bind(id)
+        .bind(status)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    // R-23, AC-30: --skip-quarantined without --confirm aborts
+    #[test]
+    fn test_confirm_safeguard_missing() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let proj = tmp.path().join("project");
+        std::fs::create_dir_all(&proj).unwrap();
+        std::fs::write(proj.join("unimatrix.toml"), "").unwrap();
+        let out = tmp.path().join("out.jsonl");
+
+        let result = run_export_with_base(
+            Some(proj.as_path()),
+            Some(out.as_path()),
+            tmp.path(),
+            true,  // skip_quarantined
+            false, // confirm missing
+        );
+
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("--confirm"),
+            "error should mention --confirm: {msg}"
+        );
+        assert!(!out.exists(), "no output file should be created");
+    }
+
+    // R-23, AC-30: --skip-quarantined with --confirm succeeds
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_confirm_safeguard_present() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let proj = tmp.path().join("project");
+        std::fs::create_dir_all(&proj).unwrap();
+        std::fs::write(proj.join("unimatrix.toml"), "").unwrap();
+        let out = tmp.path().join("out.jsonl");
+
+        let result = run_export_with_base(
+            Some(proj.as_path()),
+            Some(out.as_path()),
+            tmp.path(),
+            true, // skip_quarantined
+            true, // confirm
+        );
+
+        assert!(result.is_ok(), "export should succeed: {:?}", result.err());
+        assert!(out.exists(), "output file should be created");
+    }
+
+    // R-23, AC-29: --confirm alone is silently ignored
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_confirm_alone_ignored() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let proj = tmp.path().join("project");
+        std::fs::create_dir_all(&proj).unwrap();
+        std::fs::write(proj.join("unimatrix.toml"), "").unwrap();
+        let out = tmp.path().join("out.jsonl");
+
+        let result = run_export_with_base(
+            Some(proj.as_path()),
+            Some(out.as_path()),
+            tmp.path(),
+            false, // skip_quarantined off
+            true,  // confirm present but irrelevant
+        );
+
+        assert!(result.is_ok(), "export should succeed: {:?}", result.err());
+    }
+
+    // R-24, AC-31: header contains skip_quarantined when active
+    #[tokio::test]
+    async fn test_header_skip_quarantined_metadata_active() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        let mut buf = Vec::new();
+
+        write_header(pool, &mut buf, true).await.unwrap();
+
+        let header = parse_line(&buf);
+        assert_eq!(header["skip_quarantined"], Value::Bool(true));
+    }
+
+    // R-24: header omits skip_quarantined when inactive
+    #[tokio::test]
+    async fn test_header_skip_quarantined_metadata_inactive() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        let mut buf = Vec::new();
+
+        write_header(pool, &mut buf, false).await.unwrap();
+
+        let header = parse_line(&buf);
+        assert!(
+            !header.as_object().unwrap().contains_key("skip_quarantined"),
+            "skip_quarantined should be absent from header when not active"
+        );
+    }
+
+    // R-16, R-18, AC-23: entries with status=3 are filtered
+    #[tokio::test]
+    async fn test_skip_entries_filtered() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        // 3 active, 2 quarantined
+        for id in 1..=3 {
+            insert_entry_with_status(pool, id, 1).await;
+        }
+        insert_entry_with_status(pool, 4, 3).await;
+        insert_entry_with_status(pool, 5, 3).await;
+
+        let skip_ids: HashSet<i64> = [4, 5].into_iter().collect();
+        let mut buf = Vec::new();
+        let skipped = export_entries(pool, &mut buf, &skip_ids).await.unwrap();
+
+        let rows = parse_lines(&buf);
+        assert_eq!(rows.len(), 3, "only active entries exported");
+        assert_eq!(skipped, 2, "two entries skipped");
+
+        let ids: Vec<i64> = rows.iter().map(|r| r["id"].as_i64().unwrap()).collect();
+        assert!(!ids.contains(&4));
+        assert!(!ids.contains(&5));
+    }
+
+    // R-16, AC-24: entry_tags for quarantined entries are filtered
+    #[tokio::test]
+    async fn test_skip_entry_tags_filtered() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 1).await;
+        insert_entry_with_status(pool, 2, 3).await; // quarantined
+
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'good')")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (2, 'bad')")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        let skip_ids: HashSet<i64> = [2].into_iter().collect();
+        let mut buf = Vec::new();
+        let skipped = export_entry_tags(pool, &mut buf, &skip_ids).await.unwrap();
+
+        let rows = parse_lines(&buf);
+        assert_eq!(rows.len(), 1, "only active entry tags exported");
+        assert_eq!(skipped, 1);
+        assert_eq!(rows[0]["entry_id"].as_i64().unwrap(), 1);
+    }
+
+    // R-16, AC-25: feature_entries for quarantined entries are filtered
+    #[tokio::test]
+    async fn test_skip_feature_entries_filtered() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 1).await;
+        insert_entry_with_status(pool, 2, 3).await;
+
+        sqlx::query("INSERT INTO feature_entries (feature_id, entry_id) VALUES ('f1', 1)")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO feature_entries (feature_id, entry_id) VALUES ('f1', 2)")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        let skip_ids: HashSet<i64> = [2].into_iter().collect();
+        let mut buf = Vec::new();
+        let skipped = export_feature_entries(pool, &mut buf, &skip_ids)
+            .await
+            .unwrap();
+
+        let rows = parse_lines(&buf);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(skipped, 1);
+        assert_eq!(rows[0]["entry_id"].as_i64().unwrap(), 1);
+    }
+
+    // R-19, AC-26: co_access dual-column check
+    #[tokio::test]
+    async fn test_skip_co_access_dual_column() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 1).await;
+        insert_entry_with_status(pool, 2, 1).await;
+        insert_entry_with_status(pool, 4, 3).await;
+        insert_entry_with_status(pool, 5, 3).await;
+
+        // co_access CHECK: entry_id_a < entry_id_b
+        // (active, active): 1<2, (quarantined, active): 1<4, (active, quarantined): 2<5, (q,q): 4<5
+        for (a, b) in [(1, 2), (1, 4), (2, 5), (4, 5)] {
+            sqlx::query(
+                "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated)
+                 VALUES (?1, ?2, 1, 1700000000)",
+            )
+            .bind(a)
+            .bind(b)
+            .execute(pool)
+            .await
+            .unwrap();
+        }
+
+        let skip_ids: HashSet<i64> = [4, 5].into_iter().collect();
+        let mut buf = Vec::new();
+        let skipped = export_co_access(pool, &mut buf, &skip_ids).await.unwrap();
+
+        let rows = parse_lines(&buf);
+        assert_eq!(rows.len(), 1, "only (active, active) exported");
+        assert_eq!(skipped, 3, "three rows with quarantined endpoints");
+        assert_eq!(rows[0]["entry_id_a"].as_i64().unwrap(), 1);
+        assert_eq!(rows[0]["entry_id_b"].as_i64().unwrap(), 2);
+    }
+
+    // R-20, AC-27: graph_edges dual-column check
+    #[tokio::test]
+    async fn test_skip_graph_edges_dual_column() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 1).await;
+        insert_entry_with_status(pool, 2, 1).await;
+        insert_entry_with_status(pool, 4, 3).await;
+        insert_entry_with_status(pool, 5, 3).await;
+
+        // (active, active), (quarantined, active), (active, quarantined), (q, q)
+        for (s, t) in [(1, 2), (4, 1), (2, 5), (4, 5)] {
+            insert_test_graph_edge(pool, s, t, "relates_to", 1.0, None).await;
+        }
+
+        let skip_ids: HashSet<i64> = [4, 5].into_iter().collect();
+        let mut buf = Vec::new();
+        let skipped = export_graph_edges(pool, &mut buf, &skip_ids).await.unwrap();
+
+        let rows = parse_lines(&buf);
+        assert_eq!(rows.len(), 1, "only (active, active) exported");
+        assert_eq!(skipped, 3);
+        assert_eq!(rows[0]["source_id"].as_i64().unwrap(), 1);
+        assert_eq!(rows[0]["target_id"].as_i64().unwrap(), 2);
+    }
+
+    // R-18: empty skip set means no filtering
+    #[tokio::test]
+    async fn test_skip_empty_set_no_change() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 1).await;
+        insert_entry_with_status(pool, 2, 3).await; // quarantined but NOT in skip set
+
+        let skip_ids: HashSet<i64> = HashSet::new();
+        let mut buf = Vec::new();
+        let skipped = export_entries(pool, &mut buf, &skip_ids).await.unwrap();
+
+        let rows = parse_lines(&buf);
+        assert_eq!(rows.len(), 2, "empty skip set exports all entries");
+        assert_eq!(skipped, 0);
+    }
+
+    // R-18 (edge case #9): skip_quarantined active but no entries have status=3
+    #[tokio::test]
+    async fn test_skip_quarantined_zero_quarantined() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 1).await;
+        insert_entry_with_status(pool, 2, 1).await;
+
+        // Build skip_ids the way run_export_inner does: query for status=3
+        let ids: HashSet<i64> =
+            sqlx::query_scalar::<_, i64>("SELECT id FROM entries WHERE status = 3")
+                .fetch_all(pool)
+                .await
+                .unwrap()
+                .into_iter()
+                .collect();
+        assert!(ids.is_empty(), "no quarantined entries");
+
+        let mut buf = Vec::new();
+        let skipped = export_entries(pool, &mut buf, &ids).await.unwrap();
+        assert_eq!(skipped, 0);
+        assert_eq!(parse_lines(&buf).len(), 2);
+    }
+
+    // R-16 (edge case #10): all entries quarantined
+    #[tokio::test]
+    async fn test_skip_quarantined_all_quarantined() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 3).await;
+        insert_entry_with_status(pool, 2, 3).await;
+
+        let skip_ids: HashSet<i64> = [1, 2].into_iter().collect();
+        let mut buf = Vec::new();
+        let skipped = export_entries(pool, &mut buf, &skip_ids).await.unwrap();
+
+        assert_eq!(skipped, 2);
+        assert!(buf.is_empty(), "no entries exported");
+    }
+
+    // Full do_export with skip_quarantined active (integrated unit test)
+    #[tokio::test]
+    async fn test_do_export_skip_quarantined_full() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        // Insert active and quarantined entries
+        insert_entry_with_status(pool, 1, 1).await;
+        insert_entry_with_status(pool, 2, 3).await; // quarantined
+
+        // Add dependents for both
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'active')")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (2, 'quarantined')")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (1, 2, 1, 1700000000)")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO feature_entries (feature_id, entry_id) VALUES ('f1', 2)")
+            .execute(pool)
+            .await
+            .unwrap();
+        insert_test_graph_edge(pool, 2, 1, "relates_to", 1.0, None).await;
+
+        let skip_ids: HashSet<i64> = [2].into_iter().collect();
+        let mut buf = Vec::new();
+        do_export(pool, &mut buf, &skip_ids, true).await.unwrap();
+
+        let lines = parse_lines(&buf);
+
+        // Header should have skip_quarantined
+        let header = &lines[0];
+        assert_eq!(header["_header"], Value::Bool(true));
+        assert_eq!(header["skip_quarantined"], Value::Bool(true));
+
+        // No row should reference entry id 2
+        for line in &lines[1..] {
+            if let Some(id) = line.get("id").and_then(|v| v.as_i64()) {
+                assert_ne!(id, 2, "quarantined entry should not appear");
+            }
+            if let Some(eid) = line.get("entry_id").and_then(|v| v.as_i64()) {
+                assert_ne!(eid, 2, "quarantined entry_id should not appear");
+            }
+            if let Some(a) = line.get("entry_id_a").and_then(|v| v.as_i64()) {
+                assert_ne!(a, 2, "quarantined entry_id_a should not appear");
+            }
+            if let Some(b) = line.get("entry_id_b").and_then(|v| v.as_i64()) {
+                assert_ne!(b, 2, "quarantined entry_id_b should not appear");
+            }
+            if let Some(s) = line.get("source_id").and_then(|v| v.as_i64()) {
+                assert_ne!(s, 2, "quarantined source_id should not appear");
+            }
+            if let Some(t) = line.get("target_id").and_then(|v| v.as_i64()) {
+                assert_ne!(t, 2, "quarantined target_id should not appear");
+            }
+        }
+    }
+
+    // R-19 (edge case #11): quarantined entry on both sides of different co_access rows
+    // NOTE: co_access has CHECK (entry_id_a < entry_id_b), so true self-referencing
+    // rows are impossible. Instead we test quarantined appearing in both a-column
+    // and b-column across different rows.
+    #[tokio::test]
+    async fn test_co_access_quarantined_both_columns() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 1).await; // active
+        insert_entry_with_status(pool, 3, 3).await; // quarantined
+        insert_entry_with_status(pool, 5, 1).await; // active
+
+        // quarantined as entry_id_a (3 < 5)
+        sqlx::query(
+            "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated)
+             VALUES (3, 5, 1, 1700000000)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        // quarantined as entry_id_b (1 < 3)
+        sqlx::query(
+            "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated)
+             VALUES (1, 3, 2, 1700000000)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        let skip_ids: HashSet<i64> = [3].into_iter().collect();
+        let mut buf = Vec::new();
+        let skipped = export_co_access(pool, &mut buf, &skip_ids).await.unwrap();
+
+        assert_eq!(skipped, 2, "both rows filtered");
+        assert!(buf.is_empty());
+    }
+
+    // R-20 (edge case #12): self-loop graph edge with quarantined entry
+    #[tokio::test]
+    async fn test_graph_edges_self_loop_quarantined() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        insert_entry_with_status(pool, 1, 3).await;
+        insert_test_graph_edge(pool, 1, 1, "self_ref", 1.0, None).await;
+
+        let skip_ids: HashSet<i64> = [1].into_iter().collect();
+        let mut buf = Vec::new();
+        let skipped = export_graph_edges(pool, &mut buf, &skip_ids).await.unwrap();
+
+        assert_eq!(skipped, 1);
+        assert!(buf.is_empty(), "self-loop quarantined edge filtered");
+    }
 }
