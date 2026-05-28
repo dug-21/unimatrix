@@ -1,4 +1,4 @@
-//! Shared typed deserialization structs for JSONL format_version 1 (ADR-001).
+//! Shared typed deserialization structs for JSONL format_version 1-2.
 //!
 //! These types are the single source of truth for the import format contract.
 //! Export continues to use `serde_json::Value` for serialization (nan-001 ADR-002).
@@ -51,6 +51,15 @@ pub enum ExportRow {
 
     #[serde(rename = "audit_log")]
     AuditLog(AuditLogRow),
+
+    #[serde(rename = "graph_edges")]
+    GraphEdge(GraphEdgeRow),
+
+    #[serde(rename = "observations")]
+    Observation(ObservationRow),
+
+    #[serde(rename = "cycle_events")]
+    CycleEvent(CycleEventRow),
 }
 
 /// Row from the `counters` table.
@@ -155,6 +164,58 @@ pub struct AuditLogRow {
     pub target_ids: String,
     pub outcome: i64,
     pub detail: String,
+}
+
+/// Row from the `graph_edges` table (9 fields -- no `id`, per ADR-005).
+///
+/// The synthetic AUTOINCREMENT `id` is omitted because it is unreferenced
+/// by any other table. SQLite assigns fresh ids on import.
+#[derive(Deserialize, Debug)]
+pub struct GraphEdgeRow {
+    pub source_id: i64,
+    pub target_id: i64,
+    pub relation_type: String,
+    pub weight: f64,
+    pub created_at: i64,
+    pub created_by: String,
+    pub source: String,
+    pub bootstrap_only: i64,
+    pub metadata: Option<String>,
+}
+
+/// Row from the `observations` table (10 fields -- includes `id`, per ADR-006).
+///
+/// `id` is preserved through export/import because it has watermark/ordering
+/// significance.
+#[derive(Deserialize, Debug)]
+pub struct ObservationRow {
+    pub id: i64,
+    pub session_id: String,
+    pub ts_millis: i64,
+    pub hook: String,
+    pub tool: Option<String>,
+    pub input: Option<String>,
+    pub response_size: Option<i64>,
+    pub response_snippet: Option<String>,
+    pub topic_signal: Option<String>,
+    pub phase: Option<String>,
+}
+
+/// Row from the `cycle_events` table (9 fields -- excludes `goal_embedding`, per ADR-004).
+///
+/// `goal_embedding` is a BLOB (bincode Vec<f32>) tied to the ONNX model version.
+/// It is excluded from export; the inserter binds NULL on import.
+#[derive(Deserialize, Debug)]
+pub struct CycleEventRow {
+    pub id: i64,
+    pub cycle_id: String,
+    pub seq: i64,
+    pub event_type: String,
+    pub phase: Option<String>,
+    pub outcome: Option<String>,
+    pub next_phase: Option<String>,
+    pub timestamp: i64,
+    pub goal: Option<String>,
 }
 
 #[cfg(test)]
@@ -556,6 +617,395 @@ mod tests {
                 "removing required field '{field}' should cause error"
             );
         }
+    }
+
+    // --- GraphEdgeRow ---
+
+    #[test]
+    fn test_graph_edge_row_deserialize_all_fields() {
+        let json = r#"{"_table":"graph_edges","source_id":1,"target_id":2,"relation_type":"Supports","weight":0.85,"created_at":1700000000,"created_by":"agent-x","source":"runtime","bootstrap_only":0,"metadata":"{}"}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::GraphEdge(r) => {
+                assert_eq!(r.source_id, 1);
+                assert_eq!(r.target_id, 2);
+                assert_eq!(r.relation_type, "Supports");
+                assert!((r.weight - 0.85).abs() < f64::EPSILON);
+                assert_eq!(r.created_at, 1700000000);
+                assert_eq!(r.created_by, "agent-x");
+                assert_eq!(r.source, "runtime");
+                assert_eq!(r.bootstrap_only, 0);
+                assert_eq!(r.metadata, Some("{}".to_string()));
+            }
+            other => panic!("expected GraphEdge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_graph_edge_row_nullable_metadata() {
+        let json = r#"{"_table":"graph_edges","source_id":1,"target_id":2,"relation_type":"Supports","weight":0.85,"created_at":1700000000,"created_by":"agent-x","source":"runtime","bootstrap_only":0,"metadata":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::GraphEdge(r) => {
+                assert!(r.metadata.is_none());
+            }
+            other => panic!("expected GraphEdge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_graph_edge_weight_f64_precision() {
+        let json = r#"{"_table":"graph_edges","source_id":1,"target_id":2,"relation_type":"T","weight":0.7777777777777,"created_at":0,"created_by":"a","source":"s","bootstrap_only":0,"metadata":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::GraphEdge(r) => {
+                assert_eq!(
+                    r.weight.to_bits(),
+                    0.7777777777777_f64.to_bits(),
+                    "f64 precision must be preserved without f32 truncation"
+                );
+            }
+            other => panic!("expected GraphEdge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_graph_edge_weight_zero() {
+        let json = r#"{"_table":"graph_edges","source_id":1,"target_id":2,"relation_type":"T","weight":0.0,"created_at":0,"created_by":"a","source":"s","bootstrap_only":0,"metadata":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::GraphEdge(r) => {
+                assert!((r.weight - 0.0).abs() < f64::EPSILON);
+            }
+            other => panic!("expected GraphEdge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_graph_edge_i64_max_ids() {
+        let json = format!(
+            r#"{{"_table":"graph_edges","source_id":{},"target_id":{},"relation_type":"T","weight":1.0,"created_at":0,"created_by":"a","source":"s","bootstrap_only":0,"metadata":null}}"#,
+            i64::MAX,
+            i64::MAX
+        );
+        let row: ExportRow = serde_json::from_str(&json).unwrap();
+        match row {
+            ExportRow::GraphEdge(r) => {
+                assert_eq!(r.source_id, i64::MAX);
+                assert_eq!(r.target_id, i64::MAX);
+            }
+            other => panic!("expected GraphEdge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_graph_edge_unicode_metadata() {
+        let json = r#"{"_table":"graph_edges","source_id":1,"target_id":2,"relation_type":"T","weight":1.0,"created_at":0,"created_by":"a","source":"s","bootstrap_only":0,"metadata":"日本語テスト 🚀"}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::GraphEdge(r) => {
+                assert_eq!(r.metadata.as_deref(), Some("日本語テスト 🚀"));
+            }
+            other => panic!("expected GraphEdge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_graph_edge_row_field_count_guard() {
+        // Removing any required field should cause a deserialization error
+        let required_fields = [
+            "source_id",
+            "target_id",
+            "relation_type",
+            "weight",
+            "created_at",
+            "created_by",
+            "source",
+            "bootstrap_only",
+        ];
+        assert_eq!(
+            required_fields.len(),
+            8,
+            "8 required + 1 optional = 9 total"
+        );
+
+        let base = serde_json::json!({
+            "_table": "graph_edges",
+            "source_id": 1,
+            "target_id": 2,
+            "relation_type": "Supports",
+            "weight": 0.85,
+            "created_at": 1700000000,
+            "created_by": "agent-x",
+            "source": "runtime",
+            "bootstrap_only": 0,
+            "metadata": null
+        });
+
+        // Full JSON must deserialize
+        let full_json = serde_json::to_string(&base).unwrap();
+        assert!(
+            serde_json::from_str::<ExportRow>(&full_json).is_ok(),
+            "full 9-field JSON should deserialize"
+        );
+
+        for field in &required_fields {
+            let mut val = base.clone();
+            val.as_object_mut().unwrap().remove(*field);
+            let json = serde_json::to_string(&val).unwrap();
+            let result = serde_json::from_str::<ExportRow>(&json);
+            assert!(
+                result.is_err(),
+                "removing required field '{field}' should cause error"
+            );
+        }
+    }
+
+    // --- ObservationRow ---
+
+    #[test]
+    fn test_observation_row_deserialize_all_fields() {
+        let json = r#"{"_table":"observations","id":5,"session_id":"sess-1","ts_millis":1700000000,"hook":"on_tool","tool":"context_store","input":"test input","response_size":1024,"response_snippet":"ok","topic_signal":"testing","phase":"active"}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::Observation(r) => {
+                assert_eq!(r.id, 5);
+                assert_eq!(r.session_id, "sess-1");
+                assert_eq!(r.ts_millis, 1700000000);
+                assert_eq!(r.hook, "on_tool");
+                assert_eq!(r.tool, Some("context_store".to_string()));
+                assert_eq!(r.input, Some("test input".to_string()));
+                assert_eq!(r.response_size, Some(1024));
+                assert_eq!(r.response_snippet, Some("ok".to_string()));
+                assert_eq!(r.topic_signal, Some("testing".to_string()));
+                assert_eq!(r.phase, Some("active".to_string()));
+            }
+            other => panic!("expected Observation, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_observation_row_nullable_fields() {
+        let json = r#"{"_table":"observations","id":5,"session_id":"sess-1","ts_millis":1700000000,"hook":"on_tool","tool":null,"input":null,"response_size":null,"response_snippet":null,"topic_signal":null,"phase":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::Observation(r) => {
+                assert_eq!(r.id, 5);
+                assert_eq!(r.session_id, "sess-1");
+                assert!(r.tool.is_none());
+                assert!(r.input.is_none());
+                assert!(r.response_size.is_none());
+                assert!(r.response_snippet.is_none());
+                assert!(r.topic_signal.is_none());
+                assert!(r.phase.is_none());
+            }
+            other => panic!("expected Observation, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_observation_row_field_count_guard() {
+        let required_fields = ["id", "session_id", "ts_millis", "hook"];
+        assert_eq!(
+            required_fields.len(),
+            4,
+            "4 required + 6 optional = 10 total"
+        );
+
+        let base = serde_json::json!({
+            "_table": "observations",
+            "id": 5,
+            "session_id": "sess-1",
+            "ts_millis": 1700000000,
+            "hook": "on_tool",
+            "tool": null,
+            "input": null,
+            "response_size": null,
+            "response_snippet": null,
+            "topic_signal": null,
+            "phase": null
+        });
+
+        let full_json = serde_json::to_string(&base).unwrap();
+        assert!(
+            serde_json::from_str::<ExportRow>(&full_json).is_ok(),
+            "full 10-field JSON should deserialize"
+        );
+
+        for field in &required_fields {
+            let mut val = base.clone();
+            val.as_object_mut().unwrap().remove(*field);
+            let json = serde_json::to_string(&val).unwrap();
+            let result = serde_json::from_str::<ExportRow>(&json);
+            assert!(
+                result.is_err(),
+                "removing required field '{field}' should cause error"
+            );
+        }
+    }
+
+    #[test]
+    fn test_observation_row_unicode_tool() {
+        let json = r#"{"_table":"observations","id":1,"session_id":"s","ts_millis":0,"hook":"h","tool":"日本語ツール","input":null,"response_size":null,"response_snippet":null,"topic_signal":null,"phase":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::Observation(r) => {
+                assert_eq!(r.tool.as_deref(), Some("日本語ツール"));
+            }
+            other => panic!("expected Observation, got {other:?}"),
+        }
+    }
+
+    // --- CycleEventRow ---
+
+    #[test]
+    fn test_cycle_event_row_deserialize_all_fields() {
+        let json = r#"{"_table":"cycle_events","id":10,"cycle_id":"nxs-012","seq":1,"event_type":"cycle_start","phase":"design","outcome":"complete","next_phase":"delivery","timestamp":1700000000,"goal":"extend export"}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::CycleEvent(r) => {
+                assert_eq!(r.id, 10);
+                assert_eq!(r.cycle_id, "nxs-012");
+                assert_eq!(r.seq, 1);
+                assert_eq!(r.event_type, "cycle_start");
+                assert_eq!(r.phase, Some("design".to_string()));
+                assert_eq!(r.outcome, Some("complete".to_string()));
+                assert_eq!(r.next_phase, Some("delivery".to_string()));
+                assert_eq!(r.timestamp, 1700000000);
+                assert_eq!(r.goal, Some("extend export".to_string()));
+            }
+            other => panic!("expected CycleEvent, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_cycle_event_row_nullable_fields() {
+        let json = r#"{"_table":"cycle_events","id":10,"cycle_id":"nxs-012","seq":1,"event_type":"cycle_start","phase":null,"outcome":null,"next_phase":null,"timestamp":1700000000,"goal":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::CycleEvent(r) => {
+                assert_eq!(r.id, 10);
+                assert!(r.phase.is_none());
+                assert!(r.outcome.is_none());
+                assert!(r.next_phase.is_none());
+                assert!(r.goal.is_none());
+            }
+            other => panic!("expected CycleEvent, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_cycle_event_row_with_goal_embedding_key() {
+        // Per ADR-004: goal_embedding is excluded from export. If a JSON line
+        // includes "goal_embedding": null, serde's internally-tagged enum should
+        // handle the unknown field gracefully (no deny_unknown_fields).
+        let json = r#"{"_table":"cycle_events","id":10,"cycle_id":"nxs-012","seq":1,"event_type":"cycle_start","phase":null,"outcome":null,"next_phase":null,"timestamp":1700000000,"goal":null,"goal_embedding":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::CycleEvent(r) => {
+                assert_eq!(r.id, 10);
+                assert_eq!(r.cycle_id, "nxs-012");
+            }
+            other => panic!("expected CycleEvent, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_cycle_event_row_field_count_guard() {
+        let required_fields = ["id", "cycle_id", "seq", "event_type", "timestamp"];
+        assert_eq!(
+            required_fields.len(),
+            5,
+            "5 required + 4 optional = 9 total"
+        );
+
+        let base = serde_json::json!({
+            "_table": "cycle_events",
+            "id": 10,
+            "cycle_id": "nxs-012",
+            "seq": 1,
+            "event_type": "cycle_start",
+            "phase": null,
+            "outcome": null,
+            "next_phase": null,
+            "timestamp": 1700000000,
+            "goal": null
+        });
+
+        let full_json = serde_json::to_string(&base).unwrap();
+        assert!(
+            serde_json::from_str::<ExportRow>(&full_json).is_ok(),
+            "full 9-field JSON should deserialize"
+        );
+
+        for field in &required_fields {
+            let mut val = base.clone();
+            val.as_object_mut().unwrap().remove(*field);
+            let json = serde_json::to_string(&val).unwrap();
+            let result = serde_json::from_str::<ExportRow>(&json);
+            assert!(
+                result.is_err(),
+                "removing required field '{field}' should cause error"
+            );
+        }
+    }
+
+    #[test]
+    fn test_cycle_event_row_unicode_goal() {
+        let json = r#"{"_table":"cycle_events","id":1,"cycle_id":"c","seq":0,"event_type":"t","phase":null,"outcome":null,"next_phase":null,"timestamp":0,"goal":"目標 🎯"}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::CycleEvent(r) => {
+                assert_eq!(r.goal.as_deref(), Some("目標 🎯"));
+            }
+            other => panic!("expected CycleEvent, got {other:?}"),
+        }
+    }
+
+    // --- ExportRow variant dispatch for new types ---
+
+    #[test]
+    fn test_export_row_graph_edge_variant() {
+        let json = r#"{"_table":"graph_edges","source_id":1,"target_id":2,"relation_type":"Supports","weight":0.85,"created_at":1700000000,"created_by":"agent-x","source":"runtime","bootstrap_only":0,"metadata":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::GraphEdge(r) => assert_eq!(r.source_id, 1),
+            other => panic!("expected GraphEdge, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_export_row_observation_variant() {
+        let json = r#"{"_table":"observations","id":5,"session_id":"sess-1","ts_millis":1700000000,"hook":"on_tool","tool":null,"input":null,"response_size":null,"response_snippet":null,"topic_signal":null,"phase":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::Observation(r) => assert_eq!(r.id, 5),
+            other => panic!("expected Observation, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_export_row_cycle_event_variant() {
+        let json = r#"{"_table":"cycle_events","id":10,"cycle_id":"nxs-012","seq":1,"event_type":"cycle_start","phase":null,"outcome":null,"next_phase":null,"timestamp":1700000000,"goal":null}"#;
+        let row: ExportRow = serde_json::from_str(json).unwrap();
+        match row {
+            ExportRow::CycleEvent(r) => assert_eq!(r.id, 10),
+            other => panic!("expected CycleEvent, got {other:?}"),
+        }
+    }
+
+    // --- Regression: unknown table still errors ---
+
+    #[test]
+    fn test_export_row_unknown_table_error() {
+        let json = r#"{"_table":"unknown_table","data":1}"#;
+        let result = serde_json::from_str::<ExportRow>(json);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("unknown_table"),
+            "error should mention the unknown table name: {err}"
+        );
     }
 
     // --- Test helpers ---

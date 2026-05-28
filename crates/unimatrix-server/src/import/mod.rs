@@ -356,6 +356,9 @@ async fn ingest_rows(
                 insert_audit_log(conn, &r).await?;
                 counts.audit_log += 1;
             }
+            ExportRow::GraphEdge(_) | ExportRow::Observation(_) | ExportRow::CycleEvent(_) => {
+                // nxs-012: inserter calls added by import-pipeline agent
+            }
         }
     }
 
