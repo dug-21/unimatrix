@@ -27,6 +27,17 @@
 
 Verified: all 7 provenance tests assert on structured types (`SourceStatus::Loaded`, `SourceStatus::NotFound`, `SourceStatus::NotApplicable`) and path values. They do NOT assert on log message strings. `log_config_provenance` is not directly tested. AC-09 and AC-03 are compatible -- zero test changes required.
 
+## Knowledge Stewardship
+
+Stored:
+- ADR #4633: Remove UNIMATRIX_CONFIG from Dockerfile ENV
+- ADR #4634: No provenance summary line
+- ADR #4635: docker-compose env var example, not bind mount
+- ADR #4636: Correct roadmap/vision volume descriptions
+
+Queried:
+- context_search: config container patterns, nxs-013 decisions
+
 ## Open Questions
 
 None. All scope risks addressed, all OQs resolved.
