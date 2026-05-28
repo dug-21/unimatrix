@@ -127,8 +127,7 @@ COPY --from=builder --chown=65532:65532 /data /data
 # Environment (ADR-005).
 ENV HOME=/data \
     LD_LIBRARY_PATH=/usr/local/lib \
-    UNIMATRIX_LOG=info \
-    UNIMATRIX_CONFIG=/etc/unimatrix/config.toml
+    UNIMATRIX_LOG=info
 
 # Volume mount point for persistent data.
 VOLUME ["/data"]
