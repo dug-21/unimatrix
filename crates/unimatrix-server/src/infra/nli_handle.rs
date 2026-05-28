@@ -8,13 +8,14 @@
 //! - `nli_enabled = false` guard: provider never loads; `get_provider()` returns
 //!   `Err(NliNotReady)` immediately.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use sha2::{Digest, Sha256};
 use tokio::sync::RwLock;
 use unimatrix_embed::{EmbedError, NliModel, NliProvider, ensure_nli_model};
+
+use super::hash::verify_sha256;
 
 use crate::error::ServerError;
 
@@ -545,25 +546,7 @@ fn resolve_model_dir(model: &NliModel, config: &NliConfig) -> Result<PathBuf, Em
     }
 }
 
-/// Verify the SHA-256 hash of `model_dir/model.onnx`.
-///
-/// `model_dir` is the directory returned by `resolve_model_dir`.
-/// Returns `Ok(())` on match, `Err(String)` with a mismatch description on failure.
-fn verify_sha256(model_dir: &Path, onnx_filename: &str, expected_hex: &str) -> Result<(), String> {
-    let onnx_file = model_dir.join(onnx_filename);
-    let bytes = std::fs::read(&onnx_file)
-        .map_err(|e| format!("failed to read model file for hash check: {e}"))?;
-
-    let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    let actual_hex = format!("{:x}", hasher.finalize());
-
-    if actual_hex.eq_ignore_ascii_case(expected_hex) {
-        Ok(())
-    } else {
-        Err(format!("expected {expected_hex}, got {actual_hex}"))
-    }
-}
+// verify_sha256 is now in infra::hash (shared between embed_handle and nli_handle).
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -572,6 +555,8 @@ fn verify_sha256(model_dir: &Path, onnx_filename: &str, expected_hex: &str) -> R
 #[cfg(test)]
 mod tests {
     use std::io::Write;
+
+    use sha2::{Digest, Sha256};
 
     use super::*;
 

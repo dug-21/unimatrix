@@ -81,7 +81,7 @@ impl TestHarness {
 
         let embed_handle = EmbedServiceHandle::new();
         let config = EmbedConfig::default();
-        embed_handle.start_loading(config);
+        embed_handle.start_loading(config, None);
 
         // Wait for model to load
         let mut attempts = 0;

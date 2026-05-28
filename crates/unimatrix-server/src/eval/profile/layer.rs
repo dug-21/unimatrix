@@ -250,7 +250,14 @@ impl EvalServiceLayer {
         // ----------------------------------------------------------------
         let embed_handle = EmbedServiceHandle::new();
         let embed_config = EmbedConfig::default();
-        embed_handle.start_loading(embed_config);
+        embed_handle.start_loading(
+            embed_config,
+            profile
+                .config_overrides
+                .inference
+                .embedding_model_sha256
+                .clone(),
+        );
 
         // ----------------------------------------------------------------
         // Step 6b: Build NLI handle for NLI-enabled profiles (crt-023, FR-26, ADR-006).
