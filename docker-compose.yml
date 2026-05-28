@@ -11,10 +11,12 @@ services:
     restart: unless-stopped
     volumes:
       - unimatrix-data:/data
-      # Optional: bind-mount a custom config.toml (read-only).
-      # The daemon loads this via UNIMATRIX_CONFIG=/etc/unimatrix/config.toml.
-      # Uncomment and set the host path:
-      # - ./config.toml:/etc/unimatrix/config.toml:ro
+      # Config: per-project config.toml lives inside the data volume.
+      # Written automatically on first run. Edit via:
+      #   docker run --rm -v unimatrix-data:/data busybox vi /data/.unimatrix/<hash>/config.toml
+    # For external config (Kubernetes ConfigMap, secrets manager):
+    # environment:
+    #   - UNIMATRIX_CONFIG=/path/to/config.toml
     # No port mappings — UDS mode only until W2-2 (HTTPS transport).
     # When W2-2 lands, add:
     #   ports:
@@ -23,10 +25,11 @@ services:
 volumes:
   unimatrix-data:
     # Named volume for all Unimatrix data (databases, vector indexes,
-    # model cache, PID files, sockets, logs).
+    # config, model cache, PID files, sockets, logs).
     # Persists across container restarts.
-    # Back up: docker run --rm -v unimatrix-data:/data -v $(pwd):/backup \
-    #   busybox tar czf /backup/unimatrix-backup.tar.gz /data
+    # Backup = snapshot this volume (includes config):
+    #   docker run --rm -v unimatrix-data:/data -v $(pwd):/backup \
+    #     busybox tar czf /backup/unimatrix-backup.tar.gz /data
 
 # ──────────────────────────────────────────────────────────────────────
 # Debug override (shell access for troubleshooting)
