@@ -54,6 +54,12 @@ pub enum StoreError {
 
     /// Invalid input for an operation (e.g., correcting a deprecated entry).
     InvalidInput { field: String, reason: String },
+
+    /// Database schema version is newer than this binary supports.
+    SchemaTooNew {
+        database_version: u64,
+        binary_version: u64,
+    },
 }
 
 impl fmt::Display for StoreError {
@@ -79,6 +85,15 @@ impl fmt::Display for StoreError {
             StoreError::InvalidStatus(byte) => write!(f, "invalid status byte: {byte}"),
             StoreError::InvalidInput { field, reason } => {
                 write!(f, "invalid input for '{field}': {reason}")
+            }
+            StoreError::SchemaTooNew {
+                database_version,
+                binary_version,
+            } => {
+                write!(
+                    f,
+                    "database schema version ({database_version}) is newer than this binary supports ({binary_version}); upgrade unimatrix or restore a backup"
+                )
             }
         }
     }
@@ -222,5 +237,29 @@ mod tests {
         let err = StoreError::DrainTaskPanic;
         let msg = err.to_string();
         assert!(msg.contains("drain task panicked"), "got: {msg}");
+    }
+
+    #[test]
+    fn test_error_display_schema_too_new() {
+        let err = StoreError::SchemaTooNew {
+            database_version: 99,
+            binary_version: 27,
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("99"), "expected db version in: {msg}");
+        assert!(msg.contains("27"), "expected binary version in: {msg}");
+        assert!(
+            msg.contains("newer than this binary supports"),
+            "expected descriptive text in: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_error_source_returns_none_for_schema_too_new() {
+        let err = StoreError::SchemaTooNew {
+            database_version: 99,
+            binary_version: 27,
+        };
+        assert!(err.source().is_none());
     }
 }
