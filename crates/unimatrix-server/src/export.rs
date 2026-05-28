@@ -7,6 +7,7 @@
 //! The export creates a tokio runtime and uses sqlx for all queries.
 //! A single `BEGIN DEFERRED` transaction wraps all reads for snapshot isolation (ADR-001).
 
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
@@ -23,11 +24,18 @@ use crate::project;
 ///
 /// Opens the database, wraps the read in a single transaction for snapshot
 /// consistency, and writes JSONL to `output` (or stdout if None).
+///
+/// When `skip_quarantined` is true (with `confirm`), quarantined entries
+/// (status=3) and all rows referencing them are excluded from the export
+/// (ADR-008). When `skip_quarantined` is true without `confirm`, the export
+/// aborts immediately with a clear error message (ADR-009).
 pub fn run_export(
     project_dir: Option<&Path>,
     output: Option<&Path>,
+    skip_quarantined: bool,
+    confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    run_export_inner(project_dir, output, None)
+    run_export_inner(project_dir, output, None, skip_quarantined, confirm)
 }
 
 /// Run the export subcommand with an explicit `base_dir` for test isolation.
@@ -39,15 +47,35 @@ pub fn run_export_with_base(
     project_dir: Option<&Path>,
     output: Option<&Path>,
     base_dir: &Path,
+    skip_quarantined: bool,
+    confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    run_export_inner(project_dir, output, Some(base_dir))
+    run_export_inner(
+        project_dir,
+        output,
+        Some(base_dir),
+        skip_quarantined,
+        confirm,
+    )
 }
 
 fn run_export_inner(
     project_dir: Option<&Path>,
     output: Option<&Path>,
     base_dir: Option<&Path>,
+    skip_quarantined: bool,
+    confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // ADR-009: --confirm validation BEFORE any DB access
+    if skip_quarantined && !confirm {
+        return Err(
+            "--skip-quarantined produces a filtered export (quarantined entries and their \
+             dependents are excluded). The export file will NOT be an exact copy of the \
+             database. Add --confirm to acknowledge this and proceed."
+                .into(),
+        );
+    }
+
     // 1. Resolve project paths
     let paths = project::ensure_data_directory(project_dir, base_dir)?;
 
@@ -63,23 +91,34 @@ fn run_export_inner(
         // 4. Begin snapshot transaction (ADR-001)
         sqlx::query("BEGIN DEFERRED").execute(pool).await?;
 
-        // 5. Set up writer and run export
+        // 5. Build skip set INSIDE the transaction (ADR-008, SR-02)
+        let skip_ids: HashSet<i64> = if skip_quarantined {
+            sqlx::query_scalar::<_, i64>("SELECT id FROM entries WHERE status = 3")
+                .fetch_all(pool)
+                .await?
+                .into_iter()
+                .collect()
+        } else {
+            HashSet::new() // empty set -- O(1) contains() no-ops
+        };
+
+        // 6. Set up writer and run export
         let result = if let Some(path) = output {
             let file = File::create(path)?;
             let mut writer = BufWriter::new(file);
-            do_export(pool, &mut writer).await
+            do_export(pool, &mut writer, &skip_ids, skip_quarantined).await
         } else {
             let stdout = io::stdout();
             let lock = stdout.lock();
             let mut writer = BufWriter::new(lock);
-            do_export(pool, &mut writer).await
+            do_export(pool, &mut writer, &skip_ids, skip_quarantined).await
         };
 
-        // 6. Commit transaction regardless of export result
+        // 7. Commit transaction regardless of export result
         //    Read-only DEFERRED: COMMIT and ROLLBACK are equivalent.
         let _ = sqlx::query("COMMIT").execute(pool).await;
 
-        // 7. Propagate any export error
+        // 8. Propagate any export error
         result
     })
 }
@@ -115,30 +154,54 @@ where
 ///
 /// Separated from `run_export` to allow the writer type to vary (file vs stdout)
 /// while keeping transaction logic in one place.
+///
+/// `skip_ids` contains quarantined entry IDs to exclude (empty when
+/// `--skip-quarantined` is not active). `skip_quarantined` controls
+/// header metadata and skip-count reporting (ADR-008).
 async fn do_export(
     pool: &SqlitePool,
     writer: &mut impl Write,
+    skip_ids: &HashSet<i64>,
+    skip_quarantined: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    write_header(pool, writer).await?;
+    write_header(pool, writer, skip_quarantined).await?;
     export_counters(pool, writer).await?;
-    export_entries(pool, writer).await?;
-    export_entry_tags(pool, writer).await?;
-    export_co_access(pool, writer).await?;
-    export_feature_entries(pool, writer).await?;
+    let skip_entries = export_entries(pool, writer, skip_ids).await?;
+    let skip_tags = export_entry_tags(pool, writer, skip_ids).await?;
+    let skip_co = export_co_access(pool, writer, skip_ids).await?;
+    let skip_fe = export_feature_entries(pool, writer, skip_ids).await?;
     export_outcome_index(pool, writer).await?;
     export_agent_registry(pool, writer).await?;
     export_audit_log(pool, writer).await?;
+    // nxs-012: 3 additional tables (FR-14: after existing 8)
+    let skip_edges = export_graph_edges(pool, writer, skip_ids).await?;
+    export_observations(pool, writer).await?;
+    export_cycle_events(pool, writer).await?;
     writer.flush()?;
+
+    // Report skip counts to stderr (FR-27, AC-28)
+    if skip_quarantined && !skip_ids.is_empty() {
+        let _ = skip_entries; // entries skip count equals skip_ids.len()
+        eprintln!("Skipped {} quarantined entries.", skip_ids.len());
+        eprintln!("Skipped dependent rows:");
+        eprintln!("  Entry tags:      {}", skip_tags);
+        eprintln!("  Co-access pairs: {}", skip_co);
+        eprintln!("  Feature entries: {}", skip_fe);
+        eprintln!("  Graph edges:     {}", skip_edges);
+    }
+
     Ok(())
 }
 
 /// Write the JSONL header line with export metadata.
 ///
 /// Queries schema_version from counters and COUNT(*) from entries.
-/// Key order: _header, schema_version, exported_at, entry_count, format_version.
+/// Key order: _header, schema_version, exported_at, entry_count, format_version,
+/// and optionally skip_quarantined (R-24).
 async fn write_header(
     pool: &SqlitePool,
     writer: &mut impl Write,
+    skip_quarantined: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let schema_version: i64 =
         sqlx::query_scalar::<_, i64>("SELECT value FROM counters WHERE name = 'schema_version'")
@@ -162,7 +225,12 @@ async fn write_header(
     );
     map.insert("exported_at".to_string(), Value::Number(exported_at.into()));
     map.insert("entry_count".to_string(), Value::Number(entry_count.into()));
-    map.insert("format_version".to_string(), Value::Number(1.into()));
+    map.insert("format_version".to_string(), Value::Number(2.into()));
+
+    // Optional: indicate this is a filtered export (R-24)
+    if skip_quarantined {
+        map.insert("skip_quarantined".to_string(), Value::Bool(true));
+    }
 
     let line = serde_json::to_string(&Value::Object(map))?;
     writeln!(writer, "{line}")?;
@@ -229,10 +297,12 @@ async fn export_counters(
 ///
 /// Order: id ASC. Nullable columns emit JSON null for SQL NULL.
 /// Confidence (REAL) uses `Number::from_f64` with NaN fallback to 0 (ADR-002).
+/// Returns the count of skipped rows (ADR-008).
 async fn export_entries(
     pool: &SqlitePool,
     writer: &mut impl Write,
-) -> Result<(), Box<dyn std::error::Error>> {
+    skip_ids: &HashSet<i64>,
+) -> Result<u64, Box<dyn std::error::Error>> {
     let rows = sqlx::query(
         "SELECT id, title, content, topic, category, source, status, confidence,
                 created_at, updated_at, last_accessed_at, access_count,
@@ -245,7 +315,17 @@ async fn export_entries(
     .fetch_all(pool)
     .await?;
 
+    let mut skipped: u64 = 0;
+
     for row in &rows {
+        let id: i64 = row.get::<i64, _>(0);
+
+        // Skip quarantined entries (ADR-008)
+        if skip_ids.contains(&id) {
+            skipped += 1;
+            continue;
+        }
+
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("entries".into()));
         // INTEGER NOT NULL (PK)
@@ -335,57 +415,75 @@ async fn export_entries(
 
         write_row(map, writer)?;
     }
-    Ok(())
+    Ok(skipped)
 }
 
 /// Export all rows from the `entry_tags` table.
 ///
 /// Columns: entry_id (INTEGER), tag (TEXT). Order: entry_id ASC, tag ASC.
+/// Returns the count of skipped rows (ADR-008).
 async fn export_entry_tags(
     pool: &SqlitePool,
     writer: &mut impl Write,
-) -> Result<(), Box<dyn std::error::Error>> {
+    skip_ids: &HashSet<i64>,
+) -> Result<u64, Box<dyn std::error::Error>> {
     let rows = sqlx::query("SELECT entry_id, tag FROM entry_tags ORDER BY entry_id, tag")
         .fetch_all(pool)
         .await?;
+
+    let mut skipped: u64 = 0;
+
     for row in &rows {
+        let entry_id: i64 = row.get::<i64, _>(0);
+
+        if skip_ids.contains(&entry_id) {
+            skipped += 1;
+            continue;
+        }
+
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("entry_tags".into()));
-        map.insert(
-            "entry_id".into(),
-            Value::Number(row.get::<i64, _>(0).into()),
-        );
+        map.insert("entry_id".into(), Value::Number(entry_id.into()));
         map.insert("tag".into(), Value::String(row.get::<String, _>(1)));
         write_row(map, writer)?;
     }
-    Ok(())
+    Ok(skipped)
 }
 
 /// Export all rows from the `co_access` table.
 ///
 /// Columns: entry_id_a, entry_id_b, count, last_updated (all INTEGER NOT NULL).
 /// Order: entry_id_a ASC, entry_id_b ASC.
+/// Both entry_id_a and entry_id_b are checked against skip_ids (R-19, FR-23).
+/// Returns the count of skipped rows (ADR-008).
 async fn export_co_access(
     pool: &SqlitePool,
     writer: &mut impl Write,
-) -> Result<(), Box<dyn std::error::Error>> {
+    skip_ids: &HashSet<i64>,
+) -> Result<u64, Box<dyn std::error::Error>> {
     let rows = sqlx::query(
         "SELECT entry_id_a, entry_id_b, count, last_updated
          FROM co_access ORDER BY entry_id_a, entry_id_b",
     )
     .fetch_all(pool)
     .await?;
+
+    let mut skipped: u64 = 0;
+
     for row in &rows {
+        let entry_id_a: i64 = row.get::<i64, _>(0);
+        let entry_id_b: i64 = row.get::<i64, _>(1);
+
+        // BOTH sides checked (R-19, FR-23)
+        if skip_ids.contains(&entry_id_a) || skip_ids.contains(&entry_id_b) {
+            skipped += 1;
+            continue;
+        }
+
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("co_access".into()));
-        map.insert(
-            "entry_id_a".into(),
-            Value::Number(row.get::<i64, _>(0).into()),
-        );
-        map.insert(
-            "entry_id_b".into(),
-            Value::Number(row.get::<i64, _>(1).into()),
-        );
+        map.insert("entry_id_a".into(), Value::Number(entry_id_a.into()));
+        map.insert("entry_id_b".into(), Value::Number(entry_id_b.into()));
         map.insert("count".into(), Value::Number(row.get::<i64, _>(2).into()));
         map.insert(
             "last_updated".into(),
@@ -393,32 +491,41 @@ async fn export_co_access(
         );
         write_row(map, writer)?;
     }
-    Ok(())
+    Ok(skipped)
 }
 
 /// Export all rows from the `feature_entries` table.
 ///
 /// Columns: feature_id (TEXT), entry_id (INTEGER). Order: feature_id ASC, entry_id ASC.
+/// Returns the count of skipped rows (ADR-008).
 async fn export_feature_entries(
     pool: &SqlitePool,
     writer: &mut impl Write,
-) -> Result<(), Box<dyn std::error::Error>> {
+    skip_ids: &HashSet<i64>,
+) -> Result<u64, Box<dyn std::error::Error>> {
     let rows = sqlx::query(
         "SELECT feature_id, entry_id FROM feature_entries ORDER BY feature_id, entry_id",
     )
     .fetch_all(pool)
     .await?;
+
+    let mut skipped: u64 = 0;
+
     for row in &rows {
+        let entry_id: i64 = row.get::<i64, _>(1); // entry_id is column index 1
+
+        if skip_ids.contains(&entry_id) {
+            skipped += 1;
+            continue;
+        }
+
         let mut map = Map::new();
         map.insert("_table".into(), Value::String("feature_entries".into()));
         map.insert("feature_id".into(), Value::String(row.get::<String, _>(0)));
-        map.insert(
-            "entry_id".into(),
-            Value::Number(row.get::<i64, _>(1).into()),
-        );
+        map.insert("entry_id".into(), Value::Number(entry_id.into()));
         write_row(map, writer)?;
     }
-    Ok(())
+    Ok(skipped)
 }
 
 /// Export all rows from the `outcome_index` table.
@@ -540,6 +647,150 @@ async fn export_audit_log(
     Ok(())
 }
 
+/// Export all rows from the `graph_edges` table (9 columns, no id — ADR-005).
+///
+/// Columns: source_id, target_id, relation_type, weight, created_at, created_by,
+/// source, bootstrap_only, metadata.
+/// Order: source_id ASC, target_id ASC, relation_type ASC.
+/// Weight uses `Number::from_f64` with NaN/Inf fallback to 1.0 (ADR-003).
+/// Both source_id and target_id are checked against skip_ids (R-20, FR-24).
+/// Returns the count of skipped rows (ADR-008).
+async fn export_graph_edges(
+    pool: &SqlitePool,
+    writer: &mut impl Write,
+    skip_ids: &HashSet<i64>,
+) -> Result<u64, Box<dyn std::error::Error>> {
+    let rows = sqlx::query(
+        "SELECT source_id, target_id, relation_type, weight,
+                created_at, created_by, source, bootstrap_only, metadata
+         FROM graph_edges
+         ORDER BY source_id, target_id, relation_type",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut skipped: u64 = 0;
+
+    for row in &rows {
+        let source_id: i64 = row.get::<i64, _>(0);
+        let target_id: i64 = row.get::<i64, _>(1);
+
+        // BOTH sides checked (R-20, FR-24)
+        if skip_ids.contains(&source_id) || skip_ids.contains(&target_id) {
+            skipped += 1;
+            continue;
+        }
+
+        let mut map = Map::new();
+        map.insert("_table".into(), Value::String("graph_edges".into()));
+        map.insert("source_id".into(), Value::Number(source_id.into()));
+        map.insert("target_id".into(), Value::Number(target_id.into()));
+        map.insert(
+            "relation_type".into(),
+            Value::String(row.get::<String, _>(2)),
+        );
+        // f64 weight with NaN safety (ADR-003): fallback to 1.0, not 0
+        let weight: f64 = row.get::<f64, _>(3);
+        map.insert(
+            "weight".into(),
+            Value::Number(
+                Number::from_f64(weight)
+                    .unwrap_or_else(|| Number::from_f64(1.0).expect("1.0 is valid f64")),
+            ),
+        );
+        map.insert(
+            "created_at".into(),
+            Value::Number(row.get::<i64, _>(4).into()),
+        );
+        map.insert("created_by".into(), Value::String(row.get::<String, _>(5)));
+        map.insert("source".into(), Value::String(row.get::<String, _>(6)));
+        map.insert(
+            "bootstrap_only".into(),
+            Value::Number(row.get::<i64, _>(7).into()),
+        );
+        map.insert("metadata".into(), nullable_text(row, 8));
+        write_row(map, writer)?;
+    }
+    Ok(skipped)
+}
+
+/// Export all rows from the `observations` table (10 columns, id preserved — ADR-006).
+///
+/// Columns: id, session_id, ts_millis, hook, tool, input, response_size,
+/// response_snippet, topic_signal, phase.
+/// Order: id ASC.
+async fn export_observations(
+    pool: &SqlitePool,
+    writer: &mut impl Write,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let rows = sqlx::query(
+        "SELECT id, session_id, ts_millis, hook, tool, input,
+                response_size, response_snippet, topic_signal, phase
+         FROM observations
+         ORDER BY id",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    for row in &rows {
+        let mut map = Map::new();
+        map.insert("_table".into(), Value::String("observations".into()));
+        map.insert("id".into(), Value::Number(row.get::<i64, _>(0).into()));
+        map.insert("session_id".into(), Value::String(row.get::<String, _>(1)));
+        map.insert(
+            "ts_millis".into(),
+            Value::Number(row.get::<i64, _>(2).into()),
+        );
+        map.insert("hook".into(), Value::String(row.get::<String, _>(3)));
+        map.insert("tool".into(), nullable_text(row, 4));
+        map.insert("input".into(), nullable_text(row, 5));
+        map.insert("response_size".into(), nullable_int(row, 6));
+        map.insert("response_snippet".into(), nullable_text(row, 7));
+        map.insert("topic_signal".into(), nullable_text(row, 8));
+        map.insert("phase".into(), nullable_text(row, 9));
+        write_row(map, writer)?;
+    }
+    Ok(())
+}
+
+/// Export all rows from the `cycle_events` table (9 columns, id preserved — ADR-006).
+///
+/// Columns: id, cycle_id, seq, event_type, phase, outcome, next_phase,
+/// timestamp, goal. goal_embedding excluded from SELECT (ADR-004).
+/// Order: id ASC.
+async fn export_cycle_events(
+    pool: &SqlitePool,
+    writer: &mut impl Write,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let rows = sqlx::query(
+        "SELECT id, cycle_id, seq, event_type, phase, outcome,
+                next_phase, timestamp, goal
+         FROM cycle_events
+         ORDER BY id",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    for row in &rows {
+        let mut map = Map::new();
+        map.insert("_table".into(), Value::String("cycle_events".into()));
+        map.insert("id".into(), Value::Number(row.get::<i64, _>(0).into()));
+        map.insert("cycle_id".into(), Value::String(row.get::<String, _>(1)));
+        map.insert("seq".into(), Value::Number(row.get::<i64, _>(2).into()));
+        map.insert("event_type".into(), Value::String(row.get::<String, _>(3)));
+        map.insert("phase".into(), nullable_text(row, 4));
+        map.insert("outcome".into(), nullable_text(row, 5));
+        map.insert("next_phase".into(), nullable_text(row, 6));
+        map.insert(
+            "timestamp".into(),
+            Value::Number(row.get::<i64, _>(7).into()),
+        );
+        map.insert("goal".into(), nullable_text(row, 8));
+        write_row(map, writer)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -583,7 +834,9 @@ mod tests {
         let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
-        write_header(pool, &mut buf).await.expect("write_header");
+        write_header(pool, &mut buf, false)
+            .await
+            .expect("write_header");
 
         let line = String::from_utf8(buf).expect("utf8");
         let val: Value = serde_json::from_str(line.trim()).expect("parse json");
@@ -597,7 +850,7 @@ mod tests {
         );
         assert!(obj.get("exported_at").expect("exported_at").is_number());
         assert_eq!(obj.get("entry_count"), Some(&Value::Number(0.into())));
-        assert_eq!(obj.get("format_version"), Some(&Value::Number(1.into())));
+        assert_eq!(obj.get("format_version"), Some(&Value::Number(2.into())));
         assert_eq!(obj.len(), 5);
     }
 
@@ -612,7 +865,9 @@ mod tests {
             .unwrap()
             .as_secs() as i64;
 
-        write_header(pool, &mut buf).await.expect("write_header");
+        write_header(pool, &mut buf, false)
+            .await
+            .expect("write_header");
 
         let after = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -632,7 +887,9 @@ mod tests {
         let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
-        do_export(pool, &mut buf).await.expect("do_export");
+        do_export(pool, &mut buf, &HashSet::new(), false)
+            .await
+            .expect("do_export");
 
         let output = String::from_utf8(buf).expect("utf8");
         let lines: Vec<&str> = output.lines().collect();
@@ -650,7 +907,9 @@ mod tests {
         let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
-        do_export(pool, &mut buf).await.expect("do_export");
+        do_export(pool, &mut buf, &HashSet::new(), false)
+            .await
+            .expect("do_export");
 
         let output = String::from_utf8(buf).expect("utf8");
         for line in output.lines() {
@@ -673,7 +932,9 @@ mod tests {
         let pool = store.write_pool_server();
         let mut buf = Vec::new();
 
-        write_header(pool, &mut buf).await.expect("write_header");
+        write_header(pool, &mut buf, false)
+            .await
+            .expect("write_header");
 
         let output = String::from_utf8(buf).expect("utf8");
         let val: Value = serde_json::from_str(output.trim()).expect("parse json");
@@ -721,7 +982,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
 
         let obj = row.as_object().unwrap();
@@ -790,7 +1053,9 @@ mod tests {
             .unwrap();
 
         let mut buf = Vec::new();
-        export_entry_tags(pool, &mut buf).await.unwrap();
+        export_entry_tags(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 3);
         assert_eq!(row["_table"], "entry_tags");
@@ -809,7 +1074,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_co_access(pool, &mut buf).await.unwrap();
+        export_co_access(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 5);
         assert_eq!(row["_table"], "co_access");
@@ -829,7 +1096,9 @@ mod tests {
             .unwrap();
 
         let mut buf = Vec::new();
-        export_feature_entries(pool, &mut buf).await.unwrap();
+        export_feature_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
         assert_eq!(row.as_object().unwrap().len(), 3);
         assert_eq!(row["feature_id"], "nxs-001");
@@ -918,7 +1187,9 @@ mod tests {
         }
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let rows = parse_lines(&buf);
         assert_eq!(rows.len(), values.len());
 
@@ -1017,7 +1288,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
 
         assert!(row.as_object().unwrap().contains_key("supersedes"));
@@ -1074,7 +1347,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
 
         assert!(row["created_by"].is_string());
@@ -1103,7 +1378,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
 
         let raw = std::str::from_utf8(&buf).unwrap();
         let line = raw.lines().next().unwrap();
@@ -1185,7 +1462,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
 
         assert_eq!(row["title"].as_str().unwrap(), "\u{77E5}\u{8B58}");
@@ -1212,7 +1491,9 @@ mod tests {
             .unwrap();
 
         let mut buf = Vec::new();
-        export_entry_tags(pool, &mut buf).await.unwrap();
+        export_entry_tags(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
         assert_eq!(row["tag"].as_str().unwrap(), "resume\u{0301}");
     }
@@ -1235,7 +1516,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
 
         assert_eq!(row["created_at"].as_i64().unwrap(), 9_999_999_999i64);
@@ -1279,7 +1562,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
 
         assert!(row["supersedes"].is_null());
@@ -1306,7 +1591,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
 
         assert_eq!(row["created_at"].as_i64().unwrap(), 0);
@@ -1331,7 +1618,9 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let raw = std::str::from_utf8(&buf).unwrap();
 
         let lines: Vec<&str> = raw.lines().filter(|l| !l.is_empty()).collect();
@@ -1360,7 +1649,9 @@ mod tests {
         }
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let rows = parse_lines(&buf);
         let ids: Vec<i64> = rows.iter().map(|r| r["id"].as_i64().unwrap()).collect();
         assert_eq!(ids, vec![2, 5, 8]);
@@ -1387,7 +1678,9 @@ mod tests {
             .unwrap();
 
         let mut buf = Vec::new();
-        export_entry_tags(pool, &mut buf).await.unwrap();
+        export_entry_tags(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let rows = parse_lines(&buf);
         let tags: Vec<&str> = rows.iter().map(|r| r["tag"].as_str().unwrap()).collect();
         assert_eq!(tags, vec!["a", "z"]);
@@ -1402,19 +1695,27 @@ mod tests {
         let pool = store.write_pool_server();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_entry_tags(pool, &mut buf).await.unwrap();
+        export_entry_tags(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_co_access(pool, &mut buf).await.unwrap();
+        export_co_access(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
-        export_feature_entries(pool, &mut buf).await.unwrap();
+        export_feature_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         assert!(buf.is_empty());
 
         buf.clear();
@@ -1447,11 +1748,453 @@ mod tests {
         .unwrap();
 
         let mut buf = Vec::new();
-        export_entries(pool, &mut buf).await.unwrap();
+        export_entries(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
         let row = parse_line(&buf);
         assert_eq!(
             row["content"].as_str().unwrap(),
             r#"He said "hello" and used a \backslash"#
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // nxs-012: graph_edges export tests
+    // -----------------------------------------------------------------------
+
+    /// Helper: insert a graph_edge row with specified values.
+    async fn insert_test_graph_edge(
+        pool: &SqlitePool,
+        source_id: i64,
+        target_id: i64,
+        relation_type: &str,
+        weight: f64,
+        metadata: Option<&str>,
+    ) {
+        sqlx::query(
+            "INSERT INTO graph_edges (source_id, target_id, relation_type, weight,
+                created_at, created_by, source, bootstrap_only, metadata)
+             VALUES (?1, ?2, ?3, ?4, 1700000000, 'test-agent', 'unit-test', 0, ?5)",
+        )
+        .bind(source_id)
+        .bind(target_id)
+        .bind(relation_type)
+        .bind(weight)
+        .bind(metadata)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_export_graph_edges_9_columns() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        // Insert 3 edges in non-sorted order
+        insert_test_graph_edge(pool, 5, 10, "similar", 0.8, Some(r#"{"nli":0.9}"#)).await;
+        insert_test_graph_edge(pool, 1, 2, "related", 0.5, None).await;
+        insert_test_graph_edge(pool, 5, 10, "derived", 1.0, Some("")).await;
+
+        let mut buf = Vec::new();
+        export_graph_edges(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
+        let rows = parse_lines(&buf);
+
+        assert_eq!(rows.len(), 3);
+        for row in &rows {
+            // Each line has 10 keys (9 data + _table)
+            assert_eq!(row.as_object().unwrap().len(), 10);
+            assert_eq!(row["_table"], "graph_edges");
+            // No id field present (ADR-005)
+            assert!(!row.as_object().unwrap().contains_key("id"));
+        }
+        // Rows sorted by (source_id, target_id, relation_type)
+        assert_eq!(rows[0]["source_id"], 1);
+        assert_eq!(rows[0]["target_id"], 2);
+        assert_eq!(rows[0]["relation_type"], "related");
+        assert_eq!(rows[1]["source_id"], 5);
+        assert_eq!(rows[1]["target_id"], 10);
+        assert_eq!(rows[1]["relation_type"], "derived");
+        assert_eq!(rows[2]["source_id"], 5);
+        assert_eq!(rows[2]["target_id"], 10);
+        assert_eq!(rows[2]["relation_type"], "similar");
+    }
+
+    /// Verify the NaN safety logic directly (ADR-003).
+    /// SQLite NOT NULL columns cannot store NaN, so we test the
+    /// `Number::from_f64` fallback pattern in isolation.
+    #[test]
+    fn test_export_graph_edges_weight_nan_fallback() {
+        let weight = f64::NAN;
+        let result = Number::from_f64(weight)
+            .unwrap_or_else(|| Number::from_f64(1.0).expect("1.0 is valid f64"));
+        assert_eq!(result, Number::from_f64(1.0).unwrap());
+    }
+
+    #[test]
+    fn test_export_graph_edges_weight_infinity_fallback() {
+        let weight = f64::INFINITY;
+        let result = Number::from_f64(weight)
+            .unwrap_or_else(|| Number::from_f64(1.0).expect("1.0 is valid f64"));
+        assert_eq!(result, Number::from_f64(1.0).unwrap());
+    }
+
+    #[test]
+    fn test_export_graph_edges_weight_neg_infinity_fallback() {
+        let weight = f64::NEG_INFINITY;
+        let result = Number::from_f64(weight)
+            .unwrap_or_else(|| Number::from_f64(1.0).expect("1.0 is valid f64"));
+        assert_eq!(result, Number::from_f64(1.0).unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_export_graph_edges_weight_normal_precision() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        insert_test_graph_edge(pool, 1, 2, "test", 0.7777777, None).await;
+
+        let mut buf = Vec::new();
+        export_graph_edges(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
+        let row = parse_line(&buf);
+        let exported = row["weight"].as_f64().unwrap();
+        assert_eq!(
+            exported.to_bits(),
+            0.7777777_f64.to_bits(),
+            "full f64 precision must be preserved"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_export_graph_edges_weight_zero() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        insert_test_graph_edge(pool, 1, 2, "test", 0.0, None).await;
+
+        let mut buf = Vec::new();
+        export_graph_edges(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
+        let row = parse_line(&buf);
+        assert_eq!(row["weight"].as_f64().unwrap(), 0.0);
+    }
+
+    #[tokio::test]
+    async fn test_export_graph_edges_nullable_metadata() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        insert_test_graph_edge(pool, 1, 2, "test", 1.0, None).await;
+
+        let mut buf = Vec::new();
+        export_graph_edges(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
+        let row = parse_line(&buf);
+        assert!(row.as_object().unwrap().contains_key("metadata"));
+        assert!(row["metadata"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_export_graph_edges_metadata_empty_string() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        insert_test_graph_edge(pool, 1, 2, "test", 1.0, Some("")).await;
+
+        let mut buf = Vec::new();
+        export_graph_edges(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
+        let row = parse_line(&buf);
+        assert!(row["metadata"].is_string());
+        assert_eq!(row["metadata"].as_str().unwrap(), "");
+    }
+
+    #[tokio::test]
+    async fn test_export_graph_edges_metadata_populated() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        insert_test_graph_edge(pool, 1, 2, "test", 1.0, Some(r#"{"nli_score": 0.8}"#)).await;
+
+        let mut buf = Vec::new();
+        export_graph_edges(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
+        let row = parse_line(&buf);
+        assert!(row["metadata"].is_string());
+        assert_eq!(row["metadata"].as_str().unwrap(), r#"{"nli_score": 0.8}"#);
+    }
+
+    // -----------------------------------------------------------------------
+    // nxs-012: observations export tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_export_observations_10_columns() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        for (id, sess) in [(5, "s1"), (2, "s2"), (8, "s3")] {
+            sqlx::query(
+                "INSERT INTO observations (id, session_id, ts_millis, hook, tool, input,
+                    response_size, response_snippet, topic_signal, phase)
+                 VALUES (?1, ?2, 1700000000, 'on_response', 'grep', 'query', 512, 'snippet', 'rust', 'explore')",
+            )
+            .bind(id)
+            .bind(sess)
+            .execute(pool)
+            .await
+            .unwrap();
+        }
+
+        let mut buf = Vec::new();
+        export_observations(pool, &mut buf).await.unwrap();
+        let rows = parse_lines(&buf);
+
+        assert_eq!(rows.len(), 3);
+        for row in &rows {
+            assert_eq!(row.as_object().unwrap().len(), 11);
+            assert_eq!(row["_table"], "observations");
+            assert!(row.as_object().unwrap().contains_key("id"));
+        }
+        let ids: Vec<i64> = rows.iter().map(|r| r["id"].as_i64().unwrap()).collect();
+        assert_eq!(ids, vec![2, 5, 8]);
+    }
+
+    #[tokio::test]
+    async fn test_export_observations_nullable_fields() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
+            "INSERT INTO observations (id, session_id, ts_millis, hook, tool, input,
+                response_size, response_snippet, topic_signal, phase)
+             VALUES (1, 's1', 1700000000, 'on_response', NULL, NULL, NULL, NULL, NULL, NULL)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_observations(pool, &mut buf).await.unwrap();
+        let row = parse_line(&buf);
+
+        assert!(row["tool"].is_null());
+        assert!(row["input"].is_null());
+        assert!(row["response_size"].is_null());
+        assert!(row["response_snippet"].is_null());
+        assert!(row["topic_signal"].is_null());
+        assert!(row["phase"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_export_observations_embedded_newlines() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
+            "INSERT INTO observations (id, session_id, ts_millis, hook, tool, input,
+                response_size, response_snippet, topic_signal, phase)
+             VALUES (1, 's1', 1700000000, 'on_response', NULL, 'line1
+line2
+line3', NULL, NULL, NULL, NULL)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_observations(pool, &mut buf).await.unwrap();
+        let raw = std::str::from_utf8(&buf).unwrap();
+
+        let lines: Vec<&str> = raw.lines().filter(|l| !l.is_empty()).collect();
+        assert_eq!(lines.len(), 1, "Multi-line content must not break JSONL");
+
+        let row: Value = serde_json::from_str(lines[0]).unwrap();
+        assert_eq!(row["input"].as_str().unwrap(), "line1\nline2\nline3");
+    }
+
+    // -----------------------------------------------------------------------
+    // nxs-012: cycle_events export tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_export_cycle_events_9_columns() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        for (id, cycle) in [(7, "c1"), (3, "c2"), (12, "c3")] {
+            sqlx::query(
+                "INSERT INTO cycle_events (id, cycle_id, seq, event_type, phase,
+                    outcome, next_phase, timestamp, goal)
+                 VALUES (?1, ?2, 1, 'phase_transition', 'explore', 'ok', 'refine', 1700000000, 'test goal')",
+            )
+            .bind(id)
+            .bind(cycle)
+            .execute(pool)
+            .await
+            .unwrap();
+        }
+
+        let mut buf = Vec::new();
+        export_cycle_events(pool, &mut buf).await.unwrap();
+        let rows = parse_lines(&buf);
+
+        assert_eq!(rows.len(), 3);
+        for row in &rows {
+            assert_eq!(row.as_object().unwrap().len(), 10);
+            assert_eq!(row["_table"], "cycle_events");
+            assert!(!row.as_object().unwrap().contains_key("goal_embedding"));
+        }
+        let ids: Vec<i64> = rows.iter().map(|r| r["id"].as_i64().unwrap()).collect();
+        assert_eq!(ids, vec![3, 7, 12]);
+    }
+
+    #[tokio::test]
+    async fn test_export_cycle_events_nullable_fields() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        sqlx::query(
+            "INSERT INTO cycle_events (id, cycle_id, seq, event_type, phase,
+                outcome, next_phase, timestamp, goal)
+             VALUES (1, 'c1', 1, 'phase_transition', NULL, NULL, NULL, 1700000000, NULL)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        let mut buf = Vec::new();
+        export_cycle_events(pool, &mut buf).await.unwrap();
+        let row = parse_line(&buf);
+
+        assert!(row["phase"].is_null());
+        assert!(row["outcome"].is_null());
+        assert!(row["next_phase"].is_null());
+        assert!(row["goal"].is_null());
+    }
+
+    // -----------------------------------------------------------------------
+    // nxs-012: header and table emission order tests
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_export_header_format_version_2() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        let mut buf = Vec::new();
+
+        write_header(pool, &mut buf, false).await.unwrap();
+        let header = parse_line(&buf);
+        assert_eq!(header["format_version"], Value::Number(2.into()));
+    }
+
+    #[tokio::test]
+    async fn test_export_table_emission_order_11_tables() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        // Populate all 11 tables
+        sqlx::query(
+            "INSERT INTO entries (id, title, content, topic, category, source, created_at, updated_at)
+             VALUES (1, 't', 'c', 't', 'p', 's', 1, 1)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO entry_tags (entry_id, tag) VALUES (1, 'test')")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO co_access (entry_id_a, entry_id_b, count, last_updated) VALUES (1, 2, 1, 1)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query("INSERT INTO feature_entries (feature_id, entry_id) VALUES ('f1', 1)")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO outcome_index (feature_cycle, entry_id) VALUES ('c1', 1)")
+            .execute(pool)
+            .await
+            .unwrap();
+        sqlx::query(
+            "INSERT INTO agent_registry (agent_id, trust_level, capabilities, enrolled_at, last_seen_at, active)
+             VALUES ('a1', 1, '[]', 1, 1, 1)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id, operation, target_ids, outcome, detail)
+             VALUES (1, 1, 's1', 'a1', 'store', '[]', 0, 'ok')",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        insert_test_graph_edge(pool, 1, 2, "test", 1.0, None).await;
+        sqlx::query(
+            "INSERT INTO observations (id, session_id, ts_millis, hook) VALUES (1, 's1', 1, 'on_response')",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO cycle_events (id, cycle_id, seq, event_type, timestamp) VALUES (1, 'c1', 1, 'start', 1)",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        let mut buf = Vec::new();
+        do_export(pool, &mut buf, &HashSet::new(), false)
+            .await
+            .unwrap();
+        let all = parse_lines(&buf);
+
+        // Extract _table values in order of first appearance (skip header)
+        let mut table_order = Vec::new();
+        for val in &all {
+            if let Some(tbl) = val.get("_table").and_then(|v| v.as_str()) {
+                if !table_order.contains(&tbl.to_string()) {
+                    table_order.push(tbl.to_string());
+                }
+            }
+        }
+
+        assert_eq!(
+            table_order,
+            vec![
+                "counters",
+                "entries",
+                "entry_tags",
+                "co_access",
+                "feature_entries",
+                "outcome_index",
+                "agent_registry",
+                "audit_log",
+                "graph_edges",
+                "observations",
+                "cycle_events",
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_export_empty_new_tables() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+
+        let mut buf = Vec::new();
+        export_graph_edges(pool, &mut buf, &HashSet::new())
+            .await
+            .unwrap();
+        assert!(buf.is_empty());
+
+        buf.clear();
+        export_observations(pool, &mut buf).await.unwrap();
+        assert!(buf.is_empty());
+
+        buf.clear();
+        export_cycle_events(pool, &mut buf).await.unwrap();
+        assert!(buf.is_empty());
     }
 }
