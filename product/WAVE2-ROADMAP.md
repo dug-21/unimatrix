@@ -36,10 +36,8 @@ Intelligence-pipeline carry-forwards that do not block Wave 2: #477 (quarantine 
 ### W2-1: Container Packaging (🔬 ASS-043)
 **Goal**: Single-image personal cloud deployment. Containerized daemon with ONNX runtime. Air-gap deployable — no runtime internet dependencies.
 
-Named volumes:
-- `unimatrix-knowledge` — per-repo knowledge DBs (integrity-critical, back up frequently)
-- `unimatrix-analytics` — per-repo analytics DBs (self-healing)
-- `unimatrix-shared` — ONNX models + `config.toml` as read-only bind
+Named volume *(updated to reflect nan-014 shipped design)*:
+- `unimatrix-data` — databases, vector indexes, config, and logs (integrity-critical, back up frequently). ONNX models baked into image.
 
 Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 
@@ -102,7 +100,7 @@ Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 | Issue | Type | Description |
 |-------|------|-------------|
 | [#558](https://github.com/dug-21/unimatrix/issues/558) | Bug | Tool description fixes — NLI language in `context_briefing`, hook-path framing in `context_cycle` | ✅ COMPLETE |
-| [#559](https://github.com/dug-21/unimatrix/issues/559) | Feature | vnc-013: Canonical event normalization — Gemini `BeforeTool`/`AfterTool`/`SessionEnd` → canonical names — **blocked on ASS-051** |
+| [#559](https://github.com/dug-21/unimatrix/issues/559) | Feature | vnc-013: Canonical event normalization — Gemini `BeforeTool`/`AfterTool`/`SessionEnd` → canonical names | ✅ COMPLETE (ASS-051: keep Claude Code names) |
 | [#560](https://github.com/dug-21/unimatrix/issues/560) | Feature | Server-side session attribution via `clientInfo.name` + `Mcp-Session-Id` |
 | [#561](https://github.com/dug-21/unimatrix/issues/561) | Feature | Byte-based content size enforcement (`context_store` cap, `context_status format:json` documentation) | ✅ COMPLETE |
 | [#574](https://github.com/dug-21/unimatrix/issues/574) | Bug | `context_cycle` must write `cycle_events` + `sessions.feature_cycle` via MCP handler, not hook path — prerequisite for Codex/Gemini behavioral provenance |
@@ -144,7 +142,7 @@ Wave 2 delivers the OSS extension surface (W2-3 / ASS-050) that the enterprise p
 | ASS-047 | Core Scalability Strategy | **COMPLETE** | W2-2 (connection limits) |
 | ASS-049 | Multi-LLM MCP Client Compatibility | **COMPLETE** | W2-4 |
 | ASS-050 | Security Model Review — OSS + Enterprise Foundation | **COMPLETE** | W2-3 |
-| ASS-051 | Hook Event Canonical Naming Strategy | Not started | vnc-013 (#559) naming decision — blocking |
+| ASS-051 | Hook Event Canonical Naming Strategy | **COMPLETE** | vnc-013 (#559) — keep Claude Code names as canonical |
 | ASS-052 | RuVector Component Re-evaluation | **COMPLETE** | W3-1 (negative result — no adoption) |
 | ASS-053 | REST API Connectivity + Admin Plane Decoupling Seams | Not started | W2-3, enterprise |
 | ASS-055 | ADR DependsOn Graph Relationship (`context_relate`) | **COMPLETE** | crt-NNN (Wave 2), enterprise audit graph |
@@ -169,6 +167,9 @@ Codex CLI and Gemini CLI confirmed as primary Wave 2 targets. `Authorization: Be
 ### ASS-055 Findings Summary — ADR DependsOn Graph Relationship
 Retain `Prerequisite` RelationType (no rename). Store A→B (A is prerequisite of B). PPR reverse-walk already correctly surfaces A when B is seeded — confirmed by existing tests `test_prerequisite_incoming_direction` and `test_prerequisite_wrong_direction_does_not_propagate`. graph_expand gap accepted (PPR compensates). Write path: add `depends_on: Option<Vec<u64>>` to both `context_store` and `context_correct` — no new MCP tool (stays at 12), GRAPH_EDGES-only, no schema migration (stays at v25). Reference implementation: `write_graph_edge` in `nli_detection.rs:78–118`. No edge auto-transfer on supersession — add `stale_dependency_edges` count to `context_status` and a `DependencyOnDeprecated` detection rule to `context_cycle_review`. Security: Write cap + source-entry ownership validation (caller must match `created_by` of source_id) + confidence floor on source. Blast radius: ~4 files changed, ~7 benefit for free, 6 new tests. Effort: 2–3 days. **Go, Wave 2.** Dependency is the only named relationship in the vision not yet modeled.
 
+### ASS-051 Findings Summary — Hook Event Canonical Naming Strategy
+Keep Claude Code names (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `Stop`) as canonical. Switching to neutral names triggers a mandatory `observations` table row-rewrite migration on production data with no behavioral benefit — Gemini CLI maps trivially to existing names via normalization. Blast radius audit: 3 definition sites in `observation.rs`, 14 match-arm references, 6 test fixtures, plus stored `observations.hook` column values. Decision: normalize at ingest boundary (vnc-013), not at storage layer.
+
 ### ASS-052 Findings Summary — RuVector Re-evaluation
 All four evaluated mechanisms rejected: GNN integration (same PPR feedback loop as ASS-031, no HNSW wiring path), graph-based retrieval (Unimatrix PPR expander strictly surpasses ruvector-graph), HNSW replacement (same underlying library; Unimatrix VectorIndex superior), EWC (uncertain applicability — folded into W3-1 training harness comparison scope). No ruvector components adopted. W3-1 proceeds on existing Unimatrix graph and HNSW foundations.
 
@@ -178,7 +179,7 @@ All four evaluated mechanisms rejected: GNN integration (same PPR feedback loop 
 
 ```
 ASS-053: REST API + Admin Seams ─ depends on ASS-050 ────────► W2-3 (REST path + admin decoupling)
-ASS-051: Hook Event Naming ─── Not started ──────────────────► vnc-013 (#559) naming decision — BLOCKING
+ASS-051: Hook Event Naming ─── COMPLETE ─────────────────────► vnc-013 (#559) — DELIVERED
 ASS-050: Security Model Review ─────────────────────────────► W2-3 (extension surface spec)
 ASS-041: Transport ─── COMPLETE ────────────────────────────► W2-2 (HTTPS + static token)
 ASS-045: Licensing ─── COMPLETE ────────────────────────────► W2-0 (MIT/Apache confirmed)
@@ -189,7 +190,7 @@ ASS-052: RuVector ──── COMPLETE (negative) ─────────�
 ASS-043 ──────────────────────────────────────────────────── ► W2-1 (packaging decisions)
 ASS-046 ──────────────────────────────────────────────────── ► W2-5 go/no-go
 
-vnc-013 (#559) blocked on ASS-051: canonical name strategy must resolve before delivery begins
+vnc-013 (#559) DELIVERED: ASS-051 resolved (keep Claude Code names), #559 closed
 W2-3 unblocks: W2-2 delivery (auth middleware placement confirmed)
 W2-2 + W2-4 can ship concurrently (shared HTTPS transport layer)
 W2-1 wraps W2-2 + W2-3 (container packaging after server complete)
