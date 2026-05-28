@@ -26,8 +26,9 @@ use crate::format::{ExportHeader, ExportRow};
 use crate::project;
 
 use inserters::{
-    insert_agent_registry, insert_audit_log, insert_co_access, insert_counter, insert_entry,
-    insert_entry_tag, insert_feature_entry, insert_outcome_index,
+    insert_agent_registry, insert_audit_log, insert_co_access, insert_counter, insert_cycle_event,
+    insert_entry, insert_entry_tag, insert_feature_entry, insert_graph_edge, insert_observation,
+    insert_outcome_index,
 };
 
 /// Tracking struct for per-table insert counts.
@@ -41,6 +42,9 @@ pub struct ImportCounts {
     pub outcome_index: u64,
     pub agent_registry: u64,
     pub audit_log: u64,
+    pub graph_edges: u64,
+    pub observations: u64,
+    pub cycle_events: u64,
 }
 
 /// Run the import pipeline.
@@ -152,12 +156,14 @@ async fn run_import_async(
     check_preflight(pool, force, &paths).await?;
 
     // Phase 4: Validate header against DB
-    if header.format_version != 1 {
-        return Err(format!(
-            "unsupported format_version: {}. Only format_version 1 is supported.",
-            header.format_version
-        )
-        .into());
+    match header.format_version {
+        1 | 2 => { /* ok */ }
+        v => {
+            return Err(format!(
+                "unsupported format_version: {v}. This binary supports format_version 1 and 2."
+            )
+            .into());
+        }
     }
     if header.schema_version > db_schema_version {
         return Err(format!(
@@ -287,6 +293,11 @@ async fn drop_all_data(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Erro
          DELETE FROM outcome_index;
          DELETE FROM agent_registry;
          DELETE FROM vector_map;
+         DELETE FROM observation_phase_metrics;
+         DELETE FROM observation_metrics;
+         DELETE FROM graph_edges;
+         DELETE FROM observations;
+         DELETE FROM cycle_events;
          DELETE FROM entries;
          DELETE FROM counters;",
     )
@@ -356,8 +367,17 @@ async fn ingest_rows(
                 insert_audit_log(conn, &r).await?;
                 counts.audit_log += 1;
             }
-            ExportRow::GraphEdge(_) | ExportRow::Observation(_) | ExportRow::CycleEvent(_) => {
-                // nxs-012: inserter calls added by import-pipeline agent
+            ExportRow::GraphEdge(r) => {
+                insert_graph_edge(conn, &r).await?;
+                counts.graph_edges += 1;
+            }
+            ExportRow::Observation(r) => {
+                insert_observation(conn, &r).await?;
+                counts.observations += 1;
+            }
+            ExportRow::CycleEvent(r) => {
+                insert_cycle_event(conn, &r).await?;
+                counts.cycle_events += 1;
             }
         }
     }
@@ -437,12 +457,16 @@ async fn record_provenance(
     counts: &ImportCounts,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let detail = format!(
-        "Imported from '{}': {} entries, {} tags, {} co-access pairs, {} counters",
+        "Imported from '{}': {} entries, {} tags, {} co-access pairs, {} counters, \
+         {} graph_edges, {} observations, {} cycle_events",
         input_path.display(),
         counts.entries,
         counts.entry_tags,
         counts.co_access,
-        counts.counters
+        counts.counters,
+        counts.graph_edges,
+        counts.observations,
+        counts.cycle_events
     );
 
     let event = AuditEvent {
@@ -473,6 +497,9 @@ fn print_summary(counts: &ImportCounts, skip_hash_validation: bool) {
     eprintln!("  Outcome index:   {}", counts.outcome_index);
     eprintln!("  Agent registry:  {}", counts.agent_registry);
     eprintln!("  Audit log:       {}", counts.audit_log);
+    eprintln!("  Graph edges:     {}", counts.graph_edges);
+    eprintln!("  Observations:    {}", counts.observations);
+    eprintln!("  Cycle events:    {}", counts.cycle_events);
 
     if skip_hash_validation {
         eprintln!("  Hash validation: SKIPPED");
@@ -599,7 +626,7 @@ mod tests {
         let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
         let output_dir = TempDir::new().unwrap();
-        let lines = vec![make_header(sv, 2, 0)];
+        let lines = vec![make_header(sv, 3, 0)];
         let input_path = write_jsonl(&output_dir, &lines);
 
         let result = run_import_with_base(
@@ -611,8 +638,11 @@ mod tests {
         );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
-        assert!(err.contains("2"), "should mention version 2: {err}");
-        assert!(err.contains("format"), "should mention format: {err}");
+        assert!(err.contains("3"), "should mention version 3: {err}");
+        assert!(
+            err.contains("format_version"),
+            "should mention format_version: {err}"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -1263,5 +1293,406 @@ mod tests {
             .await
             .expect("log_audit_event must succeed after import");
         assert_eq!(id, 7, "next event_id must be 7 (counter 6 → 7)");
+    }
+
+    // --- nxs-012: format_version validation (ADR-002) ---
+
+    #[test]
+    fn test_format_version_0_rejected() {
+        // R-04, AC-07: version 0 must be rejected with supported range message.
+        let json = make_header(CURRENT_SCHEMA_VERSION, 0, 0);
+        let header = parse_header(&json).unwrap();
+        // Simulate the validation logic
+        let result: Result<(), Box<dyn std::error::Error>> = match header.format_version {
+            1 | 2 => Ok(()),
+            v => Err(format!(
+                "unsupported format_version: {v}. This binary supports format_version 1 and 2."
+            )
+            .into()),
+        };
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("0"), "should mention version 0: {err}");
+        assert!(
+            err.contains("1 and 2"),
+            "should mention supported range: {err}"
+        );
+    }
+
+    #[test]
+    fn test_format_version_1_accepted() {
+        // R-04, AC-05: version 1 must be accepted.
+        let json = make_header(CURRENT_SCHEMA_VERSION, 1, 0);
+        let header = parse_header(&json).unwrap();
+        let result: Result<(), Box<dyn std::error::Error>> = match header.format_version {
+            1 | 2 => Ok(()),
+            v => Err(format!(
+                "unsupported format_version: {v}. This binary supports format_version 1 and 2."
+            )
+            .into()),
+        };
+        assert!(result.is_ok(), "format_version 1 should be accepted");
+    }
+
+    #[test]
+    fn test_format_version_2_accepted() {
+        // R-04, AC-06: version 2 must be accepted.
+        let json = make_header(CURRENT_SCHEMA_VERSION, 2, 0);
+        let header = parse_header(&json).unwrap();
+        let result: Result<(), Box<dyn std::error::Error>> = match header.format_version {
+            1 | 2 => Ok(()),
+            v => Err(format!(
+                "unsupported format_version: {v}. This binary supports format_version 1 and 2."
+            )
+            .into()),
+        };
+        assert!(result.is_ok(), "format_version 2 should be accepted");
+    }
+
+    #[test]
+    fn test_format_version_3_rejected() {
+        // R-04, AC-07: version 3 must be rejected with supported range message.
+        let json = make_header(CURRENT_SCHEMA_VERSION, 3, 0);
+        let header = parse_header(&json).unwrap();
+        let result: Result<(), Box<dyn std::error::Error>> = match header.format_version {
+            1 | 2 => Ok(()),
+            v => Err(format!(
+                "unsupported format_version: {v}. This binary supports format_version 1 and 2."
+            )
+            .into()),
+        };
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("3"), "should mention version 3: {err}");
+        assert!(
+            err.contains("1 and 2"),
+            "should mention supported range: {err}"
+        );
+    }
+
+    #[test]
+    fn test_format_version_999_rejected() {
+        // R-04, AC-07: boundary value test.
+        let json = make_header(CURRENT_SCHEMA_VERSION, 999, 0);
+        let header = parse_header(&json).unwrap();
+        let result: Result<(), Box<dyn std::error::Error>> = match header.format_version {
+            1 | 2 => Ok(()),
+            v => Err(format!(
+                "unsupported format_version: {v}. This binary supports format_version 1 and 2."
+            )
+            .into()),
+        };
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("999"), "should mention version 999: {err}");
+    }
+
+    // --- nxs-012: ImportCounts default ---
+
+    #[test]
+    fn test_import_counts_default_includes_new_fields() {
+        // R-13: default ImportCounts should have 0 for all new fields.
+        let counts = ImportCounts::default();
+        assert_eq!(counts.graph_edges, 0);
+        assert_eq!(counts.observations, 0);
+        assert_eq!(counts.cycle_events, 0);
+    }
+
+    // --- nxs-012: format_version 2 import (integration) ---
+
+    /// Build a graph_edges JSON line.
+    fn make_graph_edge_line(
+        source_id: i64,
+        target_id: i64,
+        relation_type: &str,
+        weight: f64,
+    ) -> String {
+        serde_json::json!({
+            "_table": "graph_edges",
+            "source_id": source_id,
+            "target_id": target_id,
+            "relation_type": relation_type,
+            "weight": weight,
+            "created_at": 1700000000i64,
+            "created_by": "test-agent",
+            "source": "runtime",
+            "bootstrap_only": 0,
+            "metadata": null
+        })
+        .to_string()
+    }
+
+    /// Build an observations JSON line.
+    fn make_observation_line(id: i64, session_id: &str, hook: &str) -> String {
+        serde_json::json!({
+            "_table": "observations",
+            "id": id,
+            "session_id": session_id,
+            "ts_millis": 1700000000i64,
+            "hook": hook,
+            "tool": null,
+            "input": null,
+            "response_size": null,
+            "response_snippet": null,
+            "topic_signal": null,
+            "phase": null
+        })
+        .to_string()
+    }
+
+    /// Build a cycle_events JSON line.
+    fn make_cycle_event_line(id: i64, cycle_id: &str, seq: i64, event_type: &str) -> String {
+        serde_json::json!({
+            "_table": "cycle_events",
+            "id": id,
+            "cycle_id": cycle_id,
+            "seq": seq,
+            "event_type": event_type,
+            "phase": null,
+            "outcome": null,
+            "next_phase": null,
+            "timestamp": 1700000000i64,
+            "goal": null
+        })
+        .to_string()
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_format_version_2_import_succeeds() {
+        // AC-06: v2 file with all 11 table types imports successfully.
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let hash_a = compute_content_hash("Entry A", "Content A");
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 2, 2),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 3),
+            make_counter_line("next_audit_id", 2),
+            make_entry_line(1, "Entry A", "Content A", ""),
+            make_entry_line(2, "Entry B", "Content B", &hash_a),
+            serde_json::json!({"_table": "entry_tags", "entry_id": 1, "tag": "test"}).to_string(),
+            serde_json::json!({"_table": "co_access", "entry_id_a": 1, "entry_id_b": 2, "count": 1, "last_updated": 1700000000i64}).to_string(),
+            serde_json::json!({"_table": "feature_entries", "feature_id": "nxs-012", "entry_id": 1}).to_string(),
+            serde_json::json!({"_table": "outcome_index", "feature_cycle": "nxs-012", "entry_id": 1}).to_string(),
+            serde_json::json!({"_table": "agent_registry", "agent_id": "system", "trust_level": 3, "capabilities": "[]", "allowed_topics": null, "allowed_categories": null, "enrolled_at": 1700000000i64, "last_seen_at": 1700000000i64, "active": 1}).to_string(),
+            make_audit_log_line(1, "context_store", "stored entry 1"),
+            make_graph_edge_line(1, 2, "Supports", 0.85),
+            make_observation_line(1, "sess-1", "on_tool"),
+            make_cycle_event_line(1, "nxs-012", 1, "cycle_start"),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_ok(), "v2 import should succeed: {result:?}");
+
+        // Verify all tables have rows.
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+
+        let ge_count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM graph_edges")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(ge_count, 1, "graph_edges should have 1 row");
+
+        let obs_count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM observations")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(obs_count, 1, "observations should have 1 row");
+
+        let ce_count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM cycle_events")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(ce_count, 1, "cycle_events should have 1 row");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_v1_import_zero_new_table_counts() {
+        // AC-05: v1 file imports cleanly, new tables have 0 rows.
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 1),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            make_entry_line(1, "Entry A", "Content A", ""),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_ok(), "v1 import should succeed: {result:?}");
+
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+
+        let ge: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM graph_edges")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        let obs: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM observations")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        let ce: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM cycle_events")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(ge, 0, "graph_edges should be 0 for v1 import");
+        assert_eq!(obs, 0, "observations should be 0 for v1 import");
+        assert_eq!(ce, 0, "cycle_events should be 0 for v1 import");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_drop_all_data_clears_new_tables() {
+        // AC-13: --force import clears all new tables.
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        // First import: populate new tables via v2 file.
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 2, 1),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            make_entry_line(1, "Entry A", "Content A", ""),
+            make_graph_edge_line(1, 1, "SelfRef", 1.0),
+            make_observation_line(1, "sess-1", "on_tool"),
+            make_cycle_event_line(1, "nxs-012", 1, "cycle_start"),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_ok(), "first import should succeed: {result:?}");
+
+        // Second import with --force and empty file (header only).
+        let output_dir2 = TempDir::new().unwrap();
+        let lines2 = vec![make_header(sv, 2, 0)];
+        let input_path2 = write_jsonl(&output_dir2, &lines2);
+
+        let result2 = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path2,
+            true,
+            true, // force
+            base_dir.path(),
+        );
+        assert!(result2.is_ok(), "force import should succeed: {result2:?}");
+
+        // Verify all new tables are empty after force import.
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+
+        let ge: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM graph_edges")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        let obs: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM observations")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        let ce: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM cycle_events")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(ge, 0, "graph_edges should be 0 after force import");
+        assert_eq!(obs, 0, "observations should be 0 after force import");
+        assert_eq!(ce, 0, "cycle_events should be 0 after force import");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_record_provenance_includes_new_counts() {
+        // FR-17: provenance detail string includes 3 new table counts.
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 2, 1),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            make_counter_line("next_audit_id", 1),
+            make_entry_line(1, "Entry A", "Content A", ""),
+            make_graph_edge_line(1, 1, "SelfRef", 1.0),
+            make_graph_edge_line(1, 1, "Related", 0.5),
+            make_observation_line(1, "sess-1", "on_tool"),
+            make_observation_line(2, "sess-1", "on_result"),
+            make_observation_line(3, "sess-2", "on_tool"),
+            make_cycle_event_line(1, "nxs-012", 1, "cycle_start"),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_ok(), "import should succeed: {result:?}");
+
+        // Re-open store and check the audit_log provenance record.
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+
+        // Find the import provenance record in audit_log.
+        let detail: String = sqlx::query_scalar::<_, String>(
+            "SELECT detail FROM audit_log WHERE operation = 'import' ORDER BY event_id DESC LIMIT 1",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+
+        assert!(
+            detail.contains("2 graph_edges"),
+            "provenance should mention 2 graph_edges: {detail}"
+        );
+        assert!(
+            detail.contains("3 observations"),
+            "provenance should mention 3 observations: {detail}"
+        );
+        assert!(
+            detail.contains("1 cycle_events"),
+            "provenance should mention 1 cycle_events: {detail}"
+        );
     }
 }
