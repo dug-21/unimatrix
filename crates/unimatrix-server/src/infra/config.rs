@@ -3131,9 +3131,12 @@ pub static DEFAULT_CONFIG_TOML: &str = r#"# Unimatrix configuration file.
 # All values shown are the compiled defaults. Uncomment and edit to override.
 # File: ~/.unimatrix/{project-hash}/config.toml
 #
+# This is the PRIMARY (per-project) configuration. It is the canonical config
+# location, written automatically on first run.
+#
 # Two-level config hierarchy:
-#   ~/.unimatrix/config.toml           -- global (applies to all projects)
-#   ~/.unimatrix/{hash}/config.toml    -- per-project (overrides global)
+#   ~/.unimatrix/{hash}/config.toml    -- primary (per-project, this file)
+#   ~/.unimatrix/config.toml           -- defaults (global, optional)
 # Per-project values replace global values field-by-field (replace semantics).
 # List fields replace entirely — no append.
 
