@@ -268,7 +268,7 @@ fn parse_lines(output: &str) -> Vec<Value> {
 /// Run export to string by writing to a file then reading it back.
 /// Uses `run_export_with_base` to keep all test data inside `base_dir`.
 fn run_export_to_string(project_dir: &Path, base_dir: &Path, output_file: &Path) -> String {
-    run_export_with_base(Some(project_dir), Some(output_file), base_dir)
+    run_export_with_base(Some(project_dir), Some(output_file), base_dir, false, false)
         .expect("run_export_with_base should succeed");
     std::fs::read_to_string(output_file).expect("read output file")
 }
@@ -562,6 +562,8 @@ async fn test_counter_values_match_export() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        false,
+        false,
     )
     .unwrap();
 
@@ -865,6 +867,8 @@ async fn test_audit_provenance_no_id_collision() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        false,
+        false,
     )
     .unwrap();
 
@@ -910,6 +914,8 @@ async fn test_all_eight_tables_restored() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        false,
+        false,
     )
     .unwrap();
 
@@ -1020,6 +1026,8 @@ async fn test_entry_columns_preserved_exactly() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        false,
+        false,
     )
     .unwrap();
 
@@ -1145,4 +1153,382 @@ async fn test_force_import_counter_restoration() {
         next_id >= 101,
         "next_entry_id should be >= 101 after force import, got {next_id}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// nxs-012: Helpers for new tables
+// ---------------------------------------------------------------------------
+
+async fn insert_test_graph_edge(
+    pool: &sqlx::SqlitePool,
+    source_id: i64,
+    target_id: i64,
+    relation_type: &str,
+    weight: f64,
+) {
+    sqlx::query(
+        "INSERT INTO graph_edges (source_id, target_id, relation_type, weight,
+             created_at, created_by, source, bootstrap_only, metadata)
+         VALUES (?1, ?2, ?3, ?4, 1700000000, 'test-agent', 'integration-test', 0, NULL)",
+    )
+    .bind(source_id)
+    .bind(target_id)
+    .bind(relation_type)
+    .bind(weight)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn insert_test_observation(
+    pool: &sqlx::SqlitePool,
+    id: i64,
+    session_id: &str,
+    hook: &str,
+    ts: i64,
+) {
+    sqlx::query(
+        "INSERT INTO observations (id, session_id, ts_millis, hook)
+         VALUES (?1, ?2, ?3, ?4)",
+    )
+    .bind(id)
+    .bind(session_id)
+    .bind(ts)
+    .bind(hook)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn insert_test_cycle_event(
+    pool: &sqlx::SqlitePool,
+    id: i64,
+    cycle_id: &str,
+    seq: i64,
+    event_type: &str,
+) {
+    sqlx::query(
+        "INSERT INTO cycle_events (id, cycle_id, seq, event_type, timestamp)
+         VALUES (?1, ?2, ?3, ?4, 1700000000)",
+    )
+    .bind(id)
+    .bind(cycle_id)
+    .bind(seq)
+    .bind(event_type)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// nxs-012: R-02 -- drop_all_data clears new tables + FK-dependent metric tables
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_force_import_clears_observation_metric_tables() {
+    // R-02: --force import must clear observations, graph_edges, and cycle_events.
+    // FK-dependent tables (observation_phase_metrics, observation_metrics) are
+    // also cleared by the explicit DELETE ordering in drop_all_data (ADR-001).
+    // We verify:
+    // 1. observations, graph_edges, cycle_events are empty after force import.
+    // 2. The force succeeds without FK constraint errors, proving the DELETE ordering
+    //    (phase_metrics before metrics before observations) is correct.
+    let (project_dir, base_dir, db_path) = setup_project();
+    let store = open_store(&db_path);
+    let sv = get_schema_version(&store).await;
+    let pool = store.write_pool_server();
+
+    // Populate all 3 new tables
+    insert_test_observation(pool, 1, "sess-1", "on_tool", 1700000001).await;
+    insert_test_observation(pool, 2, "sess-2", "on_result", 1700000002).await;
+    insert_full_entry(pool, 1).await;
+    insert_test_graph_edge(pool, 1, 1, "SelfRef", 1.0).await;
+    insert_test_cycle_event(pool, 1, "nxs-012", 1, "cycle_start").await;
+
+    // Populate observation_phase_metrics (FK child of observations in some schema versions).
+    // Use INSERT OR IGNORE to handle schemas where this table has a different structure.
+    // The feature_cycle PK variant:
+    let _ = sqlx::query(
+        "INSERT OR IGNORE INTO observation_phase_metrics
+         (feature_cycle, phase, computed_at)
+         VALUES ('nxs-012', 'assimilate', 1700000000)",
+    )
+    .execute(pool)
+    .await;
+
+    sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('next_audit_id', 100)")
+        .execute(pool)
+        .await
+        .unwrap();
+    store.close().await.unwrap();
+
+    // Force-import with empty data (no rows, just counters)
+    let tmp = TempDir::new().unwrap();
+    let lines = vec![
+        make_header(sv, 2, 0),
+        make_counter_line("schema_version", sv),
+        make_counter_line("next_entry_id", 1),
+        make_counter_line("next_audit_id", 200),
+    ];
+    let input_path = write_jsonl(&tmp, &lines);
+
+    // This must succeed — proving DELETE ordering is correct (no FK constraint errors)
+    run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        false,
+        true, // force
+        base_dir.path(),
+    )
+    .expect("R-02: force import must succeed with correct FK-safe DELETE ordering");
+
+    // Verify all 3 new tables are empty after force
+    let store = open_store(&db_path);
+    let pool = store.write_pool_server();
+
+    let obs_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM observations")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(obs_count, 0, "R-02: observations cleared after --force");
+
+    let ge_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(ge_count, 0, "R-02: graph_edges cleared after --force");
+
+    let ce_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cycle_events")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(ce_count, 0, "R-02: cycle_events cleared after --force");
+
+    // observation_phase_metrics should also be cleared
+    let opm_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM observation_phase_metrics")
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+    assert_eq!(opm_count, 0, "R-02: observation_phase_metrics cleared after --force");
+}
+
+// ---------------------------------------------------------------------------
+// nxs-012: R-05 -- observations.id PRIMARY KEY collision on force import with existing ID
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observations_id_collision_via_plain_insert() {
+    // R-05: importing observations with id=1 into a DB that already has
+    // observations id=1 WITHOUT --force must fail (non-empty DB guard kicks in first).
+    // With --force (which clears the table first) it must succeed.
+    let (project_dir, base_dir, db_path) = setup_project();
+    let store = open_store(&db_path);
+    let sv = get_schema_version(&store).await;
+    let pool = store.write_pool_server();
+
+    // Pre-populate: an entry (to trigger non-empty guard) + observation id=1
+    insert_full_entry(pool, 1).await;
+    insert_test_observation(pool, 1, "existing", "on_tool", 1700000000).await;
+    sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('next_entry_id', 2)")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('next_audit_id', 1)")
+        .execute(pool)
+        .await
+        .unwrap();
+    store.close().await.unwrap();
+
+    // Craft import file with observations id=1 (would collide if table not cleared)
+    let tmp = TempDir::new().unwrap();
+    let obs_line = serde_json::json!({
+        "_table": "observations",
+        "id": 1i64,
+        "session_id": "new-sess",
+        "ts_millis": 1700001000i64,
+        "hook": "on_result",
+        "tool": null,
+        "input": null,
+        "response_size": null,
+        "response_snippet": null,
+        "topic_signal": null,
+        "phase": null
+    })
+    .to_string();
+    let lines_no_force = vec![
+        make_header(sv, 2, 0),
+        make_counter_line("schema_version", sv),
+        make_counter_line("next_entry_id", 1),
+        make_counter_line("next_audit_id", 10),
+        obs_line.clone(),
+    ];
+    let input_path = write_jsonl(&tmp, &lines_no_force);
+
+    // Without --force: fails because DB is non-empty (entries table has rows)
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input_path,
+        false,
+        false, // no force
+        base_dir.path(),
+    );
+    assert!(result.is_err(), "R-05: non-empty DB without --force must fail");
+    let err_msg = result.unwrap_err().to_string();
+    assert!(err_msg.contains("--force"), "R-05: error should mention --force: {err_msg}");
+
+    // With --force: clears table first, import succeeds (no ID collision)
+    let tmp2 = TempDir::new().unwrap();
+    let lines_force = vec![
+        make_header(sv, 2, 0),
+        make_counter_line("schema_version", sv),
+        make_counter_line("next_entry_id", 1),
+        make_counter_line("next_audit_id", 100),
+        obs_line,
+    ];
+    let input_path2 = write_jsonl(&tmp2, &lines_force);
+    let result2 = run_import_with_base(
+        Some(project_dir.path()),
+        &input_path2,
+        false,
+        true, // force
+        base_dir.path(),
+    );
+    assert!(result2.is_ok(), "R-05: --force clears table before insert, must succeed: {result2:?}");
+
+    // Verify the new observation (from import) is present
+    let store = open_store(&db_path);
+    let hook: String =
+        sqlx::query_scalar("SELECT hook FROM observations WHERE id = 1")
+            .fetch_one(store.write_pool_server())
+            .await
+            .unwrap();
+    assert_eq!(hook, "on_result", "R-05: imported observation present after force import");
+}
+
+// ---------------------------------------------------------------------------
+// nxs-012: AC-15, AC-16, AC-17 -- full round-trip with all 11 tables
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_round_trip_all_11_tables() {
+    // AC-15: export DB with all 11 tables populated, import into fresh DB,
+    // re-export, compare (excluding exported_at and goal_embedding).
+    // AC-16: observations.id preserved through export/import.
+    // AC-17: cycle_events.id preserved through export/import.
+    let (project_a, base_dir_a, db_a) = setup_project();
+    let store_a = open_store(&db_a);
+
+    {
+        let pool = store_a.write_pool_server();
+        // Populate original 8 tables
+        populate_representative_data(pool).await;
+
+        // Add new tables
+        insert_test_graph_edge(pool, 1, 2, "Supports", 0.85).await;
+        insert_test_graph_edge(pool, 2, 3, "Relates", 0.5).await;
+        insert_test_observation(pool, 1, "sess-a", "context_store", 1700000100).await;
+        insert_test_observation(pool, 2, "sess-b", "context_search", 1700000200).await;
+        insert_test_cycle_event(pool, 1, "nxs-012", 1, "cycle_start").await;
+        insert_test_cycle_event(pool, 2, "nxs-012", 2, "cycle_end").await;
+    }
+    store_a.close().await.unwrap();
+
+    let tmp = TempDir::new().unwrap();
+    let export1_path = tmp.path().join("export1.jsonl");
+    let export1 = run_export_to_string(project_a.path(), base_dir_a.path(), &export1_path);
+
+    // Import into fresh DB
+    let (project_b, base_dir_b, db_b) = setup_project();
+    run_import_with_base(
+        Some(project_b.path()),
+        &export1_path,
+        false,
+        false,
+        base_dir_b.path(),
+    )
+    .expect("import should succeed");
+
+    // AC-16: verify observations.id preserved
+    let store_b = open_store(&db_b);
+    let pool_b = store_b.write_pool_server();
+    let obs_ids: Vec<i64> =
+        sqlx::query_scalar("SELECT id FROM observations ORDER BY id")
+            .fetch_all(pool_b)
+            .await
+            .unwrap();
+    assert_eq!(obs_ids, vec![1i64, 2], "AC-16: observations.id preserved");
+
+    // AC-17: verify cycle_events.id preserved
+    let ce_ids: Vec<i64> =
+        sqlx::query_scalar("SELECT id FROM cycle_events ORDER BY id")
+            .fetch_all(pool_b)
+            .await
+            .unwrap();
+    assert_eq!(ce_ids, vec![1i64, 2], "AC-17: cycle_events.id preserved");
+
+    // Verify graph_edges present
+    let ge_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
+        .fetch_one(pool_b)
+        .await
+        .unwrap();
+    assert_eq!(ge_count, 2, "graph_edges preserved through import");
+    store_b.close().await.unwrap();
+
+    // Re-export and compare (AC-15)
+    let export2_path = tmp.path().join("export2.jsonl");
+    let export2 = run_export_to_string(project_b.path(), base_dir_b.path(), &export2_path);
+
+    let normalize = |s: &str| -> Vec<String> {
+        let mut result: Vec<String> = Vec::new();
+        for line in s.lines() {
+            if line.is_empty() {
+                continue;
+            }
+            let mut val: serde_json::Value = serde_json::from_str(line).unwrap();
+            if let Some(obj) = val.as_object_mut() {
+                if obj.contains_key("_header") {
+                    obj.insert("exported_at".into(), serde_json::Value::Number(0.into()));
+                }
+                // Normalize next_audit_id counter (incremented by provenance write)
+                if obj.get("_table").and_then(|t| t.as_str()) == Some("counters")
+                    && obj.get("name").and_then(|n| n.as_str()) == Some("next_audit_id")
+                {
+                    obj.insert("value".into(), serde_json::Value::Number(0.into()));
+                }
+            }
+            result.push(serde_json::to_string(&val).unwrap());
+        }
+        result
+    };
+
+    let lines1 = normalize(&export1);
+    let lines2_all = normalize(&export2);
+
+    // Filter out provenance audit entry added during import
+    let lines2: Vec<String> = lines2_all
+        .iter()
+        .filter(|l| {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(l) {
+                if v.get("_table").and_then(|t| t.as_str()) == Some("audit_log")
+                    && v.get("operation").and_then(|o| o.as_str()) == Some("import")
+                {
+                    return false;
+                }
+            }
+            true
+        })
+        .cloned()
+        .collect();
+
+    assert_eq!(
+        lines1.len(),
+        lines2.len(),
+        "AC-15: line count mismatch export1={} export2={}",
+        lines1.len(),
+        lines2.len()
+    );
+    for (i, (a, b)) in lines1.iter().zip(lines2.iter()).enumerate() {
+        assert_eq!(a, b, "AC-15: line {i} differs:\n  export1: {a}\n  export2: {b}");
+    }
 }

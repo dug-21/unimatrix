@@ -101,6 +101,16 @@ enum Command {
         /// Output file path. Defaults to stdout.
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// Exclude quarantined entries (status=3) and their dependents from export.
+        /// Produces a clean snapshot. Requires --confirm.
+        #[arg(long)]
+        skip_quarantined: bool,
+
+        /// Confirm intent to produce a filtered (non-exact) export.
+        /// Required with --skip-quarantined. Silently ignored otherwise.
+        #[arg(long)]
+        confirm: bool,
     },
 
     /// Import a knowledge base from a JSONL export file.
@@ -270,11 +280,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Minimal startup for <50ms budget
             return unimatrix_server::uds::hook::run(event, provider, cli.project_dir);
         }
-        Some(Command::Export { output }) => {
+        Some(Command::Export {
+            output,
+            skip_quarantined,
+            confirm,
+        }) => {
             // Sync path: NO tokio, like Hook
             return unimatrix_server::export::run_export(
                 cli.project_dir.as_deref(),
                 output.as_deref(),
+                skip_quarantined,
+                confirm,
             );
         }
         Some(Command::Import {
