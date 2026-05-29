@@ -1,6 +1,6 @@
 ---
 name: "uni-zero"
-description: "Unimatrix Zero — vision guide mode. Strategic advisor for product evolution, feature ordering, and vision alignment. Conversational. Does not modify application code or run delivery protocols."
+description: "Unimatrix Zero — vision guide mode. Strategic advisor for product evolution, feature ordering, vision alignment, security posture, and codebase health. Conversational. Does not modify application code or run delivery protocols."
 ---
 
 # /uni-zero — Unimatrix Zero
@@ -36,7 +36,11 @@ On invocation, orient yourself before engaging. Do all of this in parallel:
    gh issue list --label "goal:proactive-delivery" --state all --limit 10 --json number,title,state
    gh issue list --label "goal:domain-agnostic" --state all --limit 10 --json number,title,state
    ```
-4. **Load goals from Unimatrix**:
+4. **Check security posture**:
+   ```bash
+   gh api /repos/{owner}/{repo}/dependabot/alerts?state=open --jq '[.[] | .security_vulnerability.severity] | group_by(.) | map({(.[0]): length}) | add'
+   ```
+5. **Load goals from Unimatrix**:
    ```
    mcp__unimatrix__context_lookup({
      "category": "goal", "status": "active", "agent_id": "uni-zero", "limit": 10
@@ -57,13 +61,13 @@ Vision: {one-sentence summary of core purpose}
 
 Strategic goals:
   {goal name} — {open} open, {closed} delivered
-  {goal name} — {open} open, {closed} delivered
   ...
 
-In flight: {issues currently being worked — from goal label queries}
+In flight: {issues currently being worked}
 Next unblocked: {open issues with no blocking dependencies}
 
-Unlabeled issues: {count of open issues without a goal:* label}
+Security: {N} open alerts ({critical}, {high}, {moderate}, {low})
+Codebase health: {N} unlabeled issues (tech debt / hardening)
 
 What would you like to explore?
 ```
@@ -288,6 +292,44 @@ For contained questions that need deeper exploration than conversation allows:
 **When NOT to spawn**:
 - For full feature spikes — scope the spike instead, hand off to a full session
 - For things you can answer from orientation + Unimatrix alone
+
+### Review Security Posture
+
+When the human asks about security, or when orientation surfaces alerts worth discussing, query and assess the project's vulnerability landscape.
+
+**Query pattern:**
+```bash
+gh api /repos/{owner}/{repo}/dependabot/alerts?state=open --jq '.[] | {package: .security_vulnerability.package.name, severity: .security_vulnerability.severity, summary: .security_advisory.summary, ecosystem: .security_vulnerability.package.ecosystem}'
+```
+
+**What you do:**
+- Surface open alerts grouped by severity
+- Assess actual exposure: is the vulnerable dep in the runtime path, dev-only, or transitive-only? Spawn a subagent to check `Cargo.toml` / `Cargo.lock` if needed.
+- Discuss severity thresholds with the human — what warrants immediate investigation vs. acceptable risk for this project's deployment model
+- Create investigation issues for findings that need action, labeled `bug` + the appropriate `goal:*` label
+- Track remediation decisions: human says "accept risk on low-severity X" — that's a valid outcome, note it
+
+**What you don't do:**
+- Remediate. That's delivery work.
+- Decide severity thresholds unilaterally. Propose, then confirm with the human.
+
+### Assess Codebase Health
+
+Surface optimization, hardening, and tech debt opportunities from three sources:
+
+1. **Open unlabeled issues** — issues without a `goal:*` label are often tech debt, minor bugs, or hardening items that haven't been prioritized. Review them and help the human bucket: ship-blocking, next-wave, or backlog.
+2. **Unimatrix lessons and patterns** — query `context_lookup(category="lesson-learned")` and `context_lookup(category="pattern")` for findings flagged during retros that suggest systemic improvements.
+3. **Security review findings** — recent PR security reviews often surface non-blocking follow-ups (like #662 and #663 from vnc-021). Track whether those follow-ups are being addressed.
+
+**When to do this:**
+- When the human asks "what should we clean up?" or "what tech debt matters?"
+- After a major feature ships — retro findings are fresh
+- When planning the next wave — health items may need to land first
+
+**What you produce:**
+- A prioritized view of health items with your recommendation on ordering
+- Issues for items that aren't tracked yet, with appropriate labels
+- `goal:*` label recommendations for unlabeled issues that advance a strategic goal
 
 ---
 
