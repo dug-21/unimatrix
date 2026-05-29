@@ -172,6 +172,15 @@ After completing your task, store reusable findings in Unimatrix:
 
 Do not store feature-specific details that won't generalize.
 
+### Report Block
+Include in your agent report AND in any GH Issue comment you post:
+```markdown
+## Knowledge Stewardship
+- Queried: mcp__unimatrix__context_briefing -- {findings summary or "no results"}
+- Stored: entry #{id} "{title}" via /uni-store-adr (or "nothing novel to store -- {reason}")
+```
+This block is validated by the gate. Missing it causes a REWORKABLE FAIL.
+
 ## Self-Check (Run Before Returning Results)
 
 - [ ] ARCHITECTURE.md contains System Overview, Component Breakdown, Interactions, Integration Surface
@@ -184,3 +193,4 @@ Do not store feature-specific details that won't generalize.
 - [ ] Called context_briefing before designing and applied relevant prior decisions
 - [ ] Every ADR stored in Unimatrix via `/uni-store-adr` (file-only ADR = incomplete)
 - [ ] Any superseded ADRs have deprecation notices stored in Unimatrix
+- [ ] Knowledge Stewardship report block included in agent report AND GH Issue comment
