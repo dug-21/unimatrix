@@ -530,6 +530,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
             role: None,
             feature: None,
             token_limit: None,
+            transcript_excerpt: None, // ADR-005 vnc-022: forward compat for #670
         },
 
         // col-009: Intercept PostToolUse for rework tracking
@@ -1637,12 +1638,14 @@ mod tests {
                 role,
                 feature,
                 token_limit,
+                transcript_excerpt,
             } => {
                 assert_eq!(session_id, "sess-1");
                 assert!(injected_entry_ids.is_empty());
                 assert!(role.is_none());
                 assert!(feature.is_none());
                 assert!(token_limit.is_none());
+                assert!(transcript_excerpt.is_none());
             }
             _ => panic!("expected CompactPayload, got {req:?}"),
         }
@@ -1668,6 +1671,7 @@ mod tests {
             role: None,
             feature: None,
             token_limit: None,
+            transcript_excerpt: None,
         };
         let is_faf = matches!(
             req,

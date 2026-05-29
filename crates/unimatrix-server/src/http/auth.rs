@@ -119,7 +119,12 @@ impl StaticTokenValidator {
         Ok(ResolvedIdentity {
             agent_id: "http-bearer".to_string(),
             trust_level: TrustLevel::Restricted,
-            capabilities: vec![Capability::Read, Capability::Write, Capability::Search],
+            capabilities: vec![
+                Capability::Read,
+                Capability::Write,
+                Capability::Search,
+                Capability::SessionWrite,
+            ],
         })
     }
 }

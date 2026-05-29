@@ -248,7 +248,7 @@ async fn test_valid_token_inserts_resolved_identity_into_extensions() {
         body.contains(r#""trust_level":"Restricted""#),
         "body: {body}"
     );
-    assert!(body.contains(r#""caps":3"#), "body: {body}");
+    assert!(body.contains(r#""caps":4"#), "body: {body}");
 }
 
 // ---- T-STA-09 ----
@@ -269,7 +269,12 @@ async fn test_bearer_validator_trait_valid_token() {
     assert_eq!(identity.trust_level, TrustLevel::Restricted);
     assert_eq!(
         identity.capabilities,
-        vec![Capability::Read, Capability::Write, Capability::Search]
+        vec![
+            Capability::Read,
+            Capability::Write,
+            Capability::Search,
+            Capability::SessionWrite,
+        ]
     );
 }
 
@@ -389,4 +394,45 @@ async fn test_health_trailing_slash_no_bypass() {
 #[test]
 fn test_health_path_constant() {
     assert_eq!(HEALTH_PATH, "/health");
+}
+
+// ---- vnc-022 capability-extension tests ----
+
+#[tokio::test]
+async fn test_static_token_validator_includes_session_write() {
+    let validator = StaticTokenValidator::new(test_token_bytes());
+    let identity = validator
+        .validate(&test_token_hex())
+        .await
+        .expect("valid token should succeed");
+    assert!(
+        identity.capabilities.contains(&Capability::SessionWrite),
+        "HTTP capabilities must include SessionWrite for /observe session operations"
+    );
+    assert_eq!(
+        identity.capabilities,
+        vec![
+            Capability::Read,
+            Capability::Write,
+            Capability::Search,
+            Capability::SessionWrite,
+        ]
+    );
+    assert_eq!(identity.capabilities.len(), 4);
+}
+
+#[test]
+fn test_static_token_validator_capabilities_complete_set() {
+    let validator = StaticTokenValidator::new(test_token_bytes());
+    let identity = validator
+        .validate_sync(&test_token_hex())
+        .expect("valid token should succeed");
+    assert!(identity.capabilities.contains(&Capability::Read));
+    assert!(identity.capabilities.contains(&Capability::Write));
+    assert!(identity.capabilities.contains(&Capability::Search));
+    assert!(identity.capabilities.contains(&Capability::SessionWrite));
+    assert!(
+        !identity.capabilities.contains(&Capability::Admin),
+        "Admin must NOT be granted to HTTP bearer callers"
+    );
 }

@@ -48,7 +48,6 @@ use crate::server::PendingEntriesAnalysis;
 use crate::services::index_briefing::{IndexBriefingParams, derive_briefing_query};
 use crate::services::observation::DEFAULT_HOOK_SOURCE_DOMAIN;
 use crate::uds::hook::MAX_GOAL_BYTES;
-use crate::uds::uds_has_capability;
 
 // -- col-010 helpers --
 
@@ -486,6 +485,7 @@ async fn handle_connection(
         &session_registry,
         &pending_entries_analysis,
         &services,
+        crate::uds::UDS_CAPABILITIES,
     )
     .await;
 
@@ -513,7 +513,7 @@ async fn handle_connection(
 /// Dispatch a hook request and return the appropriate response.
 ///
 /// Fully async per ADR-002. All handler arms are async.
-async fn dispatch_request(
+pub(crate) async fn dispatch_request(
     request: HookRequest,
     store: &Arc<Store>,
     embed_service: &Arc<EmbedServiceHandle>,
@@ -524,6 +524,7 @@ async fn dispatch_request(
     session_registry: &SessionRegistry,
     pending_entries_analysis: &Arc<Mutex<PendingEntriesAnalysis>>,
     services: &crate::services::ServiceLayer,
+    capabilities: &[Capability],
 ) -> HookResponse {
     match request {
         HookRequest::Ping => HookResponse::Pong {
@@ -537,7 +538,7 @@ async fn dispatch_request(
             feature,
         } => {
             // vnc-008: UDS capability enforcement
-            if !uds_has_capability(Capability::SessionWrite) {
+            if !capabilities.contains(&Capability::SessionWrite) {
                 return HookResponse::Error {
                     code: -32003,
                     message: "insufficient capability: SessionWrite required".to_string(),
@@ -622,7 +623,7 @@ async fn dispatch_request(
             outcome,
             duration_secs,
         } => {
-            if !uds_has_capability(Capability::SessionWrite) {
+            if !capabilities.contains(&Capability::SessionWrite) {
                 return HookResponse::Error {
                     code: -32003,
                     message: "insufficient capability: SessionWrite required".to_string(),
@@ -659,7 +660,7 @@ async fn dispatch_request(
         HookRequest::RecordEvent { ref event }
             if event.event_type == "post_tool_use_rework_candidate" =>
         {
-            if !uds_has_capability(Capability::SessionWrite) {
+            if !capabilities.contains(&Capability::SessionWrite) {
                 return HookResponse::Error {
                     code: -32003,
                     message: "insufficient capability: SessionWrite required".to_string(),
@@ -733,7 +734,7 @@ async fn dispatch_request(
         }
 
         HookRequest::RecordEvent { event } => {
-            if !uds_has_capability(Capability::SessionWrite) {
+            if !capabilities.contains(&Capability::SessionWrite) {
                 return HookResponse::Error {
                     code: -32003,
                     message: "insufficient capability: SessionWrite required".to_string(),
@@ -865,7 +866,7 @@ async fn dispatch_request(
         }
 
         HookRequest::RecordEvents { events } => {
-            if !uds_has_capability(Capability::SessionWrite) {
+            if !capabilities.contains(&Capability::SessionWrite) {
                 return HookResponse::Error {
                     code: -32003,
                     message: "insufficient capability: SessionWrite required".to_string(),
@@ -1003,7 +1004,7 @@ async fn dispatch_request(
             max_tokens: _,
             source,
         } => {
-            if !uds_has_capability(Capability::Search) {
+            if !capabilities.contains(&Capability::Search) {
                 return HookResponse::Error {
                     code: -32003,
                     message: "insufficient capability: Search required".to_string(),
@@ -1167,8 +1168,11 @@ async fn dispatch_request(
             role,
             feature,
             token_limit,
+            transcript_excerpt: _, // ADR-005 vnc-022: ignored Day 1; forward compat for #670
         } => {
-            if !uds_has_capability(Capability::Search) || !uds_has_capability(Capability::Read) {
+            if !capabilities.contains(&Capability::Search)
+                || !capabilities.contains(&Capability::Read)
+            {
                 return HookResponse::Error {
                     code: -32003,
                     message: "insufficient capability: Search + Read required".to_string(),
@@ -1198,7 +1202,9 @@ async fn dispatch_request(
             feature,
             max_tokens,
         } => {
-            if !uds_has_capability(Capability::Search) || !uds_has_capability(Capability::Read) {
+            if !capabilities.contains(&Capability::Search)
+                || !capabilities.contains(&Capability::Read)
+            {
                 return HookResponse::Error {
                     code: -32003,
                     message: "insufficient capability: Search + Read required".to_string(),
@@ -3068,6 +3074,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         match response {
@@ -3099,6 +3106,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         assert!(matches!(response, HookResponse::Ack));
@@ -3134,6 +3142,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         assert!(matches!(response, HookResponse::Ack));
@@ -3168,6 +3177,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         assert!(matches!(response, HookResponse::Ack));
@@ -3199,6 +3209,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         match response {
@@ -3234,6 +3245,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         match response {
@@ -3275,6 +3287,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -3299,6 +3312,7 @@ mod tests {
                 role: None,
                 feature: None,
                 token_limit: None,
+                transcript_excerpt: None,
             },
             &store,
             &embed,
@@ -3309,6 +3323,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         match response {
@@ -3340,6 +3355,7 @@ mod tests {
                 role: None,
                 feature: None,
                 token_limit: None,
+                transcript_excerpt: None,
             },
             &store,
             &embed,
@@ -3350,6 +3366,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -3378,6 +3395,7 @@ mod tests {
                     role: None,
                     feature: None,
                     token_limit: None,
+                    transcript_excerpt: None,
                 },
                 &store,
                 &embed,
@@ -3388,6 +3406,7 @@ mod tests {
                 &registry,
                 &make_pending(),
                 &make_services(&store, &embed, &vs, &es, &adapt),
+                crate::uds::UDS_CAPABILITIES,
             )
             .await;
 
@@ -4773,6 +4792,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -4819,6 +4839,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -4858,6 +4879,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -4900,6 +4922,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -4940,6 +4963,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -4981,6 +5005,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5022,6 +5047,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5073,6 +5099,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5111,6 +5138,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5156,6 +5184,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5213,6 +5242,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5246,6 +5276,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5279,6 +5310,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5311,6 +5343,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5364,6 +5397,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5423,6 +5457,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5462,6 +5497,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5495,6 +5531,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5522,6 +5559,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5556,6 +5594,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5577,6 +5616,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5710,6 +5750,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5761,6 +5802,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5796,6 +5838,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5832,6 +5875,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5868,6 +5912,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5903,6 +5948,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5939,6 +5985,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -5995,6 +6042,7 @@ mod tests {
             &registry,
             &make_pending(),
             &services,
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         let _r2 = dispatch_request(
@@ -6010,6 +6058,7 @@ mod tests {
             &registry,
             &make_pending(),
             &services,
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         let _r3 = dispatch_request(
@@ -6023,6 +6072,7 @@ mod tests {
             &registry,
             &make_pending(),
             &services,
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6100,6 +6150,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6146,6 +6197,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6332,6 +6384,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6370,6 +6423,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6408,6 +6462,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6447,6 +6502,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6488,6 +6544,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6526,6 +6583,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6572,6 +6630,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6601,6 +6660,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6651,6 +6711,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6685,6 +6746,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6733,6 +6795,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6793,6 +6856,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6833,6 +6897,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6868,6 +6933,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6918,6 +6984,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -6963,6 +7030,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7004,6 +7072,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7042,6 +7111,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7092,6 +7162,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7150,6 +7221,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7202,6 +7274,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7261,6 +7334,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7437,6 +7511,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         assert!(matches!(response, HookResponse::Ack));
@@ -7512,6 +7587,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
         assert!(
@@ -7562,6 +7638,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7626,6 +7703,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7757,6 +7835,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7823,6 +7902,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7887,6 +7967,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -7953,6 +8034,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -8024,6 +8106,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -8084,6 +8167,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 
@@ -8162,6 +8246,7 @@ mod tests {
             &registry,
             &make_pending(),
             &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
         )
         .await;
 

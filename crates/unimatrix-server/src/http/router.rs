@@ -2,7 +2,7 @@
 //!
 //! Routes HTTP requests by URI path:
 //! - `GET /health` -> health handler (no auth, bypassed by StaticTokenAuth)
-//! - `POST /observe` -> HTTP 501 stub (auth required, W2-7 future)
+//! - `POST /observe` -> observation handler (auth required, vnc-022)
 //! - `/* (everything else)` -> MCP dispatch through ProjectRouter -> McpAdapter
 //!
 //! Contains `ProjectRouter` as the W2-6 structural seam and `McpAdapter` as
@@ -11,7 +11,7 @@
 use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
 use bytes::Bytes;
@@ -22,9 +22,18 @@ use http_body_util::{BodyExt, Full, Limited};
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::{StreamableHttpServerConfig, StreamableHttpService};
 use tower::Service;
+use unimatrix_adapt::AdaptationService;
+use unimatrix_core::async_wrappers::AsyncVectorStore;
+use unimatrix_core::{Store, VectorAdapter};
 
 use crate::http::health::health_response;
-use crate::server::UnimatrixServer;
+use crate::infra::embed_handle::EmbedServiceHandle;
+use crate::infra::session::SessionRegistry;
+use crate::mcp::identity::ResolvedIdentity;
+use crate::server::{PendingEntriesAnalysis, UnimatrixServer};
+use crate::services::ServiceLayer;
+use crate::uds::listener::dispatch_request;
+use unimatrix_engine::wire::HookRequest;
 
 /// Path for the remote telemetry endpoint (FR-24, W2-7 future).
 pub(crate) const OBSERVE_PATH: &str = "/observe";
@@ -33,13 +42,55 @@ pub(crate) const OBSERVE_PATH: &str = "/observe";
 const DEFAULT_MAX_BODY_BYTES: usize = 1_048_576;
 
 // ---------------------------------------------------------------------------
+// ObserveContext — service handle bundle for /observe handler (ADR-001)
+// ---------------------------------------------------------------------------
+
+/// Service handle bundle for the `/observe` handler (ADR-001).
+///
+/// Holds Arc-cloned references to the subset of `UnimatrixServer` fields
+/// needed by `dispatch_request()`. Constructed once in `main.rs`, stored
+/// on `PathRouter`, referenced by the `/observe` handler.
+///
+/// Intentionally NOT the same as `UnimatrixServer` — carries only what
+/// `dispatch_request` needs, not MCP-specific state.
+///
+/// **Risk R-01**: `store` and `entry_store` have identical types (`Arc<Store>`).
+/// A positional swap compiles but corrupts the pipeline. `store` is the primary
+/// knowledge store passed as `dispatch_request`'s second parameter. `entry_store`
+/// is the entry-specific store passed as its fifth parameter. In the current
+/// codebase, both point to the same `Arc<Store>` instance — but the field names
+/// must track `dispatch_request`'s parameter names, not the backing instance.
+#[derive(Clone)]
+pub struct ObserveContext {
+    /// Primary knowledge store (dispatch_request param 2: `store`).
+    pub store: Arc<Store>,
+    /// Embedding service handle (dispatch_request param 3: `embed_service`).
+    pub embed_service: Arc<EmbedServiceHandle>,
+    /// Async vector store (dispatch_request param 4: `vector_store`).
+    pub vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
+    /// Entry-specific store (dispatch_request param 5: `entry_store`).
+    /// Same backing instance as `store` today, but named to match the parameter.
+    pub entry_store: Arc<Store>,
+    /// Adaptation service (dispatch_request param 6: `adapt_service`).
+    pub adapt_service: Arc<AdaptationService>,
+    /// Server version string (dispatch_request param 7: `server_version`).
+    pub server_version: String,
+    /// Session lifecycle registry (dispatch_request param 8: `session_registry`).
+    pub session_registry: Arc<SessionRegistry>,
+    /// Pending entries analysis state (dispatch_request param 9).
+    pub pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
+    /// Shared service layer (dispatch_request param 10: `services`).
+    pub services: ServiceLayer,
+}
+
+// ---------------------------------------------------------------------------
 // PathRouter — top-level path-dispatching tower Service
 // ---------------------------------------------------------------------------
 
 /// Tower service that dispatches requests by URI path.
 ///
 /// - `GET /health` -> JSON health response
-/// - `POST /observe` -> 501 stub
+/// - `POST /observe` -> observation handler (vnc-022)
 /// - `/* (everything else)` -> MCP via ProjectRouter
 pub struct PathRouter<ReqBody>
 where
@@ -48,6 +99,7 @@ where
     ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     project_router: ProjectRouter<ReqBody>,
+    observe_ctx: ObserveContext,
 }
 
 impl<ReqBody> std::fmt::Debug for PathRouter<ReqBody>
@@ -59,6 +111,7 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PathRouter")
             .field("project_router", &self.project_router)
+            .field("observe_ctx", &"ObserveContext{..}")
             .finish()
     }
 }
@@ -69,9 +122,12 @@ where
     ReqBody::Data: Send + 'static,
     ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    /// Create a new PathRouter wrapping a ProjectRouter.
-    pub fn new(project_router: ProjectRouter<ReqBody>) -> Self {
-        PathRouter { project_router }
+    /// Create a new PathRouter wrapping a ProjectRouter and an ObserveContext.
+    pub fn new(project_router: ProjectRouter<ReqBody>, observe_ctx: ObserveContext) -> Self {
+        PathRouter {
+            project_router,
+            observe_ctx,
+        }
     }
 }
 
@@ -84,6 +140,7 @@ where
     fn clone(&self) -> Self {
         PathRouter {
             project_router: self.project_router.clone(),
+            observe_ctx: self.observe_ctx.clone(),
         }
     }
 }
@@ -113,9 +170,85 @@ where
                 Box::pin(async move { Ok(resp) })
             }
             (Method::POST, "/observe") => {
-                // 501 stub (FR-20). Auth enforced by upstream StaticTokenAuth.
-                let resp = observe_stub_response();
-                Box::pin(async move { Ok(resp) })
+                // vnc-022: Real /observe handler. Auth enforced by upstream StaticTokenAuth.
+                let observe_ctx = self.observe_ctx.clone();
+                Box::pin(async move {
+                    // Step 1: Extract ResolvedIdentity from request extensions.
+                    let identity = match request.extensions().get::<ResolvedIdentity>() {
+                        Some(id) => id.clone(),
+                        None => {
+                            tracing::error!(
+                                "POST /observe: ResolvedIdentity missing from extensions"
+                            );
+                            return Ok(json_error_response(
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                "internal error: identity not resolved",
+                            ));
+                        }
+                    };
+
+                    // Step 2: Content-Length fast-path size check (same pattern as McpAdapter).
+                    let exceeds_limit = request
+                        .headers()
+                        .get(http::header::CONTENT_LENGTH)
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|s| s.parse::<usize>().ok())
+                        .is_some_and(|len| len > DEFAULT_MAX_BODY_BYTES);
+
+                    if exceeds_limit {
+                        return Ok(payload_too_large_response());
+                    }
+
+                    // Step 3: Stream-level body collection with size limit (GH #663 pattern).
+                    let (_parts, body) = request.into_parts();
+                    let limited_body = Limited::new(body, DEFAULT_MAX_BODY_BYTES);
+
+                    let collected = match limited_body.collect().await {
+                        Ok(collected) => collected.to_bytes(),
+                        Err(err) => {
+                            if err
+                                .downcast_ref::<http_body_util::LengthLimitError>()
+                                .is_some()
+                            {
+                                return Ok(payload_too_large_response());
+                            }
+                            return Ok(internal_error_response());
+                        }
+                    };
+
+                    // Step 4: Deserialize HookRequest from JSON.
+                    let mut hook_request: HookRequest = match serde_json::from_slice(&collected) {
+                        Ok(req) => req,
+                        Err(e) => {
+                            return Ok(json_error_response(
+                                StatusCode::BAD_REQUEST,
+                                &format!("invalid request JSON: {e}"),
+                            ));
+                        }
+                    };
+
+                    // Step 5: Prefix session_id with "http-" (ADR-003).
+                    prefix_session_id(&mut hook_request);
+
+                    // Step 6: Call dispatch_request with HTTP capabilities.
+                    let response = dispatch_request(
+                        hook_request,
+                        &observe_ctx.store,
+                        &observe_ctx.embed_service,
+                        &observe_ctx.vector_store,
+                        &observe_ctx.entry_store,
+                        &observe_ctx.adapt_service,
+                        &observe_ctx.server_version,
+                        &observe_ctx.session_registry,
+                        &observe_ctx.pending_entries_analysis,
+                        &observe_ctx.services,
+                        &identity.capabilities,
+                    )
+                    .await;
+
+                    // Step 7: Map HookResponse to HTTP response.
+                    Ok(observe_response_to_http(response))
+                })
             }
             (_, _) => {
                 // Route everything else to MCP via ProjectRouter.
@@ -137,25 +270,12 @@ fn map_health_response(resp: Response<String>) -> Response<BoxBody<Bytes, Infall
     )
 }
 
-/// 501 Not Implemented response for `/observe` (FR-20, W2-7).
-fn observe_stub_response() -> Response<BoxBody<Bytes, Infallible>> {
-    Response::builder()
-        .status(StatusCode::NOT_IMPLEMENTED)
-        .header("content-type", "application/json")
-        .body(
-            Full::new(Bytes::from(
-                r#"{"error":"Remote telemetry not yet implemented. See W2-7."}"#,
-            ))
-            .map_err(|never| match never {})
-            .boxed(),
-        )
-        .expect("static response builder cannot fail")
-}
+mod observe;
+use observe::{json_error_response, observe_response_to_http, prefix_session_id};
 
 // ---------------------------------------------------------------------------
 // ProjectRouter — W2-6 structural seam (single-project default mode)
 // ---------------------------------------------------------------------------
-
 /// Project-aware MCP request router.
 ///
 /// In vnc-021, operates in single-project default mode: all MCP requests
