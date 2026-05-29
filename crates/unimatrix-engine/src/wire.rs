@@ -158,6 +158,12 @@ pub enum HookRequest {
         role: Option<String>,
         feature: Option<String>,
         token_limit: Option<u32>,
+        /// Forward-compatible transcript excerpt for PreCompact restoration (#670).
+        /// Day 1: always None over HTTP; handle_compact_payload ignores it.
+        /// Future clients (or hook-remote CLI) can populate this field to send
+        /// transcript data for server-side restoration. See ADR-005 vnc-022.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        transcript_excerpt: Option<String>,
     },
 }
 
@@ -1024,6 +1030,7 @@ mod tests {
             role: Some("developer".to_string()),
             feature: None,
             token_limit: Some(500),
+            transcript_excerpt: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1034,12 +1041,14 @@ mod tests {
                 role,
                 feature,
                 token_limit,
+                transcript_excerpt,
             } => {
                 assert_eq!(session_id, "s1");
                 assert_eq!(injected_entry_ids, vec![1, 2, 3]);
                 assert_eq!(role.as_deref(), Some("developer"));
                 assert!(feature.is_none());
                 assert_eq!(token_limit, Some(500));
+                assert!(transcript_excerpt.is_none());
             }
             _ => panic!("expected CompactPayload"),
         }
@@ -1053,6 +1062,7 @@ mod tests {
             role: None,
             feature: None,
             token_limit: None,
+            transcript_excerpt: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1061,6 +1071,114 @@ mod tests {
                 injected_entry_ids, ..
             } => {
                 assert!(injected_entry_ids.is_empty());
+            }
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    // -- vnc-022: CompactPayload transcript_excerpt tests (ADR-005) --
+
+    #[test]
+    fn test_compact_payload_with_transcript_excerpt_round_trip() {
+        // AC-09, R-07: round-trip with transcript_excerpt present
+        let req = HookRequest::CompactPayload {
+            session_id: "s1".to_string(),
+            injected_entry_ids: vec![1, 2],
+            role: Some("developer".to_string()),
+            feature: Some("vnc-022".to_string()),
+            token_limit: Some(1000),
+            transcript_excerpt: Some("excerpt text".to_string()),
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let decoded = deserialize_request(&bytes).unwrap();
+        match decoded {
+            HookRequest::CompactPayload {
+                session_id,
+                injected_entry_ids,
+                role,
+                feature,
+                token_limit,
+                transcript_excerpt,
+            } => {
+                assert_eq!(session_id, "s1");
+                assert_eq!(injected_entry_ids, vec![1, 2]);
+                assert_eq!(role.as_deref(), Some("developer"));
+                assert_eq!(feature.as_deref(), Some("vnc-022"));
+                assert_eq!(token_limit, Some(1000));
+                assert_eq!(transcript_excerpt, Some("excerpt text".to_string()));
+            }
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    #[test]
+    fn test_compact_payload_without_transcript_excerpt_defaults_to_none() {
+        // R-07: missing field deserializes to None via serde(default)
+        let json = r#"{"type":"CompactPayload","session_id":"s1","injected_entry_ids":[],"role":null,"feature":null,"token_limit":null}"#;
+        let decoded: HookRequest = serde_json::from_str(json).unwrap();
+        match decoded {
+            HookRequest::CompactPayload {
+                transcript_excerpt, ..
+            } => {
+                assert!(
+                    transcript_excerpt.is_none(),
+                    "transcript_excerpt must be None when key is absent"
+                );
+            }
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    #[test]
+    fn test_compact_payload_none_transcript_excerpt_omitted_from_json() {
+        // R-07: skip_serializing_if = "Option::is_none" must omit field from JSON
+        let req = HookRequest::CompactPayload {
+            session_id: "s1".to_string(),
+            injected_entry_ids: vec![],
+            role: None,
+            feature: None,
+            token_limit: None,
+            transcript_excerpt: None,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(
+            !json.contains("transcript_excerpt"),
+            "transcript_excerpt: None must not appear in serialized JSON; got: {json}"
+        );
+    }
+
+    #[test]
+    fn test_compact_payload_transcript_excerpt_null_deserializes_to_none() {
+        // R-07: explicit null value deserializes to None
+        let json = r#"{"type":"CompactPayload","session_id":"s1","injected_entry_ids":[],"transcript_excerpt":null}"#;
+        let decoded: HookRequest = serde_json::from_str(json).unwrap();
+        match decoded {
+            HookRequest::CompactPayload {
+                transcript_excerpt, ..
+            } => {
+                assert!(
+                    transcript_excerpt.is_none(),
+                    "transcript_excerpt: null must deserialize to None"
+                );
+            }
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    #[test]
+    fn test_compact_payload_transcript_excerpt_empty_string() {
+        // Edge case: empty string is valid, not None
+        let json = r#"{"type":"CompactPayload","session_id":"s1","injected_entry_ids":[],"transcript_excerpt":""}"#;
+        let decoded: HookRequest = serde_json::from_str(json).unwrap();
+        match decoded {
+            HookRequest::CompactPayload {
+                transcript_excerpt, ..
+            } => {
+                assert_eq!(
+                    transcript_excerpt,
+                    Some(String::new()),
+                    "empty string must be Some(\"\"), not None"
+                );
             }
             _ => panic!("expected CompactPayload"),
         }

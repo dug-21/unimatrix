@@ -19,6 +19,9 @@ pub(crate) const UDS_CAPABILITIES: &[Capability] = &[
 ];
 
 /// Check if UDS connections have a specific capability.
+/// Retained per ADR-002 (vnc-022); dispatch_request now takes capabilities as a parameter
+/// but this helper remains for direct UDS capability queries.
+#[cfg(test)]
 pub(crate) fn uds_has_capability(cap: Capability) -> bool {
     UDS_CAPABILITIES.contains(&cap)
 }
