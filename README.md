@@ -344,6 +344,23 @@ categories    = ["runbook", "post-mortem"]
 # External packs declare threshold or temporal-window rules as TOML descriptors.
 ```
 
+```toml
+# [http] — HTTPS transport (disabled by default)
+[http]
+enabled = false               # Set to true to activate the HTTPS listener
+content_port = 8443           # TCP port for MCP, health, and observe endpoints
+bind_address = "0.0.0.0"     # Bind address (use 0 for OS-assigned port in testing)
+max_connections = 32          # Maximum concurrent HTTP sessions
+
+# [tls] — TLS termination (auto-enabled when cert_path and key_path are present)
+[tls]
+enabled = true                # Set to false for reverse-proxy deployments (plain HTTP)
+cert_path = "/path/to/cert.pem"
+key_path = "/path/to/key.pem"
+```
+
+A 32-byte bearer token is generated automatically at `{data_volume}/token` on first server start with HTTP enabled. The token is printed to stdout once with the `[UNIMATRIX TOKEN]` label. Subsequent starts load it silently. See [docs/client-setup.md](docs/client-setup.md) for client configuration.
+
 Config files are validated for security at load time: world-writable files abort startup; group-writable files log a warning. `[server] instructions` is scanned for injection patterns before use.
 
 ---
@@ -425,8 +442,8 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 
 | Subcommand | Description | Key Flags |
 |------------|-------------|-----------|
-| `serve --daemon` | Start the MCP server as a detached background daemon. Daemonizes (fork/setsid), binds the MCP UDS socket (`unimatrix-mcp.sock`) and hook IPC socket, starts the background tick loop, and exits the launcher process. Fails non-zero if a healthy daemon is already running. Linux and macOS only. | `--daemon` |
-| `serve --foreground` | Start the MCP server in PID 1 foreground mode. Identical daemon functionality (UDS listener, tick loop, ML inference) without fork/setsid. SIGTERM triggers graceful shutdown. Designed for container deployment where the main process must remain PID 1. Mutually exclusive with `--daemon` and `--stdio`. | `--foreground` |
+| `serve --daemon` | Start the MCP server as a detached background daemon. Daemonizes (fork/setsid), binds the MCP UDS socket (`unimatrix-mcp.sock`) and hook IPC socket, starts the background tick loop, and exits the launcher process. Activates the HTTPS listener when `[http] enabled = true`. Fails non-zero if a healthy daemon is already running. Linux and macOS only. | `--daemon` |
+| `serve --foreground` | Start the MCP server in PID 1 foreground mode. Identical daemon functionality (UDS listener, HTTP listener when enabled, tick loop, ML inference) without fork/setsid. SIGTERM triggers graceful shutdown. Designed for container deployment where the main process must remain PID 1. Mutually exclusive with `--daemon` and `--stdio`. | `--foreground` |
 | `serve --stdio` | Start the MCP server in foreground stdio mode. Identical in behavior to the pre-daemon default — the server runs until stdin closes, then performs graceful shutdown and exits. Use for development and testing. | `--stdio` |
 | `stop` | Send SIGTERM to the running daemon and wait for it to exit (up to 10 seconds). Exits 0 on success, non-zero if no daemon is running or the PID file is absent/stale. | None |
 | `hook <EVENT>` | Handle a lifecycle hook event from Claude Code, Gemini CLI, or Codex CLI. Reads JSON from stdin, connects to the running server via UDS. Provider-specific event names (e.g., Gemini's `BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary. Designed for use in hook configuration files, not direct user invocation. | Event name as positional arg. `--provider <name>` (`claude-code` \| `gemini-cli` \| `codex-cli`) — required for Codex (shares event names with Claude Code); optional for Gemini (inferred from event name); omit for Claude Code (backward-compatible default). |
@@ -471,13 +488,17 @@ Single binary. The `hook` subcommand communicates with the running MCP server vi
 
 ### MCP Transport
 
-Daemon mode (default): Unimatrix runs as a persistent background daemon (`unimatrix serve --daemon`) that accepts MCP connections over a Unix Domain Socket (`unimatrix-mcp.sock`, 0600 permissions). Claude Code spawns a lightweight bridge process (the default `unimatrix` invocation) per session; the bridge connects stdin/stdout to the daemon's UDS socket. The daemon survives client disconnection — background tick, vector index, and all in-memory state persist across sessions. Up to 32 concurrent MCP sessions are supported.
+Two transport surfaces: Unix Domain Socket (local) and HTTPS (network).
 
-Foreground mode (container): `unimatrix serve --foreground` runs the full daemon (UDS listener, tick loop, ML inference) as PID 1 without fork/setsid. Used by the container `ENTRYPOINT`. SIGTERM triggers graceful shutdown.
+**UDS (local):** Daemon mode (default): Unimatrix runs as a persistent background daemon (`unimatrix serve --daemon`) that accepts MCP connections over a Unix Domain Socket (`unimatrix-mcp.sock`, 0600 permissions). Claude Code spawns a lightweight bridge process (the default `unimatrix` invocation) per session; the bridge connects stdin/stdout to the daemon's UDS socket. The daemon survives client disconnection — background tick, vector index, and all in-memory state persist across sessions. Up to 32 concurrent MCP sessions are supported.
 
-Stdio mode (explicit): `unimatrix serve --stdio` starts the server in foreground stdio mode. Identical to the pre-daemon behavior; use for development and testing.
+**HTTPS (network):** When `[http] enabled = true` in config.toml, the server starts an HTTPS listener on the content port (default 8443). Any MCP-compatible client (Claude Code, Codex CLI, Gemini CLI) can connect over the network using a static bearer token for authentication. TLS termination via rustls is default-on when cert/key paths are configured; set `[tls] enabled = false` for reverse-proxy deployments. A path-dispatching tower service routes requests: `GET /health` (unauthenticated, returns version and schema version), `POST /observe` (stub for remote telemetry, returns 501 until W2-7), and `/*` (MCP protocol). Up to 32 concurrent HTTP sessions (configurable). See [docs/client-setup.md](docs/client-setup.md) for per-client connection instructions.
 
-The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`) are separate files. Hook IPC uses the existing length-framed binary protocol; MCP sessions use newline-delimited JSON-RPC over the MCP socket.
+Foreground mode (container): `unimatrix serve --foreground` runs the full daemon (UDS listener, HTTP listener when enabled, tick loop, ML inference) as PID 1 without fork/setsid. Used by the container `ENTRYPOINT`. SIGTERM triggers graceful shutdown.
+
+Stdio mode (explicit): `unimatrix serve --stdio` starts the server in foreground stdio mode. Identical to the pre-daemon behavior; use for development and testing. HTTP listener does not activate in stdio mode.
+
+The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`) are separate files. Hook IPC uses the existing length-framed binary protocol; MCP sessions use newline-delimited JSON-RPC over the MCP socket or HTTPS.
 
 ### Data Layout
 
@@ -491,6 +512,7 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
   unimatrix.sock             # Unix domain socket for hook IPC
   unimatrix-mcp.sock         # Unix domain socket for MCP sessions (daemon mode)
   unimatrix.log              # Daemon stdout/stderr log (append mode)
+  token                      # Bearer token for HTTPS auth (generated on first run, mode 0600)
   vector/
     unimatrix-vector.hnsw2   # HNSW graph
     unimatrix-vector.meta    # Index metadata
@@ -513,7 +535,11 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
 
 ---
 
-## Security Model (Mostly Future Use)
+## Security Model
+
+### HTTP Authentication
+
+HTTPS transport uses static bearer token authentication. A 32-byte (256-bit) cryptographically random token is generated on first run, stored at `{data_volume}/token` (mode 0600), and validated on every HTTP request using constant-time comparison (`subtle::ConstantTimeEq`). The `/health` endpoint is the sole unauthenticated path. The `BearerValidator` trait enables enterprise extension (JWT/OAuth) without modifying the core auth path.
 
 ### Trust Hierarchy
 
