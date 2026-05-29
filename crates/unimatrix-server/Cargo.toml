@@ -30,7 +30,7 @@ nix = { version = "0.31", features = ["user", "process"] }
 petgraph = { version = "0.8", default-features = false, features = ["stable_graph"] }
 fs2 = "0.4"
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "macros"] }
-rmcp = { version = "=0.16.0", features = ["server", "client", "transport-io", "macros"] }
+rmcp = { version = "=0.16.0", features = ["server", "client", "transport-io", "macros", "transport-streamable-http-server", "transport-streamable-http-server-session"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7" }
 schemars = "1"
@@ -48,6 +48,13 @@ rayon = "1"
 rand = "0.9"
 num_cpus = "1"
 thiserror = "2"
+tokio-rustls = "0.26"
+rustls-pemfile = "2"
+subtle = "2"
+tower = { version = "0.5", features = ["util"] }
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio", "http1"] }
+hex = "0.4"
 
 [features]
 default = ["mcp-briefing"]

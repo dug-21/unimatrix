@@ -82,6 +82,10 @@ pub struct UnimatrixConfig {
     pub retention: RetentionConfig,
     #[serde(default)]
     pub store: StoreConfig,
+    #[serde(default)]
+    pub http: HttpConfig,
+    #[serde(default)]
+    pub tls: TlsConfig,
     // CycleConfig is intentionally absent (ADR-004: stub removed, rename is hardcoded).
 }
 
@@ -1653,6 +1657,155 @@ impl StoreConfig {
 }
 
 // ---------------------------------------------------------------------------
+// HttpConfig + TlsConfig (vnc-021)
+// ---------------------------------------------------------------------------
+
+/// `[http]` section — HTTP transport activation and tuning.
+///
+/// Absent section defaults to `enabled = false` (HTTP disabled). When `enabled = true`,
+/// the HTTP listener binds on `bind_address:content_port` alongside existing transports.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct HttpConfig {
+    /// Enable HTTP transport. Default: `false`.
+    pub enabled: bool,
+    /// TCP port for the HTTP content listener. Default: `8443`.
+    /// Port 0 is valid (OS-assigned, for testing).
+    pub content_port: u16,
+    /// Bind address for the HTTP listener. Default: `"0.0.0.0"`.
+    pub bind_address: String,
+    /// Maximum concurrent HTTP sessions (pre-TLS semaphore). Default: `32`.
+    pub max_concurrent_sessions: usize,
+    /// Maximum request body size in bytes. Default: `1_048_576` (1 MB).
+    pub max_request_body_bytes: usize,
+    /// Connection timeout in seconds. Default: `30`.
+    pub connection_timeout_secs: u64,
+}
+
+impl Default for HttpConfig {
+    fn default() -> Self {
+        HttpConfig {
+            enabled: false,
+            content_port: 8443,
+            bind_address: "0.0.0.0".to_string(),
+            max_concurrent_sessions: 32,
+            max_request_body_bytes: 1_048_576,
+            connection_timeout_secs: 30,
+        }
+    }
+}
+
+/// `[tls]` section — TLS certificate configuration.
+///
+/// Absent section defaults to TLS disabled (no cert/key paths, `enabled = None`).
+/// When both `cert_path` and `key_path` are present and `enabled` is absent,
+/// TLS auto-enables (ADR-005).
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct TlsConfig {
+    /// Explicit TLS enabled flag. `None` = auto-detect from cert/key presence.
+    pub enabled: Option<bool>,
+    /// Path to the PEM-encoded certificate chain.
+    pub cert_path: Option<PathBuf>,
+    /// Path to the PEM-encoded private key.
+    pub key_path: Option<PathBuf>,
+}
+
+impl Default for TlsConfig {
+    fn default() -> Self {
+        TlsConfig {
+            enabled: None,
+            cert_path: None,
+            key_path: None,
+        }
+    }
+}
+
+impl TlsConfig {
+    /// Resolve effective TLS enabled state.
+    ///
+    /// - Explicit `enabled = true/false` takes precedence.
+    /// - Absent `enabled`: true when BOTH `cert_path` and `key_path` are present.
+    pub fn is_enabled(&self) -> bool {
+        match self.enabled {
+            Some(v) => v,
+            None => self.cert_path.is_some() && self.key_path.is_some(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// HttpConfig + TlsConfig validation (vnc-021)
+// ---------------------------------------------------------------------------
+
+/// Validate HTTP config fields after TOML parse.
+pub fn validate_http_config(config: &HttpConfig, path: &Path) -> Result<(), ConfigError> {
+    use std::net::IpAddr;
+
+    // Validate bind address is parseable
+    if config.bind_address.parse::<IpAddr>().is_err() {
+        return Err(ConfigError::HttpFieldInvalid {
+            path: path.to_path_buf(),
+            field: "bind_address",
+            value: config.bind_address.clone(),
+            reason: "must be a valid IP address",
+        });
+    }
+
+    // Validate max_concurrent_sessions > 0
+    if config.max_concurrent_sessions == 0 {
+        return Err(ConfigError::HttpFieldInvalid {
+            path: path.to_path_buf(),
+            field: "max_concurrent_sessions",
+            value: "0".to_string(),
+            reason: "must be greater than 0",
+        });
+    }
+
+    // Validate max_request_body_bytes > 0
+    if config.max_request_body_bytes == 0 {
+        return Err(ConfigError::HttpFieldInvalid {
+            path: path.to_path_buf(),
+            field: "max_request_body_bytes",
+            value: "0".to_string(),
+            reason: "must be greater than 0",
+        });
+    }
+
+    // Validate connection_timeout_secs > 0
+    if config.connection_timeout_secs == 0 {
+        return Err(ConfigError::HttpFieldInvalid {
+            path: path.to_path_buf(),
+            field: "connection_timeout_secs",
+            value: "0".to_string(),
+            reason: "must be greater than 0",
+        });
+    }
+
+    Ok(())
+}
+
+/// Validate TLS config fields after TOML parse.
+pub fn validate_tls_config(config: &TlsConfig, path: &Path) -> Result<(), ConfigError> {
+    if config.is_enabled() {
+        // When TLS is enabled, BOTH cert and key must be present (FR-05).
+        match (&config.cert_path, &config.key_path) {
+            (Some(_), Some(_)) => Ok(()),
+            (None, _) => Err(ConfigError::TlsFieldInvalid {
+                path: path.to_path_buf(),
+                reason: "tls.enabled = true requires tls.cert_path",
+            }),
+            (_, None) => Err(ConfigError::TlsFieldInvalid {
+                path: path.to_path_buf(),
+                reason: "tls.enabled = true requires tls.key_path",
+            }),
+        }
+    } else {
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Preset enum
 // ---------------------------------------------------------------------------
 
@@ -1830,6 +1983,22 @@ pub enum ConfigError {
         /// Actual value that failed (displayed to operator).
         value: String,
         /// Human-readable valid range, e.g. "must be in range [1000, 1048576]".
+        reason: &'static str,
+    },
+    /// An `[http]` config field is invalid (vnc-021).
+    HttpFieldInvalid {
+        path: PathBuf,
+        /// Field name, e.g. "bind_address".
+        field: &'static str,
+        /// Actual value that failed.
+        value: String,
+        /// Human-readable reason.
+        reason: &'static str,
+    },
+    /// A `[tls]` config field is invalid (vnc-021).
+    TlsFieldInvalid {
+        path: PathBuf,
+        /// Human-readable reason.
         reason: &'static str,
     },
 }
@@ -2077,6 +2246,25 @@ impl fmt::Display for ConfigError {
                 path.display(),
                 field,
                 value,
+                reason
+            ),
+            ConfigError::HttpFieldInvalid {
+                path,
+                field,
+                value,
+                reason,
+            } => write!(
+                f,
+                "config error in {}: [http] field '{}' = '{}' is invalid: {}",
+                path.display(),
+                field,
+                value,
+                reason
+            ),
+            ConfigError::TlsFieldInvalid { path, reason } => write!(
+                f,
+                "config error in {}: [tls] configuration is invalid: {}",
+                path.display(),
                 reason
             ),
         }
@@ -2478,6 +2666,12 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
 
     // --- Validate [store] fields (#561) ---
     config.store.validate(path)?;
+
+    // --- Validate [http] fields (vnc-021) ---
+    validate_http_config(&config.http, path)?;
+
+    // --- Validate [tls] fields (vnc-021) ---
+    validate_tls_config(&config.tls, path)?;
 
     Ok(())
 }
@@ -3135,6 +3329,18 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             } else {
                 global.store.max_content_bytes
             },
+        },
+        // vnc-021: HTTP config — section-level replace semantics (project replaces entire section)
+        http: if project.http != default.http {
+            project.http
+        } else {
+            global.http
+        },
+        // vnc-021: TLS config — section-level replace semantics
+        tls: if project.tls != default.tls {
+            project.tls
+        } else {
+            global.tls
         },
     }
 }
@@ -9625,5 +9831,339 @@ nli_informs_ppr_weight = 0.4
             Some("d".repeat(64)),
             "matching hashes must produce the global value"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // vnc-021: HttpConfig + TlsConfig tests
+    // -----------------------------------------------------------------------
+
+    // T-CE-01: test_empty_config_http_defaults
+    #[test]
+    fn test_empty_config_http_defaults() {
+        let config: UnimatrixConfig = toml::from_str("").unwrap();
+        assert!(!config.http.enabled);
+        assert_eq!(config.http.content_port, 8443);
+        assert_eq!(config.http.bind_address, "0.0.0.0");
+        assert_eq!(config.http.max_concurrent_sessions, 32);
+        assert_eq!(config.http.max_request_body_bytes, 1_048_576);
+        assert_eq!(config.http.connection_timeout_secs, 30);
+    }
+
+    // T-CE-02: test_empty_config_tls_defaults
+    #[test]
+    fn test_empty_config_tls_defaults() {
+        let config: UnimatrixConfig = toml::from_str("").unwrap();
+        assert!(!config.tls.is_enabled());
+        assert_eq!(config.tls.cert_path, None);
+        assert_eq!(config.tls.key_path, None);
+    }
+
+    // T-CE-03: test_tls_enabled_true_when_both_paths_present
+    #[test]
+    fn test_tls_enabled_true_when_both_paths_present() {
+        let toml_str = r#"
+[tls]
+cert_path = "/tmp/cert.pem"
+key_path = "/tmp/key.pem"
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert!(config.tls.is_enabled());
+    }
+
+    // T-CE-04: test_tls_enabled_false_when_only_cert_path
+    #[test]
+    fn test_tls_enabled_false_when_only_cert_path() {
+        let toml_str = r#"
+[tls]
+cert_path = "/tmp/cert.pem"
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert!(!config.tls.is_enabled());
+    }
+
+    // T-CE-05: test_http_enabled_explicit_true
+    #[test]
+    fn test_http_enabled_explicit_true() {
+        let toml_str = r#"
+[http]
+enabled = true
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert!(config.http.enabled);
+    }
+
+    // T-CE-06: test_http_custom_port
+    #[test]
+    fn test_http_custom_port() {
+        let toml_str = r#"
+[http]
+content_port = 9443
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.http.content_port, 9443);
+    }
+
+    // T-CE-07: test_http_port_zero_allowed
+    #[test]
+    fn test_http_port_zero_allowed() {
+        let toml_str = r#"
+[http]
+content_port = 0
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.http.content_port, 0);
+    }
+
+    // T-CE-08: test_tls_explicit_enabled_false_overrides_auto_detect
+    #[test]
+    fn test_tls_explicit_enabled_false_overrides_auto_detect() {
+        let toml_str = r#"
+[tls]
+enabled = false
+cert_path = "/tmp/cert.pem"
+key_path = "/tmp/key.pem"
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert!(!config.tls.is_enabled());
+    }
+
+    // T-CE-09: test_http_custom_bind_address
+    #[test]
+    fn test_http_custom_bind_address() {
+        let toml_str = r#"
+[http]
+bind_address = "127.0.0.1"
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.http.bind_address, "127.0.0.1");
+    }
+
+    // T-CE-10: test_http_custom_max_connections
+    #[test]
+    fn test_http_custom_max_connections() {
+        let toml_str = r#"
+[http]
+max_concurrent_sessions = 64
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.http.max_concurrent_sessions, 64);
+    }
+
+    // T-CE-11: test_existing_config_sections_unchanged
+    #[test]
+    fn test_existing_config_sections_unchanged_with_http() {
+        let toml_str = r#"
+[http]
+enabled = true
+content_port = 9443
+"#;
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        // Existing sections use defaults
+        assert_eq!(config.profile.preset, Preset::Collaborative);
+        assert_eq!(config.agents.default_trust, "permissive");
+        // HTTP section has custom values
+        assert!(config.http.enabled);
+        assert_eq!(config.http.content_port, 9443);
+    }
+
+    // T-CE-12: test_unknown_http_fields — behavior matches existing sections (no deny_unknown_fields)
+    #[test]
+    fn test_unknown_http_fields_ignored() {
+        let toml_str = r#"
+[http]
+enabled = true
+foo = "bar"
+"#;
+        // Should succeed since we don't use deny_unknown_fields
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert!(config.http.enabled);
+    }
+
+    // Validation: invalid bind_address
+    #[test]
+    fn test_validate_http_invalid_bind_address() {
+        let path = Path::new("test.toml");
+        let mut config = HttpConfig::default();
+        config.bind_address = "not-an-ip".to_string();
+        let err = validate_http_config(&config, path).unwrap_err();
+        assert!(matches!(
+            err,
+            ConfigError::HttpFieldInvalid {
+                field: "bind_address",
+                ..
+            }
+        ));
+    }
+
+    // Validation: max_concurrent_sessions = 0
+    #[test]
+    fn test_validate_http_zero_max_sessions() {
+        let path = Path::new("test.toml");
+        let mut config = HttpConfig::default();
+        config.max_concurrent_sessions = 0;
+        let err = validate_http_config(&config, path).unwrap_err();
+        assert!(matches!(
+            err,
+            ConfigError::HttpFieldInvalid {
+                field: "max_concurrent_sessions",
+                ..
+            }
+        ));
+    }
+
+    // Validation: max_request_body_bytes = 0
+    #[test]
+    fn test_validate_http_zero_body_bytes() {
+        let path = Path::new("test.toml");
+        let mut config = HttpConfig::default();
+        config.max_request_body_bytes = 0;
+        let err = validate_http_config(&config, path).unwrap_err();
+        assert!(matches!(
+            err,
+            ConfigError::HttpFieldInvalid {
+                field: "max_request_body_bytes",
+                ..
+            }
+        ));
+    }
+
+    // Validation: connection_timeout_secs = 0
+    #[test]
+    fn test_validate_http_zero_timeout() {
+        let path = Path::new("test.toml");
+        let mut config = HttpConfig::default();
+        config.connection_timeout_secs = 0;
+        let err = validate_http_config(&config, path).unwrap_err();
+        assert!(matches!(
+            err,
+            ConfigError::HttpFieldInvalid {
+                field: "connection_timeout_secs",
+                ..
+            }
+        ));
+    }
+
+    // Validation: TLS enabled true without cert
+    #[test]
+    fn test_validate_tls_enabled_true_no_cert() {
+        let path = Path::new("test.toml");
+        let config = TlsConfig {
+            enabled: Some(true),
+            cert_path: None,
+            key_path: Some(PathBuf::from("/tmp/key.pem")),
+        };
+        let err = validate_tls_config(&config, path).unwrap_err();
+        assert!(matches!(err, ConfigError::TlsFieldInvalid { .. }));
+        let msg = format!("{err}");
+        assert!(msg.contains("cert_path"));
+    }
+
+    // Validation: TLS enabled true without key
+    #[test]
+    fn test_validate_tls_enabled_true_no_key() {
+        let path = Path::new("test.toml");
+        let config = TlsConfig {
+            enabled: Some(true),
+            cert_path: Some(PathBuf::from("/tmp/cert.pem")),
+            key_path: None,
+        };
+        let err = validate_tls_config(&config, path).unwrap_err();
+        assert!(matches!(err, ConfigError::TlsFieldInvalid { .. }));
+        let msg = format!("{err}");
+        assert!(msg.contains("key_path"));
+    }
+
+    // Validation: TLS disabled is valid without paths
+    #[test]
+    fn test_validate_tls_disabled_no_paths() {
+        let path = Path::new("test.toml");
+        let config = TlsConfig::default();
+        assert!(validate_tls_config(&config, path).is_ok());
+    }
+
+    // Validation: valid HTTP config passes
+    #[test]
+    fn test_validate_http_valid_config() {
+        let path = Path::new("test.toml");
+        let config = HttpConfig::default();
+        assert!(validate_http_config(&config, path).is_ok());
+    }
+
+    // Merge: project http overrides global
+    #[test]
+    fn test_merge_http_project_wins() {
+        let mut global = UnimatrixConfig::default();
+        global.http.enabled = false;
+
+        let mut project = UnimatrixConfig::default();
+        project.http.enabled = true;
+
+        let merged = merge_configs(global, project);
+        assert!(merged.http.enabled);
+    }
+
+    // Merge: global http used when project is default
+    #[test]
+    fn test_merge_http_global_used_when_project_default() {
+        let mut global = UnimatrixConfig::default();
+        global.http.enabled = true;
+        global.http.content_port = 9999;
+
+        let project = UnimatrixConfig::default();
+
+        let merged = merge_configs(global, project);
+        assert!(merged.http.enabled);
+        assert_eq!(merged.http.content_port, 9999);
+    }
+
+    // TlsConfig::is_enabled unit tests
+    #[test]
+    fn test_tls_is_enabled_explicit_true() {
+        let config = TlsConfig {
+            enabled: Some(true),
+            cert_path: None,
+            key_path: None,
+        };
+        assert!(config.is_enabled());
+    }
+
+    #[test]
+    fn test_tls_is_enabled_explicit_false_with_paths() {
+        let config = TlsConfig {
+            enabled: Some(false),
+            cert_path: Some(PathBuf::from("/tmp/cert.pem")),
+            key_path: Some(PathBuf::from("/tmp/key.pem")),
+        };
+        assert!(!config.is_enabled());
+    }
+
+    #[test]
+    fn test_tls_is_enabled_auto_detect_both_paths() {
+        let config = TlsConfig {
+            enabled: None,
+            cert_path: Some(PathBuf::from("/tmp/cert.pem")),
+            key_path: Some(PathBuf::from("/tmp/key.pem")),
+        };
+        assert!(config.is_enabled());
+    }
+
+    #[test]
+    fn test_tls_is_enabled_auto_detect_only_key() {
+        let config = TlsConfig {
+            enabled: None,
+            cert_path: None,
+            key_path: Some(PathBuf::from("/tmp/key.pem")),
+        };
+        assert!(!config.is_enabled());
+    }
+
+    #[test]
+    fn test_tls_is_enabled_auto_detect_neither() {
+        let config = TlsConfig {
+            enabled: None,
+            cert_path: None,
+            key_path: None,
+        };
+        assert!(!config.is_enabled());
     }
 }
