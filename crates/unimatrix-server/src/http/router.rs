@@ -18,7 +18,7 @@ use bytes::Bytes;
 use http::{Method, Request, Response, StatusCode};
 use http_body::Body;
 use http_body_util::combinators::BoxBody;
-use http_body_util::{BodyExt, Full};
+use http_body_util::{BodyExt, Full, Limited};
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::{StreamableHttpServerConfig, StreamableHttpService};
 use tower::Service;
@@ -45,7 +45,7 @@ pub struct PathRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     project_router: ProjectRouter<ReqBody>,
 }
@@ -54,7 +54,7 @@ impl<ReqBody> std::fmt::Debug for PathRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PathRouter")
@@ -67,7 +67,7 @@ impl<ReqBody> PathRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     /// Create a new PathRouter wrapping a ProjectRouter.
     pub fn new(project_router: ProjectRouter<ReqBody>) -> Self {
@@ -79,7 +79,7 @@ impl<ReqBody> Clone for PathRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     fn clone(&self) -> Self {
         PathRouter {
@@ -92,7 +92,7 @@ impl<ReqBody> Service<Request<ReqBody>> for PathRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     type Response = Response<BoxBody<Bytes, Infallible>>;
     type Error = Infallible;
@@ -165,16 +165,17 @@ pub struct ProjectRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    default_server: McpAdapter<ReqBody>,
+    default_server: McpAdapter,
+    _phantom: std::marker::PhantomData<fn(ReqBody)>,
 }
 
 impl<ReqBody> std::fmt::Debug for ProjectRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ProjectRouter")
@@ -187,13 +188,14 @@ impl<ReqBody> ProjectRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     /// Create a new ProjectRouter in single-project default mode.
     pub fn new(server: UnimatrixServer, max_body_bytes: usize) -> Self {
         let mcp_adapter = McpAdapter::new(server, max_body_bytes);
         ProjectRouter {
             default_server: mcp_adapter,
+            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -214,11 +216,12 @@ impl<ReqBody> Clone for ProjectRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     fn clone(&self) -> Self {
         ProjectRouter {
             default_server: self.default_server.clone(),
+            _phantom: std::marker::PhantomData,
         }
     }
 }
@@ -232,29 +235,25 @@ where
 /// maps rmcp errors to consistent JSON responses, and provides a workaround
 /// seam for extension propagation issues.
 ///
+/// Body size enforcement uses a two-layer strategy:
+/// 1. **Fast-path**: Content-Length header check rejects oversized requests
+///    without reading any body bytes (zero-cost for well-behaved clients).
+/// 2. **Stream-level**: `http_body_util::Limited` wraps the body stream to
+///    enforce the limit regardless of transfer encoding (chunked TE fix,
+///    GH #663). The body is fully collected before passing to rmcp.
+///
 /// R-01 spike result: extensions DO propagate through rmcp (the `Parts`
 /// struct including `extensions` is injected into MCP message extensions).
 /// The copy step is therefore a debug assertion, not a runtime fallback.
-pub(crate) struct McpAdapter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
-{
+#[derive(Clone)]
+pub(crate) struct McpAdapter {
     /// The rmcp StreamableHttpService. Isolated behind this adapter.
     streamable: StreamableHttpService<UnimatrixServer, LocalSessionManager>,
     /// Maximum request body size (bytes). Enforced before rmcp sees the body.
     max_body_bytes: usize,
-    /// Phantom for ReqBody generic.
-    _phantom: std::marker::PhantomData<fn(ReqBody)>,
 }
 
-impl<ReqBody> std::fmt::Debug for McpAdapter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
-{
+impl std::fmt::Debug for McpAdapter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("McpAdapter")
             .field("max_body_bytes", &self.max_body_bytes)
@@ -262,12 +261,7 @@ where
     }
 }
 
-impl<ReqBody> McpAdapter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
-{
+impl McpAdapter {
     /// Create a new McpAdapter wrapping a `StreamableHttpService`.
     fn new(server: UnimatrixServer, max_body_bytes: usize) -> Self {
         let session_manager = Arc::new(LocalSessionManager::default());
@@ -279,16 +273,25 @@ where
         McpAdapter {
             streamable,
             max_body_bytes,
-            _phantom: std::marker::PhantomData,
         }
     }
 
     /// Handle an MCP request with body size enforcement and error mapping.
-    async fn handle(
+    ///
+    /// Generic over the incoming body type so callers can pass any
+    /// `Body` (e.g., `hyper::body::Incoming`). The body is consumed here;
+    /// rmcp always receives `Request<Full<Bytes>>`.
+    async fn handle<ReqBody>(
         &mut self,
         request: Request<ReqBody>,
-    ) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
-        // Step 1: Enforce body size limit BEFORE rmcp (R-11, ADR-003).
+    ) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible>
+    where
+        ReqBody: Body + Send + 'static,
+        ReqBody::Data: Send + 'static,
+        ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
+        // Step 1: Fast-path Content-Length header check (zero-cost rejection).
+        // Rejects obviously oversized requests without reading any body bytes.
         let exceeds_limit = request
             .headers()
             .get(http::header::CONTENT_LENGTH)
@@ -300,28 +303,37 @@ where
             return Ok(payload_too_large_response());
         }
 
-        // Step 2: Delegate to StreamableHttpService.
+        // Step 2: Stream-level body collection with size limit (GH #663).
+        // Limited wraps the body stream and returns LengthLimitError if the
+        // accumulated data exceeds max_body_bytes. This catches chunked TE
+        // bodies that omit Content-Length.
+        let (parts, body) = request.into_parts();
+        let limited_body = Limited::new(body, self.max_body_bytes);
+
+        let collected = match limited_body.collect().await {
+            Ok(collected) => collected,
+            Err(err) => {
+                // Distinguish size-limit errors from other body read errors
+                // (e.g., client disconnect). Only return 413 for LengthLimitError.
+                if err
+                    .downcast_ref::<http_body_util::LengthLimitError>()
+                    .is_some()
+                {
+                    return Ok(payload_too_large_response());
+                }
+                // Other body read errors (disconnect, malformed chunks) → 500.
+                return Ok(internal_error_response());
+            }
+        };
+
+        // Step 3: Reconstruct request with fully-collected body for rmcp.
         // R-01 validated: extensions propagate through rmcp via Parts injection.
-        let response = self.streamable.call(request).await;
+        let full_request = Request::from_parts(parts, Full::new(collected.to_bytes()));
+        let response = self.streamable.call(full_request).await;
 
         match response {
             Ok(resp) => Ok(resp),
             Err(never) => match never {},
-        }
-    }
-}
-
-impl<ReqBody> Clone for McpAdapter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: std::fmt::Display,
-{
-    fn clone(&self) -> Self {
-        McpAdapter {
-            streamable: self.streamable.clone(),
-            max_body_bytes: self.max_body_bytes,
-            _phantom: std::marker::PhantomData,
         }
     }
 }
@@ -341,6 +353,21 @@ fn payload_too_large_response() -> Response<BoxBody<Bytes, Infallible>> {
             ))
             .map_err(|never| match never {})
             .boxed(),
+        )
+        .expect("static response builder cannot fail")
+}
+
+/// 500 Internal Server Error response for body read failures (e.g., client
+/// disconnect, malformed chunks). Distinct from 413 to avoid masking
+/// non-size-related errors (GH #663).
+fn internal_error_response() -> Response<BoxBody<Bytes, Infallible>> {
+    Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .header("content-type", "application/json")
+        .body(
+            Full::new(Bytes::from(r#"{"error":"failed to read request body"}"#))
+                .map_err(|never| match never {})
+                .boxed(),
         )
         .expect("static response builder cannot fail")
 }
