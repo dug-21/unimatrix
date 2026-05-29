@@ -7,6 +7,7 @@
 //! by `create_tables_if_needed()` in `db.rs`. Migration is needed only when
 //! opening an existing database created at an older schema version.
 
+use std::cmp::Ordering;
 use std::path::Path;
 
 use sqlx::Connection;
@@ -63,8 +64,15 @@ pub(crate) async fn migrate_if_needed(
             .map(|v| v as u64)
             .unwrap_or(0);
 
-    if current_version >= CURRENT_SCHEMA_VERSION {
-        return Ok(()); // Already up to date; idempotent.
+    match current_version.cmp(&CURRENT_SCHEMA_VERSION) {
+        Ordering::Greater => {
+            return Err(StoreError::SchemaTooNew {
+                database_version: current_version,
+                binary_version: CURRENT_SCHEMA_VERSION,
+            });
+        }
+        Ordering::Equal => return Ok(()),
+        Ordering::Less => { /* fall through to migration logic */ }
     }
 
     // Step 3: Entry-rewriting migrations for very old schemas (v0, v1, v2).
