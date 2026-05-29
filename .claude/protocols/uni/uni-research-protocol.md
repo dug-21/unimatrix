@@ -114,21 +114,19 @@ Every researcher — regardless of track count — writes their findings to a fi
 
 **Agent**: `uni-spike-researcher` or `uni-external-researcher` (per routing above)
 **Input**: complete SCOPE.md path
-**Output**: `product/research/{ass-NNN}/FINDINGS-RAW.md`
+**Output**: `product/research/{ass-NNN}/FINDINGS.md`
 
 Spawn with:
 ```
 Spike: {ass-NNN}
 SCOPE.md: product/research/{ass-NNN}/SCOPE.md
 Agent ID: {id}
-Output file: product/research/{ass-NNN}/FINDINGS-RAW.md
+Output file: product/research/{ass-NNN}/FINDINGS.md
 
-Write your findings to FINDINGS-RAW.md. This is your only deliverable — do not
+Write your findings to FINDINGS.md. This is your only deliverable — do not
 summarize findings in your response message. The primary agent reads the file, not
 your message.
 ```
-
-After the researcher completes, the primary agent reads `FINDINGS-RAW.md` and produces `FINDINGS.md` via synthesis (see Synthesis step below). The researcher's raw file is retained alongside `FINDINGS.md` as the audit trail.
 
 ---
 
@@ -170,15 +168,11 @@ Neither researcher writes `FINDINGS.md`. Each writes only their track file.
 
 ---
 
-### Synthesis — all cases
+### Synthesis — dual-track only
 
-Synthesis runs after all researcher files are written. It is always a separate step — never merged into the researcher's own work.
+Synthesis applies only to dual-track (Case 3) spikes. Single-track researchers write `FINDINGS.md` directly.
 
-**Single-track**: primary agent spawns `uni-spike-researcher` as synthesizer after `FINDINGS-RAW.md` exists.
-
-**Dual-track**: primary agent spawns `uni-spike-researcher` as synthesizer after both track files exist.
-
-Synthesizer prompt:
+Spawn `uni-spike-researcher` as synthesizer after both track files exist:
 
 ```
 Spike: {ass-NNN} — SYNTHESIS
@@ -188,19 +182,13 @@ Output: product/research/{ass-NNN}/FINDINGS.md
 
 Synthesize the researcher findings into a single coherent FINDINGS.md.
 - Answer every Goal question from SCOPE.md, drawing from the input files
-- Resolve any tensions between tracks explicitly — do not pick the more convenient answer silently
+- Resolve any tensions between tracks explicitly
 - Merge Unanswered Questions and Out-of-Scope Discoveries from all input files
 - Write one Recommendations Summary covering all questions
 Do not re-investigate. Synthesize only from the input files.
 ```
 
-The synthesizer does not spawn sub-agents or do additional investigation. If a question was not answered by any researcher file, it goes to Unanswered Questions with the reason.
-
-**Retained files**: All researcher files (`FINDINGS-RAW.md`, `FINDINGS-INTERNAL.md`, `FINDINGS-EXTERNAL.md`) are kept alongside `FINDINGS.md` — they are the audit trail showing what each researcher contributed.
-
-The synthesizer does not spawn sub-agents or do additional investigation. It reads both track files and writes `FINDINGS.md`. If a question was not answered by either track, it goes to Unanswered Questions with the reason.
-
-**Intermediate files**: `FINDINGS-INTERNAL.md` and `FINDINGS-EXTERNAL.md` are retained alongside `FINDINGS.md` — they are the audit trail showing what each track contributed.
+Track files (`FINDINGS-INTERNAL.md`, `FINDINGS-EXTERNAL.md`) are retained alongside `FINDINGS.md` as the audit trail.
 
 ---
 
@@ -229,9 +217,19 @@ If validation fails: return FINDINGS.md to the researcher with specific gaps. Do
 Knowledge flows from research into Unimatrix only via downstream sessions (design, delivery, retro) after findings have been validated through implementation. Research is provisional; Unimatrix holds settled knowledge.
 
 Routing actions:
-1. **Update planning document** — add a one-paragraph finding summary to the relevant planning doc (e.g., `product/WAVE2-ROADMAP.md`). Findings summary, not full FINDINGS.md content.
+1. **Post findings to GitHub issue** — comment the Recommendations Summary and `FINDINGS.md` path on the tracking issue. Do not close the issue — the human approves completion.
+   ```bash
+   gh issue comment {number} --body "$(cat <<'EOF'
+   ## Findings: {ass-NNN}
+
+   {Recommendations Summary section from FINDINGS.md}
+
+   Full findings: `product/research/{ass-NNN}/FINDINGS.md`
+   EOF
+   )"
+   ```
 2. **Feed-through** — for spikes that feed another spike: pass `product/research/{ass-NNN}/FINDINGS.md` path as prior art context in the consuming spike's SCOPE.md or spawn prompt.
-3. **Human handoff** — for standalone spikes: present FINDINGS.md path and the recommendations summary to the human. The human decides what happens next.
+3. **Human handoff** — present FINDINGS.md path and the recommendations summary to the human. The human reviews and closes the issue when satisfied.
 
 ---
 
@@ -255,8 +253,9 @@ Spikes within the same tier are always dispatched in a single message (parallel)
 
 - **SCOPE.md must be complete before Phase 2 begins.** No exceptions. Missing fields → ask the human. Never assume.
 - **Researchers write to a file. The file is the findings.** The agent response message is not the findings. The primary agent reads the file, not the message. A researcher that returns findings only in its message has not completed its work.
-- **Synthesis is always a separate step.** The researcher never produces the final `FINDINGS.md` directly. Synthesis runs after all researcher files are written.
+- **Synthesis is for dual-track only.** Single-track researchers write `FINDINGS.md` directly. Dual-track researchers write track files; a synthesis step merges them into `FINDINGS.md`.
 - **Researchers are read-only in Unimatrix.** `context_search` and `context_get` are allowed (when breadth includes internal/code). `context_store`, `context_correct`, `context_deprecate`, and all write tools are prohibited.
 - **FINDINGS.md is the only deliverable that gates Phase 3.** No code committed, no Unimatrix entries, no ADRs.
+- **Research issues stay open until the human closes them.** Post findings summary to the issue; never close it yourself.
 - **Scope guard is mandatory.** Interesting findings outside the SCOPE.md boundary are noted in FINDINGS.md under "Out-of-Scope Discoveries" — they are never pursued within the spike. Create a carry-forward issue if warranted.
 - **Campaign SM does not generate findings.** It coordinates only. If it starts writing analysis, it is doing the researcher's job.

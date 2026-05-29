@@ -98,15 +98,12 @@ Do not re-investigate. Do not spawn sub-agents. Do not add new findings beyond w
 
 ---
 
-## Step 4 — Write FINDINGS.md
+## Step 4 — Write Findings
 
-**In dual-track mode** (when `Your questions:` was specified): write to `product/research/{ass-NNN}/FINDINGS-INTERNAL.md`, not `FINDINGS.md`.
-
-**In synthesis mode**: write to `product/research/{ass-NNN}/FINDINGS.md`.
-
-**In single-track mode**: write to `product/research/{ass-NNN}/FINDINGS.md`.
-
-Standard path: `product/research/{ass-NNN}/FINDINGS.md`.
+Output file depends on mode:
+- **Single-track**: `product/research/{ass-NNN}/FINDINGS.md`
+- **Dual-track** (when `Your questions:` was specified): `product/research/{ass-NNN}/FINDINGS-INTERNAL.md`
+- **Synthesis**: `product/research/{ass-NNN}/FINDINGS.md`
 
 ```markdown
 # FINDINGS: {Spike Title}

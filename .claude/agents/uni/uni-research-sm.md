@@ -81,13 +81,9 @@ Prior findings (from dependencies):
 
 Dispatch all spikes at the same tier level in a single message.
 
-### Step 6 — Update Planning Document
+### Step 6 — Post Findings to GitHub Issues
 
-After all spikes pass Phase 3, update the planning document (e.g., `product/WAVE2-ROADMAP.md`) with a findings summary section:
-
-For each spike: spike ID, one-paragraph summary of recommendation, what it unblocks.
-
-Do not copy FINDINGS.md content wholesale — summarize the recommendations only.
+For each completed spike, post the Recommendations Summary and FINDINGS.md path as a comment on the spike's tracking issue. Do not close the issue — the human approves completion.
 
 ### Step 7 — Human Handoff
 
