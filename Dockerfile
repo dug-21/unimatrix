@@ -2,11 +2,11 @@
 #
 # Three-stage cargo-chef build:
 #   1. planner  — extract dependency recipe
-#   2. builder  — compile, install ORT (SHA-256 verified), bake models
+#   2. builder  — compile, install ORT (SHA-256 verified)
 #   3. runtime  — distroless, nonroot, air-gap capable
 #
 # Build:  docker build -t unimatrix .
-# Run:    docker run -v unimatrix-data:/data unimatrix
+# Run:    docker run -v unimatrix-data:/data -v unimatrix-shared:/shared unimatrix
 
 # --- Pinned versions (update deliberately) ---
 ARG RUST_VERSION=1.89
@@ -36,7 +36,7 @@ COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 # =============================================================================
-# Stage 2: Builder — compile binary, install ORT, bake models
+# Stage 2: Builder — compile binary, install ORT
 # =============================================================================
 FROM rust:${RUST_VERSION}-slim-bookworm AS builder
 
@@ -92,18 +92,13 @@ ENV RUSTFLAGS="-C link-arg=-Wl,-rpath,\$ORIGIN"
 RUN cargo build --release && \
     strip target/release/unimatrix
 
-# --- Model bake-in ---
-# HOME=/data so model-download writes to /data/.cache/unimatrix/models/.
-ENV HOME=/data
-RUN mkdir -p /data && \
-    LD_LIBRARY_PATH=/usr/local/lib target/release/unimatrix model-download && \
-    LD_LIBRARY_PATH=/usr/local/lib target/release/unimatrix model-download --nli && \
-    rm -rf /data/.cache/huggingface
-
-# --- /data directory setup (WARN-2) ---
+# --- Directory setup ---
+# /data: integrity-critical persistent storage (databases, config, logs).
+# /shared: re-downloadable assets (ONNX models). Separate volume for backup separation.
 # UID 65532 = nonroot user in distroless/cc-debian12:nonroot.
-RUN chown -R 65532:65532 /data && \
-    chmod 0700 /data
+RUN mkdir -p /data /shared/models && \
+    chown -R 65532:65532 /data /shared && \
+    chmod 0700 /data /shared
 
 # =============================================================================
 # Stage 3: Runtime — distroless, nonroot
@@ -117,20 +112,20 @@ COPY --from=builder --chown=65532:65532 \
 # ORT shared library.
 COPY --from=builder /usr/local/lib/libonnxruntime.so* /usr/local/lib/
 
-# Baked-in models (embedding + NLI). Only copy the unimatrix model cache,
-# not the huggingface hub cache (which has duplicate blobs and symlinks).
-COPY --from=builder --chown=65532:65532 /data/.cache/unimatrix/ /data/.cache/unimatrix/
-
 # /data directory with correct ownership and permissions.
 COPY --from=builder --chown=65532:65532 /data /data
+
+# /shared directory with correct ownership and permissions.
+COPY --from=builder --chown=65532:65532 /shared /shared
 
 # Environment (ADR-005).
 ENV HOME=/data \
     LD_LIBRARY_PATH=/usr/local/lib \
-    UNIMATRIX_LOG=info
+    UNIMATRIX_LOG=info \
+    UNIMATRIX_MODEL_CACHE=/shared/models
 
 # Volume mount point for persistent data.
-VOLUME ["/data"]
+VOLUME ["/data", "/shared"]
 
 # Liveness probe (ADR-003).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
