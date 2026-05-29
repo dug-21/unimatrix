@@ -126,13 +126,13 @@ impl StaticTokenValidator {
 
 /// Tower `Layer` that wraps any inner service with bearer token authentication.
 #[derive(Debug, Clone)]
-pub(crate) struct StaticTokenAuthLayer {
+pub struct StaticTokenAuthLayer {
     validator: Arc<dyn BearerValidator>,
 }
 
 impl StaticTokenAuthLayer {
     /// Create a new auth layer from raw 32-byte token.
-    pub(crate) fn new(token_bytes: [u8; 32]) -> Self {
+    pub fn new(token_bytes: [u8; 32]) -> Self {
         Self {
             validator: Arc::new(StaticTokenValidator::new(token_bytes)),
         }
@@ -156,7 +156,7 @@ impl<S> Layer<S> for StaticTokenAuthLayer {
 /// Produces `Response<BoxBody<Bytes, Infallible>>` to match rmcp's
 /// `StreamableHttpService` response type.
 #[derive(Debug, Clone)]
-pub(crate) struct StaticTokenAuth<S> {
+pub struct StaticTokenAuth<S> {
     inner: S,
     validator: Arc<dyn BearerValidator>,
 }

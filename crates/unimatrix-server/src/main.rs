@@ -806,6 +806,48 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         )
         .await?;
 
+    // --- HTTP LISTENER STARTUP (vnc-021) ---
+    let (http_acceptor_handle, http_listener_addr) = if config.http.enabled {
+        use unimatrix_server::http::{
+            PathRouter, ProjectRouter, StaticTokenAuthLayer, build_tls_acceptor,
+            load_or_generate_token, start_http_listener,
+        };
+
+        // 1. Load or generate bearer token
+        let token_bytes = load_or_generate_token(&paths.data_dir)?;
+        let token_array: [u8; 32] = token_bytes.try_into().map_err(|_| {
+            ServerError::Config("bearer token must be exactly 32 bytes".to_string())
+        })?;
+
+        // 2. Build TLS acceptor (None for proxy-terminated deployments)
+        let tls_acceptor = build_tls_acceptor(&config.tls)?;
+
+        // 3. Build the tower service stack (inside-out):
+        //    StreamableHttpService<UnimatrixServer> -> ProjectRouter -> PathRouter -> StaticTokenAuth
+        let project_router = ProjectRouter::new(server.clone(), config.http.max_request_body_bytes);
+        let path_router = PathRouter::new(project_router);
+        let auth_layer = StaticTokenAuthLayer::new(token_array);
+        let service = tower::Layer::layer(&auth_layer, path_router);
+
+        // 4. Start HTTP listener
+        let (handle, addr) = start_http_listener(
+            &config.http,
+            tls_acceptor,
+            service,
+            daemon_token.child_token(),
+        )
+        .await?;
+
+        tracing::info!(%addr, "HTTP transport active");
+        (Some(handle), Some(addr))
+    } else {
+        // HTTP disabled -- emit informational log (human review note #2).
+        tracing::info!(
+            "HTTP transport available \u{2014} set [http] enabled = true in config.toml"
+        );
+        (None, None)
+    };
+
     // Signal handler: cancel daemon token on SIGTERM/SIGINT.
     // This is the ONLY path that triggers graceful_shutdown (C-04 / C-05).
     let signal_token = daemon_token.clone();
@@ -815,7 +857,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         signal_token.cancel();
     });
 
-    // Build LifecycleHandles with new vnc-005 fields.
+    // Build LifecycleHandles with vnc-005 + vnc-021 fields.
     // Drop ordering is enforced by graceful_shutdown (see infra/shutdown.rs).
     let lifecycle_handles = LifecycleHandles {
         store,
@@ -831,6 +873,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         uds_handle: Some(uds_handle),
         tick_handle: Some(tick_handle),
         services: Some(services),
+        http_acceptor_handle, // vnc-021: HTTP accept loop (None when disabled)
+        http_listener_addr,   // vnc-021: HTTP bound address (None when disabled)
     };
 
     tracing::info!("unimatrix daemon ready");
@@ -1174,6 +1218,9 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         uds_handle: Some(uds_handle),
         tick_handle: Some(tick_handle),
         services: Some(services),
+        // vnc-021: HTTP not started in stdio mode (R-16)
+        http_acceptor_handle: None,
+        http_listener_addr: None,
     };
 
     // Serve over stdio (R-12 regression gate: must exit when stdin closes).

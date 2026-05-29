@@ -4,10 +4,6 @@
 //! per-connection timeout, and graceful shutdown via `CancellationToken`.
 //! Returns a `JoinHandle` and bound `SocketAddr` for lifecycle integration.
 
-// C1 is consumed by C8 (lifecycle integration). Until then, these
-// functions appear unused from the crate root.
-#![allow(dead_code)]
-
 use std::convert::Infallible;
 use std::future::Future;
 use std::net::SocketAddr;
@@ -39,7 +35,7 @@ use crate::infra::config::HttpConfig;
 /// The service `S` must accept `Request<Incoming>` (hyper 1.x body type) and
 /// return `Response<BoxBody<Bytes, Infallible>>`. This matches the
 /// `StaticTokenAuth<PathRouter<Incoming>>` stack built by lifecycle integration.
-pub(crate) async fn start_http_listener<S>(
+pub async fn start_http_listener<S>(
     config: &HttpConfig,
     tls_acceptor: Option<TlsAcceptor>,
     service: S,

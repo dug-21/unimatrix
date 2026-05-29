@@ -8,10 +8,6 @@
 //! Contains `ProjectRouter` as the W2-6 structural seam and `McpAdapter` as
 //! the rmcp isolation boundary (ADR-003).
 
-// C3 is built ahead of C1 (listener) and C8 (lifecycle). These types will be
-// consumed when the listener wires up the full HTTP stack.
-#![allow(dead_code)]
-
 use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
@@ -45,7 +41,7 @@ const DEFAULT_MAX_BODY_BYTES: usize = 1_048_576;
 /// - `GET /health` -> JSON health response
 /// - `POST /observe` -> 501 stub
 /// - `/* (everything else)` -> MCP via ProjectRouter
-pub(crate) struct PathRouter<ReqBody>
+pub struct PathRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
@@ -74,7 +70,7 @@ where
     ReqBody::Error: std::fmt::Display,
 {
     /// Create a new PathRouter wrapping a ProjectRouter.
-    pub(crate) fn new(project_router: ProjectRouter<ReqBody>) -> Self {
+    pub fn new(project_router: ProjectRouter<ReqBody>) -> Self {
         PathRouter { project_router }
     }
 }
@@ -165,7 +161,7 @@ fn observe_stub_response() -> Response<BoxBody<Bytes, Infallible>> {
 /// In vnc-021, operates in single-project default mode: all MCP requests
 /// route to a single `McpAdapter`. W2-6 will add path-prefix extraction
 /// and multi-project slug lookup via `stores: HashMap<String, Arc<...>>`.
-pub(crate) struct ProjectRouter<ReqBody>
+pub struct ProjectRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
@@ -194,7 +190,7 @@ where
     ReqBody::Error: std::fmt::Display,
 {
     /// Create a new ProjectRouter in single-project default mode.
-    pub(crate) fn new(server: UnimatrixServer, max_body_bytes: usize) -> Self {
+    pub fn new(server: UnimatrixServer, max_body_bytes: usize) -> Self {
         let mcp_adapter = McpAdapter::new(server, max_body_bytes);
         ProjectRouter {
             default_server: mcp_adapter,

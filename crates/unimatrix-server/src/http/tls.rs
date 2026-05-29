@@ -30,7 +30,7 @@ use crate::infra::config::TlsConfig;
 /// - Certificate or key file cannot be read
 /// - PEM data is invalid or empty
 /// - Certificate and key do not match
-pub(crate) fn build_tls_acceptor(config: &TlsConfig) -> Result<Option<TlsAcceptor>, ServerError> {
+pub fn build_tls_acceptor(config: &TlsConfig) -> Result<Option<TlsAcceptor>, ServerError> {
     if !config.is_enabled() {
         tracing::info!("TLS disabled \u{2014} binding plain HTTP (proxy-terminated mode)");
         return Ok(None);

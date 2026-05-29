@@ -23,7 +23,7 @@ const TOKEN_HEX_LEN: usize = 64;
 ///
 /// Returns raw token bytes (32 bytes), not hex. When generating a new token,
 /// prints it to stdout with a `[UNIMATRIX TOKEN]` label exactly once.
-pub(crate) fn load_or_generate_token(data_dir: &Path) -> Result<Vec<u8>, ServerError> {
+pub fn load_or_generate_token(data_dir: &Path) -> Result<Vec<u8>, ServerError> {
     let token_path = data_dir.join(TOKEN_FILE_NAME);
 
     if token_path.exists() {
