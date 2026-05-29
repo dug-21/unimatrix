@@ -39,5 +39,12 @@ Design architecture for nan-015: shared model volume for ONNX models.
 1. Eval harness in-container: if eval ever runs inside a container, it needs the shared volume mounted. Low risk (eval runs natively today).
 2. GGUF future path: `/shared/models/` leaves room for GGUF subdirectory but layout not defined by nan-015.
 
+## Knowledge Stewardship
+- Queried: context_briefing at session start — 13 entries returned, key: #4647 (model hash pinning), #4642 (hash verification ordering lesson), #4636 (ADR-004 volume descriptions), #69/#70 (hf-hub and cache directory ADRs), #4570 (ORT supply chain verification ADR), #4579 (container build pattern)
+- Stored: ADR-001 env var cache redirect (#4650)
+- Stored: ADR-002 cache path precedence (#4651)
+- Stored: ADR-003 shared volume default RW (#4652)
+- Stored: ADR-004 two-volume documentation update (#4653, supersedes nxs-013 ADR-004 #4636)
+
 ## Status
 Complete.
