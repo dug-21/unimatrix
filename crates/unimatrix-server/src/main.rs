@@ -737,7 +737,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Build server (ADR-003: constructed once, cloned into each session task).
     let mut server = UnimatrixServer::new(
         Arc::clone(&store),
-        async_vector_store,
+        Arc::clone(&async_vector_store), // vnc-022: clone (not move) to keep available for ObserveContext
         Arc::clone(&embed_handle),
         Arc::clone(&registry),
         Arc::clone(&audit),
@@ -809,7 +809,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // --- HTTP LISTENER STARTUP (vnc-021) ---
     let (http_acceptor_handle, http_listener_addr) = if config.http.enabled {
         use unimatrix_server::http::{
-            PathRouter, ProjectRouter, StaticTokenAuthLayer, build_tls_acceptor,
+            ObserveContext, PathRouter, ProjectRouter, StaticTokenAuthLayer, build_tls_acceptor,
             load_or_generate_token, start_http_listener,
         };
 
@@ -824,8 +824,24 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
         // 3. Build the tower service stack (inside-out):
         //    StreamableHttpService<UnimatrixServer> -> ProjectRouter -> PathRouter -> StaticTokenAuth
+
+        // vnc-022: Construct ObserveContext from server fields before rmcp wrapping.
+        // All fields are Arc::clone -- cheap, no logic. Field names track
+        // dispatch_request() parameter names (R-01: store vs entry_store).
+        let observe_ctx = ObserveContext {
+            store: Arc::clone(&store),
+            embed_service: Arc::clone(&embed_handle),
+            vector_store: Arc::clone(&async_vector_store),
+            entry_store: Arc::clone(&store),
+            adapt_service: Arc::clone(&adapt_service),
+            server_version: env!("CARGO_PKG_VERSION").to_string(),
+            session_registry: Arc::clone(&session_registry),
+            pending_entries_analysis: Arc::clone(&pending_entries_analysis),
+            services: services.clone(),
+        };
+
         let project_router = ProjectRouter::new(server.clone(), config.http.max_request_body_bytes);
-        let path_router = PathRouter::new(project_router);
+        let path_router = PathRouter::new(project_router, observe_ctx);
         let auth_layer = StaticTokenAuthLayer::new(token_array);
         let service = tower::Layer::layer(&auth_layer, path_router);
 

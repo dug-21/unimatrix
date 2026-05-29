@@ -14,6 +14,6 @@ pub(crate) mod token;
 // Re-exports for main.rs (binary crate) HTTP startup wiring.
 pub use auth::StaticTokenAuthLayer;
 pub use listener::start_http_listener;
-pub use router::{PathRouter, ProjectRouter};
+pub use router::{ObserveContext, PathRouter, ProjectRouter};
 pub use tls::build_tls_acceptor;
 pub use token::load_or_generate_token;
