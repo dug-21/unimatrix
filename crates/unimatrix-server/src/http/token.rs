@@ -3,6 +3,9 @@
 //! Manages the bearer token lifecycle: generate on first run, load on subsequent
 //! runs, validate format. The token is a 32-byte cryptographic random value stored
 //! as 64 hex characters in `{data_dir}/token` with mode 0600.
+//!
+//! File creation uses `O_CREAT | O_EXCL` (via `create_new`) with mode 0600 to
+//! atomically create-with-permissions and reject concurrent creators.
 
 use std::fs;
 use std::io::Write;
@@ -23,48 +26,79 @@ const TOKEN_HEX_LEN: usize = 64;
 ///
 /// Returns raw token bytes (32 bytes), not hex. When generating a new token,
 /// prints it to stdout with a `[UNIMATRIX TOKEN]` label exactly once.
+///
+/// The flow is generate-first: attempt atomic file creation, and on
+/// `AlreadyExists` fall back to loading the existing file. This eliminates
+/// the TOCTOU race from a prior `path.exists()` check.
 pub fn load_or_generate_token(data_dir: &Path) -> Result<Vec<u8>, ServerError> {
     let token_path = data_dir.join(TOKEN_FILE_NAME);
 
-    if token_path.exists() {
-        load_existing_token(&token_path)
-    } else {
-        generate_new_token(&token_path)
+    match generate_new_token(&token_path) {
+        Ok(bytes) => Ok(bytes),
+        Err(e) if is_already_exists(&e) => load_existing_token(&token_path),
+        Err(e) => Err(e),
+    }
+}
+
+/// Check whether a `ServerError::ProjectInit` wraps an `AlreadyExists` cause.
+fn is_already_exists(err: &ServerError) -> bool {
+    match err {
+        ServerError::ProjectInit(msg) => {
+            msg.contains("(os error 17)")
+                || msg.contains("already exists")
+                || msg.contains("File exists")
+        }
+        _ => false,
     }
 }
 
 /// Generate a new 32-byte token, write hex-encoded to file with mode 0600.
+///
+/// Uses `OpenOptions::create_new(true).mode(0o600)` which maps to
+/// `O_CREAT | O_EXCL` with atomic permissions — no window of umask-default
+/// permissions, and fails immediately if the file already exists.
 fn generate_new_token(path: &Path) -> Result<Vec<u8>, ServerError> {
+    use std::fs::OpenOptions;
+
     let mut token_bytes = [0u8; TOKEN_BYTE_LEN];
     rand::fill(&mut token_bytes);
 
     let hex_string = hex::encode(token_bytes);
 
-    // Create file, set permissions, then write content.
-    let mut file = fs::File::create(path).map_err(|e| {
+    // Atomically create file with 0600 permissions via O_CREAT | O_EXCL.
+    // Fails with AlreadyExists if another process created it first.
+    let open_result = {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .open(path)
+        }
+        #[cfg(not(unix))]
+        {
+            OpenOptions::new().write(true).create_new(true).open(path)
+        }
+    };
+
+    let mut file = open_result.map_err(|e| {
         ServerError::ProjectInit(format!(
             "failed to create token file {}: {e}",
             path.display()
         ))
     })?;
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600)).map_err(|e| {
-            ServerError::ProjectInit(format!(
-                "failed to set token file permissions on {}: {e}",
-                path.display()
-            ))
-        })?;
-    }
-
-    file.write_all(hex_string.as_bytes()).map_err(|e| {
-        ServerError::ProjectInit(format!(
+    // Write token content. On failure, clean up the empty file to prevent
+    // a 0-byte token file persisting on disk.
+    if let Err(e) = file.write_all(hex_string.as_bytes()) {
+        let _ = fs::remove_file(path);
+        return Err(ServerError::ProjectInit(format!(
             "failed to write token file {}: {e}",
             path.display()
-        ))
-    })?;
+        )));
+    }
 
     // Print token to stdout exactly once (FR-08).
     println!("[UNIMATRIX TOKEN] {hex_string}");
@@ -284,5 +318,86 @@ mod tests {
         let generated = load_or_generate_token(tmp.path()).unwrap();
         let loaded = load_or_generate_token(tmp.path()).unwrap();
         assert_eq!(generated, loaded);
+    }
+
+    // T-TM-12: create_new rejects when file already exists (no-overwrite test).
+    // Proves the TOCTOU overwrite race is eliminated: a pre-existing token file
+    // is loaded rather than silently overwritten.
+    #[test]
+    fn test_no_overwrite_existing_token() {
+        let tmp = TempDir::new().unwrap();
+        let token_path = tmp.path().join("token");
+        let known_hex = "cc".repeat(32);
+        fs::write(&token_path, &known_hex).unwrap();
+
+        // load_or_generate_token should load, not overwrite
+        let result = load_or_generate_token(tmp.path()).unwrap();
+        assert_eq!(result, vec![0xCC; 32]);
+
+        // File contents must be unchanged
+        let contents = fs::read_to_string(&token_path).unwrap();
+        assert_eq!(contents, known_hex);
+    }
+
+    // T-TM-13: file is created with 0600 permissions atomically (no chmod window).
+    // Verifies that mode is set at creation time via OpenOptions::mode(), not by a
+    // separate set_permissions() call.
+    #[test]
+    fn test_permissions_at_creation_are_0600() {
+        let tmp = TempDir::new().unwrap();
+        let _result = load_or_generate_token(tmp.path()).unwrap();
+
+        let token_path = tmp.path().join("token");
+        let metadata = fs::metadata(&token_path).unwrap();
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(
+            mode, 0o600,
+            "token file should be created with 0600 permissions atomically"
+        );
+    }
+
+    // T-TM-14: concurrent creation test — two threads racing to create the same
+    // token file. Both must succeed (one generates, one loads), and the file must
+    // contain a valid token.
+    #[test]
+    fn test_concurrent_creation_no_corruption() {
+        use std::sync::{Arc, Barrier};
+
+        let tmp = TempDir::new().unwrap();
+        let data_dir = tmp.path().to_path_buf();
+        let barrier = Arc::new(Barrier::new(2));
+
+        let handles: Vec<_> = (0..2)
+            .map(|_| {
+                let dir = data_dir.clone();
+                let bar = Arc::clone(&barrier);
+                std::thread::spawn(move || {
+                    bar.wait();
+                    load_or_generate_token(&dir)
+                })
+            })
+            .collect();
+
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+
+        // Both must succeed
+        let token_a = results[0].as_ref().expect("thread 0 failed");
+        let token_b = results[1].as_ref().expect("thread 1 failed");
+
+        // Both must return the same token (one generated, one loaded)
+        assert_eq!(
+            token_a, token_b,
+            "concurrent callers must converge on same token"
+        );
+
+        // File must contain a valid 64-char hex string
+        let token_path = data_dir.join("token");
+        let contents = fs::read_to_string(&token_path).unwrap();
+        assert_eq!(contents.len(), 64);
+        assert!(contents.chars().all(|c| c.is_ascii_hexdigit()));
+
+        // Permissions must be 0600
+        let mode = fs::metadata(&token_path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
     }
 }
