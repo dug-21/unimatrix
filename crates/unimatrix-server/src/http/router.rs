@@ -33,7 +33,7 @@ use crate::mcp::identity::ResolvedIdentity;
 use crate::server::{PendingEntriesAnalysis, UnimatrixServer};
 use crate::services::ServiceLayer;
 use crate::uds::listener::dispatch_request;
-use unimatrix_engine::wire::{HookRequest, HookResponse};
+use unimatrix_engine::wire::HookRequest;
 
 /// Path for the remote telemetry endpoint (FR-24, W2-7 future).
 pub(crate) const OBSERVE_PATH: &str = "/observe";
@@ -276,7 +276,6 @@ use observe::{json_error_response, observe_response_to_http, prefix_session_id};
 // ---------------------------------------------------------------------------
 // ProjectRouter — W2-6 structural seam (single-project default mode)
 // ---------------------------------------------------------------------------
-
 /// Project-aware MCP request router.
 ///
 /// In vnc-021, operates in single-project default mode: all MCP requests
