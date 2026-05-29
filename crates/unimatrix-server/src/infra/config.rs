@@ -2776,10 +2776,23 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 .inference
                 .nli_model_path
                 .or(global.inference.nli_model_path),
-            nli_model_sha256: project
-                .inference
-                .nli_model_sha256
-                .or(global.inference.nli_model_sha256),
+            // bugfix-655: global-wins semantics for nli_model_sha256.
+            // A per-project config MUST NOT override a global hash pin (security-critical).
+            nli_model_sha256: if global.inference.nli_model_sha256.is_some() {
+                if project.inference.nli_model_sha256.is_some()
+                    && project.inference.nli_model_sha256 != global.inference.nli_model_sha256
+                {
+                    tracing::warn!(
+                        "per-project nli_model_sha256 ignored — global hash pin takes precedence (security)"
+                    );
+                }
+                global.inference.nli_model_sha256
+            } else {
+                project
+                    .inference
+                    .nli_model_sha256
+                    .or(global.inference.nli_model_sha256)
+            },
             nli_top_k: if project.inference.nli_top_k != default.inference.nli_top_k {
                 project.inference.nli_top_k
             } else {
@@ -9545,6 +9558,70 @@ nli_informs_ppr_weight = 0.4
         let merged = merge_configs(global, project);
         assert_eq!(
             merged.inference.embedding_model_sha256,
+            Some("d".repeat(64)),
+            "matching hashes must produce the global value"
+        );
+    }
+
+    // bugfix-655: nli_model_sha256 global-wins merge tests
+
+    #[test]
+    fn test_merge_nli_sha256_global_wins_over_project() {
+        // Global sets nli_model_sha256 — per-project MUST NOT override (security).
+        let mut global = UnimatrixConfig::default();
+        global.inference.nli_model_sha256 = Some("a".repeat(64));
+
+        let mut project = UnimatrixConfig::default();
+        project.inference.nli_model_sha256 = Some("b".repeat(64));
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.nli_model_sha256,
+            Some("a".repeat(64)),
+            "global nli_model_sha256 must win over per-project (security)"
+        );
+    }
+
+    #[test]
+    fn test_merge_nli_sha256_project_used_when_global_none() {
+        // Global does not set hash — per-project hash is used.
+        let global = UnimatrixConfig::default();
+        assert!(global.inference.nli_model_sha256.is_none());
+
+        let mut project = UnimatrixConfig::default();
+        project.inference.nli_model_sha256 = Some("c".repeat(64));
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.nli_model_sha256,
+            Some("c".repeat(64)),
+            "per-project nli_model_sha256 must be used when global is None"
+        );
+    }
+
+    #[test]
+    fn test_merge_nli_sha256_both_none() {
+        let global = UnimatrixConfig::default();
+        let project = UnimatrixConfig::default();
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.nli_model_sha256, None,
+            "merged nli_model_sha256 must be None when both are None"
+        );
+    }
+
+    #[test]
+    fn test_merge_nli_sha256_global_same_as_project() {
+        // Both global and project set the same hash — no warning, global value used.
+        let mut global = UnimatrixConfig::default();
+        global.inference.nli_model_sha256 = Some("d".repeat(64));
+
+        let mut project = UnimatrixConfig::default();
+        project.inference.nli_model_sha256 = Some("d".repeat(64));
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.nli_model_sha256,
             Some("d".repeat(64)),
             "matching hashes must produce the global value"
         );
