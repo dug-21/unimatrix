@@ -46,7 +46,7 @@ Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 
 ---
 
-### W2-2: HTTPS Transport + Static Token Auth + Observability (🔬 ASS-041 — COMPLETE)
+### W2-2: HTTPS Transport + Static Token Auth (🔬 ASS-041 — COMPLETE)
 **Goal**: HTTPS personal cloud transport. Static 256-bit bearer token authenticates all clients — the token IS the authorization credential, not an agent identity mechanism. No per-call `agent_id` required for access. Zero enrollment friction for individual developers.
 
 **Transport**: rmcp 0.16's `transport-streamable-http-server` feature. Tower middleware for auth. No Axum required.
@@ -59,9 +59,7 @@ Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 
 **TLS**: `rustls 0.23` via `tokio-rustls`. Support `tls.enabled = false` for proxy-terminated deployments.
 
-**Observability** (required for production operation):
-- Prometheus metrics endpoint: request count per tool, write queue depth, `shed_events_total`, pool acquire latency, tick completion time, audit log write latency. Without this, operators cannot observe `shed_events_total` except as a WARN log.
-- Structured logging: `tracing` spans with `project_id` for log routing.
+**Observability**: De-scoped from W2-2. The path-dispatching router makes a future `/metrics` endpoint trivial to add. Prometheus metrics and structured logging may ship as a separate feature if production operation demands it.
 
 **Client note**: Active Claude Code bug anthropics/claude-code#28293 (headers in `.mcp.json` not forwarded on tool call POSTs). Workaround: `claude mcp add -H`. Client setup documentation must specify this path.
 
@@ -124,6 +122,25 @@ Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 
 ---
 
+### W2-7: Remote Telemetry Transport (🔬 ASS-064 — COMPLETE)
+**Goal**: Full intelligence pipeline fidelity for remote clients. Without this, a remote personal cloud deployment has MCP tool access but no behavioral signal collection, no proactive injection, and no PreCompact transcript restoration — reducing Unimatrix to a remote knowledge API.
+
+**Architecture** (from ASS-064):
+- `POST /observe` endpoint on the same TCP listener as MCP, same bearer token auth, path-based routing
+- Hook processes run locally alongside the client, POST event JSON to `/observe`, receive injection content in the response body, write to stdout
+- All three clients (Claude Code, Codex CLI, Gemini CLI): curl-based shell hooks — no local binary required
+- 13 hook event types: 9 fire-and-forget, 4 synchronous (UserPromptSubmit, PreCompact, SubagentStart, Ping)
+- Configurable remote hook timeout (default 500ms) for sync events where network RTT consumes the local 50ms budget
+
+**Enterprise portability**: Same `/observe` endpoint, same event contract. Enterprise adds OAuth JWT auth (same `BearerValidator` trait), per-team path-prefix routing (`/v1/{team-slug}/observe`), and per-team telemetry isolation. No architectural rework required.
+
+**Structural prep shipped with W2-2 (vnc-021)**: Path-dispatching tower service, `/observe` 501 stub, ProjectRouter registration. W2-7 replaces the stub with the real handler.
+
+**Depends on**: W2-2 (vnc-021) — HTTPS listener, bearer token auth, path-dispatching service
+**Effort**: ~3-4 days (handler implementation, hook timeout config, client setup validation)
+
+---
+
 ## Enterprise Tier
 
 Enterprise delivery — OAuth 2.1, three-role RBAC (Admin/Operator/Auditor), structured compliance audit log, control plane DB, admin console, SOC 2 Type I readiness — is **scoped for a separate private repository** after Wave 2 ships.
@@ -147,6 +164,8 @@ Wave 2 delivers the OSS extension surface (W2-3 / ASS-050) that the enterprise p
 | ASS-052 | RuVector Component Re-evaluation | **COMPLETE** | W3-1 (negative result — no adoption) |
 | ASS-053 | REST API Connectivity + Admin Plane Decoupling Seams | Not started | W2-3, enterprise |
 | ASS-055 | ADR DependsOn Graph Relationship (`context_relate`) | **COMPLETE** | crt-NNN (Wave 2), enterprise audit graph |
+| ASS-060 | Multi-Project Data Architecture + ProjectRouter | **COMPLETE** | W2-6 (ProjectRouter path-prefix routing, slug identity) |
+| ASS-064 | Remote Telemetry + MCP Transport Unification | **COMPLETE** | W2-7, vnc-021 structural prep |
 
 ### ASS-041 Findings Summary — Transport + Auth Stack
 rmcp 0.16 `transport-streamable-http-server` is production-ready. Tower middleware for auth. `rustls 0.23` for TLS. `subtle::ConstantTimeEq` for token validation. `Authorization: Bearer` header confirmed for Claude Code HTTP transport. `claude mcp add -H` workaround required for anthropics/claude-code#28293.
@@ -191,9 +210,12 @@ ASS-052: RuVector ──── COMPLETE (negative) ─────────�
 ASS-043 ──────────────────────────────────────────────────── ► W2-1 (packaging decisions)
 ASS-046 ──────────────────────────────────────────────────── ► W2-5 go/no-go
 
+ASS-064: Remote Telemetry ─── COMPLETE ────────────────────► W2-7 (telemetry transport) + vnc-021 structural prep
+
 vnc-013 (#559) DELIVERED: ASS-051 resolved (keep Claude Code names), #559 closed
 W2-3 unblocks: W2-2 delivery (auth middleware placement confirmed)
 W2-2 + W2-4 can ship concurrently (shared HTTPS transport layer)
+W2-7 depends on W2-2 (HTTPS listener, bearer token auth, path-dispatching service)
 W2-1 wraps W2-2 + W2-3 (container packaging after server complete)
 W2-5 independent (feature-flagged, does not block other items)
 ```
