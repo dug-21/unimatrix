@@ -111,21 +111,21 @@ class TestVolume1K:
 class TestLargeContent:
     """Tests for large content payloads.
 
-    Server enforces a 50,000 character limit on content. Tests validate
-    behavior at and beyond this boundary.
+    Server enforces an 8,000 byte limit on content (StoreConfig.max_content_bytes).
+    Tests validate behavior at and beyond this boundary.
     """
 
     def test_large_content_at_limit(self, server):
-        """V-09: Content at server limit (49,999 chars) accepted."""
-        content = load_large_content(49999)
+        """V-09: Content at server limit (7,999 bytes) accepted."""
+        content = load_large_content(7999)
         resp = server.context_store(
             content, "testing", "convention", agent_id="human"
         )
         assert_tool_success(resp)
 
     def test_large_content_over_limit_rejected(self, server):
-        """V-10: Content over 50,000 chars rejected with clear error."""
-        content = load_large_content(51000)
+        """V-10: Content over 8,000 bytes rejected with clear error."""
+        content = load_large_content(8001)
         resp = server.context_store(
             content, "testing", "convention", agent_id="human"
         )
