@@ -113,6 +113,10 @@ pub enum ServerError {
     /// Maps to `ERROR_EMBED_NOT_READY` (-32004) for callers. Server continues
     /// running on cosine fallback; NLI will not recover until restart.
     NliFailed(String),
+    /// Configuration error at startup (e.g., TLS cert/key loading failure).
+    ///
+    /// Maps to `ERROR_INTERNAL` for callers. Server refuses to start.
+    Config(String),
 }
 
 impl fmt::Display for ServerError {
@@ -170,6 +174,7 @@ impl fmt::Display for ServerError {
             }
             ServerError::NliNotReady => write!(f, "NLI service is initializing"),
             ServerError::NliFailed(msg) => write!(f, "NLI service failed: {msg}"),
+            ServerError::Config(msg) => write!(f, "configuration error: {msg}"),
         }
     }
 }
@@ -312,6 +317,9 @@ impl From<ServerError> for ErrorData {
                 format!("NLI service failed to load: {msg}. Restart the server to retry."),
                 None,
             ),
+            ServerError::Config(msg) => {
+                ErrorData::new(ERROR_INTERNAL, format!("Configuration error: {msg}"), None)
+            }
         }
     }
 }

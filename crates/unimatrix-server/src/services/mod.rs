@@ -67,13 +67,16 @@ pub(crate) use usage::UsageService;
 /// Type-safe caller identity for rate limiting and audit.
 ///
 /// Prevents cross-transport key collisions structurally. MCP constructs
-/// `Agent`, UDS constructs `UdsSession`. Services never construct CallerIds.
+/// `Agent`, UDS constructs `UdsSession`, HTTP constructs `HttpBearer`.
+/// Services never construct CallerIds.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum CallerId {
     /// MCP caller identified by resolved agent_id.
     Agent(String),
     /// UDS caller identified by session_id.
     UdsSession(String),
+    /// HTTP bearer-token caller (vnc-021). NOT exempt from rate limiting.
+    HttpBearer(String),
 }
 
 // ---------------------------------------------------------------------------

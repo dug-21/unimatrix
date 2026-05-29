@@ -6,17 +6,19 @@
 //!
 //! ## Drop Ordering (enforced explicitly in `graceful_shutdown`)
 //!
-//! 1. `mcp_acceptor_handle` — abort + join (drains all session Arc clones)
-//! 2. `mcp_socket_guard`    — removes `unimatrix-mcp.sock`
-//! 3. `uds_handle`          — abort + join (hook IPC accept loop)
-//! 4. `socket_guard`        — removes `unimatrix.sock`
-//! 5. `tick_handle`         — abort + join (background tick Arc holders)
+//! 1. `mcp_acceptor_handle`  — abort + join (drains all session Arc clones)
+//! 1b. `http_acceptor_handle` — abort + join (HTTP accept loop, vnc-021)
+//! 2. `mcp_socket_guard`     — removes `unimatrix-mcp.sock`
+//! 3. `uds_handle`           — abort + join (hook IPC accept loop)
+//! 4. `socket_guard`         — removes `unimatrix.sock`
+//! 5. `tick_handle`          — abort + join (background tick Arc holders)
 //! 6. All `Arc<Store>` holders (services, adapt_service, registry, audit, vector_index)
 //! 7. `Arc::try_unwrap(store)` → compaction
 //!
 //! `PidGuard` is NOT in this struct; it lives in `main()` as a local and drops after
 //! this function returns — always last.
 
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -73,6 +75,13 @@ pub struct LifecycleHandles {
     /// ServiceLayer holding Arc<Store> clones via internal services (#92).
     /// Must be dropped before Arc::try_unwrap(store) to release all references.
     pub services: Option<ServiceLayer>,
+    /// HTTP accept loop task handle (vnc-021).
+    /// Aborted during graceful_shutdown between MCP acceptor (Step 0) and hook IPC (Step 0b).
+    /// `None` when HTTP is disabled or in stdio mode.
+    pub http_acceptor_handle: Option<tokio::task::JoinHandle<()>>,
+    /// HTTP listener bound address (vnc-021).
+    /// Stored for logging/debugging. `None` when HTTP is disabled.
+    pub http_listener_addr: Option<SocketAddr>,
 }
 
 /// Create a new daemon-level `CancellationToken`.
@@ -118,6 +127,20 @@ pub async fn graceful_shutdown(mut handles: LifecycleHandles) -> Result<(), Serv
         match tokio::time::timeout(Duration::from_secs(35), handle).await {
             Ok(_) => tracing::info!("MCP acceptor task finished"),
             Err(_) => tracing::warn!("MCP acceptor task did not finish within 35s timeout"),
+        }
+    }
+
+    // Step 0-http: Stop HTTP acceptor task (vnc-021).
+    // Placed after MCP acceptor to match architecture's specified ordering.
+    // The HTTP accept loop stops accepting new connections when its
+    // CancellationToken is cancelled (which happens when the daemon token
+    // is cancelled, before graceful_shutdown is called). This abort + join
+    // ensures the accept loop task itself is cleaned up.
+    if let Some(handle) = handles.http_acceptor_handle.take() {
+        handle.abort();
+        match tokio::time::timeout(Duration::from_secs(35), handle).await {
+            Ok(_) => tracing::info!("HTTP acceptor task finished"),
+            Err(_) => tracing::warn!("HTTP acceptor task did not finish within 35s timeout"),
         }
     }
 
@@ -336,6 +359,8 @@ mod tests {
             uds_handle: None,
             tick_handle: None,
             services: Some(services),
+            http_acceptor_handle: None,
+            http_listener_addr: None,
         };
 
         // Drop remaining locals that held Arc clones (mirrors tokio_main ownership)
@@ -345,6 +370,7 @@ mod tests {
 
         // Simulate the shutdown drop sequence from graceful_shutdown
         drop(handles.mcp_acceptor_handle.take()); // Step 0 (None — no-op)
+        drop(handles.http_acceptor_handle.take()); // Step 0-http (None — no-op)
         drop(handles.mcp_socket_guard.take()); // Step 0a (None — no-op)
         drop(handles.uds_handle.take()); // Step 0b (None — no-op)
         drop(handles.socket_guard.take()); // Step 0c (None — no-op)
@@ -483,11 +509,16 @@ mod tests {
             uds_handle: None,
             tick_handle: None,
             services: None,
+            http_acceptor_handle: None, // vnc-021: None when HTTP disabled
+            http_listener_addr: None,
         };
 
         // Both new fields are Option; None means stdio mode (no MCP UDS)
         assert!(handles.mcp_socket_guard.is_none());
         assert!(handles.mcp_acceptor_handle.is_none());
+        // vnc-021: HTTP fields are None when HTTP disabled
+        assert!(handles.http_acceptor_handle.is_none());
+        assert!(handles.http_listener_addr.is_none());
     }
 
     /// new_daemon_token() returns a fresh CancellationToken that is not yet cancelled.
@@ -561,23 +592,29 @@ mod tests {
             uds_handle: None,
             tick_handle: None,
             services: None,
+            http_acceptor_handle: None,
+            http_listener_addr: None,
         };
 
         // Simulate the graceful_shutdown drop sequence steps 0 through 0c.
         // MCP fields must be taken before hook IPC fields.
+        // HTTP acceptor is taken between MCP acceptor and MCP socket guard (vnc-021).
         let mcp_acceptor = handles.mcp_acceptor_handle.take(); // Step 0
+        let http_acceptor = handles.http_acceptor_handle.take(); // Step 0-http
         let mcp_guard = handles.mcp_socket_guard.take(); // Step 0a
         let uds_h = handles.uds_handle.take(); // Step 0b
         let sock_guard = handles.socket_guard.take(); // Step 0c
 
         // After take(), all fields are None — confirms they were consumed in order
         assert!(handles.mcp_acceptor_handle.is_none());
+        assert!(handles.http_acceptor_handle.is_none());
         assert!(handles.mcp_socket_guard.is_none());
         assert!(handles.uds_handle.is_none());
         assert!(handles.socket_guard.is_none());
 
         // All taken values are None in this test (stdio mode)
         assert!(mcp_acceptor.is_none());
+        assert!(http_acceptor.is_none());
         assert!(mcp_guard.is_none());
         assert!(uds_h.is_none());
         assert!(sock_guard.is_none());
@@ -601,6 +638,125 @@ mod tests {
             Ok(Ok(())) => {
                 // Also acceptable if the task happened to complete before abort
             }
+            Err(_timeout) => panic!("abort + join timed out unexpectedly"),
+        }
+    }
+
+    // --- vnc-021 tests ---
+
+    /// T-LI-13: LifecycleHandles has http_acceptor_handle and http_listener_addr fields.
+    /// Structural compile-time test.
+    #[tokio::test]
+    async fn test_lifecycle_handles_has_http_fields() {
+        use unimatrix_adapt::{AdaptConfig, AdaptationService};
+        use unimatrix_core::VectorConfig;
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let db_path = dir.path().join("test.db");
+        let vector_dir = dir.path().join("vector");
+        std::fs::create_dir_all(&vector_dir).unwrap();
+
+        let store = open_store(&db_path).await;
+        let vector_config = VectorConfig::default();
+        let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
+
+        use crate::infra::audit::AuditLog;
+        use crate::infra::registry::AgentRegistry;
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+        let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
+
+        let handles = LifecycleHandles {
+            store,
+            vector_index,
+            vector_dir,
+            registry,
+            audit,
+            adapt_service,
+            data_dir: dir.path().to_path_buf(),
+            mcp_socket_guard: None,
+            mcp_acceptor_handle: None,
+            socket_guard: None,
+            uds_handle: None,
+            tick_handle: None,
+            services: None,
+            http_acceptor_handle: None,
+            http_listener_addr: None,
+        };
+
+        // Structural: fields exist and are None when HTTP disabled
+        assert!(handles.http_acceptor_handle.is_none());
+        assert!(handles.http_listener_addr.is_none());
+    }
+
+    /// T-LI-14: LifecycleHandles stores a real JoinHandle for HTTP acceptor.
+    #[tokio::test]
+    async fn test_lifecycle_handles_stores_http_join_handle() {
+        use unimatrix_adapt::{AdaptConfig, AdaptationService};
+        use unimatrix_core::VectorConfig;
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let db_path = dir.path().join("test.db");
+        let vector_dir = dir.path().join("vector");
+        std::fs::create_dir_all(&vector_dir).unwrap();
+
+        let store = open_store(&db_path).await;
+        let vector_config = VectorConfig::default();
+        let vector_index = Arc::new(VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
+
+        use crate::infra::audit::AuditLog;
+        use crate::infra::registry::AgentRegistry;
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+        let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
+
+        // Spawn a dummy async task to get a real JoinHandle.
+        let dummy_handle = tokio::spawn(async {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+        });
+
+        let addr: SocketAddr = "127.0.0.1:9999".parse().unwrap();
+
+        let mut handles = LifecycleHandles {
+            store,
+            vector_index,
+            vector_dir,
+            registry,
+            audit,
+            adapt_service,
+            data_dir: dir.path().to_path_buf(),
+            mcp_socket_guard: None,
+            mcp_acceptor_handle: None,
+            socket_guard: None,
+            uds_handle: None,
+            tick_handle: None,
+            services: None,
+            http_acceptor_handle: Some(dummy_handle),
+            http_listener_addr: Some(addr),
+        };
+
+        assert!(handles.http_acceptor_handle.is_some());
+        assert_eq!(handles.http_listener_addr, Some(addr));
+
+        // Abort to clean up
+        if let Some(h) = handles.http_acceptor_handle.take() {
+            h.abort();
+            let _ = h.await;
+        }
+    }
+
+    /// Verify HTTP acceptor abort + join pattern works (mirrors MCP acceptor test).
+    #[tokio::test]
+    async fn test_http_acceptor_handle_abort_join() {
+        let handle = tokio::spawn(async {
+            tokio::time::sleep(Duration::from_secs(60)).await;
+        });
+
+        handle.abort();
+        let result = tokio::time::timeout(Duration::from_secs(5), handle).await;
+        match result {
+            Ok(Err(e)) => assert!(e.is_cancelled(), "expected cancellation error, got: {e}"),
+            Ok(Ok(())) => {}
             Err(_timeout) => panic!("abort + join timed out unexpectedly"),
         }
     }
