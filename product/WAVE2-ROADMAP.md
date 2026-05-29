@@ -34,10 +34,11 @@ Intelligence-pipeline carry-forwards that do not block Wave 2: #477 (quarantine 
 ---
 
 ### W2-1: Container Packaging (🔬 ASS-043)
-**Goal**: Single-image personal cloud deployment. Containerized daemon with ONNX runtime. Air-gap deployable — no runtime internet dependencies.
+**Goal**: Single-image personal cloud deployment. Containerized daemon with ONNX runtime. Air-gap deployable via volume pre-population.
 
-Named volume *(updated to reflect nan-014 shipped design)*:
-- `unimatrix-data` — databases, vector indexes, config, and logs (integrity-critical, back up frequently). ONNX models baked into image.
+Named volumes *(updated to reflect nan-015 shipped design)*:
+- `unimatrix-data` — databases, vector indexes, config, and logs (integrity-critical, back up frequently).
+- `unimatrix-shared` — ONNX models (~166 MB, re-downloadable from HuggingFace Hub). Auto-populated on first start. Backup optional.
 
 Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 
