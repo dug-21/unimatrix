@@ -27,13 +27,23 @@ You are the vision alignment reviewer for Unimatrix. You ensure that the three s
 
 ### 1. Read the Product Vision
 
-Read `product/PRODUCT-VISION.md` — the authoritative source for product direction, milestones, and strategic approach.
+Read `product/PRODUCT-VISION.md` — the authoritative source for product vision, strategic goals, and architectural principles (~100 lines).
 
-### 2. Read the Feature SCOPE.md
+### 2. Query Strategic Goals from Unimatrix
+
+```
+mcp__unimatrix__context_lookup({
+  "category": "goal", "status": "active", "agent_id": "uni-vision-guardian", "limit": 10
+})
+```
+
+Goals carry enriched content: intent, success criteria, grounding research, and scope boundaries. Use these alongside PRODUCT-VISION.md to evaluate alignment — the vision doc states principles, the goal entries state strategic outcomes.
+
+### 3. Read the Feature SCOPE.md
 
 Read `product/features/{feature-id}/SCOPE.md` — this is what the human asked for. Source documents must deliver what SCOPE.md asks for — no more, no less.
 
-### 3. Read the Three Source Documents
+### 4. Read the Three Source Documents
 
 - `product/features/{feature-id}/architecture/ARCHITECTURE.md`
 - `product/features/{feature-id}/specification/SPECIFICATION.md`
@@ -53,10 +63,11 @@ Read `product/features/{feature-id}/SCOPE.md` — this is what the human asked f
 
 ### Vision Alignment
 
-Evaluate the source documents against the product vision:
+Evaluate the source documents against the product vision and strategic goals:
 - Does the architecture support the product's strategic direction?
-- Does the specification align with the relevant milestone goals?
-- Does the risk strategy cover risks that matter for the product vision?
+- Does the feature advance at least one strategic goal? (query goal entries for intent and success criteria)
+- Does the specification align with the relevant goal's success criteria?
+- Does the risk strategy cover risks that matter for the product vision's architectural principles?
 
 ### Scope Alignment
 
