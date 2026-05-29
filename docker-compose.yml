@@ -11,6 +11,11 @@ services:
     restart: unless-stopped
     volumes:
       - unimatrix-data:/data
+      - unimatrix-shared:/shared
+      # Security hardening (optional, after initial model download):
+      #   - unimatrix-shared:/shared:ro
+      # unimatrix-data: databases, vector indexes, config, logs (integrity-critical, back up).
+      # unimatrix-shared: ONNX models (re-downloadable, backup optional).
       # Config: per-project config.toml lives inside the data volume.
       # Written automatically on first run. Edit via:
       #   docker run --rm -v unimatrix-data:/data busybox vi /data/.unimatrix/<hash>/config.toml
@@ -24,12 +29,21 @@ services:
 
 volumes:
   unimatrix-data:
-    # Named volume for all Unimatrix data (databases, vector indexes,
-    # config, model cache, PID files, sockets, logs).
-    # Persists across container restarts.
-    # Backup = snapshot this volume (includes config):
+    # Integrity-critical data: databases, vector indexes, config, logs.
+    # Persists across container restarts. Back up frequently.
+    # Backup:
     #   docker run --rm -v unimatrix-data:/data -v $(pwd):/backup \
     #     busybox tar czf /backup/unimatrix-backup.tar.gz /data
+  unimatrix-shared:
+    # Re-downloadable assets: ONNX models (~166 MB).
+    # Auto-populated on first start (requires internet).
+    # Backup optional -- models re-download from HuggingFace if lost.
+    # Air-gap: pre-populate before first start.
+    #
+    # Security notes:
+    #   - After initial download, mount :ro to prevent model tampering.
+    #   - Set nli_model_sha256 in config.toml to pin NLI model integrity.
+    #   - Embedding model hash enforcement tracked as #651.
 
 # ──────────────────────────────────────────────────────────────────────
 # Debug override (shell access for troubleshooting)
