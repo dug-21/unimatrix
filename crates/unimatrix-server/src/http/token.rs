@@ -7,8 +7,8 @@
 //! File creation uses `O_CREAT | O_EXCL` (via `create_new`) with mode 0600 to
 //! atomically create-with-permissions and reject concurrent creators.
 
-use std::fs;
-use std::io::Write;
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Write};
 use std::path::Path;
 
 use crate::error::ServerError;
@@ -30,66 +30,63 @@ const TOKEN_HEX_LEN: usize = 64;
 /// The flow is generate-first: attempt atomic file creation, and on
 /// `AlreadyExists` fall back to loading the existing file. This eliminates
 /// the TOCTOU race from a prior `path.exists()` check.
+///
+/// Error discrimination uses `io::ErrorKind::AlreadyExists` directly on the
+/// raw `io::Error` from file creation, avoiding fragile string matching on
+/// stringified errors.
 pub fn load_or_generate_token(data_dir: &Path) -> Result<Vec<u8>, ServerError> {
     let token_path = data_dir.join(TOKEN_FILE_NAME);
 
-    match generate_new_token(&token_path) {
-        Ok(bytes) => Ok(bytes),
-        Err(e) if is_already_exists(&e) => load_existing_token(&token_path),
-        Err(e) => Err(e),
-    }
-}
-
-/// Check whether a `ServerError::ProjectInit` wraps an `AlreadyExists` cause.
-fn is_already_exists(err: &ServerError) -> bool {
-    match err {
-        ServerError::ProjectInit(msg) => {
-            msg.contains("(os error 17)")
-                || msg.contains("already exists")
-                || msg.contains("File exists")
-        }
-        _ => false,
-    }
-}
-
-/// Generate a new 32-byte token, write hex-encoded to file with mode 0600.
-///
-/// Uses `OpenOptions::create_new(true).mode(0o600)` which maps to
-/// `O_CREAT | O_EXCL` with atomic permissions — no window of umask-default
-/// permissions, and fails immediately if the file already exists.
-fn generate_new_token(path: &Path) -> Result<Vec<u8>, ServerError> {
-    use std::fs::OpenOptions;
-
+    // Generate token bytes before file creation so the write follows the open
+    // with minimal delay, keeping the race window narrow for concurrent creators.
     let mut token_bytes = [0u8; TOKEN_BYTE_LEN];
     rand::fill(&mut token_bytes);
-
     let hex_string = hex::encode(token_bytes);
 
-    // Atomically create file with 0600 permissions via O_CREAT | O_EXCL.
-    // Fails with AlreadyExists if another process created it first.
-    let open_result = {
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .mode(0o600)
-                .open(path)
-        }
-        #[cfg(not(unix))]
-        {
-            OpenOptions::new().write(true).create_new(true).open(path)
-        }
-    };
-
-    let mut file = open_result.map_err(|e| {
-        ServerError::ProjectInit(format!(
+    match create_token_file(&token_path) {
+        Ok(file) => write_new_token(file, &token_path, &token_bytes, &hex_string),
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => load_existing_token(&token_path),
+        Err(e) => Err(ServerError::ProjectInit(format!(
             "failed to create token file {}: {e}",
-            path.display()
-        ))
-    })?;
+            token_path.display()
+        ))),
+    }
+}
 
+/// Atomically create the token file with `O_CREAT | O_EXCL` and mode 0600.
+///
+/// Returns the raw `io::Error` so callers can match on `ErrorKind::AlreadyExists`
+/// without string parsing.
+fn create_token_file(path: &Path) -> io::Result<File> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path)
+    }
+    #[cfg(not(unix))]
+    {
+        OpenOptions::new().write(true).create_new(true).open(path)
+    }
+}
+
+/// Generate a new 32-byte token, write hex-encoded to the already-created file.
+///
+/// Token bytes and hex encoding are prepared before file creation so the write
+/// follows the open with minimal delay, narrowing the race window for concurrent
+/// creators.
+///
+/// On write failure, cleans up the empty file to prevent a 0-byte token file
+/// persisting on disk.
+fn write_new_token(
+    mut file: File,
+    path: &Path,
+    token_bytes: &[u8; TOKEN_BYTE_LEN],
+    hex_string: &str,
+) -> Result<Vec<u8>, ServerError> {
     // Write token content. On failure, clean up the empty file to prevent
     // a 0-byte token file persisting on disk.
     if let Err(e) = file.write_all(hex_string.as_bytes()) {
