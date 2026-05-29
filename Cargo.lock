@@ -3829,6 +3829,7 @@ dependencies = [
  "fs2",
  "hex",
  "http",
+ "http-body",
  "http-body-util",
  "hyper",
  "hyper-util",

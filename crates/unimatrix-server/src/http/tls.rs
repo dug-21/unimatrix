@@ -10,10 +10,10 @@ use std::io::BufReader;
 use std::path::Path;
 use std::sync::Arc;
 
-use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer};
-use tokio_rustls::rustls::ServerConfig;
-use tokio_rustls::rustls::{self};
 use tokio_rustls::TlsAcceptor;
+use tokio_rustls::rustls::ServerConfig;
+use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use tokio_rustls::rustls::{self};
 
 use crate::error::ServerError;
 use crate::infra::config::TlsConfig;
