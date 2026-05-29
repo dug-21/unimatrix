@@ -609,7 +609,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize embedding service (lazy — background task).
     let embed_handle = EmbedServiceHandle::new();
-    embed_handle.start_loading(EmbedConfig::default());
+    embed_handle.start_loading(
+        EmbedConfig::default(),
+        config.inference.embedding_model_sha256.clone(),
+    );
 
     // Initialize agent registry and bootstrap defaults.
     let registry = Arc::new(AgentRegistry::new(
@@ -965,7 +968,10 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize embedding service (lazy — background task).
     let embed_handle = EmbedServiceHandle::new();
-    embed_handle.start_loading(EmbedConfig::default());
+    embed_handle.start_loading(
+        EmbedConfig::default(),
+        config.inference.embedding_model_sha256.clone(),
+    );
 
     // Initialize agent registry and bootstrap defaults.
     let registry = Arc::new(AgentRegistry::new(
@@ -1435,13 +1441,25 @@ fn handle_model_download(
         cache_dir.display()
     );
 
-    match unimatrix_embed::ensure_model(embed_config.model, &cache_dir) {
-        Ok(model_dir) => eprintln!("Embedding model ready: {}", model_dir.display()),
+    let embed_model_dir = match unimatrix_embed::ensure_model(embed_config.model, &cache_dir) {
+        Ok(model_dir) => {
+            eprintln!("Embedding model ready: {}", model_dir.display());
+            model_dir
+        }
         Err(e) => {
             eprintln!("Embedding model download failed: {e}");
             return Err(Box::new(e));
         }
-    }
+    };
+
+    // Compute and output SHA-256 hash of the embedding model ONNX file (bugfix-651).
+    let embed_onnx_path = embed_model_dir.join(embed_config.model.onnx_filename());
+    eprintln!("Computing SHA-256 hash of {}...", embed_onnx_path.display());
+    let embed_hash_hex = compute_file_sha256(&embed_onnx_path)?;
+    println!("embedding: {}", embed_hash_hex);
+    eprintln!();
+    eprintln!("Add the following to your config.toml under [inference]:");
+    eprintln!("  embedding_model_sha256 = \"{}\"", embed_hash_hex);
 
     // Step 2: If --nli flag not given, return here (existing behavior preserved).
     if !nli {
@@ -1484,8 +1502,8 @@ fn handle_model_download(
     let hash_hex = compute_file_sha256(&onnx_path)?;
 
     // Step 6: Print hash to stdout (operator copies to config.toml).
-    // Format: one line, lowercase hex, 64 chars. Ready to paste.
-    println!("{}", hash_hex);
+    // Format: prefixed with "nli:" for disambiguation from embedding hash.
+    println!("nli: {}", hash_hex);
 
     // Step 7: Print guidance to stderr.
     eprintln!();

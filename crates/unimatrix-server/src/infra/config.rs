@@ -261,6 +261,20 @@ pub struct InferenceConfig {
     pub rayon_pool_size: usize,
 
     // -----------------------------------------------------------------------
+    // Embedding model hash verification (bugfix-651)
+    // -----------------------------------------------------------------------
+    /// SHA-256 hash of the embedding model ONNX file as a 64-char lowercase hex string.
+    ///
+    /// When set, the hash is verified before the ONNX session is loaded into memory.
+    /// When `None`, hash verification is skipped with a `warn`-level log.
+    /// Must be exactly 64 hex characters if set.
+    ///
+    /// Security-critical: global-wins semantics in merge. A per-project config
+    /// MUST NOT override a global hash pin.
+    #[serde(default)]
+    pub embedding_model_sha256: Option<String>,
+
+    // -----------------------------------------------------------------------
     // NLI cross-encoder fields (crt-023)
     // -----------------------------------------------------------------------
     /// Enable the NLI cross-encoder (default `false`, opt-in).
@@ -702,6 +716,7 @@ impl Default for InferenceConfig {
         // On 20-core:    num_cpus = 20; 20/2 = 10; max(10, 4) = 10; min(10, 8) = 8.
         InferenceConfig {
             rayon_pool_size: (num_cpus::get() / 2).max(4).min(8),
+            embedding_model_sha256: None,
             nli_enabled: default_nli_enabled(),
             nli_model_name: None,
             nli_model_path: None,
@@ -1021,6 +1036,18 @@ impl InferenceConfig {
                 path: path.to_path_buf(),
                 value: self.rayon_pool_size,
             });
+        }
+
+        // -- embedding_model_sha256: exactly 64 hex chars when Some (bugfix-651) --
+        if let Some(ref sha) = self.embedding_model_sha256 {
+            if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+                return Err(ConfigError::NliFieldOutOfRange {
+                    path: path.to_path_buf(),
+                    field: "embedding_model_sha256",
+                    value: format!("{sha} ({} chars)", sha.len()),
+                    reason: "must be a 64-character lowercase hex string",
+                });
+            }
         }
 
         // -- NLI usize range checks [1, 100] --
@@ -2718,6 +2745,24 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             } else {
                 global.inference.rayon_pool_size
             },
+            // bugfix-651: global-wins semantics for embedding_model_sha256.
+            // A per-project config MUST NOT override a global hash pin (security-critical).
+            embedding_model_sha256: if global.inference.embedding_model_sha256.is_some() {
+                if project.inference.embedding_model_sha256.is_some()
+                    && project.inference.embedding_model_sha256
+                        != global.inference.embedding_model_sha256
+                {
+                    tracing::warn!(
+                        "per-project embedding_model_sha256 ignored — global hash pin takes precedence (security)"
+                    );
+                }
+                global.inference.embedding_model_sha256
+            } else {
+                project
+                    .inference
+                    .embedding_model_sha256
+                    .or(global.inference.embedding_model_sha256)
+            },
             nli_enabled: if project.inference.nli_enabled != default.inference.nli_enabled {
                 project.inference.nli_enabled
             } else {
@@ -3216,6 +3261,11 @@ pub static DEFAULT_CONFIG_TOML: &str = r#"# Unimatrix configuration file.
 # Default: (num_cpus / 2).max(4).min(8). Valid range: [1, 64].
 # When nli_enabled = true, a pool floor of 6 is applied at startup.
 # rayon_pool_size = 4
+
+# SHA-256 hash of the embedding model ONNX file (64-char lowercase hex).
+# When set, hash is verified before loading. Run `unimatrix model-download` to get the hash.
+# Security-critical: global config hash pin cannot be overridden by per-project config.
+# embedding_model_sha256 = ""
 
 # Enable the NLI cross-encoder for re-ranking (opt-in, default false).
 # When false, all search uses cosine similarity fallback.
@@ -5430,6 +5480,56 @@ mod tests {
         // None means no verification — must pass.
         let c = InferenceConfig {
             nli_model_sha256: None,
+            ..InferenceConfig::default()
+        };
+        assert!(c.validate(Path::new("/fake")).is_ok());
+    }
+
+    // bugfix-651: embedding_model_sha256 format validation.
+
+    #[test]
+    fn test_validate_embedding_model_sha256_wrong_length_fails() {
+        let c = InferenceConfig {
+            embedding_model_sha256: Some("short_hash".to_string()),
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "embedding_model_sha256");
+    }
+
+    #[test]
+    fn test_validate_embedding_model_sha256_63_chars_fails() {
+        let c = InferenceConfig {
+            embedding_model_sha256: Some("a".repeat(63)),
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "embedding_model_sha256");
+    }
+
+    #[test]
+    fn test_validate_embedding_model_sha256_non_hex_fails() {
+        let c = InferenceConfig {
+            embedding_model_sha256: Some("z".repeat(64)),
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "embedding_model_sha256");
+    }
+
+    #[test]
+    fn test_validate_embedding_model_sha256_valid_64_hex_passes() {
+        let c = InferenceConfig {
+            embedding_model_sha256: Some("a".repeat(64)),
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "64-char lowercase hex sha256 must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_validate_embedding_model_sha256_none_passes() {
+        let c = InferenceConfig {
+            embedding_model_sha256: None,
             ..InferenceConfig::default()
         };
         assert!(c.validate(Path::new("/fake")).is_ok());
@@ -9383,6 +9483,70 @@ nli_informs_ppr_weight = 0.4
         assert_eq!(
             from_section.knowledge.categories, from_default.knowledge.categories,
             "serde field default for categories must match impl Default"
+        );
+    }
+
+    // bugfix-651: embedding_model_sha256 global-wins merge tests
+
+    #[test]
+    fn test_merge_embedding_sha256_global_wins_over_project() {
+        // Global sets embedding_model_sha256 — per-project MUST NOT override (security).
+        let mut global = UnimatrixConfig::default();
+        global.inference.embedding_model_sha256 = Some("a".repeat(64));
+
+        let mut project = UnimatrixConfig::default();
+        project.inference.embedding_model_sha256 = Some("b".repeat(64));
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.embedding_model_sha256,
+            Some("a".repeat(64)),
+            "global embedding_model_sha256 must win over per-project (security)"
+        );
+    }
+
+    #[test]
+    fn test_merge_embedding_sha256_project_used_when_global_none() {
+        // Global does not set hash — per-project hash is used.
+        let global = UnimatrixConfig::default();
+        assert!(global.inference.embedding_model_sha256.is_none());
+
+        let mut project = UnimatrixConfig::default();
+        project.inference.embedding_model_sha256 = Some("c".repeat(64));
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.embedding_model_sha256,
+            Some("c".repeat(64)),
+            "per-project embedding_model_sha256 must be used when global is None"
+        );
+    }
+
+    #[test]
+    fn test_merge_embedding_sha256_both_none() {
+        let global = UnimatrixConfig::default();
+        let project = UnimatrixConfig::default();
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.embedding_model_sha256, None,
+            "merged embedding_model_sha256 must be None when both are None"
+        );
+    }
+
+    #[test]
+    fn test_merge_embedding_sha256_global_same_as_project() {
+        // Both global and project set the same hash — no warning, global value used.
+        let mut global = UnimatrixConfig::default();
+        global.inference.embedding_model_sha256 = Some("d".repeat(64));
+
+        let mut project = UnimatrixConfig::default();
+        project.inference.embedding_model_sha256 = Some("d".repeat(64));
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.embedding_model_sha256,
+            Some("d".repeat(64)),
+            "matching hashes must produce the global value"
         );
     }
 }

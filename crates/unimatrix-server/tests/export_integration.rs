@@ -1195,7 +1195,10 @@ fn test_all_11_tables_with_new_tables_populated() {
         .find(|l| l.get("_table").and_then(|t| t.as_str()) == Some("graph_edges"))
         .unwrap();
     let ge_obj = ge_row.as_object().unwrap();
-    assert!(!ge_obj.contains_key("id"), "AC-01: graph_edges must not export id");
+    assert!(
+        !ge_obj.contains_key("id"),
+        "AC-01: graph_edges must not export id"
+    );
     assert!(ge_obj.contains_key("source_id"));
     assert!(ge_obj.contains_key("target_id"));
     assert!(ge_obj.contains_key("relation_type"));
@@ -1211,7 +1214,10 @@ fn test_all_11_tables_with_new_tables_populated() {
         .find(|l| l.get("_table").and_then(|t| t.as_str()) == Some("observations"))
         .unwrap();
     let obs_obj = obs_row.as_object().unwrap();
-    assert!(obs_obj.contains_key("id"), "AC-02: observations must export id");
+    assert!(
+        obs_obj.contains_key("id"),
+        "AC-02: observations must export id"
+    );
 
     // AC-03: cycle_events must NOT have goal_embedding
     let ce_row = lines
@@ -1327,8 +1333,8 @@ fn test_skip_quarantined_does_not_filter_observations_or_cycle_events() {
         Some(project_dir.path()),
         Some(&output_path),
         base_dir.path(),
-        true,  // skip_quarantined
-        true,  // confirm
+        true, // skip_quarantined
+        true, // confirm
     )
     .expect("export with skip_quarantined should succeed");
 
@@ -1344,8 +1350,14 @@ fn test_skip_quarantined_does_not_filter_observations_or_cycle_events() {
         .filter(|l| l.get("_table").and_then(|t| t.as_str()) == Some("cycle_events"))
         .count();
 
-    assert_eq!(obs_count, 3, "R-21: all 3 observations exported regardless of quarantined entries");
-    assert_eq!(ce_count, 2, "R-21: all 2 cycle_events exported regardless of quarantined entries");
+    assert_eq!(
+        obs_count, 3,
+        "R-21: all 3 observations exported regardless of quarantined entries"
+    );
+    assert_eq!(
+        ce_count, 2,
+        "R-21: all 2 cycle_events exported regardless of quarantined entries"
+    );
 
     // Also verify the quarantined entry itself is excluded
     let entry_count = lines
@@ -1401,8 +1413,8 @@ fn test_skip_quarantined_stderr_reports_skip_counts() {
         Some(project_dir.path()),
         Some(&output_path),
         base_dir.path(),
-        true,  // skip_quarantined (triggers eprintln skip counts)
-        true,  // confirm
+        true, // skip_quarantined (triggers eprintln skip counts)
+        true, // confirm
     )
     .expect("export should succeed and skip counts reported to stderr");
 
@@ -1419,7 +1431,10 @@ fn test_skip_quarantined_stderr_reports_skip_counts() {
         .filter(|l| l.get("_table").and_then(|t| t.as_str()) == Some("entry_tags"))
         .count();
     assert_eq!(entry_count, 1, "1 active entry exported");
-    assert_eq!(tag_count, 0, "0 tags (only tag belonged to quarantined entry)");
+    assert_eq!(
+        tag_count, 0,
+        "0 tags (only tag belonged to quarantined entry)"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1492,8 +1507,8 @@ fn test_skip_quarantined_export_import_hash_valid() {
         Some(project_dir.path()),
         Some(&output_path),
         base_dir.path(),
-        true,  // skip_quarantined
-        true,  // confirm
+        true, // skip_quarantined
+        true, // confirm
     )
     .expect("filtered export should succeed");
 
@@ -1514,10 +1529,12 @@ fn test_skip_quarantined_export_import_hash_valid() {
         .enable_all()
         .build()
         .expect("runtime");
-    let count: i64 = rt2.block_on(
-        sqlx::query_scalar("SELECT COUNT(*) FROM entries").fetch_one(store_b.write_pool_server()),
-    )
-    .unwrap();
+    let count: i64 = rt2
+        .block_on(
+            sqlx::query_scalar("SELECT COUNT(*) FROM entries")
+                .fetch_one(store_b.write_pool_server()),
+        )
+        .unwrap();
     assert_eq!(count, 2, "AC-31: only 2 active entries in imported DB");
     drop((store_b, db_b)); // keep db_b alive until here
 }

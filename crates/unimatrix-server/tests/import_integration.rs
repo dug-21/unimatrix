@@ -1305,12 +1305,14 @@ async fn test_force_import_clears_observation_metric_tables() {
     assert_eq!(ce_count, 0, "R-02: cycle_events cleared after --force");
 
     // observation_phase_metrics should also be cleared
-    let opm_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM observation_phase_metrics")
-            .fetch_one(pool)
-            .await
-            .unwrap_or(0);
-    assert_eq!(opm_count, 0, "R-02: observation_phase_metrics cleared after --force");
+    let opm_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM observation_phase_metrics")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
+    assert_eq!(
+        opm_count, 0,
+        "R-02: observation_phase_metrics cleared after --force"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1373,9 +1375,15 @@ async fn test_observations_id_collision_via_plain_insert() {
         false, // no force
         base_dir.path(),
     );
-    assert!(result.is_err(), "R-05: non-empty DB without --force must fail");
+    assert!(
+        result.is_err(),
+        "R-05: non-empty DB without --force must fail"
+    );
     let err_msg = result.unwrap_err().to_string();
-    assert!(err_msg.contains("--force"), "R-05: error should mention --force: {err_msg}");
+    assert!(
+        err_msg.contains("--force"),
+        "R-05: error should mention --force: {err_msg}"
+    );
 
     // With --force: clears table first, import succeeds (no ID collision)
     let tmp2 = TempDir::new().unwrap();
@@ -1394,16 +1402,21 @@ async fn test_observations_id_collision_via_plain_insert() {
         true, // force
         base_dir.path(),
     );
-    assert!(result2.is_ok(), "R-05: --force clears table before insert, must succeed: {result2:?}");
+    assert!(
+        result2.is_ok(),
+        "R-05: --force clears table before insert, must succeed: {result2:?}"
+    );
 
     // Verify the new observation (from import) is present
     let store = open_store(&db_path);
-    let hook: String =
-        sqlx::query_scalar("SELECT hook FROM observations WHERE id = 1")
-            .fetch_one(store.write_pool_server())
-            .await
-            .unwrap();
-    assert_eq!(hook, "on_result", "R-05: imported observation present after force import");
+    let hook: String = sqlx::query_scalar("SELECT hook FROM observations WHERE id = 1")
+        .fetch_one(store.write_pool_server())
+        .await
+        .unwrap();
+    assert_eq!(
+        hook, "on_result",
+        "R-05: imported observation present after force import"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1452,19 +1465,17 @@ async fn test_round_trip_all_11_tables() {
     // AC-16: verify observations.id preserved
     let store_b = open_store(&db_b);
     let pool_b = store_b.write_pool_server();
-    let obs_ids: Vec<i64> =
-        sqlx::query_scalar("SELECT id FROM observations ORDER BY id")
-            .fetch_all(pool_b)
-            .await
-            .unwrap();
+    let obs_ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM observations ORDER BY id")
+        .fetch_all(pool_b)
+        .await
+        .unwrap();
     assert_eq!(obs_ids, vec![1i64, 2], "AC-16: observations.id preserved");
 
     // AC-17: verify cycle_events.id preserved
-    let ce_ids: Vec<i64> =
-        sqlx::query_scalar("SELECT id FROM cycle_events ORDER BY id")
-            .fetch_all(pool_b)
-            .await
-            .unwrap();
+    let ce_ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM cycle_events ORDER BY id")
+        .fetch_all(pool_b)
+        .await
+        .unwrap();
     assert_eq!(ce_ids, vec![1i64, 2], "AC-17: cycle_events.id preserved");
 
     // Verify graph_edges present
@@ -1529,6 +1540,9 @@ async fn test_round_trip_all_11_tables() {
         lines2.len()
     );
     for (i, (a, b)) in lines1.iter().zip(lines2.iter()).enumerate() {
-        assert_eq!(a, b, "AC-15: line {i} differs:\n  export1: {a}\n  export2: {b}");
+        assert_eq!(
+            a, b,
+            "AC-15: line {i} differs:\n  export1: {a}\n  export2: {b}"
+        );
     }
 }

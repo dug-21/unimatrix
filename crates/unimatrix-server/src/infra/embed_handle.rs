@@ -8,8 +8,9 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 use unimatrix_core::EmbedAdapter;
-use unimatrix_embed::{EmbedConfig, EmbeddingProvider, OnnxProvider};
+use unimatrix_embed::{EmbedConfig, EmbeddingProvider, OnnxProvider, ensure_model};
 
+use super::hash::verify_sha256;
 use crate::error::ServerError;
 
 /// Maximum number of automatic retry attempts before giving up permanently.
@@ -36,6 +37,9 @@ enum EmbedState {
 pub struct EmbedServiceHandle {
     state: RwLock<EmbedState>,
     config: RwLock<Option<EmbedConfig>>,
+    /// Expected SHA-256 hash of the embedding model ONNX file (64-char hex).
+    /// `None` → skip verification with a `warn`-level log.
+    expected_sha256: RwLock<Option<String>>,
 }
 
 impl EmbedServiceHandle {
@@ -44,6 +48,7 @@ impl EmbedServiceHandle {
         Arc::new(EmbedServiceHandle {
             state: RwLock::new(EmbedState::Loading),
             config: RwLock::new(None),
+            expected_sha256: RwLock::new(None),
         })
     }
 
@@ -52,7 +57,10 @@ impl EmbedServiceHandle {
     /// The task downloads the model if not cached, then transitions
     /// the handle to Ready or Failed. If loading fails, a retry monitor
     /// automatically re-attempts up to `MAX_RETRIES` times (#52).
-    pub fn start_loading(self: &Arc<Self>, config: EmbedConfig) {
+    ///
+    /// `expected_sha256`: optional SHA-256 hash of the ONNX file. When `Some`,
+    /// the hash is verified BEFORE the ONNX session is loaded into memory (bugfix-651).
+    pub fn start_loading(self: &Arc<Self>, config: EmbedConfig, expected_sha256: Option<String>) {
         // Store config for potential retries.
         {
             let mut cfg = match self.config.try_write() {
@@ -64,16 +72,66 @@ impl EmbedServiceHandle {
             };
             *cfg = Some(config.clone());
         }
-        self.spawn_load_task(config, 1);
+        // Store expected hash for retries.
+        {
+            let mut sha = match self.expected_sha256.try_write() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    tracing::error!("embed sha256 lock contended at startup");
+                    return;
+                }
+            };
+            *sha = expected_sha256.clone();
+        }
+        self.spawn_load_task(config, 1, expected_sha256);
         self.spawn_retry_monitor();
     }
 
     /// Spawn the background model loading task.
-    fn spawn_load_task(self: &Arc<Self>, config: EmbedConfig, attempt: u32) {
+    ///
+    /// Ordering is security-critical (bugfix-651):
+    ///   1. `ensure_model()` — download/cache the ONNX file
+    ///   2. `verify_sha256()` — verify integrity BEFORE loading into memory
+    ///   3. `OnnxProvider::new()` — build the ONNX session (calls `ensure_model()` again, cache-hit no-op)
+    fn spawn_load_task(
+        self: &Arc<Self>,
+        config: EmbedConfig,
+        attempt: u32,
+        expected_sha256: Option<String>,
+    ) {
         let handle = Arc::clone(self);
 
         tokio::spawn(async move {
-            let result = tokio::task::spawn_blocking(move || OnnxProvider::new(config)).await;
+            let config_for_provider = config.clone();
+            let result = tokio::task::spawn_blocking(move || {
+                // Step 1: ensure model files are downloaded/cached.
+                let cache_dir = config.resolve_cache_dir();
+                let model_dir = ensure_model(config.model, &cache_dir)?;
+
+                // Step 2: verify hash BEFORE loading the ONNX session into memory.
+                if let Some(ref expected_hash) = expected_sha256 {
+                    verify_sha256(&model_dir, config.model.onnx_filename(), expected_hash)
+                        .map_err(|e| {
+                            // Log must contain "security" and "hash mismatch" (matching NLI pattern).
+                            tracing::error!(
+                                expected = %expected_hash,
+                                "embedding model security: hash mismatch — model file integrity check failed: {e}"
+                            );
+                            unimatrix_embed::EmbedError::InferenceFailed(format!(
+                                "security: hash mismatch for embedding model at {}: {e}",
+                                model_dir.display()
+                            ))
+                        })?;
+                } else {
+                    tracing::warn!(
+                        "embedding_model_sha256 not set; embedding model integrity verification is disabled"
+                    );
+                }
+
+                // Step 3: build ONNX session (ensure_model is called again inside, harmless cache-hit).
+                OnnxProvider::new(config_for_provider)
+            })
+            .await;
 
             let mut state = handle.state.write().await;
             match result {
@@ -175,6 +233,7 @@ impl EmbedServiceHandle {
                                 "retrying embedding model load"
                             );
                             let cfg_clone = cfg.clone();
+                            let sha_clone = handle.expected_sha256.read().await.clone();
                             *state = EmbedState::Retrying {
                                 attempt: next_attempt,
                             };
@@ -183,7 +242,7 @@ impl EmbedServiceHandle {
 
                             // Backoff before spawning retry.
                             tokio::time::sleep(delay).await;
-                            handle.spawn_load_task(cfg_clone, next_attempt);
+                            handle.spawn_load_task(cfg_clone, next_attempt, sha_clone);
                         } else {
                             // No config available, cannot retry.
                             return;

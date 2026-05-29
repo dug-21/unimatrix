@@ -39,6 +39,14 @@ pub fn reconstruct_embeddings(
     vector_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Initialize ONNX provider
+    // NOTE (bugfix-651): The import path does not have access to InferenceConfig,
+    // so embedding_model_sha256 hash verification is not available here. The import
+    // path operates on the CLI sync path (no server config loaded). Log a warning
+    // so operators know hash verification was skipped.
+    eprintln!(
+        "WARNING: embedding model hash verification is not available on the import path. \
+         Verify model integrity manually if importing into a production instance."
+    );
     eprintln!("Initializing embedding model...");
     let embed_config = EmbedConfig::default();
     let provider = OnnxProvider::new(embed_config).map_err(|e| {
