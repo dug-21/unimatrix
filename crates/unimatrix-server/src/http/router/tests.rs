@@ -951,3 +951,52 @@ async fn test_observe_malformed_body_no_internal_leak() {
         "error response must not leak Rust type paths: {body}"
     );
 }
+
+// ===========================================================================
+// vnc-023: allowed_origins wiring tests
+// ===========================================================================
+
+// T-RO-04: StreamableHttpServerConfig receives allowed_origins (R-04)
+#[test]
+fn test_streamable_config_allowed_origins_field_assignment() {
+    let origins = vec!["https://claude.ai".to_string()];
+    let mut config = StreamableHttpServerConfig::default();
+    config.allowed_origins = origins;
+    assert_eq!(config.allowed_origins, vec!["https://claude.ai"]);
+}
+
+// T-RO-05: allowed_hosts not overridden by default config (R-05, R-13, AC-05)
+#[test]
+fn test_streamable_config_default_allowed_hosts_non_empty() {
+    let config = StreamableHttpServerConfig::default();
+    assert!(
+        !config.allowed_hosts.is_empty(),
+        "default allowed_hosts must be non-empty (CVE-2026-42559 fix)"
+    );
+    assert!(
+        config.allowed_hosts.contains(&"localhost".to_string()),
+        "default allowed_hosts must contain localhost"
+    );
+}
+
+// T-RO-06: Setting allowed_origins does not clear allowed_hosts (R-05, R-13)
+#[test]
+fn test_setting_allowed_origins_preserves_allowed_hosts() {
+    let mut config = StreamableHttpServerConfig::default();
+    let hosts_before = config.allowed_hosts.clone();
+    config.allowed_origins = vec!["https://example.com".to_string()];
+    assert_eq!(
+        config.allowed_hosts, hosts_before,
+        "setting allowed_origins must not modify allowed_hosts"
+    );
+}
+
+// T-RO-07: Empty allowed_origins is the backward-compatible default
+#[test]
+fn test_streamable_config_default_allowed_origins_empty() {
+    let config = StreamableHttpServerConfig::default();
+    assert!(
+        config.allowed_origins.is_empty(),
+        "default allowed_origins must be empty (no restriction)"
+    );
+}

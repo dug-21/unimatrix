@@ -311,8 +311,12 @@ where
     ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     /// Create a new ProjectRouter in single-project default mode.
-    pub fn new(server: UnimatrixServer, max_body_bytes: usize) -> Self {
-        let mcp_adapter = McpAdapter::new(server, max_body_bytes);
+    pub fn new(
+        server: UnimatrixServer,
+        max_body_bytes: usize,
+        allowed_origins: Vec<String>,
+    ) -> Self {
+        let mcp_adapter = McpAdapter::new(server, max_body_bytes, allowed_origins);
         ProjectRouter {
             default_server: mcp_adapter,
             _phantom: std::marker::PhantomData,
@@ -383,9 +387,15 @@ impl std::fmt::Debug for McpAdapter {
 
 impl McpAdapter {
     /// Create a new McpAdapter wrapping a `StreamableHttpService`.
-    fn new(server: UnimatrixServer, max_body_bytes: usize) -> Self {
+    ///
+    /// `allowed_origins` configures Origin header validation (ADR-002).
+    /// Empty vec = no origin restriction (backward-compatible default).
+    /// `allowed_hosts` is NOT modified — rmcp defaults it to localhost,
+    /// which is the CVE-2026-42559 fix.
+    fn new(server: UnimatrixServer, max_body_bytes: usize, allowed_origins: Vec<String>) -> Self {
         let session_manager = Arc::new(LocalSessionManager::default());
-        let config = StreamableHttpServerConfig::default();
+        let mut config = StreamableHttpServerConfig::default();
+        config.allowed_origins = allowed_origins;
 
         let streamable =
             StreamableHttpService::new(move || Ok(server.clone()), session_manager, config);

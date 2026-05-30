@@ -1680,6 +1680,11 @@ pub struct HttpConfig {
     pub max_request_body_bytes: usize,
     /// Connection timeout in seconds. Default: `30`.
     pub connection_timeout_secs: u64,
+    /// Allowed Origin headers for CSRF defense-in-depth.
+    /// Empty vec = no origin restriction (backward-compatible default).
+    /// Independent of allowed_hosts (Host header / DNS rebinding defense).
+    /// Both checks apply independently when configured.
+    pub allowed_origins: Vec<String>,
 }
 
 impl Default for HttpConfig {
@@ -1691,6 +1696,7 @@ impl Default for HttpConfig {
             max_concurrent_sessions: 32,
             max_request_body_bytes: 1_048_576,
             connection_timeout_secs: 30,
+            allowed_origins: Vec::new(),
         }
     }
 }
@@ -9847,6 +9853,7 @@ nli_informs_ppr_weight = 0.4
         assert_eq!(config.http.max_concurrent_sessions, 32);
         assert_eq!(config.http.max_request_body_bytes, 1_048_576);
         assert_eq!(config.http.connection_timeout_secs, 30);
+        assert!(config.http.allowed_origins.is_empty());
     }
 
     // T-CE-02: test_empty_config_tls_defaults
@@ -10165,5 +10172,75 @@ foo = "bar"
             key_path: None,
         };
         assert!(!config.is_enabled());
+    }
+
+    // -----------------------------------------------------------------------
+    // vnc-023: allowed_origins config tests
+    // -----------------------------------------------------------------------
+
+    // T-AO-01: Default HttpConfig has empty allowed_origins (R-09, AC-09)
+    #[test]
+    fn test_http_config_default_has_empty_allowed_origins() {
+        let config = HttpConfig::default();
+        assert!(config.allowed_origins.is_empty());
+    }
+
+    // T-AO-02: TOML without allowed_origins deserializes successfully (R-09, AC-09)
+    #[test]
+    fn test_http_config_toml_without_allowed_origins_succeeds() {
+        let toml_str = r#"
+enabled = true
+content_port = 8443
+"#;
+        let config: HttpConfig = toml::from_str(toml_str).unwrap();
+        assert!(config.allowed_origins.is_empty());
+        assert!(config.enabled);
+        assert_eq!(config.content_port, 8443);
+    }
+
+    // T-AO-03: TOML with allowed_origins deserializes correctly (R-04, AC-09)
+    #[test]
+    fn test_http_config_toml_with_allowed_origins() {
+        let toml_str = r#"
+enabled = true
+allowed_origins = ["https://claude.ai", "vscode-webview://abc"]
+"#;
+        let config: HttpConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(
+            config.allowed_origins,
+            vec!["https://claude.ai", "vscode-webview://abc"]
+        );
+    }
+
+    // T-AO-04: TOML with empty allowed_origins array (edge case)
+    #[test]
+    fn test_http_config_toml_with_empty_allowed_origins() {
+        let toml_str = r#"
+enabled = true
+allowed_origins = []
+"#;
+        let config: HttpConfig = toml::from_str(toml_str).unwrap();
+        assert!(config.allowed_origins.is_empty());
+    }
+
+    // T-AO-05: Full config without allowed_origins (R-09 regression guard)
+    #[test]
+    fn test_http_config_full_toml_without_allowed_origins() {
+        let toml_str = r#"
+enabled = true
+content_port = 9443
+bind_address = "127.0.0.1"
+max_concurrent_sessions = 64
+max_request_body_bytes = 2097152
+connection_timeout_secs = 60
+"#;
+        let config: HttpConfig = toml::from_str(toml_str).unwrap();
+        assert!(config.allowed_origins.is_empty());
+        assert!(config.enabled);
+        assert_eq!(config.content_port, 9443);
+        assert_eq!(config.bind_address, "127.0.0.1");
+        assert_eq!(config.max_concurrent_sessions, 64);
+        assert_eq!(config.max_request_body_bytes, 2_097_152);
+        assert_eq!(config.connection_timeout_secs, 60);
     }
 }

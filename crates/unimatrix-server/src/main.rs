@@ -840,7 +840,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             services: services.clone(),
         };
 
-        let project_router = ProjectRouter::new(server.clone(), config.http.max_request_body_bytes);
+        let project_router = ProjectRouter::new(
+            server.clone(),
+            config.http.max_request_body_bytes,
+            config.http.allowed_origins.clone(),
+        );
         let path_router = PathRouter::new(project_router, observe_ctx);
         let auth_layer = StaticTokenAuthLayer::new(token_array);
         let service = tower::Layer::layer(&auth_layer, path_router);
