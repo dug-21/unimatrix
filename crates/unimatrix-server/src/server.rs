@@ -271,20 +271,16 @@ impl UnimatrixServer {
         adapt_service: Arc<AdaptationService>,
         instructions: Option<String>,
     ) -> Self {
-        let server_info = ServerInfo {
-            server_info: Implementation {
-                name: SERVER_NAME.to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-                ..Default::default()
-            },
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
+        let implementation = Implementation::new(SERVER_NAME, env!("CARGO_PKG_VERSION"))
+            .with_description("Self-learning knowledge engine for agentic workflows");
+
+        let server_info = ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(implementation)
             // Use config-supplied instructions when present; fall back to compiled default.
             // None means "not configured" — use the developer-authored default.
-            instructions: Some(
+            .with_instructions(
                 instructions.unwrap_or_else(|| SERVER_INSTRUCTIONS_DEFAULT.to_string()),
-            ),
-            ..Default::default()
-        };
+            );
 
         let usage_dedup = Arc::new(UsageDedup::new());
 
@@ -1034,7 +1030,7 @@ impl rmcp::ServerHandler for UnimatrixServer {
     /// Returns the same result as the default implementation — `Ok(self.get_info())`.
     ///
     /// The return type uses `std::future::ready(...)` rather than an `async fn`
-    /// body to match the rmcp 0.16.0 `ServerHandler` trait signature exactly (C-01).
+    /// body to match the rmcp `ServerHandler` trait signature (C-01).
     fn initialize(
         &self,
         request: rmcp::model::InitializeRequestParams,
@@ -1206,6 +1202,77 @@ mod tests {
         assert!(
             info.capabilities.tools.is_some(),
             "tools capability must be advertised"
+        );
+    }
+
+    /// T-02 (server-struct-migration): get_info returns exact CARGO_PKG_VERSION.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_info_version_matches_cargo_pkg() {
+        let server = make_server().await;
+        let info = rmcp::ServerHandler::get_info(&server);
+        assert_eq!(
+            info.server_info.version,
+            env!("CARGO_PKG_VERSION"),
+            "server_info.version must match CARGO_PKG_VERSION"
+        );
+    }
+
+    /// T-03 (server-struct-migration): get_info returns description (R-12, AC-08).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_info_returns_description() {
+        let server = make_server().await;
+        let info = rmcp::ServerHandler::get_info(&server);
+        assert_eq!(
+            info.server_info.description,
+            Some("Self-learning knowledge engine for agentic workflows".to_string()),
+            "Implementation.description must be set"
+        );
+    }
+
+    /// T-06 (server-struct-migration): custom instructions survive constructor.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_get_info_custom_instructions() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.db");
+        let store = Arc::new(
+            unimatrix_core::Store::open(&path, unimatrix_store::pool_config::PoolConfig::default())
+                .await
+                .expect("open store"),
+        );
+        std::mem::forget(dir);
+
+        let vector_config = unimatrix_core::VectorConfig::default();
+        let vector_index =
+            Arc::new(unimatrix_core::VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
+        let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
+        let vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
+        let embed_service = EmbedServiceHandle::new();
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
+        registry.bootstrap_defaults().unwrap();
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+        let categories = Arc::new(CategoryAllowlist::new());
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+
+        let server = UnimatrixServer::new(
+            Arc::clone(&store),
+            vector_store,
+            embed_service,
+            registry,
+            audit,
+            categories,
+            Arc::clone(&store),
+            vector_index,
+            adapt_service,
+            Some("custom instructions".to_string()),
+        );
+
+        let info = rmcp::ServerHandler::get_info(&server);
+        assert_eq!(
+            info.instructions.as_deref(),
+            Some("custom instructions"),
+            "custom instructions must be returned verbatim"
         );
     }
 
@@ -3254,16 +3321,11 @@ mod tests {
         let (server_transport, client_transport) = duplex(4096);
 
         // Build a ClientInfo (implements ClientHandler) with the given name.
-        let client_info = rmcp::model::ClientInfo {
-            meta: None,
-            protocol_version: ProtocolVersion::LATEST,
-            capabilities: ClientCapabilities::default(),
-            client_info: Implementation {
-                name: client_name.to_string(),
-                version: "0.0.1".to_string(),
-                ..Default::default()
-            },
-        };
+        let client_info = rmcp::model::ClientInfo::new(
+            ClientCapabilities::default(),
+            Implementation::new(client_name, "0.0.1"),
+        )
+        .with_protocol_version(ProtocolVersion::LATEST);
 
         // Run server and client concurrently; both resolve once initialize completes.
         let server_task = tokio::spawn(async move {

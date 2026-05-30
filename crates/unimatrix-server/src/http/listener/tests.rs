@@ -86,6 +86,7 @@ fn test_config(max_sessions: usize, timeout_secs: u64) -> HttpConfig {
         max_concurrent_sessions: max_sessions,
         max_request_body_bytes: 1_048_576,
         connection_timeout_secs: timeout_secs,
+        allowed_origins: Vec::new(),
     }
 }
 
@@ -383,6 +384,7 @@ async fn test_port_already_in_use_returns_error() {
         max_concurrent_sessions: 32,
         max_request_body_bytes: 1_048_576,
         connection_timeout_secs: 30,
+        allowed_origins: Vec::new(),
     };
 
     let token = CancellationToken::new();
