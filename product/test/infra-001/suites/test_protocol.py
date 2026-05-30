@@ -76,24 +76,17 @@ def test_unknown_tool_returns_error(server):
     assert_tool_error(resp)
 
 
-def test_malformed_json_handled(tmp_path):
-    """P-06: Invalid JSON on stdin triggers clean server exit.
+def test_malformed_json_handled(server):
+    """P-06: Invalid JSON on stdin is handled without crashing.
 
-    The rmcp library closes the connection on non-JSON input, causing
-    the server to shut down cleanly (exit code 0). This is the expected
-    behavior — malformed input doesn't cause a crash (non-zero exit).
+    rmcp >=1.7 replies with a JSON-RPC -32700 (Parse Error) instead of
+    closing the connection. The server stays alive and continues to
+    accept valid requests afterward.
     """
-    binary = get_binary_path()
-    client = UnimatrixClient(binary, project_dir=str(tmp_path))
-    client.initialize()
-    client.send_raw_bytes(b"this is not json\n")
-    # Wait for server to exit
-    import time
-    time.sleep(2)
-    # Server should have exited cleanly (code 0), not crashed
-    exit_code = client._process.poll()
-    assert exit_code is not None, "Server should have exited after malformed input"
-    assert exit_code == 0, f"Server should exit cleanly, got code {exit_code}"
+    server.send_raw_bytes(b"this is not json\n")
+    # Server should still be alive — send a valid request to confirm
+    resp = server.call_tool("context_status", {})
+    assert_tool_success(resp)
 
 
 def test_missing_required_params(server):
