@@ -3246,6 +3246,17 @@ mod tests {
     }
 
     // -- vnc-012 AC-10: schema snapshot — #[schemars(with = "T")] preserves type: integer --
+    //
+    // GH#684: rmcp >= 1.7 removed schemars' AddNullable transform (an OpenAPI 3.0
+    // extension, not JSON Schema 2020-12) from its schema generator. Option-backed
+    // fields now emit the spec-correct nullable union `"type": ["integer", "null"]`
+    // instead of bare `"integer"` + `nullable: true`. Required fields (with = "i64")
+    // still emit bare `"integer"`. The union is truthful — the server accepts JSON
+    // null for these params (serde_util.rs) — and is the contract going forward.
+    // Type-array unions are standard JSON Schema 2020-12 and verified compatible
+    // with Claude Code tool-schema parsing. AC-10's intent (guarding against the
+    // empty-schema `{}` fallback from an unpaired #[serde(deserialize_with)]) is
+    // preserved: a typo'd `with` attribute still emits `{}` and fails these asserts.
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_schema_integer_type_preserved_for_all_nine_fields() {
@@ -3263,12 +3274,17 @@ mod tests {
             })
             .collect();
 
-        // The 9 fields to verify as (tool_name, field_name) pairs
-        let checks: &[(&str, &str)] = &[
+        // 4 required fields (#[schemars(with = "i64")]) — bare "integer"
+        let required_checks: &[(&str, &str)] = &[
             ("context_get", "id"),
             ("context_deprecate", "id"),
             ("context_quarantine", "id"),
             ("context_correct", "original_id"),
+        ];
+
+        // 5 optional fields (#[schemars(with = "Option<...>")]) — rmcp >= 1.7 emits
+        // the JSON Schema 2020-12 nullable union ["integer", "null"]
+        let optional_checks: &[(&str, &str)] = &[
             ("context_lookup", "id"),
             ("context_lookup", "limit"),
             ("context_search", "k"),
@@ -3277,7 +3293,7 @@ mod tests {
             ("context_cycle_review", "evidence_limit"),
         ];
 
-        for (tool_name, field_name) in checks {
+        for (tool_name, field_name) in required_checks {
             let schema = schema_by_name
                 .get(*tool_name)
                 .unwrap_or_else(|| panic!("AC-10: tool {tool_name} not found in schema_by_name"));
@@ -3285,7 +3301,22 @@ mod tests {
             let field_type = &schema["properties"][field_name]["type"];
             assert_eq!(
                 field_type, "integer",
-                "AC-10: field {field_name} on {tool_name} must have type: integer in JSON schema; \
+                "AC-10: required field {field_name} on {tool_name} must have type: integer in \
+                 JSON schema; got: {field_type}. Check #[schemars(with = ...)] attribute."
+            );
+        }
+
+        for (tool_name, field_name) in optional_checks {
+            let schema = schema_by_name
+                .get(*tool_name)
+                .unwrap_or_else(|| panic!("AC-10: tool {tool_name} not found in schema_by_name"));
+
+            let field_type = &schema["properties"][field_name]["type"];
+            assert_eq!(
+                field_type,
+                &serde_json::json!(["integer", "null"]),
+                "AC-10: optional field {field_name} on {tool_name} must have type: \
+                 [integer, null] in JSON schema (rmcp >= 1.7 nullable union, GH#684); \
                  got: {field_type}. Check #[schemars(with = ...)] attribute."
             );
         }

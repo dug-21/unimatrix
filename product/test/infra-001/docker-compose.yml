@@ -11,7 +11,7 @@ services:
       - TEST_WORKERS=${TEST_WORKERS:-1}
       - PYTEST_ARGS=${PYTEST_ARGS:-}
       - RUST_LOG=${RUST_LOG:-info}
-      - UNIMATRIX_BINARY=/usr/local/bin/unimatrix-server
+      - UNIMATRIX_BINARY=/usr/local/bin/unimatrix
     volumes:
       - test-results:/results
     tmpfs:
