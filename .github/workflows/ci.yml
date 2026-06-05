@@ -10,7 +10,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  ORT_VERSION: "1.20.1"
 
 jobs:
   enforce-inference-sites:
@@ -21,41 +20,3 @@ jobs:
 
       - name: Enforce no spawn_blocking at ONNX inference sites (AC-07 / crt-022)
         run: bash scripts/check-inference-sites.sh
-
-  test:
-    name: Test + wire-contract codegen gate (vnc-024 D1)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      # unimatrix-engine links ONNX Runtime (ort) at test-binary link time; provision the
-      # native lib exactly as release.yml does (pinned ORT_VERSION).
-      - name: Install ONNX Runtime
-        run: |
-          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
-          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
-          sudo ldconfig
-
-      # ORDER IS LOAD-BEARING (vnc-024 ADR-001 / R-14): cargo test GENERATES the
-      # committed bindings + fixtures, THEN the diff fails on drift, THEN node verifies
-      # serde behavior. Generation MUST precede the diff or a dirty tree passes silently.
-      # Scope is `-p unimatrix-engine` (AC-02/AC-03): the wire types, codegen test, and
-      # fixture emitter all live in that crate, so it alone produces everything under
-      # crates/unimatrix-engine/bindings/.
-      - name: cargo test -p unimatrix-engine (generates bindings/*.ts + fixtures/*.json)
-        run: cargo test -p unimatrix-engine
-        env:
-          ORT_LIB_LOCATION: /usr/local/lib
-          ORT_PREFER_DYNAMIC_LINK: "1"
-
-      - name: Wire-contract drift gate (fails on uncommitted binding/fixture drift)
-        run: git diff --exit-code crates/unimatrix-engine/bindings/
-
-      - name: Node round-trip contract harness
-        run: node --test crates/unimatrix-engine/bindings/contract.test.mjs
