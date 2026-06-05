@@ -102,12 +102,12 @@ Each worktree contains a full `target/` build directory (~1-2GB). Failing to cle
 
 | Binary | Location | Used by |
 |--------|----------|---------|
-| Installed | `~/.local/bin/unimatrix-server` | Hooks, MCP server |
-| Build artifact | `target/release/unimatrix-server` | Integration tests |
+| Installed | `~/.local/bin/unimatrix` | Hooks, MCP server |
+| Build artifact | `target/release/unimatrix` | Integration tests |
 
 - `cargo build --release` in a worktree does NOT affect `~/.local/bin/` or other worktrees (each worktree has its own `target/`)
 - To update the installed binary: `cargo install --path crates/unimatrix-server`
-- Integration tests in worktrees: set `UNIMATRIX_BINARY` to the worktree's own `target/release/unimatrix-server`
+- Integration tests in worktrees: set `UNIMATRIX_BINARY` to the worktree's own `target/release/unimatrix`
 
 ## Rules
 

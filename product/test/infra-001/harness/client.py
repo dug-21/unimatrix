@@ -1,4 +1,4 @@
-"""MCP client library for unimatrix-server integration testing.
+"""MCP client library for unimatrix integration testing.
 
 Manages a server subprocess, handles MCP JSON-RPC protocol,
 and provides typed wrappers for all 10 context_* tools.
@@ -51,11 +51,18 @@ class ServerDied(ClientError):
     def __init__(self, returncode: int, stderr: str):
         self.returncode = returncode
         self.stderr_output = stderr
-        super().__init__(f"Server exited with code {returncode}")
+        # GH#685: include a bounded stderr tail so launch failures (e.g. clap
+        # rejecting a subcommand on a stale binary) are visible in the pytest
+        # error line instead of an opaque exit code.
+        tail = "\n".join(stderr.splitlines()[-3:]) if stderr else ""
+        message = f"Server exited with code {returncode}"
+        if tail:
+            message += f"; stderr tail:\n{tail}"
+        super().__init__(message)
 
 
 class UnimatrixClient:
-    """MCP client that manages a unimatrix-server subprocess.
+    """MCP client that manages a unimatrix server subprocess.
 
     Spawns the server binary, completes the MCP initialize handshake,
     provides typed methods for all 9 context_* tools, and handles

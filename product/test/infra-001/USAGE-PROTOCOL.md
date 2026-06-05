@@ -8,7 +8,7 @@ This document defines how the infra-001 integration test harness is used during 
 
 ## What the Harness Does
 
-The harness exercises the compiled `unimatrix-server` binary through the MCP JSON-RPC protocol over stdio — the exact interface agents use. It validates system-level behavior that unit tests cannot: protocol compliance, multi-step lifecycle flows, security defenses, confidence math, contradiction detection, scale behavior, and edge cases.
+The harness exercises the compiled `unimatrix` binary (built by the `unimatrix-server` package) through the MCP JSON-RPC protocol over stdio — the exact interface agents use. It validates system-level behavior that unit tests cannot: protocol compliance, multi-step lifecycle flows, security defenses, confidence math, contradiction detection, scale behavior, and edge cases.
 
 **205 tests across 9 suites:**
 
@@ -33,7 +33,7 @@ The harness exercises the compiled `unimatrix-server` binary through the MCP JSO
 **Local (no Docker):**
 - Python 3.12+
 - `pip install pytest pytest-timeout pytest-json-report`
-- Built binary at `target/release/unimatrix-server` (or set `UNIMATRIX_BINARY`)
+- Built binary at `target/release/unimatrix` (or set `UNIMATRIX_BINARY`)
 - ONNX Runtime shared library available (`ORT_DYLIB_PATH` or in `LD_LIBRARY_PATH`)
 
 **Docker:**
@@ -89,7 +89,7 @@ python -m pytest suites/test_tools.py::test_store_roundtrip -v
 | `TEST_SUITE` | `all` | Suite selection: `all`, `protocol`, `tools`, `lifecycle`, `volume`, `security`, `confidence`, `contradiction`, `edge_cases`, or comma-separated |
 | `TEST_WORKERS` | `1` | Parallel workers (use 1 — tests are not designed for parallel execution) |
 | `PYTEST_ARGS` | _(empty)_ | Extra pytest arguments (e.g., `-m smoke`, `-k test_store`, `--tb=short`) |
-| `UNIMATRIX_BINARY` | _(auto-detected)_ | Path to `unimatrix-server` binary |
+| `UNIMATRIX_BINARY` | _(auto-detected)_ | Path to `unimatrix` binary |
 | `RUST_LOG` | `info` | Server log level (visible in captured stderr) |
 | `RESULTS_DIR` | `/results` | Output directory for reports (Docker only) |
 

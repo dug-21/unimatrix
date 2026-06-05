@@ -2,11 +2,14 @@
 
 Provides function-scoped (fresh per test), module-scoped (shared),
 and populated server fixtures. Binary resolution from env var or
-workspace fallback.
+workspace fallback, plus a session-scoped binary version preflight.
 """
 
 import logging
 import os
+import re
+import subprocess
+import tomllib
 
 import pytest
 from pathlib import Path
@@ -18,6 +21,8 @@ logger = logging.getLogger("unimatrix.fixtures")
 
 BINARY_PATH: str | None = None
 
+_WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+
 
 def _resolve_binary() -> str:
     """Find the unimatrix binary."""
@@ -25,10 +30,9 @@ def _resolve_binary() -> str:
     if env_path and os.path.isfile(env_path):
         return env_path
 
-    workspace_root = Path(__file__).resolve().parent.parent.parent.parent.parent
     candidates = [
-        workspace_root / "target" / "release" / "unimatrix",
-        workspace_root / "target" / "debug" / "unimatrix",
+        _WORKSPACE_ROOT / "target" / "release" / "unimatrix",
+        _WORKSPACE_ROOT / "target" / "debug" / "unimatrix",
     ]
     for candidate in candidates:
         if candidate.is_file():
@@ -45,6 +49,81 @@ def get_binary_path() -> str:
     if BINARY_PATH is None:
         BINARY_PATH = _resolve_binary()
     return BINARY_PATH
+
+
+def _workspace_version() -> str | None:
+    """Read the workspace version from the root Cargo.toml.
+
+    Returns None when the workspace Cargo.toml is not available (e.g. inside
+    the Docker test-runtime image, which only ships the harness).
+    """
+    cargo_toml = _WORKSPACE_ROOT / "Cargo.toml"
+    if not cargo_toml.is_file():
+        return None
+    try:
+        with open(cargo_toml, "rb") as f:
+            data = tomllib.load(f)
+        return data["workspace"]["package"]["version"]
+    except (OSError, tomllib.TOMLDecodeError, KeyError):
+        return None
+
+
+@pytest.fixture(scope="session", autouse=True)
+def binary_version_preflight():
+    """GH#685 regression guard: fail fast on a stale or mismatched binary.
+
+    The nan-004 bin rename (unimatrix-server -> unimatrix) left a stale
+    artifact that, when picked up via UNIMATRIX_BINARY, made all 23 smoke
+    tests error with an opaque 'ServerDied code 2'. This preflight runs the
+    binary's `version` subcommand once per session and asserts the reported
+    version matches the workspace Cargo.toml version, converting that failure
+    mode into one self-explanatory session abort.
+    """
+    binary = get_binary_path()
+
+    try:
+        proc = subprocess.run(
+            [binary, "version"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        pytest.exit(
+            f"Binary preflight failed: could not run '{binary} version': {e}. "
+            "Check UNIMATRIX_BINARY points at a current unimatrix build.",
+            returncode=1,
+        )
+
+    if proc.returncode != 0:
+        stderr_tail = "\n".join(proc.stderr.splitlines()[-3:])
+        pytest.exit(
+            f"Binary preflight failed: '{binary} version' exited with code "
+            f"{proc.returncode} — the binary is likely a stale pre-rename "
+            f"artifact (GH#685). stderr tail:\n{stderr_tail}",
+            returncode=1,
+        )
+
+    match = re.search(r"unimatrix (\S+)", proc.stdout)
+    if not match:
+        pytest.exit(
+            f"Binary preflight failed: '{binary} version' printed unexpected "
+            f"output {proc.stdout.strip()!r} (expected 'unimatrix <version>').",
+            returncode=1,
+        )
+    binary_version = match.group(1)
+
+    expected = _workspace_version()
+    if expected is not None and binary_version != expected:
+        pytest.exit(
+            f"Binary preflight failed: binary at {binary} reports version "
+            f"{binary_version} but the workspace Cargo.toml version is "
+            f"{expected}. Rebuild with 'cargo build --release' or point "
+            "UNIMATRIX_BINARY at a current binary (GH#685).",
+            returncode=1,
+        )
+
+    logger.info("Binary preflight OK: %s (version %s)", binary, binary_version)
 
 
 @pytest.fixture(scope="function")

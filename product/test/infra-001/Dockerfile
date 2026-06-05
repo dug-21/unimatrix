@@ -33,12 +33,13 @@ RUN wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/o
     && ldconfig \
     && rm -rf onnxruntime-linux-x64-1.20.1*
 
-# Copy binary from builder
-COPY --from=builder /app/target/release/unimatrix-server /usr/local/bin/unimatrix-server
+# Copy binary from builder (bin target renamed unimatrix-server -> unimatrix in nan-004;
+# the cargo package above is still named unimatrix-server)
+COPY --from=builder /app/target/release/unimatrix /usr/local/bin/unimatrix
 
 # Environment for ONNX Runtime and binary location
 ENV LD_LIBRARY_PATH=/usr/local/lib
-ENV UNIMATRIX_BINARY=/usr/local/bin/unimatrix-server
+ENV UNIMATRIX_BINARY=/usr/local/bin/unimatrix
 ENV ORT_DYLIB_PATH=/usr/local/lib/libonnxruntime.so
 
 # Install Python test dependencies
