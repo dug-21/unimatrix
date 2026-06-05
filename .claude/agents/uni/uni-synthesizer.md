@@ -85,7 +85,19 @@ Every AC from SCOPE.md must appear. Verification types:
 
 ### 3. GitHub Issue
 
-Create the tracking issue:
+A feature issue usually already exists — uni-zero planning pre-creates them. Check first:
+
+```bash
+gh issue list --state open --search "{feature-id}" --json number,title
+```
+
+**If an issue exists** (or SCOPE.md's Tracking section names one): UPDATE it — never create a duplicate. Sync the body to the approved design (summary, scope, non-goals, dependencies, open questions with resolutions, links to SCOPE.md and IMPLEMENTATION-BRIEF.md). Preserve existing `goal:*` and type labels:
+
+```bash
+gh issue edit {number} --body "{synced body}"
+```
+
+**Only if no issue exists**, create one:
 
 ```bash
 gh issue create \
@@ -125,6 +137,6 @@ Exempt — no storage or query expected. This agent compiles existing artifacts 
 - [ ] IMPLEMENTATION-BRIEF.md contains Component Map and Cross-Cutting Artifacts section
 - [ ] ACCEPTANCE-MAP.md covers every AC from SCOPE.md (every AC-ID present)
 - [ ] Resolved Decisions table references ADR file paths (not pattern IDs)
-- [ ] GH Issue created and SCOPE.md updated with tracking link
+- [ ] GH Issue updated (or created only if none existed) and SCOPE.md updated with tracking link
 - [ ] No TODO or placeholder sections in deliverables
 - [ ] Alignment status section reflects vision guardian's findings

@@ -76,7 +76,7 @@ Post ONE comment on the GH issue:
 {concrete next steps for the human's decision}
 ```
 
-**Exception — `scope-review` gate**: no GH issue exists yet in design. Write the same content to `product/features/{feature-id}/reviews/uni-zero-scope-review.md` instead.
+**Exception — `scope-review` gate with no GH issue**: most features have a pre-created issue from uni-zero planning — your spawn prompt carries its number; comment there. Only when the spawn prompt states no issue exists, write the same content to `product/features/{feature-id}/reviews/uni-zero-scope-review.md` instead.
 
 ## Authority Boundaries
 
