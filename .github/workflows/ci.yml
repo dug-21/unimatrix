@@ -20,3 +20,27 @@ jobs:
 
       - name: Enforce no spawn_blocking at ONNX inference sites (AC-07 / crt-022)
         run: bash scripts/check-inference-sites.sh
+
+  test:
+    name: Test + wire-contract codegen gate (vnc-024 D1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # ORDER IS LOAD-BEARING (vnc-024 ADR-001 / R-14): cargo test GENERATES the
+      # committed bindings + fixtures, THEN the diff fails on drift, THEN node verifies
+      # serde behavior. Generation MUST precede the diff or a dirty tree passes silently.
+      - name: cargo test (generates bindings/*.ts + fixtures/*.json)
+        run: cargo test --workspace
+
+      - name: Wire-contract drift gate (fails on uncommitted binding/fixture drift)
+        run: git diff --exit-code crates/unimatrix-engine/bindings/
+
+      - name: Node round-trip contract harness
+        run: node --test crates/unimatrix-engine/bindings/contract.test.mjs

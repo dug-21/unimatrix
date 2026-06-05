@@ -35,6 +35,16 @@ pub const ERR_INVALID_PAYLOAD: i32 = -32004;
 /// Internal server error.
 pub const ERR_INTERNAL: i32 = -32005;
 
+// -- Event type values (free-form `ImplantEvent.event_type`) --
+
+/// `event_type` value carrying a client-streamed raw transcript span. Routed by the
+/// accept-and-drop guard (vnc-024 ADR-004). Carried in `ImplantEvent.payload` as
+/// [`TranscriptDeltaPayload`] `{ offset, bytes }` — NOT a new wire variant.
+///
+/// Mirrors the existing event-type-as-routing pattern (col-022 ADR-001) so the
+/// hook/listener coupling is not stringly-typed.
+pub const TRANSCRIPT_DELTA_EVENT: &str = "transcript_delta";
+
 // -- HookInput (Claude Code stdin JSON -- ADR-006) --
 
 /// Represents the JSON blob that Claude Code pipes to hook processes on stdin.
@@ -42,6 +52,8 @@ pub const ERR_INTERNAL: i32 = -32005;
 /// All fields use `#[serde(default)]` for maximum defensive parsing per ADR-006.
 /// Unknown fields are captured by the `extra` flatten field.
 #[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "../bindings/"))]
 pub struct HookInput {
     /// The hook event name (e.g., "PreToolUse", "PostToolUse", "Stop").
     #[serde(default)]
@@ -91,6 +103,8 @@ pub struct HookInput {
 ///
 /// Uses `#[serde(tag = "type")]` for JSON routing per ADR-005.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "../bindings/"))]
 #[serde(tag = "type")]
 pub enum HookRequest {
     /// Health check.
@@ -173,6 +187,8 @@ pub enum HookRequest {
 ///
 /// Uses `#[serde(tag = "type")]` for JSON routing per ADR-005.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "../bindings/"))]
 #[serde(tag = "type")]
 pub enum HookResponse {
     /// Health check response.
@@ -197,7 +213,15 @@ pub enum HookResponse {
 // -- ImplantEvent --
 
 /// A single event recorded by a hook process.
+///
+/// transcript_delta precedence (vnc-024 FR-15 / SR-06, documentary only): when both a
+/// streamed `transcript_delta` (`event_type == TRANSCRIPT_DELTA_EVENT`, `payload` =
+/// [`TranscriptDeltaPayload`]) and a legacy `CompactPayload.transcript_excerpt` are present,
+/// the streamed delta is the authoritative forward path and supersedes the excerpt (ass-069).
+/// F1 documents this precedence; the merge logic is #670. No merge code is added here.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "../bindings/"))]
 pub struct ImplantEvent {
     /// Type of event (e.g., "tool_use", "context_read").
     pub event_type: String,
@@ -230,6 +254,8 @@ pub struct ImplantEvent {
 
 /// A knowledge entry returned in search/briefing results.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "../bindings/"))]
 pub struct EntryPayload {
     pub id: u64,
     pub title: String,
@@ -237,6 +263,29 @@ pub struct EntryPayload {
     pub confidence: f64,
     pub similarity: f64,
     pub category: String,
+}
+
+// -- TranscriptDeltaPayload (vnc-024 ADR-001/ADR-004) --
+
+/// Typed payload for a `transcript_delta` event (`event_type == TRANSCRIPT_DELTA_EVENT`).
+///
+/// A client-streamed raw transcript span: `offset` is the byte offset of this span within
+/// the session transcript and `bytes` is the verbatim text. This is **not** a new wire
+/// carrier — the value still rides [`ImplantEvent::payload`] (`serde_json::Value`) unchanged.
+/// The struct exists to (a) give the one genuinely-new field a typed cross-language binding
+/// (`bindings/TranscriptDeltaPayload.ts`) so the TS client does not hand-mirror it, and
+/// (b) be the deserialization shape the accept-and-drop guard parses into (vnc-024 ADR-004).
+///
+/// Raw transcript bytes may contain secrets; they are accepted-and-dropped, never persisted
+/// (principle 8). The 6th ts-rs export. Verified dual-sided (Rust↔TS) by AC-11.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "../bindings/"))]
+pub struct TranscriptDeltaPayload {
+    /// Byte offset of this span within the session transcript.
+    pub offset: u64,
+    /// Verbatim transcript text for this span.
+    pub bytes: String,
 }
 
 // -- TransportError --
@@ -380,6 +429,45 @@ pub fn deserialize_response(data: &[u8]) -> Result<HookResponse, TransportError>
 mod tests {
     use super::*;
     use std::io::Cursor;
+    use ts_rs::TS;
+
+    // -- vnc-024 Component 1: ts-rs codegen sentinel (AC-02) --
+
+    /// Force-export all six `#[ts(export)]` wire types and assert each committed
+    /// `bindings/<Name>.ts` exists and is non-empty after `cargo test` (AC-02 / FR-02).
+    ///
+    /// `export_all()` writes the type plus its transitive dependencies to its `export_to`
+    /// path. Referencing all six explicitly guarantees a partial build cannot skip one so
+    /// the CI diff-gate (`git diff --exit-code bindings/`) compares against full output.
+    #[test]
+    fn test_export_bindings_all_six_written_and_nonempty() {
+        let cfg = ts_rs::Config::default();
+        HookInput::export_all(&cfg).expect("export HookInput bindings");
+        HookRequest::export_all(&cfg).expect("export HookRequest bindings");
+        HookResponse::export_all(&cfg).expect("export HookResponse bindings");
+        ImplantEvent::export_all(&cfg).expect("export ImplantEvent bindings");
+        EntryPayload::export_all(&cfg).expect("export EntryPayload bindings");
+        TranscriptDeltaPayload::export_all(&cfg).expect("export TranscriptDeltaPayload bindings");
+
+        let bindings_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/bindings");
+        for name in [
+            "HookInput",
+            "HookRequest",
+            "HookResponse",
+            "ImplantEvent",
+            "EntryPayload",
+            "TranscriptDeltaPayload",
+        ] {
+            let path = std::path::Path::new(bindings_dir).join(format!("{name}.ts"));
+            let meta = std::fs::metadata(&path)
+                .unwrap_or_else(|e| panic!("binding {} must exist: {e}", path.display()));
+            assert!(
+                meta.len() > 0,
+                "binding {} must be non-empty",
+                path.display()
+            );
+        }
+    }
 
     // -- Round-trip tests --
 
