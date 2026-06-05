@@ -587,7 +587,7 @@ fn test_internal_error_response_format() {
 
 #[tokio::test]
 async fn test_observe_response_ack_maps_to_204_no_content() {
-    let resp = observe_response_to_http(HookResponse::Ack);
+    let resp = observe_response_to_http(HookResponse::Ack, false);
     let status = resp.status();
     let content_type = resp.headers().get("content-type").cloned();
     let (_, body) = collect_body(resp).await;
@@ -610,10 +610,13 @@ async fn test_observe_response_entries_maps_to_200_json() {
         similarity: 0.85,
         category: "pattern".to_string(),
     };
-    let resp = observe_response_to_http(HookResponse::Entries {
-        items: vec![entry],
-        total_tokens: 150,
-    });
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![entry],
+            total_tokens: 150,
+        },
+        false,
+    );
     let (status, body) = collect_body(resp).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -625,10 +628,13 @@ async fn test_observe_response_entries_maps_to_200_json() {
 
 #[tokio::test]
 async fn test_observe_response_briefing_content_maps_to_200_json() {
-    let resp = observe_response_to_http(HookResponse::BriefingContent {
-        content: "briefing text".to_string(),
-        token_count: 50,
-    });
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "briefing text".to_string(),
+            token_count: 50,
+        },
+        false,
+    );
     let status = resp.status();
     let ct = resp.headers().get("content-type").unwrap().clone();
     let (_, body) = collect_body(resp).await;
@@ -643,9 +649,12 @@ async fn test_observe_response_briefing_content_maps_to_200_json() {
 
 #[tokio::test]
 async fn test_observe_response_pong_maps_to_200_json() {
-    let resp = observe_response_to_http(HookResponse::Pong {
-        server_version: "0.1.0".to_string(),
-    });
+    let resp = observe_response_to_http(
+        HookResponse::Pong {
+            server_version: "0.1.0".to_string(),
+        },
+        false,
+    );
     let status = resp.status();
     let ct = resp.headers().get("content-type").unwrap().clone();
     let (_, body) = collect_body(resp).await;
@@ -659,10 +668,13 @@ async fn test_observe_response_pong_maps_to_200_json() {
 
 #[tokio::test]
 async fn test_observe_response_error_maps_to_400_json() {
-    let resp = observe_response_to_http(HookResponse::Error {
-        code: -32004,
-        message: "bad input".to_string(),
-    });
+    let resp = observe_response_to_http(
+        HookResponse::Error {
+            code: -32004,
+            message: "bad input".to_string(),
+        },
+        false,
+    );
     let status = resp.status();
     let ct = resp.headers().get("content-type").unwrap().clone();
     let (_, body) = collect_body(resp).await;
@@ -677,10 +689,13 @@ async fn test_observe_response_error_maps_to_400_json() {
 
 #[tokio::test]
 async fn test_observe_response_entries_empty_items() {
-    let resp = observe_response_to_http(HookResponse::Entries {
-        items: vec![],
-        total_tokens: 0,
-    });
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![],
+            total_tokens: 0,
+        },
+        false,
+    );
     let (status, body) = collect_body(resp).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -690,10 +705,13 @@ async fn test_observe_response_entries_empty_items() {
 
 #[tokio::test]
 async fn test_observe_response_briefing_content_empty_string() {
-    let resp = observe_response_to_http(HookResponse::BriefingContent {
-        content: "".to_string(),
-        token_count: 0,
-    });
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "".to_string(),
+            token_count: 0,
+        },
+        false,
+    );
     let (status, body) = collect_body(resp).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -998,5 +1016,282 @@ fn test_streamable_config_default_allowed_origins_empty() {
     assert!(
         config.allowed_origins.is_empty(),
         "default allowed_origins must be empty (no restriction)"
+    );
+}
+
+// ===========================================================================
+// vnc-024: /observe content negotiation (AC-07 / AC-08 / AC-09)
+//
+// Unit-level mapper tests. `observe_response_to_http(resp, wants_text)` must
+// emit text/plain (via the single formatting truth `format_injection`) only for
+// the allowlist {Entries, BriefingContent}; everything else stays JSON. These
+// assert at the mapper boundary; integration /observe HTTP tests are Stage 3c.
+// ===========================================================================
+
+use crate::uds::hook::{MAX_INJECTION_BYTES, format_injection};
+
+/// One synthetic entry with a controllable content size, used to build entry
+/// sets that cross the `MAX_INJECTION_BYTES` truncation boundary (AC-07).
+fn make_entry(id: u64, content_len: usize) -> EntryPayload {
+    EntryPayload {
+        id,
+        title: format!("entry-{id}"),
+        content: "x".repeat(content_len),
+        confidence: 0.9,
+        similarity: 0.85,
+        category: "pattern".to_string(),
+    }
+}
+
+// ---- AC-07: Entries + wants_text=true → text/plain, byte-identical to
+//             format_injection(&items, MAX_INJECTION_BYTES) ----
+
+#[tokio::test]
+async fn test_observe_text_entries_byte_identical() {
+    // Small happy-path set that fits comfortably under budget.
+    let items = vec![make_entry(1, 40), make_entry(2, 40)];
+    let expected =
+        format_injection(&items, MAX_INJECTION_BYTES).expect("non-empty entries format to Some");
+
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: items.clone(),
+            total_tokens: 100,
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        ct.expect("content-type present"),
+        "text/plain",
+        "Entries + wants_text must be text/plain"
+    );
+    assert_eq!(
+        body, expected,
+        "text body must be byte-identical to format_injection"
+    );
+}
+
+#[tokio::test]
+async fn test_observe_text_entries_over_budget_matches_truncation() {
+    // Entry set large enough to cross the truncation boundary: a wrong budget
+    // (or a server-side re-truncation) would produce a detectable length diff.
+    let items = vec![
+        make_entry(1, 600),
+        make_entry(2, 600),
+        make_entry(3, 600),
+        make_entry(4, 600),
+    ];
+    let expected = format_injection(&items, MAX_INJECTION_BYTES)
+        .expect("over-budget set still yields a truncated Some");
+    // Sanity: this set actually exercises truncation at the production budget.
+    assert!(
+        expected.len() <= MAX_INJECTION_BYTES,
+        "expected output must be within budget (proves truncation engaged)"
+    );
+
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: items.clone(),
+            total_tokens: 9999,
+        },
+        true,
+    );
+    let (status, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body, expected,
+        "over-budget text body must match format_injection's truncated output exactly"
+    );
+}
+
+#[tokio::test]
+async fn test_observe_text_entries_empty_returns_204() {
+    // format_injection(&[], _) → None → 204 no-content (ADR-003), not 200/500.
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![],
+            total_tokens: 0,
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert!(body.is_empty(), "204 body must be empty, got: {body}");
+    assert!(ct.is_none(), "204 must have no Content-Type header");
+}
+
+// ---- AC-09: BriefingContent + wants_text=true → text body (positive control
+//             that the allowlist includes BriefingContent) ----
+
+#[tokio::test]
+async fn test_observe_text_briefingcontent_returns_text() {
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "briefing body text".to_string(),
+            token_count: 42,
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        ct.expect("content-type present"),
+        "text/plain",
+        "BriefingContent + wants_text must be text/plain"
+    );
+    assert_eq!(body, "briefing body text", "text body is the raw content");
+}
+
+// ---- AC-09: Pong / Ack / Error + wants_text=true → STILL JSON (allowlist is
+//             exactly {Entries, BriefingContent}, R-06) ----
+
+#[tokio::test]
+async fn test_observe_text_pong_stays_json() {
+    let resp = observe_response_to_http(
+        HookResponse::Pong {
+            server_version: "0.1.0".to_string(),
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        ct.expect("content-type present"),
+        "application/json",
+        "Pong must stay JSON even under wants_text (F2 handshake)"
+    );
+    let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    assert_eq!(json["type"], "Pong");
+    assert_eq!(
+        json["server_version"], "0.1.0",
+        "server_version must remain parseable"
+    );
+}
+
+#[tokio::test]
+async fn test_observe_text_ack_stays_204_json_path() {
+    let resp = observe_response_to_http(HookResponse::Ack, true);
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(
+        status,
+        StatusCode::NO_CONTENT,
+        "Ack stays 204 under wants_text"
+    );
+    assert!(body.is_empty(), "Ack body must be empty, got: {body}");
+    assert!(ct.is_none(), "Ack must have no Content-Type header");
+}
+
+#[tokio::test]
+async fn test_observe_text_error_stays_json() {
+    let resp = observe_response_to_http(
+        HookResponse::Error {
+            code: -32004,
+            message: "bad input".to_string(),
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "Error stays 400 under wants_text"
+    );
+    assert_eq!(
+        ct.expect("content-type present"),
+        "application/json",
+        "Error must stay JSON even under wants_text"
+    );
+    let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    assert_eq!(json["type"], "Error");
+    assert_eq!(json["code"], -32004);
+    assert_eq!(json["message"], "bad input");
+}
+
+// ---- AC-08: each response type with wants_text=false → unchanged JSON envelope.
+//             Ack→204; Entries/BriefingContent/Pong→200 JSON; Error→400 JSON.
+//             (The vnc-022 tests above already assert the bodies; this is the
+//             single consolidated AC-08 control over all variants.) ----
+
+#[tokio::test]
+async fn test_observe_json_envelope_unchanged_all_variants() {
+    // Ack → 204, empty, no content-type.
+    let resp = observe_response_to_http(HookResponse::Ack, false);
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    assert!(resp.headers().get("content-type").is_none());
+
+    // Entries → 200 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![make_entry(1, 10)],
+            total_tokens: 5,
+        },
+        false,
+    );
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/json"
+    );
+
+    // BriefingContent → 200 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "b".to_string(),
+            token_count: 1,
+        },
+        false,
+    );
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/json"
+    );
+
+    // Pong → 200 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::Pong {
+            server_version: "0.1.0".to_string(),
+        },
+        false,
+    );
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/json"
+    );
+
+    // Error → 400 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::Error {
+            code: -1,
+            message: "e".to_string(),
+        },
+        false,
+    );
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/json"
     );
 }
