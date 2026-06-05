@@ -16,6 +16,8 @@ Design Leader (you)                                  Design Agents
 read protocol + SCOPE.md (or initiate)
 spawn researcher (Phase 1) ─────────────────────────► SCOPE.md written
 ◄────────────────────────────────────────────────────
+spawn uni-zero-reviewer (scope-review) ─────────────► advisory product review
+◄────────────────────────────────────────────────────
 human approves SCOPE.md
 spawn risk strategist (Phase 1b) ───────────────────► scope risk assessment
 ◄────────────────────────────────────────────────────
@@ -25,6 +27,7 @@ spawn risk strategist (Phase 2a+) ───────────────�
 ◄────────────────────────────────────────────────────
 spawn vision guardian (Phase 2b)
 spawn synthesizer (Phase 2c)
+spawn uni-zero-reviewer (Phase 2c+) ────────────────► advisory comment on GH Issue
 return all artifacts to human
 human reviews and approves
 ```
@@ -93,7 +96,26 @@ Task(
 )
 ```
 
-After the researcher returns, the Design Leader presents SCOPE.md to the human for review and approval. **Do not proceed to Phase 1b until the human approves SCOPE.md.**
+After the researcher returns, the Design Leader spawns `uni-zero-reviewer` for an independent product-lens review:
+
+```
+Task(
+  subagent_type: "uni-zero-reviewer",
+  prompt: "Your agent ID: {feature-id}-zero-scope
+
+    GATE: scope-review
+    Feature: {feature-id}
+    Artifacts: product/features/{id}/SCOPE.md
+    GH Issue: none yet — write review to
+    product/features/{id}/reviews/uni-zero-scope-review.md"
+)
+```
+
+Then the Design Leader presents SCOPE.md to the human together with the product review's stance and file path. **Do not proceed to Phase 1b until the human approves SCOPE.md.**
+
+**Product Review Rules** (apply at every `uni-zero-reviewer` spawn):
+- The spawn prompt carries ONLY agent ID, gate, feature/issue IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
+- The review is advisory input to the human gate. The Design Leader relays the stance and location verbatim and NEVER parses, acts on, or gates on it.
 
 ### Phase 1b: Scope Risk Assessment
 
@@ -286,6 +308,32 @@ Task(
 
 The synthesizer gets a fresh context window — it reads artifacts directly for higher quality synthesis.
 
+#### Phase 2c+: Product Review (Fresh Context)
+
+After the synthesizer returns (the GH Issue now exists), spawn `uni-zero-reviewer`:
+
+```
+Task(
+  subagent_type: "uni-zero-reviewer",
+  prompt: "Your agent ID: {feature-id}-zero-design
+
+    GATE: design-review
+    Feature: {feature-id}
+    GH Issue: #{issue number from synthesizer}
+    Artifacts:
+    - product/features/{id}/SCOPE.md
+    - product/features/{id}/SCOPE-RISK-ASSESSMENT.md
+    - product/features/{id}/architecture/ARCHITECTURE.md
+    - product/features/{id}/architecture/ADR-*.md
+    - product/features/{id}/specification/SPECIFICATION.md
+    - product/features/{id}/RISK-TEST-STRATEGY.md
+    - product/features/{id}/ALIGNMENT-REPORT.md
+    - product/features/{id}/IMPLEMENTATION-BRIEF.md"
+)
+```
+
+The reviewer posts an advisory comment on the GH Issue. Product Review Rules apply (see Phase 1).
+
 #### Phase 2d: Return to Human
 
 ```
@@ -317,6 +365,7 @@ Artifacts (untracked — git begins in Session 2):
 - product/features/{feature-id}/ACCEPTANCE-MAP.md
 
 Vision Alignment: {summary}
+Product Review (advisory): {stance} — {comment URL}
 Variances requiring approval: {list or "none"}
 Open questions: {list or "none"}
 
@@ -349,6 +398,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 DESIGN LEADER (you):
   Init:       context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "{feature-id}-design-leader")
   Phase 1:    Task(uni-researcher) — scope exploration with human
+              Task(uni-zero-reviewer, GATE: scope-review) — advisory product review (file)
               ...human approves SCOPE.md...
   Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
               ...wait...
@@ -360,6 +410,7 @@ DESIGN LEADER (you):
               context_cycle(type: "phase-end", phase: "design", outcome: "...", next_phase: "design-review", ...)
   Phase 2b:   Task(uni-vision-guardian) — alignment check
   Phase 2c:   Task(uni-synthesizer) — brief + maps + GH Issue (fresh context)
+  Phase 2c+:  Task(uni-zero-reviewer, GATE: design-review) — advisory comment on GH Issue
   Phase 2d:   context_cycle(type: "phase-end", phase: "design-review", outcome: "...", next_phase: "spec", ...) — SESSION 1 ENDS
               return artifacts to human (no git ops — artifacts are untracked)
 ```
