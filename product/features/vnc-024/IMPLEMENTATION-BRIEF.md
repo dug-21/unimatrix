@@ -44,12 +44,18 @@ Land four additive Rust-workspace foundations that freeze the downstream wire/se
 | transcript_delta accept-and-drop guard (Deliverable 3) | pseudocode/transcript-delta-guard.md | test-plan/transcript-delta-guard.md |
 | transcript_retention enum (Deliverable 4) | pseudocode/transcript-retention.md | test-plan/transcript-retention.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (populated Stage 3a — 2026-06-05)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
+> Stage 3a delivered all 6 pseudocode + 6 test-plan files at the Component Map paths above.
+> Resolved during 3a: production injection budget is `MAX_INJECTION_BYTES = 1400` (`hook.rs:29`),
+> reused by the `/observe` text path for AC-07 byte-identity. Integration ACs (AC-07/08/09/10/12)
+> are covered by **server-crate Rust integration tests** — infra-001 stdio harness does not reach
+> the HTTP `/observe` tower handler or UDS dispatch; infra-001 suites run in 3c as regression baseline.
 
 > Pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists the
 > expected components from the architecture's four deliverables; actual file paths are filled during
