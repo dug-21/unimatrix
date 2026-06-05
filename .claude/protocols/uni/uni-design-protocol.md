@@ -96,7 +96,13 @@ Task(
 )
 ```
 
-After the researcher returns, the Design Leader spawns `uni-zero-reviewer` for an independent product-lens review:
+After the researcher returns, the Design Leader checks for an existing feature issue — uni-zero planning pre-creates issues for most features:
+
+```bash
+gh issue list --state open --search "{feature-id}" --json number,title
+```
+
+Then spawns `uni-zero-reviewer` for an independent product-lens review:
 
 ```
 Task(
@@ -106,12 +112,16 @@ Task(
     GATE: scope-review
     Feature: {feature-id}
     Artifacts: product/features/{id}/SCOPE.md
-    GH Issue: none yet — write review to
+    GH Issue: #{issue-number} — post your review as a comment
+    {OR, only if no issue exists:}
+    GH Issue: none — write review to
     product/features/{id}/reviews/uni-zero-scope-review.md"
 )
 ```
 
-Then the Design Leader presents SCOPE.md to the human together with the product review's stance and file path. **Do not proceed to Phase 1b until the human approves SCOPE.md.**
+Then the Design Leader presents SCOPE.md to the human together with the product review's stance and location. **Do not proceed to Phase 1b until the human approves SCOPE.md.**
+
+**On approval — issue body sync**: if a feature issue exists, the Design Leader updates its body to mirror the approved SCOPE.md (summary, scope/goals, non-goals, dependencies, open questions, scope doc link) via `gh issue edit {n} --body`. The issue body is the single current picture; planning-era content is superseded.
 
 **Product Review Rules** (apply at every `uni-zero-reviewer` spawn):
 - The spawn prompt carries ONLY agent ID, gate, feature/issue IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
@@ -302,6 +312,8 @@ Task(
     Vision variances: {from vision guardian's return}
 
     Produce: IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md, GH Issue.
+    A feature issue may already exist (uni-zero planning pre-creates them) —
+    check first and UPDATE it; never create a duplicate.
     Return: file paths + GH Issue URL."
 )
 ```
@@ -398,7 +410,8 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 DESIGN LEADER (you):
   Init:       context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "{feature-id}-design-leader")
   Phase 1:    Task(uni-researcher) — scope exploration with human
-              Task(uni-zero-reviewer, GATE: scope-review) — advisory product review (file)
+              Task(uni-zero-reviewer, GATE: scope-review) — advisory review (comment on existing issue; file if none)
+              ...on approval: sync existing issue body to approved SCOPE.md...
               ...human approves SCOPE.md...
   Phase 1b:   Task(uni-risk-strategist, MODE: scope-risk) — scope risk assessment
               ...wait...
