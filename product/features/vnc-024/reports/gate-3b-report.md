@@ -1,9 +1,9 @@
 # Gate 3b Report: vnc-024
 
 > Gate: 3b (Code Review)
-> Date: 2026-06-05
-> Result: REWORKABLE FAIL
-> Branch/HEAD: feature/vnc-024 @ a7b1772a
+> Date: 2026-06-05 (rev2 — Check 7 re-verified after rework)
+> Result: PASS
+> Branch/HEAD: feature/vnc-024 @ 95d6c389
 
 ## Summary
 
@@ -15,7 +15,7 @@
 | 4. Test case alignment | PASS | Every component test-plan scenario has a corresponding test; gate-critical scenarios all green. |
 | 5. Code quality | PASS (1 WARN) | Builds clean; no stubs/TODO/unimplemented; no non-test .unwrap(); no NEW file >500 lines (only pre-existing large files received additive inserts, per Constraint 8). |
 | 6. Security | PASS (2 pre-existing WARNs) | No secrets, input validated at boundaries (sanitize_session_id, body limit, Accept), no path traversal, serde-malformed-safe. cargo audit: 1 pre-existing transitive advisory (not vnc-024). |
-| 7. Knowledge stewardship | **REWORKABLE FAIL** | No implementation-phase (rust-dev) agent reports exist; no `## Knowledge Stewardship` block in any impl artifact or commit body. |
+| 7. Knowledge stewardship | **PASS** | All 5 implementation-component reports now recorded under `agents/`; each carries a `## Knowledge Stewardship` block with `Queried:` + `Stored:` (patterns #4723, #4724 stored; 3 explicit "nothing novel -- {reason}"). |
 | GATE-CRITICAL: transcript-delta guard | PASS | Early Ack after SessionWrite+sanitize, before :793/:849; typed parse; batch filter; no #1266 fall-through; no in-memory accumulation. 5/5 tests green. |
 | GATE-CRITICAL: ts-rs dev-only | PASS | [dev-dependencies] only; absent from `cargo tree --edges normal` (0); cfg(test)-gated derive. |
 | GATE-CRITICAL: contract fixtures | PASS | AC-11 dual-sided (Rust parse + node {offset,bytes} shape); AC-06 dual-direction all 4 skip_serializing_if fields, both runtimes. Node 4/4. |
@@ -85,12 +85,15 @@ Full server lib: **3492 pass, 1 fail** — the single failure (`server::tests::t
 - **WARN (pre-existing) — `cargo clippy --workspace -- -D warnings`**: fails, but EVERY error is in files untouched by vnc-024 (`unimatrix-observe/*`, engine `auth.rs:113`, `event_queue.rs:164`, `patches/anndists`) — `collapsible_if` / `manual_pattern_char_comparison` lints newly promoted by the rust-1.95.0 toolchain. vnc-024's own touched files (wire.rs, config.rs, listener.rs, router.rs, observe.rs, hook.rs) produce **zero** clippy hits. Out of vnc-024 scope.
 
 ### Check 7 — Knowledge stewardship compliance
-**Status**: REWORKABLE FAIL
-**Evidence**: The check requires each **implementation-phase (rust-dev)** agent report to contain a `## Knowledge Stewardship` section with `Queried:` (evidence of /uni-query-patterns before implementing) and `Stored:` / "nothing novel to store -- {reason}" entries.
-- `product/features/vnc-024/agents/` contains ONLY the six **design-phase** (Stage 3a) reports (scope-risk, architect, pseudocode, spec, testplan, risk) — all dated 2026-06-05 03:19–04:45, before implementation. These were already validated at Gate 3a.
-- **No rust-dev / implementation agent report exists** anywhere under `product/features/vnc-024/`.
-- The five implementation commit bodies (63a4455f, 8aa2d5ce, 0096c58e, 514f2acf, a7b1772a) are detailed but contain **no `## Knowledge Stewardship` block** and no `Queried:`/`Stored:` entries.
-**Issue**: Per the Gate 3b rule, a missing stewardship block = REWORKABLE FAIL. The implementation agents did not produce the required stewardship artifact (or it was not written to the agents directory / captured in the delivery record). This is a process/documentation gap, NOT a code defect — every technical and gate-critical check passes.
+**Status**: PASS (rev2)
+**Evidence**: All five implementation-component reports are now recorded under `product/features/vnc-024/agents/`, each with a `## Knowledge Stewardship` block carrying both a `Queried:` line and a `Stored:` line:
+- **Component 1** (`vnc-024-agent-3-ts-rs-codegen-report.md`): Queried `context_search` (ts-rs/serde codegen + ADR-001); Stored: nothing novel — defers to #4722 (captured by Component 2). Explicit reason given.
+- **Component 2** (`vnc-024-agent-4-contract-fixtures-report.md`): Queried `context_search` (surfaced #4722, #4719-4721); **Stored: entry #4724** (atomic fixture-write race + bigint offset trap).
+- **Component 3** (`vnc-024-agent-5-observe-content-negotiation-report.md`): Queried `context_search` (Accept-header/tower + ADR-003); Stored: nothing novel — additive mapper branch reusing existing formatter; trap already in ADR-003. Explicit reason given.
+- **Component 4** (`vnc-024-agent-6-transcript-delta-guard-report.md`): Queried `context_briefing` + 3 `context_search` (#1266, #4711, #4720, #763); **Stored: entry #4723** (two-arm accept-and-drop guard asymmetry).
+- **Component 5** (`vnc-024-agent-7-transcript-retention-report.md`): Queried `context_search` (RetentionConfig validate/merge + ADR-005); Stored: nothing novel — enum-as-enterprise-seam already ADR-005; merge pattern is crt-036/#3905. Explicit reason given.
+
+Both stored pattern IDs (**#4723**, **#4724**) are referenced. The three "nothing novel" entries each provide an explicit reason (no bare assertion → no WARN). The reports note the primary agents for Components 1/3/5 lost their API connection (temp-filesystem exhaustion) before self-reporting; their work had already landed and was independently verified at HEAD, and the reports were reconstructed by the Delivery Leader. The stewardship-artifact gap from rev1 is closed.
 
 ## GATE-CRITICAL — detailed verification
 
@@ -104,11 +107,9 @@ Full server lib: **3492 pass, 1 fail** — the single failure (`server::tests::t
 
 **content negotiation** (PASS): Accept read at router.rs:206 BEFORE `request.into_parts()` at :213; `format_injection` reused (not re-implemented) with production `MAX_INJECTION_BYTES = 1400` (observe.rs:12,35); text path for `Entries`/`BriefingContent` ONLY (Pong/Ack/Error fall through to JSON); UDS path untouched (hook.rs diff is visibility-bump only); no new wire variant.
 
-## Rework Required (REWORKABLE FAIL)
+## Rework Resolution (rev2)
 
-| Issue | Which Agent | What to Fix |
-|-------|-------------|-------------|
-| No implementation-phase stewardship artifact: no rust-dev agent report with a `## Knowledge Stewardship` block (`Queried:` + `Stored:`/"nothing novel -- reason") exists for any of the 5 implementation components. | uni-rust-dev (each implementation agent), captured by Delivery Leader | Produce the rust-dev agent report(s) under `product/features/vnc-024/agents/` with a `## Knowledge Stewardship` section evidencing pattern queries before implementing (the components reuse #1266 guard, #3557 dual-direction serde, #4070/#2730/#3905 config patterns, ADR-001..005) and a Stored/"nothing novel -- {reason}" line. Code requires NO change — all technical checks pass. Re-spawn Gate 3b to verify only Check 7. |
+The rev1 REWORKABLE FAIL on Check 7 is resolved. The five implementation-component reports were recorded under `product/features/vnc-024/agents/`, each with a compliant `## Knowledge Stewardship` block (`Queried:` + `Stored:`). Patterns #4723 and #4724 are stored and referenced; the three "nothing novel" entries carry explicit reasons. No code change was required — all 11 other technical and gate-critical checks remained PASS. **Overall gate result: PASS.**
 
 ## Scope Concerns
 
