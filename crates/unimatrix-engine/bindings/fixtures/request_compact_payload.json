@@ -1,0 +1,13 @@
+{
+  "type": "CompactPayload",
+  "session_id": "sess-fixture",
+  "injected_entry_ids": [
+    1,
+    2,
+    3
+  ],
+  "role": "developer",
+  "feature": "vnc-024",
+  "token_limit": 1000,
+  "transcript_excerpt": "prior excerpt text"
+}

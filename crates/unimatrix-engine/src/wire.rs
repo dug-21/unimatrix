@@ -1666,6 +1666,469 @@ mod tests {
         assert_eq!(input.provider, None);
     }
 
+    // -- vnc-024 Component 2: round-trip fixtures + node-harness contract (ADR-002) --
+    //
+    // The fixture (committed JSON under bindings/fixtures/) — not the generated `.ts` — is the
+    // contract authority. The Rust half here EMITS the fixtures from typed values and asserts
+    // serde BEHAVIOR (tagged discriminant, None-vs-omission dual-direction, flatten, dual-sided
+    // delta). The node harness (bindings/contract.test.mjs) consumes the SAME committed fixtures
+    // and asserts the consuming-language side. A fixture is the contract only if both runtimes agree.
+
+    /// Absolute path to the committed fixtures directory (sibling of the generated `.ts`).
+    fn fixtures_dir() -> std::path::PathBuf {
+        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/bindings/fixtures"))
+            .to_path_buf()
+    }
+
+    /// Read a committed fixture by file name (e.g. `"request_ping.json"`).
+    fn read_fixture(name: &str) -> String {
+        let path = fixtures_dir().join(name);
+        std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("fixture {} must exist: {e}", path.display()))
+    }
+
+    /// Write a fixture atomically (temp file + rename). The reader tests and the emitter run in the
+    /// same lib test binary concurrently; a non-atomic write would let a reader observe a truncated
+    /// file. `rename` within the same dir is atomic on the platforms we target, so a concurrent
+    /// reader always sees either the prior committed bytes or the full new bytes — never a partial.
+    fn write_fixture_atomic(dir: &std::path::Path, name: &str, contents: &str) {
+        let final_path = dir.join(name);
+        let tmp_path = dir.join(format!(".{name}.{}.tmp", std::process::id()));
+        std::fs::write(&tmp_path, contents).expect("write temp fixture");
+        std::fs::rename(&tmp_path, &final_path).expect("atomic rename fixture");
+    }
+
+    /// Offset value used by the delta fixture. Kept well within 2^53 so the JSON number
+    /// round-trips losslessly through Node's `number` (the ts-rs `bigint` annotation is a
+    /// compile-time type only; the wire form is a plain JSON integer). Non-trivial, non-zero.
+    const DELTA_OFFSET: u64 = 4_294_967_296; // 2^32 — > u32 range, << 2^53
+    const DELTA_BYTES: &str = "user: explain the auth flow\nassistant: tok sk-NOTAKEY example span";
+
+    /// Build one named value per `HookRequest`/`HookResponse` variant plus the serde edge cases.
+    /// Field values are NON-TRIVIAL (not all-None) so a partial wiring cannot pass on an empty path.
+    fn request_fixtures() -> Vec<(&'static str, HookRequest)> {
+        vec![
+            ("request_ping", HookRequest::Ping),
+            (
+                "request_session_register",
+                HookRequest::SessionRegister {
+                    session_id: "sess-fixture".to_string(),
+                    cwd: "/workspace/unimatrix".to_string(),
+                    agent_role: Some("developer".to_string()),
+                    feature: Some("vnc-024".to_string()),
+                },
+            ),
+            (
+                "request_session_close",
+                HookRequest::SessionClose {
+                    session_id: "sess-fixture".to_string(),
+                    outcome: Some("success".to_string()),
+                    duration_secs: 3600,
+                },
+            ),
+            (
+                // topic_signal + provider PRESENT (non-trivial) — emit/parse the skip_serializing_if keys.
+                "request_record_event",
+                HookRequest::RecordEvent {
+                    event: ImplantEvent {
+                        event_type: "tool_use".to_string(),
+                        session_id: "sess-fixture".to_string(),
+                        timestamp: 1_700_000_000,
+                        payload: serde_json::json!({ "tool": "Read", "path": "src/wire.rs" }),
+                        topic_signal: Some("vnc-024".to_string()),
+                        provider: Some("claude-code".to_string()),
+                    },
+                },
+            ),
+            (
+                // topic_signal + provider ABSENT (None-vs-omission, parse-default side).
+                "request_record_event_omitted",
+                HookRequest::RecordEvent {
+                    event: ImplantEvent {
+                        event_type: "tool_use".to_string(),
+                        session_id: "sess-fixture".to_string(),
+                        timestamp: 1_700_000_000,
+                        payload: serde_json::json!({ "tool": "Read" }),
+                        topic_signal: None,
+                        provider: None,
+                    },
+                },
+            ),
+            (
+                "request_record_events",
+                HookRequest::RecordEvents {
+                    events: vec![
+                        ImplantEvent {
+                            event_type: "tool_use".to_string(),
+                            session_id: "sess-fixture".to_string(),
+                            timestamp: 1_700_000_000,
+                            payload: serde_json::json!({ "tool": "Bash" }),
+                            topic_signal: Some("vnc-024".to_string()),
+                            provider: Some("claude-code".to_string()),
+                        },
+                        ImplantEvent {
+                            event_type: "context_read".to_string(),
+                            session_id: "sess-fixture".to_string(),
+                            timestamp: 1_700_000_001,
+                            payload: serde_json::json!({ "entry_id": 42 }),
+                            topic_signal: None,
+                            provider: None,
+                        },
+                    ],
+                },
+            ),
+            (
+                // source PRESENT (skip_serializing_if dual-direction, present side).
+                "request_context_search",
+                HookRequest::ContextSearch {
+                    query: "explain the auth flow".to_string(),
+                    session_id: Some("sess-fixture".to_string()),
+                    role: Some("developer".to_string()),
+                    task: Some("implement contract fixtures".to_string()),
+                    feature: Some("vnc-024".to_string()),
+                    k: Some(5),
+                    max_tokens: Some(1500),
+                    source: Some("SubagentStart".to_string()),
+                },
+            ),
+            (
+                // source ABSENT.
+                "request_context_search_no_source",
+                HookRequest::ContextSearch {
+                    query: "explain the auth flow".to_string(),
+                    session_id: Some("sess-fixture".to_string()),
+                    role: Some("developer".to_string()),
+                    task: None,
+                    feature: Some("vnc-024".to_string()),
+                    k: Some(5),
+                    max_tokens: Some(1500),
+                    source: None,
+                },
+            ),
+            (
+                "request_briefing",
+                HookRequest::Briefing {
+                    role: "developer".to_string(),
+                    task: "implement feature".to_string(),
+                    feature: Some("vnc-024".to_string()),
+                    max_tokens: Some(2000),
+                },
+            ),
+            (
+                // transcript_excerpt PRESENT.
+                "request_compact_payload",
+                HookRequest::CompactPayload {
+                    session_id: "sess-fixture".to_string(),
+                    injected_entry_ids: vec![1, 2, 3],
+                    role: Some("developer".to_string()),
+                    feature: Some("vnc-024".to_string()),
+                    token_limit: Some(1000),
+                    transcript_excerpt: Some("prior excerpt text".to_string()),
+                },
+            ),
+            (
+                // transcript_excerpt ABSENT.
+                "request_compact_payload_no_excerpt",
+                HookRequest::CompactPayload {
+                    session_id: "sess-fixture".to_string(),
+                    injected_entry_ids: vec![1, 2, 3],
+                    role: Some("developer".to_string()),
+                    feature: Some("vnc-024".to_string()),
+                    token_limit: Some(1000),
+                    transcript_excerpt: None,
+                },
+            ),
+        ]
+    }
+
+    fn response_fixtures() -> Vec<(&'static str, HookResponse)> {
+        vec![
+            (
+                "response_pong",
+                HookResponse::Pong {
+                    server_version: "0.1.0".to_string(),
+                },
+            ),
+            ("response_ack", HookResponse::Ack),
+            (
+                "response_error",
+                HookResponse::Error {
+                    code: ERR_UID_MISMATCH,
+                    message: "uid mismatch".to_string(),
+                },
+            ),
+            (
+                "response_entries",
+                HookResponse::Entries {
+                    items: vec![EntryPayload {
+                        id: 42,
+                        title: "Round-trip fixtures are the contract authority".to_string(),
+                        content: "ADR-002: fixtures assert serde behavior".to_string(),
+                        confidence: 0.85,
+                        similarity: 0.92,
+                        category: "decision".to_string(),
+                    }],
+                    total_tokens: 128,
+                },
+            ),
+            (
+                "response_briefing_content",
+                HookResponse::BriefingContent {
+                    content: "You are a Rust developer for Unimatrix.".to_string(),
+                    token_count: 25,
+                },
+            ),
+        ]
+    }
+
+    /// EMITTER (ADR-002 step 1): serialize every variant + edge case + the typed delta payload to
+    /// committed JSON fixtures. Run on `cargo test`; the result is reviewed and committed, then the
+    /// node harness consumes the same files. `request_hookinput_flatten.json` is the one fixture
+    /// authored as raw JSON (it carries unknown top-level keys that no typed `serialize` can emit —
+    /// the flatten *parse* side is what we assert), so the emitter writes it from a literal.
+    #[test]
+    fn test_emit_fixtures() {
+        let dir = fixtures_dir();
+        std::fs::create_dir_all(&dir).expect("create fixtures dir");
+
+        for (name, req) in request_fixtures() {
+            let json = serde_json::to_string_pretty(&req).expect("serialize request fixture");
+            write_fixture_atomic(&dir, &format!("{name}.json"), &(json + "\n"));
+        }
+        for (name, resp) in response_fixtures() {
+            let json = serde_json::to_string_pretty(&resp).expect("serialize response fixture");
+            write_fixture_atomic(&dir, &format!("{name}.json"), &(json + "\n"));
+        }
+
+        // Flatten fixture: HookInput JSON with extra unknown top-level keys (land under `extra`)
+        // PLUS a key colliding with a named field (`session_id`) — the named field must win and the
+        // collision must NOT leak into `extra`. Authored as a literal because flatten extras have no
+        // typed serialize source.
+        let flatten = serde_json::json!({
+            "hook_event_name": "PreToolUse",
+            "session_id": "sess-fixture",
+            "unknown_extra_key": "extra-value",
+            "another_extra": { "nested": 7 }
+        });
+        write_fixture_atomic(
+            &dir,
+            "request_hookinput_flatten.json",
+            &(serde_json::to_string_pretty(&flatten).unwrap() + "\n"),
+        );
+
+        // Dual-sided delta: emitted from the TYPED struct (not hand-written) so the Rust struct is
+        // the source of the {offset,bytes} shape both runtimes verify (AC-11).
+        let delta = TranscriptDeltaPayload {
+            offset: DELTA_OFFSET,
+            bytes: DELTA_BYTES.to_string(),
+        };
+        write_fixture_atomic(
+            &dir,
+            "transcript_delta_payload.json",
+            &(serde_json::to_string_pretty(&delta).unwrap() + "\n"),
+        );
+    }
+
+    /// Structural round-trip identity for every request fixture: parse → re-serialize → compare as
+    /// `serde_json::Value` (semantic, key-order-independent). Proves the committed fixture
+    /// deserializes to the right `HookRequest` variant and re-emits the same shape (AC-05).
+    #[test]
+    fn test_round_trip_request_fixtures() {
+        for (name, _) in request_fixtures() {
+            let raw = read_fixture(&format!("{name}.json"));
+            let decoded: HookRequest = serde_json::from_str(&raw)
+                .unwrap_or_else(|e| panic!("fixture {name} must parse as HookRequest: {e}"));
+            let re = serde_json::to_value(&decoded).unwrap();
+            let original: serde_json::Value = serde_json::from_str(&raw).unwrap();
+            assert_eq!(re, original, "fixture {name} must round-trip structurally");
+            // Tagged discriminant must be present on every HookRequest fixture.
+            assert!(
+                original.get("type").and_then(|t| t.as_str()).is_some(),
+                "fixture {name} must carry a literal `type` discriminant"
+            );
+        }
+    }
+
+    /// Same for every response fixture (AC-05).
+    #[test]
+    fn test_round_trip_response_fixtures() {
+        for (name, _) in response_fixtures() {
+            let raw = read_fixture(&format!("{name}.json"));
+            let decoded: HookResponse = serde_json::from_str(&raw)
+                .unwrap_or_else(|e| panic!("fixture {name} must parse as HookResponse: {e}"));
+            let re = serde_json::to_value(&decoded).unwrap();
+            let original: serde_json::Value = serde_json::from_str(&raw).unwrap();
+            assert_eq!(re, original, "fixture {name} must round-trip structurally");
+            assert!(
+                original.get("type").and_then(|t| t.as_str()).is_some(),
+                "fixture {name} must carry a literal `type` discriminant"
+            );
+        }
+    }
+
+    /// None-vs-omission, DUAL-DIRECTION, for ALL FOUR `skip_serializing_if = "Option::is_none"`
+    /// fields (R-02 / AC-06 / #3557 — the single most-omitted test category). For each field:
+    ///   (a) EMIT-absent: when `None`, the key is ABSENT from the JSON (not `null`).
+    ///   (b) PARSE-default: an omitting fixture deserializes to the default (`None`).
+    ///   (c) PRESENT round-trip: a non-trivial value survives intact.
+    #[test]
+    fn test_none_vs_omission_dual_direction_all_four_fields() {
+        // --- ImplantEvent.topic_signal + ImplantEvent.provider ---
+        // (a) emit-absent
+        let ev_none = ImplantEvent {
+            event_type: "tool_use".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({}),
+            topic_signal: None,
+            provider: None,
+        };
+        let ev_val = serde_json::to_value(&ev_none).unwrap();
+        let ev_obj = ev_val.as_object().unwrap();
+        assert!(
+            !ev_obj.contains_key("topic_signal"),
+            "topic_signal: None must be absent, not null"
+        );
+        assert!(
+            !ev_obj.contains_key("provider"),
+            "provider: None must be absent, not null"
+        );
+        // (b) parse-default from the omitting fixture
+        let raw = read_fixture("request_record_event_omitted.json");
+        let omitted: HookRequest = serde_json::from_str(&raw).unwrap();
+        match omitted {
+            HookRequest::RecordEvent { event } => {
+                assert!(event.topic_signal.is_none(), "omitted topic_signal → None");
+                assert!(event.provider.is_none(), "omitted provider → None");
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+        // (c) present non-trivial round-trip
+        let raw = read_fixture("request_record_event.json");
+        let present: HookRequest = serde_json::from_str(&raw).unwrap();
+        match present {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.topic_signal.as_deref(), Some("vnc-024"));
+                assert_eq!(event.provider.as_deref(), Some("claude-code"));
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+
+        // --- ContextSearch.source ---
+        let cs_none = HookRequest::ContextSearch {
+            query: "q".to_string(),
+            session_id: None,
+            role: None,
+            task: None,
+            feature: None,
+            k: None,
+            max_tokens: None,
+            source: None,
+        };
+        let cs_val = serde_json::to_value(&cs_none).unwrap();
+        assert!(
+            !cs_val.as_object().unwrap().contains_key("source"),
+            "source: None must be absent, not null"
+        );
+        let raw = read_fixture("request_context_search_no_source.json");
+        match serde_json::from_str::<HookRequest>(&raw).unwrap() {
+            HookRequest::ContextSearch { source, .. } => {
+                assert!(source.is_none(), "omitted source → None")
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+        let raw = read_fixture("request_context_search.json");
+        match serde_json::from_str::<HookRequest>(&raw).unwrap() {
+            HookRequest::ContextSearch { source, .. } => {
+                assert_eq!(source.as_deref(), Some("SubagentStart"))
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+
+        // --- CompactPayload.transcript_excerpt ---
+        let cp_none = HookRequest::CompactPayload {
+            session_id: "s1".to_string(),
+            injected_entry_ids: vec![],
+            role: None,
+            feature: None,
+            token_limit: None,
+            transcript_excerpt: None,
+        };
+        let cp_val = serde_json::to_value(&cp_none).unwrap();
+        assert!(
+            !cp_val
+                .as_object()
+                .unwrap()
+                .contains_key("transcript_excerpt"),
+            "transcript_excerpt: None must be absent, not null"
+        );
+        let raw = read_fixture("request_compact_payload_no_excerpt.json");
+        match serde_json::from_str::<HookRequest>(&raw).unwrap() {
+            HookRequest::CompactPayload {
+                transcript_excerpt, ..
+            } => assert!(transcript_excerpt.is_none(), "omitted excerpt → None"),
+            _ => panic!("expected CompactPayload"),
+        }
+        let raw = read_fixture("request_compact_payload.json");
+        match serde_json::from_str::<HookRequest>(&raw).unwrap() {
+            HookRequest::CompactPayload {
+                transcript_excerpt, ..
+            } => assert_eq!(transcript_excerpt.as_deref(), Some("prior excerpt text")),
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    /// Flatten (R-01 scenario 2): unknown top-level keys land under `extra`; a collision key
+    /// (`session_id`) is captured by the NAMED field and does NOT leak into `extra`.
+    #[test]
+    fn test_flatten_extra_and_collision() {
+        let raw = read_fixture("request_hookinput_flatten.json");
+        let hi: HookInput = serde_json::from_str(&raw).unwrap();
+        // named fields parse alongside the extras
+        assert_eq!(hi.hook_event_name, "PreToolUse");
+        assert_eq!(hi.session_id.as_deref(), Some("sess-fixture"));
+        // unknown keys land in extra
+        assert_eq!(hi.extra["unknown_extra_key"], "extra-value");
+        assert_eq!(hi.extra["another_extra"]["nested"], 7);
+        // collision: the named field won; the colliding key is NOT duplicated into extra
+        assert!(
+            hi.extra.get("session_id").is_none(),
+            "named field session_id must win; collision must not leak into extra; extra={:?}",
+            hi.extra
+        );
+    }
+
+    /// AC-11 Rust half: parse the committed delta fixture into the TYPED `TranscriptDeltaPayload`
+    /// (the SAME struct the accept-and-drop guard deserializes into — ADR-004) and re-serialize
+    /// losslessly. The node harness asserts the TS→Rust direction against the `{offset,bytes}`
+    /// shape the binding declares; together they make AC-11 dual-sided (a Rust-emit-only check
+    /// does NOT satisfy AC-11).
+    #[test]
+    fn test_transcript_delta_payload_round_trip() {
+        let raw = read_fixture("transcript_delta_payload.json");
+        let parsed: TranscriptDeltaPayload = serde_json::from_str(&raw)
+            .expect("delta fixture must parse into TranscriptDeltaPayload");
+        assert_eq!(
+            parsed.offset, DELTA_OFFSET,
+            "offset must round-trip losslessly"
+        );
+        assert_eq!(parsed.bytes, DELTA_BYTES, "bytes must round-trip intact");
+        // structural re-serialization identity
+        let re = serde_json::to_value(&parsed).unwrap();
+        let original: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(re, original, "delta fixture must round-trip structurally");
+        // exactly the two declared keys — a drift in the binding shape is caught here + in node.
+        let keys: Vec<&str> = original
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(keys.len(), 2, "delta payload has exactly offset + bytes");
+        assert!(original.get("offset").and_then(|v| v.as_u64()).is_some());
+        assert!(original.get("bytes").and_then(|v| v.as_str()).is_some());
+    }
+
     #[test]
     fn test_hook_input_clone_includes_new_fields() {
         // Wave 2 requirement: HookInput must be Clone (already derived) and carry

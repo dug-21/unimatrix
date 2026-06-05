@@ -1,0 +1,7 @@
+{
+  "type": "SessionRegister",
+  "session_id": "sess-fixture",
+  "cwd": "/workspace/unimatrix",
+  "agent_role": "developer",
+  "feature": "vnc-024"
+}

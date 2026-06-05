@@ -1,0 +1,7 @@
+{
+  "type": "Briefing",
+  "role": "developer",
+  "task": "implement feature",
+  "feature": "vnc-024",
+  "max_tokens": 2000
+}
