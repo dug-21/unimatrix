@@ -61,7 +61,7 @@ Non-negotiable across all work:
 
 5. **Graceful degradation.** Every ML capability (NLI, GNN, GGUF) has a defined fallback. Absent or failed model = previous behavior, not broken behavior.
 
-6. **Single binary, zero required infrastructure.** Container is optional. Daemon + UDS works without it.
+6. **Single binary server, zero required infrastructure.** The client is an adapter — JS/TS for hooks, the binary for MCP — not infrastructure. Container is optional. Daemon + UDS works without it.
 
 7. **In-memory hot path.** All analytics-derived search data cached in `Arc<RwLock<_>>`, rebuilt by tick. Never read from the database at query time.
 
