@@ -18,6 +18,8 @@ spawn investigator (Phase 1) ─────────────────
 ◄────────────────────────────────────────────────────
 spawn architect (Phase 1b) ─────────────────────────► design review of proposed fix
 ◄────────────────────────────────────────────────────
+spawn uni-zero-reviewer (Phase 1c) ─────────────────► advisory product review → GH comment
+◄────────────────────────────────────────────────────
 present diagnosis + design review to human
 ★ HUMAN CHECKPOINT ★
 human approves diagnosis + design
@@ -30,6 +32,8 @@ spawn validator (Gate 3) ──────────────────�
 ◄──────────────────────────────────────────────────── PASS / REWORKABLE FAIL / SCOPE FAIL
 on PASS: open PR
 spawn security-reviewer ────────────────────────────► review PR diff (fresh context)
+◄────────────────────────────────────────────────────
+spawn uni-zero-reviewer (pr-review) ────────────────► advisory product review → GH comment
 ◄────────────────────────────────────────────────────
 ◄──────────────────────────────  present PR + security assessment
 human reviews and merges
@@ -146,9 +150,31 @@ Wait for the architect to complete.
 
 **If REWORK NEEDED**: The Bugfix Manager incorporates the architect's revised approach into the fix plan presented to the human. The investigator is NOT re-spawned — the architect's revised approach supersedes the investigator's proposal for the affected parts.
 
+---
+
+## Phase 1c: Product Review (Advisory)
+
+**Agent**: uni-zero-reviewer
+
+After the architect returns, the Bugfix Manager spawns `uni-zero-reviewer` for an independent, fresh-context product-lens review of the proposed solution:
+
+```
+Task(subagent_type: "uni-zero-reviewer",
+  prompt: "Your agent ID: {issue-number}-zero-approach
+
+    GATE: fix-approach
+    Issue: #{issue-number}
+    Review inputs: GH Issue #{issue-number} — body and phase comments
+    (investigator diagnosis + architect design review)")
+```
+
+**Product Review Rules** (apply at every `uni-zero-reviewer` spawn):
+- The spawn prompt carries ONLY agent ID, gate, and issue/PR identifiers — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
+- The reviewer posts an advisory comment on the GH Issue. The Bugfix Leader relays stance + comment link verbatim at the human checkpoint and NEVER parses, acts on, or gates on it. Advisory — does not block.
+
 ### Human Checkpoint (MANDATORY — do NOT proceed without human approval)
 
-After both investigator and architect return, the Bugfix Manager presents the combined diagnosis and design review to the human:
+After the investigator, architect, and product reviewer return, the Bugfix Manager presents the combined diagnosis and design review to the human:
 
 ```
 DIAGNOSIS + DESIGN REVIEW COMPLETE — Awaiting approval.
@@ -159,6 +185,7 @@ Proposed Fix: {approach — investigator's if APPROVED, architect's revised appr
 Design Review: {APPROVED | APPROVED WITH NOTES | REWORK NEEDED} — {architect findings summary}
 Risk Assessment: {from investigator + architect}
 Missing Test: {what test should have caught this}
+Product Review (advisory): {stance} — {comment link}
 
 Human action required: Review diagnosis and design, then approve to proceed with fix.
 If either the diagnosis or design is wrong, provide feedback and I will re-investigate.
@@ -365,6 +392,21 @@ After the PR is opened, invoke `/uni-review-pr` with the PR number, feature/issu
 
 For bugfix PRs, the review verifies the single gate report (not three delivery gates).
 
+After the security review returns, spawn `uni-zero-reviewer` — an independent product-lens review of the fix delivery as a whole, including the security review's findings. It does NOT re-run the security review:
+
+```
+Task(subagent_type: "uni-zero-reviewer",
+  prompt: "Your agent ID: {issue-number}-zero-pr
+
+    GATE: pr-review
+    Issue: #{issue-number}
+    PR: #{pr-number}
+    Review inputs: GH Issue #{issue-number} phase comments
+    (gate report, security review)")
+```
+
+Product Review Rules apply (see Phase 1c). The reviewer posts an advisory comment with recommended actions; reviewer failure → note "product review failed" and proceed.
+
 When the security review returns with no blocking findings:
 
 ```
@@ -407,6 +449,7 @@ Fix Summary:
 Gate: Bug Fix Validation — PASS
 Security Review: {risk level} — {summary of findings}
 Blocking findings: {yes/no + details}
+Product Review (advisory): {stance} — {comment link}
 
 Reports:
 - Link to GH issue
@@ -508,7 +551,8 @@ BUGFIX LEADER (you):
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...wait...
   Phase 1b:   Task(uni-architect) — design review of proposed fix
-              ...present diagnosis + design review to human...
+  Phase 1c:   Task(uni-zero-reviewer, GATE: fix-approach) — advisory product review → GH comment
+              ...present diagnosis + design review + product review to human...
               ★ HUMAN CHECKPOINT — human approves diagnosis + design ★
               mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
                 "phase": "discovery", "next_phase": "fix", "agent_id": "{issue-number}-bugfix-leader" })
@@ -525,6 +569,7 @@ BUGFIX LEADER (you):
                        → commit + push + PR
               ...FAIL → rework or stop...
   Phase 4:    /uni-review-pr — security review + merge readiness → GH Issue comment
+              Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → GH comment
               ...wait...
               ...no blocking findings →
                 mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",

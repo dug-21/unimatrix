@@ -394,7 +394,8 @@ The Delivery Leader:
 3. Updates GH Issue with PR link
 4. Evaluates documentation trigger criteria (see below) — spawns `uni-docs` if mandatory
 5. Invokes `/uni-review-pr` for security review and merge readiness
-6. Combines impl + deploy results in the return to human
+6. Spawns `uni-zero-reviewer` for the advisory product review (after the security review returns)
+7. Combines impl + deploy + review results in the return to human
 
 ```bash
 # Commit final artifacts
@@ -459,6 +460,29 @@ Invoke `/uni-review-pr` with the PR number, feature ID, and GH Issue number. Thi
 - Review fails → return delivery results only, note "PR review failed"
 - Review returns BLOCKED → include blocking items in combined return
 
+### Product Review (after security review returns)
+
+Spawn `uni-zero-reviewer` — an independent, fresh-context product-lens review of the delivery as a whole, including the security review's findings. It does NOT re-run the security review.
+
+```
+Task(subagent_type: "uni-zero-reviewer",
+  prompt: "Your agent ID: {feature-id}-zero-pr
+
+    GATE: pr-review
+    Feature: {feature-id}
+    GH Issue: #{issue}
+    PR: #{pr-number}
+    Artifacts:
+    - product/features/{id}/reports/ (gate reports)
+    - product/features/{id}/testing/RISK-COVERAGE-REPORT.md
+    - Security review: {location of security review output}")
+```
+
+**Product Review Rules:**
+- The spawn prompt carries ONLY agent ID, gate, IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
+- The reviewer posts an advisory comment on the GH Issue with recommended actions. The Delivery Leader relays stance + comment URL verbatim in the return and NEVER parses, acts on, or gates on it. Advisory — does not block delivery.
+- Reviewer failure → note "product review failed" in the return and proceed.
+
 **Return format:**
 ```
 SESSION 2 COMPLETE — Feature delivered.
@@ -466,6 +490,7 @@ SESSION 2 COMPLETE — Feature delivered.
 Gates: 3a PASS, 3b PASS, 3c PASS
 Security Review: {risk level} — {summary}
 Merge readiness: {READY | BLOCKED}
+Product Review (advisory): {stance} — {comment URL}
 
 Files created/modified: [paths]
 Tests: X passed, Y new
@@ -570,6 +595,7 @@ DELIVERY LEADER (you):
   Phase 4:    git commit + push + gh pr create
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /uni-review-pr — security review + merge readiness
+              Task(uni-zero-reviewer, GATE: pr-review) — advisory product review comment
               Combined return — SESSION 2 ENDS
               context_cycle(type: "phase-end", phase: "pr-review", ...)
               context_cycle(type: "stop", topic: "{feature-id}", outcome: "...", agent_id: "{feature-id}-delivery-leader")
