@@ -131,6 +131,9 @@ Task(subagent_type: "uni-architect",
     5. Security surface — any new trust boundaries, input validation gaps, or
        privilege changes introduced by the approach?
 
+    Post your design-review summary as a comment on the GH issue(s), including
+    the ## Knowledge Stewardship block — the gate validator checks for it.
+
     Return:
     - Design assessment: APPROVED / APPROVED WITH NOTES / REWORK NEEDED
     - Findings: list of concerns with severity (blocking / non-blocking)
