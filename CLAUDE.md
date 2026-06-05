@@ -52,7 +52,8 @@ Features use `{phase}-{NNN}` naming. Track via **GitHub Issues**; commits refere
 
 ## Behavioral Rules
 
-- Be concise. Skip preamble, summaries, repetition.
+- Be concise. Skip preamble, summaries, repetition. Don't narrate tool calls.
+- Don't be verbose. 
 - Do what was asked; nothing more, nothing less.
 - NEVER create files unless necessary. Prefer editing existing files.
 - NEVER proactively create documentation unless explicitly requested.
