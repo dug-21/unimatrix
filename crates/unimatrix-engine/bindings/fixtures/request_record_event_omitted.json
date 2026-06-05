@@ -1,0 +1,9 @@
+{
+  "type": "RecordEvent",
+  "event_type": "tool_use",
+  "session_id": "sess-fixture",
+  "timestamp": 1700000000,
+  "payload": {
+    "tool": "Read"
+  }
+}

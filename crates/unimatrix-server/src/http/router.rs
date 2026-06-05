@@ -199,6 +199,16 @@ where
                         return Ok(payload_too_large_response());
                     }
 
+                    // Step 2b: Read Accept header for content negotiation (ADR-003, vnc-024).
+                    // MUST be read here, before `into_parts()` consumes the request — a late
+                    // read silently loses the header and falls back to JSON (Constraint 2 / R-07).
+                    // `wants_text` is true iff the Accept value contains "text/plain".
+                    let wants_text = request
+                        .headers()
+                        .get(http::header::ACCEPT)
+                        .and_then(|v| v.to_str().ok())
+                        .is_some_and(|s| s.contains("text/plain"));
+
                     // Step 3: Stream-level body collection with size limit (GH #663 pattern).
                     let (_parts, body) = request.into_parts();
                     let limited_body = Limited::new(body, DEFAULT_MAX_BODY_BYTES);
@@ -246,8 +256,8 @@ where
                     )
                     .await;
 
-                    // Step 7: Map HookResponse to HTTP response.
-                    Ok(observe_response_to_http(response))
+                    // Step 7: Map HookResponse to HTTP response (content negotiation, ADR-003).
+                    Ok(observe_response_to_http(response, wants_text))
                 })
             }
             (_, _) => {

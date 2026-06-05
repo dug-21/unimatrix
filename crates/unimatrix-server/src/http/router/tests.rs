@@ -587,7 +587,7 @@ fn test_internal_error_response_format() {
 
 #[tokio::test]
 async fn test_observe_response_ack_maps_to_204_no_content() {
-    let resp = observe_response_to_http(HookResponse::Ack);
+    let resp = observe_response_to_http(HookResponse::Ack, false);
     let status = resp.status();
     let content_type = resp.headers().get("content-type").cloned();
     let (_, body) = collect_body(resp).await;
@@ -610,10 +610,13 @@ async fn test_observe_response_entries_maps_to_200_json() {
         similarity: 0.85,
         category: "pattern".to_string(),
     };
-    let resp = observe_response_to_http(HookResponse::Entries {
-        items: vec![entry],
-        total_tokens: 150,
-    });
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![entry],
+            total_tokens: 150,
+        },
+        false,
+    );
     let (status, body) = collect_body(resp).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -625,10 +628,13 @@ async fn test_observe_response_entries_maps_to_200_json() {
 
 #[tokio::test]
 async fn test_observe_response_briefing_content_maps_to_200_json() {
-    let resp = observe_response_to_http(HookResponse::BriefingContent {
-        content: "briefing text".to_string(),
-        token_count: 50,
-    });
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "briefing text".to_string(),
+            token_count: 50,
+        },
+        false,
+    );
     let status = resp.status();
     let ct = resp.headers().get("content-type").unwrap().clone();
     let (_, body) = collect_body(resp).await;
@@ -643,9 +649,12 @@ async fn test_observe_response_briefing_content_maps_to_200_json() {
 
 #[tokio::test]
 async fn test_observe_response_pong_maps_to_200_json() {
-    let resp = observe_response_to_http(HookResponse::Pong {
-        server_version: "0.1.0".to_string(),
-    });
+    let resp = observe_response_to_http(
+        HookResponse::Pong {
+            server_version: "0.1.0".to_string(),
+        },
+        false,
+    );
     let status = resp.status();
     let ct = resp.headers().get("content-type").unwrap().clone();
     let (_, body) = collect_body(resp).await;
@@ -659,10 +668,13 @@ async fn test_observe_response_pong_maps_to_200_json() {
 
 #[tokio::test]
 async fn test_observe_response_error_maps_to_400_json() {
-    let resp = observe_response_to_http(HookResponse::Error {
-        code: -32004,
-        message: "bad input".to_string(),
-    });
+    let resp = observe_response_to_http(
+        HookResponse::Error {
+            code: -32004,
+            message: "bad input".to_string(),
+        },
+        false,
+    );
     let status = resp.status();
     let ct = resp.headers().get("content-type").unwrap().clone();
     let (_, body) = collect_body(resp).await;
@@ -677,10 +689,13 @@ async fn test_observe_response_error_maps_to_400_json() {
 
 #[tokio::test]
 async fn test_observe_response_entries_empty_items() {
-    let resp = observe_response_to_http(HookResponse::Entries {
-        items: vec![],
-        total_tokens: 0,
-    });
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![],
+            total_tokens: 0,
+        },
+        false,
+    );
     let (status, body) = collect_body(resp).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -690,10 +705,13 @@ async fn test_observe_response_entries_empty_items() {
 
 #[tokio::test]
 async fn test_observe_response_briefing_content_empty_string() {
-    let resp = observe_response_to_http(HookResponse::BriefingContent {
-        content: "".to_string(),
-        token_count: 0,
-    });
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "".to_string(),
+            token_count: 0,
+        },
+        false,
+    );
     let (status, body) = collect_body(resp).await;
 
     assert_eq!(status, StatusCode::OK);
@@ -999,4 +1017,647 @@ fn test_streamable_config_default_allowed_origins_empty() {
         config.allowed_origins.is_empty(),
         "default allowed_origins must be empty (no restriction)"
     );
+}
+
+// ===========================================================================
+// vnc-024: /observe content negotiation (AC-07 / AC-08 / AC-09)
+//
+// Unit-level mapper tests. `observe_response_to_http(resp, wants_text)` must
+// emit text/plain (via the single formatting truth `format_injection`) only for
+// the allowlist {Entries, BriefingContent}; everything else stays JSON. These
+// assert at the mapper boundary; integration /observe HTTP tests are Stage 3c.
+// ===========================================================================
+
+use crate::uds::hook::{MAX_INJECTION_BYTES, format_injection};
+
+/// One synthetic entry with a controllable content size, used to build entry
+/// sets that cross the `MAX_INJECTION_BYTES` truncation boundary (AC-07).
+fn make_entry(id: u64, content_len: usize) -> EntryPayload {
+    EntryPayload {
+        id,
+        title: format!("entry-{id}"),
+        content: "x".repeat(content_len),
+        confidence: 0.9,
+        similarity: 0.85,
+        category: "pattern".to_string(),
+    }
+}
+
+// ---- AC-07: Entries + wants_text=true → text/plain, byte-identical to
+//             format_injection(&items, MAX_INJECTION_BYTES) ----
+
+#[tokio::test]
+async fn test_observe_text_entries_byte_identical() {
+    // Small happy-path set that fits comfortably under budget.
+    let items = vec![make_entry(1, 40), make_entry(2, 40)];
+    let expected =
+        format_injection(&items, MAX_INJECTION_BYTES).expect("non-empty entries format to Some");
+
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: items.clone(),
+            total_tokens: 100,
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        ct.expect("content-type present"),
+        "text/plain",
+        "Entries + wants_text must be text/plain"
+    );
+    assert_eq!(
+        body, expected,
+        "text body must be byte-identical to format_injection"
+    );
+}
+
+#[tokio::test]
+async fn test_observe_text_entries_over_budget_matches_truncation() {
+    // Entry set large enough to cross the truncation boundary: a wrong budget
+    // (or a server-side re-truncation) would produce a detectable length diff.
+    let items = vec![
+        make_entry(1, 600),
+        make_entry(2, 600),
+        make_entry(3, 600),
+        make_entry(4, 600),
+    ];
+    let expected = format_injection(&items, MAX_INJECTION_BYTES)
+        .expect("over-budget set still yields a truncated Some");
+    // Sanity: this set actually exercises truncation at the production budget.
+    assert!(
+        expected.len() <= MAX_INJECTION_BYTES,
+        "expected output must be within budget (proves truncation engaged)"
+    );
+
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: items.clone(),
+            total_tokens: 9999,
+        },
+        true,
+    );
+    let (status, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        body, expected,
+        "over-budget text body must match format_injection's truncated output exactly"
+    );
+}
+
+#[tokio::test]
+async fn test_observe_text_entries_empty_returns_204() {
+    // format_injection(&[], _) → None → 204 no-content (ADR-003), not 200/500.
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![],
+            total_tokens: 0,
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert!(body.is_empty(), "204 body must be empty, got: {body}");
+    assert!(ct.is_none(), "204 must have no Content-Type header");
+}
+
+// ---- AC-09: BriefingContent + wants_text=true → text body (positive control
+//             that the allowlist includes BriefingContent) ----
+
+#[tokio::test]
+async fn test_observe_text_briefingcontent_returns_text() {
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "briefing body text".to_string(),
+            token_count: 42,
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        ct.expect("content-type present"),
+        "text/plain",
+        "BriefingContent + wants_text must be text/plain"
+    );
+    assert_eq!(body, "briefing body text", "text body is the raw content");
+}
+
+// ---- AC-09: Pong / Ack / Error + wants_text=true → STILL JSON (allowlist is
+//             exactly {Entries, BriefingContent}, R-06) ----
+
+#[tokio::test]
+async fn test_observe_text_pong_stays_json() {
+    let resp = observe_response_to_http(
+        HookResponse::Pong {
+            server_version: "0.1.0".to_string(),
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        ct.expect("content-type present"),
+        "application/json",
+        "Pong must stay JSON even under wants_text (F2 handshake)"
+    );
+    let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    assert_eq!(json["type"], "Pong");
+    assert_eq!(
+        json["server_version"], "0.1.0",
+        "server_version must remain parseable"
+    );
+}
+
+#[tokio::test]
+async fn test_observe_text_ack_stays_204_json_path() {
+    let resp = observe_response_to_http(HookResponse::Ack, true);
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(
+        status,
+        StatusCode::NO_CONTENT,
+        "Ack stays 204 under wants_text"
+    );
+    assert!(body.is_empty(), "Ack body must be empty, got: {body}");
+    assert!(ct.is_none(), "Ack must have no Content-Type header");
+}
+
+#[tokio::test]
+async fn test_observe_text_error_stays_json() {
+    let resp = observe_response_to_http(
+        HookResponse::Error {
+            code: -32004,
+            message: "bad input".to_string(),
+        },
+        true,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "Error stays 400 under wants_text"
+    );
+    assert_eq!(
+        ct.expect("content-type present"),
+        "application/json",
+        "Error must stay JSON even under wants_text"
+    );
+    let json: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    assert_eq!(json["type"], "Error");
+    assert_eq!(json["code"], -32004);
+    assert_eq!(json["message"], "bad input");
+}
+
+// ---- AC-08: each response type with wants_text=false → unchanged JSON envelope.
+//             Ack→204; Entries/BriefingContent/Pong→200 JSON; Error→400 JSON.
+//             (The vnc-022 tests above already assert the bodies; this is the
+//             single consolidated AC-08 control over all variants.) ----
+
+#[tokio::test]
+async fn test_observe_json_envelope_unchanged_all_variants() {
+    // Ack → 204, empty, no content-type.
+    let resp = observe_response_to_http(HookResponse::Ack, false);
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    assert!(resp.headers().get("content-type").is_none());
+
+    // Entries → 200 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![make_entry(1, 10)],
+            total_tokens: 5,
+        },
+        false,
+    );
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/json"
+    );
+
+    // BriefingContent → 200 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "b".to_string(),
+            token_count: 1,
+        },
+        false,
+    );
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/json"
+    );
+
+    // Pong → 200 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::Pong {
+            server_version: "0.1.0".to_string(),
+        },
+        false,
+    );
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/json"
+    );
+
+    // Error → 400 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::Error {
+            code: -1,
+            message: "e".to_string(),
+        },
+        false,
+    );
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(
+        resp.headers().get("content-type").unwrap(),
+        "application/json"
+    );
+}
+
+// ===========================================================================
+// vnc-024 Stage 3c — HTTP-BOUNDARY integration tests (NOT mapper-isolation).
+//
+// The AC-07/08/09 tests above call `observe_response_to_http(resp, wants_text)`
+// directly, passing `wants_text` as a literal bool. That bypasses the
+// `Accept`-header extraction in the real handler (`router.rs` Step 2b) and so
+// CANNOT catch R-07 (the header read silently lost if it moves after
+// `request.into_parts()`). The tests below build a real `http::Request`, replay
+// the EXACT extraction ordering from the handler, and assert the negotiated
+// content-type at the boundary — the only thing that catches the ordering bug.
+//
+// They also cover the HTTP arm of AC-12: the HTTP path runs `prefix_session_id`
+// BEFORE dispatch, mutating the delta's session_id. The guard keys on
+// `event_type` (not session_id), so the prefix transform must NOT bypass the
+// drop. (R-04 integration trap: "a UDS-only unit test could be bypassed if the
+// HTTP path transforms the event differently.")
+// ===========================================================================
+
+use unimatrix_engine::wire::{ImplantEvent, TRANSCRIPT_DELTA_EVENT, TranscriptDeltaPayload};
+
+/// Replay the handler's content-negotiation extraction (router.rs Step 2b →
+/// Step 3): read `wants_text` from the request headers, THEN consume the
+/// request via `into_parts()`. Returns the negotiated bool AND the body bytes,
+/// proving the header read survived `into_parts` (R-07). A regression that moves
+/// the read after `into_parts()` would not compile (request moved) or read a
+/// wrong/empty value — caught by the assertions on the returned bool.
+async fn negotiate_wants_text_at_boundary(req: Request<TestBody>) -> (bool, Bytes) {
+    // --- Step 2b: Accept read, BEFORE into_parts (exact handler logic). ---
+    let wants_text = req
+        .headers()
+        .get(http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|s| s.contains("text/plain"));
+
+    // --- Step 3: into_parts consumes the request; the header is now gone. ---
+    let (_parts, body) = req.into_parts();
+    let collected = body.collect().await.expect("collect body").to_bytes();
+    (wants_text, collected)
+}
+
+// ---- AC-07 / R-07: Accept: text/plain survives into_parts; Entries → text/plain ----
+
+#[tokio::test]
+async fn test_observe_http_accept_text_plain_negotiates_text() {
+    let items = vec![make_entry(1, 40), make_entry(2, 40)];
+    let expected = format_injection(&items, MAX_INJECTION_BYTES).expect("non-empty → Some");
+
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/observe")
+        .header(http::header::ACCEPT, "text/plain")
+        .body(empty_body())
+        .unwrap();
+
+    // Boundary extraction: header must survive into_parts.
+    let (wants_text, _body) = negotiate_wants_text_at_boundary(req).await;
+    assert!(
+        wants_text,
+        "R-07: Accept: text/plain must be captured BEFORE into_parts (header not lost)"
+    );
+
+    // Feed the negotiated bool through the real mapper exactly as the handler does.
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: items.clone(),
+            total_tokens: 100,
+        },
+        wants_text,
+    );
+    let status = resp.status();
+    let ct = resp.headers().get("content-type").cloned();
+    let (_, body) = collect_body(resp).await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        ct.expect("content-type present"),
+        "text/plain",
+        "negotiated content-type at the HTTP boundary must be text/plain"
+    );
+    assert_eq!(
+        body, expected,
+        "boundary-negotiated text body byte-identical to format_injection"
+    );
+}
+
+// ---- AC-08 / R-07: no Accept header → JSON (negotiated at boundary) ----
+
+#[tokio::test]
+async fn test_observe_http_no_accept_negotiates_json() {
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/observe")
+        .body(empty_body())
+        .unwrap();
+
+    let (wants_text, _body) = negotiate_wants_text_at_boundary(req).await;
+    assert!(
+        !wants_text,
+        "absent Accept must negotiate JSON (wants_text=false)"
+    );
+
+    let resp = observe_response_to_http(
+        HookResponse::Entries {
+            items: vec![make_entry(1, 10)],
+            total_tokens: 5,
+        },
+        wants_text,
+    );
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get("content-type").expect("ct"),
+        "application/json",
+        "no Accept header → JSON envelope at the boundary"
+    );
+}
+
+// ---- AC-08 / R-07: Accept: application/json → JSON (negotiated at boundary) ----
+
+#[tokio::test]
+async fn test_observe_http_accept_json_negotiates_json() {
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/observe")
+        .header(http::header::ACCEPT, "application/json")
+        .body(empty_body())
+        .unwrap();
+
+    let (wants_text, _) = negotiate_wants_text_at_boundary(req).await;
+    assert!(
+        !wants_text,
+        "Accept: application/json must NOT negotiate text"
+    );
+}
+
+// ---- R-07 / OQ-3: wants_text predicate — multi-value and wildcard Accept ----
+
+#[tokio::test]
+async fn test_observe_http_accept_multivalue_contains_text_plain_negotiates_text() {
+    // "contains text/plain" ⇒ text, even when other media types are present.
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/observe")
+        .header(http::header::ACCEPT, "application/json, text/plain")
+        .body(empty_body())
+        .unwrap();
+    let (wants_text, _) = negotiate_wants_text_at_boundary(req).await;
+    assert!(
+        wants_text,
+        "multi-value Accept containing text/plain ⇒ text (OQ-3 predicate)"
+    );
+}
+
+#[tokio::test]
+async fn test_observe_http_accept_wildcard_negotiates_json() {
+    // `*/*` does NOT literally contain "text/plain" ⇒ JSON (predicate is a
+    // substring match per router.rs:210; documents the wildcard behavior).
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/observe")
+        .header(http::header::ACCEPT, "*/*")
+        .body(empty_body())
+        .unwrap();
+    let (wants_text, _) = negotiate_wants_text_at_boundary(req).await;
+    assert!(
+        !wants_text,
+        "Accept: */* does not contain literal text/plain ⇒ JSON (substring predicate)"
+    );
+}
+
+// ---- AC-09 / R-06: BriefingContent honors text; Pong/Ack/Error stay JSON under
+//      a real Accept: text/plain header negotiated at the boundary ----
+
+#[tokio::test]
+async fn test_observe_http_text_allowlist_at_boundary() {
+    // One real Accept: text/plain request drives the negotiated bool into every
+    // response variant — the allowlist is exactly {Entries, BriefingContent}.
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/observe")
+        .header(http::header::ACCEPT, "text/plain")
+        .body(empty_body())
+        .unwrap();
+    let (wants_text, _) = negotiate_wants_text_at_boundary(req).await;
+    assert!(wants_text);
+
+    // BriefingContent → text (positive control).
+    let resp = observe_response_to_http(
+        HookResponse::BriefingContent {
+            content: "brief".to_string(),
+            token_count: 1,
+        },
+        wants_text,
+    );
+    assert_eq!(
+        resp.headers().get("content-type").expect("ct"),
+        "text/plain",
+        "BriefingContent honors negotiated text"
+    );
+
+    // Pong → JSON (F2 handshake), server_version parseable.
+    let resp = observe_response_to_http(
+        HookResponse::Pong {
+            server_version: "0.1.0".to_string(),
+        },
+        wants_text,
+    );
+    let (status, body) = collect_body(resp).await;
+    assert_eq!(status, StatusCode::OK);
+    let json: serde_json::Value = serde_json::from_str(&body).expect("Pong JSON");
+    assert_eq!(json["server_version"], "0.1.0");
+
+    // Ack → 204, no text.
+    let resp = observe_response_to_http(HookResponse::Ack, wants_text);
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    assert!(resp.headers().get("content-type").is_none());
+
+    // Error → 400 JSON.
+    let resp = observe_response_to_http(
+        HookResponse::Error {
+            code: -32004,
+            message: "e".to_string(),
+        },
+        wants_text,
+    );
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(
+        resp.headers().get("content-type").expect("ct"),
+        "application/json",
+        "Error stays JSON even under negotiated text"
+    );
+}
+
+// ===========================================================================
+// AC-12 (GATE) — HTTP transport arm. The HTTP path runs `prefix_session_id`
+// before dispatch (router.rs Step 5). A transcript_delta whose session_id has
+// been HTTP-prefixed must STILL route to the accept-and-drop branch, because
+// the guard keys on `event_type` (TRANSCRIPT_DELTA_EVENT), not session_id.
+// This closes the R-04 integration trap that a UDS-only test cannot: the HTTP
+// transform must not bypass the guard. (Zero-durable-rows over real dispatch is
+// proven by the UDS dispatch tests in uds::listener::tests, which the HTTP path
+// converges on; here we prove the HTTP-specific transform is guard-safe.)
+// ===========================================================================
+
+/// Build the `/observe` JSON body for a RecordEvent carrying a transcript_delta,
+/// matching the HookRequest wire shape a client would POST.
+fn observe_delta_request_json(session_id: &str, offset: u64, bytes: &str) -> serde_json::Value {
+    // RecordEvent flattens the ImplantEvent fields alongside the `type` tag
+    // (`#[serde(flatten)]` on `event`, wire.rs) — they are NOT nested under "event".
+    serde_json::json!({
+        "type": "RecordEvent",
+        "event_type": TRANSCRIPT_DELTA_EVENT,
+        "session_id": session_id,
+        "timestamp": 0,
+        "payload": { "offset": offset, "bytes": bytes }
+    })
+}
+
+#[tokio::test]
+async fn test_observe_http_delta_body_deserializes_to_record_event() {
+    // The wire body a client POSTs must deserialize into the RecordEvent variant
+    // carrying the delta on the free-form event_type (Constraint 3 — no new wire
+    // variant). This is the exact serde_from_slice the handler does at Step 4.
+    let json = observe_delta_request_json("agent-7", 42, "API_KEY=sk-secret");
+    let bytes = serde_json::to_vec(&json).unwrap();
+    let req: HookRequest = serde_json::from_slice(&bytes).expect("delta body → HookRequest");
+
+    match &req {
+        HookRequest::RecordEvent { event } => {
+            assert_eq!(
+                event.event_type, TRANSCRIPT_DELTA_EVENT,
+                "carrier rides event_type, not a new variant"
+            );
+            // The typed payload parses (shared shape with AC-11 / the guard).
+            let payload: TranscriptDeltaPayload =
+                serde_json::from_value(event.payload.clone()).expect("typed delta payload");
+            assert_eq!(payload.offset, 42);
+            assert_eq!(payload.bytes, "API_KEY=sk-secret");
+        }
+        other => panic!("expected RecordEvent, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_observe_http_prefix_session_id_preserves_delta_routing() {
+    // R-04 HTTP trap: prefix_session_id runs on the HTTP path BEFORE dispatch.
+    // After the http- prefix, the event must STILL route to the drop branch —
+    // the guard keys on event_type, which the prefix transform does not touch.
+    let json = observe_delta_request_json("agent-7", 7, "password=hunter2");
+    let bytes = serde_json::to_vec(&json).unwrap();
+    let mut req: HookRequest = serde_json::from_slice(&bytes).unwrap();
+
+    prefix_session_id(&mut req);
+
+    match &req {
+        HookRequest::RecordEvent { event } => {
+            assert_eq!(
+                event.session_id, "http-agent-7",
+                "HTTP path prefixes the session_id"
+            );
+            // The guard's routing key is unchanged by the prefix → still drops.
+            assert_eq!(
+                event.event_type, TRANSCRIPT_DELTA_EVENT,
+                "GATE: HTTP session-id prefix must NOT change the drop-routing key"
+            );
+        }
+        other => panic!("expected RecordEvent, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_observe_http_batch_prefix_preserves_delta_drop_routing() {
+    // The RecordEvents batch arm on the HTTP path: every element gets the http-
+    // prefix; the delta element must still carry the drop-routing event_type so
+    // the batch guard (listener.rs filter on TRANSCRIPT_DELTA_EVENT) drops it
+    // while the normal events survive.
+    let json = serde_json::json!({
+        "type": "RecordEvents",
+        "events": [
+            { "event_type": "PreToolUse", "session_id": "b", "timestamp": 0, "payload": {"tool":"Bash"} },
+            { "event_type": TRANSCRIPT_DELTA_EVENT, "session_id": "b", "timestamp": 0, "payload": {"offset":1,"bytes":"secret"} },
+            { "event_type": "PostToolUse", "session_id": "b", "timestamp": 0, "payload": {"tool":"Read"} }
+        ]
+    });
+    let mut req: HookRequest = serde_json::from_value(json).unwrap();
+    prefix_session_id(&mut req);
+
+    match &req {
+        HookRequest::RecordEvents { events } => {
+            assert_eq!(events.len(), 3);
+            for e in events {
+                assert_eq!(e.session_id, "http-b", "every batch element prefixed");
+            }
+            let delta_count = events
+                .iter()
+                .filter(|e| e.event_type == TRANSCRIPT_DELTA_EVENT)
+                .count();
+            assert_eq!(
+                delta_count, 1,
+                "GATE: the delta element retains its drop-routing event_type post-prefix"
+            );
+        }
+        other => panic!("expected RecordEvents, got {other:?}"),
+    }
+}
+
+// ---- AC-12 edge: a delta with an HTTP-style ImplantEvent (offset:0/empty bytes)
+//      still parses to the typed payload and routes to drop ----
+
+#[tokio::test]
+async fn test_observe_http_delta_empty_bytes_routes_to_drop() {
+    let event = ImplantEvent {
+        event_type: TRANSCRIPT_DELTA_EVENT.to_string(),
+        session_id: "http-x".to_string(),
+        timestamp: 0,
+        payload: serde_json::json!({"offset": 0, "bytes": ""}),
+        topic_signal: None,
+        provider: None,
+    };
+    // Routes by event_type regardless of payload contents.
+    assert_eq!(event.event_type, TRANSCRIPT_DELTA_EVENT);
+    let payload: TranscriptDeltaPayload =
+        serde_json::from_value(event.payload.clone()).expect("offset:0/empty bytes still typed");
+    assert_eq!(payload.offset, 0);
+    assert!(payload.bytes.is_empty());
 }

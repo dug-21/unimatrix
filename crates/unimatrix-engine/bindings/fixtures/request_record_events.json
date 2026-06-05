@@ -1,0 +1,23 @@
+{
+  "type": "RecordEvents",
+  "events": [
+    {
+      "event_type": "tool_use",
+      "session_id": "sess-fixture",
+      "timestamp": 1700000000,
+      "payload": {
+        "tool": "Bash"
+      },
+      "topic_signal": "vnc-024",
+      "provider": "claude-code"
+    },
+    {
+      "event_type": "context_read",
+      "session_id": "sess-fixture",
+      "timestamp": 1700000001,
+      "payload": {
+        "entry_id": 42
+      }
+    }
+  ]
+}

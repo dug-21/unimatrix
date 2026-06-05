@@ -9,13 +9,43 @@ use http_body_util::{BodyExt, Full};
 use unimatrix_engine::wire::{HookRequest, HookResponse};
 
 use super::internal_error_response;
+use crate::uds::hook::{MAX_INJECTION_BYTES, format_injection};
 
-/// Map a HookResponse to an HTTP response (ADR-004).
+/// Map a HookResponse to an HTTP response (ADR-004; ADR-003 content negotiation, vnc-024).
 ///
+/// JSON path (`wants_text == false`, or non-injection response):
 /// - Ack -> 204 No Content (empty body)
 /// - Entries/BriefingContent/Pong -> 200 OK + JSON body
 /// - Error -> 400 Bad Request + JSON body
-pub(crate) fn observe_response_to_http(resp: HookResponse) -> Response<BoxBody<Bytes, Infallible>> {
+///
+/// Text path (`wants_text == true`, HTTP-only): the two injection-bearing responses are
+/// formatted as `text/plain` via the single formatting truth `format_injection`
+/// (`hook.rs`, Constraint 4 / AC-07 byte-identity). `Pong`/`Ack`/`Error` fall through to
+/// JSON regardless of `Accept` (the allowlist is exactly `{Entries, BriefingContent}`, R-06).
+pub(crate) fn observe_response_to_http(
+    resp: HookResponse,
+    wants_text: bool,
+) -> Response<BoxBody<Bytes, Infallible>> {
+    // Content-negotiated text path: Entries / BriefingContent only (ADR-003).
+    if wants_text {
+        match resp {
+            HookResponse::Entries { ref items, .. } => {
+                // Reuse the PRODUCTION injection budget so the text is byte-identical to the
+                // UDS hook path (AC-07). `None` (empty / over-budget) -> 204, not 200/500.
+                return match format_injection(items, MAX_INJECTION_BYTES) {
+                    Some(text) => http_200_text_plain(text),
+                    None => http_204_no_content(),
+                };
+            }
+            HookResponse::BriefingContent { content, .. } => {
+                return http_200_text_plain(content);
+            }
+            // Pong / Ack / Error under text/plain: not text-eligible. Fall through to the
+            // unchanged JSON envelope below (Pong.server_version is parsed structured, R-06).
+            _ => {}
+        }
+    }
+
     match resp {
         HookResponse::Ack => Response::builder()
             .status(StatusCode::NO_CONTENT)
@@ -60,6 +90,31 @@ pub(crate) fn observe_response_to_http(resp: HookResponse) -> Response<BoxBody<B
             }
         },
     }
+}
+
+/// 200 OK with a `text/plain` body (content-negotiated injection text, ADR-003).
+fn http_200_text_plain(body: String) -> Response<BoxBody<Bytes, Infallible>> {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "text/plain")
+        .body(
+            Full::new(Bytes::from(body))
+                .map_err(|never| match never {})
+                .boxed(),
+        )
+        .expect("static response builder cannot fail")
+}
+
+/// 204 No Content with an empty body (empty/over-budget Entries text path, ADR-003).
+fn http_204_no_content() -> Response<BoxBody<Bytes, Infallible>> {
+    Response::builder()
+        .status(StatusCode::NO_CONTENT)
+        .body(
+            Full::new(Bytes::new())
+                .map_err(|never| match never {})
+                .boxed(),
+        )
+        .expect("static response builder cannot fail")
 }
 
 /// Prefix client-supplied session_id with "http-" for transport scoping (ADR-003).

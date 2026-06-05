@@ -26,7 +26,7 @@ use crate::infra::validation::{
 const HOOK_TIMEOUT: Duration = Duration::from_millis(40);
 
 /// Maximum byte budget for injection output (~350 tokens at 4 bytes/token).
-const MAX_INJECTION_BYTES: usize = 1400;
+pub(crate) const MAX_INJECTION_BYTES: usize = 1400;
 
 /// Minimum word count for UserPromptSubmit to route to ContextSearch.
 /// Prompts shorter than this threshold fall through to generic_record_event.
@@ -1044,7 +1044,7 @@ fn write_stdout_subagent_inject_response(
 ///
 /// Returns `None` if entries is empty or no entries fit within the budget.
 /// Entries are included in input order (rank order from server).
-fn format_injection(entries: &[EntryPayload], max_bytes: usize) -> Option<String> {
+pub(crate) fn format_injection(entries: &[EntryPayload], max_bytes: usize) -> Option<String> {
     if entries.is_empty() {
         return None;
     }

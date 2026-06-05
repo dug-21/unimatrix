@@ -1,0 +1,10 @@
+{
+  "type": "ContextSearch",
+  "query": "explain the auth flow",
+  "session_id": "sess-fixture",
+  "role": "developer",
+  "task": null,
+  "feature": "vnc-024",
+  "k": 5,
+  "max_tokens": 1500
+}

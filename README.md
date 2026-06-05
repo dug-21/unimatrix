@@ -330,6 +330,16 @@ max_cycles_per_tick = 10
 # Audit data is an accountability record, not a learning signal.
 # Range: [1, 3650]. Default: 180.
 audit_log_retention_days = 180
+
+# Purge policy for raw session transcript (ephemeral, possibly secret-bearing
+# conversation bytes — distinct from distilled knowledge, observations, and the
+# audit log, which have their own retention knobs above).
+# Values:
+#   "PurgeOnCycleClose"  — event-driven purge on cycle/session close. Default,
+#                          and the only value the OSS build accepts.
+#   { RetainDays = N }   — enterprise retain-N-days seam. REJECTED at startup by
+#                          the OSS build with an enterprise-only validation error.
+transcript_retention = "PurgeOnCycleClose"
 ```
 
 ```toml
@@ -492,7 +502,7 @@ Two transport surfaces: Unix Domain Socket (local) and HTTPS (network).
 
 **UDS (local):** Daemon mode (default): Unimatrix runs as a persistent background daemon (`unimatrix serve --daemon`) that accepts MCP connections over a Unix Domain Socket (`unimatrix-mcp.sock`, 0600 permissions). Claude Code spawns a lightweight bridge process (the default `unimatrix` invocation) per session; the bridge connects stdin/stdout to the daemon's UDS socket. The daemon survives client disconnection — background tick, vector index, and all in-memory state persist across sessions. Up to 32 concurrent MCP sessions are supported.
 
-**HTTPS (network):** When `[http] enabled = true` in config.toml, the server starts an HTTPS listener on the content port (default 8443). Any MCP-compatible client (Claude Code, Codex CLI, Gemini CLI) can connect over the network using a static bearer token for authentication. TLS termination via rustls is default-on when cert/key paths are configured; set `[tls] enabled = false` for reverse-proxy deployments. A path-dispatching tower service routes requests: `GET /health` (unauthenticated, returns version and schema version), `POST /observe` (stub for remote telemetry, returns 501 until W2-7), and `/*` (MCP protocol). Up to 32 concurrent HTTP sessions (configurable). See [docs/client-setup.md](docs/client-setup.md) for per-client connection instructions.
+**HTTPS (network):** When `[http] enabled = true` in config.toml, the server starts an HTTPS listener on the content port (default 8443). Any MCP-compatible client (Claude Code, Codex CLI, Gemini CLI) can connect over the network using a static bearer token for authentication. TLS termination via rustls is default-on when cert/key paths are configured; set `[tls] enabled = false` for reverse-proxy deployments. A path-dispatching tower service routes requests: `GET /health` (unauthenticated, returns version and schema version), `POST /observe` (remote telemetry — content-negotiated: `Accept: text/plain` returns server-formatted injection text for injection-bearing responses, while `application/json` or no `Accept` header returns the JSON envelope as the default), and `/*` (MCP protocol). Up to 32 concurrent HTTP sessions (configurable). See [docs/client-setup.md](docs/client-setup.md) for per-client connection instructions.
 
 Foreground mode (container): `unimatrix serve --foreground` runs the full daemon (UDS listener, HTTP listener when enabled, tick loop, ML inference) as PID 1 without fork/setsid. Used by the container `ENTRYPOINT`. SIGTERM triggers graceful shutdown.
 

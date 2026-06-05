@@ -21,6 +21,7 @@ use unimatrix_engine::coaccess::generate_pairs;
 use unimatrix_engine::confidence::rerank_score;
 use unimatrix_engine::wire::{
     ERR_INVALID_PAYLOAD, EntryPayload, HookRequest, HookResponse, MAX_PAYLOAD_SIZE,
+    TRANSCRIPT_DELTA_EVENT, TranscriptDeltaPayload,
 };
 use unimatrix_store::{
     InjectionLogRecord, QueryLogRecord, SessionLifecycleStatus, SessionRecord, SignalRecord,
@@ -761,6 +762,29 @@ pub(crate) async fn dispatch_request(
                 "UDS: event recorded"
             );
 
+            // vnc-024 ADR-004 (R-03 / AC-12 GATE): transcript_delta accept-and-drop guard.
+            // principle 8 / ass-069 Q4: raw conversation bytes may contain secrets and must
+            // NEVER reach durable storage. Accept-and-drop until #670 wires the legitimate
+            // in-memory consumer. This is an EARLY RETURN — it must NOT reuse the col-022
+            // specialize-then-fall-through pattern (#1266); persistence at :793/:849 below is
+            // provably unreachable for a delta. Persists nothing, buffers nothing (SR-05).
+            // The DROP decision keys on event_type ONLY; the typed parse is contract-alignment
+            // (the AC-11 shape, ADR-004) + a debug observability hook and never changes control
+            // flow — a malformed payload is still dropped with Ack (no Error leaked to clients).
+            if event.event_type == TRANSCRIPT_DELTA_EVENT {
+                match serde_json::from_value::<TranscriptDeltaPayload>(event.payload.clone()) {
+                    Ok(delta) => tracing::debug!(
+                        offset = delta.offset,
+                        "transcript_delta accepted-and-dropped"
+                    ),
+                    Err(e) => tracing::debug!(
+                        error = %e,
+                        "transcript_delta dropped (unparsed payload)"
+                    ),
+                }
+                return HookResponse::Ack;
+            }
+
             // col-022 + crt-025: Lifecycle event routing.
             // Must run BEFORE the generic #198 path so set_feature_if_absent becomes a no-op.
             // set_current_phase is called synchronously inside handle_cycle_event (ADR-001 / SR-01).
@@ -972,8 +996,17 @@ pub(crate) async fn dispatch_request(
             // col-012: Batch persist observations in single transaction (fire-and-forget)
             // col-024: Enrich topic_signal per-event from session registry fallback.
             let store_for_obs = Arc::clone(store);
+            // vnc-024 ADR-004 (R-04 / AC-12 GATE): drop transcript_delta elements from the
+            // durable observation batch. A delta inside the batch persists NOTHING while the
+            // remaining events persist normally — deltas never enter obs_batch, so they never
+            // reach insert_observations_batch. principle 8 / SR-05: non-persistence only, no
+            // buffering. The pre-persistence loops above (#198 feature_cycle / col-017 topic
+            // signal) record registry signals derived from the feature_cycle/topic_signal
+            // fields, NOT the delta `bytes` payload, so they are not a durable write path for
+            // delta content (ADR-004 assumption A3).
             let obs_batch: Vec<ObservationRow> = events
                 .iter()
+                .filter(|event| event.event_type != TRANSCRIPT_DELTA_EVENT)
                 .map(|event| {
                     let mut obs = extract_observation_fields(event);
                     obs.topic_signal =
@@ -5214,6 +5247,260 @@ mod tests {
             topic_signal,
             provider: None,
         }
+    }
+
+    // ======================================================================================
+    // vnc-024 ADR-004 — transcript_delta accept-and-drop guard (Deliverable 3) — AC-12 GATE
+    //
+    // GATE PREREQUISITE (R-03 secrets-to-disk, R-04 both-transports/batch): a transcript_delta
+    // must yield Ack and create ZERO durable observation rows. Raw conversation `bytes` may
+    // contain secrets and must NEVER reach SQLite (principle 8 / ass-069 Q4). There is no
+    // content secret-scanner (Constraint 9) — accept-and-drop IS the secrets guarantee.
+    //
+    // These are the UDS-dispatch-level unit/component tests. The HTTP /observe transport half
+    // of AC-12 and full integration runs are Stage 3c.
+    // ======================================================================================
+
+    /// Helper: build a transcript_delta ImplantEvent carried on the existing event_type field
+    /// (Constraint 3 — a new VALUE, not a new wire variant; payload typed as TranscriptDeltaPayload).
+    fn make_delta_event(
+        session_id: &str,
+        payload: serde_json::Value,
+    ) -> unimatrix_engine::wire::ImplantEvent {
+        make_cycle_event(TRANSCRIPT_DELTA_EVENT, session_id, payload, None)
+    }
+
+    /// Count ALL observation rows in the table (queries the insert_observation target directly,
+    /// not via search) — the GATE assertion is "zero durable rows for the delta".
+    async fn count_all_observations(store: &Store) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM observations")
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("count observations")
+    }
+
+    /// GATE / R-03: a transcript_delta over DIRECT UDS dispatch returns Ack AND writes zero
+    /// durable observation rows. The disk insert (:849) is provably unreachable for a delta.
+    #[tokio::test]
+    async fn test_transcript_delta_uds_acks_zero_rows() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+
+        let event = make_delta_event(
+            "sess-delta-1",
+            serde_json::json!({"offset": 42, "bytes": "API_KEY=sk-secret-do-not-persist"}),
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
+        )
+        .await;
+
+        // Allow any (erroneously) spawned blocking write to land before we count.
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        assert!(
+            matches!(resp, HookResponse::Ack),
+            "transcript_delta must be accepted with Ack, got {resp:?}"
+        );
+        assert_eq!(
+            count_all_observations(&store).await,
+            0,
+            "GATE: a transcript_delta must create ZERO durable observation rows (secrets-to-disk)"
+        );
+        // Belt-and-suspenders: the delta's session_id produced no rows specifically.
+        let rows = query_observations(&store, "sess-delta-1").await;
+        assert!(
+            rows.is_empty(),
+            "no observation row may exist for the delta session_id"
+        );
+    }
+
+    /// R-04 batch arm: a RecordEvents batch with one delta among N normal events drops the
+    /// delta (persists nothing) while the N normal events persist normally.
+    #[tokio::test]
+    async fn test_transcript_delta_in_batch_dropped_rest_persist() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+
+        // Two normal observation-producing events + one delta in the middle.
+        let normal_1 = make_cycle_event(
+            "PreToolUse",
+            "sess-batch-normal",
+            serde_json::json!({"tool": "Bash"}),
+            None,
+        );
+        let delta = make_delta_event(
+            "sess-batch-delta",
+            serde_json::json!({"offset": 7, "bytes": "password=hunter2"}),
+        );
+        let normal_2 = make_cycle_event(
+            "PostToolUse",
+            "sess-batch-normal",
+            serde_json::json!({"tool": "Read"}),
+            None,
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvents {
+                events: vec![normal_1, delta, normal_2],
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
+        )
+        .await;
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        assert!(matches!(resp, HookResponse::Ack), "batch must Ack");
+        // The two non-delta events persist; the delta persists nothing.
+        assert_eq!(
+            count_all_observations(&store).await,
+            2,
+            "batch: exactly the N=2 non-delta events persist; the delta is dropped"
+        );
+        assert!(
+            query_observations(&store, "sess-batch-delta")
+                .await
+                .is_empty(),
+            "the delta element must produce ZERO observation rows"
+        );
+        assert_eq!(
+            query_observations(&store, "sess-batch-normal").await.len(),
+            2,
+            "the non-delta events in the same batch must persist normally"
+        );
+    }
+
+    /// R-03 edge: the guard keys on event_type ONLY — a malformed/empty/extra-key payload is
+    /// STILL dropped with Ack and zero rows, and MUST NOT error (fire-and-forget contract).
+    #[tokio::test]
+    async fn test_transcript_delta_malformed_payload_still_acks_zero_rows() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+
+        // offset:0 + empty bytes, AND missing/extra keys — all must drop with Ack, no Error.
+        let cases = vec![
+            serde_json::json!({"offset": 0, "bytes": ""}),
+            serde_json::json!({"bytes": "no offset field"}),
+            serde_json::json!({"offset": 1, "bytes": "x", "unexpected": true}),
+            serde_json::json!({}),
+        ];
+
+        for (i, payload) in cases.into_iter().enumerate() {
+            let event = make_delta_event(&format!("sess-delta-malformed-{i}"), payload);
+            let resp = dispatch_request(
+                HookRequest::RecordEvent { event },
+                &store,
+                &embed,
+                &vs,
+                &es,
+                &adapt,
+                "0.1.0",
+                &registry,
+                &make_pending(),
+                &make_services(&store, &embed, &vs, &es, &adapt),
+                crate::uds::UDS_CAPABILITIES,
+            )
+            .await;
+            assert!(
+                matches!(resp, HookResponse::Ack),
+                "malformed delta payload (case {i}) must still Ack, never Error, got {resp:?}"
+            );
+        }
+
+        tokio::task::yield_now().await;
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        assert_eq!(
+            count_all_observations(&store).await,
+            0,
+            "no malformed-payload delta may produce a durable row"
+        );
+    }
+
+    /// NFR-04 auth inheritance: the guard sits AFTER the SessionWrite capability check, so a
+    /// delta from an agent lacking SessionWrite is rejected exactly as any RecordEvent — no new
+    /// auth surface, no bearer/cap bypass via the new event_type.
+    #[tokio::test]
+    async fn test_transcript_delta_requires_session_write() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+
+        // Capability set WITHOUT SessionWrite.
+        let no_write_caps: &[Capability] = &[Capability::Search];
+
+        let event = make_delta_event(
+            "sess-delta-noauth",
+            serde_json::json!({"offset": 1, "bytes": "secret"}),
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+            no_write_caps,
+        )
+        .await;
+
+        match resp {
+            HookResponse::Error { code, .. } => assert_eq!(
+                code, -32003,
+                "delta without SessionWrite must be rejected exactly as any RecordEvent"
+            ),
+            other => panic!("expected capability Error, got {other:?}"),
+        }
+        // And still nothing persisted.
+        assert_eq!(count_all_observations(&store).await, 0);
+    }
+
+    /// Shared-shape coupling: the guard's parse target is the typed TranscriptDeltaPayload — the
+    /// SAME struct the AC-11 dual-sided fixture round-trips — not raw serde_json::Value. This
+    /// asserts the production-side parse shape is exercised (drop path and typed contract share
+    /// one shape, ADR-004). A divergence in field names/types would fail to compile/parse here.
+    #[test]
+    fn test_transcript_delta_parses_into_typed_payload() {
+        let payload = serde_json::json!({"offset": 99u64, "bytes": "hello"});
+        let parsed: TranscriptDeltaPayload =
+            serde_json::from_value(payload).expect("delta payload deserializes into typed shape");
+        assert_eq!(parsed.offset, 99);
+        assert_eq!(parsed.bytes, "hello");
+        // The routing constant is the shared wire constant, not a stringly-typed literal.
+        assert_eq!(TRANSCRIPT_DELTA_EVENT, "transcript_delta");
     }
 
     #[tokio::test]

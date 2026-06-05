@@ -1492,6 +1492,24 @@ impl InferenceConfig {
 // RetentionConfig (crt-036)
 // ---------------------------------------------------------------------------
 
+/// Retention policy for the RAW SESSION TRANSCRIPT — ephemeral working state: the
+/// verbatim, possibly-secret-bearing conversation bytes streamed as `transcript_delta`
+/// (vnc-024 ADR-004/ADR-005). Does NOT govern distilled knowledge, observations, or the
+/// audit log — those are durable, sanitized artifacts with their own retention knobs.
+///
+/// The enum shape is the load-bearing enterprise seam: a future retain/encrypt/residency
+/// policy adds a variant without re-architecting the field's type (goal #4710). OSS honors
+/// ONLY `PurgeOnCycleClose`; `RetainDays` is rejected by `validate()` as enterprise-only
+/// (durable secret-bearing persistence needs encrypt-at-rest the OSS build lacks —
+/// PRODUCT-VISION principle 8 / ass-069 in-memory-only).
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+pub enum TranscriptRetention {
+    /// Default — event-driven purge on cycle/session close. The ONLY value OSS honors.
+    PurgeOnCycleClose,
+    /// Enterprise seam — retain raw transcript N days. REJECTED by OSS `validate()`.
+    RetainDays(u32),
+}
+
 /// `[retention]` section — activity data and audit log retention policy.
 ///
 /// All fields have compiled defaults via `#[serde(default = "...")]` so an absent
@@ -1536,6 +1554,12 @@ pub struct RetentionConfig {
     /// Range: [1, 1000]. Default: 10.
     #[serde(default = "default_max_cycles_per_tick")]
     pub max_cycles_per_tick: u32,
+
+    /// Raw-transcript retention policy (vnc-024 ADR-005). OSS honors only
+    /// `PurgeOnCycleClose`; `RetainDays` is rejected by `validate()` as enterprise-only.
+    /// Default: `PurgeOnCycleClose`.
+    #[serde(default = "default_transcript_retention")]
+    pub transcript_retention: TranscriptRetention,
 }
 
 fn default_activity_detail_retention_cycles() -> u32 {
@@ -1547,6 +1571,9 @@ fn default_audit_log_retention_days() -> u32 {
 fn default_max_cycles_per_tick() -> u32 {
     10
 }
+fn default_transcript_retention() -> TranscriptRetention {
+    TranscriptRetention::PurgeOnCycleClose
+}
 
 impl Default for RetentionConfig {
     fn default() -> Self {
@@ -1554,6 +1581,7 @@ impl Default for RetentionConfig {
             activity_detail_retention_cycles: default_activity_detail_retention_cycles(),
             audit_log_retention_days: default_audit_log_retention_days(),
             max_cycles_per_tick: default_max_cycles_per_tick(),
+            transcript_retention: default_transcript_retention(),
         }
     }
 }
@@ -1596,6 +1624,25 @@ impl RetentionConfig {
                 value: self.max_cycles_per_tick.to_string(),
                 reason: "must be in range [1, 1000]",
             });
+        }
+
+        // vnc-024 ADR-005: OSS rejects RetainDays(N) for any N (including 0) as
+        // enterprise-only. This is NOT a range check — durable persistence of raw,
+        // secret-bearing transcript needs encrypt-at-rest/residency the OSS build lacks
+        // (PRODUCT-VISION principle 8 / ass-069 in-memory-only). PurgeOnCycleClose is the
+        // only value OSS honors and is always valid.
+        match self.transcript_retention {
+            TranscriptRetention::PurgeOnCycleClose => {}
+            TranscriptRetention::RetainDays(_) => {
+                return Err(ConfigError::RetentionFieldOutOfRange {
+                    path: path.to_path_buf(),
+                    field: "transcript_retention",
+                    value: "RetainDays".to_string(),
+                    reason: "RetainDays is an enterprise-only policy; the OSS build cannot \
+                             durably retain raw transcript (no encrypt-at-rest). Use \
+                             PurgeOnCycleClose.",
+                });
+            }
         }
 
         Ok(())
@@ -3325,6 +3372,15 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.retention.max_cycles_per_tick
             } else {
                 global.retention.max_cycles_per_tick
+            },
+            // vnc-024 ADR-005: per-field project-wins merge for transcript_retention (R-09).
+            // Enum is Clone (not Copy), so clone the chosen value. `!=` uses derived PartialEq.
+            transcript_retention: if project.retention.transcript_retention
+                != default.retention.transcript_retention
+            {
+                project.retention.transcript_retention.clone()
+            } else {
+                global.retention.transcript_retention.clone()
             },
         },
         // #561: per-field project-wins merge for store config
@@ -7991,6 +8047,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 0,
             audit_log_retention_days: 180,
             max_cycles_per_tick: 10,
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
         };
         let err = cfg
             .validate(Path::new("config.toml"))
@@ -8010,6 +8067,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 10_001,
             audit_log_retention_days: 180,
             max_cycles_per_tick: 10,
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
         };
         let err_high = cfg_high
             .validate(Path::new("config.toml"))
@@ -8026,6 +8084,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 1,
             audit_log_retention_days: 1,
             max_cycles_per_tick: 1,
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
         };
         assert!(
             cfg_low.validate(Path::new("config.toml")).is_ok(),
@@ -8037,6 +8096,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 10_000,
             audit_log_retention_days: 3_650,
             max_cycles_per_tick: 1_000,
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
         };
         assert!(
             cfg_max.validate(Path::new("config.toml")).is_ok(),
@@ -8051,6 +8111,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 50,
             audit_log_retention_days: 0,
             max_cycles_per_tick: 10,
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
         };
         let err = cfg
             .validate(Path::new("config.toml"))
@@ -8066,6 +8127,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 50,
             audit_log_retention_days: 3_651,
             max_cycles_per_tick: 10,
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
         };
         let err_high = cfg_high
             .validate(Path::new("config.toml"))
@@ -8083,6 +8145,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 50,
             audit_log_retention_days: 180,
             max_cycles_per_tick: 0,
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
         };
         let err_zero = cfg_zero
             .validate(Path::new("config.toml"))
@@ -8098,6 +8161,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 50,
             audit_log_retention_days: 180,
             max_cycles_per_tick: 1_001,
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
         };
         let err_high = cfg_high
             .validate(Path::new("config.toml"))
@@ -8129,6 +8193,188 @@ max_cycles_per_tick = 20
         assert!(
             matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
             "must be RetentionFieldOutOfRange variant; got: {err:?}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // vnc-024 ADR-005: transcript_retention enum tests (AC-13, AC-14)
+    // OSS validate() REJECTS RetainDays(N) as enterprise-only (NOT a range check);
+    // only PurgeOnCycleClose is accepted. Config-only in F1.
+    // -----------------------------------------------------------------------
+
+    fn retention_with(transcript_retention: TranscriptRetention) -> RetentionConfig {
+        RetentionConfig {
+            transcript_retention,
+            ..RetentionConfig::default()
+        }
+    }
+
+    #[test]
+    fn test_retention_compiled_default_is_purge() {
+        // AC-13: the compiled Default value is PurgeOnCycleClose.
+        assert_eq!(
+            RetentionConfig::default().transcript_retention,
+            TranscriptRetention::PurgeOnCycleClose,
+            "compiled default transcript_retention must be PurgeOnCycleClose"
+        );
+        assert_eq!(
+            default_transcript_retention(),
+            TranscriptRetention::PurgeOnCycleClose,
+            "defaulter fn must return PurgeOnCycleClose"
+        );
+    }
+
+    #[test]
+    fn test_retention_absent_block_defaults_purge() {
+        // AC-13: an absent [retention] block loads transcript_retention as PurgeOnCycleClose,
+        // exercising both the #[serde(default)] defaulter and Default for RetentionConfig.
+        let parsed: UnimatrixConfig =
+            toml::from_str("").expect("empty TOML must parse as default UnimatrixConfig");
+        assert_eq!(
+            parsed.retention.transcript_retention,
+            TranscriptRetention::PurgeOnCycleClose,
+            "absent [retention]: transcript_retention must default to PurgeOnCycleClose"
+        );
+    }
+
+    #[test]
+    fn test_retention_present_but_field_absent_defaults_purge() {
+        // AC-13 (Edge): a present [retention] block with transcript_retention absent
+        // also loads PurgeOnCycleClose via the field-level #[serde(default)].
+        let toml_str = r#"
+[retention]
+max_cycles_per_tick = 20
+"#;
+        let parsed: UnimatrixConfig =
+            toml::from_str(toml_str).expect("present-block partial TOML must parse");
+        assert_eq!(
+            parsed.retention.transcript_retention,
+            TranscriptRetention::PurgeOnCycleClose,
+            "present-but-field-absent: transcript_retention must default to PurgeOnCycleClose"
+        );
+    }
+
+    #[test]
+    fn test_validate_accepts_purge_on_cycle_close() {
+        // AC-13: validate() accepts PurgeOnCycleClose unconditionally.
+        let cfg = retention_with(TranscriptRetention::PurgeOnCycleClose);
+        assert!(
+            cfg.validate(Path::new("config.toml")).is_ok(),
+            "PurgeOnCycleClose must always pass validate"
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_retaindays_enterprise_only() {
+        // AC-13 (R-09): validate() rejects RetainDays(N) for ANY N (incl. 0) with an
+        // enterprise-only error naming RetainDays — NOT a generic range error.
+        for n in [0u32, 30u32] {
+            let cfg = retention_with(TranscriptRetention::RetainDays(n));
+            let err = cfg.validate(Path::new("config.toml")).unwrap_err();
+            assert!(
+                matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
+                "RetainDays({n}) must be a RetentionFieldOutOfRange error; got: {err:?}"
+            );
+            let msg = err.to_string();
+            assert!(
+                msg.contains("transcript_retention"),
+                "error must name the transcript_retention field; got: {msg}"
+            );
+            assert!(
+                msg.contains("RetainDays"),
+                "error must name RetainDays as enterprise-only; got: {msg}"
+            );
+            assert!(
+                msg.contains("enterprise-only"),
+                "error must state enterprise-only (not a range error); got: {msg}"
+            );
+            // Must NOT be a generic range message.
+            assert!(
+                !msg.contains("must be in range"),
+                "RetainDays rejection must NOT be a range error; got: {msg}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_purge_on_cycle_close_toml_deserializes() {
+        // R-10: "PurgeOnCycleClose" (serde externally-tagged unit variant) deserializes.
+        let toml_str = r#"
+[retention]
+transcript_retention = "PurgeOnCycleClose"
+"#;
+        let parsed: UnimatrixConfig =
+            toml::from_str(toml_str).expect("PurgeOnCycleClose bare-string TOML must parse");
+        assert_eq!(
+            parsed.retention.transcript_retention,
+            TranscriptRetention::PurgeOnCycleClose
+        );
+    }
+
+    #[test]
+    fn test_bare_u32_rejected() {
+        // R-10: a bare u32 (transcript_retention = 30) fails to deserialize into the enum —
+        // the enum is the only accepted shape, not silently coerced.
+        let toml_str = r#"
+[retention]
+transcript_retention = 30
+"#;
+        let result: Result<UnimatrixConfig, _> = toml::from_str(toml_str);
+        assert!(
+            result.is_err(),
+            "bare u32 for transcript_retention must be rejected at deserialize"
+        );
+    }
+
+    #[test]
+    fn test_retention_merge_project_wins() {
+        // AC-14 (R-09/R-11): per-field project-wins merge for transcript_retention.
+        // Project sets a non-default value (RetainDays(30)); global keeps the default
+        // (PurgeOnCycleClose). The merge `!=` arm must pick the project value.
+        // This exercises a REAL inequality so a broken PartialEq is caught.
+        assert_ne!(
+            TranscriptRetention::RetainDays(30),
+            TranscriptRetention::PurgeOnCycleClose,
+            "inequality must hold for the merge arm to be meaningful"
+        );
+        let mut global = UnimatrixConfig::default();
+        global.retention.transcript_retention = TranscriptRetention::PurgeOnCycleClose;
+        let mut project = UnimatrixConfig::default();
+        project.retention.transcript_retention = TranscriptRetention::RetainDays(30);
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.retention.transcript_retention,
+            TranscriptRetention::RetainDays(30),
+            "project's non-default transcript_retention must win the merge"
+        );
+    }
+
+    #[test]
+    fn test_retention_merge_revalidated_rejects_retaindays() {
+        // #3905 / AC-14 / Constraint 10: the MERGED config is re-validated, so a merged
+        // RetainDays is still rejected post-merge. validate_config(&merged) is the
+        // post-merge finalize site (config.rs load_config step 4).
+        let global = UnimatrixConfig::default(); // PurgeOnCycleClose
+        let mut project = UnimatrixConfig::default();
+        project.retention.transcript_retention = TranscriptRetention::RetainDays(7);
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.retention.transcript_retention,
+            TranscriptRetention::RetainDays(7),
+            "merge must pick the RetainDays value first"
+        );
+
+        let err = validate_config(&merged, Path::new("/fake"))
+            .expect_err("post-merge validate_config must reject a merged RetainDays");
+        assert!(
+            matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
+            "merged RetainDays must be rejected as RetentionFieldOutOfRange; got: {err:?}"
+        );
+        assert!(
+            err.to_string().contains("RetainDays"),
+            "post-merge rejection must name RetainDays as enterprise-only"
         );
     }
 
