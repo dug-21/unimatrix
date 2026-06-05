@@ -1,4 +1,4 @@
-## ADR-001: ts-rs Wire-Contract Codegen as a Dev-Dependency with CI-Gated Bindings
+## ADR-001: ts-rs Wire-Contract Codegen as a Dev-Dependency with Drift-Checked Bindings
 
 ### Context
 The all-Rust→TS client migration (ass-068 Q3) requires the TS client's wire types to be *generated*
@@ -6,8 +6,9 @@ from the authoritative Rust serde schema (`crates/unimatrix-engine/src/wire.rs`)
 Hand-mirroring is the primary drift risk the migration exists to eliminate. ts-rs is not currently
 in the workspace. Three constraints shape the choice: (1) it must add zero runtime/supply-chain
 footprint to any shipped crate (AC-15, SR-03; rust-workspace minimal-footprint rule); (2) the
-generated bindings must be a single CI-gated source of truth that downstream chunks consume without
-guessing; (3) the codegen must run as part of the normal test cycle, not a bespoke build step.
+generated bindings must be a single drift-checked source of truth that downstream chunks consume
+without guessing; (3) the codegen must run as part of the normal local test cycle, not a bespoke
+build step and not a new GitHub CI job.
 
 ts-rs's `serde-compat` feature (default-on) handles the workspace's exact annotation set —
 `#[serde(tag = "type")]` internally-tagged enums (`HookRequest`/`HookResponse`),
@@ -27,12 +28,15 @@ runtime — `.ts` export fires only when the test binary runs (`#[ts(export)]` i
 `cargo test` invocation). Running `cargo test` writes the committed bindings to
 `crates/unimatrix-engine/bindings/` (the ts-rs default location).
 
-These bindings are the **CI-gated source of truth**, *not* promoted to a workspace-root `bindings/`.
-F2/F5 copy/vendor them into the bundled `@dug-21/unimatrix` client at build time. The CI gate runs
-`cargo test` then `git diff --exit-code crates/unimatrix-engine/bindings/` inside the **existing**
-test job (OQ-01 — no new workflow); committed bindings must equal fresh codegen output or the build
-fails (AC-02/AC-03). An explicit assertion confirms ts-rs is absent from `cargo tree --edges normal`
-and present only under `[dev-dependencies]` (SR-03).
+These bindings are the **drift-checked source of truth**, *not* promoted to a workspace-root `bindings/`.
+F2/F5 copy/vendor them into the bundled `@dug-21/unimatrix` client at build time. The drift check runs
+`cargo test -p unimatrix-engine` then `git diff --exit-code crates/unimatrix-engine/bindings/`
+**locally** — this repo runs cargo tests locally and builds at release; PR CI stays lint-only, so do
+**NOT** add a GitHub Actions cargo job for this (no prior compiling PR-CI arm exists to "fold" into).
+This constrains *where* the gate runs, not *whether* to test: the round-trip behavior tests (ADR-002)
+and the codegen drift check are both still required. Committed bindings must equal fresh codegen output
+or the drift check fails (AC-02/AC-03). An explicit assertion confirms ts-rs is absent from
+`cargo tree --edges normal` and present only under `[dev-dependencies]` (SR-03).
 
 The generated discriminated unions must express the `#[serde(tag = "type")]` enums with a literal
 `type` field per variant (AC-04); this is verified behaviorally by ADR-002's fixtures, not assumed
@@ -44,8 +48,8 @@ type layer. No runtime dependency, no supply-chain exposure, `cargo audit` unaff
 Downstream chunks vendor a known, fixed path. Codegen rides `cargo test` — no separate toolchain.
 
 **Harder**: Six types now carry a derive that contributors must preserve. A new wire field
-requires re-running `cargo test` and committing the regenerated `.ts` or CI blocks the merge (this
-is the intended forcing function). ts-rs is new to the workspace with no prior in-repo evidence, so
+requires re-running `cargo test -p unimatrix-engine` and committing the regenerated `.ts` or the
+local drift check fails (this is the intended forcing function). ts-rs is new to the workspace with no prior in-repo evidence, so
 its serde-compat fidelity on the hard cases (tagged enums, flatten) cannot be trusted from
 compilation alone — ADR-002's round-trip fixtures are the safety net (SR-01).
 
