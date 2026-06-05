@@ -24,3 +24,6 @@ product/research/**/__pycache__/
 
 # Claude Code worktrees (parallel workstream isolation)
 .claude/worktrees/
+
+# Claude Code runtime session state
+.claude/scheduled_tasks.lock
