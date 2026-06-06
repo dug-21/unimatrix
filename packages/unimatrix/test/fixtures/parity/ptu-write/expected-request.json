@@ -1,0 +1,17 @@
+{
+  "type": "RecordEvent",
+  "event_type": "post_tool_use_rework_candidate",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "tool_name": "Write",
+    "file_path": "/src/new_module.rs",
+    "had_failure": false,
+    "tool_input": {
+      "file_path": "/src/new_module.rs",
+      "content": "fn main() {}"
+    },
+    "tool_response": null
+  },
+  "provider": "claude-code"
+}

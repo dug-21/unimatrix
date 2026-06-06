@@ -1,0 +1,11 @@
+{
+  "type": "ContextSearch",
+  "query": "=== Recent conversation (last 1 exchanges) ===\n[tool: Task(implement parity corpus generator) → agent spawned successfully]\n[Assistant] spawning the implementation agent\n[User] implement the corpus generator in the server crate\n=== End recent conversation ===",
+  "session_id": "sess-corpus",
+  "role": "developer",
+  "task": null,
+  "feature": null,
+  "k": null,
+  "max_tokens": null,
+  "source": "SubagentStart"
+}

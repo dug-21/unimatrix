@@ -1,0 +1,1 @@
+{"hookSpecificOutput":{"hookEventName":"SubagentStart","additionalContext":"--- Unimatrix Context ---\n[ADR-001 parity corpus] (decision, 85% confidence)\nThe Rust hook is the oracle for the corpus.\n<!-- id:101 sim:0.92 -->\n\n[Hook exit contract] (decision, 85% confidence)\nThe hook always exits 0 and never blocks.\n<!-- id:102 sim:0.92 -->\n\n"}}

@@ -1,0 +1,11 @@
+{
+  "type": "ContextSearch",
+  "query": "=== Recent conversation (last 1 exchanges) ===\n[Assistant] assistant reply inside the window\n[User] first full line after the mid-line window cut\n=== End recent conversation ===",
+  "session_id": "sess-corpus",
+  "role": null,
+  "task": null,
+  "feature": null,
+  "k": null,
+  "max_tokens": null,
+  "source": "SubagentStart"
+}

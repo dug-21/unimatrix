@@ -1,0 +1,1 @@
+{"session_id":"sess-corpus","tool_name":"MultiEdit","tool_input":{"edits":[{"path":"/src/a.rs","old":"x","new":"y"},{"path":"/src/b.rs","old":"x","new":"y"},{"old":"no path on this edit","new":"z"}]},"tool_response":{"ok":true}}

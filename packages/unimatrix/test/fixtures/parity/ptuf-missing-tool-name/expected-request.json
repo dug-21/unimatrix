@@ -1,0 +1,13 @@
+{
+  "type": "RecordEvent",
+  "event_type": "PostToolUseFailure",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "error": "boom",
+    "tool_input": {
+      "x": 1
+    }
+  },
+  "provider": "claude-code"
+}

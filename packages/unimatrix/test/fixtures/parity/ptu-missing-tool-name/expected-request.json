@@ -1,0 +1,12 @@
+{
+  "type": "RecordEvent",
+  "event_type": "PostToolUse",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "tool_input": {
+      "command": "ls"
+    }
+  },
+  "provider": "claude-code"
+}

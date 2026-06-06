@@ -1,0 +1,14 @@
+{
+  "type": "RecordEvent",
+  "event_type": "cycle_phase_end",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "feature_cycle": "vnc-026",
+    "phase": "design",
+    "outcome": "approved with notes",
+    "next_phase": "implement"
+  },
+  "topic_signal": "vnc-026",
+  "provider": "claude-code"
+}

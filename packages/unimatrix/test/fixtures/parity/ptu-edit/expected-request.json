@@ -1,0 +1,20 @@
+{
+  "type": "RecordEvent",
+  "event_type": "post_tool_use_rework_candidate",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "tool_name": "Edit",
+    "file_path": "/src/lib.rs",
+    "had_failure": false,
+    "tool_input": {
+      "path": "/src/lib.rs",
+      "old": "a",
+      "new": "b"
+    },
+    "tool_response": {
+      "ok": true
+    }
+  },
+  "provider": "claude-code"
+}

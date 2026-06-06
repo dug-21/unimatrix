@@ -1,0 +1,1 @@
+{"type":"assistant","message":{"content":[{"type":"text","text":"calling an unmapped tool"},{"type":"tool_use","id":"tu-3","name":"CustomFrobnicator","input":{"count":3,"label":"first string field wins"}}]}}

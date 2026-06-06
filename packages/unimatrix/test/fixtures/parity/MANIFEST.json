@@ -1,0 +1,342 @@
+{
+  "generated_by": "parity_corpus_gen.rs",
+  "case_count": 83,
+  "conventions": {
+    "transcript_path": "relative transcript_path values in stdin.json resolve against the case directory",
+    "stdin_cap_bytes": 1048576,
+    "volatile_normalization": [
+      "timestamp -> 0 (top-level RecordEvent flatten and each RecordEvents element)",
+      "session_id matching ^ppid-\\d+$ -> \"ppid-X\"",
+      "cwd equal to the running process current working directory -> \"<process-cwd>\""
+    ]
+  },
+  "arms": {
+    "adversarial::prompt_escapes": [
+      "ups-adversarial-content"
+    ],
+    "build_request::Ping": [
+      "event-ping"
+    ],
+    "build_request::PostToolUse::missing_tool_name": [
+      "ptu-missing-tool-name"
+    ],
+    "build_request::PostToolUse::multiedit_empty_pairs": [
+      "ptu-multiedit-empty-edits"
+    ],
+    "build_request::PostToolUse::multiedit_fanout": [
+      "ptu-multiedit-fanout"
+    ],
+    "build_request::PostToolUse::non_claude_provider": [
+      "alias-after-tool"
+    ],
+    "build_request::PostToolUse::non_rework_tool": [
+      "ptu-non-rework-tool"
+    ],
+    "build_request::PostToolUse::single_rework": [
+      "ptu-bash-exit-zero"
+    ],
+    "build_request::PostToolUseFailure": [
+      "ptuf-basic",
+      "ptuf-empty-extra",
+      "ptuf-null-extra",
+      "ptuf-missing-tool-name",
+      "ptuf-null-error"
+    ],
+    "build_request::PreCompact": [
+      "event-precompact"
+    ],
+    "build_request::PreToolUse::mcp_context_promotion": [
+      "cycle-mcp-context-promotion"
+    ],
+    "build_request::PreToolUse::no_promotion": [
+      "ptu-pre-non-cycle"
+    ],
+    "build_request::SessionStart": [
+      "event-session-start"
+    ],
+    "build_request::SessionStart::role_feature_absent": [
+      "event-session-start-no-role"
+    ],
+    "build_request::Stop": [
+      "event-stop"
+    ],
+    "build_request::SubagentStart::context_search": [
+      "sas-prompt-snippet"
+    ],
+    "build_request::SubagentStart::empty_snippet": [
+      "sas-no-snippet-no-transcript",
+      "sas-whitespace-snippet-tail"
+    ],
+    "build_request::TaskCompleted": [
+      "event-task-completed"
+    ],
+    "build_request::UserPromptSubmit::below_min_words": [
+      "ups-four-words",
+      "ups-padded-words-not-counted"
+    ],
+    "build_request::UserPromptSubmit::context_search": [
+      "ups-five-words",
+      "ups-long-multiword"
+    ],
+    "build_request::UserPromptSubmit::empty_prompt": [
+      "ups-empty-prompt",
+      "ups-whitespace-prompt",
+      "ups-missing-prompt-field"
+    ],
+    "build_request::cwd_fallback": [
+      "stdin-malformed",
+      "stdin-missing-cwd"
+    ],
+    "build_request::session_id_ppid_fallback": [
+      "stdin-empty"
+    ],
+    "build_request::wildcard_generic": [
+      "event-subagent-stop",
+      "event-unknown-passthrough"
+    ],
+    "cycle::bare_name": [
+      "cycle-start-bare"
+    ],
+    "cycle::goal_ignored_non_start": [
+      "cycle-stop"
+    ],
+    "cycle::goal_truncation": [
+      "cycle-goal-overflow-multibyte"
+    ],
+    "cycle::missing_tool_input": [
+      "cycle-missing-tool-input"
+    ],
+    "cycle::near_miss_not_intercepted": [
+      "cycle-near-miss",
+      "cycle-near-miss-suffixed"
+    ],
+    "cycle::not_context_cycle": [
+      "ptu-pre-non-cycle"
+    ],
+    "cycle::phase_end": [
+      "cycle-phase-end"
+    ],
+    "cycle::prefixed_name": [
+      "cycle-start-prefixed"
+    ],
+    "cycle::start": [
+      "cycle-start-bare"
+    ],
+    "cycle::stop": [
+      "cycle-stop"
+    ],
+    "cycle::validation_failed": [
+      "cycle-invalid-type",
+      "cycle-invalid-topic"
+    ],
+    "extract_file_path::absent": [
+      "ptu-bash-exit-zero"
+    ],
+    "extract_file_path::edit_path": [
+      "ptu-edit"
+    ],
+    "extract_file_path::write_file_path": [
+      "ptu-write"
+    ],
+    "is_bash_failure::exit_missing": [
+      "ptu-bash-exit-missing"
+    ],
+    "is_bash_failure::exit_non_integer": [
+      "ptu-bash-exit-non-integer"
+    ],
+    "is_bash_failure::exit_nonzero": [
+      "ptu-bash-exit-nonzero"
+    ],
+    "is_bash_failure::exit_zero": [
+      "ptu-bash-exit-zero"
+    ],
+    "is_bash_failure::interrupted_true": [
+      "ptu-bash-interrupted"
+    ],
+    "multiedit::edit_path_missing": [
+      "ptu-multiedit-fanout"
+    ],
+    "multiedit::edits_empty": [
+      "ptu-multiedit-empty-edits"
+    ],
+    "multiedit::edits_missing": [
+      "ptu-multiedit-missing-edits"
+    ],
+    "multiedit::edits_non_array": [
+      "ptu-multiedit-non-array-edits"
+    ],
+    "multiedit::edits_present": [
+      "ptu-multiedit-fanout"
+    ],
+    "normalize_event_name::alias::AfterTool": [
+      "alias-after-tool"
+    ],
+    "normalize_event_name::alias::BeforeTool": [
+      "alias-before-tool"
+    ],
+    "normalize_event_name::alias::SessionEnd": [
+      "alias-session-end"
+    ],
+    "normalize_event_name::canonical::Ping": [
+      "event-ping"
+    ],
+    "normalize_event_name::canonical::PostToolUse": [
+      "ptu-bash-exit-zero"
+    ],
+    "normalize_event_name::canonical::PostToolUseFailure": [
+      "ptuf-basic"
+    ],
+    "normalize_event_name::canonical::PreCompact": [
+      "event-precompact"
+    ],
+    "normalize_event_name::canonical::PreToolUse": [
+      "ptu-pre-non-cycle"
+    ],
+    "normalize_event_name::canonical::SessionStart": [
+      "event-session-start"
+    ],
+    "normalize_event_name::canonical::Stop": [
+      "event-stop"
+    ],
+    "normalize_event_name::canonical::SubagentStart": [
+      "sas-prompt-snippet"
+    ],
+    "normalize_event_name::canonical::SubagentStop": [
+      "event-subagent-stop"
+    ],
+    "normalize_event_name::canonical::TaskCompleted": [
+      "event-task-completed"
+    ],
+    "normalize_event_name::canonical::UserPromptSubmit": [
+      "ups-five-words"
+    ],
+    "normalize_event_name::unknown": [
+      "event-unknown-passthrough"
+    ],
+    "parse_hook_input::defensive_default": [
+      "stdin-empty",
+      "stdin-malformed"
+    ],
+    "parse_hook_input::extra_flatten_preserved": [
+      "stdin-extra-fields-preserved"
+    ],
+    "parse_hook_input::lone_surrogate_defensive": [
+      "stdin-lone-surrogate-escape"
+    ],
+    "parse_hook_input::ok": [
+      "event-session-start"
+    ],
+    "parse_hook_input::provider_named_field_overwritten": [
+      "stdin-provider-field-overwritten"
+    ],
+    "parse_hook_input::wrong_typed_field": [
+      "stdin-wrong-typed-field"
+    ],
+    "read_stdin::cap_exact_1mib": [
+      "stdin-exactly-1mib"
+    ],
+    "read_stdin::cap_over_1mib": [
+      "stdin-over-1mib"
+    ],
+    "stdout::briefing_content": [
+      "stdout-briefing-content"
+    ],
+    "stdout::briefing_empty": [
+      "stdout-briefing-empty"
+    ],
+    "stdout::entries_empty": [
+      "stdout-subagent-empty-entries"
+    ],
+    "stdout::entries_plain": [
+      "stdout-plain-entries"
+    ],
+    "stdout::envelope_adversarial": [
+      "stdout-subagent-envelope-adversarial"
+    ],
+    "stdout::subagent_envelope": [
+      "stdout-subagent-envelope"
+    ],
+    "stdout::subagent_non_entries_fallback": [
+      "stdout-subagent-non-entries-fallback"
+    ],
+    "stdout::truncation": [
+      "stdout-entries-truncation"
+    ],
+    "stdout::truncation_remaining_too_small": [
+      "stdout-entries-remaining-too-small"
+    ],
+    "subagent_fallback::empty_transcript_path": [
+      "sas-tail-empty-path"
+    ],
+    "subagent_fallback::missing_file": [
+      "sas-tail-missing-file"
+    ],
+    "subagent_fallback::no_transcript_path": [
+      "sas-no-snippet-no-transcript"
+    ],
+    "subagent_fallback::not_applicable": [
+      "sas-prompt-snippet"
+    ],
+    "subagent_fallback::query_some": [
+      "sas-whitespace-snippet-tail",
+      "sas-tail-basic"
+    ],
+    "topic_signal::generic": [
+      "event-subagent-stop"
+    ],
+    "topic_signal::generic_null_extra": [
+      "event-unknown-null-extra"
+    ],
+    "topic_signal::post_tool_use": [
+      "ptu-bash-exit-zero"
+    ],
+    "topic_signal::post_tool_use_failure": [
+      "ptuf-basic"
+    ],
+    "topic_signal::pre_tool_use": [
+      "alias-before-tool"
+    ],
+    "topic_signal::subagent_start": [
+      "sas-no-snippet-no-transcript"
+    ],
+    "topic_signal::user_prompt_submit": [
+      "ups-empty-prompt"
+    ],
+    "transcript::assistant_text": [
+      "sas-tail-basic"
+    ],
+    "transcript::budget_loop_break": [
+      "sas-tail-budget-overflow"
+    ],
+    "transcript::key_param_fallback": [
+      "sas-tail-key-param-fallback"
+    ],
+    "transcript::malformed_lines_skipped": [
+      "sas-tail-malformed-lines"
+    ],
+    "transcript::mid_line_window": [
+      "sas-tail-window-mid-line"
+    ],
+    "transcript::multibyte_window_edge": [
+      "sas-tail-multibyte-window-edge"
+    ],
+    "transcript::no_turns_none": [
+      "sas-tail-single-turn-too-big"
+    ],
+    "transcript::raw_content_shape": [
+      "sas-tail-raw-content-shape"
+    ],
+    "transcript::thinking_only_suppressed": [
+      "sas-tail-thinking-only"
+    ],
+    "transcript::tool_pairing": [
+      "sas-tail-basic"
+    ],
+    "transcript::tool_result_string_content": [
+      "sas-tail-tool-result-string-content"
+    ],
+    "transcript::user_text": [
+      "sas-tail-basic"
+    ]
+  }
+}

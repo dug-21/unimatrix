@@ -1,0 +1,7 @@
+{
+  "type": "SessionRegister",
+  "session_id": "sess-nocwd",
+  "cwd": "<process-cwd>",
+  "agent_role": null,
+  "feature": null
+}

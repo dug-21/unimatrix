@@ -1,0 +1,14 @@
+{
+  "type": "RecordEvent",
+  "event_type": "PostToolUse",
+  "session_id": "gem-1",
+  "timestamp": 0,
+  "payload": {
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "ls"
+    },
+    "exit_code": 1
+  },
+  "provider": "gemini-cli"
+}

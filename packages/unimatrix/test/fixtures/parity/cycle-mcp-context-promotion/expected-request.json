@@ -1,0 +1,12 @@
+{
+  "type": "RecordEvent",
+  "event_type": "cycle_start",
+  "session_id": "gem-1",
+  "timestamp": 0,
+  "payload": {
+    "feature_cycle": "vnc-026",
+    "goal": "Promoted from mcp_context"
+  },
+  "topic_signal": "vnc-026",
+  "provider": "gemini-cli"
+}

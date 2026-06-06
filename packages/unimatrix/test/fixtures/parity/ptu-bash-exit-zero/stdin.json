@@ -1,0 +1,1 @@
+{"session_id":"sess-corpus","tool_name":"Bash","tool_input":{"command":"cargo build --workspace"},"tool_response":{"stdout":"Finished"},"exit_code":0}

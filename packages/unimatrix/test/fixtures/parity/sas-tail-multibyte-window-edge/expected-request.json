@@ -1,0 +1,11 @@
+{
+  "type": "ContextSearch",
+  "query": "=== Recent conversation (last 1 exchanges) ===\n[Assistant] assistant reply after the emoji filler\n[User] after the multibyte window edge!\n=== End recent conversation ===",
+  "session_id": "sess-corpus",
+  "role": null,
+  "task": null,
+  "feature": null,
+  "k": null,
+  "max_tokens": null,
+  "source": "SubagentStart"
+}

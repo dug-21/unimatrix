@@ -1,0 +1,18 @@
+{
+  "type": "RecordEvent",
+  "event_type": "post_tool_use_rework_candidate",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "tool_name": "Bash",
+    "file_path": null,
+    "had_failure": true,
+    "tool_input": {
+      "command": "cargo test"
+    },
+    "tool_response": {
+      "stderr": "2 tests failed"
+    }
+  },
+  "provider": "claude-code"
+}

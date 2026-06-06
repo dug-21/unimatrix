@@ -1,0 +1,101 @@
+{
+  "type": "RecordEvents",
+  "events": [
+    {
+      "event_type": "post_tool_use_rework_candidate",
+      "session_id": "sess-corpus",
+      "timestamp": 0,
+      "payload": {
+        "tool_name": "MultiEdit",
+        "file_path": "/src/a.rs",
+        "had_failure": false,
+        "tool_input": {
+          "edits": [
+            {
+              "path": "/src/a.rs",
+              "old": "x",
+              "new": "y"
+            },
+            {
+              "path": "/src/b.rs",
+              "old": "x",
+              "new": "y"
+            },
+            {
+              "old": "no path on this edit",
+              "new": "z"
+            }
+          ]
+        },
+        "tool_response": {
+          "ok": true
+        }
+      },
+      "provider": "claude-code"
+    },
+    {
+      "event_type": "post_tool_use_rework_candidate",
+      "session_id": "sess-corpus",
+      "timestamp": 0,
+      "payload": {
+        "tool_name": "MultiEdit",
+        "file_path": "/src/b.rs",
+        "had_failure": false,
+        "tool_input": {
+          "edits": [
+            {
+              "path": "/src/a.rs",
+              "old": "x",
+              "new": "y"
+            },
+            {
+              "path": "/src/b.rs",
+              "old": "x",
+              "new": "y"
+            },
+            {
+              "old": "no path on this edit",
+              "new": "z"
+            }
+          ]
+        },
+        "tool_response": {
+          "ok": true
+        }
+      },
+      "provider": "claude-code"
+    },
+    {
+      "event_type": "post_tool_use_rework_candidate",
+      "session_id": "sess-corpus",
+      "timestamp": 0,
+      "payload": {
+        "tool_name": "MultiEdit",
+        "file_path": null,
+        "had_failure": false,
+        "tool_input": {
+          "edits": [
+            {
+              "path": "/src/a.rs",
+              "old": "x",
+              "new": "y"
+            },
+            {
+              "path": "/src/b.rs",
+              "old": "x",
+              "new": "y"
+            },
+            {
+              "old": "no path on this edit",
+              "new": "z"
+            }
+          ]
+        },
+        "tool_response": {
+          "ok": true
+        }
+      },
+      "provider": "claude-code"
+    }
+  ]
+}

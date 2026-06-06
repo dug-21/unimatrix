@@ -1,0 +1,8 @@
+{
+  "type": "CompactPayload",
+  "session_id": "sess-corpus",
+  "injected_entry_ids": [],
+  "role": null,
+  "feature": null,
+  "token_limit": null
+}

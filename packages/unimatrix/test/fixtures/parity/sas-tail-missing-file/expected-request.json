@@ -1,0 +1,10 @@
+{
+  "type": "RecordEvent",
+  "event_type": "SubagentStart",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "agent_type": "developer"
+  },
+  "provider": "claude-code"
+}

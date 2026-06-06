@@ -1,0 +1,10 @@
+{
+  "type": "ContextSearch",
+  "query": "fix the broken build now",
+  "session_id": "sess-corpus",
+  "role": null,
+  "task": null,
+  "feature": null,
+  "k": null,
+  "max_tokens": null
+}

@@ -1,0 +1,21 @@
+{
+  "type": "RecordEvent",
+  "event_type": "SubagentStop",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "zeta": "last-alpha-first",
+    "alpha": {
+      "deep": [
+        1,
+        2,
+        3
+      ]
+    },
+    "num": 3.5,
+    "flag": true,
+    "nothing": null
+  },
+  "topic_signal": "last-alpha-first",
+  "provider": "claude-code"
+}

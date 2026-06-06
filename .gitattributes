@@ -1,0 +1,3 @@
+# Parity-corpus goldens are byte-authoritative (vnc-026 ADR-001): never let
+# CRLF conversion mangle stdin/expected-request/expected-stdout bytes.
+packages/unimatrix/test/fixtures/parity/** -text

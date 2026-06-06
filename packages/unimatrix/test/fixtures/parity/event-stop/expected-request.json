@@ -1,0 +1,6 @@
+{
+  "type": "SessionClose",
+  "session_id": "sess-corpus",
+  "outcome": "success",
+  "duration_secs": 0
+}

@@ -1,0 +1,2 @@
+{"type":"assistant","message":{"content":[{"type":"text","text":"running a quick check"},{"type":"tool_use","id":"tu-2","name":"Bash","input":{"command":"cargo fmt --check"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu-2","content":"plain string tool result"}]}}

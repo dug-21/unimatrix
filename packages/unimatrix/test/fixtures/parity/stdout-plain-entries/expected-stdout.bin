@@ -1,0 +1,10 @@
+--- Unimatrix Context ---
+[Config precedence] (decision, 85% confidence)
+Env vars beat settings.local.json (ADR-006).
+<!-- id:104 sim:0.92 -->
+
+[State dir layout] (decision, 85% confidence)
+~/.unimatrix/{hash}/hook-client per ADR-003.
+<!-- id:105 sim:0.92 -->
+
+

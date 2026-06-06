@@ -1,0 +1,6 @@
+{
+  "type": "SessionClose",
+  "session_id": "ppid-X",
+  "outcome": "success",
+  "duration_secs": 0
+}
