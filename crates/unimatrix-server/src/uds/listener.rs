@@ -1793,7 +1793,9 @@ async fn process_session_close(
 
     // Step 1: Sweep stale sessions first (FR-09.1)
     // #198 Part 3: Sweep now resolves feature_cycle via majority vote before eviction
-    let stale_outputs = session_registry.sweep_stale_sessions();
+    // vnc-025 (mechanical signature adaptation): sweep now also returns transcript
+    // purge records. Audit emission for them is Wave 3 (purge-audit) — ignored here.
+    let (stale_outputs, _transcript_purges) = session_registry.sweep_stale_sessions();
     for sweep_result in &stale_outputs {
         tracing::info!(session_id = %sweep_result.session_id, "UDS: sweeping stale session");
         // #198: Persist resolved feature_cycle for stale session
@@ -1811,7 +1813,11 @@ async fn process_session_close(
     }
 
     // Step 2: Generate signals for the closing session (atomic — ADR-003)
-    let maybe_output = session_registry.drain_and_signal_session(session_id, hook_outcome);
+    // vnc-025 (mechanical signature adaptation): drain now also returns an optional
+    // transcript purge record. Audit emission is Wave 3 (purge-audit) — dropped here.
+    let maybe_output = session_registry
+        .drain_and_signal_session(session_id, hook_outcome)
+        .map(|(output, _transcript_purge)| output);
 
     if let Some(ref output) = maybe_output {
         // col-010: resolve final status and outcome string
