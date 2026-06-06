@@ -2098,12 +2098,18 @@ impl UnimatrixServer {
                                 metadata: metadata_json,
                             });
                             let fmt = params.format.as_deref().unwrap_or("markdown");
-                            return dispatch_review_with_advisory(
+                            let result = dispatch_review_with_advisory(
                                 report,
                                 fmt,
                                 params.evidence_limit,
                                 Some(note),
                             );
+                            // vnc-025 (#670, FR-15/FR-16): purge AFTER the success
+                            // response is built; error paths keep transcripts.
+                            if result.is_ok() {
+                                self.purge_cycle_transcripts(&feature_cycle);
+                            }
+                            return result;
                         }
                         Err(e) => {
                             // Corrupt stored record + no signals = cannot recover.
@@ -2212,7 +2218,7 @@ impl UnimatrixServer {
 
                         // Cached path also respects format (vnc-011)
                         let format = params.format.as_deref().unwrap_or("markdown");
-                        return match format {
+                        let result = match format {
                             "markdown" | "summary" => Ok(format_retrospective_markdown(&report)),
                             "json" => Ok(format_retrospective_report(&report)),
                             _ => Err(rmcp::model::ErrorData::new(
@@ -2224,6 +2230,12 @@ impl UnimatrixServer {
                                 None,
                             )),
                         };
+                        // vnc-025 (#670, FR-15/FR-16): purge AFTER the success
+                        // response is built; error paths keep transcripts.
+                        if result.is_ok() {
+                            self.purge_cycle_transcripts(&feature_cycle);
+                        }
+                        return result;
                     }
                     None => {
                         // No data, no cache (FR-09.7)
@@ -2899,13 +2911,20 @@ impl UnimatrixServer {
                 metadata: metadata_json,
             });
             let fmt = params.format.as_deref().unwrap_or("markdown");
-            return dispatch_review_with_advisory_and_parse_failures(
+            let result = dispatch_review_with_advisory_and_parse_failures(
                 memo_report,
                 fmt,
                 params.evidence_limit,
                 advisory,
                 parse_failure_count,
             );
+            // vnc-025 (#670, FR-15/FR-16): the cached re-review also purges —
+            // idempotent (second call finds empty buffers → no audit rows).
+            // Error paths keep transcripts.
+            if result.is_ok() {
+                self.purge_cycle_transcripts(&feature_cycle);
+            }
+            return result;
         }
 
         // 11. Audit (full pipeline path)
@@ -2933,7 +2952,7 @@ impl UnimatrixServer {
         let report = full_report
             .expect("full_report must be Some when memo_hit is None — logic invariant violated");
         let format = params.format.as_deref().unwrap_or("markdown");
-        match format {
+        let result = match format {
             "markdown" | "summary" => {
                 // Markdown path: formatter controls its own evidence selection (k=3 by timestamp).
                 // evidence_limit is irrelevant here.
@@ -2996,7 +3015,18 @@ impl UnimatrixServer {
                     None,
                 ))
             }
+        };
+        // vnc-025 (#670, FR-15/FR-16): purge transcript buffers for the reviewed
+        // cycle AFTER the success response is built (the last step before
+        // returning Ok). Error paths keep transcripts for the retry (Gate 3a
+        // disposition 2). The retention gate + audit emission live in
+        // `purge_cycle_transcripts` (server.rs) — exhaustive TranscriptRetention
+        // match, ADR-004 pinned audit shape, trigger=cycle_review. Pure side
+        // effect: the review response is UNCHANGED (AC-09).
+        if result.is_ok() {
+            self.purge_cycle_transcripts(&feature_cycle);
         }
+        result
     }
 
     // -- vnc-015: context_edge --
@@ -5559,6 +5589,80 @@ mod tests {
         let json = dispatch_review_with_advisory(report, "json", Some(3), None)
             .expect("json render must succeed");
 
+        crate::test_support::assert_matches_committed_baseline(
+            "cycle_review_render.markdown.json",
+            &serde_json::to_string_pretty(&markdown).expect("serialize CallToolResult"),
+        );
+        crate::test_support::assert_matches_committed_baseline(
+            "cycle_review_render.format_json.json",
+            &serde_json::to_string_pretty(&json).expect("serialize CallToolResult"),
+        );
+    }
+
+    /// AC-09 (cycle-review-purge §4): the transcript purge is a pure side
+    /// effect — running `purge_cycle_transcripts` between report construction
+    /// and render (the same point the handler invokes it, relative to the
+    /// response) leaves the rendered response byte-identical to the committed
+    /// pre-vnc-025 Wave 0 baselines. Sessions stay registered with empty
+    /// buffers; no new fields, no count changes across the 23 detection rules.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_cycle_review_output_unchanged_by_purge() {
+        let server = crate::server::tests::make_server().await;
+        // Sessions attributed to the reviewed cycle, with non-empty buffers.
+        for sid in ["vnc025-base-s1", "vnc025-base-s2"] {
+            server.session_registry.register_session(
+                sid,
+                None,
+                Some("vnc025-baseline".to_string()),
+            );
+            server
+                .session_registry
+                .apply_transcript_delta(sid, 0, b"transcript bytes to purge");
+        }
+
+        // Identical render-path replay to test_cycle_review_render_baseline_byte_identical.
+        let corpus = vnc025_cycle_review_baseline_corpus();
+        let rules = unimatrix_observe::default_rules(None, vec![]);
+        assert_eq!(rules.len(), 23, "AC-09 pins the 23 detection rules");
+        let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
+        const PINNED_NOW: u64 = 2_000_000_000;
+        let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
+        let mut report = unimatrix_observe::build_report(
+            "vnc025-baseline",
+            &corpus,
+            metrics,
+            hotspots,
+            None,
+            None,
+        );
+        report.recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
+        report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
+
+        // The purge side effect fires for the reviewed cycle.
+        server.purge_cycle_transcripts("vnc025-baseline");
+
+        // Sessions stay registered; buffers empty afterward.
+        for sid in ["vnc025-base-s1", "vnc025-base-s2"] {
+            let state = server
+                .session_registry
+                .get_state(sid)
+                .expect("session must stay registered after purge");
+            assert_eq!(
+                state
+                    .transcript
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .len(),
+                0,
+                "{sid} buffer must be empty after purge"
+            );
+        }
+
+        // Render AFTER the purge: byte-identical to the committed baselines.
+        let markdown = dispatch_review_with_advisory(report.clone(), "markdown", None, None)
+            .expect("markdown render must succeed");
+        let json = dispatch_review_with_advisory(report, "json", Some(3), None)
+            .expect("json render must succeed");
         crate::test_support::assert_matches_committed_baseline(
             "cycle_review_render.markdown.json",
             &serde_json::to_string_pretty(&markdown).expect("serialize CallToolResult"),
