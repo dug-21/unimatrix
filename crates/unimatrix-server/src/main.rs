@@ -642,7 +642,12 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Create session registry for hook IPC (col-008).
-    let session_registry = Arc::new(unimatrix_server::infra::session::SessionRegistry::new());
+    // vnc-025 (ADR-006): inject the configured per-session transcript buffer cap.
+    let session_registry = Arc::new(
+        unimatrix_server::infra::session::SessionRegistry::with_transcript_cap(
+            config.retention.transcript_buffer_max_bytes,
+        ),
+    );
 
     // Create pending entries analysis accumulator (col-009).
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
@@ -1065,7 +1070,12 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Create session registry for hook IPC (col-008).
-    let session_registry = Arc::new(unimatrix_server::infra::session::SessionRegistry::new());
+    // vnc-025 (ADR-006): inject the configured per-session transcript buffer cap.
+    let session_registry = Arc::new(
+        unimatrix_server::infra::session::SessionRegistry::with_transcript_cap(
+            config.retention.transcript_buffer_max_bytes,
+        ),
+    );
 
     // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009).
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));

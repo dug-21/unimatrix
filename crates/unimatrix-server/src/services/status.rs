@@ -1580,7 +1580,9 @@ impl StatusService {
 
         // 5. Stale session sweep (col-009, FR-09.2)
         // #198 Part 3: Sweep now resolves feature_cycle via majority vote before eviction
-        let stale_outputs = session_registry.sweep_stale_sessions();
+        // vnc-025 (mechanical signature adaptation): sweep now also returns transcript
+        // purge records. Audit emission for them is Wave 3 (purge-audit) — ignored here.
+        let (stale_outputs, _transcript_purges) = session_registry.sweep_stale_sessions();
         if !stale_outputs.is_empty() {
             let store_for_sweep = Arc::clone(&self.store);
             let entry_store_for_sweep = Arc::clone(entry_store);

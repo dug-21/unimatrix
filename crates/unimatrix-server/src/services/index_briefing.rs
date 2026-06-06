@@ -361,6 +361,11 @@ mod tests {
             category_counts: HashMap::new(),
             current_goal: current_goal.map(str::to_string), // col-025
             confirmed_entries: HashSet::new(),              // col-028
+            transcript: std::sync::Arc::new(std::sync::Mutex::new(
+                crate::infra::session_transcript::TranscriptBuffer::new(
+                    crate::infra::session_transcript::DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES,
+                ),
+            )), // vnc-025
         }
     }
 

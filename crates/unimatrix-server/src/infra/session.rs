@@ -8,8 +8,12 @@
 //! and implicit signal generation on session close (drain_and_signal_session).
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::infra::session_transcript::{
+    DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES, TranscriptBuffer, TranscriptPurgeRecord, session_key,
+};
 
 // -- Constants (ADR-002, ADR-003) --
 
@@ -149,6 +153,12 @@ pub struct SessionState {
     /// In-memory only; reset on register_session; never persisted.
     /// First consumer: Thompson Sampling (future feature).
     pub confirmed_entries: HashSet<u64>,
+    // vnc-025 fields
+    /// Per-session in-memory transcript buffer (ADR-001). Arc so SessionState
+    /// clones (get_state, hot paths) copy 8 bytes + refcount, never transcript
+    /// bytes (AC-10). Debug derives fine: TranscriptBuffer has a manual
+    /// metadata-only Debug. Lock order: registry → buffer, NEVER reverse.
+    pub transcript: Arc<Mutex<TranscriptBuffer>>,
 }
 
 /// Thread-safe registry for per-session state.
@@ -158,12 +168,24 @@ pub struct SessionState {
 /// are serialized per-session by Claude Code.
 pub struct SessionRegistry {
     sessions: Mutex<HashMap<String, SessionState>>,
+    /// Per-session transcript buffer cap in bytes (vnc-025, ADR-006).
+    /// Immutable for the registry lifetime; injected into each new buffer.
+    transcript_cap: usize,
 }
 
 impl SessionRegistry {
     pub fn new() -> Self {
+        // Keeps the 4 MiB default — zero churn across existing test call sites (ADR-006).
+        Self::with_transcript_cap(DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES)
+    }
+
+    /// Construct with an explicit per-session transcript buffer cap (vnc-025, ADR-006).
+    ///
+    /// Production path: `with_transcript_cap(cfg.retention.transcript_buffer_max_bytes)`.
+    pub fn with_transcript_cap(max_bytes: usize) -> Self {
         SessionRegistry {
             sessions: Mutex::new(HashMap::new()),
+            transcript_cap: max_bytes,
         }
     }
 
@@ -194,8 +216,75 @@ impl SessionRegistry {
                 category_counts: HashMap::new(), // crt-026: empty histogram on session start
                 current_goal: None, // col-025: initialized None; populated by handle_cycle_event or resume
                 confirmed_entries: HashSet::new(), // col-028: empty on session start
+                // vnc-025: fresh empty buffer. Re-registration replaces the old Arc;
+                // the old buffer frees on last drop — no ghost content (ADR-001).
+                transcript: Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap))),
             },
         );
+    }
+
+    /// Merge a transcript delta into the session's buffer (vnc-025, FR-03).
+    ///
+    /// Silent no-op for unregistered sessions (FR-04, AC-03): no auto-registration,
+    /// no slot, no allocation before the registry check. No return value —
+    /// always-Ack is dispatch's job (ADR-003).
+    ///
+    /// Lock discipline (ADR-001 / NFR-03): registry lock does lookup + Arc clone +
+    /// activity bump only; the memcpy (≤1 MiB frame ceiling) happens under the
+    /// per-session buffer lock after the registry lock is released.
+    pub fn apply_transcript_delta(&self, session_id: &str, offset: u64, bytes: &[u8]) {
+        // Phase 1 — registry lock: lookup + Arc clone + scalar bump ONLY.
+        let arc = {
+            let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+            let key = session_key("default", "", session_id); // ADR-007 seam
+            match sessions.get_mut(&key) {
+                None => return, // silent no-op (FR-04, AC-03)
+                Some(state) => {
+                    state.last_activity_at = state.last_activity_at.max(now_secs());
+                    Arc::clone(&state.transcript)
+                }
+            }
+        }; // registry lock RELEASED here
+
+        // Phase 2 — buffer lock: the memcpy happens here, never under the registry lock.
+        let mut buf = lock_buffer(&arc);
+        buf.apply_delta(offset, bytes);
+    }
+
+    /// Clear transcript buffers for every session attributed to `feature_cycle`
+    /// (vnc-025, FR-12 — the named crt-052 seam, ADR-004).
+    ///
+    /// Sessions stay registered; buffers are cleared in place. Counts-only today,
+    /// deliberately (crt-052 makes it take-shaped). Arcs are cloned under the
+    /// registry lock and cleared after release — no deadlock with concurrent
+    /// delta streams (R-06.3). Zero-byte purges produce no record (ADR-004).
+    /// The caller (cycle-review-purge) emits audit — never this method.
+    pub fn clear_transcripts_for_feature(&self, feature_cycle: &str) -> Vec<TranscriptPurgeRecord> {
+        // Phase 1 — registry lock: linear scan (no feature→session index; fine at OSS scale).
+        let handles: Vec<(String, Arc<Mutex<TranscriptBuffer>>)> = {
+            let sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+            sessions
+                .values()
+                .filter(|s| s.feature.as_deref() == Some(feature_cycle)) // None never matches (R-10.1)
+                .map(|s| (s.session_id.clone(), Arc::clone(&s.transcript)))
+                .collect()
+        }; // registry lock RELEASED
+
+        // Phase 2 — per-buffer clear.
+        let mut records = Vec::new();
+        for (sid, arc) in handles {
+            let purged = {
+                let mut buf = lock_buffer(&arc);
+                buf.clear()
+            };
+            if purged > 0 {
+                records.push(TranscriptPurgeRecord {
+                    session_id: session_key("default", "", &sid),
+                    bytes_purged: purged,
+                });
+            }
+        }
+        records
     }
 
     /// Record injected entries from a ContextSearch response.
@@ -472,21 +561,31 @@ impl SessionRegistry {
     ///
     /// If session is already cleared, returns None — caller handles (FR-04.2, AC-03).
     /// ADR-003: single lock acquisition for atomicity.
+    ///
+    /// vnc-025: also purges the session's transcript buffer and returns a
+    /// counts-only `TranscriptPurgeRecord` when bytes were purged (ADR-004).
+    /// The `SignalOutput` shape is UNTOUCHED — it feeds the persisted signal
+    /// queue (Wave 0 baseline pins it).
     pub fn drain_and_signal_session(
         &self,
         session_id: &str,
         hook_outcome: &str,
-    ) -> Option<SignalOutput> {
+    ) -> Option<(SignalOutput, Option<TranscriptPurgeRecord>)> {
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
 
         // If session absent, already cleared — no-op (FR-04.2, AC-03)
         let state = sessions.remove(session_id)?;
 
+        // vnc-025: snapshot purge metadata BEFORE state is consumed. Buffer lock
+        // taken while holding the registry lock — permitted order (registry →
+        // buffer), bounded work (ADR-001).
+        let purge = purge_record_for(&state);
+
         // Build signal output from the removed state (lock still held — ADR-003)
         let output = build_signal_output_from_state(state, hook_outcome);
 
         // Lock released here — session is gone, no race possible (ADR-003)
-        Some(output)
+        Some((output, purge))
     }
 
     /// Sweep stale sessions and generate signals for non-empty ones.
@@ -498,7 +597,12 @@ impl SessionRegistry {
     /// (#198, Part 3): Before eviction, runs majority vote on topic_signals
     /// to resolve feature_cycle. Returns the resolved feature alongside the
     /// signal output so callers can persist it.
-    pub fn sweep_stale_sessions(&self) -> Vec<SweepResult> {
+    ///
+    /// vnc-025: also purges transcript buffers and returns counts-only
+    /// `TranscriptPurgeRecord`s for EVERY evicted session — INCLUDING
+    /// silently-evicted ones (empty injection_history, no SweepResult) — or
+    /// AC-08 has a hole (ADR-004 / R-08.1 named mandatory case).
+    pub fn sweep_stale_sessions(&self) -> (Vec<SweepResult>, Vec<TranscriptPurgeRecord>) {
         let now = now_secs();
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
 
@@ -511,8 +615,14 @@ impl SessionRegistry {
             .collect();
 
         let mut results = Vec::new();
+        let mut purges = Vec::new();
         for session_id in stale_ids {
             if let Some(state) = sessions.remove(&session_id) {
+                // vnc-025: purge record for every evicted session (R-08.1).
+                if let Some(rec) = purge_record_for(&state) {
+                    purges.push(rec);
+                }
+
                 // (#198): Resolve feature_cycle via majority vote before eviction
                 let resolved_feature =
                     majority_vote_internal(&state.topic_signals).or_else(|| state.feature.clone());
@@ -530,7 +640,7 @@ impl SessionRegistry {
             }
         }
 
-        results
+        (results, purges)
     }
 
     /// Return the number of currently tracked sessions (used in tests).
@@ -554,6 +664,54 @@ pub struct SweepResult {
 }
 
 // -- Internal helpers --
+
+/// Lock a session's transcript buffer with ADR-008 Layer 2 poison recovery
+/// (vnc-025). A panic mid-mutation may have left `data`/`holes`/`base_offset`
+/// mutually inconsistent; empty is the only state with guaranteed invariants —
+/// so recovery clears the buffer (treat-as-empty) and continues.
+///
+/// NEVER `lock().unwrap()` on a buffer mutex (grep-able review gate).
+/// Callers that need `bytes_purged` from a poisoned buffer must capture
+/// `clear()`'s return inside their own recovery arm — see `purge_record_for`.
+pub(crate) fn lock_buffer(arc: &Arc<Mutex<TranscriptBuffer>>) -> MutexGuard<'_, TranscriptBuffer> {
+    match arc.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => {
+            let mut guard = poisoned.into_inner();
+            let _ = guard.clear(); // treat-as-empty; drop the possibly-corrupt bytes
+            // Un-poison so recovery happens ONCE: without this, every later
+            // lock re-enters this arm and re-clears — "subsequent deltas
+            // accumulate" (ADR-008 / R-06.2) would never hold.
+            arc.clear_poison();
+            guard
+        }
+    }
+}
+
+/// Snapshot-and-clear a session's transcript buffer into a counts-only purge
+/// record (vnc-025, ADR-004). `clear()` (not just `len()`) so a racing reader
+/// or second purge point sees 0 — guarantees "at most one non-zero audit per
+/// buffer content" (sweep × cycle-review race). Returns None for empty buffers
+/// (zero-byte purges emit nothing).
+fn purge_record_for(state: &SessionState) -> Option<TranscriptPurgeRecord> {
+    let purged = match state.transcript.lock() {
+        Ok(mut buf) => buf.clear(),
+        // ADR-008 Layer 2: best-effort bytes_purged from a poisoned buffer.
+        Err(poisoned) => {
+            let purged = poisoned.into_inner().clear();
+            state.transcript.clear_poison(); // one-shot recovery (see lock_buffer)
+            purged
+        }
+    };
+    if purged == 0 {
+        None
+    } else {
+        Some(TranscriptPurgeRecord {
+            session_id: session_key("default", "", &state.session_id),
+            bytes_purged: purged,
+        })
+    }
+}
 
 /// Internal majority vote over topic signals (#198).
 ///
@@ -1027,7 +1185,7 @@ mod tests {
         reg.register_session("s1", None, None);
         reg.record_injection("s1", &[(1, 0.9), (2, 0.8), (3, 0.7)]);
 
-        let out = reg.drain_and_signal_session("s1", "success").unwrap();
+        let (out, _purge) = reg.drain_and_signal_session("s1", "success").unwrap();
         assert_eq!(out.final_outcome, SessionOutcome::Success);
         let mut ids = out.helpful_entry_ids.clone();
         ids.sort_unstable();
@@ -1056,7 +1214,7 @@ mod tests {
         reg.register_session("s1", None, None);
         reg.record_injection("s1", &[(1, 0.9)]);
 
-        let out = reg.drain_and_signal_session("s1", "abandoned").unwrap();
+        let (out, _purge) = reg.drain_and_signal_session("s1", "abandoned").unwrap();
         assert_eq!(out.final_outcome, SessionOutcome::Abandoned);
         assert!(out.helpful_entry_ids.is_empty());
         assert!(out.flagged_entry_ids.is_empty());
@@ -1068,7 +1226,7 @@ mod tests {
         reg.register_session("s1", None, None);
         reg.record_injection("s1", &[(1, 0.9)]);
 
-        let out = reg.drain_and_signal_session("s1", "").unwrap();
+        let (out, _purge) = reg.drain_and_signal_session("s1", "").unwrap();
         assert_eq!(out.final_outcome, SessionOutcome::Abandoned);
     }
 
@@ -1092,7 +1250,7 @@ mod tests {
             },
         );
 
-        let out = reg.drain_and_signal_session("s1", "success").unwrap();
+        let (out, _purge) = reg.drain_and_signal_session("s1", "success").unwrap();
         assert!(!out.helpful_entry_ids.contains(&42));
         assert!(out.helpful_entry_ids.contains(&1));
         assert!(out.helpful_entry_ids.contains(&2));
@@ -1120,7 +1278,7 @@ mod tests {
         // Success outcome: three injected entries, no exclusions.
         reg.register_session("vnc025-signal-success", None, None);
         reg.record_injection("vnc025-signal-success", &[(30, 0.7), (10, 0.9), (20, 0.8)]);
-        let success = reg
+        let (success, _purge) = reg
             .drain_and_signal_session("vnc025-signal-success", "success")
             .expect("success drain");
 
@@ -1142,7 +1300,7 @@ mod tests {
                 make_rework_event(tool, file, failed),
             );
         }
-        let rework = reg
+        let (rework, _purge) = reg
             .drain_and_signal_session("vnc025-signal-rework", "success")
             .expect("rework drain");
         assert_eq!(rework.final_outcome, SessionOutcome::Rework);
@@ -1150,7 +1308,7 @@ mod tests {
         // Abandoned outcome: injections present but outcome not success.
         reg.register_session("vnc025-signal-abandoned", None, None);
         reg.record_injection("vnc025-signal-abandoned", &[(1, 0.9)]);
-        let abandoned = reg
+        let (abandoned, _purge) = reg
             .drain_and_signal_session("vnc025-signal-abandoned", "abandoned")
             .expect("abandoned drain");
 
@@ -1234,6 +1392,9 @@ mod tests {
             category_counts: HashMap::new(),
             current_goal: None,
             confirmed_entries: HashSet::new(), // col-028
+            transcript: Arc::new(Mutex::new(TranscriptBuffer::new(
+                DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES,
+            ))), // vnc-025
         }
     }
 
@@ -1315,7 +1476,7 @@ mod tests {
         reg.record_rework_event("s1", make_rework_event("Edit", Some("/foo.rs"), false));
 
         // hook_outcome="success" but rework threshold crossed → Rework
-        let out = reg.drain_and_signal_session("s1", "success").unwrap();
+        let (out, _purge) = reg.drain_and_signal_session("s1", "success").unwrap();
         assert_eq!(out.final_outcome, SessionOutcome::Rework);
         assert!(out.helpful_entry_ids.is_empty());
         assert!(!out.flagged_entry_ids.is_empty());
@@ -1341,7 +1502,7 @@ mod tests {
                 });
             }
         }
-        let results = reg.sweep_stale_sessions();
+        let (results, _purges) = reg.sweep_stale_sessions();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].session_id, "s1");
         assert!(reg.get_state("s1").is_none());
@@ -1352,7 +1513,7 @@ mod tests {
         let reg = make_registry();
         reg.register_session("s1", None, None);
         // last_activity_at is now (just registered) — not stale
-        let results = reg.sweep_stale_sessions();
+        let (results, _purges) = reg.sweep_stale_sessions();
         assert!(results.is_empty());
         assert!(reg.get_state("s1").is_some());
     }
@@ -1369,7 +1530,7 @@ mod tests {
                     now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
             }
         }
-        let results = reg.sweep_stale_sessions();
+        let (results, _purges) = reg.sweep_stale_sessions();
         // No result because injection_history is empty (FR-09.4)
         assert!(results.is_empty());
         // Session was still removed
@@ -1404,7 +1565,7 @@ mod tests {
         reg.record_injection("s2", &[(2, 0.8)]);
 
         // Sweep: s1 should be swept (stale)
-        let swept = reg.sweep_stale_sessions();
+        let (swept, _purges) = reg.sweep_stale_sessions();
         // Drain: s2 should be drained
         let drained = reg.drain_and_signal_session("s2", "success");
 
@@ -1414,7 +1575,7 @@ mod tests {
 
         // s2 in drain exactly once
         assert!(drained.is_some());
-        assert_eq!(drained.unwrap().session_id, "s2");
+        assert_eq!(drained.unwrap().0.session_id, "s2");
 
         // Both sessions are gone
         assert!(reg.get_state("s1").is_none());
@@ -1431,7 +1592,7 @@ mod tests {
         let reg = make_registry();
         reg.register_session("s1", None, None);
         // No injections — empty injection_history
-        let out = reg.drain_and_signal_session("s1", "success").unwrap();
+        let (out, _purge) = reg.drain_and_signal_session("s1", "success").unwrap();
         assert_eq!(out.final_outcome, SessionOutcome::Success);
         assert!(out.helpful_entry_ids.is_empty());
     }
@@ -1729,7 +1890,7 @@ mod tests {
                 );
             }
         }
-        let results = reg.sweep_stale_sessions();
+        let (results, _purges) = reg.sweep_stale_sessions();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].session_id, "s1");
         assert_eq!(results[0].resolved_feature, Some("col-020".to_string()));
@@ -1752,7 +1913,7 @@ mod tests {
                 // No topic signals — should fall back to registered feature
             }
         }
-        let results = reg.sweep_stale_sessions();
+        let (results, _purges) = reg.sweep_stale_sessions();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].resolved_feature, Some("col-017".to_string()));
     }
@@ -1773,7 +1934,7 @@ mod tests {
                 });
             }
         }
-        let results = reg.sweep_stale_sessions();
+        let (results, _purges) = reg.sweep_stale_sessions();
         assert_eq!(results.len(), 1);
         assert!(results[0].resolved_feature.is_none());
     }
@@ -2135,5 +2296,462 @@ mod tests {
             Some(&u32::MAX),
             "counter must saturate at u32::MAX, not wrap to 0"
         );
+    }
+
+    // -- vnc-025: registry-wiring tests (test-plan/registry-wiring.md) --
+
+    /// Backdate a session's last_activity_at past the stale threshold.
+    fn backdate_session(reg: &SessionRegistry, session_id: &str) {
+        let mut sessions = reg.sessions.lock().unwrap();
+        if let Some(state) = sessions.get_mut(session_id) {
+            state.last_activity_at = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+        }
+    }
+
+    /// Poison a session's transcript buffer mutex by panicking while holding it.
+    fn poison_buffer(arc: &Arc<Mutex<TranscriptBuffer>>) {
+        let thread_arc = Arc::clone(arc);
+        let handle = std::thread::spawn(move || {
+            let _guard = thread_arc.lock().expect("not yet poisoned");
+            panic!("intentional poison (vnc-025 ADR-008 Layer 2 test)");
+        });
+        assert!(handle.join().is_err(), "poison thread must panic");
+        assert!(arc.is_poisoned(), "buffer mutex must be poisoned");
+    }
+
+    // §1 apply_transcript_delta
+
+    #[test]
+    fn test_apply_transcript_delta_registered_merges() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        let before = reg.get_state("s1").unwrap().last_activity_at;
+
+        reg.apply_transcript_delta("s1", 0, b"hello transcript");
+
+        let state = reg.get_state("s1").unwrap();
+        let tail = state
+            .transcript
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .contiguous_tail(1024);
+        assert_eq!(tail.as_deref(), Some(b"hello transcript".as_slice()));
+        assert!(
+            state.last_activity_at >= before,
+            "last_activity_at must be bumped (monotonic)"
+        );
+    }
+
+    /// AC-03: unknown session — no panic, no slot created, no other session's
+    /// buffer affected. Structural half (no allocation before the registry
+    /// check): the byte slice is borrowed until after lookup — review gate.
+    #[test]
+    fn test_apply_transcript_delta_unregistered_silent_noop() {
+        let reg = make_registry();
+        reg.register_session("other", None, None);
+        reg.apply_transcript_delta("other", 0, b"other-bytes");
+        assert_eq!(reg.session_count(), 1);
+
+        reg.apply_transcript_delta("unknown", 0, b"dropped");
+
+        // No slot created (no auto-registration).
+        assert_eq!(reg.session_count(), 1);
+        assert!(reg.get_state("unknown").is_none());
+        // Other session's buffer unaffected.
+        let other = reg.get_state("other").unwrap();
+        let tail = other
+            .transcript
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .contiguous_tail(1024);
+        assert_eq!(tail.as_deref(), Some(b"other-bytes".as_slice()));
+    }
+
+    // test_apply_transcript_delta_no_memcpy_under_registry_lock (NFR-03) is a
+    // structural review gate, not a runtime assertion: the registry lock scope
+    // in apply_transcript_delta contains lookup + Arc clone + scalar bump only;
+    // buf.apply_delta runs after the registry guard is dropped (ADR-001).
+
+    // §2 Drain / sweep signature changes — R-08
+
+    #[test]
+    fn test_drain_returns_signal_and_purge_record() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.record_injection("s1", &[(1, 0.9)]);
+        reg.apply_transcript_delta("s1", 0, b"0123456789"); // 10 bytes
+
+        let (output, purge) = reg.drain_and_signal_session("s1", "success").unwrap();
+        assert_eq!(output.session_id, "s1");
+        let rec = purge.expect("non-empty buffer must yield a purge record");
+        assert_eq!(rec.session_id, "s1");
+        assert_eq!(rec.bytes_purged, 10);
+        // Key removed.
+        assert!(reg.get_state("s1").is_none());
+    }
+
+    #[test]
+    fn test_drain_empty_buffer_returns_none_record() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.record_injection("s1", &[(1, 0.9)]);
+
+        let (output, purge) = reg.drain_and_signal_session("s1", "success").unwrap();
+        assert_eq!(output.session_id, "s1");
+        assert!(
+            purge.is_none(),
+            "zero-byte purge must emit nothing (ADR-004)"
+        );
+    }
+
+    #[test]
+    fn test_drain_unknown_session_returns_none() {
+        let reg = make_registry();
+        assert!(reg.drain_and_signal_session("unknown", "success").is_none());
+    }
+
+    #[test]
+    fn test_sweep_returns_purge_records_for_stale() {
+        let reg = make_registry();
+        reg.register_session("stale", None, None);
+        reg.record_injection("stale", &[(1, 0.9)]);
+        reg.apply_transcript_delta("stale", 0, b"stale-bytes"); // 11 bytes
+        backdate_session(&reg, "stale");
+
+        reg.register_session("fresh", None, None);
+        reg.apply_transcript_delta("fresh", 0, b"fresh-bytes");
+
+        let (results, purges) = reg.sweep_stale_sessions();
+        assert_eq!(results.len(), 1);
+        assert_eq!(purges.len(), 1);
+        assert_eq!(purges[0].session_id, "stale");
+        assert_eq!(purges[0].bytes_purged, 11);
+
+        // Fresh session untouched: still registered, buffer intact.
+        let fresh = reg.get_state("fresh").unwrap();
+        let tail = fresh
+            .transcript
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .contiguous_tail(1024);
+        assert_eq!(tail.as_deref(), Some(b"fresh-bytes".as_slice()));
+    }
+
+    /// MANDATORY (R-08.1, #4140): deltas streamed, never injected (empty
+    /// injection_history), idle past threshold → swept with NO SweepResult
+    /// but WITH a TranscriptPurgeRecord. The audit-row half is purge-audit §1.
+    #[test]
+    fn test_sweep_silently_evicted_session_yields_purge_record() {
+        let reg = make_registry();
+        reg.register_session("silent", None, None);
+        reg.apply_transcript_delta("silent", 0, b"never injected"); // 14 bytes
+        backdate_session(&reg, "silent");
+
+        let (results, purges) = reg.sweep_stale_sessions();
+        assert!(
+            results.is_empty(),
+            "empty injection_history → silent eviction, no SweepResult (FR-09.4)"
+        );
+        assert_eq!(
+            purges.len(),
+            1,
+            "silently-evicted session still purged (AC-08)"
+        );
+        assert_eq!(purges[0].session_id, "silent");
+        assert_eq!(purges[0].bytes_purged, 14);
+        assert!(reg.get_state("silent").is_none());
+    }
+
+    #[test]
+    fn test_sweep_empty_buffer_session_no_purge_record() {
+        let reg = make_registry();
+        reg.register_session("empty", None, None);
+        backdate_session(&reg, "empty");
+
+        let (results, purges) = reg.sweep_stale_sessions();
+        assert!(results.is_empty());
+        assert!(
+            purges.is_empty(),
+            "zero-byte purges produce no record (ADR-004 suppression feeds from here)"
+        );
+        assert!(reg.get_state("empty").is_none());
+    }
+
+    // §3 Lock discipline + poison recovery — R-06, NFR-09 Layer 2
+
+    #[test]
+    fn test_concurrent_deltas_and_state_reads_no_deadlock() {
+        let reg = Arc::new(make_registry());
+        reg.register_session("hot", None, None);
+
+        let mut handles = Vec::new();
+        // N delta-streaming threads.
+        for t in 0..4u64 {
+            let reg = Arc::clone(&reg);
+            handles.push(std::thread::spawn(move || {
+                for i in 0..200u64 {
+                    let offset = (t * 200 + i) * 4;
+                    reg.apply_transcript_delta("hot", offset, b"abcd");
+                }
+            }));
+        }
+        // M reader threads: get_state + contiguous_tail (registry→buffer order only).
+        for _ in 0..2 {
+            let reg = Arc::clone(&reg);
+            handles.push(std::thread::spawn(move || {
+                for _ in 0..200 {
+                    if let Some(state) = reg.get_state("hot") {
+                        let _ = state
+                            .transcript
+                            .lock()
+                            .unwrap_or_else(|p| p.into_inner())
+                            .contiguous_tail(4096);
+                    }
+                }
+            }));
+        }
+        for h in handles {
+            h.join().expect("no thread may panic or deadlock");
+        }
+
+        let state = reg.get_state("hot").unwrap();
+        let len = state
+            .transcript
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .len();
+        assert_eq!(len, 4 * 200 * 4, "all deltas merged");
+    }
+
+    /// MANDATORY (R-06.2, ADR-008 Layer 2): poison recovery at every lock-site
+    /// class — merge resumes against a cleared buffer, read degrades to the
+    /// empty-buffer result, purge reports best-effort bytes without panicking.
+    #[test]
+    fn test_poisoned_buffer_mutex_recovery() {
+        // -- merge + read site --
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.apply_transcript_delta("s1", 0, b"pre-poison-content");
+        let arc = Arc::clone(&reg.get_state("s1").unwrap().transcript);
+        poison_buffer(&arc);
+
+        // Read after poison: lock_buffer recovers by clearing — empty-buffer result.
+        {
+            let buf = lock_buffer(&arc);
+            assert!(
+                buf.contiguous_tail(4096).is_none(),
+                "PreCompact degrades to empty"
+            );
+            assert_eq!(buf.len(), 0);
+        }
+
+        // Merge after poison: succeeds against the cleared buffer; subsequent
+        // deltas accumulate. Post-clear floor is high_water (18) — resume there.
+        reg.apply_transcript_delta("s1", 18, b"after");
+        reg.apply_transcript_delta("s1", 23, b"-poison");
+        let tail = lock_buffer(&arc).contiguous_tail(4096);
+        assert_eq!(tail.as_deref(), Some(b"after-poison".as_slice()));
+
+        // -- purge site (drain): best-effort bytes_purged, no panic --
+        let reg2 = make_registry();
+        reg2.register_session("s2", None, None);
+        reg2.apply_transcript_delta("s2", 0, b"0123456789"); // 10 bytes
+        let arc2 = Arc::clone(&reg2.get_state("s2").unwrap().transcript);
+        poison_buffer(&arc2);
+        let (_out, purge) = reg2.drain_and_signal_session("s2", "success").unwrap();
+        let rec = purge.expect("best-effort purge record from poisoned buffer");
+        assert_eq!(rec.bytes_purged, 10);
+
+        // -- purge site (sweep): same contract --
+        let reg3 = make_registry();
+        reg3.register_session("s3", None, None);
+        reg3.apply_transcript_delta("s3", 0, b"abc");
+        let arc3 = Arc::clone(&reg3.get_state("s3").unwrap().transcript);
+        poison_buffer(&arc3);
+        backdate_session(&reg3, "s3");
+        let (_results, purges) = reg3.sweep_stale_sessions();
+        assert_eq!(purges.len(), 1);
+        assert_eq!(purges[0].bytes_purged, 3);
+    }
+
+    #[test]
+    fn test_clear_transcripts_for_feature_under_concurrent_stream() {
+        let reg = Arc::new(make_registry());
+        reg.register_session("hot", None, Some("vnc-025".to_string()));
+
+        let mut handles = Vec::new();
+        for t in 0..4u64 {
+            let reg = Arc::clone(&reg);
+            handles.push(std::thread::spawn(move || {
+                for i in 0..100u64 {
+                    let offset = (t * 100 + i) * 4;
+                    reg.apply_transcript_delta("hot", offset, b"wxyz");
+                }
+            }));
+        }
+        // Clear while delta threads run: Arcs cloned under registry lock,
+        // cleared after release — no deadlock (R-06.3).
+        for _ in 0..10 {
+            let _ = reg.clear_transcripts_for_feature("vnc-025");
+        }
+        for h in handles {
+            h.join().expect("no deadlock under clear + stream");
+        }
+
+        // Post-clear merges still apply: stream past high_water (1600 sent).
+        reg.apply_transcript_delta("hot", 1600, b"post-clear");
+        let state = reg.get_state("hot").unwrap();
+        assert!(reg.get_state("hot").is_some(), "session stays registered");
+        let tail = state
+            .transcript
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .contiguous_tail(10);
+        assert_eq!(tail.as_deref(), Some(b"post-clear".as_slice()));
+    }
+
+    /// R-10.1 matrix: Some(cycle) / Some(other) / None — only the first clears;
+    /// all stay registered; counts match.
+    #[test]
+    fn test_clear_transcripts_for_feature_matrix() {
+        let reg = make_registry();
+        reg.register_session("match", None, Some("vnc-025".to_string()));
+        reg.register_session("other", None, Some("col-099".to_string()));
+        reg.register_session("none", None, None);
+        reg.apply_transcript_delta("match", 0, b"match-bytes"); // 11
+        reg.apply_transcript_delta("other", 0, b"other-bytes");
+        reg.apply_transcript_delta("none", 0, b"none-bytes");
+
+        let records = reg.clear_transcripts_for_feature("vnc-025");
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].session_id, "match");
+        assert_eq!(records[0].bytes_purged, 11);
+
+        // All stay registered (the crt-052 seam: clear in place).
+        assert_eq!(reg.session_count(), 3);
+        // Matched buffer is empty; others retain content.
+        let matched = reg.get_state("match").unwrap();
+        assert_eq!(
+            matched
+                .transcript
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .len(),
+            0
+        );
+        for sid in ["other", "none"] {
+            let state = reg.get_state(sid).unwrap();
+            assert!(
+                state
+                    .transcript
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .len()
+                    > 0,
+                "{sid} buffer must be untouched"
+            );
+        }
+
+        // Second clear of the same cycle: nothing left to purge.
+        assert!(reg.clear_transcripts_for_feature("vnc-025").is_empty());
+    }
+
+    /// R-06.4: delta racing drain key removal lands in the orphaned buffer,
+    /// freed on drop; re-registered same-id session gets a fresh buffer.
+    #[test]
+    fn test_orphaned_arc_merge_harmless() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.apply_transcript_delta("s1", 0, b"ghost");
+        let orphan = Arc::clone(&reg.get_state("s1").unwrap().transcript);
+
+        // Drain removes the key.
+        assert!(reg.drain_and_signal_session("s1", "success").is_some());
+
+        // Merge into the orphan handle directly: no panic, content lands there.
+        lock_buffer(&orphan).apply_delta(5, b"-late");
+
+        // Registry-path merge for the removed id: silent no-op.
+        reg.apply_transcript_delta("s1", 10, b"dropped");
+        assert!(reg.get_state("s1").is_none());
+
+        // Re-registration after drain: fresh empty buffer, no ghost content.
+        reg.register_session("s1", None, None);
+        let fresh = reg.get_state("s1").unwrap();
+        assert!(
+            !Arc::ptr_eq(&fresh.transcript, &orphan),
+            "re-registration must allocate a fresh buffer"
+        );
+        assert_eq!(
+            fresh
+                .transcript
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .len(),
+            0
+        );
+    }
+
+    /// Edge case (pseudocode #11): sweep × cycle-review race — at most one
+    /// non-zero purge record total per buffer content (clear-then-report).
+    #[test]
+    fn test_sweep_after_cycle_review_clear_yields_no_second_record() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("vnc-025".to_string()));
+        reg.apply_transcript_delta("s1", 0, b"contents");
+
+        let first = reg.clear_transcripts_for_feature("vnc-025");
+        assert_eq!(first.len(), 1);
+
+        backdate_session(&reg, "s1");
+        let (_results, purges) = reg.sweep_stale_sessions();
+        assert!(
+            purges.is_empty(),
+            "already-cleared buffer must not produce a second non-zero record"
+        );
+    }
+
+    // §4 Clone cost — AC-10, NFR-02
+
+    #[test]
+    fn test_get_state_does_not_deep_copy_transcript() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        // Fill with a large payload (1 MiB frame-ceiling sized).
+        let payload = vec![b'x'; 1_048_576];
+        reg.apply_transcript_delta("s1", 0, &payload);
+
+        let live = Arc::clone(&reg.get_state("s1").unwrap().transcript);
+        let count_before = Arc::strong_count(&live);
+        let snapshot = reg.get_state("s1").unwrap();
+
+        // Structural proof (ADR-001): the clone shares the buffer.
+        assert!(Arc::ptr_eq(&snapshot.transcript, &live));
+        assert_eq!(Arc::strong_count(&live), count_before + 1);
+    }
+
+    // §5 Constructor
+
+    #[test]
+    fn test_with_transcript_cap_propagates_to_new_sessions() {
+        let cap = 131_072; // 128 KiB
+        let reg = SessionRegistry::with_transcript_cap(cap);
+        reg.register_session("s1", None, None);
+
+        // Overflow at 128 KiB, not 4 MiB: send cap + 100 bytes.
+        let payload = vec![b'y'; cap + 100];
+        reg.apply_transcript_delta("s1", 0, &payload);
+
+        let state = reg.get_state("s1").unwrap();
+        let buf = state.transcript.lock().unwrap_or_else(|p| p.into_inner());
+        assert_eq!(buf.len(), cap, "ring-tail must enforce the injected cap");
+        assert_eq!(buf.elided_bytes(), 100);
+    }
+
+    #[test]
+    fn test_new_defaults_to_4mib() {
+        let reg = SessionRegistry::new();
+        assert_eq!(reg.transcript_cap, DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES);
+        assert_eq!(reg.transcript_cap, 4_194_304);
     }
 }
