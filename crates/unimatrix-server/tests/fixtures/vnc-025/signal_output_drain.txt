@@ -1,0 +1,3 @@
+success: SignalOutput { session_id: "vnc025-signal-success", helpful_entry_ids: [10, 20, 30], flagged_entry_ids: [], final_outcome: Success }
+rework: SignalOutput { session_id: "vnc025-signal-rework", helpful_entry_ids: [], flagged_entry_ids: [5, 7], final_outcome: Rework }
+abandoned: SignalOutput { session_id: "vnc025-signal-abandoned", helpful_entry_ids: [], flagged_entry_ids: [], final_outcome: Abandoned }

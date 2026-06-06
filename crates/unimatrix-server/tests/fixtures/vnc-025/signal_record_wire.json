@@ -1,0 +1,2 @@
+{"signal_id":0,"session_id":"vnc025-signal-success","created_at":1700000000,"entry_ids":[10,20,30],"signal_type":"Helpful","signal_source":"ImplicitOutcome"}
+{"signal_id":0,"session_id":"vnc025-signal-rework","created_at":1700000000,"entry_ids":[5,7],"signal_type":"Flagged","signal_source":"ImplicitRework"}

@@ -5442,6 +5442,133 @@ mod tests {
         assert_eq!(params.force, Some(false));
     }
 
+    // -- vnc-025 Wave 0: pre-change cycle-review render baseline (AC-09 HARD GATE) --
+
+    /// Deterministic fixed corpus for the AC-09 baseline: two claude-code
+    /// sessions with pinned timestamps. Session 1 issues enough Bash search
+    /// commands (2 of 6 = 33% > 5% threshold) to trip `SearchViaBashRule`,
+    /// so hotspots, recommendations, and narratives are all non-empty in the
+    /// snapshot. No wall-clock dependence anywhere in the corpus.
+    fn vnc025_cycle_review_baseline_corpus() -> Vec<unimatrix_observe::ObservationRecord> {
+        fn rec(
+            ts: u64,
+            event_type: &str,
+            session_id: &str,
+            tool: Option<&str>,
+            input: Option<serde_json::Value>,
+        ) -> unimatrix_observe::ObservationRecord {
+            unimatrix_observe::ObservationRecord {
+                ts,
+                event_type: event_type.to_string(),
+                source_domain: "claude-code".to_string(),
+                session_id: session_id.to_string(),
+                tool: tool.map(|t| t.to_string()),
+                input,
+                response_size: None,
+                response_snippet: None,
+            }
+        }
+        let bash = |ts: u64, cmd: &str| {
+            rec(
+                ts,
+                "PreToolUse",
+                "vnc025-base-s1",
+                Some("Bash"),
+                Some(serde_json::json!({ "command": cmd })),
+            )
+        };
+        vec![
+            // Session 1: six Bash calls, two of them search commands.
+            bash(1_000_000, "cargo build --workspace"),
+            bash(1_010_000, "grep TODO src/main.rs"),
+            bash(1_020_000, "cargo test --workspace"),
+            bash(1_030_000, "find . -name '*.rs'"),
+            bash(1_040_000, "git status"),
+            bash(1_050_000, "cargo fmt"),
+            // Session 2: non-Bash activity.
+            rec(
+                1_100_000,
+                "PreToolUse",
+                "vnc025-base-s2",
+                Some("Read"),
+                Some(serde_json::json!({ "file_path": "/src/lib.rs" })),
+            ),
+            rec(
+                1_110_000,
+                "PreToolUse",
+                "vnc025-base-s2",
+                Some("Edit"),
+                Some(serde_json::json!({ "file_path": "/src/lib.rs" })),
+            ),
+            rec(
+                1_120_000,
+                "PostToolUse",
+                "vnc025-base-s2",
+                Some("Edit"),
+                None,
+            ),
+        ]
+    }
+
+    /// HARD GATE (AC-09, cycle-review-purge §4, Gate 3a W3/OQ-5): the rendered
+    /// `context_cycle_review` response for a fixed corpus must be byte-identical
+    /// to the committed pre-vnc-025 baseline in both formats.
+    ///
+    /// Replays the handler's full-pipeline render path with all wall-clock and
+    /// store inputs pinned: detection (steps 7c) → metrics (pinned `now`) →
+    /// `build_report` (10c) → recommendations (10d) → narratives (10e) →
+    /// `dispatch_review_with_advisory` (step 12 render dispatch).
+    ///
+    /// After Stage 3b inserts the transcript purge into this handler, the purge
+    /// must be a pure side effect: same corpus → same bytes (no new fields, no
+    /// count changes across the 23 detection rules). The Stage 3b/3c test
+    /// `test_cycle_review_output_unchanged_by_purge` consumes these same
+    /// committed fixtures.
+    #[test]
+    fn test_cycle_review_render_baseline_byte_identical() {
+        let corpus = vnc025_cycle_review_baseline_corpus();
+
+        // Step 7c equivalent: no history, no stale prerequisite edges.
+        let rules = unimatrix_observe::default_rules(None, vec![]);
+        assert_eq!(rules.len(), 23, "AC-09 pins the 23 detection rules");
+        let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
+        assert!(
+            !hotspots.is_empty(),
+            "baseline corpus must trigger at least one hotspot (SearchViaBashRule)"
+        );
+
+        // Step 7c/8 equivalent with pinned clock.
+        const PINNED_NOW: u64 = 2_000_000_000;
+        let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
+
+        // Steps 10c-10e.
+        let mut report = unimatrix_observe::build_report(
+            "vnc025-baseline",
+            &corpus,
+            metrics,
+            hotspots,
+            None, // baseline comparison: no history
+            None, // entries_analysis: none pending
+        );
+        report.recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
+        report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
+
+        // Step 12: render dispatch — both formats.
+        let markdown = dispatch_review_with_advisory(report.clone(), "markdown", None, None)
+            .expect("markdown render must succeed");
+        let json = dispatch_review_with_advisory(report, "json", Some(3), None)
+            .expect("json render must succeed");
+
+        crate::test_support::assert_matches_committed_baseline(
+            "cycle_review_render.markdown.json",
+            &serde_json::to_string_pretty(&markdown).expect("serialize CallToolResult"),
+        );
+        crate::test_support::assert_matches_committed_baseline(
+            "cycle_review_render.format_json.json",
+            &serde_json::to_string_pretty(&json).expect("serialize CallToolResult"),
+        );
+    }
+
     // -- crt-033: check_stored_review helper tests (TH-U-03 through TH-U-06) --
 
     /// Helper: build a minimal CycleReviewRecord with a valid serialized
