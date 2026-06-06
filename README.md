@@ -335,11 +335,20 @@ audit_log_retention_days = 180
 # conversation bytes — distinct from distilled knowledge, observations, and the
 # audit log, which have their own retention knobs above).
 # Values:
-#   "PurgeOnCycleClose"  — event-driven purge on cycle/session close. Default,
-#                          and the only value the OSS build accepts.
+#   "PurgeOnCycleClose"  — purge the in-memory transcript buffer at session close,
+#                          the staleness sweep, and cycle review
+#                          (context_cycle_review). Default, and the only value
+#                          the OSS build accepts.
 #   { RetainDays = N }   — enterprise retain-N-days seam. REJECTED at startup by
 #                          the OSS build with an enterprise-only validation error.
 transcript_retention = "PurgeOnCycleClose"
+
+# Maximum accumulated size in bytes of a session's in-memory transcript buffer.
+# On overflow the most recent content is kept (ring-tail) and the dropped-byte
+# count is recorded as metadata — never as marker bytes in content. Per-session
+# bound; aggregate memory is this cap times the number of concurrent sessions.
+# Floor: 65536 (64 KiB) — values below abort startup. Default: 4194304 (4 MiB).
+transcript_buffer_max_bytes = 4194304
 ```
 
 ```toml
@@ -562,6 +571,10 @@ Four capabilities gate tool access: `read`, `write`, `search`, `admin`.
 ### Content Scanning
 
 Every write operation (`context_store`, `context_correct`) scans content for injection patterns (~25+ patterns including prompt injection, system prompt overrides, and encoded payloads) and PII patterns (6+ patterns including emails, phone numbers, API keys, and credentials). Flagged content is rejected before storage.
+
+### Transcript Handling
+
+Streamed session transcript deltas (raw conversation bytes, possibly secret-bearing) accumulate in a per-session in-memory buffer only — they never reach disk, SQL, or logs. In-memory plus purge-on-close is the secrets guarantee: there is no content scanner for raw transcript. The buffer is bounded by `retention.transcript_buffer_max_bytes` (default 4 MiB; oldest bytes dropped on overflow) and purged at session close, the staleness sweep, and cycle review per `retention.transcript_retention`. Purging a non-empty buffer emits a content-free `transcript_session_purged` audit event (session ID, byte count, timestamp — never content). The buffer's sole reader is the server-side PreCompact transcript-tail block, built when a compaction event arrives for a session with a non-empty buffer. A server crash loses in-flight transcript by design.
 
 ### Audit Trail
 
