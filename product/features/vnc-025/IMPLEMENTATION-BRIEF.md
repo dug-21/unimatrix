@@ -24,10 +24,13 @@
 | config-knob (`transcript_buffer_max_bytes` + validate + project-wins merge) | pseudocode/config-knob.md | test-plan/config-knob.md |
 | cycle-review-purge (tools.rs handler gate + clear call) | pseudocode/cycle-review-purge.md | test-plan/cycle-review-purge.md |
 
-Pseudocode and test-plan files are produced in Session 2 Stage 3a; this map lists expected
-components from the architecture — actual paths are confirmed during delivery.
+Component Map confirmed 2026-06-06 (Stage 3a): all seven pseudocode and test-plan files exist
+at the paths above, plus `pseudocode/OVERVIEW.md` and `test-plan/OVERVIEW.md`. Stage 3a open
+questions are recorded in the two OVERVIEW.md files (register_session overwrite purge,
+purge-on-success-only, server.rs:335 reachability, new `UnimatrixServer.retention_config`
+wiring requirement, pre-change snapshot baselines, FR-16 compile-gate verification).
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (confirmed Stage 3a)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
@@ -70,7 +73,8 @@ All paths under `crates/unimatrix-server/src/` unless noted.
 - `uds/hook.rs` — extraction internals removed; call sites (`:220/:252/:295`) re-import from `transcript_block.rs`. Behavior unchanged; existing test suite passes unmodified (R-14: pre/post test-name inventory + constant pins).
 - `mcp/tools.rs` — `context_cycle_review` handler (`:1918`): `match transcript_retention { PurgeOnCycleClose => clear_transcripts_for_feature(...) }`, audit via `log_event_async`.
 - `infra/config.rs` — `RetentionConfig.transcript_buffer_max_bytes` beside `transcript_retention` (`:1561`); `validate()` floor; project-wins merge arm (`:3376`).
-- `server.rs:335`, `main.rs:645/:1068` — switch to `with_transcript_cap(cfg.retention.transcript_buffer_max_bytes)`.
+- `main.rs:645/:1068` — switch to `with_transcript_cap(cfg.retention.transcript_buffer_max_bytes)`. (Gate 3a W1: `server.rs:335` is the test ctor whose `session_registry` is overwritten at `main.rs:752/:1174` — no switch there.)
+- `server.rs` — `UnimatrixServer.retention_config: Arc<RetentionConfig>` field (Gate 3a-approved FR-16 wiring, #561 precedent) for the cycle-review handler's retention read.
 - `http/router.rs` — **unchanged** (`prefix_session_id` already preserves `event_type`; convergence proven by tests, pattern #4725).
 
 ## Data Structures
