@@ -1560,6 +1560,20 @@ pub struct RetentionConfig {
     /// Default: `PurgeOnCycleClose`.
     #[serde(default = "default_transcript_retention")]
     pub transcript_retention: TranscriptRetention,
+
+    /// Accumulated per-session transcript buffer cap in bytes (vnc-025 ADR-006).
+    ///
+    /// Governs the ACCUMULATED in-memory buffer (the 64 KiB client soft cap bounds
+    /// individual deltas; the 1 MiB frame ceiling bounds individual events). Sibling of
+    /// `transcript_retention` — together they form the transcript-policy surface the
+    /// enterprise seam reads as a unit. No global aggregate cap (Constraint 11,
+    /// human-accepted): worst case is cap × concurrent sessions; the 4 h
+    /// `sweep_stale_sessions` eviction is the backstop. Evidence trigger to revisit:
+    /// >32 concurrent registered sessions or >256 MiB resident transcript memory.
+    ///
+    /// Range: [65_536, usize::MAX]. Default: 4_194_304 (4 MiB).
+    #[serde(default = "default_transcript_buffer_max_bytes")]
+    pub transcript_buffer_max_bytes: usize,
 }
 
 fn default_activity_detail_retention_cycles() -> u32 {
@@ -1574,6 +1588,12 @@ fn default_max_cycles_per_tick() -> u32 {
 fn default_transcript_retention() -> TranscriptRetention {
     TranscriptRetention::PurgeOnCycleClose
 }
+fn default_transcript_buffer_max_bytes() -> usize {
+    // vnc-025 ADR-006: keep equal to DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES in
+    // infra/session_transcript.rs (pinned by
+    // test_transcript_buffer_max_bytes_default_when_absent).
+    4_194_304
+}
 
 impl Default for RetentionConfig {
     fn default() -> Self {
@@ -1582,6 +1602,7 @@ impl Default for RetentionConfig {
             audit_log_retention_days: default_audit_log_retention_days(),
             max_cycles_per_tick: default_max_cycles_per_tick(),
             transcript_retention: default_transcript_retention(),
+            transcript_buffer_max_bytes: default_transcript_buffer_max_bytes(),
         }
     }
 }
@@ -1643,6 +1664,18 @@ impl RetentionConfig {
                              PurgeOnCycleClose.",
                 });
             }
+        }
+
+        // vnc-025 ADR-006: a cap smaller than one max client delta (64 KiB) makes every
+        // merge pathological ring-tail churn. Values between 64 KiB and the 12 KB
+        // PreCompact tail window are legal. Floor only — no upper bound.
+        if self.transcript_buffer_max_bytes < 65_536 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_buffer_max_bytes",
+                value: self.transcript_buffer_max_bytes.to_string(),
+                reason: "must be >= 65536 (64 KiB — one max client delta)",
+            });
         }
 
         Ok(())
@@ -3381,6 +3414,14 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.retention.transcript_retention.clone()
             } else {
                 global.retention.transcript_retention.clone()
+            },
+            // vnc-025 ADR-006: per-field project-wins merge for transcript_buffer_max_bytes.
+            transcript_buffer_max_bytes: if project.retention.transcript_buffer_max_bytes
+                != default.retention.transcript_buffer_max_bytes
+            {
+                project.retention.transcript_buffer_max_bytes
+            } else {
+                global.retention.transcript_buffer_max_bytes
             },
         },
         // #561: per-field project-wins merge for store config
@@ -8047,7 +8088,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 0,
             audit_log_retention_days: 180,
             max_cycles_per_tick: 10,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
         let err = cfg
             .validate(Path::new("config.toml"))
@@ -8067,7 +8108,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 10_001,
             audit_log_retention_days: 180,
             max_cycles_per_tick: 10,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
         let err_high = cfg_high
             .validate(Path::new("config.toml"))
@@ -8084,7 +8125,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 1,
             audit_log_retention_days: 1,
             max_cycles_per_tick: 1,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
         assert!(
             cfg_low.validate(Path::new("config.toml")).is_ok(),
@@ -8096,7 +8137,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 10_000,
             audit_log_retention_days: 3_650,
             max_cycles_per_tick: 1_000,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
         assert!(
             cfg_max.validate(Path::new("config.toml")).is_ok(),
@@ -8111,7 +8152,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 50,
             audit_log_retention_days: 0,
             max_cycles_per_tick: 10,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
         let err = cfg
             .validate(Path::new("config.toml"))
@@ -8127,7 +8168,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 50,
             audit_log_retention_days: 3_651,
             max_cycles_per_tick: 10,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
         let err_high = cfg_high
             .validate(Path::new("config.toml"))
@@ -8145,7 +8186,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 50,
             audit_log_retention_days: 180,
             max_cycles_per_tick: 0,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
         let err_zero = cfg_zero
             .validate(Path::new("config.toml"))
@@ -8161,7 +8202,7 @@ max_cycles_per_tick = 20
             activity_detail_retention_cycles: 50,
             audit_log_retention_days: 180,
             max_cycles_per_tick: 1_001,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
         let err_high = cfg_high
             .validate(Path::new("config.toml"))
@@ -8375,6 +8416,137 @@ transcript_retention = 30
         assert!(
             err.to_string().contains("RetainDays"),
             "post-merge rejection must name RetainDays as enterprise-only"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // vnc-025 ADR-006: transcript_buffer_max_bytes tests (FR-10, R-11)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_transcript_buffer_max_bytes_default_when_absent() {
+        // R-11.1: absent [retention] block → 4 MiB via #[serde(default)].
+        let parsed: UnimatrixConfig =
+            toml::from_str("").expect("empty TOML must parse as default UnimatrixConfig");
+        assert_eq!(
+            parsed.retention.transcript_buffer_max_bytes, 4_194_304,
+            "absent [retention]: transcript_buffer_max_bytes must default to 4 MiB"
+        );
+
+        // Present [retention] block with the field absent → field-level default.
+        let toml_str = r#"
+[retention]
+max_cycles_per_tick = 20
+"#;
+        let partial: UnimatrixConfig =
+            toml::from_str(toml_str).expect("present-block partial TOML must parse");
+        assert_eq!(
+            partial.retention.transcript_buffer_max_bytes, 4_194_304,
+            "present-but-field-absent: transcript_buffer_max_bytes must default to 4 MiB"
+        );
+
+        // Compiled Default and defaulter fn agree (guards serde/Default divergence, #3817).
+        assert_eq!(
+            RetentionConfig::default().transcript_buffer_max_bytes,
+            4_194_304
+        );
+        assert_eq!(default_transcript_buffer_max_bytes(), 4_194_304);
+    }
+
+    #[test]
+    fn test_transcript_buffer_max_bytes_explicit_value_respected() {
+        // R-11.1: an explicit non-default value round-trips through TOML deserialization.
+        let toml_str = r#"
+[retention]
+transcript_buffer_max_bytes = 131072
+"#;
+        let parsed: UnimatrixConfig =
+            toml::from_str(toml_str).expect("explicit transcript_buffer_max_bytes must parse");
+        assert_eq!(
+            parsed.retention.transcript_buffer_max_bytes, 131_072,
+            "explicit value must be respected, not the default"
+        );
+        // Siblings keep their defaults (partial-override behavior).
+        assert_eq!(parsed.retention.max_cycles_per_tick, 10);
+        assert_eq!(
+            parsed.retention.transcript_retention,
+            TranscriptRetention::PurgeOnCycleClose
+        );
+    }
+
+    #[test]
+    fn test_validate_rejects_below_floor() {
+        // R-11.2 boundary: 65_535 rejected with the field name and floor in the error.
+        let cfg = RetentionConfig {
+            transcript_buffer_max_bytes: 65_535,
+            ..RetentionConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("transcript_buffer_max_bytes = 65535 must fail validate");
+        assert!(
+            matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
+            "must be RetentionFieldOutOfRange variant; got: {err:?}"
+        );
+        let msg = err.to_string();
+        assert!(
+            msg.contains("transcript_buffer_max_bytes"),
+            "error must name the field; got: {msg}"
+        );
+        assert!(
+            msg.contains("65536"),
+            "error must state the 65536 floor; got: {msg}"
+        );
+
+        // R-11.2 boundary: 65_536 (exactly one max client delta) accepted.
+        let cfg_floor = RetentionConfig {
+            transcript_buffer_max_bytes: 65_536,
+            ..RetentionConfig::default()
+        };
+        assert!(
+            cfg_floor.validate(Path::new("config.toml")).is_ok(),
+            "boundary value 65536 must pass validate"
+        );
+    }
+
+    #[test]
+    fn test_validate_accepts_default() {
+        // R-11.2: the compiled default passes validate() (guard against a floor typo).
+        assert!(
+            RetentionConfig::default()
+                .validate(Path::new("config.toml"))
+                .is_ok(),
+            "default RetentionConfig (4 MiB cap) must pass validate"
+        );
+    }
+
+    #[test]
+    fn test_transcript_buffer_max_bytes_project_overrides_global() {
+        // R-11.3: per-field project-wins merge — project sets a non-default, it wins
+        // even when global also sets a non-default (mirrors transcript_retention arm).
+        let mut global = UnimatrixConfig::default();
+        global.retention.transcript_buffer_max_bytes = 8_388_608; // 8 MiB, non-default
+        let mut project = UnimatrixConfig::default();
+        project.retention.transcript_buffer_max_bytes = 131_072; // 128 KiB, non-default
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.retention.transcript_buffer_max_bytes, 131_072,
+            "project's non-default transcript_buffer_max_bytes must win the merge"
+        );
+    }
+
+    #[test]
+    fn test_transcript_buffer_max_bytes_global_used_when_project_absent() {
+        // R-11.3: project at compiled default (field absent in project TOML) → global wins.
+        let mut global = UnimatrixConfig::default();
+        global.retention.transcript_buffer_max_bytes = 8_388_608; // 8 MiB, non-default
+        let project = UnimatrixConfig::default(); // field at default = "absent"
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.retention.transcript_buffer_max_bytes, 8_388_608,
+            "global's value must apply when project leaves the field at default"
         );
     }
 

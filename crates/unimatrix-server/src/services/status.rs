@@ -3224,7 +3224,7 @@ mod crt_036_gc_block_tests {
     use unimatrix_store::SqlxStore as Store;
     use unimatrix_store::cycle_review_index::CycleReviewRecord;
 
-    use crate::infra::config::{InferenceConfig, RetentionConfig, TranscriptRetention};
+    use crate::infra::config::{InferenceConfig, RetentionConfig};
     use crate::infra::session::SessionRegistry;
     use crate::mcp::response::status::StatusReport;
     use crate::server::PendingEntriesAnalysis;
@@ -3387,7 +3387,7 @@ mod crt_036_gc_block_tests {
             activity_detail_retention_cycles: 1,
             max_cycles_per_tick: 10,
             audit_log_retention_days: 180,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
 
         let svc = make_status_service(&store);
@@ -3484,7 +3484,7 @@ mod crt_036_gc_block_tests {
             activity_detail_retention_cycles: 1,
             max_cycles_per_tick: cap,
             audit_log_retention_days: 180,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
 
         let svc = make_status_service(&store);
@@ -3595,7 +3595,7 @@ mod crt_036_gc_block_tests {
             activity_detail_retention_cycles: 1,
             max_cycles_per_tick: 10,
             audit_log_retention_days: 180,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
 
         let svc = make_status_service(&store);
@@ -3669,7 +3669,7 @@ mod crt_036_gc_block_tests {
             activity_detail_retention_cycles: 1,
             max_cycles_per_tick: 10,
             audit_log_retention_days: 180,
-            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
         };
 
         let svc = make_status_service(&store);
