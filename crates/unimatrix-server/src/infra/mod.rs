@@ -19,6 +19,7 @@ pub mod rayon_pool;
 pub mod registry;
 pub mod scanning;
 pub mod session;
+pub mod session_transcript;
 pub mod shutdown;
 pub mod timeout;
 pub mod usage_dedup;
