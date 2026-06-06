@@ -1580,9 +1580,18 @@ impl StatusService {
 
         // 5. Stale session sweep (col-009, FR-09.2)
         // #198 Part 3: Sweep now resolves feature_cycle via majority vote before eviction
-        // vnc-025 (mechanical signature adaptation): sweep now also returns transcript
-        // purge records. Audit emission for them is Wave 3 (purge-audit) — ignored here.
-        let (stale_outputs, _transcript_purges) = session_registry.sweep_stale_sessions();
+        // vnc-025 (#670, ADR-004): sweep also returns transcript purge records;
+        // every non-empty purged buffer gets a `transcript_session_purged` audit row
+        // (AC-08 — this maintenance tick is the primary stale-sweep driver, so
+        // dropping the records here would leave most sweep purges unaudited).
+        // `AuditLog` is a stateless handle over the SAME store/audit_log table the
+        // dispatch path writes to — constructing it here is a handle clone, not new
+        // audit plumbing. Emission is after lock release, fire-and-forget (FR-14).
+        let (stale_outputs, transcript_purges) = session_registry.sweep_stale_sessions();
+        if !transcript_purges.is_empty() {
+            let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(&self.store)));
+            crate::uds::listener::emit_purge_audits(&audit, transcript_purges, "stale_sweep");
+        }
         if !stale_outputs.is_empty() {
             let store_for_sweep = Arc::clone(&self.store);
             let entry_store_for_sweep = Arc::clone(entry_store);

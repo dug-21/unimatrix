@@ -651,6 +651,17 @@ impl SessionRegistry {
             .unwrap_or_else(|e| e.into_inner())
             .len()
     }
+
+    /// Test-only: backdate a session's `last_activity_at` past the stale
+    /// threshold so the next `sweep_stale_sessions` evicts it (vnc-025
+    /// purge-audit tests in `uds/listener.rs`).
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn backdate_session_for_test(&self, session_id: &str) {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(session_id) {
+            state.last_activity_at = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+        }
+    }
 }
 
 /// Result of sweeping a single stale session (#198).
