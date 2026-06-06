@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "# Unimatrix Cycle Review — vnc025-baseline\n\nCycle type: Unknown\n**Sessions**: 2  |  **Records**: 9  |  **Duration**: 2m\n\n---\n\n## Goal\nNo goal recorded for this cycle.\n\n## Recommendations\n- Investigate tool invocations with no terminal event (neither PostToolUse nor PostToolUseFailure) — common causes are agent context overflow, parallel call cancellation, or interrupted subagent turns\n\nNo phase information captured.\n\n## Findings (2)\n### F-01 [warning] orphaned_calls: Tool 'Bash' had 6 orphaned call(s) (Pre–terminal differential). 2 event cluster(s) detected -- 6 events\nTool 'Bash' had 6 orphaned call(s) (Pre–terminal differential)\nBash(6)\n(2 clusters)\nTimeline: +0m(6▲)\nPeak: 6 events in 5min at +0m — Bash\n\n### F-02 [info] search_via_bash: 33.3% of Bash calls are search commands (2/6). 1 event cluster(s) detected. Top files: src/main.rs -- 33 events\n33.3% of Bash calls are search commands (2/6)\nBash(2)\n(1 clusters)\nTimeline: +0m(2▲)\nPeak: 2 events in 5min at +0m — Bash\n\n"
+    }
+  ],
+  "isError": false
+}

@@ -20,6 +20,56 @@ use crate::infra::usage_dedup::UsageDedup;
 use crate::services::search::{RetrievalMode, ServiceSearchParams};
 use crate::services::{AuditContext, AuditSource, CallerId, RateLimitConfig, ServiceLayer};
 
+// ---------------------------------------------------------------------------
+// vnc-025: committed pre-change baseline fixtures (Gate 3a W3 / OQ-5)
+// ---------------------------------------------------------------------------
+
+/// Absolute path to the committed vnc-025 baseline fixture directory.
+///
+/// Follows the unimatrix-engine `bindings/fixtures` precedent: the committed
+/// file — not the generating test — is the contract authority.
+pub fn vnc025_fixture_dir() -> std::path::PathBuf {
+    std::path::Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/vnc-025"
+    ))
+    .to_path_buf()
+}
+
+/// Byte-identity gate against a committed pre-vnc-025 baseline fixture.
+///
+/// First run (fixture absent): writes `actual` to the fixture file. The result
+/// is reviewed and committed; the committed file then becomes the baseline
+/// authority. All subsequent runs assert `actual` is byte-identical to the
+/// committed fixture.
+///
+/// Baselines were captured BEFORE any vnc-025 production edit (Gate 3a W3).
+/// After Stage 3b lands, drift in these fixtures is a hard-gate failure:
+/// R-09.4 (empty-buffer CompactPayload), AC-09 (cycle-review output),
+/// ADR-004 (SignalOutput feeds the persisted signal queue).
+pub fn assert_matches_committed_baseline(name: &str, actual: &str) {
+    let dir = vnc025_fixture_dir();
+    let path = dir.join(name);
+    if path.exists() {
+        let committed = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("failed to read baseline fixture {}: {e}", path.display()));
+        assert_eq!(
+            actual,
+            committed,
+            "output drifted from committed pre-change baseline {} — \
+             vnc-025 hard gate requires byte identity (R-09.4 / AC-09 / ADR-004)",
+            path.display()
+        );
+    } else {
+        std::fs::create_dir_all(&dir).expect("create vnc-025 fixture dir");
+        std::fs::write(&path, actual).expect("write vnc-025 baseline fixture");
+        eprintln!(
+            "vnc-025 baseline emitted: {} — review and commit",
+            path.display()
+        );
+    }
+}
+
 /// A search result from the test harness.
 #[derive(Debug)]
 pub struct TestSearchResult {

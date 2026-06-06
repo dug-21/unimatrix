@@ -1098,6 +1098,115 @@ mod tests {
         assert!(out.helpful_entry_ids.contains(&2));
     }
 
+    // -- vnc-025 Wave 0: pre-change SignalOutput baseline (ADR-004 firm constraint) --
+
+    /// HARD GATE (registry-wiring §2, Gate 3a W3/OQ-5): `SignalOutput` content
+    /// and its persisted-queue serialization must be byte-identical to the
+    /// committed pre-vnc-025 baseline across the Stage 3b drain signature
+    /// change (`Option<SignalOutput>` → tuple with `TranscriptPurgeRecord`).
+    ///
+    /// Pins, per committed fixture:
+    /// - `signal_output_drain.txt`: Debug of drained `SignalOutput` for the
+    ///   success / rework / abandoned outcomes (entry ids are sorted by
+    ///   `build_signal_output_from_state` — deterministic).
+    /// - `signal_record_wire.json`: serde-JSON of the `SignalRecord`s produced
+    ///   by the exact `write_signals_to_queue` field mapping (listener.rs),
+    ///   with `created_at` pinned — the shape that feeds the persisted
+    ///   SIGNAL_QUEUE (ADR-004: must not change).
+    #[test]
+    fn test_signal_output_shape_unchanged() {
+        let reg = make_registry();
+
+        // Success outcome: three injected entries, no exclusions.
+        reg.register_session("vnc025-signal-success", None, None);
+        reg.record_injection("vnc025-signal-success", &[(30, 0.7), (10, 0.9), (20, 0.8)]);
+        let success = reg
+            .drain_and_signal_session("vnc025-signal-success", "success")
+            .expect("success drain");
+
+        // Rework outcome: injections + 3 edit-fail-edit cycles on one file.
+        reg.register_session("vnc025-signal-rework", None, None);
+        reg.record_injection("vnc025-signal-rework", &[(7, 0.9), (5, 0.8)]);
+        let cycle_events: Vec<(&str, Option<&str>, bool)> = vec![
+            ("Edit", Some("/foo.rs"), false),
+            ("Bash", None, true),
+            ("Edit", Some("/foo.rs"), false),
+            ("Bash", None, true),
+            ("Edit", Some("/foo.rs"), false),
+            ("Bash", None, true),
+            ("Edit", Some("/foo.rs"), false),
+        ];
+        for (tool, file, failed) in cycle_events {
+            reg.record_rework_event(
+                "vnc025-signal-rework",
+                make_rework_event(tool, file, failed),
+            );
+        }
+        let rework = reg
+            .drain_and_signal_session("vnc025-signal-rework", "success")
+            .expect("rework drain");
+        assert_eq!(rework.final_outcome, SessionOutcome::Rework);
+
+        // Abandoned outcome: injections present but outcome not success.
+        reg.register_session("vnc025-signal-abandoned", None, None);
+        reg.record_injection("vnc025-signal-abandoned", &[(1, 0.9)]);
+        let abandoned = reg
+            .drain_and_signal_session("vnc025-signal-abandoned", "abandoned")
+            .expect("abandoned drain");
+
+        let debug_doc =
+            format!("success: {success:?}\nrework: {rework:?}\nabandoned: {abandoned:?}\n");
+        crate::test_support::assert_matches_committed_baseline(
+            "signal_output_drain.txt",
+            &debug_doc,
+        );
+
+        // Persisted-queue serialization: replicate the write_signals_to_queue
+        // (listener.rs) SignalOutput → SignalRecord field mapping exactly,
+        // with created_at pinned for determinism (live code uses now()).
+        const PINNED_CREATED_AT: u64 = 1_700_000_000;
+        let map_to_record = |output: &SignalOutput| -> Option<unimatrix_store::SignalRecord> {
+            let (entry_ids, signal_type, signal_source) = match output.final_outcome {
+                SessionOutcome::Success if !output.helpful_entry_ids.is_empty() => (
+                    output.helpful_entry_ids.clone(),
+                    unimatrix_store::SignalType::Helpful,
+                    unimatrix_store::SignalSource::ImplicitOutcome,
+                ),
+                SessionOutcome::Rework if !output.flagged_entry_ids.is_empty() => (
+                    output.flagged_entry_ids.clone(),
+                    unimatrix_store::SignalType::Flagged,
+                    unimatrix_store::SignalSource::ImplicitRework,
+                ),
+                _ => return None,
+            };
+            Some(unimatrix_store::SignalRecord {
+                signal_id: 0, // Allocated by insert_signal
+                session_id: output.session_id.clone(),
+                created_at: PINNED_CREATED_AT,
+                entry_ids,
+                signal_type,
+                signal_source,
+            })
+        };
+
+        let success_record = map_to_record(&success).expect("success maps to Helpful record");
+        let rework_record = map_to_record(&rework).expect("rework maps to Flagged record");
+        assert!(
+            map_to_record(&abandoned).is_none(),
+            "abandoned must produce no signal record"
+        );
+
+        let wire_doc = format!(
+            "{}\n{}\n",
+            serde_json::to_string(&success_record).expect("serialize success record"),
+            serde_json::to_string(&rework_record).expect("serialize rework record"),
+        );
+        crate::test_support::assert_matches_committed_baseline(
+            "signal_record_wire.json",
+            &wire_doc,
+        );
+    }
+
     // -- Rework threshold tests --
 
     fn make_state_with_rework(events: Vec<(&str, Option<&str>, bool)>) -> SessionState {

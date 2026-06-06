@@ -3459,6 +3459,154 @@ mod tests {
         }
     }
 
+    // -- vnc-025 Wave 0: pre-change CompactPayload baseline (R-09.4 / FR-18 HARD GATE) --
+
+    /// HARD GATE (R-09.4, FR-18, Gate 3a W3/OQ-5): the full serialized
+    /// `CompactPayload` → `BriefingContent` response for a never-streamed
+    /// session must be byte-identical to the committed pre-vnc-025 baseline.
+    ///
+    /// Captured BEFORE any Stage 3b production edit. After the transcript
+    /// prepend lands, an empty/absent transcript buffer must leave these
+    /// responses untouched (no-double-prepend / no-empty-block-header guard).
+    ///
+    /// Three scenarios, each its own committed fixture:
+    /// 1. unknown (never-registered) session — empty content, token_count 0
+    /// 2. registered session, no accumulated state — empty content
+    /// 3. registered session with role/feature/category-histogram and one
+    ///    prior compaction — non-empty deterministic content (header, Role,
+    ///    Feature, Compaction line, histogram line; no timestamps)
+    #[tokio::test]
+    async fn test_compact_payload_empty_buffer_byte_identical() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        async fn dispatch_compact(
+            session_id: &str,
+            store: &Arc<Store>,
+            embed: &Arc<EmbedServiceHandle>,
+            vs: &Arc<AsyncVectorStore<VectorAdapter>>,
+            es: &Arc<Store>,
+            adapt: &Arc<AdaptationService>,
+            registry: &SessionRegistry,
+        ) -> HookResponse {
+            dispatch_request(
+                HookRequest::CompactPayload {
+                    session_id: session_id.to_string(),
+                    injected_entry_ids: vec![],
+                    role: None,
+                    feature: None,
+                    token_limit: None,
+                    transcript_excerpt: None,
+                },
+                store,
+                embed,
+                vs,
+                es,
+                adapt,
+                "0.1.0",
+                registry,
+                &make_pending(),
+                &make_services(store, embed, vs, es, adapt),
+                crate::uds::UDS_CAPABILITIES,
+            )
+            .await
+        }
+
+        // Scenario 1: unknown session (never registered, never streamed).
+        let resp_unknown = dispatch_compact(
+            "vnc025-baseline-unknown",
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            &registry,
+        )
+        .await;
+        crate::test_support::assert_matches_committed_baseline(
+            "compact_payload_empty_buffer.unknown_session.json",
+            &serde_json::to_string(&resp_unknown).expect("serialize HookResponse"),
+        );
+
+        // Scenario 2: registered session, no accumulated state.
+        registry.register_session(
+            "vnc025-baseline-plain",
+            Some("tester".to_string()),
+            Some("vnc-025".to_string()),
+        );
+        let resp_plain = dispatch_compact(
+            "vnc025-baseline-plain",
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            &registry,
+        )
+        .await;
+        crate::test_support::assert_matches_committed_baseline(
+            "compact_payload_empty_buffer.registered_no_state.json",
+            &serde_json::to_string(&resp_plain).expect("serialize HookResponse"),
+        );
+
+        // Scenario 3: registered session with role/feature, a category
+        // histogram (distinct counts — histogram sort ties are documented as
+        // non-deterministic, EC-04), and one prior compaction so the response
+        // carries non-empty content with a Compaction line. Fully
+        // deterministic: no timestamps appear in the payload.
+        registry.register_session(
+            "vnc025-baseline-rich",
+            Some("tester".to_string()),
+            Some("vnc-025".to_string()),
+        );
+        for _ in 0..3 {
+            registry.record_category_store("vnc025-baseline-rich", "decision");
+        }
+        for _ in 0..2 {
+            registry.record_category_store("vnc025-baseline-rich", "pattern");
+        }
+        registry.record_category_store("vnc025-baseline-rich", "procedure");
+
+        // First dispatch bumps compaction_count 0 → 1 (response not captured).
+        let _warmup = dispatch_compact(
+            "vnc025-baseline-rich",
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            &registry,
+        )
+        .await;
+        // Second dispatch reads compaction_count == 1 → "Compaction: #2" line.
+        let resp_rich = dispatch_compact(
+            "vnc025-baseline-rich",
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            &registry,
+        )
+        .await;
+        // Sanity: content must be non-empty so the prepend point is observable.
+        match &resp_rich {
+            HookResponse::BriefingContent { content, .. } => {
+                assert!(
+                    !content.is_empty(),
+                    "rich scenario must produce non-empty content"
+                );
+            }
+            other => panic!("expected BriefingContent, got {other:?}"),
+        }
+        crate::test_support::assert_matches_committed_baseline(
+            "compact_payload_empty_buffer.registered_with_histogram.json",
+            &serde_json::to_string(&resp_rich).expect("serialize HookResponse"),
+        );
+    }
+
     // -- format_compaction_payload unit tests --
 
     // -- Test helpers for format_compaction_payload tests --
