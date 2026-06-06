@@ -1,0 +1,31 @@
+{
+  "generated_by": "crates/unimatrix-engine/src/project.rs::compute_project_hash (temporary dev test, vnc-026 #679)",
+  "algorithm": "first 16 hex chars of SHA-256 over the UTF-8 bytes of the normalized root path string",
+  "cases": [
+    {
+      "input": "/tmp/unimatrix-parity/ascii-project",
+      "normalized": "/tmp/unimatrix-parity/ascii-project",
+      "hash": "3b0cb3d493bd9235"
+    },
+    {
+      "input": "/tmp/unimatrix-parity/プロジェクト-ümlaut",
+      "normalized": "/tmp/unimatrix-parity/プロジェクト-ümlaut",
+      "hash": "2f67f3fed0e4d4f7"
+    },
+    {
+      "input": "/tmp/unimatrix-parity/trailing/",
+      "normalized": "/tmp/unimatrix-parity/trailing",
+      "hash": "0c2ddb08ffdfda32"
+    },
+    {
+      "input": "/workspaces/unimatrix",
+      "normalized": "/workspaces/unimatrix",
+      "hash": "0d62f3bf1bf46a0a"
+    },
+    {
+      "input": "C:\\Program Files\\My Project",
+      "normalized": "C:\\Program Files\\My Project",
+      "hash": "a4013bc88bed644f"
+    }
+  ]
+}
