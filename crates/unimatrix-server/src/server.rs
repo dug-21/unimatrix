@@ -19,7 +19,7 @@ use crate::background::TickMetadata;
 use crate::error::ServerError;
 use crate::infra::audit::{AuditEvent, AuditLog};
 use crate::infra::categories::CategoryAllowlist;
-use crate::infra::config::{InferenceConfig, StoreConfig};
+use crate::infra::config::{InferenceConfig, RetentionConfig, StoreConfig, TranscriptRetention};
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::registry::{AgentRegistry, TrustLevel};
 use crate::infra::session::SessionRegistry;
@@ -240,6 +240,11 @@ pub struct UnimatrixServer {
     /// validate_store_params and validate_correct_params. Initialized to default
     /// in `new()` (for tests). Overwritten from `main.rs` with the startup config.
     pub store_config: Arc<StoreConfig>,
+    /// vnc-025 (#670, FR-16): retention policy snapshot for the cycle-review
+    /// transcript purge gate (`purge_cycle_transcripts`). Initialized to default
+    /// in `new()` (for tests). Overwritten from `main.rs` with the startup config
+    /// in the daemon/stdio paths (#561 `store_config` precedent).
+    pub retention_config: Arc<RetentionConfig>,
     /// Maps rmcp session ID → clientInfo.name (vnc-014, ADR-001).
     ///
     /// Key: Mcp-Session-Id UUID string (HTTP) or "" (stdio singleton).
@@ -344,6 +349,9 @@ impl UnimatrixServer {
             inference_config: Arc::new(InferenceConfig::default()),
             // #561: default for test server; overwritten in main.rs daemon/stdio paths.
             store_config: Arc::new(StoreConfig::default()),
+            // vnc-025: default (PurgeOnCycleClose) for test server; overwritten in
+            // main.rs daemon/stdio paths.
+            retention_config: Arc::new(RetentionConfig::default()),
             // vnc-014 (ADR-001): empty map; populated by ServerHandler::initialize override.
             client_type_map: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -512,6 +520,40 @@ impl UnimatrixServer {
                 tracing::warn!(error = %e, "audit_fire_and_forget: write failed");
             }
         });
+    }
+
+    /// vnc-025 (#670, FR-15/FR-16): purge transcript buffers for a successfully
+    /// reviewed cycle, gated on the retention policy.
+    ///
+    /// Called by `context_cycle_review` immediately before each SUCCESS return
+    /// (full pipeline, memoization hit, cached-metrics, purged-signals). Error
+    /// paths never reach it — a failed review keeps transcripts for the retry
+    /// (Gate 3a disposition 2). Sessions stay registered; buffers are cleared in
+    /// place (`clear_transcripts_for_feature`, the named crt-052 seam, ADR-004).
+    /// Audit rows are emitted after all locks are released, fire-and-forget via
+    /// `emit_purge_audits` (tokio::spawn + log_event_async); zero-byte purges
+    /// emit nothing. The purge introduces NO new error path: it cannot change
+    /// the review's result or output (AC-09).
+    ///
+    /// The match is EXHAUSTIVE — the enterprise seam (Constraint 7). Never an
+    /// assumed variant, never `if ==`, never a `_` arm: a new `TranscriptRetention`
+    /// variant must force a compile error here.
+    pub(crate) fn purge_cycle_transcripts(&self, feature_cycle: &str) {
+        match self.retention_config.transcript_retention {
+            TranscriptRetention::PurgeOnCycleClose => {
+                let records = self
+                    .session_registry
+                    .clear_transcripts_for_feature(feature_cycle);
+                // ADR-004: locks already released inside clear_transcripts_for_feature;
+                // content-free audit, purge success never depends on audit success.
+                crate::uds::listener::emit_purge_audits(&self.audit, records, "cycle_review");
+            }
+            TranscriptRetention::RetainDays(_) => {
+                // Enterprise-only; OSS `validate()` rejects this value at startup,
+                // so this arm is unreachable in OSS — but it MUST exist and MUST
+                // NOT purge (the whole point of the seam). No-op.
+            }
+        }
     }
 
     /// Insert a new entry and write an audit event.
@@ -1093,7 +1135,7 @@ impl rmcp::ServerHandler for UnimatrixServer {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use serde_json;
 
@@ -3243,6 +3285,196 @@ mod tests {
             "GH #579 regression: audit_fire_and_forget must persist the event within 5 s; \
              found 0 rows. spawn_blocking + block_in_place would produce 0."
         );
+    }
+
+    // -- vnc-025 (#670, FR-15/FR-16): cycle-review transcript purge gate --
+
+    /// Length of a transcript buffer through the SessionState Arc (poison-recovered).
+    fn buffer_len(server: &UnimatrixServer, session_id: &str) -> usize {
+        server
+            .session_registry
+            .get_state(session_id)
+            .expect("session must be registered")
+            .transcript
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .len()
+    }
+
+    /// Poll the audit_log for `transcript_session_purged` rows with
+    /// trigger=cycle_review until `expected` rows appear (deadline 5 s).
+    /// Returns the (session_id, detail) rows found.
+    async fn poll_cycle_review_purge_audits(
+        server: &UnimatrixServer,
+        expected: usize,
+    ) -> Vec<(String, String)> {
+        let deadline = tokio::time::Instant::now() + tokio::time::Duration::from_secs(5);
+        loop {
+            let rows: Vec<(String, String)> = sqlx::query_as(
+                "SELECT session_id, detail FROM audit_log \
+                 WHERE operation = 'transcript_session_purged' \
+                   AND agent_id = 'server' \
+                   AND detail LIKE '%trigger=cycle_review' \
+                 ORDER BY session_id",
+            )
+            .fetch_all(server.store.read_pool_test())
+            .await
+            .expect("audit_log query failed");
+            if rows.len() >= expected || tokio::time::Instant::now() >= deadline {
+                return rows;
+            }
+            tokio::task::yield_now().await;
+        }
+    }
+
+    /// R-10.1 (cycle-review-purge §1): mixed registry — only sessions attributed
+    /// to the reviewed cycle are cleared; `Some(other)` and `None` buffers are
+    /// untouched; ALL sessions stay registered; audit rows match the cleared set
+    /// (ids + byte counts, trigger=cycle_review, ADR-004 pinned shape).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_cycle_review_clears_only_matching_feature_sessions() {
+        let server = make_server().await;
+        let reg = &server.session_registry;
+        reg.register_session("purge-match", None, Some("vnc-025-rev".to_string()));
+        reg.register_session("purge-other", None, Some("col-099".to_string()));
+        reg.register_session("purge-none", None, None);
+        reg.apply_transcript_delta("purge-match", 0, b"match-bytes"); // 11 bytes
+        reg.apply_transcript_delta("purge-other", 0, b"other-bytes");
+        reg.apply_transcript_delta("purge-none", 0, b"none-bytes");
+
+        server.purge_cycle_transcripts("vnc-025-rev");
+
+        // Matching buffer empty; other/None untouched; all stay registered.
+        assert_eq!(
+            buffer_len(&server, "purge-match"),
+            0,
+            "matching buffer cleared"
+        );
+        assert_eq!(
+            buffer_len(&server, "purge-other"),
+            11,
+            "other-feature buffer untouched"
+        );
+        assert_eq!(
+            buffer_len(&server, "purge-none"),
+            10,
+            "feature-None buffer untouched"
+        );
+
+        // Audit: exactly one row, pinned shape, content-free detail.
+        let rows = poll_cycle_review_purge_audits(&server, 1).await;
+        assert_eq!(
+            rows,
+            vec![(
+                "purge-match".to_string(),
+                "bytes=11 trigger=cycle_review".to_string()
+            )],
+            "exactly one purge audit row matching the cleared set"
+        );
+
+        // Idempotent cached re-review (§ scenario 4): second purge finds empty
+        // buffers → no clear, no new audit rows.
+        server.purge_cycle_transcripts("vnc-025-rev");
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+        let rows = poll_cycle_review_purge_audits(&server, 1).await;
+        assert_eq!(rows.len(), 1, "second purge of empty buffers emits nothing");
+    }
+
+    /// R-10.5 (cycle-review-purge §1): zero attributed sessions — no-op, no
+    /// audit row, no error.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_cycle_review_zero_attributed_sessions_noop() {
+        let server = make_server().await;
+        server
+            .session_registry
+            .register_session("unrelated", None, Some("col-099".to_string()));
+        server
+            .session_registry
+            .apply_transcript_delta("unrelated", 0, b"keep-me");
+
+        server.purge_cycle_transcripts("vnc-025-nobody");
+
+        // Empty record vec ⇒ emit_purge_audits spawns nothing — no rows ever.
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+        let rows = poll_cycle_review_purge_audits(&server, 0).await;
+        assert!(
+            rows.is_empty(),
+            "zero attributed sessions must emit no audit"
+        );
+        assert_eq!(
+            buffer_len(&server, "unrelated"),
+            7,
+            "unrelated buffer untouched"
+        );
+    }
+
+    /// FR-16 (cycle-review-purge §2): default OSS config (PurgeOnCycleClose) —
+    /// the clear runs through the retention gate.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_cycle_review_purges_under_purge_on_cycle_close() {
+        let server = make_server().await;
+        assert_eq!(
+            server.retention_config.transcript_retention,
+            TranscriptRetention::PurgeOnCycleClose,
+            "test ctor must default to the OSS retention policy"
+        );
+        server
+            .session_registry
+            .register_session("gate-s1", None, Some("vnc-025-gate".to_string()));
+        server
+            .session_registry
+            .apply_transcript_delta("gate-s1", 0, b"0123456789");
+
+        server.purge_cycle_transcripts("vnc-025-gate");
+
+        assert_eq!(
+            buffer_len(&server, "gate-s1"),
+            0,
+            "PurgeOnCycleClose clears"
+        );
+        let rows = poll_cycle_review_purge_audits(&server, 1).await;
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].1, "bytes=10 trigger=cycle_review");
+    }
+
+    /// FR-16 (cycle-review-purge §2, Gate 3a disposition 6): direct
+    /// `RetainDays` enum-injection — the non-default arm MUST NOT purge.
+    /// Constructed by assigning the enum value to the pub field directly
+    /// (`validate()` is bypassed, never weakened: this value cannot occur in a
+    /// validated OSS config — the arm is the enterprise seam, Constraint 7).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_cycle_review_retain_days_arm_does_not_purge() {
+        let mut server = make_server().await;
+        server.retention_config = Arc::new(RetentionConfig {
+            transcript_retention: TranscriptRetention::RetainDays(30),
+            ..RetentionConfig::default()
+        });
+        server.session_registry.register_session(
+            "retain-s1",
+            None,
+            Some("vnc-025-retain".to_string()),
+        );
+        server
+            .session_registry
+            .apply_transcript_delta("retain-s1", 0, b"retained-bytes");
+
+        server.purge_cycle_transcripts("vnc-025-retain");
+
+        // RetainDays arm: no clear, no audit — ever.
+        assert_eq!(
+            buffer_len(&server, "retain-s1"),
+            14,
+            "RetainDays arm must NOT purge"
+        );
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+        let rows = poll_cycle_review_purge_audits(&server, 0).await;
+        assert!(rows.is_empty(), "RetainDays arm must emit no audit");
     }
 
     // -- vnc-012 AC-10: schema snapshot — #[schemars(with = "T")] preserves type: integer --

@@ -761,6 +761,9 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.inference_config = Arc::clone(&inference_config);
     // #561: thread store config for content byte limit enforcement.
     server.store_config = Arc::new(config.store.clone());
+    // vnc-025 (#670, FR-16): thread retention config for the cycle-review
+    // transcript purge gate (reuses the snapshot taken for the GC tick).
+    server.retention_config = Arc::clone(&retention_config);
 
     // Extract state handles before services is moved.
     let confidence_state_handle = services.confidence_state_handle();
@@ -1188,6 +1191,9 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.inference_config = Arc::clone(&inference_config);
     // #561: thread store config for content byte limit enforcement.
     server.store_config = Arc::new(config.store.clone());
+    // vnc-025 (#670, FR-16): thread retention config for the cycle-review
+    // transcript purge gate (reuses the snapshot taken for the GC tick).
+    server.retention_config = Arc::clone(&retention_config);
 
     // crt-019: extract ConfidenceStateHandle before services is moved.
     let confidence_state_handle = services.confidence_state_handle();

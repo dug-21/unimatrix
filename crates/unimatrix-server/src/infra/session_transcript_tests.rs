@@ -368,6 +368,42 @@ fn test_clear_returns_bytes_purged() {
     assert_eq!(buf.elided_bytes(), 10);
 }
 
+/// R-10.2/.3 (cycle-review-purge §3, crt-052 inherits): after a cycle-review
+/// clear, the client keeps streaming at high FILE offsets (it doesn't know the
+/// server cleared). A resume far beyond `high_water` opens a large gap; the
+/// pinned behavior is hole + ring-tail collapse to the newest bytes — the final
+/// `contiguous_tail` serves exactly the newest contiguous bytes, no panic, no
+/// zero-fill leaking into the tail (FR-19).
+#[test]
+fn test_post_clear_resumed_stream_serves_tail() {
+    let src = src_bytes(60_000);
+    let mut buf = TranscriptBuffer::new(4096);
+    buf.apply_delta(0, &src[0..300]);
+    assert_eq!(buf.clear(), 300);
+    assert_eq!(buf.high_water(), 300);
+
+    // Resume far beyond high_water: gap of ~49.7 KB, then 50 content bytes.
+    buf.apply_delta(50_000, &src[50_000..50_050]);
+    assert_eq!(buf.high_water(), 50_050, "high_water is monotonic");
+
+    // Tail never crosses the gap: exactly the newest contiguous bytes.
+    let tail = buf.contiguous_tail(4096).expect("tail must be served");
+    assert_eq!(tail, &src[50_000..50_050], "newest contiguous bytes only");
+    assert!(
+        !tail.contains(&0u8),
+        "no zero-fill (gap filler) in the tail"
+    );
+
+    // The stream continues contiguously from the resume point and extends the tail.
+    buf.apply_delta(50_050, &src[50_050..50_150]);
+    let tail = buf.contiguous_tail(4096).expect("tail must be served");
+    assert_eq!(
+        tail,
+        &src[50_000..50_150],
+        "contiguous continuation extends the tail"
+    );
+}
+
 // ------------------------------------------ session_key seam (ADR-007) --
 
 #[test]

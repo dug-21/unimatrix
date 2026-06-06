@@ -1851,7 +1851,7 @@ async fn warm_embedding_model(
 pub(crate) fn emit_purge_audits(
     audit_log: &Arc<AuditLog>,
     records: Vec<TranscriptPurgeRecord>,
-    trigger: &'static str, // "session_close" | "stale_sweep"
+    trigger: &'static str, // "session_close" | "stale_sweep" | "cycle_review"
 ) {
     for record in records {
         let audit = Arc::clone(audit_log);
