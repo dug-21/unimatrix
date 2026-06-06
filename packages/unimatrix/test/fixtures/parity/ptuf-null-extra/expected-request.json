@@ -1,0 +1,8 @@
+{
+  "type": "RecordEvent",
+  "event_type": "PostToolUseFailure",
+  "session_id": "ppid-X",
+  "timestamp": 0,
+  "payload": null,
+  "provider": "claude-code"
+}

@@ -1,0 +1,11 @@
+{
+  "type": "ContextSearch",
+  "query": "=== Recent conversation (last 1 exchanges) ===\n[User] only this valid user line survives the malformed window\n=== End recent conversation ===",
+  "session_id": "sess-corpus",
+  "role": null,
+  "task": null,
+  "feature": null,
+  "k": null,
+  "max_tokens": null,
+  "source": "SubagentStart"
+}

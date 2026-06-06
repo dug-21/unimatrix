@@ -1,0 +1,11 @@
+{
+  "type": "ContextSearch",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(cargo fmt --check) → plain string tool result]\n[Assistant] running a quick check\n=== End recent conversation ===",
+  "session_id": "sess-corpus",
+  "role": null,
+  "task": null,
+  "feature": null,
+  "k": null,
+  "max_tokens": null,
+  "source": "SubagentStart"
+}

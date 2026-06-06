@@ -1,0 +1,13 @@
+{
+  "type": "RecordEvent",
+  "event_type": "PostToolUse",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "tool_name": "MultiEdit",
+    "tool_input": {
+      "edits": []
+    }
+  },
+  "provider": "claude-code"
+}

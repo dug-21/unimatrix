@@ -1,0 +1,8 @@
+{
+  "type": "RecordEvent",
+  "event_type": "SubagentStop",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {},
+  "provider": "claude-code"
+}

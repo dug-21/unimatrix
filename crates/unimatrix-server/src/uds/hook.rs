@@ -1093,6 +1093,13 @@ fn queue_dir(home: &Path, project_hash: &str) -> PathBuf {
         .join("event-queue")
 }
 
+// Parity-corpus golden generator (vnc-026, ADR-001): same-crate test module so
+// it can call the private oracle fns above. No production code change (C-07);
+// same wiring pattern as transcript_block_tests.rs.
+#[cfg(test)]
+#[path = "parity_corpus_gen.rs"]
+mod parity_corpus_gen;
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,0 +1,10 @@
+{
+  "type": "ContextSearch",
+  "query": "he said \"do it\" with C:\\path\\to\\file 😀 line sep para \u0007bell done",
+  "session_id": "sess-corpus",
+  "role": null,
+  "task": null,
+  "feature": null,
+  "k": null,
+  "max_tokens": null
+}

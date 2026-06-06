@@ -1,0 +1,3 @@
+{"type":"user","message":{"content":[{"type":"text","text":"implement the corpus generator in the server crate"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"spawning the implementation agent"},{"type":"tool_use","id":"tu-1","name":"Task","input":{"description":"implement parity corpus generator"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu-1","content":[{"type":"text","text":"agent spawned successfully"}]}]}}

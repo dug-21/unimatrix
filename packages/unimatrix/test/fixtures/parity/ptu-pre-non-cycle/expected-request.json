@@ -1,0 +1,13 @@
+{
+  "type": "RecordEvent",
+  "event_type": "PreToolUse",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "ls -la /tmp"
+    }
+  },
+  "provider": "claude-code"
+}

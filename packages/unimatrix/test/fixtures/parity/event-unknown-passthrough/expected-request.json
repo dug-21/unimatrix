@@ -1,0 +1,10 @@
+{
+  "type": "RecordEvent",
+  "event_type": "SomethingNovel",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "k": 1
+  },
+  "provider": "unknown"
+}

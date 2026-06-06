@@ -1,0 +1,22 @@
+{
+  "type": "Entries",
+  "items": [
+    {
+      "id": 104,
+      "title": "Config precedence",
+      "content": "Env vars beat settings.local.json (ADR-006).",
+      "confidence": 0.85,
+      "similarity": 0.92,
+      "category": "decision"
+    },
+    {
+      "id": 105,
+      "title": "State dir layout",
+      "content": "~/.unimatrix/{hash}/hook-client per ADR-003.",
+      "confidence": 0.85,
+      "similarity": 0.92,
+      "category": "decision"
+    }
+  ],
+  "total_tokens": 100
+}

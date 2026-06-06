@@ -1,0 +1,1 @@
+{"session_id":"sess-corpus","tool_name":"Bash","error":"command not found: frobnicate","tool_input":{"command":"frobnicate --all"},"is_interrupt":false}

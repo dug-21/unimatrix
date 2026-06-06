@@ -1,0 +1,1 @@
+{"session_id":"sess-corpus","tool_name":"Bash","tool_input":{"command":"cargo test"},"tool_response":{"stderr":"2 tests failed"},"exit_code":101}

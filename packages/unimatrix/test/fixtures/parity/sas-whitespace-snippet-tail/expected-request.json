@@ -1,0 +1,11 @@
+{
+  "type": "ContextSearch",
+  "query": "=== Recent conversation (last 1 exchanges) ===\n[Assistant] starting on the generator now\n[User] please build the parity corpus generator\n=== End recent conversation ===",
+  "session_id": "sess-corpus",
+  "role": "rust-developer",
+  "task": null,
+  "feature": null,
+  "k": null,
+  "max_tokens": null,
+  "source": "SubagentStart"
+}

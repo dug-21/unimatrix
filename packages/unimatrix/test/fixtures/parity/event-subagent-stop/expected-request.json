@@ -1,0 +1,10 @@
+{
+  "type": "RecordEvent",
+  "event_type": "SubagentStop",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "custom_field": "kept verbatim"
+  },
+  "provider": "claude-code"
+}

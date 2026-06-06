@@ -1,0 +1,11 @@
+{
+  "type": "RecordEvent",
+  "event_type": "cycle_start",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "feature_cycle": "vnc-026"
+  },
+  "topic_signal": "vnc-026",
+  "provider": "claude-code"
+}

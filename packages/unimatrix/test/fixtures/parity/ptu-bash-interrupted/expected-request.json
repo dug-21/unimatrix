@@ -1,0 +1,16 @@
+{
+  "type": "RecordEvent",
+  "event_type": "post_tool_use_rework_candidate",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "tool_name": "Bash",
+    "file_path": null,
+    "had_failure": true,
+    "tool_input": {
+      "command": "sleep 100"
+    },
+    "tool_response": null
+  },
+  "provider": "claude-code"
+}

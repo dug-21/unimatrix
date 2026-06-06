@@ -1,0 +1,22 @@
+{
+  "type": "Entries",
+  "items": [
+    {
+      "id": 101,
+      "title": "ADR-001 parity corpus",
+      "content": "The Rust hook is the oracle for the corpus.",
+      "confidence": 0.85,
+      "similarity": 0.92,
+      "category": "decision"
+    },
+    {
+      "id": 102,
+      "title": "Hook exit contract",
+      "content": "The hook always exits 0 and never blocks.",
+      "confidence": 0.85,
+      "similarity": 0.92,
+      "category": "decision"
+    }
+  ],
+  "total_tokens": 100
+}
