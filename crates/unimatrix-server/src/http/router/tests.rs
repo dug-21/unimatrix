@@ -891,6 +891,75 @@ fn test_prefix_session_id_briefing_unchanged() {
     assert!(matches!(req, HookRequest::Briefing { .. }));
 }
 
+// vnc-025 (#670, AC-06 / R-12, pattern #4725): HTTP→UDS convergence rests on
+// `prefix_session_id` rewriting ONLY session_id — event_type must survive so a
+// transcript_delta routes into the shared merge arm.
+
+#[test]
+fn test_prefix_session_id_preserves_event_type_single() {
+    use unimatrix_engine::wire::{HookRequest, ImplantEvent, TRANSCRIPT_DELTA_EVENT};
+    let mut req = HookRequest::RecordEvent {
+        event: ImplantEvent {
+            event_type: TRANSCRIPT_DELTA_EVENT.to_string(),
+            session_id: "sess-d1".to_string(),
+            timestamp: 1,
+            payload: serde_json::json!({"offset": 0, "bytes": "x"}),
+            topic_signal: None,
+            provider: None,
+        },
+    };
+    prefix_session_id(&mut req);
+    if let HookRequest::RecordEvent { event } = &req {
+        assert_eq!(event.event_type, TRANSCRIPT_DELTA_EVENT);
+        assert_eq!(event.session_id, "http-sess-d1");
+        assert_eq!(
+            event.payload,
+            serde_json::json!({"offset": 0, "bytes": "x"})
+        );
+    } else {
+        panic!("wrong variant");
+    }
+}
+
+#[test]
+fn test_prefix_session_id_preserves_event_type_batch_every_element() {
+    use unimatrix_engine::wire::{HookRequest, ImplantEvent, TRANSCRIPT_DELTA_EVENT};
+    let make = |event_type: &str, sid: &str| ImplantEvent {
+        event_type: event_type.to_string(),
+        session_id: sid.to_string(),
+        timestamp: 1,
+        payload: serde_json::json!({}),
+        topic_signal: None,
+        provider: None,
+    };
+    // Mixed batch: normal events around a transcript_delta.
+    let mut req = HookRequest::RecordEvents {
+        events: vec![
+            make("PreToolUse", "sess-m1"),
+            make(TRANSCRIPT_DELTA_EVENT, "sess-m2"),
+            make("PostToolUse", "sess-m3"),
+        ],
+    };
+    prefix_session_id(&mut req);
+    if let HookRequest::RecordEvents { events } = &req {
+        let got: Vec<(&str, &str)> = events
+            .iter()
+            .map(|e| (e.event_type.as_str(), e.session_id.as_str()))
+            .collect();
+        assert_eq!(
+            got,
+            vec![
+                ("PreToolUse", "http-sess-m1"),
+                (TRANSCRIPT_DELTA_EVENT, "http-sess-m2"),
+                ("PostToolUse", "http-sess-m3"),
+            ],
+            "every element keeps its event_type; every session_id is prefixed"
+        );
+    } else {
+        panic!("wrong variant");
+    }
+}
+
 // ===========================================================================
 // vnc-022: handler error response tests
 // ===========================================================================

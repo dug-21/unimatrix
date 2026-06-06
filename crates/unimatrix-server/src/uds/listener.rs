@@ -40,8 +40,9 @@ use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::registry::Capability;
 use crate::infra::session::{
-    ReworkEvent, SessionOutcome, SessionRegistry, SetFeatureResult, SignalOutput,
+    ReworkEvent, SessionOutcome, SessionRegistry, SetFeatureResult, SignalOutput, lock_buffer,
 };
+use crate::infra::session_transcript::TranscriptPurgeRecord;
 use crate::infra::timeout::MCP_HANDLER_TIMEOUT;
 use crate::infra::validation::{CYCLE_PHASE_END_EVENT, CYCLE_START_EVENT, CYCLE_STOP_EVENT};
 use crate::mcp::response::{IndexEntry, format_index_table};
@@ -49,6 +50,9 @@ use crate::server::PendingEntriesAnalysis;
 use crate::services::index_briefing::{IndexBriefingParams, derive_briefing_query};
 use crate::services::observation::DEFAULT_HOOK_SOURCE_DOMAIN;
 use crate::uds::hook::MAX_GOAL_BYTES;
+use crate::uds::transcript_block::{
+    MAX_PRECOMPACT_BYTES, TAIL_MULTIPLIER, extract_transcript_block_from_bytes, prepend_transcript,
+};
 
 // -- col-010 helpers --
 
@@ -646,6 +650,10 @@ pub(crate) async fn dispatch_request(
             );
 
             let hook_outcome = outcome.as_deref().unwrap_or("");
+            // vnc-025 (#670, ADR-004): thread the EXISTING audit log into the close
+            // path for transcript purge audit. `services.store_ops.audit` is the
+            // same `Arc<AuditLog>` wired at startup — no new audit plumbing, and no
+            // dispatch_request signature change (HTTP /observe stays untouched).
             process_session_close(
                 &session_id,
                 hook_outcome,
@@ -653,6 +661,7 @@ pub(crate) async fn dispatch_request(
                 session_registry,
                 entry_store,
                 pending_entries_analysis,
+                &services.store_ops.audit,
             )
             .await
         }
@@ -762,25 +771,35 @@ pub(crate) async fn dispatch_request(
                 "UDS: event recorded"
             );
 
-            // vnc-024 ADR-004 (R-03 / AC-12 GATE): transcript_delta accept-and-drop guard.
-            // principle 8 / ass-069 Q4: raw conversation bytes may contain secrets and must
-            // NEVER reach durable storage. Accept-and-drop until #670 wires the legitimate
-            // in-memory consumer. This is an EARLY RETURN — it must NOT reuse the col-022
-            // specialize-then-fall-through pattern (#1266); persistence at :793/:849 below is
-            // provably unreachable for a delta. Persists nothing, buffers nothing (SR-05).
-            // The DROP decision keys on event_type ONLY; the typed parse is contract-alignment
-            // (the AC-11 shape, ADR-004) + a debug observability hook and never changes control
-            // flow — a malformed payload is still dropped with Ack (no Error leaked to clients).
+            // vnc-025 (#670): merge into the per-session in-memory buffer (ADR-003).
+            // Replaces the vnc-024 accept-and-drop guard. Raw conversation bytes may
+            // contain secrets and must NEVER reach durable storage (principle 8 /
+            // ass-069 Q4) — the buffer is in-memory only; purge IS the guarantee.
+            // This is an EARLY RETURN — persistence at :793/:849 below remains
+            // provably unreachable for a delta. Fire-and-forget contract: every
+            // outcome (merged, unregistered, malformed, over-cap, poison-recovered)
+            // Acks; no payload content in logs (AC-04/AC-12, Constraint 4).
             if event.event_type == TRANSCRIPT_DELTA_EVENT {
                 match serde_json::from_value::<TranscriptDeltaPayload>(event.payload.clone()) {
-                    Ok(delta) => tracing::debug!(
-                        offset = delta.offset,
-                        "transcript_delta accepted-and-dropped"
-                    ),
-                    Err(e) => tracing::debug!(
-                        error = %e,
-                        "transcript_delta dropped (unparsed payload)"
-                    ),
+                    Ok(delta) => {
+                        session_registry.apply_transcript_delta(
+                            &event.session_id,
+                            delta.offset,
+                            delta.bytes.as_bytes(),
+                        );
+                    }
+                    Err(e) => {
+                        // content-free (R-05): log the error CATEGORY only.
+                        // Deliberate deviation from pseudocode's `error = %e` —
+                        // serde_json invalid-type errors embed the offending
+                        // string VALUE in Display (e.g. `invalid type: string
+                        // "<payload bytes>", expected u64`), which would leak
+                        // transcript content into logs (AC-04/AC-12 hard gate).
+                        tracing::debug!(
+                            category = ?e.classify(),
+                            "transcript_delta dropped (unparsed payload)"
+                        );
+                    }
                 }
                 return HookResponse::Ack;
             }
@@ -989,6 +1008,32 @@ pub(crate) async fn dispatch_request(
                                 );
                             }
                         });
+                    }
+                }
+            }
+
+            // vnc-025 (#670, ADR-003): tee transcript deltas to the in-memory merge BEFORE
+            // the vnc-024 non-persistence filter below. The filter line is NOT edited,
+            // moved, or simplified — it remains the second, independent guarantee that
+            // deltas never enter obs_batch (SR-07 hard gate; vnc-024 zero-rows test runs
+            // unmodified). Parse failure = content-free skip; the arm still Acks (R-05).
+            for event in events
+                .iter()
+                .filter(|e| e.event_type == TRANSCRIPT_DELTA_EVENT)
+            {
+                match serde_json::from_value::<TranscriptDeltaPayload>(event.payload.clone()) {
+                    Ok(delta) => session_registry.apply_transcript_delta(
+                        &event.session_id,
+                        delta.offset,
+                        delta.bytes.as_bytes(),
+                    ),
+                    Err(e) => {
+                        // content-free (R-05): category only — serde_json error
+                        // Display can embed payload string values (see single arm).
+                        tracing::debug!(
+                            category = ?e.classify(),
+                            "transcript_delta dropped (unparsed payload)"
+                        )
                     }
                 }
             }
@@ -1590,6 +1635,33 @@ async fn handle_compact_payload(
         &category_histogram, // crt-026: histogram summary block (WA-2)
     );
 
+    // vnc-025 (#670, ADR-005): server-built transcript tail block. Point-in-time
+    // contiguous tail read under the per-session buffer lock (≤12,000 bytes copied;
+    // never crosses a hole, never zero-fill — FR-19). The step-2 snapshot already
+    // shares the live buffer via the Arc — NO new registry read (ADR-001).
+    // `lock_buffer` applies the ADR-008 Layer 2 poison policy (treat-as-empty), so a
+    // poisoned mutex degrades to the empty-buffer path. The guard drops at the end of
+    // the closure — released before any await/formatting below.
+    let tail: Option<Vec<u8>> = session_state.as_ref().and_then(|s| {
+        lock_buffer(&s.transcript).contiguous_tail(MAX_PRECOMPACT_BYTES * TAIL_MULTIPLIER)
+    });
+    let block: Option<String> = tail
+        .as_deref()
+        .and_then(extract_transcript_block_from_bytes);
+
+    // Empty buffer / absent session / None tail / None block → `content` flows through
+    // UNTOUCHED — byte-identical to pre-vnc-025 (AC-11/FR-18 hard gate, the
+    // no-double-prepend guard). (block = Some, content = None) → transcript-only
+    // payload: a session with transcript but no briefing entries still gets its tail
+    // block, and token_count below becomes non-zero (computed AFTER prepend, R-09.5).
+    let content: Option<String> = match block {
+        Some(b) => Some(prepend_transcript(
+            Some(&b),
+            content.as_deref().unwrap_or(""),
+        )),
+        None => content,
+    };
+
     // 10. Increment compaction count (transport concern)
     session_registry.increment_compaction(session_id);
 
@@ -1762,6 +1834,47 @@ async fn warm_embedding_model(
 
 // -- col-009: Signal dispatch helpers --
 
+/// Emit the content-free `transcript_session_purged` audit event for each purge
+/// record (vnc-025 #670, ADR-004). Async contexts only.
+///
+/// Fire-and-forget: one spawned task per record; the `JoinHandle` is dropped and
+/// the purge has already completed before any write runs — purge success NEVER
+/// depends on audit success (FR-14). Per GH #302/#4379, `log_event_async` is used
+/// (direct `SqlxStore::log_audit_event`, no blocking bridge); never `log_event` /
+/// `block_in_place` from async code. Records arrive non-zero-bytes only
+/// (zero-byte purges are filtered at record construction — R-07.4).
+///
+/// Shape (mirrors `uds_auth_failure`): operation `transcript_session_purged`,
+/// agent_id `server`, detail `bytes=<n> trigger=<t>`, Success, empty target_ids.
+/// The detail interpolates ONLY the u64 count and the static trigger token —
+/// structurally incapable of carrying transcript content (R-05.3).
+pub(crate) fn emit_purge_audits(
+    audit_log: &Arc<AuditLog>,
+    records: Vec<TranscriptPurgeRecord>,
+    trigger: &'static str, // "session_close" | "stale_sweep"
+) {
+    for record in records {
+        let audit = Arc::clone(audit_log);
+        let event = AuditEvent {
+            event_id: 0,  // assigned by store
+            timestamp: 0, // assigned by store
+            session_id: record.session_id,
+            agent_id: "server".to_string(),
+            operation: "transcript_session_purged".to_string(),
+            target_ids: vec![],
+            outcome: Outcome::Success,
+            detail: format!("bytes={} trigger={}", record.bytes_purged, trigger),
+            ..AuditEvent::default()
+        };
+        tokio::spawn(async move {
+            if let Err(e) = audit.log_event_async(event).await {
+                // content-free warn; no retry loop (FR-14) — the purge stands.
+                tracing::warn!(error = %e, "transcript purge audit write failed");
+            }
+        });
+    }
+}
+
 /// Process session close: sweep stale sessions, generate signals, run consumers.
 ///
 /// Never panics. Always returns HookResponse::Ack.
@@ -1772,6 +1885,7 @@ async fn process_session_close(
     session_registry: &SessionRegistry,
     entry_store: &Arc<Store>,
     pending: &Arc<Mutex<PendingEntriesAnalysis>>,
+    audit_log: &Arc<AuditLog>,
 ) -> HookResponse {
     // col-010: capture session metadata before drain (state is removed by drain)
     // col-017: also capture topic_signals for majority vote resolution
@@ -1793,9 +1907,10 @@ async fn process_session_close(
 
     // Step 1: Sweep stale sessions first (FR-09.1)
     // #198 Part 3: Sweep now resolves feature_cycle via majority vote before eviction
-    // vnc-025 (mechanical signature adaptation): sweep now also returns transcript
-    // purge records. Audit emission for them is Wave 3 (purge-audit) — ignored here.
-    let (stale_outputs, _transcript_purges) = session_registry.sweep_stale_sessions();
+    // vnc-025 (#670, ADR-004): sweep also returns transcript purge records —
+    // INCLUDING for silently-evicted sessions (R-08.1). The registry lock is
+    // released at method return; emission below is strictly after-lock (FR-14).
+    let (stale_outputs, sweep_purges) = session_registry.sweep_stale_sessions();
     for sweep_result in &stale_outputs {
         tracing::info!(session_id = %sweep_result.session_id, "UDS: sweeping stale session");
         // #198: Persist resolved feature_cycle for stale session
@@ -1811,13 +1926,19 @@ async fn process_session_close(
         }
         write_signals_to_queue(&sweep_result.output, store).await;
     }
+    emit_purge_audits(audit_log, sweep_purges, "stale_sweep");
 
     // Step 2: Generate signals for the closing session (atomic — ADR-003)
-    // vnc-025 (mechanical signature adaptation): drain now also returns an optional
-    // transcript purge record. Audit emission is Wave 3 (purge-audit) — dropped here.
-    let maybe_output = session_registry
-        .drain_and_signal_session(session_id, hook_outcome)
-        .map(|(output, _transcript_purge)| output);
+    // vnc-025 (#670, ADR-004): drain also returns an optional transcript purge
+    // record (registry lock already released inside the method).
+    let (maybe_output, drain_purge) =
+        match session_registry.drain_and_signal_session(session_id, hook_outcome) {
+            Some((output, purge)) => (Some(output), purge),
+            None => (None, None),
+        };
+    if let Some(rec) = drain_purge {
+        emit_purge_audits(audit_log, vec![rec], "session_close");
+    }
 
     if let Some(ref output) = maybe_output {
         // col-010: resolve final status and outcome string
@@ -8718,4 +8839,13 @@ mod tests {
             "rework candidate must be written as PostToolUse, got={hook}"
         );
     }
+
+    // vnc-025 (#670): dispatch-wiring + purge-audit component tests, in
+    // `uds/listener/tests/` per the 500-line rule; they share this module's
+    // helpers.
+    mod transcript;
+
+    mod compact;
+
+    mod purge_audit;
 }
