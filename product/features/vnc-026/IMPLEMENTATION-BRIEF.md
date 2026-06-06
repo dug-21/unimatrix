@@ -54,8 +54,14 @@ GH Issue: #679 | Branch dependency: vnc-025 (#670) MERGED via PR #692 — C-08 d
 | init-remote (init.js + merge-settings.js changes) | pseudocode/init-remote.md | test-plan/init-remote.md |
 | parity-corpus (Rust generator + Layer 1/2 suites) | pseudocode/parity-corpus.md | test-plan/parity-corpus.md |
 
-Pseudocode and test-plan files are produced in Session 2 Stage 3a; component list reflects
-the architecture's module breakdown — actual file paths are filled during delivery.
+Stage 3a COMPLETE — all 12 pseudocode and test-plan files above exist and are actual paths
+(verified). Delivery-leader sign-offs from Stage 3a open questions:
+- Timeout-override config keys pinned: `unimatrix.remote.timeouts.{connect_ms,sync_ms,fnf_ms}`
+  (consistent with ADR-005 "config-overridable" and the brief's optional timeouts block).
+- WARN 2 (ownership-regex spaced paths) resolved in pseudocode/init-remote.md — quoted-path
+  command writing + new ownership regex with positive/negative test table. No open gate notes remain.
+- Documented parity deviations accepted (short-prompt FNF latency, remote Ping no-stdout,
+  JS key-order caveats) — recorded in pseudocode/OVERVIEW.md.
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
