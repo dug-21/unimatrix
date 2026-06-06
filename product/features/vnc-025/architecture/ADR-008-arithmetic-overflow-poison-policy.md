@@ -43,10 +43,15 @@ non-bricking if a future bug reaches it anyway.
 
 - No `lock().unwrap()` on the buffer mutex anywhere. Every site uses
   `lock().unwrap_or_else(|poisoned| poisoned.into_inner())` and, on the poison path,
-  **`clear()`s the buffer before proceeding** — a panic mid-mutation may have left
-  `data`/`holes`/`base_offset` mutually inconsistent, and empty is the only state with
-  guaranteed invariants. Serving a possibly-corrupt tail is also an SR-02 hazard; dropping
-  the bytes is the safe direction.
+  **`clear()`s the buffer and calls `Mutex::clear_poison()` before proceeding** — a panic
+  mid-mutation may have left `data`/`holes`/`base_offset` mutually inconsistent, and empty
+  is the only state with guaranteed invariants; clearing the poison flag is mandatory,
+  otherwise it persists and every later lock re-triggers treat-as-empty recovery, breaking
+  R-06.2's merge-resumes-and-accumulates. Serving a possibly-corrupt tail is also an SR-02
+  hazard; dropping the bytes is the safe direction.
+
+> *Amended 2026-06-06: Layer 2 recovery extended with `Mutex::clear_poison()` —
+> validated by implementation (pattern #4748), which correctly deviated from the original text.*
 - Resulting behavior per site: dispatch merge — recovered-empty buffer, delta applies
   fresh, `Ack` (always-Ack preserved, ADR-003); PreCompact read — degrades to the
   empty-buffer path (no transcript block prepended); purge/drain/sweep — `into_inner()` +
@@ -68,4 +73,5 @@ non-bricking if a future bug reaches it anyway.
   straddling `u64::MAX` loses its in-range prefix too — irrelevant for legitimate clients,
   documented here so the spec doesn't "fix" it into partial-clip complexity.
 - Cross-references: ADR-001 (mutex shape), ADR-002 (merge semantics this hardens),
-  ADR-003 (always-Ack contract preserved on the poison path), pattern #734.
+  ADR-003 (always-Ack contract preserved on the poison path), pattern #734, pattern #4748
+  (clear_poison amendment).
