@@ -5673,6 +5673,63 @@ mod tests {
         );
     }
 
+    /// Gate 3b W1 (cycle-review-purge plan scenario 7): a FAILED review keeps
+    /// transcripts. Every `purge_cycle_transcripts` call in the handler is
+    /// gated on `result.is_ok()` (tools.rs four success-return sites); this
+    /// test replays the full-pipeline gate with the same `result` value the
+    /// handler computes: an unknown format makes the format dispatch return
+    /// `Err(ERROR_INVALID_PARAMS)`, the gate skips the purge, and the
+    /// attributed session's buffer survives intact for the retry.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_cycle_review_error_path_keeps_transcripts() {
+        let server = crate::server::tests::make_server().await;
+        const SID: &str = "vnc025-errpath-s1";
+        const CYCLE: &str = "vnc025-errpath";
+        const PAYLOAD: &[u8] = b"transcript bytes that must survive a failed review";
+        server
+            .session_registry
+            .register_session(SID, None, Some(CYCLE.to_string()));
+        server.session_registry.apply_transcript_delta(SID, 0, PAYLOAD);
+
+        // Same report-construction replay as the AC-09 purge test, but the
+        // render is asked for an unknown format — the handler's `result` is Err.
+        let corpus = vnc025_cycle_review_baseline_corpus();
+        let rules = unimatrix_observe::default_rules(None, vec![]);
+        let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
+        const PINNED_NOW: u64 = 2_000_000_000;
+        let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
+        let report = unimatrix_observe::build_report(CYCLE, &corpus, metrics, hotspots, None, None);
+
+        let result = dispatch_review_with_advisory(report, "xml", None, None);
+        assert!(
+            result.is_err(),
+            "unknown format must yield Err — the precondition of the purge gate"
+        );
+
+        // Replay the handler's gate verbatim: Err → purge never fires.
+        if result.is_ok() {
+            server.purge_cycle_transcripts(CYCLE);
+        }
+
+        // The failed review left the transcript intact: session still
+        // registered, buffer non-empty with the exact streamed bytes.
+        let state = server
+            .session_registry
+            .get_state(SID)
+            .expect("session must stay registered after a failed review");
+        let buf = state.transcript.lock().unwrap_or_else(|p| p.into_inner());
+        assert_eq!(
+            buf.len(),
+            PAYLOAD.len(),
+            "buffer must be untouched after a failed review"
+        );
+        assert_eq!(
+            buf.contiguous_tail(PAYLOAD.len()).as_deref(),
+            Some(PAYLOAD),
+            "buffer content must survive a failed review byte-for-byte"
+        );
+    }
+
     // -- crt-033: check_stored_review helper tests (TH-U-03 through TH-U-06) --
 
     /// Helper: build a minimal CycleReviewRecord with a valid serialized
