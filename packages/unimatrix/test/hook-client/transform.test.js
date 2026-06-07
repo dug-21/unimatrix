@@ -4,7 +4,11 @@ const { describe, it } = require("node:test");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
-const { renderEnvelope, writeSyncOutput } = require("../../lib/hook-client/transform");
+const {
+  renderEnvelope,
+  writeSyncOutput,
+  INJECTION_HEADER,
+} = require("../../lib/hook-client/transform");
 
 const TRANSFORM_SRC_PATH = path.join(__dirname, "..", "..", "lib", "hook-client", "transform.js");
 const PARITY_DIR = path.join(__dirname, "..", "fixtures", "parity");
@@ -78,7 +82,9 @@ describe("transform.renderEnvelope - SubagentStart envelope (AC-04)", function (
     if (!fs.existsSync(PARITY_DIR)) {
       t.diagnostic("parity goldens not yet generated - using independent escaper oracle");
     }
-    const text = "## Relevant Context\n\n- entry one\n- entry two";
+    // A real Entries wire body always carries the format_injection header
+    // (the wrap-dispatch key); the rest exercises the inner-scalar escaping.
+    const text = INJECTION_HEADER + "## Relevant Context\n\n- entry one\n- entry two";
     const out = renderEnvelope("SubagentStart", text);
     assert.ok(Buffer.isBuffer(out));
     assert.ok(out.equals(expectedSubagentBytes(text)), "envelope bytes diverge from oracle form");
@@ -99,59 +105,70 @@ describe("transform.renderEnvelope - SubagentStart envelope (AC-04)", function (
   });
 
   it("test_subagent_envelope_trailing_newline_exactly_one", function () {
-    const out = renderEnvelope("SubagentStart", "x");
+    const out = renderEnvelope("SubagentStart", INJECTION_HEADER + "x");
     const s = out.toString("utf8");
+    assert.ok(s.startsWith(ENVELOPE_PREFIX), "header-prefixed body must wrap");
     assert.ok(s.endsWith("\n"));
     assert.ok(!s.endsWith("\n\n"));
   });
 
-  it("test_subagent_always_wraps_documented_wire_divergence", function () {
-    // DOCUMENTED WIRE-CONTRACT LIMITATION (vnc-026 rework agent-18; Gate-3b).
+  it("test_subagent_header_dispatch_mirrors_oracle_enum_match", function () {
+    // WIRE-DISCRIMINATOR DISPATCH (vnc-026 agent-24; resolves the former
+    // stdout-subagent-non-entries-fallback todo).
     //
-    // The UDS oracle (hook.rs write_stdout_subagent_inject_response, :1013-1028)
-    // matches on the in-process HookResponse ENUM: Entries -> envelope,
-    // BriefingContent -> plain. A SubagentStart ContextSearch with an active
-    // session goal returns BriefingContent BY DESIGN (col-025 ADR-003,
-    // listener.rs:1174 -> format_index_table), so the plain path is reachable
-    // in production, not just as a degraded edge.
+    // The UDS oracle (hook.rs write_stdout_subagent_inject_response) matches
+    // on the in-process HookResponse ENUM: Entries -> envelope, everything
+    // else (incl. BriefingContent, production-reachable via the col-025
+    // goal-present branch, listener.rs:1174) -> write_stdout PLAIN. The
+    // ADR-003 text/plain wire sends both as 200 text/plain -- but the Entries
+    // variant is structurally marked: format_injection (the single formatting
+    // truth, AC-07) unconditionally prepends INJECTION_HEADER to every Entries
+    // body, and an unrenderable Entries yields 204, never a headerless 200.
+    // BriefingContent always starts with the CONTEXT_GET_INSTRUCTION constant
+    // (index_briefing.rs:41). The header IS the wire discriminator -- this is
+    // contract-keyed dispatch, not content sniffing; ADR-002's letter governs
+    // envelope SERIALIZATION (literal templates only), not the wrap decision.
     //
-    // The F1/F2 HTTP wire ERASES that discriminator: observe_response_to_http
-    // (router/observe.rs:30-46) sends BOTH Entries and BriefingContent as
-    // 200 text/plain (ADR-003 {Entries, BriefingContent} text allowlist). The
-    // ONLY remaining signal is the body text prefix -- a content heuristic
-    // ADR-002 forbids ("never invent a heuristic").
-    //
-    // RESOLUTION: the client implements ADR-002's letter -- ALWAYS wrap on
-    // reqSource === "SubagentStart". This test pins that decision so a future
-    // editor cannot silently add a body-sniffing heuristic; the residual
-    // divergence stays a VISIBLE `todo` in parity-layer1.test.js
-    // (stdout-subagent-non-entries-fallback). The remedy is server-side
-    // (C-07 out of scope here): carry a response-type discriminator in the
-    // text path, or split the ADR-003 text allowlist.
+    // Misclassification is only possible for a BriefingContent that begins
+    // with the exact header line -- impossible in production (fixed
+    // CONTEXT_GET_INSTRUCTION preamble) and fail-safe if contrived (the body
+    // is wrapped, so injection still occurs). A server-side header change
+    // breaks the Layer 1 goldens loudly (ADR-001 drift check).
     const briefingBody = "unexpected briefing on the SubagentStart path";
     const out = renderEnvelope("SubagentStart", briefingBody);
-    // Client wraps (ADR-002 letter) -- it does NOT emit the oracle's plain bytes.
-    assert.ok(out.equals(expectedSubagentBytes(briefingBody)), "always-wrap on SubagentStart");
+    // Non-Entries body -> oracle plain bytes (println! parity), NOT an envelope.
     assert.ok(
-      !out.equals(Buffer.from(briefingBody + "\n", "utf8")),
-      "client deliberately diverges from the oracle plain path over the text/plain wire"
+      out.equals(Buffer.from(briefingBody + "\n", "utf8")),
+      "non-header SubagentStart body must take the oracle plain path"
     );
-    // No content heuristic: a body that looks like injection text is treated
-    // identically to one that does not -- the decision keys ONLY on reqSource.
-    const injectionLike = "--- Unimatrix Context ---\n[x] (decision, 90% confidence)\n";
-    const out2 = renderEnvelope("SubagentStart", injectionLike);
-    assert.ok(out2.equals(expectedSubagentBytes(injectionLike)), "no body-prefix sniffing");
+    // Entries-shaped body -> envelope.
+    const entriesBody = INJECTION_HEADER + "[x] (decision, 90% confidence)\n";
+    const out2 = renderEnvelope("SubagentStart", entriesBody);
+    assert.ok(out2.equals(expectedSubagentBytes(entriesBody)), "header body must wrap");
+    // Dispatch keys on the FULL header line incl. its newline: a body that is
+    // only the bare header text without the line break is not Entries-shaped.
+    const bareHeader = "--- Unimatrix Context ---";
+    const out3 = renderEnvelope("SubagentStart", bareHeader);
+    assert.ok(out3.equals(Buffer.from(bareHeader + "\n", "utf8")), "no partial-prefix wrap");
+    // The header only matters on the SubagentStart path -- plain events never wrap.
+    const out4 = renderEnvelope("UserPromptSubmit", entriesBody);
+    assert.ok(out4.equals(Buffer.from(entriesBody + "\n", "utf8")), "plain events stay plain");
   });
 });
 
 // --- R-03: adversarial inner-scalar escaping -------------------------
 
+// Adversarial bodies ride behind the INJECTION_HEADER (the Entries wire
+// invariant that selects the envelope path); the inner-scalar escaping under
+// test is unaffected by the ASCII header prefix.
+const HEADER_ESCAPED = '--- Unimatrix Context ---\\n'; // header as JSON-escaped text
+
 describe("transform - adversarial inner-scalar escaping (R-03)", function () {
   it("test_quotes_and_backslashes", function () {
-    const text = 'he said "hi" \\ done';
+    const text = INJECTION_HEADER + 'he said "hi" \\ done';
     const out = renderEnvelope("SubagentStart", text);
     const expected = Buffer.from(
-      ENVELOPE_PREFIX + '"he said \\"hi\\" \\\\ done"' + ENVELOPE_SUFFIX,
+      ENVELOPE_PREFIX + '"' + HEADER_ESCAPED + 'he said \\"hi\\" \\\\ done"' + ENVELOPE_SUFFIX,
       "utf8"
     );
     assert.ok(out.equals(expected));
@@ -160,11 +177,13 @@ describe("transform - adversarial inner-scalar escaping (R-03)", function () {
   it("test_control_chars_shortforms", function () {
     // backspace/tab/LF/FF/CR get two-char shortforms; others lowercase
     // hex \u00xx. Hardcoded expectation pins JS escaping byte-for-byte.
-    const text = C(0x00, 0x01, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x1f);
+    const text = INJECTION_HEADER + C(0x00, 0x01, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x1f);
     const out = renderEnvelope("SubagentStart", text);
     const expected = Buffer.from(
       ENVELOPE_PREFIX +
-        '"\\u0000\\u0001\\b\\t\\n\\u000b\\f\\r\\u001f"' +
+        '"' +
+        HEADER_ESCAPED +
+        '\\u0000\\u0001\\b\\t\\n\\u000b\\f\\r\\u001f"' +
         ENVELOPE_SUFFIX,
       "utf8"
     );
@@ -172,7 +191,7 @@ describe("transform - adversarial inner-scalar escaping (R-03)", function () {
   });
 
   it("test_control_chars_dense_full_range", function () {
-    let text = "";
+    let text = INJECTION_HEADER;
     for (let i = 0; i < 0x20; i++) text += C(i);
     const out = renderEnvelope("SubagentStart", text);
     assert.ok(out.equals(expectedSubagentBytes(text)));
@@ -180,7 +199,7 @@ describe("transform - adversarial inner-scalar escaping (R-03)", function () {
 
   it("test_emoji_non_bmp_raw_passthrough", function () {
     // 4-byte UTF-8, surrogate pair in JS; neither serializer u-escapes it.
-    const text = "crab " + CP(0x1f980) + " done " + CP(0x1f600);
+    const text = INJECTION_HEADER + "crab " + CP(0x1f980) + " done " + CP(0x1f600);
     const out = renderEnvelope("SubagentStart", text);
     assert.ok(out.equals(expectedSubagentBytes(text)));
     assert.ok(out.includes(Buffer.from([0xf0, 0x9f, 0xa6, 0x80])), "raw 4-byte emoji expected");
@@ -190,7 +209,7 @@ describe("transform - adversarial inner-scalar escaping (R-03)", function () {
   it("test_u2028_u2029_raw_passthrough", function () {
     // Classic divergence point: JSON-legal raw, JS-source-illegal pre-ES2019.
     // Neither serializer escapes them.
-    const text = "a" + C(0x2028) + "b" + C(0x2029) + "c";
+    const text = INJECTION_HEADER + "a" + C(0x2028) + "b" + C(0x2029) + "c";
     const out = renderEnvelope("SubagentStart", text);
     assert.ok(out.equals(expectedSubagentBytes(text)));
     assert.ok(out.includes(Buffer.from([0xe2, 0x80, 0xa8])), "raw U+2028 bytes expected");
@@ -199,10 +218,10 @@ describe("transform - adversarial inner-scalar escaping (R-03)", function () {
   });
 
   it("test_mixed_crlf", function () {
-    const text = "line1\r\nline2\nline3\r";
+    const text = INJECTION_HEADER + "line1\r\nline2\nline3\r";
     const out = renderEnvelope("SubagentStart", text);
     const expected = Buffer.from(
-      ENVELOPE_PREFIX + '"line1\\r\\nline2\\nline3\\r"' + ENVELOPE_SUFFIX,
+      ENVELOPE_PREFIX + '"' + HEADER_ESCAPED + 'line1\\r\\nline2\\nline3\\r"' + ENVELOPE_SUFFIX,
       "utf8"
     );
     assert.ok(out.equals(expected));
@@ -210,7 +229,7 @@ describe("transform - adversarial inner-scalar escaping (R-03)", function () {
 
   it("test_surrogate_pair_adjacent_to_boundary_chars", function () {
     // quote + non-BMP pair + backslash + control char, packed together.
-    const text = '"' + CP(0x1f600) + "\\" + C(0x01);
+    const text = INJECTION_HEADER + '"' + CP(0x1f600) + "\\" + C(0x01);
     const out = renderEnvelope("SubagentStart", text);
     assert.ok(out.equals(expectedSubagentBytes(text)));
   });
@@ -258,11 +277,22 @@ describe("transform.writeSyncOutput - defensive rules", function () {
   });
 
   it("test_subagent_200_text_plain_writes_envelope", function () {
+    const body = INJECTION_HEADER + "ctx";
     const writes = captureStdout(function () {
-      writeSyncOutput("SubagentStart", okTextResult("ctx"));
+      writeSyncOutput("SubagentStart", okTextResult(body));
     });
     assert.strictEqual(writes.length, 1);
-    assert.ok(writes[0].equals(expectedSubagentBytes("ctx")));
+    assert.ok(writes[0].equals(expectedSubagentBytes(body)));
+  });
+
+  it("test_subagent_200_briefing_body_writes_plain", function () {
+    // Non-Entries (BriefingContent) body on the SubagentStart path: oracle
+    // plain bytes, no envelope (write_stdout fallthrough parity).
+    const writes = captureStdout(function () {
+      writeSyncOutput("SubagentStart", okTextResult("briefing index table"));
+    });
+    assert.strictEqual(writes.length, 1);
+    assert.ok(writes[0].equals(Buffer.from("briefing index table\n", "utf8")));
   });
 
   it("test_text_plain_charset_variant_accepted", function () {
@@ -383,9 +413,16 @@ describe("transform - literal-template enforcement (ADR-002)", function () {
 
   it("test_transform_source_is_ascii_safe", function () {
     // Guard against raw control bytes sneaking into the byte-pinned template.
+    // CR is tolerated ONLY as part of a CRLF line ending: windows-latest
+    // checkouts run Git with core.autocrlf=true, so working-tree newlines may
+    // be CRLF. That is a checkout artifact, not a source byte -- JS string
+    // literals cannot contain raw line breaks (syntax error), so a CRLF can
+    // never sit inside the byte-pinned template itself. A bare CR (not
+    // followed by LF) is still rejected.
     const buf = fs.readFileSync(TRANSFORM_SRC_PATH);
     for (let i = 0; i < buf.length; i++) {
       const b = buf[i];
+      if (b === 0x0d && buf[i + 1] === 0x0a) continue; // CRLF line ending
       assert.ok(
         b === 0x0a || b >= 0x20,
         "raw control byte 0x" + b.toString(16) + " at offset " + i
