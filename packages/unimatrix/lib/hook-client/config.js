@@ -39,7 +39,11 @@ const MAX_TIMEOUT_MS = 600000;
 /**
  * Non-throwing port of init.js detectProjectRoot / Rust detect_project_root:
  * walk up from startDir to the first directory containing `.git` (dir OR file —
- * worktrees). No `.git` found → resolved startDir (ADR-006).
+ * worktrees). No `.git` found → resolved startDir (ADR-006). The result is
+ * canonicalized (realpath) like project.rs `.canonicalize()` — otherwise the
+ * same project reached via a symlink alias (macOS /var → /private/var, stdin
+ * cwd vs process.cwd()) hashes to TWO state dirs and queued frames are never
+ * replayed.
  *
  * Divergence from project.rs: Rust resolves `.git` worktree FILES to the real
  * gitdir; this walk stops at the containing directory. The hash is client-only
@@ -55,16 +59,29 @@ function walkToProjectRoot(startDir) {
   for (;;) {
     try {
       if (fs.existsSync(path.join(current, ".git"))) {
-        return current;
+        return realpathOrSelf(current);
       }
     } catch (_err) {
       // non-throwing contract (existsSync should not throw)
     }
     const parent = path.dirname(current);
     if (parent === current) {
-      return path.resolve(startDir); // no .git anywhere → resolved cwd
+      return realpathOrSelf(path.resolve(startDir)); // no .git anywhere → resolved cwd
     }
     current = parent;
+  }
+}
+
+/**
+ * fs.realpathSync with non-throwing fallback (nonexistent path, permission) —
+ * project.rs propagates canonicalize errors via io::Result; the JS client's
+ * fail-open contract returns the resolved string instead.
+ */
+function realpathOrSelf(p) {
+  try {
+    return fs.realpathSync(p);
+  } catch (_err) {
+    return p;
   }
 }
 
