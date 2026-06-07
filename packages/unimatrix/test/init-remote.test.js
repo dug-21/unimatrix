@@ -30,7 +30,7 @@ const { initRemote } = initModule;
 const transport = require("../lib/hook-client/transport-http.js");
 
 const REMOTE = "https://unimatrix.example.com";
-const TOKEN = "tok-secret-12345";
+const TOKEN = "unit-test-placeholder-token-2";
 
 // Resolve the same client path initRemote will write, so command-string
 // assertions are exact regardless of the install location. index.js is owned by
