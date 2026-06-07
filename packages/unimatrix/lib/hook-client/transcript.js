@@ -2,25 +2,24 @@
 
 // transcript.js — JSONL tail-parse (SubagentStart query derivation, RQ-6).
 //
-// Exact port of crates/unimatrix-server/src/uds/transcript_block.rs (the
-// path-variant front-end). The Rust module is the read-only parity oracle
-// (vnc-026 ADR-001); behavior here must match it byte-for-byte on the
-// derived block. Used ONLY by the SubagentStart fallback in index.js — the
-// single permitted transcript read on a sync spawn (FR-09 exception).
+// Exact port of transcript_block.rs (path-variant front-end), the read-only
+// parity oracle (ADR-001); behavior must match byte-for-byte on the derived
+// block. Used ONLY by the SubagentStart fallback in index.js — the single
+// permitted transcript read on a sync spawn (FR-09 exception).
 //
-// Also exports truncateUtf8, shared by build-request.js (goal truncation)
-// and delta.js (boundary trims). All byte budgets are measured on the UTF-8
-// byte image via Buffer — never String.prototype.length (UTF-16 trap).
+// Also exports truncateUtf8 (shared by build-request.js goal truncation and
+// delta.js boundary trims). All byte budgets use the UTF-8 Buffer image, never
+// String.prototype.length (UTF-16 trap).
 
 const fs = require("fs");
 
 // Constants PINNED — transcript_block.rs:18-29 (R-14.2).
 const MAX_PRECOMPACT_BYTES = 3000;
-const TAIL_MULTIPLIER = 4; // window = MAX_PRECOMPACT_BYTES * 4 = 12,000 bytes
+const TAIL_MULTIPLIER = 4; // window = 12,000 bytes
 const TOOL_RESULT_SNIPPET_BYTES = 300;
 const TOOL_KEY_PARAM_BYTES = 120;
 
-// Hardcoded key-param map for 10 known Claude Code tools (OQ-3 settled).
+// Key-param map for 10 known Claude Code tools (OQ-3 settled).
 const KEY_PARAM_FIELDS = {
   Bash: "command",
   Read: "file_path",
@@ -35,10 +34,9 @@ const KEY_PARAM_FIELDS = {
 };
 
 /**
- * Truncate a string to at most `maxBytes` UTF-8 bytes, never splitting a
- * multi-byte character (transcript_block.rs::truncate_utf8). Backing off to
- * a UTF-8 char boundary keeps whole code points, so no surrogate pair is
- * ever split in the resulting JS string.
+ * Truncate to at most `maxBytes` UTF-8 bytes without splitting a multi-byte char
+ * (transcript_block.rs::truncate_utf8). Backing off to a char boundary keeps
+ * whole code points, so no surrogate pair is split.
  */
 function truncateUtf8(s, maxBytes) {
   const buf = Buffer.from(s, "utf8");
@@ -59,10 +57,8 @@ function isJsonObject(v) {
 }
 
 /**
- * Extract the content array from a JSONL record
- * (transcript_block.rs::get_content_array). Handles two shapes:
- *   { "type": "...", "message": { "content": [...] } }  (Claude Code UX)
- *   { "type": "...", "content": [...] }                 (raw API)
+ * Content array from a JSONL record (get_content_array). Two shapes:
+ * { message: { content: [...] } } (Claude Code) or { content: [...] } (raw API).
  */
 function getContentArray(record) {
   const msg = record === null || record === undefined ? undefined : record.message;
@@ -75,7 +71,7 @@ function getContentArray(record) {
   return [];
 }
 
-/** Collect text from type:"text" blocks with string .text (oracle filter_map). */
+/** Text from type:"text" blocks with string .text (oracle filter_map). */
 function textBlocks(contentArr) {
   const out = [];
   for (const block of contentArr) {
@@ -87,9 +83,8 @@ function textBlocks(contentArr) {
 }
 
 /**
- * Most-identifying input field for a tool call
- * (transcript_block.rs::extract_key_param). Named field first; fallback to
- * the first string-valued field in insertion order (≙ serde preserve_order).
+ * Most-identifying input field for a tool call (extract_key_param). Named field
+ * first; else the first string-valued field in insertion order (serde preserve_order).
  */
 function extractKeyParam(toolName, input) {
   const fieldName = Object.prototype.hasOwnProperty.call(KEY_PARAM_FIELDS, toolName)
@@ -111,9 +106,8 @@ function extractKeyParam(toolName, input) {
 }
 
 /**
- * Snippet text from a tool_result content block
- * (transcript_block.rs::extract_tool_result_snippet): string content, or
- * first type:"text" block in an array.
+ * Snippet from a tool_result content block (extract_tool_result_snippet): string
+ * content, or first type:"text" block in an array.
  */
 function extractToolResultSnippet(toolResultBlock) {
   const content = toolResultBlock.content;
@@ -132,11 +126,9 @@ function extractToolResultSnippet(toolResultBlock) {
 
 /**
  * Parse JSONL lines into typed exchange turns
- * (transcript_block.rs::build_exchange_pairs).
- *
- * Fail-open: malformed lines and unknown type values skipped silently.
- * Tool-use/result pairing: adjacent-record look-ahead ONLY (ADR-002).
- * Returns turns in reverse-chronological order.
+ * (transcript_block.rs::build_exchange_pairs). Fail-open: malformed/unknown-type
+ * lines skipped silently. Tool-use/result pairing via adjacent-record look-ahead
+ * ONLY (ADR-002). Returns turns reverse-chronologically.
  *
  * Turn shapes: {kind:"user",text} | {kind:"assistant",text} |
  * {kind:"tool",name,keyParam,resultSnippet}.
@@ -196,13 +188,13 @@ function buildExchangePairs(lines) {
       const hasText = asstTexts.length > 0;
       const hasToolUse = toolUses.length > 0;
 
-      // Pure thinking turn (no text, no tool_use): suppress entirely.
+      // Pure thinking turn (no text, no tool_use): suppress.
       if (!hasText && !hasToolUse) {
         i += 1;
         continue;
       }
 
-      // Emit assistant text only when present (OQ-SPEC-1).
+      // Emit assistant text only when present (OQ-SPEC-1)
       if (hasText) {
         turns.push({ kind: "assistant", text: asstTexts.join("\n") });
       }
@@ -266,9 +258,9 @@ function formatTurn(turn) {
 }
 
 /**
- * Shared extraction core (transcript_block.rs::block_from_lines): JSONL
- * lines → exchange turns → byte-budget loop → header/body/footer block.
- * Returns null when no complete turn fits the budget (ADR-003 degradation).
+ * Shared extraction core (transcript_block.rs::block_from_lines): lines →
+ * turns → byte-budget loop → header/body/footer block. Returns null when no
+ * complete turn fits the budget (ADR-003 degradation).
  */
 function blockFromLines(lines) {
   const turns = buildExchangePairs(lines);
@@ -304,11 +296,9 @@ function blockFromLines(lines) {
 /**
  * Split a tail-window buffer into lines with Rust BufRead::lines() parity:
  * - split on 0x0A at the BYTE level (terminator dropped);
- * - strip one trailing 0x0D only from \n-terminated lines (read_line pops
- *   \r only after popping \n);
- * - drop lines that are not valid UTF-8 (String::from_utf8 errs per line and
- *   the oracle's filter_map skips it). A lossy decode would keep U+FFFD
- *   lines; the round-trip check below preserves oracle parity instead.
+ * - strip one trailing 0x0D only from \n-terminated lines;
+ * - drop lines that are not valid UTF-8 (per-line round-trip check; the oracle's
+ *   filter_map skips them — a lossy decode keeping U+FFFD would break parity).
  */
 function splitLinesLikeBufRead(buf) {
   const out = [];
@@ -342,12 +332,10 @@ function splitLinesLikeBufRead(buf) {
 }
 
 /**
- * Read the tail of the transcript file at `path`, parse as JSONL, and format
- * a restoration block within MAX_PRECOMPACT_BYTES
- * (transcript_block.rs::extract_transcript_block).
- *
- * Returns null on ANY failure — missing file, empty path, directory path,
- * permissions, read error (ADR-003 degradation contract). Never throws.
+ * Read the transcript tail at `path`, parse as JSONL, and format a restoration
+ * block within MAX_PRECOMPACT_BYTES
+ * (transcript_block.rs::extract_transcript_block). Returns null on ANY failure
+ * (missing/empty/dir path, permissions, read error — ADR-003). Never throws.
  */
 function extractTranscriptBlock(path) {
   if (typeof path !== "string" || path === "") {

@@ -2,14 +2,14 @@
 
 /**
  * build-request-tools.js — helpers and arm-builders for the HookRequest parity
- * port. Split out of build-request.js to keep each file under the 500-line gate
- * (OVERVIEW.md guidance). Pure; never throws.
+ * port. Split from build-request.js for the 500-line gate (OVERVIEW.md). Pure;
+ * never throws.
  *
- * Holds: shared ImplantEvent/RecordEvent constructors, Value/Option-chaining
- * accessors, topic-signal selection, cycle validation
- * (`validation.rs::validate_cycle_params`), the PostToolUse rework helpers
- * (hook.rs:881-951), and the PostToolUse / PreToolUse / SubagentStart / generic
- * arm builders (hook.rs:524-861). The dispatch lives in build-request.js.
+ * Holds: ImplantEvent/RecordEvent constructors, Value/Option-chaining accessors,
+ * topic-signal selection, cycle validation (validation.rs::validate_cycle_params),
+ * the PostToolUse rework helpers (hook.rs:881-951), and the PostToolUse /
+ * PreToolUse / SubagentStart / generic arm builders (hook.rs:524-861). Dispatch
+ * lives in build-request.js.
  */
 
 const { truncateUtf8 } = require("./transcript");
@@ -28,15 +28,12 @@ const MAX_GOAL_BYTES = 1024;
 
 // -- Shared event helpers (OVERVIEW.md; consumed by delta.js too) --
 
-/** Current Unix timestamp in seconds (port of hook.rs::now_secs). */
+/** Unix timestamp in seconds (hook.rs::now_secs). */
 function nowSecs() {
   return Math.floor(Date.now() / 1000);
 }
 
-/**
- * Build an ImplantEvent object. `topic_signal`/`provider` keys are OMITTED
- * when null/undefined (serde `skip_serializing_if = Option::is_none` parity).
- */
+/** ImplantEvent. topic_signal/provider OMITTED when null/undefined (serde skip_serializing_if parity). */
 function implantEvent(eventType, sessionId, payload, topicSignal, provider) {
   const e = {
     event_type: eventType,
@@ -53,7 +50,7 @@ function implantEvent(eventType, sessionId, payload, topicSignal, provider) {
   return e;
 }
 
-/** RecordEvent frame = `{ type: "RecordEvent" }` + flattened ImplantEvent. */
+/** RecordEvent frame = { type:"RecordEvent" } + flattened ImplantEvent. */
 function recordEventFrame(eventType, sessionId, payload, topicSignal, provider) {
   return Object.assign(
     { type: "RecordEvent" },
@@ -63,7 +60,7 @@ function recordEventFrame(eventType, sessionId, payload, topicSignal, provider) 
 
 // -- Small accessors (Rust Option/Value chaining parity) --
 
-/** `process.cwd()` wrapped — "" on failure (Rust current_dir().unwrap_or_default()). */
+/** process.cwd() wrapped — "" on failure (Rust current_dir().unwrap_or_default()). */
 function safeCwd() {
   try {
     return process.cwd();
@@ -91,18 +88,12 @@ function strOrUndef(v) {
   return typeof v === "string" ? v : undefined;
 }
 
-/**
- * Payload from `input.extra` as-is — null when parse failed, {} when parsed
- * with no unknown keys (Rust `input.extra.clone()`).
- */
+/** Payload from input.extra as-is — null on parse failure, {} when no unknown keys (Rust extra.clone()). */
 function payloadFromExtra(input) {
   return input ? input.extra : null;
 }
 
-/**
- * Whitespace-word count — Rust `str::split_whitespace().count()`:
- * Unicode-whitespace split, empty tokens dropped.
- */
+/** Whitespace-word count — Rust split_whitespace().count() (empty tokens dropped). */
 function countWhitespaceWords(s) {
   return s.split(/\s+/u).filter((w) => w !== "").length;
 }
@@ -110,9 +101,9 @@ function countWhitespaceWords(s) {
 // -- Topic-signal selection by event (hook.rs::extract_event_topic_signal) --
 
 /**
- * Compute topic_signal for an event. The source text differs by event family;
- * the underlying extractor is the shared `extractTopicSignal` chain.
- * Port of `hook.rs::extract_event_topic_signal`.
+ * Compute topic_signal for an event (hook.rs::extract_event_topic_signal). The
+ * source text differs by event family; the extractor is the shared
+ * extractTopicSignal chain.
  */
 function extractEventTopicSignal(event, input) {
   switch (event) {
@@ -157,7 +148,7 @@ function genericRecordEvent(event, sessionId, input) {
 
 // -- PostToolUse rework helpers (hook.rs:881-951) --
 
-/** rework-eligible (file-mutating) tools — hook.rs::is_rework_eligible_tool. */
+/** rework-eligible (file-mutating) tools — hook.rs::is_rework_eligible_tool */
 function isReworkEligibleTool(toolName) {
   return (
     toolName === "Bash" ||
@@ -168,10 +159,9 @@ function isReworkEligibleTool(toolName) {
 }
 
 /**
- * Bash failure detection — hook.rs::is_bash_failure.
- * Failure = exit_code is a non-zero INTEGER, OR interrupted === true.
- * `as_i64` parity: 1.5 / "1" / true are not integers → skipped.
- * `as_bool` parity: only JSON `true` counts.
+ * Bash failure detection — hook.rs::is_bash_failure. Failure = exit_code is a
+ * non-zero INTEGER, OR interrupted === true. as_i64 parity: 1.5/"1"/true are not
+ * integers → skipped. as_bool parity: only JSON `true` counts.
  */
 function isBashFailure(extra) {
   const ec = extra ? extra.exit_code : undefined;
@@ -185,8 +175,8 @@ function isBashFailure(extra) {
 }
 
 /**
- * file_path extraction for Edit/Write — hook.rs::extract_file_path.
- * Edit → tool_input.path; Write → tool_input.file_path; else null.
+ * file_path for Edit/Write — hook.rs::extract_file_path. Edit → tool_input.path;
+ * Write → tool_input.file_path; else null.
  */
 function extractFilePath(extra, toolName) {
   const ti = extra ? extra.tool_input : undefined;
@@ -203,8 +193,6 @@ function extractFilePath(extra, toolName) {
 /**
  * (file_path, had_failure) pairs for MultiEdit —
  * hook.rs::extract_rework_events_for_multiedit. Non-array/missing `edits` → [].
- *
- * @returns {Array<[string|null, boolean]>}
  */
 function extractReworkEventsForMultiEdit(extra) {
   const ti = extra ? extra.tool_input : undefined;
@@ -219,9 +207,8 @@ function extractReworkEventsForMultiEdit(extra) {
 }
 
 /**
- * Build the rework-candidate payload. Mirrors the Rust `serde_json::json!`
- * macro: missing `tool_input`/`tool_response` serialize as JSON null.
- * Insertion order: tool_name, file_path, had_failure, tool_input, tool_response.
+ * Build the rework-candidate payload (Rust json!: missing tool_input/tool_response
+ * → null). Order: tool_name, file_path, had_failure, tool_input, tool_response.
  */
 function reworkPayload(toolName, filePath, hadFailure, input) {
   const ti = extraGet(input, "tool_input");
@@ -307,7 +294,7 @@ function buildPreToolUse(event, sessionId, input) {
       : null;
 
   if (bare !== null) {
-    // Clone — never mutate the caller's input (R-01 clone rule).
+    // Clone — never mutate the caller's input (R-01).
     const promoted = Object.assign({}, input);
     if (
       !promoted.extra ||
@@ -327,7 +314,7 @@ function buildPreToolUse(event, sessionId, input) {
 function buildCycleEventOrFallthrough(event, sessionId, input) {
   const toolName = strOr(extraGet(input, "tool_name"), "");
 
-  // Exact equality (security gate F-02): "evil_context_cycle_bypass" must fail.
+  // Exact equality (security gate F-02): "evil_context_cycle_bypass" must fail
   if (
     toolName !== "context_cycle" &&
     toolName !== "mcp__unimatrix__context_cycle"
@@ -372,7 +359,7 @@ function buildCycleEventOrFallthrough(event, sessionId, input) {
     eventType = CYCLE_STOP_EVENT;
   }
 
-  // goal only on Start, byte-truncated at a UTF-8 boundary (hook.rs:808-823).
+  // goal only on Start, byte-truncated at a UTF-8 boundary (hook.rs:808-823)
   let goal = null;
   if (validated.cycleType === "start" && typeof tiObj.goal === "string") {
     const g = tiObj.goal;
@@ -386,7 +373,7 @@ function buildCycleEventOrFallthrough(event, sessionId, input) {
     }
   }
 
-  // Insertion order: feature_cycle first (json! parity), then optionals.
+  // Insertion order: feature_cycle first (json! parity), then optionals
   const payload = { feature_cycle: validated.topic };
   if (validated.phase !== null) {
     payload.phase = validated.phase;

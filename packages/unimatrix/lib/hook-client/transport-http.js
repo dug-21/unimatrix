@@ -6,23 +6,19 @@
 //   SendResult = { ok, status, contentType, body, failureClass }
 //   failureClass: null | "auth" | "connect" | "timeout" | "http_4xx" | "http_5xx"
 //
-// NEVER throws and NEVER rejects — always resolves a SendResult (ADR-005
-// fail-open posture; callers' Promise.allSettled independence degenerates to
-// values). No retries (queue / offset re-drive are the retry mechanisms).
-// Emits NO stdout/stderr and never logs the token, full URL, or body (R-16) —
-// classification strings only, callers compose messages.
+// NEVER throws/rejects — always resolves a SendResult (ADR-005 fail-open). No
+// retries (queue / offset re-drive are the retry mechanisms). Emits NO
+// stdout/stderr and never logs the token, full URL, or body (R-16).
 
 const http = require("http");
 const https = require("https");
 
-// ADR-005: connect 750 ms / sync total 2,000 ms / fire-and-forget total
-// 3,000 ms — config-overridable via unimatrix.remote.timeouts.{connect_ms,
-// sync_ms,fnf_ms}. Caller (config.js) supplies resolved values; these defaults
-// back pingForInit and any caller without overrides.
+// ADR-005 defaults (config-overridable via unimatrix.remote.timeouts). config.js
+// supplies resolved values; these back pingForInit and override-less callers.
 const DEFAULT_TIMEOUTS = Object.freeze({ connectMs: 750, syncMs: 2000, fnfMs: 3000 });
 
-// C-02: 1 MiB post-serialization body guard (client-side backstop; delta.js
-// pre-checks its own frames). Also caps response-body buffering.
+// C-02: 1 MiB post-serialization body guard (backstop; delta.js pre-checks its
+// own frames). Also caps response-body buffering.
 const BODY_LIMIT_BYTES = 1048576;
 
 /** Build a failure SendResult. */
@@ -52,12 +48,12 @@ function classifyErrno(err) {
 }
 
 /**
- * POST a HookRequest frame to {config.url}/observe.
+ * POST a HookRequest frame to {config.url}/observe. Always resolves a SendResult,
+ * never rejects.
  *
  * @param {object} config  { url, token, timeouts: {connectMs, syncMs, fnfMs} }
  * @param {object} frame   HookRequest object (ignored when opts.bodyBuf set)
  * @param {object} opts    { sync: boolean, bodyBuf?: Buffer }
- * @returns {Promise<object>} SendResult — always resolves, never rejects.
  */
 function post(config, frame, opts) {
   const options = opts || {};
@@ -194,12 +190,9 @@ function actionable(failureClass, status, host) {
 }
 
 /**
- * Strict Ping/Pong validation for `init --remote` (FR-19 / R-18) — the ONE
- * loud path (ADR-005). Returns { ok, message }; never throws.
- *
- * @param {string} url
- * @param {string} token
- * @param {object} [timeouts]  { connectMs, syncMs, fnfMs }
+ * Strict Ping/Pong validation for `init --remote` (FR-19 / R-18) — the ONE loud
+ * path (ADR-005). Returns { ok, message }; never throws.
+ * @param {object} [timeouts] { connectMs, syncMs, fnfMs }
  */
 async function pingForInit(url, token, timeouts) {
   const host = safeHost(url);

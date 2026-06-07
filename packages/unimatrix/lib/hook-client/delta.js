@@ -3,23 +3,19 @@
 /**
  * delta.js — transcript delta streaming (ADR-004 / ADR-007 / ADR-008).
  *
- * On fire-and-forget spawns with a non-empty transcript_path: stat the file,
- * read the unshipped span [last_offset, file_len), and ship ONE
- * `transcript_delta` RecordEvent as a separate, concurrent POST. The persisted
- * offset advances by the UNIFORM rule `declared offset + byteLength(bytes)`,
- * and only on send success.
+ * On FNF spawns with a non-empty transcript_path: stat the file, read the
+ * unshipped span [last_offset, file_len), and ship ONE `transcript_delta`
+ * RecordEvent as a separate concurrent POST. The persisted offset advances by
+ * the UNIFORM rule `declared offset + byteLength(bytes)`, only on send success.
  *
- * Deltas are NEVER queued (ADR-004): send failure = offset non-advance; the
- * next FNF spawn re-derives [last_offset, file_len). Zero transcript bytes at
- * rest. End-anchored elision (ADR-008): an oversized span ships
- * head(48 KiB) ++ marker ++ tail(12 KiB) with declared
- * `offset = effectiveEnd − byteLength(bytes)` so the frame ends exactly at the
- * file end — NEVER the span start (phantom hole + PreCompact starvation against
- * merged F2).
+ * Deltas are NEVER queued (ADR-004): send failure = offset non-advance; the next
+ * FNF spawn re-derives the span. Zero transcript bytes at rest. End-anchored
+ * elision (ADR-008): an oversized span ships head(48 KiB) ++ marker ++
+ * tail(12 KiB) with `offset = effectiveEnd − byteLength(bytes)` so the frame ends
+ * at file end — NEVER the span start (phantom hole + PreCompact starvation vs F2).
  *
- * Content-opaque: works identically on non-JSONL/binary files. Every fs call is
- * wrapped; this module never throws and never rejects. No stdout/stderr —
- * index.js owns outcome handling and the breadcrumb.
+ * Content-opaque (works on binary/non-JSONL). Every fs call wrapped; never throws
+ * or rejects. No stdout/stderr — index.js owns outcome handling + breadcrumb.
  */
 
 const fs = require("fs");
@@ -36,10 +32,7 @@ function nowSecs() {
   return Math.floor(Date.now() / 1000);
 }
 
-/**
- * Build an ImplantEvent. `topic_signal`/`provider` keys are OMITTED when null
- * (serde skip_serializing_if parity — OVERVIEW wire rules).
- */
+/** Build an ImplantEvent. topic_signal/provider OMITTED when null (serde skip parity). */
 function implantEvent(event_type, session_id, payload, topic_signal, provider) {
   const e = { event_type, session_id, timestamp: nowSecs(), payload };
   if (topic_signal !== null && topic_signal !== undefined) e.topic_signal = topic_signal;
@@ -48,9 +41,8 @@ function implantEvent(event_type, session_id, payload, topic_signal, provider) {
 }
 
 /**
- * UTF-8 lead-byte sequence length. 1 for ASCII, 2/3/4 for multi-byte leads;
- * an invalid lead byte (a continuation byte or 0xF8+) is treated as length 1
- * (lossy-tolerant, content-opaque).
+ * UTF-8 lead-byte sequence length. 1 for ASCII, 2/3/4 for multi-byte leads; an
+ * invalid lead (continuation byte or 0xF8+) → 1 (lossy-tolerant, content-opaque).
  */
 function utf8SeqLen(b) {
   if (b < 0x80) return 1;
@@ -61,12 +53,10 @@ function utf8SeqLen(b) {
 }
 
 /**
- * Number of bytes to KEEP from the start of `buf` so it ends on a complete
- * UTF-8 character. Backs off at most 3 trailing continuation bytes.
- *   - whole buffer is continuation bytes → 0 (ship nothing: span grew by 1-3
- *     trailing bytes of one char, R-04 scenario 2);
- *   - >3 trailing continuation bytes → not valid UTF-8 anyway, keep everything
- *     (content-opaque tolerance).
+ * Bytes to KEEP from the start of `buf` so it ends on a complete UTF-8 char.
+ * Backs off at most 3 trailing continuation bytes.
+ *   - whole buffer is continuation bytes → 0 (ship nothing; R-04 scenario 2);
+ *   - >3 trailing continuation bytes → not valid UTF-8, keep everything.
  */
 function trimEndToUtf8Boundary(buf) {
   let i = buf.length - 1;
@@ -88,9 +78,8 @@ function trimStartToUtf8Boundary(buf) {
 }
 
 /**
- * Positioned read of up to `length` bytes at `position`. Returns a Buffer
- * sized to the ACTUAL bytes read (short read → smaller buffer). Throws on a
- * read error; callers convert that to "ship nothing".
+ * Positioned read of up to `length` bytes at `position`. Returns a Buffer sized
+ * to the ACTUAL bytes read. Throws on read error; callers → "ship nothing".
  */
 function readAt(fd, position, length) {
   const buf = Buffer.allocUnsafe(length);
@@ -99,11 +88,9 @@ function readAt(fd, position, length) {
 }
 
 /**
- * Serialize a delta frame and enforce the post-serialization body guard
- * (SR-04). Returns `{ bodyBuf, offset, byteLen }` or `null` to ship nothing.
- * The body guard is theoretically unreachable (64 KiB raw × ≤6x JSON-escape
- * inflation ≈ 384 KiB); the assert is a defensive backstop — never throws,
- * never emits a 413.
+ * Serialize a delta frame and enforce the post-serialization body guard (SR-04).
+ * Returns `{ bodyBuf, offset, byteLen }` or `null` to ship nothing. The guard is
+ * a defensive backstop (64 KiB raw × ≤6x escape ≈ 384 KiB) — never throws/413.
  */
 function assemble(offset, bytes, sessionId, provider) {
   const byteLen = Buffer.byteLength(bytes, "utf8");
@@ -123,23 +110,23 @@ function assemble(offset, bytes, sessionId, provider) {
 
 /**
  * Build an end-anchored elided frame for an oversized span (> DELTA_SOFT_CAP).
- * `headLimit`/`tailLimit` are the head/tail byte budgets (halved on the one
- * defensive rebuild). Returns the assembled frame or `null` to ship nothing.
+ * `headLimit`/`tailLimit` are byte budgets (halved on the one defensive rebuild).
+ * Returns the assembled frame or `null` to ship nothing.
  */
 function buildElidedFrame(fd, last, fileLen, sessionId, provider, headLimit, tailLimit) {
-  // 1. Anchor: effectiveEnd = fileLen backed off ≤3 bytes so the tail's last
-  //    char is complete (file may end mid-write). Usually === fileLen for JSONL.
+  // 1. Anchor: effectiveEnd = fileLen backed off ≤3 bytes so the tail ends on a
+  //    complete char (file may end mid-write). Usually === fileLen for JSONL.
   const tailProbe = readAt(fd, fileLen - tailLimit, tailLimit);
   const keptLen = trimEndToUtf8Boundary(tailProbe);
   const effectiveEnd = fileLen - tailLimit + keptLen;
 
-  // 2. Tail: ends at effectiveEnd; start advanced ≤3 bytes forward to a boundary.
+  // 2. Tail: ends at effectiveEnd; start advanced ≤3 bytes to a boundary.
   const tailStartRaw = effectiveEnd - tailLimit;
   const tailBuf = readAt(fd, tailStartRaw, tailLimit);
   const s = trimStartToUtf8Boundary(tailBuf);
   const tailStr = tailBuf.subarray(s).toString("utf8");
 
-  // 3. Head: from the span start, end-trimmed to a boundary.
+  // 3. Head: from span start, end-trimmed to a boundary.
   const headBuf = readAt(fd, last, headLimit);
   const e = trimEndToUtf8Boundary(headBuf);
   const headStr = headBuf.subarray(0, e).toString("utf8");
@@ -149,17 +136,15 @@ function buildElidedFrame(fd, last, fileLen, sessionId, provider, headLimit, tai
   const marker = "…[" + nElided + " bytes elided]…"; // U+2026 each end (3 bytes)
   const bytes = headStr + marker + tailStr;
 
-  // 5. End-anchored declaration: frame ends exactly at effectiveEnd. NEVER
-  //    offset = last for an elided frame (ADR-008 — phantom hole + starvation).
+  // 5. End-anchored: frame ends exactly at effectiveEnd. NEVER offset = last for
+  //    an elided frame (ADR-008 — phantom hole + starvation).
   const offset = effectiveEnd - Buffer.byteLength(bytes, "utf8");
   return assemble(offset, bytes, sessionId, provider);
 }
 
 /**
- * Build the delta frame for the unshipped span [last, fileLen).
- *
- * @returns {{bodyBuf:Buffer, offset:number, byteLen:number}|null} `null` ships
- *   nothing (open/read error, or a span that trims away to nothing).
+ * Build the delta frame for the unshipped span [last, fileLen). `null` ships
+ * nothing (open/read error, or a span that trims away to nothing).
  */
 function buildDeltaFrame(path_, last, fileLen, sessionId, provider) {
   let fd;
@@ -213,14 +198,13 @@ function buildDeltaFrame(path_, last, fileLen, sessionId, provider) {
 }
 
 /**
- * Stat the transcript, ship one delta for any growth, advance the offset only
- * on send success. Never throws / never rejects.
+ * Stat the transcript, ship one delta for any growth, advance the offset only on
+ * send success. Never throws / rejects.
  *
  * @returns {Promise<object>} DeltaOutcome:
- *   { attempted:false, reason } — no POST made (stat error, rewind, no growth,
- *     empty span);
- *   { attempted:true, send:SendResult } — a POST was attempted (success or
- *     failure). index.js feeds attempted:true outcomes into the breadcrumb.
+ *   { attempted:false, reason } — no POST (stat error, rewind, no growth, empty);
+ *   { attempted:true, send:SendResult } — a POST was attempted. index.js feeds
+ *     attempted:true outcomes into the breadcrumb.
  */
 async function maybeSendDelta(transcriptPath, sessionId, provider, config) {
   const last = state.readOffset(config.stateDir, sessionId); // corrupt/missing/neg → 0

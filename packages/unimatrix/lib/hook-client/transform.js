@@ -3,16 +3,13 @@
 /**
  * transform.js — host-envelope stdout (vnc-026, ADR-002).
  *
- * The ONLY module in the hook client that writes to stdout. Envelopes are
- * emitted from LITERAL template strings; the sole serializer call in this
- * file is on the inner text scalar (string escaping only). No code path may
- * serialize a whole envelope object — the committed parity goldens
- * (expected-stdout.bin, ADR-001) are the byte authority for AC-04.
+ * The ONLY module that writes stdout. Envelopes are emitted from LITERAL template
+ * strings; the sole serializer call is on the inner text scalar (string escaping
+ * only) — no code path serializes a whole envelope object. The committed parity
+ * goldens (expected-stdout.bin, ADR-001) are the byte authority for AC-04.
  *
- * Oracle: crates/unimatrix-server/src/uds/hook.rs:963-1028
- * (write_stdout, write_stdout_subagent_inject).
- *
- * This module performs no I/O besides stdout, no network, no state.
+ * Oracle: hook.rs:963-1028 (write_stdout, write_stdout_subagent_inject). No I/O
+ * besides stdout, no network, no state.
  */
 
 /**
@@ -28,9 +25,9 @@ function renderEnvelope(reqSource, text) {
     return null; // empty body → silent skip (write_stdout parity)
   }
   if (reqSource === "SubagentStart") {
-    // Byte-pinned to hook.rs write_stdout_subagent_inject: compact
-    // separators, key order hard-codes the serde preserve_order output,
-    // trailing newline. The serializer below touches ONLY the text scalar.
+    // Byte-pinned to hook.rs write_stdout_subagent_inject: compact separators,
+    // hard-coded serde preserve_order key order, trailing newline. The
+    // serializer below touches ONLY the text scalar.
     return Buffer.from(
       '{"hookSpecificOutput":{"hookEventName":"SubagentStart","additionalContext":' +
         JSON.stringify(text) +
@@ -38,18 +35,16 @@ function renderEnvelope(reqSource, text) {
       "utf8"
     );
   }
-  // Plain path (UserPromptSubmit / PreCompact): body verbatim + ONE newline.
-  // The server already formatted/budgeted the body (F1 format_injection,
-  // MAX_INJECTION_BYTES) — no client-side budget.
+  // Plain path (UserPromptSubmit / PreCompact): body verbatim + ONE newline. The
+  // server already formatted/budgeted the body (F1 format_injection) — no
+  // client-side budget.
   return Buffer.from(text + "\n", "utf8");
 }
 
 /**
- * Write the sync-response stdout for a spawn. At most ONE stdout write.
- *
- * Silent (zero stdout bytes) on: failed sends, non-200 status (incl. 204),
- * null/empty body, and any 200 whose Content-Type is not text/plain (R-15:
- * Pong/Error JSON and misbehaving 200s never reach the host context).
+ * Write the sync-response stdout for a spawn. At most ONE stdout write. Silent on
+ * failed sends, non-200 status (incl. 204), null/empty body, and any 200 whose
+ * Content-Type is not text/plain (R-15).
  *
  * @param {string} reqSource - request source event (see renderEnvelope).
  * @param {{ok: boolean, status: number, contentType: (string|null),
