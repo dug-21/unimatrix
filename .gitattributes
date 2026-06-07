@@ -1,3 +1,7 @@
 # Parity-corpus goldens are byte-authoritative (vnc-026 ADR-001): never let
 # CRLF conversion mangle stdin/expected-request/expected-stdout bytes.
-packages/unimatrix/test/fixtures/parity/** -text
+# Text fixtures (*.json, *.jsonl, *.txt) are LF-authoritative — pin eol=lf
+# explicitly so core.autocrlf=true checkouts (Windows CI) get exact LF bytes.
+packages/unimatrix/test/fixtures/parity/** text eol=lf
+# Binary goldens: no conversion in either direction, ever.
+packages/unimatrix/test/fixtures/parity/**/*.bin -text
