@@ -9,12 +9,17 @@ function main() {
   // Route "init" to JS implementation (ADR-003)
   if (args[0] === "init") {
     const { init } = require("../lib/init.js");
-    const projectDirIdx = args.indexOf("--project-dir");
-    const projectDir =
-      projectDirIdx >= 0 && projectDirIdx + 1 < args.length
-        ? args[projectDirIdx + 1]
-        : undefined;
-    init({ dryRun: args.includes("--dry-run"), projectDir })
+    const valueAfter = (flag) => {
+      const idx = args.indexOf(flag);
+      return idx >= 0 && idx + 1 < args.length ? args[idx + 1] : undefined;
+    };
+    const projectDir = valueAfter("--project-dir");
+    // --remote/--token plumbed through init's own argv (interactive, user-typed).
+    // RQ-3 forbids the token in the HOOK command line / checked-in files, not the
+    // init invocation itself.
+    const remote = valueAfter("--remote");
+    const token = valueAfter("--token");
+    init({ dryRun: args.includes("--dry-run"), projectDir, remote, token })
       .then(() => {
         process.exitCode = 0;
       })
