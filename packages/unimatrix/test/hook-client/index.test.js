@@ -157,6 +157,42 @@ describe("parseHookInput (serde parity)", () => {
     const out = index.parseHookInput(JSON.stringify({ mcp_context: { tool_name: "x" } }));
     assert.deepStrictEqual(out.mcp_context, { tool_name: "x" });
   });
+
+  it("test_parse_lone_surrogate_in_unknown_field_falls_back_to_empty", () => {
+    // serde_json rejects the WHOLE document on a lone surrogate anywhere — even
+    // in an unknown field that would flatten into `extra`. Node JSON.parse
+    // accepts it, so parseHookInput must deep-scan and fall back. Adversarial
+    // byte built via String.fromCharCode (#4769), never a bare \uXXXX literal.
+    const lone = String.fromCharCode(0xd800);
+    const raw = JSON.stringify({ session_id: "sess-corpus", note: lone + " adjacent" });
+    const out = index.parseHookInput(raw);
+    assert.strictEqual(out.session_id, null); // whole-parse failure → empty
+    assert.strictEqual(out.extra, null); // parse failure → extra=null (not {})
+  });
+
+  it("test_parse_lone_surrogate_in_named_field_falls_back_to_empty", () => {
+    // Lone surrogate inside a NAMED string field also fails the whole parse.
+    const lone = String.fromCharCode(0xdc00); // lone low surrogate
+    const out = index.parseHookInput(JSON.stringify({ session_id: "ok" + lone }));
+    assert.strictEqual(out.session_id, null);
+    assert.strictEqual(out.extra, null);
+  });
+
+  it("test_parse_lone_surrogate_in_object_key_falls_back_to_empty", () => {
+    // A lone surrogate in a KEY is equally ill-formed UTF-8 to serde.
+    const lone = String.fromCharCode(0xd800);
+    const out = index.parseHookInput(JSON.stringify({ ["k" + lone]: "v" }));
+    assert.strictEqual(out.extra, null);
+  });
+
+  it("test_parse_valid_astral_pair_survives", () => {
+    // A well-formed surrogate PAIR (e.g. an emoji) is valid UTF-8 and must NOT
+    // trip the lone-surrogate guard — clean parse, unknown key kept in extra.
+    const emoji = String.fromCharCode(0xd83d, 0xde00); // U+1F600
+    const out = index.parseHookInput(JSON.stringify({ session_id: "s1", note: emoji }));
+    assert.strictEqual(out.session_id, "s1");
+    assert.strictEqual(out.extra.note, emoji);
+  });
 });
 
 describe("resolveCwd", () => {

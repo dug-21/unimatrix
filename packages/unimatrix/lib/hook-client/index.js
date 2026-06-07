@@ -86,6 +86,42 @@ function isStringOrNull(v) {
 }
 
 /**
+ * True iff `s` contains an unpaired (lone) UTF-16 surrogate. Node's JSON.parse
+ * accepts a lone-surrogate escape (e.g. "\ud800"), but serde_json (the Rust
+ * oracle) rejects the WHOLE document because every Rust String — including the
+ * flattened `extra` Value strings — must be valid UTF-8, which a lone surrogate
+ * is not. A UTF-8 Buffer round-trip replaces any lone surrogate with U+FFFD, so
+ * the round-trip is lossless iff the string is well-formed.
+ * @returns {boolean}
+ */
+function hasLoneSurrogate(s) {
+  return Buffer.from(s, "utf8").toString("utf8") !== s;
+}
+
+/**
+ * Deep-scan a JSON.parse result for any lone surrogate in a string key OR value.
+ * serde_json fails the entire parse on the first ill-formed string anywhere in
+ * the document, so this mirrors that whole-parse rejection (keys and values, at
+ * any depth, including unknown fields that would land in `extra`).
+ * @returns {boolean}
+ */
+function containsLoneSurrogate(node) {
+  if (typeof node === "string") return hasLoneSurrogate(node);
+  if (Array.isArray(node)) {
+    for (const v of node) {
+      if (containsLoneSurrogate(v)) return true;
+    }
+    return false;
+  }
+  if (node !== null && typeof node === "object") {
+    for (const key of Object.keys(node)) {
+      if (hasLoneSurrogate(key) || containsLoneSurrogate(node[key])) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Defensive parse — port of hook.rs::parse_hook_input + wire.rs HookInput serde
  * semantics. serde fails the WHOLE parse if any named field has a wrong type;
  * the fallback is all-empty HookInput with extra=null. Unknown stdin keys
@@ -103,6 +139,14 @@ function parseHookInput(raw) {
   }
   if (!isPlainObject(obj)) {
     if (raw !== "") stderrLine("parse", "stdin parse error");
+    return emptyInput();
+  }
+  // Lone-surrogate parity: Node's JSON.parse accepts a lone-surrogate escape,
+  // but serde_json (oracle) rejects the WHOLE document — every Rust String,
+  // including flattened `extra` strings, must be valid UTF-8. Scan keys+values
+  // at any depth and fall back to empty input exactly as serde does.
+  if (containsLoneSurrogate(obj)) {
+    stderrLine("parse", "stdin parse error");
     return emptyInput();
   }
   // serde type-check of named fields (whole-parse failure on any violation):
