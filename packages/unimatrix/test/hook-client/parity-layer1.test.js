@@ -184,15 +184,13 @@ function wireBodyFromGolden(goldenBuf, reqSource) {
 // genuine client bugs surfaced by Layer 1; fixing them lives outside this
 // suite's scope (the parse / transform owners). See agent report blockers.
 //
-//   stdin-lone-surrogate-escape: Rust serde rejects a lone-surrogate \uD800
-//     escape (invalid UTF-8 String) -> empty input -> ppid fallback. Node
-//     JSON.parse ACCEPTS it, so parseHookInput keeps session_id="sess-corpus".
-//     index.js::parseHookInput must detect lone surrogates to reach parity.
-const REQUEST_TODO = {
-  "stdin-lone-surrogate-escape": {
-    todo: "client divergence: parseHookInput does not reject lone-surrogate escapes (Rust serde does)",
-  },
-};
+//   stdin-lone-surrogate-escape: FIXED — Rust serde rejects a lone-surrogate
+//     \uD800 escape (invalid UTF-8 String) -> empty input -> ppid fallback.
+//     Node JSON.parse ACCEPTS it, so parseHookInput now deep-scans keys+values
+//     for lone surrogates after JSON.parse (UTF-8 round-trip check) and routes
+//     to the same defensive empty-input fallback serde takes. Now a passing
+//     assertion (no longer a todo).
+const REQUEST_TODO = {};
 //   stdout-subagent-non-entries-fallback: a non-Entries response on a
 //     SubagentStart ContextSearch falls through to the PLAIN writer in the Rust
 //     oracle (write_stdout_subagent_inject_response), but the client's
