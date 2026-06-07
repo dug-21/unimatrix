@@ -104,6 +104,44 @@ describe("transform.renderEnvelope - SubagentStart envelope (AC-04)", function (
     assert.ok(s.endsWith("\n"));
     assert.ok(!s.endsWith("\n\n"));
   });
+
+  it("test_subagent_always_wraps_documented_wire_divergence", function () {
+    // DOCUMENTED WIRE-CONTRACT LIMITATION (vnc-026 rework agent-18; Gate-3b).
+    //
+    // The UDS oracle (hook.rs write_stdout_subagent_inject_response, :1013-1028)
+    // matches on the in-process HookResponse ENUM: Entries -> envelope,
+    // BriefingContent -> plain. A SubagentStart ContextSearch with an active
+    // session goal returns BriefingContent BY DESIGN (col-025 ADR-003,
+    // listener.rs:1174 -> format_index_table), so the plain path is reachable
+    // in production, not just as a degraded edge.
+    //
+    // The F1/F2 HTTP wire ERASES that discriminator: observe_response_to_http
+    // (router/observe.rs:30-46) sends BOTH Entries and BriefingContent as
+    // 200 text/plain (ADR-003 {Entries, BriefingContent} text allowlist). The
+    // ONLY remaining signal is the body text prefix -- a content heuristic
+    // ADR-002 forbids ("never invent a heuristic").
+    //
+    // RESOLUTION: the client implements ADR-002's letter -- ALWAYS wrap on
+    // reqSource === "SubagentStart". This test pins that decision so a future
+    // editor cannot silently add a body-sniffing heuristic; the residual
+    // divergence stays a VISIBLE `todo` in parity-layer1.test.js
+    // (stdout-subagent-non-entries-fallback). The remedy is server-side
+    // (C-07 out of scope here): carry a response-type discriminator in the
+    // text path, or split the ADR-003 text allowlist.
+    const briefingBody = "unexpected briefing on the SubagentStart path";
+    const out = renderEnvelope("SubagentStart", briefingBody);
+    // Client wraps (ADR-002 letter) -- it does NOT emit the oracle's plain bytes.
+    assert.ok(out.equals(expectedSubagentBytes(briefingBody)), "always-wrap on SubagentStart");
+    assert.ok(
+      !out.equals(Buffer.from(briefingBody + "\n", "utf8")),
+      "client deliberately diverges from the oracle plain path over the text/plain wire"
+    );
+    // No content heuristic: a body that looks like injection text is treated
+    // identically to one that does not -- the decision keys ONLY on reqSource.
+    const injectionLike = "--- Unimatrix Context ---\n[x] (decision, 90% confidence)\n";
+    const out2 = renderEnvelope("SubagentStart", injectionLike);
+    assert.ok(out2.equals(expectedSubagentBytes(injectionLike)), "no body-prefix sniffing");
+  });
 });
 
 // --- R-03: adversarial inner-scalar escaping -------------------------

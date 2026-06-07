@@ -180,9 +180,9 @@ function wireBodyFromGolden(goldenBuf, reqSource) {
 
 // Known client/oracle divergences (tracked, NOT silently passed). Each maps a
 // corpus case to a node:test `todo` option so the divergence stays VISIBLE in
-// every run while keeping the suite green for unrelated CI gates. These two are
-// genuine client bugs surfaced by Layer 1; fixing them lives outside this
-// suite's scope (the parse / transform owners). See agent report blockers.
+// every run while keeping the suite green for unrelated CI gates. Surfaced by
+// Layer 1; each is owned by the relevant client module (parse / transform) and
+// dispositioned below — one FIXED, one a documented wire-contract limitation.
 //
 //   stdin-lone-surrogate-escape: FIXED — Rust serde rejects a lone-surrogate
 //     \uD800 escape (invalid UTF-8 String) -> empty input -> ppid fallback.
@@ -191,15 +191,38 @@ function wireBodyFromGolden(goldenBuf, reqSource) {
 //     to the same defensive empty-input fallback serde takes. Now a passing
 //     assertion (no longer a todo).
 const REQUEST_TODO = {};
-//   stdout-subagent-non-entries-fallback: a non-Entries response on a
-//     SubagentStart ContextSearch falls through to the PLAIN writer in the Rust
-//     oracle (write_stdout_subagent_inject_response), but the client's
-//     transform.renderEnvelope unconditionally wraps when reqSource is
-//     "SubagentStart" -> over-wraps. The wire carries no Entries-vs-other
-//     signal; resolving it is a transform.js / index.js concern.
+//   stdout-subagent-non-entries-fallback: WIRE-CONTRACT LIMITATION, not a
+//     fixable client bug (vnc-026 rework agent-18; Gate-3b dispositioned).
+//
+//     The UDS oracle write_stdout_subagent_inject_response (hook.rs:1013-1028)
+//     matches on the in-process HookResponse ENUM: Entries -> envelope,
+//     everything-else (incl. BriefingContent) -> write_stdout PLAIN path. This
+//     is reachable in PRODUCTION, not merely the "unexpected but safe" edge the
+//     hook.rs comment implies: a SubagentStart ContextSearch with an active
+//     session goal returns HookResponse::BriefingContent BY DESIGN (col-025
+//     ADR-003, listener.rs:1174 goal-present branch -> format_index_table).
+//
+//     But the F1/F2 HTTP wire (the path a non-Rust client takes) ERASES that
+//     discriminator. observe_response_to_http (router/observe.rs:30-46) sends
+//     BOTH Entries AND BriefingContent as 200 text/plain under the ADR-003
+//     {Entries, BriefingContent} text allowlist; only Pong/Ack/Error reach
+//     application/json or 204 (already dropped by transform's R-15 content-type
+//     guard, so they never call renderEnvelope). The ONLY signal separating an
+//     Entries body from a BriefingContent body is the body TEXT prefix
+//     ("--- Unimatrix Context ---" vs CONTEXT_GET_INSTRUCTION) -- a content
+//     heuristic ADR-002 explicitly forbids ("never invent a heuristic").
+//
+//     RESOLUTION: the client implements ADR-002's letter -- always-wrap when
+//     reqSource === "SubagentStart" (transform.js renderEnvelope; pinned by
+//     transform.test.js::test_subagent_always_wraps_documented_wire_divergence).
+//     This golden (BriefingContent -> plain bytes) therefore exceeds the spec
+//     the client can honor over the wire and stays a VISIBLE `todo`. The remedy
+//     is server-side (carry a response-type discriminator in the text path, or
+//     split the text allowlist), out of scope here (C-07: no server changes) and
+//     revisits ADR-003's text allowlist.
 const STDOUT_TODO = {
   "stdout-subagent-non-entries-fallback": {
-    todo: "client divergence: transform over-wraps a non-Entries SubagentStart response (oracle plain-paths it)",
+    todo: "wire-contract limitation: text/plain erases Entries-vs-BriefingContent (ADR-003 allowlist); client implements ADR-002 always-wrap. Fix is server-side (C-07 out of scope). See comment above.",
   },
 };
 
