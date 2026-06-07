@@ -20,3 +20,91 @@ jobs:
 
       - name: Enforce no spawn_blocking at ONNX inference sites (AC-07 / crt-022)
         run: bash scripts/check-inference-sites.sh
+
+  # ── vnc-026 AC-12: TS HTTP hook client CI ──────────────────────────────────
+  # The hook client (packages/unimatrix/lib/hook-client/) is pure CommonJS with
+  # zero runtime deps. These jobs prove it across the supported runtimes/OSes and
+  # guard the parity contract against the Rust oracle.
+
+  hook-client-matrix:
+    name: Hook client suite (Node ${{ matrix.node }} / ${{ matrix.os }})
+    # R-14 (approved AC-12 expansion): the feature's stated purpose is Windows/
+    # macOS remote support, so the full Node × OS grid runs the package suites —
+    # including the fd-0 stdin path (index.test.js spawns the real client with a
+    # piped fd 0), which MUST execute on Windows to honour R-14 (fs.readFileSync(0),
+    # never '/dev/stdin'). Layer 2 (needs a cargo-built server) and the AC-13
+    # benchmark (machine-variant perf gate) are excluded here and run in their own
+    # jobs — see test/run-hook-client.js for the exclusion list and rationale.
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["18", "20", "22", "24"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # No `npm ci` — the client has zero runtime deps and the suites use only
+      # node:test + built-ins (verified by the zero-dep audit job).
+      - name: Run hook-client unit + Layer 1 parity suites
+        run: npm run test:hook-client
+
+  hook-client-audit:
+    name: Hook client zero-dep + payload size audit (AC-12 / C-04)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Zero runtime-dependency audit
+        run: node test/check-zero-deps.js
+      - name: Payload size check (lib/hook-client/ < 100 KB)
+        run: node test/check-hook-client-size.js
+
+  parity-drift:
+    name: Parity corpus drift check vs Rust oracle (AC-12 / R-20)
+    # Linux only: the goldens are platform-independent (the generator normalises
+    # volatile fields; .gitattributes marks the corpus `-text` so CRLF can never
+    # mangle the golden bytes). R-20: this job FAILS — never skips — if the
+    # generator does not run (see scripts/check-parity-drift.sh non-vacuity guards).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Regenerate corpus from the oracle and assert zero drift
+        run: bash scripts/check-parity-drift.sh
+
+  hook-client-layer2:
+    name: Hook client Layer 2 integration (merged F2 server)
+    # Scoped to a single Linux cell per the test-plan OVERVIEW Integration Plan:
+    # Layer 2 spawns the cargo-built unimatrix-server (real-server.js hard-fails —
+    # never skips — when the binary is absent, #4452). A full cargo build on every
+    # Node × OS cell is impractical and adds no coverage (the server is identical
+    # across cells; OS-specific client behaviour is covered by hook-client-matrix).
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build the server binary (Layer 2 prerequisite, C-08)
+        working-directory: .
+        run: cargo build --release -p unimatrix-server
+      - name: Run Layer 2 parity suites against the real server
+        run: npm run test:hook-client:layer2
