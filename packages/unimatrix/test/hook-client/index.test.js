@@ -47,15 +47,18 @@ function writeRemoteConfig(url, token, timeouts) {
   );
 }
 
-// The state dir the SPAWNED child will use: HOME=tmpRoot and projectRoot=tmpRoot
-// (the .git marker is at tmpRoot). Mirrors config.js stateDirFor + hash so the
-// in-process test can pre-seed the same queue/offsets the child reads.
-function childStateDir() {
-  // config.walkToProjectRoot uses path.resolve (NOT realpath); the child's cwd
-  // is tmpRoot and .git sits there, so projectRoot === path.resolve(tmpRoot).
-  const projectRoot = path.resolve(tmpRoot);
-  const hash = require("../../lib/hook-client/config").computeProjectHash(projectRoot);
-  return path.join(tmpRoot, ".unimatrix", hash, "hook-client");
+// The state dir the SPAWNED child will use: HOME=root and projectRoot=root
+// (the .git marker is at tmpRoot). Derives the hash through the REAL lib walk
+// so this helper can never drift from the child's behavior: the child's
+// process.cwd() is the kernel-physical path (macOS os.tmpdir() is a symlink,
+// /var/folders → /private/var/folders), and config.walkToProjectRoot
+// canonicalizes (project.rs parity) — path.resolve alone would hash the
+// logical alias and seed a queue the child never reads.
+function childStateDir(root) {
+  const base = root || tmpRoot;
+  const config = require("../../lib/hook-client/config");
+  const hash = config.computeProjectHash(config.walkToProjectRoot(base));
+  return path.join(base, ".unimatrix", hash, "hook-client");
 }
 
 function cleanup() {
@@ -583,6 +586,47 @@ describe("spawn: FNF replay → carrying → delta order", () => {
     assert.strictEqual(first.payload && first.payload.marker, "queued"); // replay first
     assert.strictEqual(second.type, "SessionClose"); // carrying second
   });
+
+  it(
+    "test_replay_through_symlinked_project_root",
+    { skip: process.platform === "win32" }, // symlinks need privileges on Windows
+    async () => {
+      // macOS CI regression (vnc-026): os.tmpdir() is a symlink alias, so the
+      // parent's tmpRoot string is logical while the spawned child's
+      // process.cwd() is physical. Reproduce on any POSIX OS by driving the
+      // whole scenario through an explicit symlink — replay must still find
+      // the pre-seeded queue (walkToProjectRoot canonicalizes, project.rs
+      // parity).
+      stub = await startStubServer();
+      stub.respondWith({ status: 204 });
+      writeRemoteConfig(stub.url, "tok");
+      const link = tmpRoot + "-link";
+      fs.symlinkSync(tmpRoot, link, "dir");
+      try {
+        const queue = require("../../lib/hook-client/queue");
+        queue.enqueue(childStateDir(link), {
+          type: "RecordEvent",
+          session_id: "old",
+          event_type: "PreToolUse",
+          payload: { marker: "queued" },
+        });
+        const r = await runEntry("Stop", JSON.stringify({ session_id: "s1" }), {
+          cwd: link,
+          home: link,
+        });
+        assert.strictEqual(r.status, 0);
+        assert.strictEqual(stub.requests.length, 2); // replay + carrying, despite the alias
+        const first = JSON.parse(stub.requests[0].body.toString("utf8"));
+        assert.strictEqual(first.payload && first.payload.marker, "queued");
+      } finally {
+        try {
+          fs.unlinkSync(link);
+        } catch (_e) {
+          /* best-effort */
+        }
+      }
+    }
+  );
 
   it("test_carrying_and_delta_both_sent_concurrently", async () => {
     stub = await startStubServer();
