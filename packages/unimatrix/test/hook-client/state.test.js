@@ -145,7 +145,7 @@ describe("state breadcrumb (ADR-005, R-10)", function () {
   it("test_content_free", function () {
     // Across the full failure matrix the breadcrumb must never contain the
     // token, payload fragments, transcript bytes, or a full URL (R-16).
-    const token = "sk-secret-token-abc123";
+    const token = "unit-test-placeholder-token-1";
     const fullUrl = "https://unimatrix.example.com:8443/observe";
     const payloadFragment = "tool_input_secret_value";
     for (const cls of ["auth", "connect", "timeout", "http_4xx", "http_5xx"]) {

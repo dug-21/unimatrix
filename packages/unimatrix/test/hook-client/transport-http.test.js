@@ -18,7 +18,7 @@ const {
   refusedPort,
 } = require("../helpers/stub-server");
 
-const TOKEN = "secret-token-XYZZY-9000";
+const TOKEN = "unit-test-placeholder-token-3";
 
 function cfg(url, timeouts) {
   return { url, token: TOKEN, timeouts: timeouts || DEFAULT_TIMEOUTS };
