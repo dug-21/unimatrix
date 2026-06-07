@@ -5,17 +5,14 @@
  * index.js — hook-client entry / dispatch (vnc-026, F3).
  *
  * Per-spawn entry: `node /abs/path/lib/hook-client/index.js <EVENT>`.
- * Mirrors crates/unimatrix-server/src/uds/hook.rs::run() step-for-step with the
- * OVERVIEW-documented deviations (HTTP transport, ADR-003 queue, client-side
- * deltas, no client PreCompact transcript prepend). Guarantees exit code 0 and
- * zero stdout on every failure path (C-05). The ONLY stdout writer in the whole
- * client is transform.js; index.js never calls console.log.
+ * Mirrors hook.rs::run() step-for-step with OVERVIEW deviations (HTTP transport,
+ * ADR-003 queue, client-side deltas, no client PreCompact transcript prepend).
+ * Guarantees exit code 0 and zero stdout on every failure path (C-05). Only
+ * transform.js writes stdout; index.js never calls console.log.
  *
- * Oracles (read-only): hook.rs::run / read_stdin / parse_hook_input /
- * resolve_cwd, sync/FNF split at hook.rs:244-251.
- *
- * Every state/queue/breadcrumb/delta/transport call is internally non-throwing;
- * the top-level try/catch is a last-resort guard, never the primary mechanism.
+ * Oracles: hook.rs::run / read_stdin / parse_hook_input / resolve_cwd;
+ * sync/FNF split at hook.rs:244-251. The top-level try/catch is a last-resort
+ * guard — every internal call is non-throwing.
  */
 
 const fs = require("fs");
@@ -59,9 +56,8 @@ function emptyInput() {
 }
 
 /**
- * Read all of stdin via fd 0 (FR-01, R-14). The numeric fd is required: the
- * device-path form throws on Windows, so it is never used. Caps at 1 MiB.
- * EOF/EAGAIN on a console fd 0 (Windows) → "".
+ * Read all of stdin via numeric fd 0 (FR-01, R-14; device-path form throws on
+ * Windows). Caps at 1 MiB. EOF/EAGAIN on a console fd 0 → "".
  * @returns {string}
  */
 function readStdin() {
@@ -86,12 +82,9 @@ function isStringOrNull(v) {
 }
 
 /**
- * True iff `s` contains an unpaired (lone) UTF-16 surrogate. Node's JSON.parse
- * accepts a lone-surrogate escape (e.g. "\ud800"), but serde_json (the Rust
- * oracle) rejects the WHOLE document because every Rust String — including the
- * flattened `extra` Value strings — must be valid UTF-8, which a lone surrogate
- * is not. A UTF-8 Buffer round-trip replaces any lone surrogate with U+FFFD, so
- * the round-trip is lossless iff the string is well-formed.
+ * True iff `s` contains a lone UTF-16 surrogate. serde_json (oracle) rejects the
+ * whole document on any ill-formed UTF-8; a UTF-8 Buffer round-trip replaces a
+ * lone surrogate with U+FFFD, so round-trip is lossless iff well-formed.
  * @returns {boolean}
  */
 function hasLoneSurrogate(s) {
@@ -99,10 +92,8 @@ function hasLoneSurrogate(s) {
 }
 
 /**
- * Deep-scan a JSON.parse result for any lone surrogate in a string key OR value.
- * serde_json fails the entire parse on the first ill-formed string anywhere in
- * the document, so this mirrors that whole-parse rejection (keys and values, at
- * any depth, including unknown fields that would land in `extra`).
+ * Deep-scan a parse result for a lone surrogate in any string key OR value at
+ * any depth (mirrors serde_json whole-parse rejection, including `extra` fields).
  * @returns {boolean}
  */
 function containsLoneSurrogate(node) {
@@ -122,11 +113,10 @@ function containsLoneSurrogate(node) {
 }
 
 /**
- * Defensive parse — port of hook.rs::parse_hook_input + wire.rs HookInput serde
- * semantics. serde fails the WHOLE parse if any named field has a wrong type;
- * the fallback is all-empty HookInput with extra=null. Unknown stdin keys
- * survive verbatim in `extra` (insertion order — ass-071 / wire.rs flatten
- * parity); a clean parse with no unknown keys yields extra={}.
+ * Defensive parse — port of hook.rs::parse_hook_input + wire.rs HookInput serde.
+ * serde fails the WHOLE parse on any named-field type mismatch; fallback is
+ * all-empty HookInput with extra=null. Unknown keys survive verbatim in `extra`
+ * in insertion order (ass-071 / wire.rs flatten parity); clean parse → extra={}.
  * @returns {object} HookInput
  */
 function parseHookInput(raw) {
@@ -141,15 +131,13 @@ function parseHookInput(raw) {
     if (raw !== "") stderrLine("parse", "stdin parse error");
     return emptyInput();
   }
-  // Lone-surrogate parity: Node's JSON.parse accepts a lone-surrogate escape,
-  // but serde_json (oracle) rejects the WHOLE document — every Rust String,
-  // including flattened `extra` strings, must be valid UTF-8. Scan keys+values
-  // at any depth and fall back to empty input exactly as serde does.
+  // Lone-surrogate parity: serde_json rejects the whole document on ill-formed
+  // UTF-8 anywhere; fall back to empty input exactly as serde does.
   if (containsLoneSurrogate(obj)) {
     stderrLine("parse", "stdin parse error");
     return emptyInput();
   }
-  // serde type-check of named fields (whole-parse failure on any violation):
+  // serde type-check of named fields (whole-parse failure on any violation).
   if (
     !(obj.hook_event_name === undefined || typeof obj.hook_event_name === "string") ||
     !isStringOrNull(obj.session_id) ||
@@ -181,7 +169,7 @@ function parseHookInput(raw) {
 
 /**
  * Resolve working directory — port of hook.rs::resolve_cwd minus --project-dir
- * (no flag in F3). stdin.cwd (non-empty) wins over process.cwd().
+ * (no F3 flag). Non-empty stdin.cwd wins over process.cwd().
  * @returns {string}
  */
 function resolveCwd(input) {
@@ -202,8 +190,8 @@ function stderrLine(cls, message) {
   }
 }
 
-/** Extract the session id from any HookRequest frame (build-request applied the
- *  ppid fallback already, so this is always present for FNF frames). */
+/** Session id from any HookRequest frame (build-request applied the ppid
+ *  fallback already, so it is always present for FNF frames). */
 function sessionIdOf(request) {
   switch (request.type) {
     case "SessionRegister":
@@ -218,9 +206,9 @@ function sessionIdOf(request) {
 }
 
 /**
- * Settle a transport result from Promise.allSettled. A rejected promise (the
- * transport never rejects, but allSettled is defensive) becomes a synthetic
- * connect failure so independence holds (AC-09).
+ * Settle a transport result from Promise.allSettled. A rejected promise
+ * (defensive; transport never rejects) becomes a synthetic connect failure so
+ * independence holds (AC-09).
  */
 function settledSendResult(settled) {
   if (settled && settled.status === "fulfilled" && settled.value) return settled.value;
@@ -228,9 +216,9 @@ function settledSendResult(settled) {
 }
 
 /**
- * Settle a delta outcome from Promise.allSettled. delta.maybeSendDelta resolves
- * { attempted, send? } — a rejected promise degrades to a non-attempt.
- * @returns {object|null} the DeltaOutcome, or null when no delta task ran.
+ * Settle a delta outcome from Promise.allSettled. maybeSendDelta resolves
+ * { attempted, send? }; a rejected promise degrades to a non-attempt.
+ * @returns {object|null} DeltaOutcome, or null when no delta task ran.
  */
 function settledDeltaOutcome(settled) {
   if (!settled) return null;
@@ -239,9 +227,9 @@ function settledDeltaOutcome(settled) {
 }
 
 /**
- * Synchronous path — ContextSearch | CompactPayload | Ping. NO queue replay, NO
- * delta, NO transcript I/O (the SubagentStart tail read already happened
- * pre-dispatch; C-03 / R-13). Exactly one POST.
+ * Synchronous path — ContextSearch | CompactPayload | Ping. No queue replay,
+ * delta, or transcript I/O (SubagentStart tail read happened pre-dispatch;
+ * C-03 / R-13). Exactly one POST.
  */
 async function runSync(request, reqSource, config) {
   const res = await transport.post(config, request, { sync: true }); // Accept: text/plain
@@ -252,9 +240,9 @@ async function runSync(request, reqSource, config) {
 
 /**
  * Fire-and-forget path — SessionRegister | SessionClose | RecordEvent |
- * RecordEvents. Replay-before-send (best-effort, does NOT gate the carrying
- * POST — Rust parity), then carrying POST and the delta POST concurrently
- * (ADR-007, Promise.allSettled — independent outcomes, AC-09).
+ * RecordEvents. Replay-before-send (best-effort, does NOT gate the carrying POST
+ * — Rust parity), then carrying + delta POSTs concurrently (ADR-007,
+ * Promise.allSettled — independent outcomes, AC-09).
  */
 async function runFireAndForget(request, input, config) {
   queue.prune(config.stateDir); // 24 h age prune (wrapped, best-effort)
@@ -316,8 +304,8 @@ function describeReason(reason) {
 }
 
 /**
- * main — top-level pipeline, invoked immediately. Always resolves; never calls
- * process.exit() with a nonzero code; never writes stdout on a failure path.
+ * main — top-level pipeline. Always resolves; never exits nonzero; never writes
+ * stdout on a failure path.
  */
 async function main() {
   try {
@@ -328,7 +316,7 @@ async function main() {
     const normalized = normalize.normalizeEventName(rawEvent);
     const canonical = normalized[0];
     const providerStr = normalized[1];
-    // hook.rs run() step 2b: overwrite provider from inference (no --provider in F3).
+    // hook.rs run() step 2b: overwrite provider from inference (no --provider, F3)
     input.provider = providerStr;
     const effectiveEvent = canonical === normalize.UNKNOWN_EVENT ? rawEvent : canonical;
 
@@ -346,9 +334,9 @@ async function main() {
 
     let request = buildRequestMod.buildRequest(effectiveEvent, input); // pure
 
-    // SubagentStart fallback — hook.rs run() step 5b. Claude Code does not send
-    // prompt_snippet, so build_request returns RecordEvent; derive the query
-    // from the transcript tail (the sole sync-path-exempt file read, RQ-6).
+    // SubagentStart fallback — hook.rs run() step 5b. Claude Code sends no
+    // prompt_snippet, so build_request returns RecordEvent; derive the query from
+    // the transcript tail (the sole sync-path-exempt file read, RQ-6).
     if (effectiveEvent === "SubagentStart" && request.type === "RecordEvent") {
       const role =
         isPlainObject(input.extra) && typeof input.extra.agent_type === "string"
@@ -409,8 +397,8 @@ module.exports = {
   STDIN_CAP,
 };
 
-// Run only when invoked directly as the hook command (not when require()d by
-// tests). require.main === module is the standard CommonJS entry guard.
+// Run only when invoked directly as the hook command (CommonJS entry guard;
+// not when require()d by tests).
 if (require.main === module) {
   main();
 }

@@ -5,14 +5,12 @@
  *
  * ADR-006: env vars UNIMATRIX_REMOTE_URL/UNIMATRIX_REMOTE_TOKEN win outright
  * (partial pair = misconfiguration); otherwise exactly ONE file is read:
- * {project_root}/.claude/settings.local.json, key unimatrix.remote.
- * The SAME projectRoot string feeds both the config lookup and the state-dir
- * hash (ADR-003) so config identity and state identity can never disagree.
+ * {project_root}/.claude/settings.local.json, key unimatrix.remote. The SAME
+ * projectRoot string feeds the config lookup and the state-dir hash (ADR-003) so
+ * config identity and state identity never disagree.
  *
- * Hash parity oracle: crates/unimatrix-engine/src/project.rs::compute_project_hash
- * (first 16 hex chars of SHA-256 over the UTF-8 bytes of the path string).
- *
- * This module never throws to callers and performs no network I/O.
+ * Hash parity oracle: project.rs::compute_project_hash (first 16 hex of SHA-256
+ * over the UTF-8 path string). Never throws; no network I/O.
  */
 
 const crypto = require("crypto");
@@ -40,16 +38,12 @@ const MAX_TIMEOUT_MS = 600000;
 
 /**
  * Non-throwing port of init.js detectProjectRoot / Rust detect_project_root:
- * walk up from startDir to the first directory containing `.git` (directory
- * OR file — worktrees). No `.git` found → resolved startDir (ADR-006).
+ * walk up from startDir to the first directory containing `.git` (dir OR file —
+ * worktrees). No `.git` found → resolved startDir (ADR-006).
  *
- * Documented divergence from project.rs: Rust resolves `.git` worktree FILES
- * to the real gitdir; this walk stops at the directory containing `.git`.
- * The hash is consumed only by this client (state-dir identity), so internal
- * consistency is what matters — worktree users get a per-worktree state dir.
- *
- * @param {string} startDir
- * @returns {string}
+ * Divergence from project.rs: Rust resolves `.git` worktree FILES to the real
+ * gitdir; this walk stops at the containing directory. The hash is client-only
+ * (state-dir identity), so worktree users get a per-worktree state dir.
  */
 function walkToProjectRoot(startDir) {
   let current;
@@ -64,7 +58,7 @@ function walkToProjectRoot(startDir) {
         return current;
       }
     } catch (_err) {
-      // existsSync should not throw, but the module contract is non-throwing.
+      // non-throwing contract (existsSync should not throw)
     }
     const parent = path.dirname(current);
     if (parent === current) {
@@ -75,12 +69,8 @@ function walkToProjectRoot(startDir) {
 }
 
 /**
- * Identical algorithm to project.rs::compute_project_hash: first 16 hex of
- * SHA-256 over the UTF-8 bytes of the path string, exactly as produced by
- * walkToProjectRoot (platform-native separators, no trailing slash).
- *
- * @param {string} projectRoot
- * @returns {string}
+ * project.rs::compute_project_hash: first 16 hex of SHA-256 over the UTF-8 path
+ * string from walkToProjectRoot (native separators, no trailing slash).
  */
 function computeProjectHash(projectRoot) {
   return crypto
@@ -91,12 +81,9 @@ function computeProjectHash(projectRoot) {
 }
 
 /**
- * Merge config timeout overrides over ADR-005 defaults. Keys (delivery-pinned):
- * unimatrix.remote.timeouts.{connect_ms,sync_ms,fnf_ms}. Invalid values are
- * silently ignored (fail-open) — only finite numbers in [1, 600000] apply.
- *
- * @param {*} t - the `timeouts` block from settings.local.json, if any.
- * @returns {{connectMs: number, syncMs: number, fnfMs: number}}
+ * Merge config timeout overrides over ADR-005 defaults. Keys:
+ * unimatrix.remote.timeouts.{connect_ms,sync_ms,fnf_ms}. Invalid values ignored
+ * (fail-open) — only finite numbers in [1, 600000] apply.
  */
 function mergeTimeouts(t) {
   const out = {
@@ -121,12 +108,8 @@ function nonEmpty(v) {
 }
 
 /**
- * Host of a URL for the content-free breadcrumb. Parse failure → "" — an
- * unparseable URL is NOT rejected here; transport.post classifies it as a
- * "connect" failure at send time (fail-open; init is the loud validation point).
- *
- * @param {string} url
- * @returns {string}
+ * Host of a URL for the content-free breadcrumb. Parse failure → "" — not
+ * rejected here; transport.post classifies it "connect" at send time (fail-open).
  */
 function safeHostOf(url) {
   try {
@@ -137,12 +120,9 @@ function safeHostOf(url) {
 }
 
 /**
- * State dir per ADR-003: ~/.unimatrix/{hash}/hook-client. os.homedir()
- * throwing or empty (no HOME) → null; state.js treats null as "all
- * persistence disabled, sends still attempted".
- *
- * @param {string} projectHash
- * @returns {string|null}
+ * State dir per ADR-003: ~/.unimatrix/{hash}/hook-client. os.homedir() throwing
+ * or empty (no HOME) → null; state.js treats null as "persistence disabled,
+ * sends still attempted".
  */
 function stateDirFor(projectHash) {
   let home;
@@ -157,15 +137,7 @@ function stateDirFor(projectHash) {
   return path.join(home, ".unimatrix", projectHash, "hook-client");
 }
 
-/**
- * @param {string} url
- * @param {string} token
- * @param {{connectMs: number, syncMs: number, fnfMs: number}} timeouts
- * @param {"env"|"file"} source
- * @param {string} projectRoot
- * @param {string} projectHash
- * @param {string|null} stateDir
- */
+/** Build a successful ResolvedConfig (url, token, timeouts, source, root, hash, stateDir). */
 function ok(url, token, timeouts, source, projectRoot, projectHash, stateDir) {
   return {
     ok: true,
@@ -185,14 +157,11 @@ function ok(url, token, timeouts, source, projectRoot, projectHash, stateDir) {
  *   1. env pair (partial pair = misconfiguration, reason "partial_env")
  *   2. {project_root}/.claude/settings.local.json → unimatrix.remote
  *   3. neither → { ok:false, reason:"missing" } (caller breadcrumbs + exits 0)
- *
  * Never throws. No network I/O. Single file read, no probing.
  *
  * @param {string} cwd - resolved cwd (stdin.cwd if non-empty, else process.cwd()).
- * @returns {object} ResolvedConfig — { ok:true, url, token, timeouts, source,
- *   projectRoot, projectHash, stateDir, urlHost } or
- *   { ok:false, reason:"partial_env"|"missing"|"malformed", projectRoot,
- *     projectHash, stateDir }.
+ * @returns {object} ResolvedConfig — { ok:true, ... } or { ok:false, reason,
+ *   projectRoot, projectHash, stateDir }.
  */
 function resolve(cwd) {
   const startDir = nonEmpty(cwd) ? cwd : safeProcessCwd();

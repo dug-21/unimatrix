@@ -8,10 +8,9 @@
  *   queue/{ts}-{pid}-{seq}.json  (owned by queue.js)
  *   health.json                  (ADR-005 content-free breadcrumb)
  *
- * Everything here is best-effort: NO function in this module ever throws to a
- * caller. Failures degrade to `false` / `0` / default values so the hook spawn
- * always exits 0 (AC-15, R-10 scenario 3). Dir mode 0700, file mode 0600; on
- * Windows these are advisory no-ops that must not throw (R-14 scenario 3).
+ * Best-effort: NO function here ever throws. Failures degrade to false/0/default
+ * so the spawn always exits 0 (AC-15, R-10 scenario 3). Dir mode 0700, file mode
+ * 0600; on Windows these are advisory no-ops that must not throw (R-14).
  */
 
 const fs = require("fs");
@@ -34,10 +33,9 @@ function usable(stateDir) {
 }
 
 /**
- * Sanitize a session id into a filesystem-safe key (ADR-003).
- * Conforming ids pass through verbatim; anything else (traversal shapes,
- * absolute paths, NUL bytes, 65+ chars, Unicode) becomes the first 16 hex
- * chars of its SHA-256. Idempotent: hashed output matches the regex.
+ * Sanitize a session id into a filesystem-safe key (ADR-003). Conforming ids
+ * pass through; anything else (traversal, absolute paths, NUL, 65+ chars,
+ * Unicode) becomes the first 16 hex of its SHA-256. Idempotent.
  */
 function sanitizeSessionKey(sessionId) {
   const id = typeof sessionId === "string" ? sessionId : String(sessionId);
@@ -56,10 +54,9 @@ function healthPath(stateDir) {
 }
 
 /**
- * Create `{stateDir}/offsets` (and stateDir itself) with mode 0700.
- * The queue/ subdir is created on demand by queue.js. Returns false when
- * stateDir is unusable (no HOME) or creation fails — callers skip persistence,
- * sends proceed.
+ * Create `{stateDir}/offsets` (and stateDir) with mode 0700; queue/ is created
+ * on demand by queue.js. Returns false when stateDir is unusable (no HOME) or
+ * creation fails — callers skip persistence, sends proceed.
  */
 function ensureStateDir(stateDir) {
   if (!usable(stateDir)) return false;
@@ -72,11 +69,9 @@ function ensureStateDir(stateDir) {
 }
 
 /**
- * Atomically write `jsonString` to `filePath` via temp file + rename in the
- * SAME directory (rename atomicity). POSIX rename is atomic; Windows
- * renameSync overwrites — acceptable, last-writer-wins is the declared
- * concurrency model (FR-11). Returns false on any error (tmp unlinked
- * best-effort), never throws.
+ * Atomically write `jsonString` to `filePath` via temp file + rename in the same
+ * directory. POSIX rename is atomic; Windows renameSync overwrites — acceptable,
+ * last-writer-wins (FR-11). Returns false on error (tmp unlinked best-effort).
  */
 function atomicWrite(filePath, jsonString) {
   const tmp =
@@ -96,9 +91,8 @@ function atomicWrite(filePath, jsonString) {
 }
 
 /**
- * Read the persisted offset for a session. Missing, corrupt, negative,
- * non-integer, or unsafe values all return 0 — re-shipping from 0 is SAFE
- * because the F2 merge is offset-bounded and idempotent.
+ * Read the persisted offset. Missing/corrupt/negative/non-integer/unsafe → 0;
+ * re-shipping from 0 is SAFE (F2 merge is offset-bounded and idempotent).
  */
 function readOffset(stateDir, sessionId) {
   if (!usable(stateDir)) return 0;
@@ -112,7 +106,7 @@ function readOffset(stateDir, sessionId) {
   return Number.isSafeInteger(v) && v >= 0 ? v : 0;
 }
 
-/** Persist a session's offset atomically. Returns false on failure. */
+/** Persist a session's offset atomically. False on failure. */
 function writeOffset(stateDir, sessionId, offset) {
   if (!usable(stateDir)) return false;
   if (!ensureStateDir(stateDir)) return false;
@@ -120,10 +114,7 @@ function writeOffset(stateDir, sessionId, offset) {
   return atomicWrite(offsetPath(stateDir, sessionId), body);
 }
 
-/**
- * Delete a session's offset file (called on successful SessionClose send —
- * FR-16 lifecycle). Returns false on failure, never throws.
- */
+/** Delete a session's offset file (on successful SessionClose — FR-16). False on failure. */
 function deleteOffset(stateDir, sessionId) {
   if (!usable(stateDir)) return false;
   try {
@@ -135,10 +126,9 @@ function deleteOffset(stateDir, sessionId) {
 }
 
 /**
- * Prune offset files whose `updated` is older than 7 days (file mtime used as
- * fallback when the JSON is unreadable). Called opportunistically on FNF
- * spawns after replay. A pruned mid-session file degrades to offset 0 —
- * documented-safe (idempotent merge). Never throws.
+ * Prune offset files whose `updated` is older than 7 days (mtime fallback when
+ * JSON is unreadable). Called opportunistically on FNF spawns after replay. A
+ * pruned mid-session file degrades to offset 0 — safe (idempotent merge).
  */
 function pruneOffsets(stateDir) {
   if (!usable(stateDir)) return;
@@ -178,7 +168,7 @@ function pruneOffsets(stateDir) {
   }
 }
 
-/** Zeroed breadcrumb default (used when health.json is missing or corrupt). */
+/** Zeroed breadcrumb default (health.json missing/corrupt). */
 function defaultBreadcrumb() {
   return {
     last_success: null,
@@ -190,10 +180,7 @@ function defaultBreadcrumb() {
   };
 }
 
-/**
- * Read the health breadcrumb; missing/corrupt/mistyped fields degrade to the
- * zeroed default field-by-field. Never throws.
- */
+/** Read the health breadcrumb; missing/corrupt/mistyped fields degrade field-by-field to zeroed default. */
 function readBreadcrumb(stateDir) {
   const def = defaultBreadcrumb();
   if (!usable(stateDir)) return def;
@@ -223,15 +210,12 @@ function readBreadcrumb(stateDir) {
 
 /**
  * Update the breadcrumb after a spawn that attempted ≥1 send (sync AND FNF —
- * R-10 scenario 4). `results` is an array of SendResult-like objects in
- * carrying-event-first order; null/undefined entries (delta skipped upstream)
- * are excluded. Aggregation (ADR-005 / state.md pinned rule):
- *   - all attempted ok  → last_success=now, consecutive_failures=0
- *   - any failure       → last_failure=now, consecutive_failures=prev+1,
- *                         failure_class = first failure's class in given order
- *                         (carrying event's class wins over the delta's)
- * Content-free: writes only timestamps, class, counters, and url HOST.
- * Best-effort: write failure is swallowed; returns boolean.
+ * R-10 scenario 4). `results` is SendResult-like objects, carrying-event-first;
+ * null/undefined entries excluded. Aggregation (ADR-005 / state.md pinned rule):
+ *   - all ok    → last_success=now, consecutive_failures=0
+ *   - any fail  → last_failure=now, consecutive_failures=prev+1,
+ *                 failure_class = first failure's class (carrying wins over delta)
+ * Content-free: only timestamps, class, counters, url HOST. Best-effort.
  */
 function recordSendOutcomes(stateDir, urlHost, results, queueDepth) {
   if (!usable(stateDir)) return false;
@@ -262,10 +246,9 @@ function recordSendOutcomes(stateDir, urlHost, results, queueDepth) {
 
 /**
  * Config-miss breadcrumb variant (no send attempted — index.js). Pinned rule:
- * config-miss DOES increment `consecutive_failures` and sets the class
- * ("auth" for partial_env, "connect" for missing/malformed) so a perpetually
- * misconfigured install shows a growing counter (SR-10 diagnostic intent).
- * `url_host` is left at its previous value or "". Best-effort.
+ * config-miss DOES increment `consecutive_failures` and sets the class ("auth"
+ * for partial_env, "connect" for missing/malformed) so a misconfigured install
+ * shows a growing counter (SR-10). `url_host` keeps prior value or "".
  */
 function writeBreadcrumb(stateDir, info) {
   if (!usable(stateDir)) return false;

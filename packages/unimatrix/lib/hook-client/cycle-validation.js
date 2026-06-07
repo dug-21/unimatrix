@@ -1,13 +1,13 @@
 "use strict";
 
 /**
- * cycle-validation.js — port of `validation.rs::validate_cycle_params`
- * (:411-509) and its `validate_phase_field` helper. Split out of
- * build-request-tools.js to keep each file under the 500-line gate.
+ * cycle-validation.js — port of validation.rs::validate_cycle_params (:411-509)
+ * and its validate_phase_field helper. Split from build-request-tools.js for the
+ * 500-line gate.
  *
- * Pure; never throws. All length checks mirror the Rust oracle: topic uses
- * BYTE length (`Buffer.byteLength`), while phase/outcome use CODE-POINT count
- * (`Array.from(...).length`) to match Rust `chars().count()`.
+ * Pure; never throws. Length checks mirror the Rust oracle: topic uses BYTE
+ * length (Buffer.byteLength), phase/outcome use CODE-POINT count
+ * (Array.from(...).length) to match Rust chars().count().
  */
 
 const MAX_CYCLE_TOPIC_LEN = 128;

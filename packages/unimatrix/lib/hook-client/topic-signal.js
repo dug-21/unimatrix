@@ -1,29 +1,23 @@
 "use strict";
 
 /**
- * Topic-signal extraction — pure port of
- * `crates/unimatrix-observe/src/attribution.rs:15-92` (read-only oracle).
+ * Topic-signal extraction — pure port of attribution.rs:15-92 (read-only oracle).
  *
- * The priority chain (first match wins):
- *   1. extractFromPath        — `product/features/{id}/...`
+ * Priority chain (first match wins):
+ *   1. extractFromPath         — `product/features/{id}/...`
  *   2. extractFeatureIdPattern — word-boundary `{alpha}-{digits}` tokens
- *   3. extractFromGitCheckout — `feature/{id}` in git commands
+ *   3. extractFromGitCheckout  — `feature/{id}` in git commands
  *
- * All length checks are BYTE length (`Buffer.byteLength`) to match Rust's
- * `str::len()` (UTF-8 bytes), never `String.prototype.length` (UTF-16 units).
+ * Length checks are BYTE length (Buffer.byteLength) to match Rust str::len(),
+ * never String.prototype.length (UTF-16 units).
  */
 
 const MAX_FEATURE_ID_LEN = 128;
 
 /**
  * Structural check for a plausible feature ID — port of
- * `attribution.rs::is_valid_feature_id` (also duplicated in validation.rs).
- *
- * Non-empty, byte length <= 128, contains a hyphen, no leading/trailing
- * hyphen, only `[A-Za-z0-9\-_.]`.
- *
- * @param {string} s
- * @returns {boolean}
+ * attribution.rs::is_valid_feature_id. Non-empty, byte length <= 128, contains a
+ * hyphen, no leading/trailing hyphen, only `[A-Za-z0-9\-_.]`.
  */
 function isValidFeatureId(s) {
   return (
@@ -38,13 +32,9 @@ function isValidFeatureId(s) {
 }
 
 /**
- * Extract a feature ID from `product/features/{id}/...`.
- * Scans every occurrence of the marker left-to-right; the first segment
- * (text up to the next `/` or end) that validates wins.
- * Port of `attribution.rs::extract_from_path`.
- *
- * @param {string} s
- * @returns {string|null}
+ * Extract a feature ID from `product/features/{id}/...` — port of
+ * attribution.rs::extract_from_path. Scans each marker left-to-right; the first
+ * segment (to the next `/` or end) that validates wins.
  */
 function extractFromPath(s) {
   const marker = "product/features/";
@@ -65,9 +55,8 @@ function extractFromPath(s) {
 }
 
 /**
- * Iterate Unicode code points of `s` (matches Rust `char` iteration).
- * `String.prototype[Symbol.iterator]` yields code points, so spread/for-of
- * is correct here; this helper documents the intent.
+ * Unicode code points of `s` (matches Rust `char` iteration; the string iterator
+ * yields code points). Helper documents intent.
  */
 function codePoints(s) {
   return Array.from(s);
@@ -84,12 +73,9 @@ function isUnicodeWhitespace(ch) {
 }
 
 /**
- * Trim from BOTH ends every code point that is NOT Unicode-alphanumeric and
- * NOT '-' — Rust `trim_matches(|c| !c.is_alphanumeric() && c != '-')`.
- * Keeps interior `-`, `_`, `.`; trims leading/trailing `_` `.` etc.
- *
- * @param {string} word
- * @returns {string}
+ * Trim from both ends every code point that is NOT Unicode-alphanumeric and NOT
+ * '-' — Rust `trim_matches(|c| !c.is_alphanumeric() && c != '-')`. Keeps interior
+ * `-`/`_`/`.`; trims leading/trailing `_`/`.` etc.
  */
 function trimToFeatureCandidate(word) {
   const cps = codePoints(word);
@@ -106,13 +92,9 @@ function trimToFeatureCandidate(word) {
 }
 
 /**
- * Extract a feature ID by word-boundary scan. Words are split on Unicode
- * whitespace and the literal characters `"`, `'`, `(`, `)`. Each word is
- * trimmed to a candidate; the first that validates wins.
- * Port of `attribution.rs::extract_feature_id_pattern`.
- *
- * @param {string} s
- * @returns {string|null}
+ * Extract a feature ID by word-boundary scan — port of
+ * attribution.rs::extract_feature_id_pattern. Words split on Unicode whitespace
+ * and `" ' ( )`; each trimmed to a candidate; first valid wins.
  */
 function extractFeatureIdPattern(s) {
   // Split on Unicode whitespace OR " ' ( ) — mirrors the Rust closure.
@@ -127,12 +109,9 @@ function extractFeatureIdPattern(s) {
 }
 
 /**
- * Extract a feature ID from a git checkout pattern `feature/{id}`.
- * Takes code points after `feature/` while Unicode-alphanumeric or '-'.
- * Port of `attribution.rs::extract_from_git_checkout`.
- *
- * @param {string} s
- * @returns {string|null}
+ * Extract a feature ID from a git checkout `feature/{id}` — port of
+ * attribution.rs::extract_from_git_checkout. Takes code points after `feature/`
+ * while Unicode-alphanumeric or '-'.
  */
 function extractFromGitCheckout(s) {
   const idx = s.indexOf("feature/");
@@ -153,11 +132,8 @@ function extractFromGitCheckout(s) {
 }
 
 /**
- * Priority-chain topic-signal extraction.
- * Port of `attribution.rs::extract_topic_signal`.
- *
- * @param {string} text
- * @returns {string|null}
+ * Priority-chain topic-signal extraction — port of
+ * attribution.rs::extract_topic_signal.
  */
 function extractTopicSignal(text) {
   const t = typeof text === "string" ? text : "";

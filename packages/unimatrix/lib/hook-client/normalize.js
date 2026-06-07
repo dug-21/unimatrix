@@ -1,12 +1,11 @@
 "use strict";
 
 /**
- * Event canonicalization — exact port of hook.rs:50-105
- * (crates/unimatrix-server/src/uds/hook.rs, read-only parity oracle).
+ * Event canonicalization — exact port of hook.rs:50-105 (read-only oracle).
  *
  * Pure string maps: exact-match, case-sensitive, no trimming — byte-for-byte
- * parity with the Rust `match`. Unknown names return the "__unknown__"
- * sentinel; the caller substitutes the raw event string (NFR-01).
+ * parity with the Rust `match`. Unknown names return the "__unknown__" sentinel;
+ * the caller substitutes the raw event string (NFR-01).
  */
 
 /** Sentinel returned for unrecognized event names. */
@@ -16,12 +15,9 @@ const UNKNOWN_EVENT = "__unknown__";
 const UNKNOWN_PROVIDER = "unknown";
 
 /**
- * Map any event name (Gemini-specific or canonical) to its canonical
- * Unimatrix name. Port of `hook.rs::map_to_canonical`.
- *
- * F3 has no --provider flag, so index.js uses only normalizeEventName;
- * this is exported for completeness and future hint-path use (the parity
- * corpus enumerates it).
+ * Map any event name (Gemini-specific or canonical) to its canonical Unimatrix
+ * name — port of hook.rs::map_to_canonical. F3 has no --provider flag, so
+ * index.js uses only normalizeEventName; exported for completeness / parity.
  *
  * @param {string} event - Raw event name (argv[2]).
  * @returns {string} Canonical name, or "__unknown__" sentinel.
@@ -58,21 +54,17 @@ function mapToCanonical(event) {
       return "SubagentStart";
     case "SubagentStop":
       return "SubagentStop";
-    // Unknown event name — caller detects this sentinel and uses raw event string
+    // Unknown event name — caller detects the sentinel, uses raw event string
     default:
       return UNKNOWN_EVENT;
   }
 }
 
 /**
- * Translate a provider-specific event name to its canonical Unimatrix name
- * and infer the originating provider (inference path only). Port of
- * `hook.rs::normalize_event_name`.
- *
- * - Gemini-unique names (BeforeTool, AfterTool, SessionEnd) infer "gemini-cli".
- * - All known Claude Code / Codex names infer "claude-code".
- * - Unknown names return ["__unknown__", "unknown"] — caller substitutes the
- *   raw event string to preserve the unrecognized name (NFR-01).
+ * Translate a provider-specific event name to its canonical Unimatrix name and
+ * infer the provider — port of hook.rs::normalize_event_name. Gemini-unique
+ * names infer "gemini-cli"; known Claude Code / Codex names infer "claude-code";
+ * unknown → ["__unknown__", "unknown"] (caller preserves raw name, NFR-01).
  *
  * @param {string} event - Raw event name (argv[2]).
  * @returns {[string, string]} [canonical, provider] pair.
@@ -109,8 +101,7 @@ function normalizeEventName(event) {
       return ["SubagentStart", "claude-code"];
     case "SubagentStop":
       return ["SubagentStop", "claude-code"];
-    // Unknown event: sentinel return. Caller checks for "__unknown__" and
-    // substitutes the raw event string.
+    // Unknown event: sentinel return (caller substitutes the raw event string).
     default:
       return [UNKNOWN_EVENT, UNKNOWN_PROVIDER];
   }

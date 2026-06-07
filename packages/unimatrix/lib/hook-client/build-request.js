@@ -3,17 +3,15 @@
 /**
  * build-request.js — HookRequest parity port (dispatch).
  *
- * Pure function `buildRequest(effectiveEvent, input) -> HookRequest`, a
- * byte-faithful port of `hook.rs::build_request` (hook.rs:440-727). The arm
- * builders, rework/cycle helpers, and topic-signal selection live in
- * `build-request-tools.js` to keep each file under the 500-line gate
- * (OVERVIEW.md). Read-only oracles under `crates/`.
+ * Pure `buildRequest(effectiveEvent, input) -> HookRequest`, a byte-faithful port
+ * of `hook.rs::build_request` (hook.rs:440-727). Arm builders, rework/cycle
+ * helpers, and topic-signal selection live in build-request-tools.js for the
+ * 500-line gate (OVERVIEW.md).
  *
- * Purity contract: no I/O except `process.ppid` (parent_id fallback) and
- * `process.cwd()` (cwd fallback). Never throws — every malformed shape falls
- * through to `genericRecordEvent` or a defensive default (FR-03.7 parity). All
- * byte budgets use `Buffer.byteLength` (UTF-16 trap avoided). stderr one-liners
- * fire only where the Rust oracle `eprintln!`s — never stdout.
+ * Purity: no I/O except process.ppid (parent_id fallback) and process.cwd() (cwd
+ * fallback). Never throws — malformed shapes fall through to genericRecordEvent
+ * or a defensive default (FR-03.7). Byte budgets use Buffer.byteLength. stderr
+ * one-liners fire only where the Rust oracle eprintln!s — never stdout.
  */
 
 const tools = require("./build-request-tools");
@@ -34,8 +32,8 @@ const {
 } = tools;
 
 /**
- * Build a HookRequest from a normalized event name and parsed HookInput.
- * Pure; never throws.
+ * Build a HookRequest from a normalized event name and parsed HookInput. Pure;
+ * never throws.
  *
  * @param {string} event - canonical (normalized) event name
  * @param {object} input - parsed HookInput (see OVERVIEW shared types)
