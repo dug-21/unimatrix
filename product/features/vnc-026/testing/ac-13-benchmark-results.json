@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-06-07T00:29:02.705Z",
+  "node_version": "v24.16.0",
+  "platform": "linux",
+  "arch": "arm64",
+  "cpus": 10,
+  "cpu_model": "unknown",
+  "event": "UserPromptSubmit",
+  "warmup": 10,
+  "iterations": 60,
+  "measured_path": "spawn + fd-0 read + parse + normalize + buildRequest + config(hash+root-walk) + POST(stub) + transform + health.json breadcrumb",
+  "breadcrumb_written": true,
+  "targets_ms": {
+    "p50": 12,
+    "p95": 20
+  },
+  "results_ms": {
+    "min": 24.036417,
+    "p50": 25.668125,
+    "p95": 29.758083,
+    "max": 32.887,
+    "mean": 26.22562711666667
+  },
+  "client_work_ms": {
+    "min": 0.047417,
+    "p50": 0.071791,
+    "p95": 0.114333,
+    "max": 0.430834,
+    "mean": 0.08209791666666667
+  },
+  "node_startup_ms": {
+    "p50": 11.589083,
+    "p95": 13.423667
+  }
+}
