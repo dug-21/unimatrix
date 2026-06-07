@@ -5,14 +5,25 @@ const path = require("path");
 
 /**
  * Regex patterns to identify Unimatrix-owned hook entries (ADR-004).
- * Matches both current "unimatrix" and pre-rename "unimatrix-server" commands,
- * whether bare names or absolute paths.
+ * Matches both current "unimatrix" and pre-rename "unimatrix-server" commands
+ * (local binary mode), whether bare names or absolute paths, AND the remote
+ * node-client command form (vnc-026).
+ *
+ * The fifth (node-client) pattern resolves the Alignment WARN 2 spaced-path
+ * defect: the defective `\S*\/hook-client\/index\.js` form could not cross a
+ * space inside a spaced install path and never matched backslash separators.
+ * The replacement uses three alternations (double-quoted / single-quoted /
+ * bare path) and accepts both `/` and `\` separators. We only ever WRITE an
+ * unquoted command when the path has no whitespace (buildHookClientCommand),
+ * so `\S+` is correct for the bare arm. See pseudocode/init-remote.md §1.
  */
 const UNIMATRIX_PATTERNS = [
   /^unimatrix\s+hook\s/,
   /^unimatrix-server\s+hook\s/,
   /\/unimatrix\s+hook\s/,
   /\/unimatrix-server\s+hook\s/,
+  // node <path>/hook-client/index.js <EVENT> — quoted or bare, / or \ separators.
+  /(^|[\s"'/\\])node(\.exe)?\s+("[^"]*[/\\]hook-client[/\\]index\.js"|'[^']*[/\\]hook-client[/\\]index\.js'|\S+[/\\]hook-client[/\\]index\.js)\s/,
 ];
 
 const HOOK_EVENTS = [
@@ -21,6 +32,8 @@ const HOOK_EVENTS = [
   "UserPromptSubmit",
   "PreToolUse",
   "PostToolUse",
+  "PostToolUseFailure",
+  "PreCompact",
   "SubagentStart",
   "SubagentStop",
 ];
@@ -32,9 +45,55 @@ const EVENT_MATCHERS = {
   UserPromptSubmit: "",
   PreToolUse: "*",
   PostToolUse: "*",
+  PostToolUseFailure: "*",
+  PreCompact: "",
   SubagentStart: "*",
   SubagentStop: "*",
 };
+
+/**
+ * Build a remote hook-client command string for a given event.
+ *
+ * The command is `node <path> <event>`, with the path double-quoted iff it
+ * contains whitespace. Double quotes work for both POSIX shells and Windows
+ * cmd; settings.json hook commands run via shell, so an unquoted spaced path
+ * would mis-parse — quoting is required for execution correctness, not just
+ * for the ownership regex. See pseudocode/init-remote.md §1.
+ *
+ * @param {string} clientPath - Absolute path to lib/hook-client/index.js.
+ * @param {string} event - Hook event name (the trailing argument).
+ * @returns {string} The hook command string.
+ */
+function buildHookClientCommand(clientPath, event) {
+  const quoted = /\s/.test(clientPath) ? '"' + clientPath + '"' : clientPath;
+  return "node " + quoted + " " + event;
+}
+
+/**
+ * Normalize a commandSource into the canonical
+ * { events: string[], commandForEvent(event) -> string } shape.
+ *
+ * Back-compat: a string argument is the legacy local binaryPath call site.
+ * It is mapped to the EXACT command string the pre-generalization
+ * implementation produced — `LD_LIBRARY_PATH=<binDir> <binary> hook <event>` —
+ * over the full HOOK_EVENTS set. This preserves byte-identical local output
+ * (AC-16), except for the two NEW events FR-21 adds, which is the intended fix.
+ *
+ * @param {object|string} cs - commandSource object, or legacy binaryPath string.
+ * @returns {{ events: string[], commandForEvent: function }}
+ */
+function normalizeCommandSource(cs) {
+  if (typeof cs === "string") {
+    const binaryPath = cs;
+    const binDir = path.dirname(binaryPath);
+    return {
+      events: HOOK_EVENTS,
+      commandForEvent: (event) =>
+        "LD_LIBRARY_PATH=" + binDir + " " + binaryPath + " hook " + event,
+    };
+  }
+  return cs;
+}
 
 /**
  * Returns true if a hook entry is owned by Unimatrix, identified by
@@ -58,12 +117,14 @@ function isUnimatrixHook(hookEntry) {
  * produces the same result.
  *
  * @param {string} filePath - Path to .claude/settings.json
- * @param {string} binaryPath - Absolute path to the unimatrix binary
+ * @param {object|string} commandSource - Either { events, commandForEvent } or,
+ *   for back-compat, the legacy local binaryPath string.
  * @param {object} options - { dryRun: boolean }
  * @returns {{ actions: string[], content: object }}
  */
-function mergeSettings(filePath, binaryPath, options) {
+function mergeSettings(filePath, commandSource, options) {
   const dryRun = (options && options.dryRun) || false;
+  const source = normalizeCommandSource(commandSource);
   const actions = [];
   let content = {};
 
@@ -107,9 +168,8 @@ function mergeSettings(filePath, binaryPath, options) {
   }
 
   // Step 3: For each hook event, merge the unimatrix entry
-  const binDir = path.dirname(binaryPath);
-  for (const event of HOOK_EVENTS) {
-    const hookCommand = "LD_LIBRARY_PATH=" + binDir + " " + binaryPath + " hook " + event;
+  for (const event of source.events) {
+    const hookCommand = source.commandForEvent(event);
     const matcher = EVENT_MATCHERS[event];
 
     const newHookEntry = {
@@ -186,4 +246,12 @@ function mergeSettings(filePath, binaryPath, options) {
   return { actions: finalActions, content };
 }
 
-module.exports = { mergeSettings, isUnimatrixHook, HOOK_EVENTS, EVENT_MATCHERS, UNIMATRIX_PATTERNS };
+module.exports = {
+  mergeSettings,
+  isUnimatrixHook,
+  buildHookClientCommand,
+  normalizeCommandSource,
+  HOOK_EVENTS,
+  EVENT_MATCHERS,
+  UNIMATRIX_PATTERNS,
+};

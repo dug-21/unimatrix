@@ -21,6 +21,13 @@ function writeSettings(filePath, content) {
 
 const BINARY = "/abs/path/to/unimatrix";
 
+// Byte-exact local-mode command the back-compat wrapper produces (AC-16).
+// Mirrors normalizeCommandSource(string): LD_LIBRARY_PATH=<binDir> <binary> hook <event>.
+const BIN_DIR = path.dirname(BINARY);
+function expectedLocalCommand(event) {
+  return "LD_LIBRARY_PATH=" + BIN_DIR + " " + BINARY + " hook " + event;
+}
+
 // ── R-01 Scenarios ──────────────────────────────────────────────────
 
 describe("mergeSettings", function () {
@@ -50,7 +57,8 @@ describe("mergeSettings", function () {
       const result = mergeSettings(fp, BINARY, {});
       assert.deepStrictEqual(result.content.permissions, { allow: ["Read"], deny: [] });
       assert.ok(result.content.hooks);
-      assert.strictEqual(Object.keys(result.content.hooks).length, 7);
+      // FR-21: 9-event set (7 + PreCompact + PostToolUseFailure)
+      assert.strictEqual(Object.keys(result.content.hooks).length, 9);
     });
   });
 
@@ -94,7 +102,7 @@ describe("mergeSettings", function () {
       const result = mergeSettings(fp, BINARY, {});
       const group = result.content.hooks.SessionStart[0];
       assert.strictEqual(group.hooks.length, 1);
-      assert.strictEqual(group.hooks[0].command, BINARY + " hook SessionStart");
+      assert.strictEqual(group.hooks[0].command, expectedLocalCommand("SessionStart"));
     });
   });
 
@@ -114,7 +122,7 @@ describe("mergeSettings", function () {
       const result = mergeSettings(fp, BINARY, {});
       const group = result.content.hooks.SessionStart[0];
       assert.strictEqual(group.hooks.length, 1);
-      assert.strictEqual(group.hooks[0].command, BINARY + " hook SessionStart");
+      assert.strictEqual(group.hooks[0].command, expectedLocalCommand("SessionStart"));
     });
   });
 
@@ -139,12 +147,14 @@ describe("mergeSettings", function () {
   // ── Hook Event Coverage ───────────────────────────────────────────
 
   describe("hook event coverage", function () {
-    it("test_all_7_events_present", function () {
+    it("test_all_9_events_present", function () {
       const fp = tempSettingsPath();
       const result = mergeSettings(fp, BINARY, {});
+      // FR-21: 9-event set (7 + PreCompact + PostToolUseFailure)
       const expected = [
         "SessionStart", "Stop", "UserPromptSubmit",
-        "PreToolUse", "PostToolUse", "SubagentStart", "SubagentStop",
+        "PreToolUse", "PostToolUse", "PostToolUseFailure", "PreCompact",
+        "SubagentStart", "SubagentStop",
       ];
       for (const e of expected) {
         assert.ok(result.content.hooks[e], "Missing event: " + e);
@@ -176,7 +186,8 @@ describe("mergeSettings", function () {
     it("test_session_events_use_empty_matcher", function () {
       const fp = tempSettingsPath();
       const result = mergeSettings(fp, BINARY, {});
-      for (const event of ["SessionStart", "Stop", "UserPromptSubmit"]) {
+      // FR-21: PreCompact joins the session-level ("") matcher group.
+      for (const event of ["SessionStart", "Stop", "UserPromptSubmit", "PreCompact"]) {
         assert.strictEqual(result.content.hooks[event][0].matcher, "");
       }
     });
@@ -184,7 +195,11 @@ describe("mergeSettings", function () {
     it("test_tool_events_use_star_matcher", function () {
       const fp = tempSettingsPath();
       const result = mergeSettings(fp, BINARY, {});
-      for (const event of ["PreToolUse", "PostToolUse", "SubagentStart", "SubagentStop"]) {
+      // FR-21: PostToolUseFailure joins the tool-level ("*") matcher group.
+      for (const event of [
+        "PreToolUse", "PostToolUse", "PostToolUseFailure",
+        "SubagentStart", "SubagentStop",
+      ]) {
         assert.strictEqual(result.content.hooks[event][0].matcher, "*");
       }
     });
@@ -239,7 +254,8 @@ describe("mergeSettings", function () {
       writeSettings(fp, "");
       const result = mergeSettings(fp, BINARY, {});
       assert.ok(result.content.hooks);
-      assert.strictEqual(Object.keys(result.content.hooks).length, 7);
+      // FR-21: 9-event set
+      assert.strictEqual(Object.keys(result.content.hooks).length, 9);
     });
 
     it("test_hooks_key_not_object_errors", function () {
@@ -299,7 +315,8 @@ describe("mergeSettings", function () {
       const fp = tempSettingsPath();
       const result = mergeSettings(fp, BINARY, { dryRun: true });
       assert.ok(result.actions.length > 0);
-      assert.strictEqual(Object.keys(result.content.hooks).length, 7);
+      // FR-21: 9-event set
+      assert.strictEqual(Object.keys(result.content.hooks).length, 9);
     });
   });
 
@@ -344,7 +361,7 @@ describe("mergeSettings", function () {
       const group = result.content.hooks.SessionStart[0];
       const uniHooks = group.hooks.filter((h) => isUnimatrixHook(h));
       assert.strictEqual(uniHooks.length, 1);
-      assert.strictEqual(uniHooks[0].command, BINARY + " hook SessionStart");
+      assert.strictEqual(uniHooks[0].command, expectedLocalCommand("SessionStart"));
       assert.ok(result.actions.some((a) => a.includes("Removed duplicate")));
     });
   });
@@ -415,8 +432,8 @@ describe("mergeSettings", function () {
       const result = mergeSettings(fp, BINARY, {});
       const group = result.content.hooks.UserPromptSubmit[0];
       assert.strictEqual(group.hooks.length, 1);
-      // No tee pipeline - plain command format
-      assert.strictEqual(group.hooks[0].command, BINARY + " hook UserPromptSubmit");
+      // No tee pipeline — back-compat local command format (AC-16)
+      assert.strictEqual(group.hooks[0].command, expectedLocalCommand("UserPromptSubmit"));
     });
 
     it("test_file_not_exist_creates_directory_and_file", function () {
@@ -432,24 +449,26 @@ describe("mergeSettings", function () {
       writeSettings(fp, "   \n  \t  ");
       const result = mergeSettings(fp, BINARY, {});
       assert.ok(result.content.hooks);
-      assert.strictEqual(Object.keys(result.content.hooks).length, 7);
+      // FR-21: 9-event set
+      assert.strictEqual(Object.keys(result.content.hooks).length, 9);
     });
   });
 
   // ── Command Format ────────────────────────────────────────────────
 
   describe("command format", function () {
-    it("test_all_hooks_use_plain_command_format", function () {
+    it("test_all_hooks_use_backcompat_command_format", function () {
       const fp = tempSettingsPath();
       const result = mergeSettings(fp, BINARY, {});
       for (const event of HOOK_EVENTS) {
         for (const group of result.content.hooks[event]) {
           for (const hook of group.hooks) {
             if (isUnimatrixHook(hook)) {
+              // AC-16 byte-identical local command (LD_LIBRARY_PATH-prefixed).
               assert.strictEqual(
                 hook.command,
-                BINARY + " hook " + event,
-                "Hook for " + event + " should use plain command format"
+                expectedLocalCommand(event),
+                "Hook for " + event + " should use back-compat command format"
               );
               assert.ok(!hook.command.includes("|"), "No pipe in hook command for " + event);
             }

@@ -4,17 +4,12 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { resolveBinary } = require("./resolve-binary.js");
-const { mergeSettings } = require("./merge-settings.js");
-
-const HOOK_EVENTS = [
-  "SessionStart",
-  "Stop",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "SubagentStart",
-  "SubagentStop",
-];
+const {
+  mergeSettings,
+  buildHookClientCommand,
+  HOOK_EVENTS,
+} = require("./merge-settings.js");
+const transport = require("./hook-client/transport-http.js");
 
 /**
  * Detect project root by walking up from startDir to find .git directory.
@@ -159,6 +154,214 @@ function copySkills(projectRoot, dryRun) {
 }
 
 /**
+ * Read and parse a JSON file, returning {} if it does not exist.
+ * Malformed JSON THROWS with a fix-it message (never clobber user content).
+ *
+ * @param {string} filePath - Path to the JSON file.
+ * @param {string} label - Human label for the file in error messages.
+ * @returns {object} Parsed object, or {} when the file is absent/empty.
+ */
+function readJsonOrEmpty(filePath, label) {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+  const raw = fs.readFileSync(filePath, "utf8").trim();
+  if (raw === "") {
+    return {};
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (parseError) {
+    throw new Error(
+      "Malformed " +
+        label +
+        " at " +
+        filePath +
+        ": " +
+        parseError.message +
+        "\nFix the JSON syntax and re-run 'npx unimatrix init'."
+    );
+  }
+}
+
+/**
+ * Write the unimatrix.remote subtree into .claude/settings.local.json,
+ * merge-preserving (only unimatrix.remote is touched; Claude Code's keys and
+ * other unimatrix.* keys survive verbatim). Mode 0600 (ADR-006, FR-18).
+ *
+ * @param {string} projectRoot - Absolute project root.
+ * @param {string} remote - Remote URL.
+ * @param {string} token - Bearer token.
+ * @param {boolean} dryRun - If true, do not write.
+ * @returns {string[]} Actions taken.
+ */
+function writeRemoteSettingsLocal(projectRoot, remote, token, dryRun) {
+  const actions = [];
+  const slPath = path.join(projectRoot, ".claude", "settings.local.json");
+  const existing = readJsonOrEmpty(slPath, ".claude/settings.local.json");
+
+  existing.unimatrix = existing.unimatrix || {};
+  existing.unimatrix.remote = Object.assign({}, existing.unimatrix.remote, {
+    url: remote,
+    token: token,
+  });
+
+  if (!dryRun) {
+    fs.mkdirSync(path.dirname(slPath), { recursive: true });
+    fs.writeFileSync(slPath, JSON.stringify(existing, null, 2) + "\n", {
+      mode: 0o600,
+    });
+    // Re-assert mode in case the file pre-existed with looser perms.
+    // Wrapped: chmod is a no-op on Windows but must not abort init.
+    try {
+      fs.chmodSync(slPath, 0o600);
+    } catch (_err) {
+      // best-effort (Windows / unsupported fs)
+    }
+    actions.push(
+      "Wrote unimatrix.remote to .claude/settings.local.json (mode 0600)"
+    );
+  } else {
+    actions.push(
+      "[dry-run] Would write unimatrix.remote to .claude/settings.local.json (mode 0600)"
+    );
+  }
+
+  return actions;
+}
+
+/**
+ * Best-effort check that .claude/settings.local.json is gitignored; emit a
+ * WARNING action when it is not (the file contains the token). String match
+ * against common patterns only — no glob engine (FR-18).
+ *
+ * @param {string} projectRoot - Absolute project root.
+ * @returns {string[]} Actions (warning, or none when covered).
+ */
+function gitignoreWarning(projectRoot) {
+  const giPath = path.join(projectRoot, ".gitignore");
+  let giLines = [];
+  if (fs.existsSync(giPath)) {
+    giLines = fs
+      .readFileSync(giPath, "utf8")
+      .split("\n")
+      .map((l) => l.trim());
+  }
+  const coverPatterns = [
+    ".claude/settings.local.json",
+    "settings.local.json",
+    "**/settings.local.json",
+    ".claude/",
+    "*.local.json",
+  ];
+  const covered = giLines.some((l) => coverPatterns.includes(l));
+  if (covered) {
+    return [];
+  }
+  return [
+    "WARNING: .claude/settings.local.json is not gitignored — " +
+      "it contains your token; add it to .gitignore",
+  ];
+}
+
+/**
+ * Remote-mode init: wire the HTTP hook client into .claude/settings.json,
+ * write credentials to settings.local.json (0600), validate via Ping. No
+ * local binary, no .mcp.json, no database, no skills (those belong to F5).
+ *
+ * Failures THROW → bin catches → stderr + exit 1 (init is interactive; the
+ * one loud checkpoint, opposite the hook client's exit-0 posture).
+ *
+ * @param {object} options - { remote, token, dryRun, projectDir }
+ */
+async function initRemote(options) {
+  const dryRun = (options && options.dryRun) || false;
+  const remote = options.remote;
+  const token = options.token;
+  const actions = [];
+
+  // Step 0: argument validation — LOUD failures.
+  if (!remote || !token) {
+    throw new Error("--remote and --token are both required");
+  }
+  let u;
+  try {
+    u = new URL(remote);
+  } catch (_err) {
+    throw new Error("invalid --remote URL: " + remote);
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error("--remote URL must be http: or https: (got " + u.protocol + ")");
+  }
+
+  // Step 1: project root (throwing detectProjectRoot — correct for init UX).
+  let projectRoot;
+  if (options.projectDir) {
+    projectRoot = path.resolve(options.projectDir);
+  } else {
+    projectRoot = detectProjectRoot(process.cwd());
+  }
+  actions.push("Project root: " + projectRoot);
+
+  // Step 2: resolve the installed client path (absolute, platform-native).
+  // require.resolve is the contract (ADR/pseudocode); fall back to the computed
+  // path so wiring works before the Wave-3 index.js lands and so init produces a
+  // correct command even if resolution is not yet warm. Both forms yield the
+  // identical absolute path once index.js exists.
+  let clientPath;
+  try {
+    clientPath = require.resolve("./hook-client/index.js");
+  } catch (_err) {
+    clientPath = path.join(__dirname, "hook-client", "index.js");
+  }
+
+  // Step 3: write settings.local.json unimatrix.remote (ADR-006; FR-18).
+  actions.push(
+    ...writeRemoteSettingsLocal(projectRoot, remote, token, dryRun)
+  );
+
+  // Step 3b: gitignore warning (best-effort, no glob engine).
+  actions.push(...gitignoreWarning(projectRoot));
+
+  // Step 4: merge hooks (full 9-event remote set; idempotent; preserves
+  // foreign hooks). The hook command carries ONLY `node <path> <EVENT>` —
+  // no URL, no token (RQ-3 / R-16).
+  const settingsPath = path.join(projectRoot, ".claude", "settings.json");
+  const settingsResult = mergeSettings(
+    settingsPath,
+    {
+      events: HOOK_EVENTS,
+      commandForEvent: (event) => buildHookClientCommand(clientPath, event),
+    },
+    { dryRun }
+  );
+  actions.push(...settingsResult.actions);
+
+  // Step 5: explicit skips with messages (FR-20).
+  actions.push(
+    "Skipped .mcp.json: remote mode does not register a local MCP server"
+  );
+  actions.push("Skipped binary/database steps: no local binary in remote mode");
+
+  // Step 6: Ping validation — the ONE loud checkpoint (FR-19, ADR-005, R-18).
+  if (!dryRun) {
+    const res = await transport.pingForInit(remote, token);
+    if (!res.ok) {
+      throw new Error(
+        "Remote validation failed: " +
+          res.message +
+          "\nConfiguration files were written; fix the URL/token and re-run init."
+      );
+    }
+    actions.push("Ping OK: " + res.message);
+  } else {
+    actions.push("[dry-run] Would Ping " + u.host);
+  }
+
+  printSummary(actions, dryRun);
+}
+
+/**
  * Print summary of all actions taken during init.
  *
  * @param {string[]} actions - List of action descriptions.
@@ -191,7 +394,15 @@ function printSummary(actions, dryRun) {
  * @param {string} [options.projectDir] - Override project root (skip .git walk).
  */
 async function init(options) {
-  const dryRun = (options && options.dryRun) || false;
+  const opts = options || {};
+
+  // Remote mode: --remote / --token routes to the HTTP hook-client wiring.
+  // The local flow below is untouched (C-10 blast radius).
+  if (opts.remote || opts.token) {
+    return initRemote(opts);
+  }
+
+  const dryRun = opts.dryRun || false;
   const actions = [];
 
   // Step 1: Resolve project root
@@ -271,8 +482,12 @@ async function init(options) {
 
 module.exports = {
   init,
+  initRemote,
   detectProjectRoot,
   writeMcpJson,
   copySkills,
   printSummary,
+  readJsonOrEmpty,
+  writeRemoteSettingsLocal,
+  gitignoreWarning,
 };
