@@ -101,6 +101,16 @@ Then start a Claude Code session and run:
 
 That's it. Unimatrix is ready to use.
 
+#### Remote (HTTP) mode
+
+To wire a project against a networked Unimatrix server instead of a local binary:
+
+```bash
+npx @dug-21/unimatrix init --remote https://uni.example.com --token <token>
+```
+
+This configures `.claude/settings.json` hooks to invoke the pure-JS HTTP hook client (`node /abs/path/lib/hook-client/index.js <EVENT>`) for the full remote event set, including `PreCompact` and `PostToolUseFailure`. The URL and token are written to `.claude/settings.local.json` (gitignored, per-project) under the `unimatrix.remote` key — never on the hook command line. The environment variables `UNIMATRIX_REMOTE_URL` and `UNIMATRIX_REMOTE_TOKEN` override the file when set. Init validates connectivity with a `Ping` request before writing config. No platform binary or ONNX model is required, so remote mode works on Linux, macOS, and Windows with Node >= 18. `.mcp.json` is skipped in remote mode with an informative message. The merge is idempotent — re-running preserves non-unimatrix hooks and recognizes its own entries.
+
 ### Brownfield Applications
 
 ```
@@ -174,6 +184,8 @@ All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. 
 Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — this combined with a `context_briefing` call on the outset, provides agents with an index of the most relevant artifacts to their goal and task. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. **No guidance is better than misdirection**. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC. Hooks provide the telemetry necessary for Unimatrix to learn.
 
 Multi-provider hook support: Gemini CLI events (`BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary — no downstream code sees provider-specific strings. Codex CLI uses the same event names as Claude Code; the `--provider codex-cli` flag on the `unimatrix hook` subcommand disambiguates attribution. Reference configurations are provided at `.gemini/settings.json` and `.codex/hooks.json`. Codex live MCP hook support is pending resolution of Codex upstream bug #16732.
+
+Remote (HTTP) hook client: for deployments connecting to a networked server, a pure-JS hook client ships in the `@dug-21/unimatrix` npm package (`lib/hook-client/`) — no platform binary or ONNX model required, so it runs on Linux, macOS, and Windows with Node >= 18. It reads hook stdin, builds the same `HookRequest` the Rust hook builds, and POSTs to `{url}/observe` with `Authorization: Bearer <token>`; sync events (`UserPromptSubmit`, `PreCompact`, `SubagentStart`) request `Accept: text/plain` so the server formats injection text. On fire-and-forget events it streams transcript deltas (`[last_offset, file_len)`) in a separate POST so the server's per-session buffer holds the authoritative conversation — bringing remote `PreCompact` restoration to local fidelity. It is fail-open (exit 0 always, never blocks the host CLI), has zero runtime dependencies, and uses a disk-backed event queue for graceful degradation. Configure it with `npx @dug-21/unimatrix init --remote <url> --token <tok>` (see "Wire into your project"). The local-mode hook event set written by `init` covers 9 events: `SessionStart`, `Stop`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `SubagentStart`, `SubagentStop`, `PreCompact`.
 
 ### Cycle Review Analysis
 
@@ -503,7 +515,7 @@ Local ONNX model (all-MiniLM-L6-v2) via ONNX Runtime. No API calls. MicroLoRA ad
 
 ### Hook Integration
 
-Single binary. The `hook` subcommand communicates with the running MCP server via Unix domain socket (UDS) IPC. Sub-50ms round-trip budget.
+Two hook clients. Local: the single-binary `hook` subcommand communicates with the running MCP server via Unix domain socket (UDS) IPC, with a sub-50ms round-trip budget. Remote: a pure-JS, zero-dependency hook client in the `@dug-21/unimatrix` npm package (`lib/hook-client/`) POSTs `HookRequest` frames to the server's `/observe` endpoint over HTTP with Bearer auth — no binary or ONNX model required. The HTTP client streams transcript deltas on fire-and-forget events so the server's per-session buffer stays authoritative, is fail-open (exit 0 always), and keeps bounded client state (per-session `last_offset` plus a disk event queue) under `~/.unimatrix/{project-hash}/hook-client/`. Configured via `init --remote` (see "Wire into your project").
 
 ### MCP Transport
 
@@ -535,6 +547,10 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
   vector/
     unimatrix-vector.hnsw2   # HNSW graph
     unimatrix-vector.meta    # Index metadata
+  hook-client/               # Remote HTTP hook client state (mode 0700; created by remote mode only)
+    offsets/                 # Per-session transcript last_offset files
+    queue/                   # Disk event queue for graceful degradation
+    health.json              # Content-free health breadcrumb (no token, no transcript bytes)
 ~/.cache/unimatrix/models/   # ONNX model files (downloaded once)
 ```
 
