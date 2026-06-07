@@ -6,7 +6,10 @@
     "unimatrix": "bin/unimatrix.js"
   },
   "scripts": {
-    "postinstall": "node postinstall.js"
+    "postinstall": "node postinstall.js",
+    "test": "node --test",
+    "test:hook-client": "node test/run-hook-client.js",
+    "test:hook-client:layer2": "node test/run-hook-client.js --only parity-layer2"
   },
   "optionalDependencies": {
     "@dug-21/unimatrix-linux-x64": "0.7.2",
