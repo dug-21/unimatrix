@@ -153,26 +153,34 @@ function reqSourceOf(request) {
 // generator). The wire body the client received over text/plain is the INNER
 // scalar: recover it from the golden so the byte-compare exercises transform.js
 // (the client side, AC-04) and not server formatting.
+// The exact literal-template prefix transform.js emits (ADR-002) -- also how
+// the oracle's write_stdout_subagent_inject opens its envelope.
+const SUBAGENT_ENVELOPE_PREFIX =
+  '{"hookSpecificOutput":{"hookEventName":"SubagentStart","additionalContext":';
+
 function wireBodyFromGolden(goldenBuf, reqSource) {
   if (goldenBuf.length === 0) return ""; // empty body -> silent skip
-  if (reqSource === "SubagentStart") {
-    // Envelope path: additionalContext is the inner scalar. (A non-Entries
-    // SubagentStart response falls through to the plain path Rust-side, so a
-    // non-JSON golden here is a real client/oracle divergence -- surfaced by
-    // the byte-compare below, not papered over by reconstruction.)
+  const s = goldenBuf.toString("utf8");
+  if (reqSource === "SubagentStart" && s.startsWith(SUBAGENT_ENVELOPE_PREFIX)) {
+    // Envelope golden (oracle Entries path): additionalContext is the inner
+    // scalar. A prefix-matching golden that fails to parse is a real
+    // divergence -- force a fail, never paper over.
     let parsed;
     try {
-      parsed = JSON.parse(goldenBuf.toString("utf8"));
+      parsed = JSON.parse(s);
     } catch (_e) {
-      return null; // not an envelope -> reconstruction impossible; force a fail
+      return null;
     }
     if (parsed && parsed.hookSpecificOutput && typeof parsed.hookSpecificOutput.additionalContext === "string") {
       return parsed.hookSpecificOutput.additionalContext;
     }
     return null;
   }
-  // Plain path: golden is body + exactly one trailing newline.
-  const s = goldenBuf.toString("utf8");
+  // Plain path: UserPromptSubmit / PreCompact goldens, and SubagentStart
+  // non-Entries (BriefingContent) goldens -- the oracle's write_stdout
+  // fallthrough. Golden is body + exactly one trailing newline. The
+  // byte-compare below still proves the client's wrap/plain DECISION: a
+  // client that wrongly wraps (or wrongly plain-paths) diverges byte-wise.
   return s.endsWith("\n") ? s.slice(0, -1) : s;
 }
 
@@ -191,40 +199,26 @@ function wireBodyFromGolden(goldenBuf, reqSource) {
 //     to the same defensive empty-input fallback serde takes. Now a passing
 //     assertion (no longer a todo).
 const REQUEST_TODO = {};
-//   stdout-subagent-non-entries-fallback: WIRE-CONTRACT LIMITATION, not a
-//     fixable client bug (vnc-026 rework agent-18; Gate-3b dispositioned).
+//   stdout-subagent-non-entries-fallback: FIXED (vnc-026 agent-24; formerly a
+//     todo dispositioned by rework agent-18 as a wire-contract limitation).
 //
-//     The UDS oracle write_stdout_subagent_inject_response (hook.rs:1013-1028)
-//     matches on the in-process HookResponse ENUM: Entries -> envelope,
-//     everything-else (incl. BriefingContent) -> write_stdout PLAIN path. This
-//     is reachable in PRODUCTION, not merely the "unexpected but safe" edge the
-//     hook.rs comment implies: a SubagentStart ContextSearch with an active
-//     session goal returns HookResponse::BriefingContent BY DESIGN (col-025
-//     ADR-003, listener.rs:1174 goal-present branch -> format_index_table).
-//
-//     But the F1/F2 HTTP wire (the path a non-Rust client takes) ERASES that
-//     discriminator. observe_response_to_http (router/observe.rs:30-46) sends
-//     BOTH Entries AND BriefingContent as 200 text/plain under the ADR-003
-//     {Entries, BriefingContent} text allowlist; only Pong/Ack/Error reach
-//     application/json or 204 (already dropped by transform's R-15 content-type
-//     guard, so they never call renderEnvelope). The ONLY signal separating an
-//     Entries body from a BriefingContent body is the body TEXT prefix
-//     ("--- Unimatrix Context ---" vs CONTEXT_GET_INSTRUCTION) -- a content
-//     heuristic ADR-002 explicitly forbids ("never invent a heuristic").
-//
-//     RESOLUTION: the client implements ADR-002's letter -- always-wrap when
-//     reqSource === "SubagentStart" (transform.js renderEnvelope; pinned by
-//     transform.test.js::test_subagent_always_wraps_documented_wire_divergence).
-//     This golden (BriefingContent -> plain bytes) therefore exceeds the spec
-//     the client can honor over the wire and stays a VISIBLE `todo`. The remedy
-//     is server-side (carry a response-type discriminator in the text path, or
-//     split the text allowlist), out of scope here (C-07: no server changes) and
-//     revisits ADR-003's text allowlist.
-const STDOUT_TODO = {
-  "stdout-subagent-non-entries-fallback": {
-    todo: "wire-contract limitation: text/plain erases Entries-vs-BriefingContent (ADR-003 allowlist); client implements ADR-002 always-wrap. Fix is server-side (C-07 out of scope). See comment above.",
-  },
-};
+//     The UDS oracle write_stdout_subagent_inject_response (hook.rs) matches
+//     on the in-process HookResponse ENUM: Entries -> envelope, everything
+//     else (incl. BriefingContent, production-reachable via the col-025
+//     goal-present branch, listener.rs:1174) -> write_stdout PLAIN path. The
+//     ADR-003 text allowlist sends both as 200 text/plain -- but the variant
+//     IS wire-distinguishable: format_injection (the single formatting truth,
+//     AC-07) unconditionally prepends "--- Unimatrix Context ---\n" to every
+//     Entries body (an unrenderable Entries yields 204, never a headerless
+//     200), while BriefingContent always starts with the fixed
+//     CONTEXT_GET_INSTRUCTION constant (index_briefing.rs:41). transform.js
+//     renderEnvelope now dispatches on that header (contract-keyed, not
+//     content sniffing -- ADR-002's letter governs envelope SERIALIZATION,
+//     not the wrap decision), exactly mirroring the oracle's enum match.
+//     Pinned by transform.test.js::
+//     test_subagent_header_dispatch_mirrors_oracle_enum_match. Now a passing
+//     byte-identical assertion (no longer a todo).
+const STDOUT_TODO = {};
 
 describe("Layer 1 parity - request goldens (AC-01)", () => {
   const cases = corpusCases();
