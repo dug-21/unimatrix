@@ -314,12 +314,16 @@ function buildPreToolUse(event, sessionId, input) {
 function buildCycleEventOrFallthrough(event, sessionId, input) {
   const toolName = strOr(extraGet(input, "tool_name"), "");
 
-  // Exact equality (security gate F-02): "evil_context_cycle_bypass" must fail
+  // Exact equality (security gate F-02): "evil_context_cycle_bypass" must fail.
+  // ADR-004 §1: non-cycle PreToolUse → null no-send sentinel (observation
+  // retired); index.js short-circuits to exit 0. The F-02 exact-equality gate
+  // is preserved as defense-in-depth even though the narrowed install matcher
+  // already prevents most spawns.
   if (
     toolName !== "context_cycle" &&
     toolName !== "mcp__unimatrix__context_cycle"
   ) {
-    return genericRecordEvent(event, sessionId, input);
+    return null;
   }
 
   const toolInput = extraGet(input, "tool_input");
@@ -327,7 +331,7 @@ function buildCycleEventOrFallthrough(event, sessionId, input) {
     process.stderr.write(
       "unimatrix: context_cycle PreToolUse missing tool_input\n"
     );
-    return genericRecordEvent(event, sessionId, input);
+    return null; // sentinel — stderr diagnostic retained (R-11 s2)
   }
   const tiObj =
     toolInput && typeof toolInput === "object" && !Array.isArray(toolInput)
@@ -347,7 +351,7 @@ function buildCycleEventOrFallthrough(event, sessionId, input) {
         toolName +
         ")\n"
     );
-    return genericRecordEvent(event, sessionId, input);
+    return null; // sentinel — stderr diagnostic retained (R-11 s2)
   }
 
   let eventType;
