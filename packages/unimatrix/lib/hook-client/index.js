@@ -21,11 +21,24 @@ const normalize = require("./normalize");
 const configMod = require("./config");
 const buildRequestMod = require("./build-request");
 const transcript = require("./transcript");
-const transport = require("./transport-http");
+const transportHttp = require("./transport-http");
+const transportUds = require("./transport-uds");
 const transform = require("./transform");
 const delta = require("./delta");
 const queue = require("./queue");
 const state = require("./state");
+
+/**
+ * Select the transport module once per spawn from config.mode (ADR-002 §4,
+ * FR-14). The selected module's `post` flows into runSync, runFireAndForget
+ * (carrying + delta), AND queue.replay, so queued frames replay over whichever
+ * transport THIS spawn picked (SR-10 — accepted session-id split). Pure dispatch,
+ * never throws. UDS is the no-remote-config fall-through (config.js); HTTP wins
+ * whenever remote config resolved.
+ */
+function selectTransport(config) {
+  return config && config.mode === "uds" ? transportUds : transportHttp;
+}
 
 /** stdin hard cap — parity with hook.rs read_stdin take(1 MiB). */
 const STDIN_CAP = 1048576;
@@ -231,7 +244,7 @@ function settledDeltaOutcome(settled) {
  * delta, or transcript I/O (SubagentStart tail read happened pre-dispatch;
  * C-03 / R-13). Exactly one POST.
  */
-async function runSync(request, reqSource, config) {
+async function runSync(request, reqSource, config, transport = transportHttp) {
   const res = await transport.post(config, request, { sync: true }); // Accept: text/plain
   transform.writeSyncOutput(reqSource, res); // stdout iff 200 text/plain non-empty
   state.recordSendOutcomes(config.stateDir, config.urlHost, [res], queue.queueDepth(config.stateDir));
@@ -244,7 +257,14 @@ async function runSync(request, reqSource, config) {
  * — Rust parity), then carrying + delta POSTs concurrently (ADR-007,
  * Promise.allSettled — independent outcomes, AC-09).
  */
-async function runFireAndForget(request, input, config) {
+async function runFireAndForget(
+  request,
+  input,
+  config,
+  transport = transportHttp,
+  canonicalEvent
+) {
+  state.pruneOffsets(config.stateDir); // ADR-006 §2: 7-day offset prune, FNF path ONLY (NFR-4 — sync trio gains no extra I/O); wrapped/best-effort
   queue.prune(config.stateDir); // 24 h age prune (wrapped, best-effort)
   await queue.replay(config, transport.post); // ≤32 frames / 256 KiB, stop-at-first-failure
 
@@ -265,8 +285,13 @@ async function runFireAndForget(request, input, config) {
   if (!carrying.ok) {
     queue.enqueue(config.stateDir, request); // NEVER a delta frame here (ADR-004)
     stderrLine(carrying.failureClass, "send failed, event queued");
-  } else if (request.type === "SessionClose") {
-    state.deleteOffset(config.stateDir, sessionId); // FR-16 lifecycle (wrapped)
+  } else if (canonicalEvent === "TaskCompleted") {
+    // ADR-006 §3: keyed by CANONICAL EVENT name, NEVER frame type. Stop and
+    // TaskCompleted both build SessionClose frames, so a Stop spawn (canonical
+    // "Stop") does NOT delete — the assertable negative that fixed the per-turn
+    // re-stream. Unreachable under current HOOK_EVENTS (TaskCompleted not
+    // registered); retained as a zero-cost forward provision, pinned by unit test.
+    state.deleteOffset(config.stateDir, sessionId);
   }
 
   // Delta outcome → breadcrumb only when a POST was actually attempted.
@@ -334,6 +359,14 @@ async function main() {
 
     let request = buildRequestMod.buildRequest(effectiveEvent, input); // pure
 
+    // ADR-004 §1 / FR-27 / R-11 s4: a `null` build-request sentinel (non-cycle
+    // PreToolUse — observation retired) short-circuits BEFORE transport selection.
+    // No network, no queue, no stdout, exit 0. Must precede selectTransport and the
+    // SubagentStart promotion (which references request.type).
+    if (request === null) {
+      return; // exit 0; no-send path
+    }
+
     // SubagentStart fallback — hook.rs run() step 5b. Claude Code sends no
     // prompt_snippet, so build_request returns RecordEvent; derive the query from
     // the transcript tail (the sole sync-path-exempt file read, RQ-6).
@@ -372,10 +405,15 @@ async function main() {
       request.type === "RecordEvent" ||
       request.type === "RecordEvents";
 
+    // ADR-002 §4: transport chosen ONCE per spawn from config.mode, after the
+    // null guard, and threaded through both dispatch paths + queue.replay.
+    const transport = selectTransport(config);
+
     if (isFnf) {
-      await runFireAndForget(request, input, config);
+      // canonical (NOT effectiveEvent, NOT request.type) keys the FR-16 delete.
+      await runFireAndForget(request, input, config, transport, canonical);
     } else {
-      await runSync(request, reqSource, config);
+      await runSync(request, reqSource, config, transport);
     }
   } catch (e) {
     // Last-resort guard: NEVER stdout, NEVER nonzero exit.
@@ -390,6 +428,7 @@ module.exports = {
   parseHookInput,
   resolveCwd,
   sessionIdOf,
+  selectTransport,
   settledSendResult,
   settledDeltaOutcome,
   runSync,
