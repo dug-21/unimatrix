@@ -1,15 +1,21 @@
-//! Integration tests for the v26→v27 schema migration (vnc-018).
+//! Integration tests for the v27→v28 schema migration (vnc-030, ADR-005).
 //!
-//! Covers:
-//!   MIG-V27-U-01 — CURRENT_SCHEMA_VERSION constant is >= 27
-//!   MIG-V27-U-02 — Fresh database initializes directly to v27 with all 4 indexes present
-//!   MIG-V27-U-03 — v26→v27 migration creates all 4 required indexes (AC-19)
-//!   MIG-V27-U-04 — Idempotency: re-open v27 database is a no-op
-//!   MIG-V27-U-05 — schema_version updated to 27 after migration
+//! Adds `observations.topic_source TEXT NULL` — the F6 (#682) retirement-gate
+//! evidence base. Pragma-guarded idempotent ALTER (pattern #4092/C-07); version
+//! stamp at the end of `run_main_migrations` in one transaction. No backfill:
+//! pre-vnc-030 rows stay NULL-source by design (SR-04/R-20).
 //!
-//! Pattern: create a v26-shaped database (all v25 tables + next_audit_id counter +
-//! schema_version=26, but WITHOUT the four new context_graph indexes).
-//! Open with current SqlxStore to trigger v26→v27 migration. Assert all 4 indexes exist.
+//! Covers (test-plan/topic-source-migration.md):
+//!   migration_fresh_db_adds_topic_source_column   — fresh DB → column present, v28
+//!   migration_already_migrated_db_is_noop         — re-run is a pragma-guarded no-op
+//!   migration_pre_migration_v27_to_v28            — v27 DB → column added, stamped 28
+//!   migration_leaves_existing_rows_null           — no backfill; existing rows NULL
+//!   current_schema_version_is_28_unique           — constant is 28
+//!
+//! Pattern: build a v27-shaped database (v26 DDL + the four context_graph indexes,
+//! observations WITHOUT topic_source, schema_version=27). Open with the current
+//! SqlxStore to trigger v27→v28. Assert `topic_source` exists, is TEXT/nullable,
+//! version is 28, and pre-existing rows remain NULL-source.
 
 #![cfg(feature = "test-support")]
 
@@ -22,23 +28,20 @@ use unimatrix_store::SqlxStore;
 use unimatrix_store::pool_config::PoolConfig;
 
 // ---------------------------------------------------------------------------
-// V26 database builder
+// V27 database builder
 // ---------------------------------------------------------------------------
 
-/// Create a v26-shaped database at the given path.
+/// Create a v27-shaped database at the given path.
 ///
-/// The v26 DDL = v25 DDL (audit_log 12 columns + triggers + next_audit_id counter).
-/// Does NOT include the four new context_graph indexes (added by v27 migration):
-///   - idx_entries_supersedes
-///   - idx_entries_superseded_by
-///   - idx_graph_edges_source_type
-///   - idx_graph_edges_target_type
-async fn create_v26_database(path: &Path) {
+/// The v27 DDL = v26 DDL + the four context_graph indexes added by the v27
+/// migration. The `observations` table has its v26 shape (10 columns) WITHOUT
+/// `topic_source` — that column is added by the v28 migration under test.
+async fn create_v27_database(path: &Path) {
     let opts = SqliteConnectOptions::new()
         .filename(path)
         .create_if_missing(true);
 
-    let mut conn = opts.connect().await.expect("open v26 setup conn");
+    let mut conn = opts.connect().await.expect("open v27 setup conn");
 
     sqlx::query("PRAGMA journal_mode = WAL")
         .execute(&mut conn)
@@ -148,7 +151,6 @@ async fn create_v26_database(path: &Path) {
             last_seen_at       INTEGER NOT NULL,
             active             INTEGER NOT NULL DEFAULT 1
         )",
-        // v26 audit_log: 12 columns (full schema from v24→v25 migration)
         "CREATE TABLE audit_log (
             event_id          INTEGER PRIMARY KEY,
             timestamp         INTEGER NOT NULL,
@@ -163,6 +165,7 @@ async fn create_v26_database(path: &Path) {
             agent_attribution TEXT    NOT NULL DEFAULT '',
             metadata          TEXT    NOT NULL DEFAULT '{}'
         )",
+        // v27 observations: 10 columns, WITHOUT topic_source (added by v28).
         "CREATE TABLE observations (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             session_id       TEXT    NOT NULL,
@@ -319,16 +322,19 @@ async fn create_v26_database(path: &Path) {
         "CREATE INDEX idx_graph_edges_relation_type ON graph_edges(relation_type)",
         "CREATE INDEX idx_cycle_events_cycle_id ON cycle_events (cycle_id)",
         "CREATE INDEX idx_goal_clusters_created_at ON goal_clusters(created_at DESC)",
-        // Append-only triggers from v24→v25 migration
+        // The four context_graph indexes added by the v27 migration (present at v27).
+        "CREATE INDEX idx_entries_supersedes ON entries(supersedes)",
+        "CREATE INDEX idx_entries_superseded_by ON entries(superseded_by)",
+        "CREATE INDEX idx_graph_edges_source_type ON graph_edges(source_id, relation_type)",
+        "CREATE INDEX idx_graph_edges_target_type ON graph_edges(target_id, relation_type)",
+        // Append-only triggers from v24→v25 migration.
         "CREATE TRIGGER audit_log_no_update
          BEFORE UPDATE ON audit_log
          BEGIN SELECT RAISE(ABORT, 'audit_log is append-only: UPDATE not permitted'); END",
         "CREATE TRIGGER audit_log_no_delete
          BEFORE DELETE ON audit_log
          BEGIN SELECT RAISE(ABORT, 'audit_log is append-only: DELETE not permitted'); END",
-        // NOTE: idx_entries_supersedes, idx_entries_superseded_by,
-        //       idx_graph_edges_source_type, idx_graph_edges_target_type
-        // are intentionally absent — they are added by the v27 migration.
+        // NOTE: observations.topic_source is intentionally absent — added by v28.
     ] {
         sqlx::query(ddl)
             .execute(&mut conn)
@@ -336,9 +342,8 @@ async fn create_v26_database(path: &Path) {
             .expect("create table/index/trigger");
     }
 
-    // Seed counters at v26 (with correct next_audit_id, not the phantom).
     for seed in &[
-        "INSERT INTO counters (name, value) VALUES ('schema_version', 26)",
+        "INSERT INTO counters (name, value) VALUES ('schema_version', 27)",
         "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
         "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
         "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
@@ -350,30 +355,18 @@ async fn create_v26_database(path: &Path) {
             .expect("seed counters");
     }
 
-    // Seed a few entries and graph_edges rows so the migration runs on real data.
+    // Seed pre-migration observation rows (no topic_source column yet) so the
+    // no-backfill guarantee can be asserted post-migration.
     sqlx::query(
-        "INSERT INTO entries
-             (id, title, content, topic, category, source, status, confidence,
-              created_at, updated_at, supersedes, superseded_by)
+        "INSERT INTO observations
+             (session_id, ts_millis, hook, tool, topic_signal, phase)
          VALUES
-             (1, 'Entry A', 'content a', 'rust', 'pattern', 'agent', 0, 0.5, 0, 0, NULL, NULL),
-             (2, 'Entry B', 'content b', 'rust', 'pattern', 'agent', 0, 0.5, 0, 0, 1, NULL),
-             (3, 'Entry C', 'content c', 'rust', 'convention', 'agent', 0, 0.5, 0, 0, NULL, NULL)",
+             ('s1', 100, 'PostToolUse', 'Edit', 'rust', 'design'),
+             ('s2', 200, 'PostToolUse', 'Bash', NULL, NULL)",
     )
     .execute(&mut conn)
     .await
-    .expect("seed entries");
-
-    sqlx::query(
-        "INSERT INTO graph_edges
-             (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only)
-         VALUES
-             (1, 2, 'Supersedes', 1.0, 0, 'bootstrap', 'entries.supersedes', 0),
-             (2, 3, 'Informs', 0.8, 0, 'agent', 'context_edge', 0)",
-    )
-    .execute(&mut conn)
-    .await
-    .expect("seed graph_edges");
+    .expect("seed observations");
 }
 
 // ---------------------------------------------------------------------------
@@ -387,207 +380,185 @@ async fn read_schema_version(store: &SqlxStore) -> i64 {
         .expect("read schema_version")
 }
 
-const V27_INDEX_NAMES: [&str; 4] = [
-    "idx_entries_supersedes",
-    "idx_entries_superseded_by",
-    "idx_graph_edges_source_type",
-    "idx_graph_edges_target_type",
-];
+async fn topic_source_column_count(store: &SqlxStore) -> i64 {
+    sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM pragma_table_info('observations') WHERE name = 'topic_source'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("pragma_table_info topic_source")
+}
 
 // ---------------------------------------------------------------------------
-// MIG-V27-U-01: CURRENT_SCHEMA_VERSION constant is >= 27
+// current_schema_version_is_28_unique (R-11)
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_current_schema_version_is_at_least_27() {
+#[allow(clippy::assertions_on_constants)] // version constant is compile-time; assertion guards the bump
+fn test_current_schema_version_is_28() {
     assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 27,
-        "CURRENT_SCHEMA_VERSION must be >= 27 after vnc-018, got {}",
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 28,
+        "CURRENT_SCHEMA_VERSION must be >= 28 after vnc-030, got {}",
         unimatrix_store::migration::CURRENT_SCHEMA_VERSION
     );
 }
 
 // ---------------------------------------------------------------------------
-// MIG-V27-U-02: Fresh database initializes directly to v27 with all 4 indexes
+// migration_fresh_db_adds_topic_source_column
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_fresh_db_creates_schema_v27() {
+async fn test_fresh_db_has_topic_source_column() {
     let dir = TempDir::new().expect("temp dir");
     let store = SqlxStore::open(&dir.path().join("test.db"), PoolConfig::test_default())
         .await
         .expect("open fresh store");
 
     assert!(
-        read_schema_version(&store).await >= 27,
-        "schema_version must be >= 27 on a fresh database"
+        read_schema_version(&store).await >= 28,
+        "schema_version must be >= 28 on a fresh database"
     );
 
-    // All 4 new indexes must be present on a fresh database (via create_tables_if_needed).
-    for index_name in V27_INDEX_NAMES {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='index' AND name=?",
-        )
-        .bind(index_name)
-        .fetch_one(store.read_pool_test())
-        .await
-        .expect("sqlite_master index check");
-        assert!(
-            exists,
-            "Index '{index_name}' must exist on a fresh database (v27 schema)"
-        );
-    }
+    // Column present exactly once, TEXT, nullable.
+    assert_eq!(
+        topic_source_column_count(&store).await,
+        1,
+        "fresh database (v28 schema) must have observations.topic_source"
+    );
+
+    let (col_type, notnull): (String, i64) = sqlx::query_as(
+        "SELECT type, \"notnull\" FROM pragma_table_info('observations') WHERE name = 'topic_source'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("pragma type/notnull");
+    assert_eq!(col_type, "TEXT", "topic_source must be TEXT");
+    assert_eq!(notnull, 0, "topic_source must be nullable (NULL allowed)");
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// MIG-V27-U-03: v26→v27 migration creates all 4 required indexes (AC-19)
+// migration_pre_migration_v27_to_v28
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_migration_v26_to_v27_creates_four_indexes() {
+async fn test_migration_v27_to_v28_adds_topic_source() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v26_database(&db_path).await;
+    create_v27_database(&db_path).await;
 
-    // Verify that the four indexes are absent before migration.
+    // Pre-condition: column absent before migration.
     {
         let opts = SqliteConnectOptions::new().filename(&db_path);
         let mut pre_conn = opts.connect().await.expect("pre-migration check conn");
-        for index_name in V27_INDEX_NAMES {
-            let exists: bool = sqlx::query_scalar(
-                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='index' AND name=?",
-            )
-            .bind(index_name)
-            .fetch_one(&mut pre_conn)
-            .await
-            .expect("pre-migration index check");
-            assert!(
-                !exists,
-                "Pre-condition: index '{index_name}' must NOT exist before v27 migration"
-            );
-        }
+        let pre: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM pragma_table_info('observations') WHERE name = 'topic_source'",
+        )
+        .fetch_one(&mut pre_conn)
+        .await
+        .expect("pre-migration topic_source check");
+        assert_eq!(
+            pre, 0,
+            "pre-condition: observations.topic_source must NOT exist at v27"
+        );
     }
 
-    // Trigger the v26→v27 migration by opening with SqlxStore.
+    // Trigger v27→v28 by opening with SqlxStore.
     let store = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("open after migration");
 
-    // Assert: all four indexes now exist in sqlite_master.
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name IN (?,?,?,?)",
-    )
-    .bind("idx_entries_supersedes")
-    .bind("idx_entries_superseded_by")
-    .bind("idx_graph_edges_source_type")
-    .bind("idx_graph_edges_target_type")
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("count v27 indexes");
-
     assert_eq!(
-        count, 4,
-        "All four v27 indexes must be present after migration; found {count}"
+        topic_source_column_count(&store).await,
+        1,
+        "observations.topic_source must exist after v27→v28 migration"
     );
-
-    // Assert each index individually for clearer failure messages.
-    for index_name in V27_INDEX_NAMES {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='index' AND name=?",
-        )
-        .bind(index_name)
-        .fetch_one(store.read_pool_test())
-        .await
-        .expect("sqlite_master index check");
-        assert!(
-            exists,
-            "Index '{index_name}' must exist after v26→v27 migration"
-        );
-    }
-
-    // Assert schema_version was updated to >= 27.
-    let version = read_schema_version(&store).await;
     assert!(
-        version >= 27,
-        "schema_version must be >= 27 after v26→v27 migration, got {version}"
+        read_schema_version(&store).await >= 28,
+        "schema_version must be >= 28 after v27→v28 migration"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// MIG-V27-U-04: Idempotency — re-open v27+ database is a no-op
+// migration_already_migrated_db_is_noop (idempotency via pragma guard)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v27_migration_is_idempotent() {
+async fn test_v28_migration_is_idempotent() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v26_database(&db_path).await;
+    create_v27_database(&db_path).await;
 
-    // First open: triggers v26→v27 migration.
+    // First open: triggers v27→v28.
     let store = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("first open");
     let v1 = read_schema_version(&store).await;
+    let c1 = topic_source_column_count(&store).await;
     store.close().await.unwrap();
 
-    // Second open: already at v27+, migration block must be skipped.
+    // Second open: already at v28 — the `current_version < 28` block is skipped,
+    // and even if entered the pragma guard makes the ALTER a no-op (no duplicate
+    // column, no error).
     let store2 = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("second open — idempotency check");
     let v2 = read_schema_version(&store2).await;
-
-    // All four indexes still present — no duplicates, no errors.
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name IN (?,?,?,?)",
-    )
-    .bind("idx_entries_supersedes")
-    .bind("idx_entries_superseded_by")
-    .bind("idx_graph_edges_source_type")
-    .bind("idx_graph_edges_target_type")
-    .fetch_one(store2.read_pool_test())
-    .await
-    .expect("count v27 indexes on re-open");
-
+    let c2 = topic_source_column_count(&store2).await;
     store2.close().await.unwrap();
 
     assert!(
-        v1 >= 27,
-        "schema_version must be >= 27 after first open, got {v1}"
+        v1 >= 28,
+        "schema_version must be >= 28 after first open, got {v1}"
     );
     assert_eq!(
         v1, v2,
         "schema_version must not change on idempotent re-open"
     );
     assert_eq!(
-        count, 4,
-        "All four indexes must still be present on idempotent re-open; found {count}"
+        c1, 1,
+        "topic_source must exist exactly once after first open"
+    );
+    assert_eq!(
+        c2, 1,
+        "topic_source must still exist exactly once on idempotent re-open (no duplicate)"
     );
 }
 
 // ---------------------------------------------------------------------------
-// MIG-V27-U-05: schema_version updated to 27 after migration
+// migration_leaves_existing_rows_null (no backfill, R-20)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v26_to_v27_schema_version_updated() {
+async fn test_migration_leaves_existing_rows_null() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v26_database(&db_path).await;
+    create_v27_database(&db_path).await;
 
     let store = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("open after migration");
 
-    let version = read_schema_version(&store).await;
-    // >= 27: a later migration (vnc-030 v28) bumps CURRENT_SCHEMA_VERSION past 27,
-    // so a v26 DB opened now cascades to the current version (#4153/#4373).
-    assert!(
-        version >= 27,
-        "schema_version must be >= 27 after v26→v27 migration, got {version}"
+    // The two seeded pre-migration rows are preserved...
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM observations")
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("count observations");
+    assert_eq!(total, 2, "pre-migration observation rows must be preserved");
+
+    // ...and every existing row's topic_source is NULL (no backfill by design,
+    // ADR-005 §3 / R-20: F6 distribution windows on post-migration rows only).
+    let null_sources: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM observations WHERE topic_source IS NULL")
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("count null topic_source");
+    assert_eq!(
+        null_sources, 2,
+        "all pre-migration rows must have NULL topic_source (no backfill)"
     );
 
     store.close().await.unwrap();

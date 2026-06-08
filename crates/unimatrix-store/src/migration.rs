@@ -19,7 +19,7 @@ use crate::schema::{deserialize_entry, serialize_entry};
 /// Current schema version. Incremented from 26 to 27 by vnc-018 (four indexes for
 /// context_graph CTE and neighbor queries: idx_entries_supersedes, idx_entries_superseded_by,
 /// idx_graph_edges_source_type, idx_graph_edges_target_type).
-pub const CURRENT_SCHEMA_VERSION: u64 = 27;
+pub const CURRENT_SCHEMA_VERSION: u64 = 28;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -1373,6 +1373,36 @@ async fn run_main_migrations(
             .map_err(|e| StoreError::Migration {
                 source: Box::new(e),
             })?;
+    }
+
+    // v27 → v28: topic_source column on observations (vnc-030, ADR-005).
+    // F6 (#682) retirement-gate evidence base. No backfill: pre-vnc-030 rows stay
+    // NULL-source by design (inventing historical sources = the SR-04 "best guess").
+    // Mirrors the v9→v10 topic_signal precedent exactly (pattern #4092: pragma_table_info
+    // pre-check before ALTER; single-column block, so the one check IS "all checks
+    // before any ALTER").
+    if current_version < 28 {
+        let has_topic_source: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('observations') WHERE name = 'topic_source'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .unwrap_or(false);
+
+        if !has_topic_source {
+            sqlx::query("ALTER TABLE observations ADD COLUMN topic_source TEXT")
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+        }
+        // No intra-block `UPDATE counters SET value = 28` is required: this is the
+        // LAST migration block, so the final INSERT OR REPLACE below stamps
+        // CURRENT_SCHEMA_VERSION (=28). Earlier blocks intra-stamp only because LATER
+        // blocks must observe the intermediate version. If a v29 block lands after
+        // this one, add `UPDATE counters SET value = 28` here at that time (R-11).
     }
 
     // Update schema_version counter to CURRENT_SCHEMA_VERSION.
