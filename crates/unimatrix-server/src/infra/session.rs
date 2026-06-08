@@ -97,6 +97,34 @@ pub enum SetFeatureResult {
     Overridden { previous: String },
 }
 
+// -- vnc-030: FeatureSource precedence (ADR-004) --
+
+/// Precedence class for a session's resolved feature (vnc-030, ADR-004).
+///
+/// The TWO variants are the precedence classes; every precedence check is
+/// `matches!(src, FeatureSource::Declared)`. A `Declared` feature (cycle_start
+/// via `set_feature_force`, or a `cycle_stamp` via `apply_stamp`) can no longer
+/// be vote-inverted at the sweep or close paths.
+#[derive(Clone, Debug, PartialEq)]
+pub enum FeatureSource {
+    /// cycle_start (`set_feature_force`) or stamp (`apply_stamp`).
+    Declared,
+    /// Never beats a declared feature; sub-origin carried for `topic_source` only.
+    Inferred(InferredOrigin),
+}
+
+/// Sub-origin of an `Inferred` feature (vnc-030, ADR-004).
+///
+/// Exists SOLELY so `topic_source` can split registry-fill from vote-derived
+/// fill (ADR-005 / SR-04). Never affects precedence.
+#[derive(Clone, Debug, PartialEq)]
+pub enum InferredOrigin {
+    /// `register_session` feature param (SessionStart) → topic_source 'registry-fill'.
+    Registered,
+    /// `set_feature_if_absent` eager (#198) → topic_source 'vote'.
+    Voted,
+}
+
 // -- Existing type (extended with new fields) --
 
 /// A single injection event recorded during ContextSearch.
@@ -119,6 +147,11 @@ pub struct SessionState {
     pub session_id: String,
     pub role: Option<String>,
     pub feature: Option<String>,
+    // vnc-030 field (ADR-004): precedence class for `feature`. Travels with the
+    // feature so a declared session can't be vote-inverted. Default on register
+    // is `Inferred(Registered)`; transitions to `Declared` on cycle_start
+    // (set_feature_force) or stamp (apply_stamp), `Inferred(Voted)` on eager fill.
+    pub feature_source: FeatureSource,
     pub injection_history: Vec<InjectionRecord>,
     pub coaccess_seen: HashSet<Vec<u64>>,
     pub compaction_count: u32,
@@ -204,6 +237,10 @@ impl SessionRegistry {
                 session_id: session_id.to_string(),
                 role,
                 feature,
+                // vnc-030 (ADR-004): registration is the lowest-precedence origin,
+                // regardless of whether `feature` is Some/None. Resume/compact
+                // re-register resets here; the next stamp restores Declared (R-13).
+                feature_source: FeatureSource::Inferred(InferredOrigin::Registered),
                 injection_history: Vec::new(),
                 coaccess_seen: HashSet::new(),
                 compaction_count: 0,
@@ -401,6 +438,9 @@ impl SessionRegistry {
         if let Some(state) = sessions.get_mut(session_id) {
             if state.feature.is_none() {
                 state.feature = Some(feature.to_string());
+                // vnc-030 (ADR-004): eager / #198 payload fill is vote-class — it
+                // only fires when feature was absent (never-declared sessions).
+                state.feature_source = FeatureSource::Inferred(InferredOrigin::Voted);
                 return true;
             }
         }
@@ -429,16 +469,58 @@ impl SessionRegistry {
             Some(state) => match &state.feature {
                 None => {
                     state.feature = Some(feature.to_string());
+                    state.feature_source = FeatureSource::Declared; // vnc-030 (ADR-004)
                     SetFeatureResult::Set
                 }
-                Some(existing) if existing == feature => SetFeatureResult::AlreadyMatches,
+                Some(existing) if existing == feature => {
+                    // vnc-030 (ADR-004): idempotent re-affirm of the declared class.
+                    state.feature_source = FeatureSource::Declared;
+                    SetFeatureResult::AlreadyMatches
+                }
                 Some(existing) => {
                     let previous = existing.clone();
                     state.feature = Some(feature.to_string());
+                    state.feature_source = FeatureSource::Declared; // vnc-030 (ADR-004)
                     SetFeatureResult::Overridden { previous }
                 }
             },
         }
+    }
+
+    /// Idempotently (re)establish the `Declared` feature from a `cycle_stamp` (vnc-030, ADR-004).
+    ///
+    /// Called from the listener record paths when an event carries `cycle_stamp`.
+    /// Covers server restart mid-session (no post-restart cycle_start replay): the
+    /// first post-restart stamped event re-establishes `Declared` with no churn.
+    ///
+    /// Idempotent: NO-OP when feature+source already match (no `Overridden` log
+    /// noise per stamped event — R-17). On a genuine (re)declaration it logs once.
+    ///
+    /// Unlike `set_feature_force`, this does NOT pre-register an evicted session —
+    /// it is a best-effort registry affirmation. Row attribution comes from the
+    /// stamp directly at the listener, so a no-op on an absent session loses no
+    /// row-level attribution. Poison recovery via `unwrap_or_else(|e| e.into_inner())`.
+    pub fn apply_stamp(&self, session_id: &str, topic: &str) {
+        let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(session_id) {
+            let already = state.feature.as_deref() == Some(topic)
+                && matches!(state.feature_source, FeatureSource::Declared);
+            if already {
+                return; // idempotent no-op: no churn, no log
+            }
+            // last-writer-wins; this is a genuine (re)declaration via stamp.
+            if state.feature.as_deref() != Some(topic) {
+                tracing::info!(
+                    session_id,
+                    topic,
+                    "apply_stamp: feature set/overridden by cycle_stamp"
+                );
+            }
+            state.feature = Some(topic.to_string());
+            state.feature_source = FeatureSource::Declared;
+        }
+        // Session absent → no-op (the record path still attributes the row from
+        // the stamp; see listener-stamp-read).
     }
 
     /// Set the active workflow phase for a session (crt-025, ADR-001 / SR-01).
@@ -623,9 +705,18 @@ impl SessionRegistry {
                     purges.push(rec);
                 }
 
-                // (#198): Resolve feature_cycle via majority vote before eviction
-                let resolved_feature =
-                    majority_vote_internal(&state.topic_signals).or_else(|| state.feature.clone());
+                // (#198): Resolve feature_cycle via majority vote before eviction.
+                // vnc-030 inversion flip 1 (ADR-004 §5, FR-16): a Declared feature
+                // (cycle_start / stamp) beats a contradicting majority vote. The
+                // vote is consulted ONLY when no Declared feature exists — the
+                // unchanged path below (crt-052 rebases over this, ADR-007 §2).
+                let resolved_feature = if matches!(state.feature_source, FeatureSource::Declared)
+                    && state.feature.is_some()
+                {
+                    state.feature.clone() // declared wins (inversion fixed)
+                } else {
+                    majority_vote_internal(&state.topic_signals).or_else(|| state.feature.clone())
+                };
 
                 // Stale sessions default to "success" outcome (orphaned — best effort)
                 // If injection_history is empty: silent eviction (FR-09.4)
@@ -1383,6 +1474,7 @@ mod tests {
             session_id: "test".to_string(),
             role: None,
             feature: None,
+            feature_source: FeatureSource::Inferred(InferredOrigin::Registered), // vnc-030
             injection_history: Vec::new(),
             coaccess_seen: HashSet::new(),
             compaction_count: 0,
@@ -2764,5 +2856,230 @@ mod tests {
         let reg = SessionRegistry::new();
         assert_eq!(reg.transcript_cap, DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES);
         assert_eq!(reg.transcript_cap, 4_194_304);
+    }
+
+    // -- vnc-030: FeatureSource precedence (ADR-004, test-plan/feature-source.md) --
+
+    /// Backdate a session and seed a contradicting majority vote, so sweep must
+    /// choose between the declared/registry feature and the vote winner.
+    fn seed_stale_with_vote(reg: &SessionRegistry, sid: &str, vote_topic: &str, count: u32) {
+        let mut sessions = reg.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(state) = sessions.get_mut(sid) {
+            let stale_time = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+            state.last_activity_at = stale_time;
+            state.injection_history.push(InjectionRecord {
+                entry_id: 10,
+                confidence: 0.9,
+                timestamp: stale_time,
+            });
+            state.topic_signals.insert(
+                vote_topic.to_string(),
+                TopicTally {
+                    count,
+                    last_seen: 1000,
+                },
+            );
+        }
+    }
+
+    // §Source assignment at existing set sites
+
+    #[test]
+    fn test_register_session_defaults_feature_source_inferred_registered() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("vnc-030".to_string()));
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(
+            state.feature_source,
+            FeatureSource::Inferred(InferredOrigin::Registered)
+        );
+    }
+
+    #[test]
+    fn test_set_feature_force_sets_declared_source() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.set_feature_force("s1", "vnc-030");
+        assert_eq!(
+            reg.get_state("s1").unwrap().feature_source,
+            FeatureSource::Declared
+        );
+    }
+
+    #[test]
+    fn test_set_feature_force_already_matches_reaffirms_declared() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("vnc-030".to_string()));
+        // Registered → Inferred; an identical cycle_start force re-affirms Declared.
+        assert_eq!(
+            reg.set_feature_force("s1", "vnc-030"),
+            SetFeatureResult::AlreadyMatches
+        );
+        assert_eq!(
+            reg.get_state("s1").unwrap().feature_source,
+            FeatureSource::Declared
+        );
+    }
+
+    #[test]
+    fn test_set_feature_if_absent_sets_inferred_voted_source() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        assert!(reg.set_feature_if_absent("s1", "vnc-030"));
+        assert_eq!(
+            reg.get_state("s1").unwrap().feature_source,
+            FeatureSource::Inferred(InferredOrigin::Voted)
+        );
+    }
+
+    // §apply_stamp idempotency (R-17)
+
+    #[test]
+    fn test_apply_stamp_sets_declared_idempotent() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+
+        reg.apply_stamp("s1", "vnc-030");
+        let after_first = reg.get_state("s1").unwrap();
+        assert_eq!(after_first.feature.as_deref(), Some("vnc-030"));
+        assert_eq!(after_first.feature_source, FeatureSource::Declared);
+
+        // Second identical stamp: no-op — feature + source unchanged, no churn.
+        reg.apply_stamp("s1", "vnc-030");
+        let after_second = reg.get_state("s1").unwrap();
+        assert_eq!(after_second.feature.as_deref(), Some("vnc-030"));
+        assert_eq!(after_second.feature_source, FeatureSource::Declared);
+    }
+
+    #[test]
+    fn test_apply_stamp_contradicting_topic_last_writer_wins() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.apply_stamp("s1", "vnc-030");
+        // Contradicting topic → last-writer-wins (logged once as a genuine override).
+        reg.apply_stamp("s1", "crt-052");
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(state.feature.as_deref(), Some("crt-052"));
+        assert_eq!(state.feature_source, FeatureSource::Declared);
+    }
+
+    #[test]
+    fn test_apply_stamp_absent_session_is_noop() {
+        let reg = make_registry();
+        // No session registered — must not panic, must not create a slot.
+        reg.apply_stamp("ghost", "vnc-030");
+        assert!(reg.get_state("ghost").is_none());
+        assert_eq!(reg.session_count(), 0);
+    }
+
+    #[test]
+    fn test_apply_stamp_restores_declared_after_reregister() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.apply_stamp("s1", "vnc-030");
+        assert_eq!(
+            reg.get_state("s1").unwrap().feature_source,
+            FeatureSource::Declared
+        );
+
+        // Re-register (resume/compact) resets to Inferred(Registered).
+        reg.register_session("s1", None, Some("vnc-030".to_string()));
+        assert_eq!(
+            reg.get_state("s1").unwrap().feature_source,
+            FeatureSource::Inferred(InferredOrigin::Registered)
+        );
+
+        // One stamped event restores Declared (R-13 boundary).
+        reg.apply_stamp("s1", "vnc-030");
+        assert_eq!(
+            reg.get_state("s1").unwrap().feature_source,
+            FeatureSource::Declared
+        );
+    }
+
+    // §Inversion fix 1 — sweep (R-04, FR-16)
+
+    #[test]
+    fn test_sweep_declared_beats_contradicting_vote() {
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.set_feature_force("s1", "vnc-030"); // Declared
+        // Contradicting majority vote for a different topic.
+        seed_stale_with_vote(&reg, "s1", "crt-052", 5);
+
+        let (results, _purges) = reg.sweep_stale_sessions();
+        assert_eq!(results.len(), 1);
+        // Declared wins — the inversion is fixed.
+        assert_eq!(results[0].resolved_feature, Some("vnc-030".to_string()));
+    }
+
+    #[test]
+    fn test_sweep_inferred_session_uses_vote_then_registry() {
+        let reg = make_registry();
+        // Registered feature (Inferred) — must NOT beat the vote (floor preserved).
+        reg.register_session("s1", None, Some("col-017".to_string()));
+        seed_stale_with_vote(&reg, "s1", "crt-052", 5);
+
+        let (results, _purges) = reg.sweep_stale_sessions();
+        assert_eq!(results.len(), 1);
+        // Vote wins for a non-Declared session (today's order, NULL-gated).
+        assert_eq!(results[0].resolved_feature, Some("crt-052".to_string()));
+    }
+
+    #[test]
+    fn test_sweep_inferred_no_vote_falls_back_to_registry() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("col-017".to_string()));
+        // No topic signals → vote None → or_else registry feature (unchanged path).
+        {
+            let mut sessions = reg.sessions.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(state) = sessions.get_mut("s1") {
+                let stale_time = now_secs().saturating_sub(STALE_SESSION_THRESHOLD_SECS + 1);
+                state.last_activity_at = stale_time;
+                state.injection_history.push(InjectionRecord {
+                    entry_id: 10,
+                    confidence: 0.9,
+                    timestamp: stale_time,
+                });
+            }
+        }
+        let (results, _purges) = reg.sweep_stale_sessions();
+        assert_eq!(results[0].resolved_feature, Some("col-017".to_string()));
+    }
+
+    #[test]
+    fn test_sweep_returns_resolved_feature_for_crt052_interface() {
+        // ADR-007 §2 citable interface: resolved_feature == declared feature
+        // whenever feature_source == Declared && feature.is_some().
+        let reg = make_registry();
+        reg.register_session("s1", None, None);
+        reg.apply_stamp("s1", "vnc-030"); // Declared via stamp
+        seed_stale_with_vote(&reg, "s1", "crt-052", 9);
+
+        let (results, _purges) = reg.sweep_stale_sessions();
+        assert_eq!(results[0].resolved_feature, Some("vnc-030".to_string()));
+    }
+
+    // §Re-register accepted-consequence boundary (R-13)
+
+    #[test]
+    fn test_reregister_then_sweep_before_stamp_degrades_then_restores() {
+        let reg = make_registry();
+        // Declare, then re-register (resume/compact) with NO intervening stamp.
+        reg.register_session("s1", None, None);
+        reg.set_feature_force("s1", "vnc-030"); // Declared
+        reg.register_session("s1", None, Some("vnc-030".to_string())); // reset to Inferred
+        seed_stale_with_vote(&reg, "s1", "crt-052", 5);
+
+        // Accepted consequence: degrades to the floor (vote wins) for the gap.
+        let (results, _purges) = reg.sweep_stale_sessions();
+        assert_eq!(results[0].resolved_feature, Some("crt-052".to_string()));
+
+        // Now: re-register → one stamped event restores Declared → declared wins.
+        reg.register_session("s2", None, Some("vnc-030".to_string()));
+        reg.apply_stamp("s2", "vnc-030");
+        seed_stale_with_vote(&reg, "s2", "crt-052", 5);
+        let (results2, _purges2) = reg.sweep_stale_sessions();
+        assert_eq!(results2[0].resolved_feature, Some("vnc-030".to_string()));
     }
 }
