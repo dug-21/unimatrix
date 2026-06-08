@@ -153,6 +153,7 @@ fn apply_subagent_fallback(
                 feature: None,
                 k: None,
                 max_tokens: None,
+                accept: None, // vnc-027 ADR-001 §6: Rust hook never sends accept
             },
             None => request,
         }

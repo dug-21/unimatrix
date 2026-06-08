@@ -150,6 +150,13 @@ pub enum HookRequest {
         /// in `hook.rs`. See ADR-001 crt-027.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         source: Option<String>,
+        /// HTTP-`Accept` mirror for server-side preformatted sync responses (vnc-027
+        /// ADR-001 §1). Set ONLY by `transport-uds.js` at serialization time, value
+        /// `Some("text/plain")`. `hook.rs` construction sites pass `None` (mechanical
+        /// edit, approved variance). `skip_serializing_if` keeps `None` absent on the
+        /// wire, so frozen-hook frames stay byte-identical (AC-11).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        accept: Option<String>,
     },
 
     /// Request a role briefing (future).
@@ -178,6 +185,13 @@ pub enum HookRequest {
         /// transcript data for server-side restoration. See ADR-005 vnc-022.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         transcript_excerpt: Option<String>,
+        /// HTTP-`Accept` mirror for server-side preformatted sync responses (vnc-027
+        /// ADR-001 §1). Set ONLY by `transport-uds.js` at serialization time, value
+        /// `Some("text/plain")`. `hook.rs` construction sites pass `None` (mechanical
+        /// edit, approved variance). `skip_serializing_if` keeps `None` absent on the
+        /// wire, so frozen-hook frames stay byte-identical (AC-11).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        accept: Option<String>,
     },
 }
 
@@ -208,6 +222,18 @@ pub enum HookResponse {
 
     /// Briefing content (compaction defense or role briefing).
     BriefingContent { content: String, token_count: u32 },
+
+    /// Server-side preformatted injection text for UDS sync callers that sent
+    /// `accept` (vnc-027 ADR-001 §3). `body` is the exact bytes the HTTP text/plain
+    /// path would return: an `Entries` result formats to
+    /// `format_injection(items, MAX_INJECTION_BYTES)` output INCLUDING the
+    /// load-bearing `--- Unimatrix Context ---\n` header; a `BriefingContent`
+    /// result is `content` verbatim (no header). Returned ONLY to callers that sent
+    /// `accept` — the frozen Rust hook never does, so it never receives `Text` and
+    /// never fails to deserialize (ADR-001 §6 coupling, R-08). Additive: existing
+    /// variants are unchanged and there is no `deny_unknown_fields`, so old
+    /// serialized responses still deserialize.
+    Text { body: String },
 }
 
 // -- ImplantEvent --
@@ -1051,6 +1077,7 @@ mod tests {
             k: Some(5),
             max_tokens: None,
             source: None,
+            accept: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1084,6 +1111,7 @@ mod tests {
             k: None,
             max_tokens: None,
             source: None,
+            accept: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1119,6 +1147,7 @@ mod tests {
             feature: None,
             token_limit: Some(500),
             transcript_excerpt: None,
+            accept: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1130,6 +1159,7 @@ mod tests {
                 feature,
                 token_limit,
                 transcript_excerpt,
+                accept: _,
             } => {
                 assert_eq!(session_id, "s1");
                 assert_eq!(injected_entry_ids, vec![1, 2, 3]);
@@ -1151,6 +1181,7 @@ mod tests {
             feature: None,
             token_limit: None,
             transcript_excerpt: None,
+            accept: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1176,6 +1207,7 @@ mod tests {
             feature: Some("vnc-022".to_string()),
             token_limit: Some(1000),
             transcript_excerpt: Some("excerpt text".to_string()),
+            accept: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1187,6 +1219,7 @@ mod tests {
                 feature,
                 token_limit,
                 transcript_excerpt,
+                accept: _,
             } => {
                 assert_eq!(session_id, "s1");
                 assert_eq!(injected_entry_ids, vec![1, 2]);
@@ -1227,6 +1260,7 @@ mod tests {
             feature: None,
             token_limit: None,
             transcript_excerpt: None,
+            accept: None,
         };
         let json = serde_json::to_string(&req).unwrap();
         assert!(
@@ -1446,6 +1480,7 @@ mod tests {
             k: None,
             max_tokens: None,
             source: None,
+            accept: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
@@ -1467,6 +1502,7 @@ mod tests {
             k: None,
             max_tokens: None,
             source: None,
+            accept: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1490,6 +1526,7 @@ mod tests {
             k: None,
             max_tokens: None,
             source: Some("SubagentStart".to_string()),
+            accept: None,
         };
         let bytes = serialize_request(&req).unwrap();
         let decoded = deserialize_request(&bytes).unwrap();
@@ -1789,6 +1826,7 @@ mod tests {
                     k: Some(5),
                     max_tokens: Some(1500),
                     source: Some("SubagentStart".to_string()),
+                    accept: None,
                 },
             ),
             (
@@ -1803,6 +1841,7 @@ mod tests {
                     k: Some(5),
                     max_tokens: Some(1500),
                     source: None,
+                    accept: None,
                 },
             ),
             (
@@ -1824,6 +1863,7 @@ mod tests {
                     feature: Some("vnc-024".to_string()),
                     token_limit: Some(1000),
                     transcript_excerpt: Some("prior excerpt text".to_string()),
+                    accept: None,
                 },
             ),
             (
@@ -1836,6 +1876,7 @@ mod tests {
                     feature: Some("vnc-024".to_string()),
                     token_limit: Some(1000),
                     transcript_excerpt: None,
+                    accept: None,
                 },
             ),
         ]
@@ -2024,6 +2065,7 @@ mod tests {
             k: None,
             max_tokens: None,
             source: None,
+            accept: None,
         };
         let cs_val = serde_json::to_value(&cs_none).unwrap();
         assert!(
@@ -2053,6 +2095,7 @@ mod tests {
             feature: None,
             token_limit: None,
             transcript_excerpt: None,
+            accept: None,
         };
         let cp_val = serde_json::to_value(&cp_none).unwrap();
         assert!(
@@ -2148,6 +2191,237 @@ mod tests {
                 .and_then(|v| v.get("tool_name"))
                 .and_then(|v| v.as_str()),
             Some("context_cycle")
+        );
+    }
+
+    // -- vnc-027 wire-accept-text: additive `accept` field + `HookResponse::Text` (ADR-001) --
+
+    #[test]
+    fn test_context_search_without_accept_serializes_byte_unchanged() {
+        // R-07 / AC-11: accept: None must produce the exact pre-feature bytes (no `accept`
+        // key present). `skip_serializing_if = "Option::is_none"` is the byte authority.
+        let req = HookRequest::ContextSearch {
+            query: "frozen frame".to_string(),
+            session_id: Some("sess-1".to_string()),
+            role: Some("developer".to_string()),
+            task: None,
+            feature: None,
+            k: Some(5),
+            max_tokens: None,
+            source: None,
+            accept: None,
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let json = String::from_utf8(bytes).unwrap();
+        assert!(
+            !json.contains("accept"),
+            "accept: None must omit the key from serialized JSON; got: {json}"
+        );
+        // The exact pre-feature byte string for these field values.
+        assert_eq!(
+            json,
+            r#"{"type":"ContextSearch","query":"frozen frame","session_id":"sess-1","role":"developer","task":null,"feature":null,"k":5,"max_tokens":null}"#
+        );
+    }
+
+    #[test]
+    fn test_compact_payload_without_accept_serializes_byte_unchanged() {
+        // R-07 / AC-11: same skip_serializing_if proof for CompactPayload.
+        let req = HookRequest::CompactPayload {
+            session_id: "s1".to_string(),
+            injected_entry_ids: vec![1, 2],
+            role: Some("developer".to_string()),
+            feature: None,
+            token_limit: Some(500),
+            transcript_excerpt: None,
+            accept: None,
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let json = String::from_utf8(bytes).unwrap();
+        assert!(
+            !json.contains("accept"),
+            "accept: None must omit the key from serialized JSON; got: {json}"
+        );
+        assert_eq!(
+            json,
+            r#"{"type":"CompactPayload","session_id":"s1","injected_entry_ids":[1,2],"role":"developer","feature":null,"token_limit":500}"#
+        );
+    }
+
+    #[test]
+    fn test_context_search_with_accept_text_plain_roundtrips() {
+        // accept: Some("text/plain") serializes WITH the key and deserializes back equal.
+        let req = HookRequest::ContextSearch {
+            query: "q".to_string(),
+            session_id: None,
+            role: None,
+            task: None,
+            feature: None,
+            k: None,
+            max_tokens: None,
+            source: None,
+            accept: Some("text/plain".to_string()),
+        };
+        let bytes = serialize_request(&req).unwrap();
+        let json = String::from_utf8(bytes.clone()).unwrap();
+        assert!(
+            json.contains(r#""accept":"text/plain""#),
+            "accept: Some must emit the key; got: {json}"
+        );
+        match deserialize_request(&bytes).unwrap() {
+            HookRequest::ContextSearch { accept, .. } => {
+                assert_eq!(accept.as_deref(), Some("text/plain"));
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn test_compact_payload_with_accept_text_plain_roundtrips() {
+        let req = HookRequest::CompactPayload {
+            session_id: "s1".to_string(),
+            injected_entry_ids: vec![],
+            role: None,
+            feature: None,
+            token_limit: None,
+            transcript_excerpt: None,
+            accept: Some("text/plain".to_string()),
+        };
+        let bytes = serialize_request(&req).unwrap();
+        match deserialize_request(&bytes).unwrap() {
+            HookRequest::CompactPayload { accept, .. } => {
+                assert_eq!(accept.as_deref(), Some("text/plain"));
+            }
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    #[test]
+    fn test_accept_default_on_missing_field() {
+        // A JSON body with no `accept` key deserializes to accept: None (serde default),
+        // proving old-client frames still parse on both injection-bearing variants.
+        let cs = br#"{"type":"ContextSearch","query":"old client"}"#;
+        match deserialize_request(cs).unwrap() {
+            HookRequest::ContextSearch { accept, .. } => assert!(accept.is_none()),
+            _ => panic!("expected ContextSearch"),
+        }
+        let cp = br#"{"type":"CompactPayload","session_id":"s1","injected_entry_ids":[]}"#;
+        match deserialize_request(cp).unwrap() {
+            HookRequest::CompactPayload { accept, .. } => assert!(accept.is_none()),
+            _ => panic!("expected CompactPayload"),
+        }
+    }
+
+    #[test]
+    fn test_no_deny_unknown_fields() {
+        // A frame with an unrecognized extra key still deserializes (no deny_unknown_fields).
+        let json = br#"{"type":"ContextSearch","query":"q","accept":"text/plain","future_field":42}"#;
+        match deserialize_request(json).unwrap() {
+            HookRequest::ContextSearch { query, accept, .. } => {
+                assert_eq!(query, "q");
+                assert_eq!(accept.as_deref(), Some("text/plain"));
+            }
+            _ => panic!("expected ContextSearch"),
+        }
+    }
+
+    #[test]
+    fn test_response_text_variant_roundtrips() {
+        // HookResponse::Text serializes with "type":"Text" and roundtrips; body bytes
+        // preserved verbatim including the load-bearing header prefix and multibyte content.
+        let body = "--- Unimatrix Context ---\n• café ☕ entry\n".to_string();
+        let resp = HookResponse::Text { body: body.clone() };
+        let bytes = serialize_response(&resp).unwrap();
+        let json = String::from_utf8(bytes.clone()).unwrap();
+        assert!(
+            json.contains(r#""type":"Text""#),
+            "Text variant must carry the type tag; got: {json}"
+        );
+        match deserialize_response(&bytes).unwrap() {
+            HookResponse::Text { body: decoded } => assert_eq!(decoded, body),
+            _ => panic!("expected Text"),
+        }
+    }
+
+    #[test]
+    fn test_response_text_variant_empty_body() {
+        // Empty body is structurally valid at the wire layer (listener returns Ack for the
+        // empty-injection case, per ADR-001 §4 — enforced at the listener, not here).
+        let resp = HookResponse::Text {
+            body: String::new(),
+        };
+        let bytes = serialize_response(&resp).unwrap();
+        match deserialize_response(&bytes).unwrap() {
+            HookResponse::Text { body } => assert!(body.is_empty()),
+            _ => panic!("expected Text"),
+        }
+    }
+
+    #[test]
+    fn test_older_response_json_without_text_still_deserializes() {
+        // Additive proof: pre-feature HookResponse JSON (no Text variant) still parses.
+        let json = br#"{"type":"BriefingContent","content":"c","token_count":3}"#;
+        assert!(matches!(
+            deserialize_response(json).unwrap(),
+            HookResponse::BriefingContent { .. }
+        ));
+    }
+
+    #[test]
+    fn test_ping_briefing_have_no_accept_field() {
+        // ADR-001 §1: accept is NOT added to Ping or Briefing (Pong stays JSON).
+        let ping = serde_json::to_string(&HookRequest::Ping).unwrap();
+        assert!(!ping.contains("accept"), "Ping must have no accept: {ping}");
+        let briefing = serde_json::to_string(&HookRequest::Briefing {
+            role: "developer".to_string(),
+            task: "t".to_string(),
+            feature: None,
+            max_tokens: None,
+        })
+        .unwrap();
+        assert!(
+            !briefing.contains("accept"),
+            "Briefing must have no accept: {briefing}"
+        );
+    }
+
+    #[test]
+    fn test_existing_response_variants_unchanged() {
+        // Adding Text must not reorder/retag existing variants — each serializes byte-unchanged.
+        assert_eq!(
+            serde_json::to_string(&HookResponse::Ack).unwrap(),
+            r#"{"type":"Ack"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&HookResponse::Pong {
+                server_version: "0.1.0".to_string()
+            })
+            .unwrap(),
+            r#"{"type":"Pong","server_version":"0.1.0"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&HookResponse::Error {
+                code: -32005,
+                message: "x".to_string()
+            })
+            .unwrap(),
+            r#"{"type":"Error","code":-32005,"message":"x"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&HookResponse::BriefingContent {
+                content: "c".to_string(),
+                token_count: 3
+            })
+            .unwrap(),
+            r#"{"type":"BriefingContent","content":"c","token_count":3}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&HookResponse::Entries {
+                items: vec![],
+                total_tokens: 0
+            })
+            .unwrap(),
+            r#"{"type":"Entries","items":[],"total_tokens":0}"#
         );
     }
 }

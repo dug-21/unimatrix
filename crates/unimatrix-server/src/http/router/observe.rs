@@ -56,8 +56,12 @@ pub(crate) fn observe_response_to_http(
             )
             .expect("static response builder cannot fail"),
 
+        // `Text` is a UDS-only variant (vnc-027 ADR-001 §3): it is constructed in the
+        // listener post-dispatch, never returned by the HTTP dispatch path. Handled here
+        // only to keep the match exhaustive; falls into the JSON envelope harmlessly.
         HookResponse::Entries { .. }
         | HookResponse::BriefingContent { .. }
+        | HookResponse::Text { .. }
         | HookResponse::Pong { .. } => match serde_json::to_vec(&resp) {
             Ok(body) => Response::builder()
                 .status(StatusCode::OK)
