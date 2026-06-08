@@ -6,4 +6,4 @@ import type { EntryPayload } from "./EntryPayload";
  *
  * Uses `#[serde(tag = "type")]` for JSON routing per ADR-005.
  */
-export type HookResponse = { "type": "Pong", server_version: string, } | { "type": "Ack" } | { "type": "Error", code: number, message: string, } | { "type": "Entries", items: Array<EntryPayload>, total_tokens: number, } | { "type": "BriefingContent", content: string, token_count: number, };
+export type HookResponse = { "type": "Pong", server_version: string, } | { "type": "Ack" } | { "type": "Error", code: number, message: string, } | { "type": "Entries", items: Array<EntryPayload>, total_tokens: number, } | { "type": "BriefingContent", content: string, token_count: number, } | { "type": "Text", body: string, };

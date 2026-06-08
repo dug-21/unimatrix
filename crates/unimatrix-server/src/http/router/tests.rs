@@ -821,6 +821,7 @@ fn test_prefix_session_id_context_search_some() {
         k: None,
         max_tokens: None,
         source: None,
+        accept: None,
     };
     prefix_session_id(&mut req);
     if let HookRequest::ContextSearch { session_id, .. } = &req {
@@ -842,6 +843,7 @@ fn test_prefix_session_id_context_search_none() {
         k: None,
         max_tokens: None,
         source: None,
+        accept: None,
     };
     prefix_session_id(&mut req);
     if let HookRequest::ContextSearch { session_id, .. } = &req {
@@ -861,6 +863,7 @@ fn test_prefix_session_id_compact_payload() {
         feature: None,
         token_limit: None,
         transcript_excerpt: None,
+        accept: None,
     };
     prefix_session_id(&mut req);
     if let HookRequest::CompactPayload { session_id, .. } = &req {

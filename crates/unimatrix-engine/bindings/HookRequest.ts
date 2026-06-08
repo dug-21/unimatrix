@@ -43,7 +43,15 @@ provider?: string | null, } | { "type": "RecordEvents", events: Array<ImplantEve
  * `dispatch_request`. Set to `Some("SubagentStart")` by the SubagentStart arm
  * in `hook.rs`. See ADR-001 crt-027.
  */
-source?: string | null, } | { "type": "Briefing", role: string, task: string, feature: string | null, max_tokens: number | null, } | { "type": "CompactPayload", session_id: string, 
+source?: string | null, 
+/**
+ * HTTP-`Accept` mirror for server-side preformatted sync responses (vnc-027
+ * ADR-001 §1). Set ONLY by `transport-uds.js` at serialization time, value
+ * `Some("text/plain")`. `hook.rs` construction sites pass `None` (mechanical
+ * edit, approved variance). `skip_serializing_if` keeps `None` absent on the
+ * wire, so frozen-hook frames stay byte-identical (AC-11).
+ */
+accept?: string | null, } | { "type": "Briefing", role: string, task: string, feature: string | null, max_tokens: number | null, } | { "type": "CompactPayload", session_id: string, 
 /**
  * Reserved for col-010: once INJECTION_LOG persists to the database, the hook
  * process can populate this from disk after a server restart, giving
@@ -57,4 +65,12 @@ injected_entry_ids: Array<bigint>, role: string | null, feature: string | null, 
  * Future clients (or hook-remote CLI) can populate this field to send
  * transcript data for server-side restoration. See ADR-005 vnc-022.
  */
-transcript_excerpt?: string | null, };
+transcript_excerpt?: string | null, 
+/**
+ * HTTP-`Accept` mirror for server-side preformatted sync responses (vnc-027
+ * ADR-001 §1). Set ONLY by `transport-uds.js` at serialization time, value
+ * `Some("text/plain")`. `hook.rs` construction sites pass `None` (mechanical
+ * edit, approved variance). `skip_serializing_if` keeps `None` absent on the
+ * wire, so frozen-hook frames stay byte-identical (AC-11).
+ */
+accept?: string | null, };

@@ -215,6 +215,7 @@ pub fn run(
                 feature: None,
                 k: None,
                 max_tokens: None,
+                accept: None, // vnc-027 ADR-001 §6: Rust hook never sends accept
             },
             None => request,
         }
@@ -508,6 +509,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                 feature: None,
                 k: None,
                 max_tokens: None,
+                accept: None, // vnc-027 ADR-001 §6: Rust hook never sends accept
             }
         }
 
@@ -518,6 +520,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
             feature: None,
             token_limit: None,
             transcript_excerpt: None, // ADR-005 vnc-022: forward compat for #670
+            accept: None,             // vnc-027 ADR-001 §6: Rust hook never sends accept
         },
 
         // col-009: Intercept PostToolUse for rework tracking
@@ -719,6 +722,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                 feature: None,
                 k: None,
                 max_tokens: None,
+                accept: None, // vnc-027 ADR-001 §6: Rust hook never sends accept
             }
         }
 
@@ -1257,6 +1261,7 @@ mod tests {
             k: None,
             max_tokens: None,
             source: None,
+            accept: None,
         };
         let is_faf = matches!(
             req,
@@ -1283,6 +1288,7 @@ mod tests {
                 feature,
                 token_limit,
                 transcript_excerpt,
+                accept: _,
             } => {
                 assert_eq!(session_id, "sess-1");
                 assert!(injected_entry_ids.is_empty());
@@ -1316,6 +1322,7 @@ mod tests {
             feature: None,
             token_limit: None,
             transcript_excerpt: None,
+            accept: None,
         };
         let is_faf = matches!(
             req,
@@ -3273,6 +3280,7 @@ mod tests {
                 feature,
                 k,
                 max_tokens,
+                accept: _,
             } => {
                 assert_eq!(query, "implement the spec writer agent");
                 assert_eq!(source, Some("SubagentStart".to_string()));

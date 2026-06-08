@@ -96,6 +96,7 @@ pub(crate) async fn dispatch_compact(
             feature: None,
             token_limit: None,
             transcript_excerpt: None,
+            accept: None,
         },
         registry,
     )
