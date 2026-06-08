@@ -5689,7 +5689,9 @@ mod tests {
         server
             .session_registry
             .register_session(SID, None, Some(CYCLE.to_string()));
-        server.session_registry.apply_transcript_delta(SID, 0, PAYLOAD);
+        server
+            .session_registry
+            .apply_transcript_delta(SID, 0, PAYLOAD);
 
         // Same report-construction replay as the AC-09 purge test, but the
         // render is asked for an unknown format — the handler's `result` is Err.
