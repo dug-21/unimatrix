@@ -54,3 +54,31 @@ env override beating a present file; partial env pair.
 - Storing the token in a Claude-Code-owned file means Claude Code rewrites of
   settings.local.json could theoretically drop unknown keys — mitigated by init's
   re-run idempotency (re-add) and the env-var escape hatch.
+
+### Amendment (2026-06-08 — vnc-026 retro, human-approved)
+
+The Decision above claimed Rust-hook parity while specifying a gitdir-blind root walk
+(the `init.js` `detectProjectRoot` port) and never mentioning git worktrees. The Rust
+hook's `project.rs` chases the `.git`-FILE worktree pointer; the walk as written did
+not — this silence was the root cause of vnc-026 rework item 4 (the gates had nothing
+to check against; lessons #4785/#4791). Two binding corrections:
+
+**(a) Root resolution MUST port `project.rs::resolve_git_file`.** When the walk finds
+`.git` and it is a FILE (worktree marker), parse the `gitdir:` pointer line (a relative
+path resolves against the containing dir), realpath the target, walk UP to the
+`.git`-DIRECTORY ancestor, and return its parent (realpath'd) — the MAIN repo root.
+Non-throwing fallback on ANY failure (unreadable file, no `gitdir:` line, dangling
+target, no `.git`-dir ancestor): realpath of the containing dir. All return paths are
+realpath-canonicalized per `project.rs` return-path semantics (`.canonicalize()`), so
+every worktree shares ONE state hash and ONE settings.local.json. Shipped as
+`resolveGitFile` in `packages/unimatrix/lib/hook-client/config.js` (commit b2e215fd;
+agent-26/agent-27 reports). `project.rs` is the verified oracle for this port.
+
+**(b) The resolved `projectRoot` has exactly TWO consumers, both enumerated here:**
+1. the state-dir project hash (ADR-003), and
+2. the `{root}/.claude/settings.local.json` config anchor (this ADR).
+
+Any future proposal to change root resolution for one consumer MUST address every
+enumerated consumer explicitly — a divergence accepted for one silently splits config
+identity from state identity (lesson #4785: enumerate ALL consumers; lesson #4791:
+divergences accepted below the ADR level are invisible to gates).

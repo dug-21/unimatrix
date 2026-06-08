@@ -95,3 +95,13 @@ Rejected alternatives:
   updated by their owners.
 - Cross-references: ADR-004 (offset advance), ADR-007 (carrier), vnc-025 ADR-002
   (server buffer representation, metadata-only elision).
+
+### Amendment (2026-06-08 — vnc-026 retro, human-approved)
+
+Wording correction to match shipped behavior (Gate 3a WARN A resolution): elided frames
+anchor at `effectiveEnd`, not the literal `file_len`. `effectiveEnd` = `file_len` backed
+off ≤3 bytes when the file ends mid-UTF-8 character; for well-formed JSONL it equals
+`file_len`. Declared `offset = effectiveEnd − bytes.length`; the frame ends exactly at
+`effectiveEnd`. Implemented and tested in `packages/unimatrix/lib/hook-client/delta.js`.
+All four pinned server-state assertions (a–d) hold against `effectiveEnd` in place of
+`file_len`.

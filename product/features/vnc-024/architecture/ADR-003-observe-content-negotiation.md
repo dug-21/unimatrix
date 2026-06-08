@@ -47,3 +47,20 @@ contract: adding a future text-eligible response requires revisiting this ADR.
 
 Cross-references: vnc-022 (#669) `observe_response_to_http` / `prefix_session_id`; ADR-004 (the
 `transcript_delta` guard shares the same dispatch path but is a fire-and-forget `Ack`, never text).
+
+### Amendment (2026-06-08 — vnc-026 retro, human-approved)
+
+The `--- Unimatrix Context ---\n` header that `format_injection` unconditionally prepends
+to every `Entries` body (`crates/unimatrix-server/src/uds/hook.rs:1040`; served on the
+HTTP text path via `observe_response_to_http`) is now a **load-bearing wire contract**,
+not an incidental formatting detail. The shipped TS hook client (`transform.js`,
+`INJECTION_HEADER`) dispatches envelope-vs-plain on exactly this prefix for SubagentStart
+responses — it is the mandatory `Entries` discriminator on the text/plain surface.
+
+Binding consequences:
+- The server MUST NOT remove or alter the prefix on any `Entries` text/plain body.
+- Any future change to the header requires a coordinated client (`transform.js`) +
+  Layer-1-golden update — never a server-only change.
+
+Provenance: lesson #4783 (`caused_by_feature:vnc-024` — header-keyed dispatch is
+contract-keyed, not a forbidden heuristic), vnc-026 retro.
