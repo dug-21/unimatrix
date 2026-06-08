@@ -14,6 +14,9 @@
 
 const http = require("http");
 const net = require("net");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 
 /**
  * Start a scriptable HTTP stub server on an ephemeral port.
@@ -144,4 +147,200 @@ function refusedPort() {
   });
 }
 
-module.exports = { startStubServer, startSilentTcpServer, refusedPort };
+/** Frame a JSON-serializable object as wire.rs does: 4-byte BE u32 len + JSON. */
+function frameResponse(obj) {
+  const json = Buffer.from(JSON.stringify(obj), "utf8");
+  const header = Buffer.alloc(4);
+  header.writeUInt32BE(json.length, 0);
+  return Buffer.concat([header, json]);
+}
+
+/**
+ * Start a scriptable Unix-domain-socket stub listener (mirrors the daemon's
+ * one-frame-per-connection contract). Reads the client's framed request, then
+ * the scripted responder decides how to reply.
+ *
+ * Responder is (requestBody:Buffer) => spec, where spec is one of:
+ *   { frame: object }          — reply with a framed HookResponse, then end
+ *   { raw: Buffer, chunkSize } — write raw bytes (optionally in chunkSize pieces)
+ *   { silent: true }           — accept, read, never reply (deadline tests)
+ *   { endEarly: true }         — close before sending a complete frame
+ *   undefined / {}             — accept and end (FNF: no reply at all)
+ *
+ * @returns {Promise<object>} { socketPath, requests, respondWith, close }
+ */
+function startUdsStubServer() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uds-stub-"));
+  const socketPath = path.join(dir, "stub.sock");
+  const requests = [];
+  let responder = () => ({});
+  const sockets = new Set();
+
+  // allowHalfOpen mirrors the daemon: the client half-closes (write FIN) after
+  // sending its frame; the stub must keep its write side open to reply.
+  const server = net.createServer({ allowHalfOpen: true }, (s) => {
+    sockets.add(s);
+    s.on("error", () => {});
+    s.on("close", () => sockets.delete(s));
+    const chunks = [];
+    let received = 0;
+    let declaredLen = null;
+    const onData = (chunk) => {
+      chunks.push(chunk);
+      received += chunk.length;
+      if (declaredLen === null && received >= 4) {
+        declaredLen = Buffer.concat(chunks).readUInt32BE(0);
+      }
+      if (declaredLen !== null && received >= 4 + declaredLen) {
+        s.removeListener("data", onData);
+        const body = Buffer.concat(chunks).subarray(4, 4 + declaredLen);
+        requests.push(body);
+        reply(s, responder(body) || {});
+      }
+    };
+    s.on("data", onData);
+  });
+
+  function reply(s, spec) {
+    if (spec.silent) return; // hold the connection open, send nothing
+    if (spec.endEarly) {
+      try {
+        s.end();
+      } catch (_err) {
+        // already closed
+      }
+      return;
+    }
+    let out = null;
+    if (spec.frame !== undefined) out = frameResponse(spec.frame);
+    else if (spec.raw !== undefined) out = spec.raw;
+    if (out === null) {
+      try {
+        s.end(); // FNF: nothing to send
+      } catch (_err) {
+        // already closed
+      }
+      return;
+    }
+    if (spec.noEnd) {
+      // Write partial bytes and hold the connection open (deadline / partial-read tests).
+      try {
+        s.write(out);
+      } catch (_err) {
+        // closed
+      }
+      return;
+    }
+    const chunkSize = spec.chunkSize;
+    if (chunkSize && chunkSize > 0) {
+      let i = 0;
+      const writeNext = () => {
+        if (i >= out.length) {
+          try {
+            s.end();
+          } catch (_err) {
+            // closed
+          }
+          return;
+        }
+        const slice = out.subarray(i, Math.min(i + chunkSize, out.length));
+        i += chunkSize;
+        try {
+          s.write(slice);
+        } catch (_err) {
+          return;
+        }
+        setImmediate(writeNext); // separate 'data' events, well under the 40 ms budget
+      };
+      writeNext();
+    } else {
+      try {
+        s.end(out);
+      } catch (_err) {
+        // closed
+      }
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(socketPath, () => {
+      resolve({
+        socketPath,
+        requests,
+        respondWith(specOrFn) {
+          responder = typeof specOrFn === "function" ? specOrFn : () => specOrFn;
+        },
+        close() {
+          for (const s of sockets) s.destroy();
+          return new Promise((res2) =>
+            server.close(() => {
+              try {
+                fs.rmSync(dir, { recursive: true, force: true });
+              } catch (_err) {
+                // best-effort cleanup
+              }
+              res2();
+            })
+          );
+        },
+      });
+    });
+  });
+}
+
+/** A socket path under a temp dir that has NO listener (ENOENT on connect). */
+function absentSocketPath() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uds-absent-"));
+  return path.join(dir, "nope.sock");
+}
+
+/**
+ * Start a UDS listener that ACCEPTS connections but never reads — the kernel
+ * receive buffer fills, so a large client write never flushes ('finish' never
+ * fires) and any sync read never returns. Used for flush-timeout / deadline tests.
+ *
+ * @returns {Promise<object>} { socketPath, close }
+ */
+function startUdsBlackholeServer() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "uds-blackhole-"));
+  const socketPath = path.join(dir, "blackhole.sock");
+  const sockets = new Set();
+  const server = net.createServer({ allowHalfOpen: true }, (s) => {
+    sockets.add(s);
+    s.on("error", () => {});
+    s.on("close", () => sockets.delete(s));
+    s.pause(); // stop draining the kernel receive buffer
+  });
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(socketPath, () => {
+      resolve({
+        socketPath,
+        close() {
+          for (const s of sockets) s.destroy();
+          return new Promise((res2) =>
+            server.close(() => {
+              try {
+                fs.rmSync(dir, { recursive: true, force: true });
+              } catch (_err) {
+                // best-effort
+              }
+              res2();
+            })
+          );
+        },
+      });
+    });
+  });
+}
+
+module.exports = {
+  startStubServer,
+  startSilentTcpServer,
+  refusedPort,
+  startUdsStubServer,
+  startUdsBlackholeServer,
+  absentSocketPath,
+  frameResponse,
+};
