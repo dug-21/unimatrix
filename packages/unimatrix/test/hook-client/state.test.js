@@ -160,7 +160,7 @@ describe("state breadcrumb (ADR-005, R-10)", function () {
       assert.strictEqual(h.url_host, "unimatrix.example.com:8443");
       assert.deepStrictEqual(
         Object.keys(h).sort(),
-        ["consecutive_failures", "failure_class", "last_failure", "last_success", "queue_depth", "url_host"]
+        ["consecutive_failures", "failure_class", "last_failure", "last_success", "queue_depth", "stamp_miss", "url_host"]
       );
     }
   });
@@ -204,6 +204,7 @@ describe("state breadcrumb (ADR-005, R-10)", function () {
       consecutive_failures: 0,
       queue_depth: 0,
       url_host: "",
+      stamp_miss: 0,
     });
     // Mistyped fields degrade field-by-field.
     fs.writeFileSync(

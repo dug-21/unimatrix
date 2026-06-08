@@ -183,6 +183,7 @@ function defaultBreadcrumb() {
     consecutive_failures: 0,
     queue_depth: 0,
     url_host: "",
+    stamp_miss: 0, // ADR-006 rev2 — zero-tolerance inheritance-drift counter
   };
 }
 
@@ -211,6 +212,10 @@ function readBreadcrumb(stateDir) {
         ? parsed.queue_depth
         : 0,
     url_host: typeof parsed.url_host === "string" ? parsed.url_host : "",
+    stamp_miss:
+      Number.isSafeInteger(parsed.stamp_miss) && parsed.stamp_miss >= 0
+        ? parsed.stamp_miss
+        : 0,
   };
 }
 
@@ -245,6 +250,7 @@ function recordSendOutcomes(stateDir, urlHost, results, queueDepth) {
     queue_depth:
       Number.isSafeInteger(queueDepth) && queueDepth >= 0 ? queueDepth : 0,
     url_host: typeof urlHost === "string" ? urlHost : prev.url_host,
+    stamp_miss: prev.stamp_miss, // R-19 carry-through: never reset on send
   };
   if (!ensureStateDir(stateDir)) return false;
   return atomicWrite(healthPath(stateDir), JSON.stringify(next));
@@ -267,6 +273,34 @@ function writeBreadcrumb(stateDir, info) {
     consecutive_failures: prev.consecutive_failures + 1,
     queue_depth: prev.queue_depth,
     url_host: prev.url_host || "",
+    stamp_miss: prev.stamp_miss, // R-19 carry-through: never reset on config-miss
+  };
+  if (!ensureStateDir(stateDir)) return false;
+  return atomicWrite(healthPath(stateDir), JSON.stringify(next));
+}
+
+/**
+ * Increment the `stamp_miss` inheritance-drift counter (ADR-006 rev2). Content-
+ * free RMW: takes ONLY `stateDir` (a derived hash path, never user content) — no
+ * topic, no session_id, no path enters this function, so a malicious cycle topic
+ * can never poison the breadcrumb (ADR-006 §1). Touches `stamp_miss` only; every
+ * other field carries its prior value. Never-throw (C-04): degrades to false.
+ *
+ * The counter is a zero-tolerance invariant (`stamp_miss == 0` at test time AND
+ * production) — no threshold, no denominator, no baseline. The increment SITE is
+ * the subagent-gated FNF decoration miss branch in index.js; this is just the RMW.
+ */
+function bumpStampMiss(stateDir) {
+  if (!usable(stateDir)) return false;
+  const prev = readBreadcrumb(stateDir);
+  const next = {
+    last_success: prev.last_success,
+    last_failure: prev.last_failure,
+    failure_class: prev.failure_class,
+    consecutive_failures: prev.consecutive_failures,
+    queue_depth: prev.queue_depth,
+    url_host: prev.url_host || "",
+    stamp_miss: prev.stamp_miss + 1, // the only mutation
   };
   if (!ensureStateDir(stateDir)) return false;
   return atomicWrite(healthPath(stateDir), JSON.stringify(next));
@@ -286,4 +320,5 @@ module.exports = {
   readBreadcrumb,
   recordSendOutcomes,
   writeBreadcrumb,
+  bumpStampMiss,
 };

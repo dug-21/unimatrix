@@ -3383,6 +3383,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let response = dispatch_request(
             HookRequest::RecordEvent { event },
@@ -4841,6 +4842,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -4864,6 +4866,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -4889,6 +4892,7 @@ mod tests {
             }),
             topic_signal: Some("col-019".to_string()),
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -4909,6 +4913,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -4932,6 +4937,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.response_size, None);
@@ -5030,6 +5036,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         // AC-04: hook stored verbatim, not normalized to "PostToolUse"
@@ -5058,6 +5065,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, hook_type::POSTTOOLUSEFAILURE);
@@ -5077,6 +5085,7 @@ mod tests {
             payload: serde_json::json!({"error": "boom"}),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, hook_type::POSTTOOLUSEFAILURE);
@@ -5594,6 +5603,7 @@ mod tests {
             payload,
             topic_signal,
             provider: None,
+            cycle_stamp: None,
         }
     }
 
@@ -8265,6 +8275,7 @@ mod tests {
             payload: serde_json::json!({"tool": "Read", "input": "some file"}),
             topic_signal: None, // no explicit signal — must be enriched from registry
             provider: None,
+            cycle_stamp: None,
         };
 
         let _resp2 = dispatch_request(
@@ -8332,6 +8343,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
 
         let response = dispatch_request(
@@ -8796,6 +8808,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
 
         let response = dispatch_request(
@@ -8845,6 +8858,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
         assert_eq!(obs.hook, "PostToolUse");
@@ -8873,6 +8887,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
 
         let response = dispatch_request(
