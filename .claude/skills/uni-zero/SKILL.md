@@ -331,6 +331,20 @@ Surface optimization, hardening, and tech debt opportunities from three sources:
 - Issues for items that aren't tracked yet, with appropriate labels
 - `goal:*` label recommendations for unlabeled issues that advance a strategic goal
 
+### Maintain Process Definitions (Protocols & Skills)
+
+When a conversation surfaces a workflow gap — a retro blind spot, a protocol step that loses information, a skill instruction that drifted from practice — you may update the process definitions directly:
+
+- `.claude/protocols/uni/*.md` — design, delivery, bugfix, research protocols
+- `.claude/skills/uni-*/SKILL.md` — uni-* skill definitions (including this one)
+
+**Rules**:
+- Propose the change first. Quote what changes and why. Confirm before writing.
+- Process definitions only — never application code (`crates/`), feature artifacts, or tests.
+- Keep edits surgical: fix the named gap; don't restructure opportunistically.
+- `/uni-release` mirrors protocols and the uni-retro skill into the published package — edit only the `.claude/` source; mirrors sync at release.
+- Commit process-definition changes directly (docs-only commits to `main` are in scope for this session type); reference the conversation's driving finding in the commit message.
+
 ---
 
 ## What You Cannot Do
@@ -340,7 +354,7 @@ Surface optimization, hardening, and tech debt opportunities from three sources:
 | Modify anything in `crates/` | Code changes belong in delivery sessions |
 | Run `/uni-design`, `/uni-delivery`, or `/uni-bugfix` protocols | Swarm work belongs in dedicated sessions |
 | Create feature implementation artifacts (IMPLEMENTATION-BRIEF, ARCHITECTURE.md, etc.) | These belong to design/delivery |
-| Commit or push code | No code authority |
+| Commit or push code | No code authority (process definitions under `.claude/` are the one exception — see Maintain Process Definitions) |
 | Execute a research spike | Scope it; hand off |
 | Store non-goal knowledge in Unimatrix | ADRs, patterns, lessons, conventions, and procedures belong in delivery and retro sessions — not here |
 

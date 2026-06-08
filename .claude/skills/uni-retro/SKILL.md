@@ -82,11 +82,13 @@ Gather all evidence about the shipped feature:
 
 4. **Check for rework signals**: Did any gate fail before passing? Read the gate report for what went wrong.
 
-5. **Review the git log** for this feature's branch:
+5. **Review the full PR commit history — including the post-gate rework window**:
    ```bash
-   git log main..HEAD --oneline
+   gh pr view {pr} --json commits --jq '.commits[] | "\(.oid[0:8]) \(.messageHeadline)"'
    ```
-   Look for rework commits (`fix(gate):`) — these indicate where the process struggled.
+   a. Look for rework commits (`fix(gate):`) — these indicate where the process struggled.
+   b. **Post-gate rework window**: identify the last gate-report commit (`review: gate 3b/3c`, `test: risk coverage`). Every commit AFTER it up to merge is rework the gate reports do not cover — typically human-directed fixes done outside the delivery session. Read each one (diff summary + any agent reports it adds under `product/features/{id}/agents/`). These commonly carry the highest-value lessons of the whole cycle.
+   c. **Post-gate decisions**: scan PR comments and GH issue comments dated after the last gate report — human/uni-zero decisions (constraint changes, gate redefinitions, deferrals) recorded there are retro input. Flag any knowledge entry stored mid-delivery that a later decision obsoleted.
 
 6. **Share the interim results**: Provide cleanesed view of the context_cycle_review output with key observations before moving forward.  At a MINIMUM show the ##Phase Narrative and ##Phase Timeline.  Also Highlight a specific section of content retrieved during the cycle... (This reinforces the Unimatrix Value Prop)
 
@@ -116,6 +118,11 @@ RECOMMENDATIONS FROM RETROSPECTIVE:
 
 REWORK SIGNALS:
 {gate failures, rework commits from Phase 1 step 4-5}
+
+POST-GATE REWORK (commits after the last gate report → merge, Phase 1 step 5b-c):
+{For each commit: "- {sha} {headline} — {what it fixed; lesson candidate?}"}
+{For each post-gate decision from PR/issue comments: "- {decision} — {source}"}
+{Mid-delivery knowledge entries obsoleted by post-gate decisions: "- #{id} {title} — {what changed}"}
 ```
 
 Spawn `uni-architect` to review what was built and extract reusable knowledge:
@@ -188,6 +195,12 @@ Agent(uni-architect, "
      C. From baseline outliers:
         - Positive outliers (improvements): note what changed and why — may be a new pattern.
         - Negative outliers (regressions): root-cause and store as lesson if generalizable.
+
+     D. From the post-gate rework window (briefing section POST-GATE REWORK):
+        - Each post-gate commit exists because the gates missed something — root-cause WHY
+          the gates missed it, not just what was fixed. That root cause is the lesson.
+        - For each mid-delivery entry obsoleted by a post-gate decision: correct it via
+          context_correct (or deprecate) NOW — stale guidance is worse than none.
 
   Return:
   1. Patterns: [new entries with IDs, updated entries with IDs, skipped with reason]
