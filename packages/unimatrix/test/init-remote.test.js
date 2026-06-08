@@ -49,6 +49,21 @@ function makeTempProject() {
   return dir;
 }
 
+/**
+ * Write the SubagentStop opt-in key into {root}/.claude/settings.local.json
+ * (vnc-027 ADR-004 §2). Used by tests that assert the full 9-event contract;
+ * SubagentStop is default-off otherwise.
+ */
+function writeSubagentOptIn(projectRoot) {
+  const claudeDir = path.join(projectRoot, ".claude");
+  fs.mkdirSync(claudeDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(claudeDir, "settings.local.json"),
+    JSON.stringify({ unimatrix: { hooks: { subagent_stop: true } } }, null, 2),
+    "utf8"
+  );
+}
+
 function readSettings(projectRoot) {
   const fp = path.join(projectRoot, ".claude", "settings.json");
   return JSON.parse(fs.readFileSync(fp, "utf8"));
@@ -211,6 +226,9 @@ describe("buildHookClientCommand", () => {
 describe("mergeSettings commandSource generalization", () => {
   function tempSettingsPath() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-cs-test-"));
+    // These tests iterate the full HOOK_EVENTS set; opt in to SubagentStop
+    // (vnc-027 ADR-004 §2 default-off otherwise drops it).
+    writeSubagentOptIn(dir);
     return path.join(dir, ".claude", "settings.json");
   }
 
@@ -276,6 +294,7 @@ describe("FR-21 9-event set", () => {
     // Diff of local-mode output vs the pre-change 7-event set is EXACTLY the
     // two new event entries — nothing else changes (SR-07 / C-10 gate).
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-blast-"));
+    writeSubagentOptIn(dir); // assert the full 9-event blast radius (ADR-004 §2)
     const fp = path.join(dir, ".claude", "settings.json");
     const binary = "/abs/path/to/unimatrix";
     const result = mergeSettings(fp, binary, {});
@@ -292,6 +311,7 @@ describe("FR-21 9-event set", () => {
     // Re-run over a PRE-EXISTING 7-event local config: new events added,
     // existing recognized, no duplicates.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-rerun-"));
+    writeSubagentOptIn(dir); // retain the seeded SubagentStop entry (ADR-004 §2)
     const fp = path.join(dir, ".claude", "settings.json");
     const binary = "/abs/path/to/unimatrix";
     const binDir = path.dirname(binary);
@@ -335,6 +355,7 @@ describe("initRemote matrix (AC-11)", () => {
   it("test_fresh_config", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
+    writeSubagentOptIn(dir); // full 9-event contract (ADR-004 §2 default-off)
     await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
     const content = readSettings(dir);
     assert.strictEqual(Object.keys(content.hooks).length, 9);
@@ -357,6 +378,7 @@ describe("initRemote matrix (AC-11)", () => {
   it("test_rerun_idempotent_double_fire", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
+    writeSubagentOptIn(dir); // full 9-event contract (ADR-004 §2 default-off)
     await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
     await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
     const content = readSettings(dir);
@@ -539,6 +561,7 @@ describe("settings.local.json (R-16 / FR-18)", () => {
   it("test_no_token_on_argv_or_settings_json", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
+    writeSubagentOptIn(dir); // iterate the full HOOK_EVENTS set (ADR-004 §2)
     await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
     // The token must NOT appear anywhere in settings.json (only the hook
     // command lines + matcher groups live there; R-16).
