@@ -114,7 +114,13 @@ function writeOffset(stateDir, sessionId, offset) {
   return atomicWrite(offsetPath(stateDir, sessionId), body);
 }
 
-/** Delete a session's offset file (on successful SessionClose — FR-16). False on failure. */
+/**
+ * Delete a session's offset file. Fired by index.js ONLY when the carrying send
+ * succeeds AND the canonical event is TaskCompleted (ADR-006 vnc-027 — keyed by
+ * canonical event name, NEVER frame type; Stop and TaskCompleted both build
+ * SessionClose frames). Unreachable under current HOOK_EVENTS; pinned by unit
+ * test. Fail-open: returns false on failure, never throws.
+ */
 function deleteOffset(stateDir, sessionId) {
   if (!usable(stateDir)) return false;
   try {

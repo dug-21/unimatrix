@@ -324,16 +324,144 @@ describe("state offset lifecycle (ADR-003, FR-16)", function () {
     assert.strictEqual(state.readOffset(dir, "new-sess"), 20);
   });
 
-  it("test_offset_deleted_on_sessionclose_success", function () {
-    // index.js calls deleteOffset only after a 2xx SessionClose send.
+  it("test_pruneoffsets_deletes_only_files_older_than_7_days", function () {
+    // Age-prune is the SOLE effective offset-cleanup mechanism (ADR-006 §2).
+    // Boundary: file exactly at the 7-day cutoff is kept (strict `< cutoff`).
     const dir = tempStateDir();
-    state.writeOffset(dir, "sess-close", 99);
-    const fp = state.offsetPath(dir, "sess-close");
+    state.ensureStateDir(dir);
+    const now = Math.floor(Date.now() / 1000);
+    const cases = [
+      ["older.json", now - state.OFFSET_PRUNE_SECS - 1, false], // pruned
+      ["at-cutoff.json", now - state.OFFSET_PRUNE_SECS, true], // kept (not strictly older)
+      ["fresh.json", now - 60, true], // kept
+    ];
+    for (const [name, updated] of cases) {
+      fs.writeFileSync(
+        path.join(dir, "offsets", name),
+        JSON.stringify({ offset: 1, updated })
+      );
+    }
+    state.pruneOffsets(dir);
+    for (const [name, , kept] of cases) {
+      assert.strictEqual(
+        fs.existsSync(path.join(dir, "offsets", name)),
+        kept,
+        name
+      );
+    }
+  });
+
+  it("test_pruneoffsets_mtime_fallback_for_unreadable_json", function () {
+    // updated unreadable (corrupt/missing field) → mtime decides (state-offset-rekey.md).
+    const dir = tempStateDir();
+    state.ensureStateDir(dir);
+    const stalePath = path.join(dir, "offsets", "corrupt-stale.json");
+    const freshPath = path.join(dir, "offsets", "corrupt-fresh.json");
+    fs.writeFileSync(stalePath, "{not valid json");
+    fs.writeFileSync(freshPath, "{not valid json");
+    const stale = (Date.now() - (state.OFFSET_PRUNE_SECS + 60) * 1000) / 1000;
+    fs.utimesSync(stalePath, stale, stale);
+    state.pruneOffsets(dir);
+    assert.strictEqual(fs.existsSync(stalePath), false, "stale mtime → pruned");
+    assert.strictEqual(fs.existsSync(freshPath), true, "fresh mtime → kept");
+  });
+
+  it("test_pruneoffsets_skips_tmp_remnants", function () {
+    // Only *.json is considered; .tmp-* atomic-write remnants are skipped.
+    const dir = tempStateDir();
+    state.ensureStateDir(dir);
+    const stale = Math.floor(Date.now() / 1000) - state.OFFSET_PRUNE_SECS - 60;
+    const tmpPath = path.join(dir, "offsets", "x.json.tmp-1-deadbeef");
+    fs.writeFileSync(tmpPath, JSON.stringify({ offset: 1, updated: stale }));
+    state.pruneOffsets(dir);
+    assert.strictEqual(fs.existsSync(tmpPath), true, ".tmp- remnant untouched by prune");
+  });
+
+  it("test_pruneoffsets_mid_session_degrades_to_one_restream", function () {
+    // A pruned mid-session offset → next readOffset returns 0 → one full re-stream
+    // (idempotent server-side merge, R-04 s4). No error path.
+    const dir = tempStateDir();
+    state.ensureStateDir(dir);
+    const stale = Math.floor(Date.now() / 1000) - state.OFFSET_PRUNE_SECS - 60;
+    fs.writeFileSync(
+      path.join(dir, "offsets", "mid.json"),
+      JSON.stringify({ offset: 4242, updated: stale })
+    );
+    assert.strictEqual(state.readOffset(dir, "mid"), 4242);
+    state.pruneOffsets(dir);
+    assert.strictEqual(state.readOffset(dir, "mid"), 0, "degrades to 0, safe re-ship");
+  });
+
+  it("test_pruneoffsets_fail_open", function () {
+    // Unreadable/missing offsets dir → no-op, no throw (fail-open, R-14 s2 / R-04 s4).
+    // ENOENT: offsets dir never created.
+    const dir = tempStateDir();
+    assert.strictEqual(fs.existsSync(path.join(dir, "offsets")), false);
+    assert.doesNotThrow(() => state.pruneOffsets(dir));
+    // Empty offsets dir → no-op, no throw.
+    state.ensureStateDir(dir);
+    assert.doesNotThrow(() => state.pruneOffsets(dir));
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, "offsets")), []);
+    // readdir throws (EACCES) → swallowed best-effort.
+    const origReaddir = fs.readdirSync;
+    fs.readdirSync = function () {
+      const err = new Error("EACCES: permission denied");
+      err.code = "EACCES";
+      throw err;
+    };
+    try {
+      assert.doesNotThrow(() => state.pruneOffsets(dir));
+    } finally {
+      fs.readdirSync = origReaddir;
+    }
+  });
+
+  it("test_pruneoffsets_unlink_error_best_effort", function () {
+    // A stale file whose unlink fails must not throw; prune continues over siblings.
+    const dir = tempStateDir();
+    state.ensureStateDir(dir);
+    const stale = Math.floor(Date.now() / 1000) - state.OFFSET_PRUNE_SECS - 60;
+    fs.writeFileSync(
+      path.join(dir, "offsets", "a.json"),
+      JSON.stringify({ offset: 1, updated: stale })
+    );
+    fs.writeFileSync(
+      path.join(dir, "offsets", "b.json"),
+      JSON.stringify({ offset: 2, updated: stale })
+    );
+    const origUnlink = fs.unlinkSync;
+    let calls = 0;
+    fs.unlinkSync = function (p) {
+      calls += 1;
+      if (calls === 1) {
+        const err = new Error("EBUSY: resource busy");
+        err.code = "EBUSY";
+        throw err;
+      }
+      return origUnlink.call(fs, p);
+    };
+    try {
+      assert.doesNotThrow(() => state.pruneOffsets(dir));
+    } finally {
+      fs.unlinkSync = origUnlink;
+    }
+    assert.strictEqual(calls, 2, "prune attempted both stale files despite first failure");
+  });
+
+  it("test_delete_offset_unlinks_fail_open", function () {
+    // ADR-006 (amended): deleteOffset itself is event-agnostic — it just unlinks
+    // fail-open. The TaskCompleted-vs-Stop keying lives in index.js (Wave 5), NOT
+    // here; see index.test.js for the keying-discrimination assertions. This test
+    // pins only the file-level contract this module owns.
+    const dir = tempStateDir();
+    state.writeOffset(dir, "sess-del", 99);
+    const fp = state.offsetPath(dir, "sess-del");
     assert.ok(fs.existsSync(fp));
-    assert.strictEqual(state.deleteOffset(dir, "sess-close"), true);
+    assert.strictEqual(state.deleteOffset(dir, "sess-del"), true);
     assert.strictEqual(fs.existsSync(fp), false);
-    // Failed SessionClose → caller skips deleteOffset; a repeat delete is a safe no-op.
-    assert.strictEqual(state.deleteOffset(dir, "sess-close"), false);
+    // Repeat delete (missing file) is a safe no-op returning false; never throws.
+    assert.strictEqual(state.deleteOffset(dir, "sess-del"), false);
+    assert.doesNotThrow(() => state.deleteOffset(dir, "never-existed"));
   });
 
   it("test_offset_corruption_reads_zero", function () {
