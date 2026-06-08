@@ -10,10 +10,13 @@ const {
   HOOK_EVENTS,
 } = require("./merge-settings.js");
 const transport = require("./hook-client/transport-http.js");
+const { resolveGitFile } = require("./hook-client/config.js");
 
 /**
- * Detect project root by walking up from startDir to find .git directory.
- * Mirrors the Rust detect_project_root algorithm (ADR-003).
+ * Detect project root by walking up from startDir to find `.git` (Rust
+ * detect_project_root parity, ADR-003). A `.git` DIRECTORY marks the root; a
+ * `.git` FILE marks a worktree, chased via resolveGitFile to the MAIN repo
+ * root so init from a worktree writes where the hook client will look.
  *
  * @param {string} startDir - Directory to start searching from.
  * @returns {string} Absolute path to the project root.
@@ -21,8 +24,16 @@ const transport = require("./hook-client/transport-http.js");
 function detectProjectRoot(startDir) {
   let current = path.resolve(startDir);
   for (;;) {
-    if (fs.existsSync(path.join(current, ".git"))) {
-      return current;
+    const gitPath = path.join(current, ".git");
+    let st = null;
+    try {
+      st = fs.statSync(gitPath);
+    } catch (_err) {
+      // .git absent here — keep walking
+    }
+    if (st) {
+      // FILE = worktree → main root (any failure → `current`, per project.rs).
+      return st.isFile() ? resolveGitFile(gitPath, current) : current;
     }
     const parent = path.dirname(current);
     if (parent === current) {
@@ -231,9 +242,8 @@ function writeRemoteSettingsLocal(projectRoot, remote, token, dryRun) {
 }
 
 /**
- * Best-effort check that .claude/settings.local.json is gitignored; emit a
- * WARNING action when it is not (the file contains the token). String match
- * against common patterns only — no glob engine (FR-18).
+ * Best-effort check that .claude/settings.local.json (token-bearing) is
+ * gitignored; WARN when not. Common patterns only — no glob engine (FR-18).
  *
  * @param {string} projectRoot - Absolute project root.
  * @returns {string[]} Actions (warning, or none when covered).
@@ -304,10 +314,8 @@ async function initRemote(options) {
   actions.push("Project root: " + projectRoot);
 
   // Step 2: resolve the installed client path (absolute, platform-native).
-  // require.resolve is the contract (ADR/pseudocode); fall back to the computed
-  // path so wiring works before the Wave-3 index.js lands and so init produces a
-  // correct command even if resolution is not yet warm. Both forms yield the
-  // identical absolute path once index.js exists.
+  // require.resolve is the contract (ADR/pseudocode); the computed-path
+  // fallback yields the identical absolute path once index.js exists.
   let clientPath;
   try {
     clientPath = require.resolve("./hook-client/index.js");
@@ -324,8 +332,7 @@ async function initRemote(options) {
   actions.push(...gitignoreWarning(projectRoot));
 
   // Step 4: merge hooks (full 9-event remote set; idempotent; preserves
-  // foreign hooks). The hook command carries ONLY `node <path> <EVENT>` —
-  // no URL, no token (RQ-3 / R-16).
+  // foreign hooks). Command is ONLY `node <path> <EVENT>` (RQ-3 / R-16).
   const settingsPath = path.join(projectRoot, ".claude", "settings.json");
   const settingsResult = mergeSettings(
     settingsPath,

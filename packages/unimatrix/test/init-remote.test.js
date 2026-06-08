@@ -88,6 +88,35 @@ afterEach(() => {
   }
 });
 
+// ── detectProjectRoot worktree parity (project.rs::resolve_git_file) ─
+
+describe("detectProjectRoot worktree parity", () => {
+  const { detectProjectRoot } = initModule;
+
+  it("resolves a worktree .git FILE to the main repo root", () => {
+    // init --remote from a worktree must write settings/hooks into the MAIN
+    // root — the same root the hook client resolves at spawn time (ADR-006).
+    const main = fs.realpathSync(makeTempProject());
+    fs.mkdirSync(path.join(main, ".git", "worktrees", "wt"), { recursive: true });
+    const wt = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-remote-wt-"))
+    );
+    fs.writeFileSync(
+      path.join(wt, ".git"),
+      "gitdir: " + path.join(main, ".git", "worktrees", "wt") + "\n"
+    );
+    assert.strictEqual(detectProjectRoot(wt), main);
+  });
+
+  it("falls back to the containing dir on a malformed .git file", () => {
+    const dir = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-remote-wt-"))
+    );
+    fs.writeFileSync(path.join(dir, ".git"), "no gitdir line here\n");
+    assert.strictEqual(detectProjectRoot(dir), dir);
+  });
+});
+
 // ── Ownership Pattern Table (R-11 — the only open gate note) ─────────
 
 describe("ownership pattern (R-11 spaced-path table)", () => {

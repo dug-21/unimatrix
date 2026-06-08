@@ -54,6 +54,31 @@ function remoteSettings(url, token, extra) {
   return { unimatrix: { remote: Object.assign({ url, token }, extra || {}) } };
 }
 
+/**
+ * Hand-built worktree fixture mirroring the project.rs unit tests
+ * (test_detect_root_worktree_git_file etc.): main repo with
+ * .git/worktrees/{name}, worktree dir whose `.git` FILE points there.
+ * opts.inside → worktree nested under the main repo (for relative gitdir);
+ * opts.gitdir → override the gitdir line target (absolute by default).
+ */
+function makeWorktree(opts) {
+  const o = opts || {};
+  const main = makeProject();
+  const name = o.name || "wt";
+  fs.mkdirSync(path.join(main, ".git", "worktrees", name), { recursive: true });
+  let wt;
+  if (o.inside) {
+    wt = path.join(main, "worktrees", name);
+    fs.mkdirSync(wt, { recursive: true });
+  } else {
+    wt = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-wt-")));
+  }
+  const gitdir =
+    o.gitdir !== undefined ? o.gitdir : path.join(main, ".git", "worktrees", name);
+  fs.writeFileSync(path.join(wt, ".git"), "gitdir: " + gitdir + "\n");
+  return { main, wt };
+}
+
 // Env isolation across every test.
 let savedUrl;
 let savedTok;
@@ -266,9 +291,79 @@ describe("config root walk + hash", function () {
     );
   });
 
-  it("test_git_file_worktree_accepted", function () {
+  // ── Worktree parity (project.rs::resolve_git_file oracle) ─────────
+
+  it("test_git_file_worktree_resolves_main_root", function () {
+    // Oracle: test_detect_root_worktree_git_file — absolute gitdir.
+    const { main, wt } = makeWorktree();
+    assert.strictEqual(walkToProjectRoot(wt), main);
+  });
+
+  it("test_worktree_relative_gitdir", function () {
+    // Oracle: test_worktree_relative_gitdir — relative path resolved against
+    // the dir containing the .git file.
+    const { main, wt } = makeWorktree({
+      inside: true,
+      name: "rel-wt",
+      gitdir: path.join("..", "..", ".git", "worktrees", "rel-wt"),
+    });
+    assert.strictEqual(walkToProjectRoot(wt), main);
+  });
+
+  it("test_worktree_same_hash_as_main", function () {
+    // Oracle: test_worktree_same_hash_as_main_repo — one state dir for all
+    // worktrees of a repo.
+    const { main, wt } = makeWorktree();
+    const a = resolve(main);
+    const b = resolve(wt);
+    assert.strictEqual(a.projectRoot, b.projectRoot);
+    assert.strictEqual(a.projectHash, b.projectHash);
+    assert.strictEqual(b.projectHash, computeProjectHash(main));
+  });
+
+  it("test_worktree_subdirectory_cwd_resolves_main_root", function () {
+    const { main, wt } = makeWorktree();
+    const sub = path.join(wt, "deep", "er");
+    fs.mkdirSync(sub, { recursive: true });
+    assert.strictEqual(walkToProjectRoot(sub), main);
+  });
+
+  it("test_worktree_finds_main_root_settings", function () {
+    // Claim (b) end-to-end: settings.local.json lives ONLY in the main root
+    // (gitignored — absent in worktrees); resolve from a worktree cwd must
+    // find it, or every worktree spawn silently drops events.
+    const { main, wt } = makeWorktree();
+    writeLocalSettings(main, remoteSettings("https://wt.example.com", "tok"));
+    const result = resolve(wt);
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.source, "file");
+    assert.strictEqual(result.url, "https://wt.example.com");
+    assert.strictEqual(result.projectRoot, main);
+  });
+
+  it("test_git_file_no_gitdir_line_falls_back", function () {
+    // Oracle: test_worktree_git_file_no_gitdir_line — Rust errors (hook.rs
+    // then uses raw cwd); the fail-open JS falls back to the containing dir.
     const root = makeProject({ git: false });
-    fs.writeFileSync(path.join(root, ".git"), "gitdir: /elsewhere/.git/worktrees/x\n");
+    fs.writeFileSync(path.join(root, ".git"), "something unexpected\n");
+    assert.strictEqual(walkToProjectRoot(root), root);
+  });
+
+  it("test_git_file_dangling_gitdir_falls_back", function () {
+    const root = makeProject({ git: false });
+    fs.writeFileSync(
+      path.join(root, ".git"),
+      "gitdir: " + path.join(root, "nonexistent", ".git", "worktrees", "x") + "\n"
+    );
+    assert.strictEqual(walkToProjectRoot(root), root);
+  });
+
+  it("test_git_file_no_git_dir_ancestor_falls_back", function () {
+    // gitdir target exists but no `.git` DIRECTORY ancestor (project.rs:112-113).
+    const root = makeProject({ git: false });
+    const target = path.join(root, "not-git", "worktrees", "x");
+    fs.mkdirSync(target, { recursive: true });
+    fs.writeFileSync(path.join(root, ".git"), "gitdir: " + target + "\n");
     assert.strictEqual(walkToProjectRoot(root), root);
   });
 
