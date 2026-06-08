@@ -10,15 +10,30 @@ Tier A fix (this guard's subject): the canonical convention in
 with a hard ceiling, writing to a file instead of a live pipe:
 
 ```bash
-# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
-setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
+# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children.
+# `setsid -w` is REQUIRED: without -w, setsid returns its own fork status (0) instead of
+# the inner command's exit code, producing false-green gates (GH#709). rc=124 = killed at ceiling.
+setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
 ```
+
+Follow-up defect (GH#709): the first hardened form shipped `setsid` **without** `-w`.
+Bare `setsid` forks and returns the *fork's* exit status (always 0), so `rc=$?`
+captured 0 even when `cargo test` failed or was killed at the ceiling — a silent
+false-green that inverted the very gate-integrity guarantee #122 exists to protect.
+The corrected form uses `setsid -w`, which waits for the child and propagates its
+real exit code.
 
 ## What the guard does
 
 `check-cargo-test-convention.sh` scans `.claude/` and exits non-zero if any agent,
-protocol, or rule file invokes `cargo test` as the head of a bare pipe (`cargo test ... |`)
-without `setsid`. This prevents the convention from silently reverting.
+protocol, or rule file:
+
+- invokes `cargo test` as the head of a bare pipe (`cargo test ... |`) without
+  `setsid` (CLASS 1, #122 — no process group), OR
+- invokes `cargo test` via `setsid` **without** the `-w` flag (CLASS 2, GH#709 —
+  false-green exit code).
+
+This prevents the convention from silently reverting to either defective form.
 
 It is a standalone shell script — deliberately NOT a `cargo test --workspace` target — so
 it can never be defeated by the orphan/lock bug it guards against.
@@ -29,7 +44,8 @@ it can never be defeated by the orphan/lock bug it guards against.
 # scan the live tree (CI / pre-PR gate)
 bash product/test/infra-002/check-cargo-test-convention.sh
 
-# prove the guard still works: flags the old bare form, passes the hardened form
+# prove the guard still works: flags the bare-pipe form AND the setsid-without-w
+# form, passes the hardened `setsid -w` form
 bash product/test/infra-002/check-cargo-test-convention.sh --self-test
 ```
 

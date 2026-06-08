@@ -15,8 +15,10 @@ cargo build --workspace 2>&1 | grep -A5 "^error" | head -20
 cargo build --workspace 2>&1 | tail -3
 
 # Test: hardened workspace run (see "Hardened cargo test convention" below)
-# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
-setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
+# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children.
+# `setsid -w` is REQUIRED: without -w, setsid returns its own fork status (0) instead of
+# the inner command's exit code, producing false-green gates (GH#709). rc=124 = killed at ceiling.
+setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
 
 # Clippy: first warnings only
 cargo clippy --workspace -- -D warnings 2>&1 | head -30
@@ -29,16 +31,22 @@ the single source of truth; every agent/protocol copy must match it byte-for-byt
 the regression lint (`product/test/infra-002/check-cargo-test-convention.sh`) passes.
 
 ```bash
-# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
-setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
+# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children.
+# `setsid -w` is REQUIRED: without -w, setsid returns its own fork status (0) instead of
+# the inner command's exit code, producing false-green gates (GH#709). rc=124 = killed at ceiling.
+setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
 ```
 
 Why each piece exists (do NOT rewrite it as a pipeline — `cargo test ... | tail`):
 
-- **`setsid`** runs `cargo` (and its `rustc`/test-binary descendants) in a NEW session
+- **`setsid -w`** runs `cargo` (and its `rustc`/test-binary descendants) in a NEW session
   and process group. If the Bash tool call is interrupted/timed-out, the harness can
   signal the whole group instead of orphaning the cargo subtree to PID 1 (root cause
   of #122 — orphans hold `target/.cargo-lock` and test `.db` handles, hanging later runs).
+  The **`-w` flag is mandatory**: bare `setsid` forks and returns the *fork's* status
+  (always 0), so `rc=$?` would capture 0 even when `cargo test` FAILS or is killed at the
+  ceiling — a silent false-green that INVERTS the gate-integrity guarantee #122 exists to
+  protect (GH#709). `-w` makes `setsid` wait for the child and propagate its real exit code.
 - **`timeout` + named constant** `CARGO_TEST_TIMEOUT_SECS` (default **600s**, NOT a bare
   magic number) imposes a hard ceiling and kills the entire child tree on expiry. 600s
   fits a cold full-workspace build+test; integration-heavy crates may approach it on a

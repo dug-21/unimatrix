@@ -254,7 +254,7 @@ cargo build --workspace 2>&1 | tail -3
 
 # Tests: hardened workspace run — own process group + hard ceiling + file-not-pipe.
 # CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
-setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
+setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
 ```
 
 NEVER pipe full cargo output into context. NEVER rewrite the test line as a pipeline
