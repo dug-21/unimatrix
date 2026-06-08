@@ -460,7 +460,15 @@ describe("cycles path-traversal safety (security)", function () {
     for (const sid of adversarial) {
       // Every op must stay within cycles/ — assert the resolved path is contained.
       const p = cycles.cyclePath(dir, sid);
-      const resolved = path.resolve(p);
+      // Resolve symlinks on BOTH sides consistently: cyclesRoot is realpath'd,
+      // so realpath the candidate's (existing) parent dir before joining the
+      // basename. ensureCyclesDir guarantees the parent exists. A genuine
+      // escape would yield a dirname that resolves outside cyclesRoot and still
+      // (correctly) fail the startsWith containment check.
+      const resolved = path.join(
+        fs.realpathSync(path.dirname(p)),
+        path.basename(p)
+      );
       assert.strictEqual(
         resolved.startsWith(cyclesRoot + path.sep),
         true,
