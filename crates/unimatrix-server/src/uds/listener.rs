@@ -7102,6 +7102,224 @@ mod tests {
         assert_eq!(result, None);
     }
 
+    // ── vnc-030: apply_stamp_to_row 3-site round-trip + per-value topic_source ──
+    // GATE-BLOCKING (seam-and-roundtrip.md §2, #3486 / R-01 / FR-13). The shared
+    // helper apply_stamp_to_row is exercised by all three record sites (single
+    // ~:907, single ~:1076, batch ~:1243). The #3486 lesson is that field-exists-
+    // on-struct is insufficient evidence: each site must read AND apply the stamp.
+    // Because the three sites call ONE helper, the helper's behavior IS the per-site
+    // behavior — but R-12 (per-value topic_source) and the legacy-chain negative
+    // are asserted here at the helper, the single point all three sites route through.
+
+    /// Build a stamped ImplantEvent (cycle_stamp present → declared path).
+    fn stamped_event(
+        session_id: &str,
+        event_type: &str,
+        topic: &str,
+        phase: Option<&str>,
+    ) -> ImplantEvent {
+        ImplantEvent {
+            event_type: event_type.to_string(),
+            session_id: session_id.to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({}),
+            topic_signal: None,
+            provider: None,
+            cycle_stamp: Some(unimatrix_engine::wire::CycleStampPayload {
+                topic: topic.to_string(),
+                phase: phase.map(|p| p.to_string()),
+            }),
+        }
+    }
+
+    /// Build an unstamped ImplantEvent (Rust-hook-shaped: cycle_stamp None).
+    fn unstamped_event(
+        session_id: &str,
+        event_type: &str,
+        topic_signal: Option<&str>,
+    ) -> ImplantEvent {
+        ImplantEvent {
+            event_type: event_type.to_string(),
+            session_id: session_id.to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({}),
+            topic_signal: topic_signal.map(|s| s.to_string()),
+            provider: None,
+            cycle_stamp: None,
+        }
+    }
+
+    fn blank_row(session_id: &str, topic_signal: Option<&str>) -> ObservationRow {
+        ObservationRow {
+            session_id: session_id.to_string(),
+            ts_millis: 100_000,
+            hook: "PostToolUse".to_string(),
+            tool: None,
+            input: None,
+            response_size: None,
+            response_snippet: None,
+            topic_signal: topic_signal.map(|s| s.to_string()),
+            phase: None,
+            topic_source: None,
+        }
+    }
+
+    /// R-01 / FR-13: a stamped event lands a row with topic_signal=stamp.topic,
+    /// topic_source='declared', phase=stamp.phase; apply_stamp set Declared on the
+    /// registry; the row is declared regardless of a contradicting registry state.
+    #[test]
+    fn test_apply_stamp_to_row_stamped_records_declared() {
+        let registry = make_registry();
+        // Contradicting registry state: an Inferred(Registered) feature that must NOT win.
+        registry.register_session("s1", None, Some("col-099".to_string()));
+
+        let event = stamped_event("s1", "PostToolUse", "vnc-030", Some("delivery"));
+        let mut row = blank_row("s1", Some("extracted-x"));
+        apply_stamp_to_row(&mut row, &event, &registry);
+
+        assert_eq!(
+            row.topic_signal,
+            Some("vnc-030".to_string()),
+            "stamp topic wins"
+        );
+        assert_eq!(
+            row.topic_source,
+            Some("declared".to_string()),
+            "declared source"
+        );
+        assert_eq!(
+            row.phase,
+            Some("delivery".to_string()),
+            "stamp phase applied"
+        );
+        // apply_stamp promoted the registry to Declared.
+        let st = registry.get_state("s1").unwrap();
+        assert_eq!(st.feature, Some("vnc-030".to_string()));
+        assert!(matches!(st.feature_source, FeatureSource::Declared));
+    }
+
+    /// R-01: stamp with no phase → phase falls back to registry.current_phase.
+    #[test]
+    fn test_apply_stamp_to_row_stamp_phase_none_uses_registry_phase() {
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        registry.set_current_phase("s1", Some("design".to_string()));
+
+        let event = stamped_event("s1", "PostToolUse", "vnc-030", None);
+        let mut row = blank_row("s1", None);
+        apply_stamp_to_row(&mut row, &event, &registry);
+
+        assert_eq!(row.topic_source, Some("declared".to_string()));
+        assert_eq!(
+            row.phase,
+            Some("design".to_string()),
+            "registry phase fallback"
+        );
+    }
+
+    /// R-01: a CYCLE_* event (no stamp) is declared — topic_signal already IS the
+    /// declaration; the helper sets topic_source='declared' without re-enriching.
+    #[test]
+    fn test_apply_stamp_to_row_cycle_event_is_declared() {
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        let event = unstamped_event("s1", CYCLE_START_EVENT, Some("vnc-030"));
+        let mut row = blank_row("s1", Some("vnc-030"));
+        apply_stamp_to_row(&mut row, &event, &registry);
+        assert_eq!(row.topic_signal, Some("vnc-030".to_string()));
+        assert_eq!(row.topic_source, Some("declared".to_string()));
+    }
+
+    /// R-12: per-value topic_source — 'extracted' (unstamped, extraction present,
+    /// non-declared registry).
+    #[test]
+    fn test_apply_stamp_to_row_unstamped_extracted_source() {
+        let registry = make_registry();
+        registry.register_session("s1", None, Some("col-099".to_string())); // Inferred(Registered)
+        let event = unstamped_event("s1", "PostToolUse", Some("extracted-feat"));
+        let mut row = blank_row("s1", Some("extracted-feat"));
+        apply_stamp_to_row(&mut row, &event, &registry);
+        assert_eq!(
+            row.topic_signal,
+            Some("extracted-feat".to_string()),
+            "extraction wins vs Inferred"
+        );
+        assert_eq!(row.topic_source, Some("extracted".to_string()));
+    }
+
+    /// R-12: per-value topic_source — 'registry-fill' (unstamped, no extraction,
+    /// Inferred(Registered) feature).
+    #[test]
+    fn test_apply_stamp_to_row_unstamped_registry_fill_source() {
+        let registry = make_registry();
+        registry.register_session("s1", None, Some("col-099".to_string()));
+        let event = unstamped_event("s1", "PostToolUse", None);
+        let mut row = blank_row("s1", None);
+        apply_stamp_to_row(&mut row, &event, &registry);
+        assert_eq!(row.topic_signal, Some("col-099".to_string()));
+        assert_eq!(row.topic_source, Some("registry-fill".to_string()));
+    }
+
+    /// R-12 / OQ-A: per-value topic_source — 'vote' (unstamped, no extraction,
+    /// Inferred(Voted) feature via the eager #198 fill path).
+    #[test]
+    fn test_apply_stamp_to_row_unstamped_vote_source() {
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        registry.set_feature_if_absent("s1", "voted-feat"); // → Inferred(Voted)
+        let event = unstamped_event("s1", "PostToolUse", None);
+        let mut row = blank_row("s1", None);
+        apply_stamp_to_row(&mut row, &event, &registry);
+        assert_eq!(row.topic_signal, Some("voted-feat".to_string()));
+        assert_eq!(row.topic_source, Some("vote".to_string()));
+    }
+
+    /// R-12: per-value topic_source — NULL (unstamped, no extraction, no registry
+    /// feature → unattributed).
+    #[test]
+    fn test_apply_stamp_to_row_unstamped_null_source() {
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        let event = unstamped_event("s1", "PostToolUse", None);
+        let mut row = blank_row("s1", None);
+        apply_stamp_to_row(&mut row, &event, &registry);
+        assert_eq!(row.topic_signal, None);
+        assert_eq!(row.topic_source, None, "NULL source for unattributed row");
+    }
+
+    /// R-01 negative: an unstamped frame takes the legacy chain at every site — the
+    /// declared 'extracted'/'registry-fill'/'vote'/NULL outcome, NEVER 'declared'
+    /// (unless a declared registry feature, which is the #588 remedy, not the stamp).
+    #[test]
+    fn test_apply_stamp_to_row_unstamped_never_stamp_declared() {
+        let registry = make_registry();
+        registry.register_session("s1", None, Some("col-099".to_string()));
+        let event = unstamped_event("s1", "PostToolUse", Some("extracted-feat"));
+        let mut row = blank_row("s1", Some("extracted-feat"));
+        apply_stamp_to_row(&mut row, &event, &registry);
+        // Source reflects the heuristic path, not a stamp.
+        assert_eq!(row.topic_source, Some("extracted".to_string()));
+        assert_ne!(row.topic_source, Some("declared".to_string()));
+    }
+
+    /// R-04 / #588: an unstamped event against a DECLARED registry feature attributes
+    /// to declared (the unstamped-window remedy) even though no stamp is present.
+    #[test]
+    fn test_apply_stamp_to_row_unstamped_declared_registry_wins_588() {
+        let registry = make_registry();
+        registry.register_session("s1", None, None);
+        registry.set_feature_force("s1", "vnc-030"); // → Declared
+        let event = unstamped_event("s1", "PostToolUse", Some("contradicting"));
+        let mut row = blank_row("s1", Some("contradicting"));
+        apply_stamp_to_row(&mut row, &event, &registry);
+        assert_eq!(
+            row.topic_signal,
+            Some("vnc-030".to_string()),
+            "declared beats extraction (#588)"
+        );
+        assert_eq!(row.topic_source, Some("declared".to_string()));
+    }
+
     // -- col-025: truncate_at_utf8_boundary unit tests --
 
     /// T-CEH-05: 3-byte CJK character straddling the boundary → truncated to char boundary (R-07 / Gate 3c #5)

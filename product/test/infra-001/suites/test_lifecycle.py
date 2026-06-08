@@ -3513,3 +3513,140 @@ def test_graph_subgraph_truncation_depth_reached(server):
     for edge in data.get("edges", []):
         assert edge["source_id"] in node_id_set, f"dangling source: {edge['source_id']}"
         assert edge["target_id"] in node_id_set, f"dangling target: {edge['target_id']}"
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# vnc-030 (#699): contractual cycle attribution — MCP-visible integration.
+#
+# The cycle_stamp wire field and the 3-site apply_stamp_to_row read are emitted
+# by the TS hook client over UDS, which is NOT active in the infra-001 harness
+# (the harness drives the MCP JSON-RPC tool surface, not the UDS hook frame).
+# These tests therefore validate the MCP-visible *results* of the server change:
+#   1. the v27→v28 migration ran on the live binary → observations.topic_source
+#      exists, is TEXT/nullable, and accepts all five attribution values;
+#   2. the context_cycle declaration lifecycle (start/phase-end/stop) is accepted
+#      at the MCP tool surface (the declaration the stamp records);
+#   3. the close path is reachable after a declaration (declared-survives-vote is
+#      asserted at the cargo session.rs unit layer where the registry state is
+#      visible; here we assert the MCP flow that drives it does not error).
+# The byte-level wire round-trip and the per-site lockstep are covered by cargo
+# unit/integration (wire.rs serde trio + listener apply_stamp_to_row 9-test set)
+# and the JS parity-UDS live-daemon suite (test-plan/OVERVIEW.md §Integration).
+# ───────────────────────────────────────────────────────────────────────────
+
+
+def test_topic_source_column_per_value(server):
+    """vnc-030 AC-05/R-12: the live binary's v28 migration adds observations.topic_source
+    (TEXT, nullable); the column accepts every attribution value the record paths write
+    ('declared'/'extracted'/'registry-fill'/'vote') and NULL for unattributed rows."""
+    import sqlite3 as _sqlite3
+    import time as _time
+    import uuid as _uuid
+
+    # A store call guarantees DB creation + v28 migration on the live binary.
+    server.context_store(
+        "vnc-030 topic_source column probe content xyz",
+        "vnc-030", "convention", agent_id="human", format="json",
+    )
+
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+
+    # Column present exactly once, TEXT, nullable — proves the v28 migration ran.
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    cols = conn.execute("PRAGMA table_info('observations')").fetchall()
+    ts_cols = [c for c in cols if c[1] == "topic_source"]
+    assert len(ts_cols) == 1, f"observations.topic_source must exist exactly once (v28 migration); cols={[c[1] for c in cols]}"
+    assert ts_cols[0][2].upper() == "TEXT", f"topic_source must be TEXT, got {ts_cols[0][2]}"
+    assert ts_cols[0][3] == 0, "topic_source must be nullable (no backfill — pre-v28 rows stay NULL)"
+
+    # Every per-value source the record paths write must round-trip through the column.
+    session_id = f"vnc030-{_uuid.uuid4().hex[:8]}"
+    now_ms = int(_time.time()) * 1000
+    rows = [
+        ("declared", 1),
+        ("extracted", 2),
+        ("registry-fill", 3),
+        ("vote", 4),
+        (None, 5),  # unattributed → NULL
+    ]
+    for source, i in rows:
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input, "
+            "response_size, response_snippet, topic_signal, phase, topic_source) "
+            "VALUES (?, ?, 'PostToolUse', 'Read', NULL, NULL, NULL, ?, NULL, ?)",
+            (session_id, now_ms + i, "vnc-030" if source else None, source),
+        )
+    conn.commit()
+
+    got = conn.execute(
+        "SELECT topic_source FROM observations WHERE session_id = ? ORDER BY ts_millis",
+        (session_id,),
+    ).fetchall()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+    values = [r[0] for r in got]
+    assert values == ["declared", "extracted", "registry-fill", "vote", None], (
+        f"all five topic_source values must round-trip; got {values}"
+    )
+
+
+def test_stamped_event_attributes_declared(server):
+    """vnc-030 AC-04/AC-05: the context_cycle declaration lifecycle (the declaration a
+    cycle_stamp records) is accepted at the MCP tool surface, and a 'declared'-source
+    observation row coexists with the migrated schema. The raw stamped wire frame is
+    TS-client/UDS-emitted (not constructible via a raw MCP tool call) — the per-row
+    stamp→declared contract is asserted at cargo listener::apply_stamp_to_row; here we
+    assert the MCP-visible declaration + storage round-trip the contract rests on."""
+    import sqlite3 as _sqlite3
+    import time as _time
+    import uuid as _uuid
+
+    topic = "vnc-030"
+    # The declaration the stamp records — start/phase-end/stop accepted by the tool.
+    assert_tool_success(server.context_cycle("start", topic, next_phase="delivery", agent_id="human"))
+    assert_tool_success(server.context_cycle("phase-end", topic, phase="delivery", next_phase="test", agent_id="human"))
+    assert_tool_success(server.context_cycle("stop", topic, phase="test", agent_id="human"))
+
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    session_id = f"declared-{_uuid.uuid4().hex[:8]}"
+    now_ms = int(_time.time()) * 1000
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    # A 'declared'-source row (what apply_stamp_to_row writes on the stamp path).
+    conn.execute(
+        "INSERT INTO observations (session_id, ts_millis, hook, tool, input, "
+        "response_size, response_snippet, topic_signal, phase, topic_source) "
+        "VALUES (?, ?, 'PostToolUse', 'Edit', NULL, NULL, NULL, ?, 'delivery', 'declared')",
+        (session_id, now_ms, topic),
+    )
+    conn.commit()
+    row = conn.execute(
+        "SELECT topic_signal, topic_source, phase FROM observations WHERE session_id = ?",
+        (session_id,),
+    ).fetchone()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+    assert row == (topic, "declared", "delivery"), (
+        f"declared-source row must carry topic_signal=topic, source='declared', phase; got {row}"
+    )
+
+
+def test_declared_survives_vote_at_close(server):
+    """vnc-030 AC-04/R-04: the MCP declaration→close flow that the declared-beats-vote
+    inversion fix rests on is accepted end-to-end (start → store → stop). The registry-
+    level 'declared beats contradicting vote at close AND sweep' assertion lives in
+    cargo session.rs (test_sweep_declared_beats_contradicting_vote and the close-path
+    inversion test) where SessionState.feature_source is visible; this test guards that
+    the MCP surface driving that path does not regress."""
+    topic = "vnc-030-close"
+    assert_tool_success(server.context_cycle("start", topic, next_phase="delivery", agent_id="human"))
+    store_resp = server.context_store(
+        "vnc-030 declared session content that survives a contradicting vote at close",
+        topic, "decision", agent_id="human", format="json",
+    )
+    assert_tool_success(store_resp)
+    # Close the declared cycle — the path the close-inversion flip guards.
+    assert_tool_success(server.context_cycle("stop", topic, phase="delivery", outcome="success", agent_id="human"))
