@@ -374,6 +374,54 @@ async fn accept_loop(
 }
 
 /// Handle a single UDS connection: authenticate, read request, dispatch, respond.
+/// vnc-027 ADR-001 §5 (seam 1) — does this UDS caller want a server-side preformatted
+/// `text/plain` body?
+///
+/// Only `ContextSearch`/`CompactPayload` carry the additive `accept` field; any value other
+/// than the exact `"text/plain"` (including absence or e.g. `"application/xml"`) is treated as
+/// "no" — unknown content-negotiation values are inert (security: an attacker cannot coax a
+/// `Text` frame with a junk `accept`). No other request variant has an `accept` field.
+fn request_wants_text(request: &HookRequest) -> bool {
+    match request {
+        HookRequest::ContextSearch { accept, .. } | HookRequest::CompactPayload { accept, .. } => {
+            accept.as_deref() == Some("text/plain")
+        }
+        _ => false,
+    }
+}
+
+/// vnc-027 ADR-001 §5,§6 (seam 2) — convert a dispatched `HookResponse` into the wire
+/// response, applying the server-side preformatting contract.
+///
+/// When `wants_text == false` (no `accept`, e.g. every frozen Rust hook frame), the typed
+/// frame is returned UNTOUCHED — `Text` is never sent to a caller that did not ask, so a
+/// frozen hook never receives an undeserializable variant (the coupling IS the safety
+/// contract, R-08).
+///
+/// When `wants_text == true`, the hard allowlist is exactly `{Entries, BriefingContent}`:
+/// - `Entries` with renderable injection -> `Text { body }` (header-prefixed via the shared
+///   core); empty/over-budget `Entries` -> `Ack` (204-equivalent, ADR-001 §4), NOT a
+///   headerless `Text`.
+/// - `BriefingContent` -> `Text { body: content }` verbatim (no header).
+/// - `Ack`/`Error`/`Pong` ALWAYS stay JSON regardless of `accept` (a `Pong` carrying
+///   `server_version` must remain parseable JSON — vnc-024 OQ-06).
+///
+/// The text comes from `response_injection_text` (http/router/observe.rs), the single
+/// formatting truth shared with the HTTP `text/plain` path, so UDS `Text` bodies and HTTP
+/// bodies are byte-identical by construction (R-09 s3).
+fn negotiate_text_response(response: HookResponse, wants_text: bool) -> HookResponse {
+    if !wants_text {
+        return response;
+    }
+    match crate::http::router::observe::response_injection_text(&response) {
+        Some(text) => HookResponse::Text { body: text },
+        None => match response {
+            HookResponse::Entries { .. } => HookResponse::Ack,
+            other => other,
+        },
+    }
+}
+
 async fn handle_connection(
     stream: tokio::net::UnixStream,
     store: Arc<Store>,
@@ -478,7 +526,11 @@ async fn handle_connection(
         }
     };
 
-    // Dispatch request (async per ADR-002)
+    // vnc-027 ADR-001 §5 — seam 1: extract `wants_text` BEFORE dispatch (the request is
+    // moved into `dispatch_request`). The dispatch path itself is UNCHANGED.
+    let wants_text = request_wants_text(&request);
+
+    // Dispatch request (async per ADR-002) — UNCHANGED.
     let response = dispatch_request(
         request,
         &store,
@@ -494,12 +546,16 @@ async fn handle_connection(
     )
     .await;
 
+    // vnc-027 ADR-001 §5,§6 — seam 2: convert the response to `Text` AFTER dispatch, and
+    // ONLY when the caller sent `accept` (the frozen-hook safety coupling, R-08).
+    let wire_response = negotiate_text_response(response, wants_text);
+
     // Write response frame
     // Fire-and-forget callers (LocalTransport::fire_and_forget) drop their stream
     // immediately after sending.  When the server tries to write the Ack the pipe is
     // already closed, producing EPIPE / BrokenPipe.  This is expected — log at DEBUG
     // and treat as success so the WARN catch-all at the accept loop is not triggered.
-    if let Err(e) = write_response(&mut writer, &response).await {
+    if let Err(e) = write_response(&mut writer, &wire_response).await {
         // Downcast Box<dyn Error> → &io::Error to inspect the kind.
         if let Some(io_err) = e.downcast_ref::<io::Error>() {
             if io_err.kind() == io::ErrorKind::BrokenPipe {
@@ -8872,4 +8928,7 @@ mod tests {
     mod compact;
 
     mod purge_audit;
+
+    // vnc-027 (#680): listener-preformatted UDS Text-negotiation component tests.
+    mod preformatted;
 }
