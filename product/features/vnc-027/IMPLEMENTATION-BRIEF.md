@@ -29,14 +29,14 @@ GH Issue: [#680](https://github.com/dug-21/unimatrix/issues/680). Delivery order
 | state-offset-rekey (`lib/hook-client/state.js`) | pseudocode/state-offset-rekey.md | test-plan/state-offset-rekey.md |
 | parity-corpus-uds (UDS layer: framing/hash fixtures, round-trip, stdout goldens, cross-transport replay) | pseudocode/parity-corpus-uds.md | test-plan/parity-corpus-uds.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (produced in Stage 3a)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a; the map lists expected components from the architecture.
+Note: all 10 component pseudocode + test-plan files plus both OVERVIEWs produced in Stage 3a; paths above and in the Component Map are verified on disk.
 
 ## Goal
 
