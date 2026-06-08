@@ -547,6 +547,12 @@ impl UnimatrixServer {
                 // ADR-004: locks already released inside clear_transcripts_for_feature;
                 // content-free audit, purge success never depends on audit success.
                 crate::uds::listener::emit_purge_audits(&self.audit, records, "cycle_review");
+                // crt-052 Wave B seam (C8, ADR-008/ADR-009): the held-buffer purge
+                // (`purge_held_for_feature(feature_cycle)` + its own emit_purge_audits)
+                // is added HERE inside this arm — held buffers are purged in lockstep
+                // with registered buffers, only under PurgeOnCycleClose. Wave A adds
+                // nothing referencing transcript_hold.rs (R-11); reverting Wave B
+                // removes only that single addition and leaves this arm correct.
             }
             TranscriptRetention::RetainDays(_) => {
                 // Enterprise-only; OSS `validate()` rejects this value at startup,
@@ -3475,6 +3481,42 @@ pub(crate) mod tests {
         }
         let rows = poll_cycle_review_purge_audits(&server, 0).await;
         assert!(rows.is_empty(), "RetainDays arm must emit no audit");
+    }
+
+    /// crt-052 AC-10 (ADR-005, Constraint 2 enterprise seam): compile-level guard
+    /// that the `TranscriptRetention` match stays EXHAUSTIVE with NO wildcard `_`
+    /// arm. `purge_cycle_transcripts` (the purge gate) and `distill_before_purge`
+    /// (the distill gate, C6) match the SAME variants so distill and purge stay in
+    /// lockstep at every one of the four success returns.
+    ///
+    /// This function mirrors the production gate's variant arms exactly. Adding a
+    /// third `TranscriptRetention` variant makes this `match` non-exhaustive and
+    /// breaks the build HERE — the desired enterprise-seam compile error — forcing
+    /// a deliberate decision at both the purge site and the distill gate rather
+    /// than a silent wildcard fall-through.
+    #[test]
+    fn test_retention_match_no_wildcard() {
+        fn gate_decision(r: &TranscriptRetention) -> bool {
+            // EXHAUSTIVE — no `_ =>` arm. Mirrors purge_cycle_transcripts (:543/:551)
+            // and the C6 distill gate. `true` = proceed (distill + purge);
+            // `false` = skip (no distill, no purge).
+            match r {
+                TranscriptRetention::PurgeOnCycleClose => true,
+                TranscriptRetention::RetainDays(_) => false,
+            }
+        }
+        assert!(
+            gate_decision(&TranscriptRetention::PurgeOnCycleClose),
+            "PurgeOnCycleClose is the sole OSS-honored arm: proceed"
+        );
+        assert!(
+            !gate_decision(&TranscriptRetention::RetainDays(30)),
+            "RetainDays must neither distill nor purge"
+        );
+        assert!(
+            !gate_decision(&TranscriptRetention::RetainDays(0)),
+            "RetainDays(0) is treated identically: skip"
+        );
     }
 
     // -- vnc-012 AC-10: schema snapshot — #[schemars(with = "T")] preserves type: integer --
