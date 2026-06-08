@@ -7,6 +7,7 @@
 pub mod attribution;
 pub mod baseline;
 pub mod detection;
+pub mod distill;
 pub mod domain;
 pub mod error;
 pub mod extraction;

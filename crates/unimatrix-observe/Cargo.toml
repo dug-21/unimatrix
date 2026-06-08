@@ -13,6 +13,7 @@ serde_json = { workspace = true }
 unimatrix-core = { path = "../unimatrix-core" }
 unimatrix-store = { path = "../unimatrix-store" }
 tokio = { version = "1", features = ["rt"] }
+regex = "1"
 unimatrix-learn = { path = "../unimatrix-learn" }
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
 
