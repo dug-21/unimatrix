@@ -480,7 +480,9 @@ describe("buildRequest: PreToolUse context_cycle interception", () => {
   });
 
   it("test_cycle_near_miss_not_intercepted", () => {
-    // security gate F-02: substring-like names must NOT pass.
+    // ADR-004 §1: security gate F-02 substring-like names must NOT pass; the
+    // retired PreToolUse observation now yields the null no-send sentinel
+    // (was a RecordEvent/PreToolUse fallthrough before the reduction).
     for (const name of [
       "context_cycles",
       "mcp__other__context_cycle",
@@ -492,8 +494,7 @@ describe("buildRequest: PreToolUse context_cycle interception", () => {
           extra: { tool_name: name, tool_input: { type: "start", topic: "x-1" } },
         })
       );
-      assert.strictEqual(r.type, "RecordEvent", name);
-      assert.strictEqual(r.event_type, "PreToolUse", name);
+      assert.strictEqual(r, null, name);
     }
   });
 
@@ -507,7 +508,7 @@ describe("buildRequest: PreToolUse context_cycle interception", () => {
         },
       })
     );
-    assert.strictEqual(r.event_type, "PreToolUse");
+    assert.strictEqual(r, null); // sentinel (ADR-004 §1)
   });
 
   it("test_cycle_missing_tool_input_fall_through", () => {
@@ -515,7 +516,7 @@ describe("buildRequest: PreToolUse context_cycle interception", () => {
       "PreToolUse",
       mkInput({ extra: { tool_name: "context_cycle" } })
     );
-    assert.strictEqual(r.event_type, "PreToolUse");
+    assert.strictEqual(r, null); // sentinel (ADR-004 §1)
   });
 
   it("test_cycle_goal_only_on_start", () => {
@@ -589,7 +590,228 @@ describe("buildRequest: PreToolUse context_cycle interception", () => {
         },
       })
     );
-    assert.strictEqual(r.event_type, "PreToolUse");
+    assert.strictEqual(r, null); // sentinel (ADR-004 §1)
+  });
+});
+
+// vnc-027 ADR-004 §1 / FR-27 / AC-08 / R-11: PreToolUse loses standalone
+// observation. Every non-cycle path returns a null no-send sentinel (index.js
+// short-circuits to exit 0); stderr diagnostics are retained; cycle frames and
+// the F-02 exact-equality gate are fully preserved. Only PreToolUse changes.
+describe("buildRequest: PreToolUse no-send sentinel (ADR-004 §1)", () => {
+  // Capture process.stderr.write byte-for-byte without leaking to the runner.
+  function captureStderr(fn) {
+    const orig = process.stderr.write;
+    const lines = [];
+    process.stderr.write = (chunk) => {
+      lines.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"));
+      return true;
+    };
+    try {
+      const result = fn();
+      return { result, stderr: lines.join("") };
+    } finally {
+      process.stderr.write = orig;
+    }
+  }
+
+  it("test_non_cycle_tool_name_returns_null", () => {
+    // An ordinary tool name → null, no RecordEvent fallthrough, no stderr.
+    const { result, stderr } = captureStderr(() =>
+      buildRequest(
+        "PreToolUse",
+        mkInput({ extra: { tool_name: "Bash", tool_input: { command: "ls" } } })
+      )
+    );
+    assert.strictEqual(result, null);
+    assert.strictEqual(stderr, "");
+  });
+
+  it("test_missing_tool_input_returns_null_retains_stderr", () => {
+    const { result, stderr } = captureStderr(() =>
+      buildRequest("PreToolUse", mkInput({ extra: { tool_name: "context_cycle" } }))
+    );
+    assert.strictEqual(result, null);
+    assert.strictEqual(
+      stderr,
+      "unimatrix: context_cycle PreToolUse missing tool_input\n"
+    );
+  });
+
+  it("test_failed_validate_cycle_params_returns_null_retains_stderr", () => {
+    const { result, stderr } = captureStderr(() =>
+      buildRequest(
+        "PreToolUse",
+        mkInput({
+          extra: {
+            tool_name: "context_cycle",
+            tool_input: { type: "nope", topic: "vnc-026" },
+          },
+        })
+      )
+    );
+    assert.strictEqual(result, null);
+    assert.strictEqual(
+      stderr,
+      "unimatrix: context_cycle validation failed in hook (tool_name=context_cycle)\n"
+    );
+  });
+
+  it("test_malformed_non_object_tool_input_returns_null_no_throw", () => {
+    // Non-object tool_input → tiObj defaults to {} → validateCycleParams fails
+    // (empty type) → null sentinel + stderr; never throws (module contract).
+    const { result, stderr } = captureStderr(() =>
+      buildRequest(
+        "PreToolUse",
+        mkInput({ extra: { tool_name: "context_cycle", tool_input: "not-an-object" } })
+      )
+    );
+    assert.strictEqual(result, null);
+    assert.ok(stderr.includes("validation failed"), "stderr retained");
+  });
+
+  it("test_valid_cycle_start_returns_frame_parity", () => {
+    // Valid cycle → frame UNCHANGED (stays in the byte-parity corpus, ADR-004 §4).
+    const { result, stderr } = captureStderr(() =>
+      buildRequest(
+        "PreToolUse",
+        mkInput({
+          session_id: "s1",
+          extra: {
+            tool_name: "context_cycle",
+            tool_input: { type: "start", topic: "vnc-027" },
+          },
+        })
+      )
+    );
+    assert.strictEqual(stderr, "");
+    assert.strictEqual(result.type, "RecordEvent");
+    assert.strictEqual(result.event_type, "cycle_start");
+    assert.strictEqual(result.payload.feature_cycle, "vnc-027");
+    assert.strictEqual(result.topic_signal, "vnc-027");
+  });
+
+  it("test_valid_cycle_phase_end_and_stop_return_frames", () => {
+    const phaseEnd = buildRequest(
+      "PreToolUse",
+      mkInput({
+        extra: {
+          tool_name: "context_cycle",
+          tool_input: {
+            type: "phase-end",
+            topic: "vnc-027",
+            phase: "Design",
+            outcome: "done",
+            next_phase: "Build",
+          },
+        },
+      })
+    );
+    assert.strictEqual(phaseEnd.event_type, "cycle_phase_end");
+    const stop = buildRequest(
+      "PreToolUse",
+      mkInput({
+        extra: {
+          tool_name: "mcp__unimatrix__context_cycle",
+          tool_input: { type: "stop", topic: "vnc-027" },
+        },
+      })
+    );
+    assert.strictEqual(stop.event_type, "cycle_stop");
+  });
+
+  // F-02 exact-equality gate (defense in depth): the narrowed install matcher is
+  // a regex, so "evil_context_cycle_bypass" can SPAWN the hook; the exact gate
+  // must still send nothing. R-11 s3.
+  it("test_exact_equality_only_context_cycle_intercepted", () => {
+    for (const name of ["context_cycle", "mcp__unimatrix__context_cycle"]) {
+      const r = buildRequest(
+        "PreToolUse",
+        mkInput({
+          extra: { tool_name: name, tool_input: { type: "start", topic: "x-1" } },
+        })
+      );
+      assert.strictEqual(r.type, "RecordEvent", name);
+      assert.strictEqual(r.event_type, "cycle_start", name);
+    }
+  });
+
+  it("test_evil_substring_bypass_sends_nothing", () => {
+    const { result, stderr } = captureStderr(() =>
+      buildRequest(
+        "PreToolUse",
+        mkInput({
+          extra: {
+            tool_name: "evil_context_cycle_bypass",
+            tool_input: { type: "start", topic: "x-1" },
+          },
+        })
+      )
+    );
+    assert.strictEqual(result, null);
+    assert.strictEqual(stderr, ""); // gated before any diagnostic
+  });
+
+  it("test_near_miss_suffixed_not_intercepted", () => {
+    for (const name of [
+      "context_cycle_extra",
+      "context_cycles",
+      "mcp__other__context_cycle",
+    ]) {
+      const r = buildRequest(
+        "PreToolUse",
+        mkInput({
+          extra: { tool_name: name, tool_input: { type: "start", topic: "x-1" } },
+        })
+      );
+      assert.strictEqual(r, null, name);
+    }
+  });
+
+  it("test_bare_tool_promotion_routes_through_sentinel_no_mutation", () => {
+    // mcp_context promotion of a non-cycle bare tool still clones input (R-01)
+    // and returns the sentinel (it was observation-only before).
+    const input = mkInput({
+      session_id: "gem-1",
+      mcp_context: { tool_name: "Bash" },
+      extra: {},
+    });
+    input.extra.tool_input = { command: "ls" };
+    const before = JSON.parse(JSON.stringify(input));
+    const r = buildRequest("PreToolUse", input);
+    assert.strictEqual(r, null);
+    assert.deepStrictEqual(input, before); // caller input unmutated
+    assert.ok(!("tool_name" in input.extra), "extra not mutated");
+  });
+
+  // Scope guard (R-11 s6): ONLY PreToolUse loses fallthrough observation.
+  it("test_posttooluse_fallthrough_untouched", () => {
+    const ptu = buildRequest(
+      "PostToolUse",
+      mkInput({ extra: { tool_name: "Read" } })
+    );
+    assert.strictEqual(ptu.type, "RecordEvent");
+    assert.strictEqual(ptu.event_type, "PostToolUse");
+
+    const ptuf = buildRequest(
+      "PostToolUseFailure",
+      mkInput({ extra: { tool_name: "Bash", error: "boom" } })
+    );
+    assert.strictEqual(ptuf.type, "RecordEvent");
+    assert.strictEqual(ptuf.event_type, "PostToolUseFailure");
+  });
+
+  it("test_other_event_builders_unchanged", () => {
+    // SubagentStop generic fallthrough still observes (not PreToolUse).
+    const sub = buildRequest("SubagentStop", mkInput({ extra: { a: 1 } }));
+    assert.strictEqual(sub.type, "RecordEvent");
+    assert.strictEqual(sub.event_type, "SubagentStop");
+    // SessionStart/Stop/UserPromptSubmit/PreCompact still produce frames.
+    assert.strictEqual(
+      buildRequest("SessionStart", mkInput({ cwd: "/w" })).type,
+      "SessionRegister"
+    );
+    assert.strictEqual(buildRequest("Stop", mkInput()).type, "SessionClose");
   });
 });
 
