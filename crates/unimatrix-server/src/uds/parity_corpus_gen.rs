@@ -37,6 +37,8 @@ mod cases_tools;
 mod gen_tests;
 #[path = "parity_corpus_transcripts.rs"]
 mod transcripts;
+#[path = "parity_corpus_uds.rs"]
+mod uds_layer;
 
 /// One corpus case: raw inputs plus the manifest arm keys it covers.
 pub(crate) struct Case {
@@ -491,6 +493,11 @@ fn generate_parity_corpus() {
     }
 
     write_pretty_json(&out_dir.join("MANIFEST.json"), &build_manifest(&cases));
+
+    // vnc-027 UDS parity layer (framing + hash goldens). Emitted AFTER the stale-
+    // dir prune so `uds-framing/` survives; `project-hash-goldens.json` is a file
+    // (the prune only touches directories).
+    uds_layer::generate(&out_dir);
 
     // Non-vacuity: the corpus the job just wrote must be non-trivial.
     assert!(

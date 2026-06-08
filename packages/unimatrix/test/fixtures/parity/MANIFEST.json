@@ -1,6 +1,6 @@
 {
   "generated_by": "parity_corpus_gen.rs",
-  "case_count": 83,
+  "case_count": 76,
   "conventions": {
     "transcript_path": "relative transcript_path values in stdin.json resolve against the case directory",
     "stdin_cap_bytes": 1048576,
@@ -47,9 +47,6 @@
     ],
     "build_request::PreToolUse::mcp_context_promotion": [
       "cycle-mcp-context-promotion"
-    ],
-    "build_request::PreToolUse::no_promotion": [
-      "ptu-pre-non-cycle"
     ],
     "build_request::SessionStart": [
       "event-session-start"
@@ -103,16 +100,6 @@
     "cycle::goal_truncation": [
       "cycle-goal-overflow-multibyte"
     ],
-    "cycle::missing_tool_input": [
-      "cycle-missing-tool-input"
-    ],
-    "cycle::near_miss_not_intercepted": [
-      "cycle-near-miss",
-      "cycle-near-miss-suffixed"
-    ],
-    "cycle::not_context_cycle": [
-      "ptu-pre-non-cycle"
-    ],
     "cycle::phase_end": [
       "cycle-phase-end"
     ],
@@ -124,10 +111,6 @@
     ],
     "cycle::stop": [
       "cycle-stop"
-    ],
-    "cycle::validation_failed": [
-      "cycle-invalid-type",
-      "cycle-invalid-topic"
     ],
     "extract_file_path::absent": [
       "ptu-bash-exit-zero"
@@ -171,9 +154,6 @@
     "normalize_event_name::alias::AfterTool": [
       "alias-after-tool"
     ],
-    "normalize_event_name::alias::BeforeTool": [
-      "alias-before-tool"
-    ],
     "normalize_event_name::alias::SessionEnd": [
       "alias-session-end"
     ],
@@ -190,7 +170,7 @@
       "event-precompact"
     ],
     "normalize_event_name::canonical::PreToolUse": [
-      "ptu-pre-non-cycle"
+      "cycle-start-bare"
     ],
     "normalize_event_name::canonical::SessionStart": [
       "event-session-start"
@@ -292,9 +272,6 @@
     ],
     "topic_signal::post_tool_use_failure": [
       "ptuf-basic"
-    ],
-    "topic_signal::pre_tool_use": [
-      "alias-before-tool"
     ],
     "topic_signal::subagent_start": [
       "sas-no-snippet-no-transcript"
