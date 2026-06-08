@@ -151,12 +151,17 @@ NEVER pipe full cargo output into context. Always truncate:
 cargo build --workspace 2>&1 | grep -A5 "^error" | head -20
 cargo build --workspace 2>&1 | tail -3
 
-# Test: summary only
-cargo test --workspace 2>&1 | tail -30
+# Test: hardened workspace run — own process group + hard ceiling + file-not-pipe (see rust-workspace.md).
+# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
+setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
 
 # Clippy: first warnings only
 cargo clippy --workspace -- -D warnings 2>&1 | head -30
 ```
+
+Never rewrite the test line as a pipeline (`cargo test ... | tail`) or background it —
+`rc=$?` must capture `cargo test`, not `tail`. `timeout` rc=124 = killed-at-ceiling
+(investigate the hang), not an ordinary test failure.
 
 ---
 
