@@ -65,6 +65,62 @@ pub struct TranscriptPurgeRecord {
     pub bytes_purged: u64,
 }
 
+/// An unwritten sub-range within a snapshotted span, in LOGICAL stream offsets
+/// (crt-052 ADR-002). `[start, end)` half-open; `end` exclusive. Offsets only —
+/// safe to `derive(Debug)` (no content).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HoleInfo {
+    /// Logical stream offset of the hole start (inclusive).
+    pub start: u64,
+    /// Logical stream offset of the hole end (exclusive).
+    pub end: u64,
+}
+
+/// Owned, never-persisted snapshot of a `TranscriptBuffer`'s readable content
+/// plus loss metadata (crt-052 ADR-002). Co-designed for crt-052 candidate
+/// selection AND #700 marker recovery — both parse `bytes` with their own
+/// patterns, placing matches at LOGICAL stream offsets via `base_offset`. This
+/// is the second and last production buffer-content reader's return value;
+/// there is no third reader (Constraint 4).
+///
+/// `bytes` is an owned copy of the contiguous readable span: it never crosses a
+/// hole and carries no zero-fill (FR-19). All parsing happens AFTER the buffer
+/// lock is released, on this owned value (AC-01).
+///
+/// Content opacity (SR-02, AC-06): `Debug` is hand-written and metadata-only —
+/// it MUST NOT carry any byte of `bytes`. Do NOT `derive(Debug)`.
+#[derive(Clone)]
+pub struct TranscriptSnapshot {
+    /// Owned copy of the contiguous readable span (never crosses a hole; no
+    /// zero-fill). Parse only after lock release.
+    pub bytes: Vec<u8>,
+    /// Logical stream offset of `bytes[0]` (R-12: makes a candidate's
+    /// `byte_offset = base_offset + in_snapshot_offset` a logical position,
+    /// meaningful across ring-tail elision). `0` for a non-overflowed buffer.
+    pub base_offset: u64,
+    /// `max(offset + len)` ever seen — monotonic, survives clipping.
+    pub high_water: u64,
+    /// Lifetime count of content dropped from the span (ring-tail / clip).
+    pub elided_bytes: u64,
+    /// Remaining unwritten sub-ranges within the span (logical offsets).
+    pub holes: Vec<HoleInfo>,
+}
+
+/// Manual, metadata-only `Debug` (R-19, AC-06 content-leak gate): emits the
+/// span length and counts ONLY — NEVER any byte of `bytes`. `derive(Debug)`
+/// would leak content and is forbidden by the leak gate.
+impl fmt::Debug for TranscriptSnapshot {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TranscriptSnapshot")
+            .field("len", &self.bytes.len())
+            .field("base_offset", &self.base_offset)
+            .field("high_water", &self.high_water)
+            .field("elided_bytes", &self.elided_bytes)
+            .field("holes", &self.holes.len())
+            .finish()
+    }
+}
+
 /// Enterprise seam (ADR-007): collapses the (tenant, project, session) composite
 /// dimension to the registry's string key. OSS: tenant is always "default";
 /// returns `session_id` unchanged (transport namespacing via the existing `http-`
@@ -180,17 +236,71 @@ impl TranscriptBuffer {
         if self.data.is_empty() || window == 0 {
             return None;
         }
-        let span_end = self.base_offset.saturating_add(self.data.len() as u64);
-        let tail_floor = match self.holes.last() {
-            Some(&(_, hole_end)) => hole_end,
-            None => self.base_offset,
-        };
-        // I5: span_end - tail_floor <= data.len() <= max_bytes (holes are
-        // strictly inside the span per I2, so avail >= 1).
-        let avail = (span_end - tail_floor) as usize;
+        // The contiguous readable run is `[start_rel, data.len())` where
+        // `start_rel` is the post-hole floor; `snapshot_block` copies it.
+        let start_rel = self.contiguous_run_start_rel();
+        let avail = self.data.len() - start_rel;
         let take = window.min(avail);
-        let start_rel = self.data.len() - take;
-        Some(self.data[start_rel..].to_vec())
+        // Windowed tail: take the newest `take` bytes of the contiguous run.
+        Some(self.snapshot_block(self.data.len() - take))
+    }
+
+    /// Owned snapshot of the WHOLE contiguous readable span plus the four
+    /// metadata fields both content consumers need (crt-052 ADR-002; #700
+    /// marker recovery reuses the SAME return type — no third buffer reader).
+    ///
+    /// Unlike [`contiguous_tail`], this returns the entire contiguous run (not
+    /// a windowed tail) and all metadata, so a consumer can parse the bytes and
+    /// place every match at a LOGICAL stream offset (`base_offset + in-span`).
+    ///
+    /// Byte copy + metadata read ONLY: no parse, no marker match, no I/O, no
+    /// `tracing` of content (Constraint 1, AC-01). Infallible — an empty buffer
+    /// yields `bytes: vec![]` with truthful metadata; never panics, never
+    /// returns `Result`/`Option`. Locking is the caller's job (C1 holds the
+    /// buffer guard, poison-recovers per #4764); this method is `&self`.
+    pub fn snapshot(&self) -> TranscriptSnapshot {
+        // Contiguous readable span: from the post-hole floor to the span end,
+        // never crossing a hole, never zero-fill — same span logic as the
+        // tail reader, just unwindowed.
+        let bytes = if self.data.is_empty() {
+            Vec::new()
+        } else {
+            self.snapshot_block(self.contiguous_run_start_rel())
+        };
+        TranscriptSnapshot {
+            bytes,
+            base_offset: self.base_offset,
+            high_water: self.high_water,
+            elided_bytes: self.elided_bytes,
+            holes: self
+                .holes
+                .iter()
+                .map(|&(start, end)| HoleInfo { start, end })
+                .collect(),
+        }
+    }
+
+    /// Span-relative start of the contiguous readable run: the most recent hole
+    /// end (relative to `base_offset`), or 0 when there are no holes. The run is
+    /// `data[start_rel..]` — the bytes that never cross a hole and carry no
+    /// zero-fill (I4). Caller must ensure `!data.is_empty()`.
+    fn contiguous_run_start_rel(&self) -> usize {
+        match self.holes.last() {
+            // I5: hole_end - base_offset <= data.len() <= max_bytes (holes are
+            // strictly inside the span per I2).
+            Some(&(_, hole_end)) => (hole_end - self.base_offset) as usize,
+            None => 0,
+        }
+    }
+
+    /// The one content-extraction primitive: an owned copy of
+    /// `data[start_rel..]`. Both `snapshot()` (full span) and `contiguous_tail`
+    /// (windowed tail) route their copy through here, so a single span-copy path
+    /// keeps the single-reader invariant true by construction (ADR-002). Does no
+    /// locking, no parse, no I/O. `start_rel` must already sit on or after the
+    /// post-hole floor so the result never crosses a hole or returns zero-fill.
+    fn snapshot_block(&self, start_rel: usize) -> Vec<u8> {
+        self.data[start_rel..].to_vec()
     }
 
     /// Purge all content; returns bytes purged (span length — the value

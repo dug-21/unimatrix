@@ -255,6 +255,175 @@ fn test_post_collapse_merge_and_tail_correct() {
     assert_eq!(buf.contiguous_tail(100).as_deref(), Some(&src[1300..1400]));
 }
 
+// ----------------------- §5 snapshot() under overflow / poison (crt-052 C2) --
+// R-12 (logical base_offset), R-09 (cap boundary), R-16 (poison recovery).
+
+/// Under ring-tail overflow the snapshot's `base_offset` advances and
+/// `elided_bytes > 0` (R-12 feeds C3's logical-offset arithmetic). Variance 1:
+/// tail-window equivalence only — do NOT assert full content.
+#[test]
+fn test_snapshot_base_offset_advances_under_overflow() {
+    const CAP: usize = 256;
+    let src = src_bytes(1000);
+    // Ten contiguous 100-byte chunks covering [0,1000) — 3.9x the cap.
+    let deltas: Vec<(u64, usize)> = (0..10).map(|i| (i as u64 * 100, 100)).collect();
+    let mut buf = TranscriptBuffer::new(CAP);
+    apply_all(&mut buf, &src, &deltas);
+    let snap = buf.snapshot();
+    assert!(snap.base_offset > 0, "ring-tail advanced the logical floor");
+    assert!(snap.elided_bytes > 0, "head content elided");
+    assert_eq!(
+        snap.base_offset,
+        1000 - CAP as u64,
+        "logical floor = end - cap"
+    );
+    assert_eq!(snap.bytes.len(), CAP, "newest cap window retained");
+}
+
+/// `high_water` survives clipping (monotone, tracks sent-not-retained).
+#[test]
+fn test_snapshot_high_water_survives_clipping() {
+    const CAP: usize = 100;
+    let src = src_bytes(256);
+    let mut buf = TranscriptBuffer::new(CAP);
+    buf.apply_delta(0, &src[0..100]);
+    buf.apply_delta(80, &src[80..180]); // clips, base advances
+    let snap = buf.snapshot();
+    assert_eq!(
+        snap.high_water, 180,
+        "high_water = max(offset+len) ever sent"
+    );
+    assert!(snap.base_offset > 0, "clipping occurred");
+}
+
+/// Holes surface in the snapshot as a sorted, disjoint, in-span `Vec<HoleInfo>`.
+#[test]
+fn test_snapshot_holes_reported() {
+    let src = src_bytes(500);
+    let mut buf = TranscriptBuffer::new(4096);
+    apply_all(&mut buf, &src, &[(0, 100), (200, 100), (400, 100)]);
+    let snap = buf.snapshot();
+    assert_eq!(
+        snap.holes,
+        vec![
+            HoleInfo {
+                start: 100,
+                end: 200
+            },
+            HoleInfo {
+                start: 300,
+                end: 400
+            },
+        ]
+    );
+    // Disjoint, sorted ascending, strictly inside the span, bounded.
+    assert!(snap.holes.len() <= 64, "bounded by MAX_HOLE_RANGES");
+    for w in snap.holes.windows(2) {
+        assert!(w[0].end <= w[1].start, "sorted + disjoint");
+    }
+    let span_end = snap.base_offset + buf.len() as u64;
+    for h in &snap.holes {
+        assert!(h.start >= snap.base_offset && h.end <= span_end, "in span");
+        assert!(h.start < h.end, "non-empty hole");
+    }
+}
+
+/// At exactly the cap, then one byte over: the ring-tail-just-engaged transition
+/// surfaces `base_offset` advance / `elided_bytes > 0` (SR-08 calibration edge).
+#[test]
+fn test_snapshot_at_exactly_cap_boundary() {
+    const CAP: usize = 256;
+    let src = src_bytes(CAP + 1);
+    // Exactly at cap: no elision, base stays 0.
+    let mut at_cap = TranscriptBuffer::new(CAP);
+    at_cap.apply_delta(0, &src[0..CAP]);
+    let snap = at_cap.snapshot();
+    assert_eq!(snap.base_offset, 0, "at cap: no advance");
+    assert_eq!(snap.elided_bytes, 0, "at cap: nothing elided");
+    assert_eq!(snap.bytes.len(), CAP);
+    // One byte over: ring-tail engages.
+    let mut over = TranscriptBuffer::new(CAP);
+    over.apply_delta(0, &src[0..CAP + 1]);
+    let snap = over.snapshot();
+    assert_eq!(snap.base_offset, 1, "one over: floor advanced by one");
+    assert_eq!(snap.elided_bytes, 1, "one byte elided");
+    assert_eq!(snap.bytes.len(), CAP);
+}
+
+/// 4 MiB byte copy completes well within the latency class (AC-12); the copy is
+/// bounded by the 4 MiB cap. No parse, no marker match in the body (AC-01).
+#[test]
+fn test_snapshot_4mib_copy_fast() {
+    const CAP: usize = 4 * 1024 * 1024;
+    let src = src_bytes(CAP);
+    let mut buf = TranscriptBuffer::new(CAP);
+    buf.apply_delta(0, &src);
+    let started = std::time::Instant::now();
+    let snap = buf.snapshot();
+    let elapsed = started.elapsed();
+    assert_eq!(snap.bytes.len(), CAP, "full 4 MiB span copied");
+    assert!(
+        elapsed < std::time::Duration::from_millis(50),
+        "byte copy within latency class, took {elapsed:?}"
+    );
+}
+
+/// Poison recovery (R-16, #4764): the seam takes the buffer lock with
+/// `unwrap_or_else(|p| p.into_inner())`, treats the recovered buffer as empty,
+/// and calls `clear_poison()` so recovery happens exactly once (#4748). The
+/// snapshot of the treat-as-empty buffer surfaces as empty/lossy — the loss is
+/// visible downstream, not silently absent. This mirrors C1's lock acquisition.
+#[test]
+fn test_snapshot_poisoned_lock_treats_as_empty() {
+    use std::sync::{Arc, Mutex};
+
+    let src = src_bytes(300);
+    let mut seeded = TranscriptBuffer::new(4096);
+    seeded.apply_delta(0, &src);
+    let lock = Arc::new(Mutex::new(seeded));
+
+    // Poison the mutex by panicking while the guard is held.
+    let poison_lock = Arc::clone(&lock);
+    let _ = std::thread::spawn(move || {
+        let _guard = poison_lock.lock().expect("first lock");
+        panic!("poison the transcript mutex");
+    })
+    .join();
+    assert!(lock.is_poisoned(), "mutex is poisoned");
+
+    // Seam-style recovery: into_inner + treat-as-empty + clear_poison.
+    let snapshot = {
+        let mut guard = lock.lock().unwrap_or_else(|p| p.into_inner());
+        // Treat-as-empty: drop content but keep truthful metadata where readable.
+        let _purged = guard.clear();
+        let snap = guard.snapshot();
+        lock.clear_poison();
+        snap
+    };
+    assert!(
+        snapshot.bytes.is_empty(),
+        "treat-as-empty: no content surfaced"
+    );
+
+    // Recovery happened exactly once: a subsequent write accumulates (#4748 —
+    // without clear_poison every later lock would re-clear and lose the write).
+    assert!(!lock.is_poisoned(), "poison cleared");
+    {
+        let mut guard = lock.lock().unwrap_or_else(|p| p.into_inner());
+        let hw = guard.high_water();
+        guard.apply_delta(hw, &src[0..50]);
+    }
+    let after = {
+        let guard = lock.lock().unwrap_or_else(|p| p.into_inner());
+        guard.snapshot()
+    };
+    assert_eq!(
+        after.bytes.len(),
+        50,
+        "post-recovery write survived (#4748)"
+    );
+}
+
 /// Pathological sparse stream: alternating far offsets for ~10k deltas stays
 /// memory-bounded (len <= cap, holes <= 64) and completes in sane wall time.
 /// The bounded-metadata property is the assertion; the 64 constant is tunable.
