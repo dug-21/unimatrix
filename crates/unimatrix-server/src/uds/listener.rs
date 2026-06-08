@@ -40,7 +40,8 @@ use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::registry::Capability;
 use crate::infra::session::{
-    ReworkEvent, SessionOutcome, SessionRegistry, SetFeatureResult, SignalOutput, lock_buffer,
+    FeatureSource, InferredOrigin, ReworkEvent, SessionOutcome, SessionRegistry, SetFeatureResult,
+    SignalOutput, lock_buffer,
 };
 use crate::infra::session_transcript::TranscriptPurgeRecord;
 use crate::infra::timeout::MCP_HANDLER_TIMEOUT;
@@ -139,43 +140,156 @@ fn sanitize_observation_source(source: Option<&str>) -> String {
 /// and returns state.feature.clone() if the session has a registered feature.
 /// Returns None if the session is not registered or has no feature set (FR-13).
 ///
-/// When `extracted` is `Some(x)` and the session registry has a different feature,
-/// emits tracing::debug! with both values for attribution forensics (AC-08).
-/// The extracted signal is still returned unchanged; the debug log is informational only.
+/// vnc-030 (ADR-004): the "explicit always wins" rule is no longer unconditional —
+/// a `FeatureSource::Declared` registry feature now beats a contradicting extracted
+/// signal (the unstamped-window #588 remedy). This thin wrapper preserves the old
+/// signature for any non-record-path caller; record-path callers must use
+/// [`enrich_topic_signal_with_source`] so the row's `topic_source` is set from the
+/// same decision tree (ADR-005 — signal and source can never disagree).
 ///
 /// This is a synchronous Mutex read (~microseconds); no await, no spawn_blocking.
-/// The registry lock is held for the duration of the read only.
+///
+/// All record-path callers now use [`enrich_topic_signal_with_source`] directly so the
+/// row's `topic_source` is set; this signal-only wrapper survives for the col-024 unit
+/// tests (which assert the signal half of the contract in isolation).
+#[cfg(test)]
 fn enrich_topic_signal(
     extracted: Option<String>,
     session_id: &str,
     session_registry: &SessionRegistry,
 ) -> Option<String> {
-    // Read the registry feature for this session, if any.
-    // get_state acquires a Mutex lock briefly and uses unwrap_or_else internally (FM-04).
-    let registry_feature: Option<String> = session_registry
-        .get_state(session_id)
-        .and_then(|state| state.feature);
+    enrich_topic_signal_with_source(extracted, session_id, session_registry).0
+}
 
-    // Case 1: explicit extracted signal present — explicit wins unconditionally (AC-08).
-    if let Some(ref explicit) = extracted {
-        // Diagnostic: log if the explicit signal differs from the registry feature.
-        if let Some(ref reg_feat) = registry_feature {
-            if explicit != reg_feat {
-                tracing::debug!(
-                    session_id = session_id,
-                    extracted_signal = %explicit,
-                    registry_feature = %reg_feat,
-                    "enrich_topic_signal: explicit signal differs from registry feature; \
-                     explicit wins (AC-08)"
-                );
-            }
+/// Resolve `(topic_signal, topic_source)` for one observation row via the ADR-004 §4
+/// precedence decision tree (vnc-030, FR-21). One value per code path; the returned
+/// `topic_source` is exactly the path that produced the signal, so source and signal
+/// can never disagree (ADR-005 §2).
+///
+/// Decision tree (in order):
+///  1. Declared registry feature → `('declared')` — beats extraction (the
+///     unstamped-window #588 remedy); the inverted forensics log fires when a
+///     declared feature overrides a contradicting extraction.
+///  2. extracted signal present → `('extracted')` — extraction wins only against an
+///     Inferred / absent registry now.
+///  3. registry fill, split by `InferredOrigin`:
+///     `Inferred(Registered)` → `('registry-fill')`,
+///     `Inferred(Voted)` → `('vote')` (OQ-A: the ONLY row-level 'vote' site),
+///     `Declared` NULL-fill → `('declared')`.
+///  4. nothing → `(None, None)` — `topic_source` NULL, UNATTRIBUTED.
+///
+/// This is a synchronous Mutex read (~microseconds); no await, no spawn_blocking.
+fn enrich_topic_signal_with_source(
+    extracted: Option<String>,
+    session_id: &str,
+    session_registry: &SessionRegistry,
+) -> (Option<String>, Option<String>) {
+    // ONE get_state for both the feature and its precedence source (as today).
+    let state = session_registry.get_state(session_id);
+    let feat = state.as_ref().and_then(|s| s.feature.clone());
+    let src = state.as_ref().map(|s| s.feature_source.clone());
+
+    // 1. Declared registry feature beats extraction (the unstamped-window #588 remedy).
+    if let (Some(f), Some(FeatureSource::Declared)) = (&feat, &src) {
+        // Forensics log INVERTS (ADR-004 consequence): now logs when a DECLARED
+        // feature overrides a contradicting extraction.
+        if let Some(ref ex) = extracted
+            && ex != f
+        {
+            tracing::debug!(
+                session_id,
+                extracted_signal = %ex,
+                declared_feature = %f,
+                "enrich_topic_signal: declared registry feature overrides extraction \
+                 (#588 remedy)"
+            );
         }
-        return extracted;
+        return (Some(f.clone()), Some("declared".to_string()));
     }
 
-    // Case 2: no explicit signal — use registry feature as fallback.
-    // Returns None if session not registered or feature not set (FR-13, I-03).
-    registry_feature
+    // 2. Explicit extracted signal present — extraction wins (against Inferred/absent only).
+    if let Some(ex) = extracted {
+        return (Some(ex), Some("extracted".to_string()));
+    }
+
+    // 3. No extraction — registry fill, split by InferredOrigin for the F6 evidence base.
+    match (&feat, &src) {
+        (Some(f), Some(FeatureSource::Inferred(InferredOrigin::Registered))) => {
+            (Some(f.clone()), Some("registry-fill".to_string()))
+        }
+        // OQ-A: the SINGLE row-level 'vote' write site. An unstamped event with no
+        // extraction fills from a registry feature whose source is Inferred(Voted)
+        // (eager-set, #198). Session-level majority vote resolves sessions.feature_cycle,
+        // never rows (rows are immutable, never retro-stamped — ADR-005 §1).
+        (Some(f), Some(FeatureSource::Inferred(InferredOrigin::Voted))) => {
+            (Some(f.clone()), Some("vote".to_string()))
+        }
+        // Declared with no extraction (case 1 handled the with-extraction subcase) —
+        // this is declared NULL-fill.
+        (Some(f), Some(FeatureSource::Declared)) => (Some(f.clone()), Some("declared".to_string())),
+        // 4. Nothing attributed the row.
+        _ => (None, None),
+    }
+}
+
+/// True for any CYCLE_* lifecycle event_type (vnc-030, ADR-004). A CYCLE_* row's
+/// `topic_signal` already IS the declaration, so its `topic_source` is 'declared'.
+fn is_cycle_event(event_type: &str) -> bool {
+    event_type == CYCLE_START_EVENT
+        || event_type == CYCLE_PHASE_END_EVENT
+        || event_type == CYCLE_STOP_EVENT
+}
+
+/// Attribute one observation row from the event (vnc-030, ADR-004 §4). The single
+/// shared record-path helper exercised by all three record sites (ADR-003 anti-drift
+/// mandate, R-01). Sets `obs.topic_signal`, `obs.phase`, and `obs.topic_source`
+/// together so the row's signal and source come from one decision (ADR-005 §2):
+///
+///  - stamp present  → row = declared; `registry.apply_stamp`; SKIP tally + enrich;
+///  - CYCLE_* event  → row = declared (topic_signal already IS the declaration);
+///  - else           → the `enrich_topic_signal_with_source` decision tree.
+///
+/// `obs.phase` is set to `stamp.phase ?? registry.current_phase` on the stamp path,
+/// and to `registry.current_phase` otherwise (preserving the crt-043 capture).
+fn apply_stamp_to_row(
+    obs: &mut ObservationRow,
+    event: &unimatrix_engine::wire::ImplantEvent,
+    session_registry: &SessionRegistry,
+) {
+    let registry_phase = || {
+        session_registry
+            .get_state(&event.session_id)
+            .and_then(|s| s.current_phase.clone())
+    };
+
+    if let Some(stamp) = &event.cycle_stamp {
+        // STAMP path — contractual (ADR-004). The stamp, not the heuristic chain, is
+        // the source of truth; covers server-restart mid-session (apply_stamp).
+        obs.topic_signal = Some(stamp.topic.clone());
+        obs.phase = stamp.phase.clone().or_else(registry_phase); // stamp.phase ?? registry phase
+        obs.topic_source = Some("declared".to_string());
+        // Idempotent Declared set; no-op on an absent session (row still gets 'declared').
+        session_registry.apply_stamp(&event.session_id, &stamp.topic);
+        // SKIP record_topic_signal tally + #198 eager + enrich (guarded at the call sites).
+        return;
+    }
+
+    if is_cycle_event(&event.event_type) {
+        // CYCLE_* event (any client): topic_signal already = the declaration.
+        obs.phase = registry_phase();
+        obs.topic_source = Some("declared".to_string());
+        return;
+    }
+
+    // Heuristic path — enrich WITH source (replaces the bare enrich call at the site).
+    let (signal, source) = enrich_topic_signal_with_source(
+        obs.topic_signal.clone(),
+        &event.session_id,
+        session_registry,
+    );
+    obs.topic_signal = signal;
+    obs.topic_source = source;
+    obs.phase = registry_phase();
 }
 
 /// Fire-and-forget `spawn_blocking`. The returned JoinHandle is dropped.
@@ -771,25 +885,26 @@ pub(crate) async fn dispatch_request(
 
             session_registry.record_rework_event(&event.session_id, rework_event);
 
-            // col-017: Accumulate topic signal from rework candidate events
-            if let Some(ref signal) = event.topic_signal {
-                session_registry.record_topic_signal(
-                    &event.session_id,
-                    signal.clone(),
-                    event.timestamp,
-                );
+            // col-017: Accumulate topic signal from rework candidate events.
+            // vnc-030 tally-skip (R-05): a stamped event must NOT feed the vote tally —
+            // belt-and-suspenders against a mixed/buggy client (the client also strips
+            // topic_signal from stamped non-CYCLE_* frames).
+            if event.cycle_stamp.is_none() {
+                if let Some(ref signal) = event.topic_signal {
+                    session_registry.record_topic_signal(
+                        &event.session_id,
+                        signal.clone(),
+                        event.timestamp,
+                    );
+                }
             }
 
             // col-019: Persist rework PostToolUse as observation (fire-and-forget)
-            // col-024: Enrich topic_signal from session registry when not set by extract.
+            // vnc-030 Site A (ADR-004 §4): shared apply_stamp_to_row sets topic_signal,
+            // phase, and topic_source together (stamp → declared, else enrich tree).
             let store_for_obs = Arc::clone(store);
-            let mut obs = extract_observation_fields(&event);
-            obs.topic_signal =
-                enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
-            // crt-043: capture phase before spawn_blocking — same timing contract as topic_signal enrichment.
-            obs.phase = session_registry
-                .get_state(&event.session_id)
-                .and_then(|s| s.current_phase.clone());
+            let mut obs = extract_observation_fields(event);
+            apply_stamp_to_row(&mut obs, event, session_registry);
             tokio::task::spawn_blocking(move || {
                 if let Err(e) = insert_observation(&store_for_obs, &obs) {
                     tracing::error!(error = %e, "rework observation write failed");
@@ -889,72 +1004,76 @@ pub(crate) async fn dispatch_request(
                 );
             }
 
-            // #198 Part 1: Extract explicit feature_cycle from event payload
-            if let Some(fc) = event.payload.get("feature_cycle").and_then(|v| v.as_str()) {
-                let fc_clean = sanitize_metadata_field(fc);
-                if !fc_clean.is_empty()
-                    && session_registry.set_feature_if_absent(&event.session_id, &fc_clean)
-                {
-                    tracing::info!(
-                        session_id = %event.session_id,
-                        feature_cycle = %fc_clean,
-                        "#198: feature_cycle set from event payload"
-                    );
-                    let store_fc = Arc::clone(store);
-                    let sid = event.session_id.clone();
-                    let fc_owned = fc_clean;
-                    let _ = tokio::spawn(async move {
-                        if let Err(e) =
-                            update_session_feature_cycle(&store_fc, &sid, &fc_owned).await
-                        {
-                            tracing::warn!(error = %e, "#198: feature_cycle persist failed");
-                        }
-                    });
-                }
-            }
-
-            // col-017: Accumulate topic signal in session state
-            if let Some(ref signal) = event.topic_signal {
-                session_registry.record_topic_signal(
-                    &event.session_id,
-                    signal.clone(),
-                    event.timestamp,
-                );
-
-                // #198 Part 2: Check eager attribution after signal accumulation
-                if let Some(winner) = session_registry.check_eager_attribution(&event.session_id) {
-                    if session_registry.set_feature_if_absent(&event.session_id, &winner) {
+            // vnc-030 tally-skip (R-05): a stamped event must NOT feed the vote tally,
+            // the #198 feature_cycle path, or eager attribution — its attribution is
+            // contractual (the stamp). The client also strips topic_signal on stamped
+            // non-CYCLE_* frames; this guard is the belt-and-suspenders server side.
+            if event.cycle_stamp.is_none() {
+                // #198 Part 1: Extract explicit feature_cycle from event payload
+                if let Some(fc) = event.payload.get("feature_cycle").and_then(|v| v.as_str()) {
+                    let fc_clean = sanitize_metadata_field(fc);
+                    if !fc_clean.is_empty()
+                        && session_registry.set_feature_if_absent(&event.session_id, &fc_clean)
+                    {
                         tracing::info!(
                             session_id = %event.session_id,
-                            feature_cycle = %winner,
-                            "#198: feature_cycle set via eager attribution"
+                            feature_cycle = %fc_clean,
+                            "#198: feature_cycle set from event payload"
                         );
-                        let store_eager = Arc::clone(store);
+                        let store_fc = Arc::clone(store);
                         let sid = event.session_id.clone();
+                        let fc_owned = fc_clean;
                         let _ = tokio::spawn(async move {
                             if let Err(e) =
-                                update_session_feature_cycle(&store_eager, &sid, &winner).await
+                                update_session_feature_cycle(&store_fc, &sid, &fc_owned).await
                             {
-                                tracing::warn!(
-                                    error = %e,
-                                    "#198: eager attribution persist failed"
-                                );
+                                tracing::warn!(error = %e, "#198: feature_cycle persist failed");
                             }
                         });
+                    }
+                }
+
+                // col-017: Accumulate topic signal in session state
+                if let Some(ref signal) = event.topic_signal {
+                    session_registry.record_topic_signal(
+                        &event.session_id,
+                        signal.clone(),
+                        event.timestamp,
+                    );
+
+                    // #198 Part 2: Check eager attribution after signal accumulation
+                    if let Some(winner) =
+                        session_registry.check_eager_attribution(&event.session_id)
+                    {
+                        if session_registry.set_feature_if_absent(&event.session_id, &winner) {
+                            tracing::info!(
+                                session_id = %event.session_id,
+                                feature_cycle = %winner,
+                                "#198: feature_cycle set via eager attribution"
+                            );
+                            let store_eager = Arc::clone(store);
+                            let sid = event.session_id.clone();
+                            let _ = tokio::spawn(async move {
+                                if let Err(e) =
+                                    update_session_feature_cycle(&store_eager, &sid, &winner).await
+                                {
+                                    tracing::warn!(
+                                        error = %e,
+                                        "#198: eager attribution persist failed"
+                                    );
+                                }
+                            });
+                        }
                     }
                 }
             }
 
             // col-012: Persist observation to SQLite (fire-and-forget)
-            // col-024: Enrich topic_signal from session registry when not set by extract.
+            // vnc-030 Site B (ADR-004 §4): shared apply_stamp_to_row sets topic_signal,
+            // phase, and topic_source together (stamp → declared, else enrich tree).
             let store_for_obs = Arc::clone(store);
             let mut obs = extract_observation_fields(&event);
-            obs.topic_signal =
-                enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
-            // crt-043: capture phase before spawn_blocking — same timing contract as topic_signal enrichment.
-            obs.phase = session_registry
-                .get_state(&event.session_id)
-                .and_then(|s| s.current_phase.clone());
+            apply_stamp_to_row(&mut obs, &event, session_registry);
             spawn_blocking_fire_and_forget(move || {
                 if let Err(e) = insert_observation(&store_for_obs, &obs) {
                     tracing::error!(error = %e, "observation write failed");
@@ -994,6 +1113,10 @@ pub(crate) async fn dispatch_request(
             let mut eager_resolved: std::collections::HashSet<String> =
                 std::collections::HashSet::new();
             for event in &events {
+                // vnc-030 tally-skip (R-05): stamped events skip the #198 feature_cycle path.
+                if event.cycle_stamp.is_some() {
+                    continue;
+                }
                 if let Some(fc) = event.payload.get("feature_cycle").and_then(|v| v.as_str()) {
                     let fc_clean = sanitize_metadata_field(fc);
                     if !fc_clean.is_empty()
@@ -1022,8 +1145,12 @@ pub(crate) async fn dispatch_request(
                 }
             }
 
-            // col-017: Accumulate topic signals for all events in batch
+            // col-017: Accumulate topic signals for all events in batch.
+            // vnc-030 tally-skip (R-05): stamped events do NOT feed the vote tally.
             for event in &events {
+                if event.cycle_stamp.is_some() {
+                    continue;
+                }
                 if let Some(ref signal) = event.topic_signal {
                     session_registry.record_topic_signal(
                         &event.session_id,
@@ -1033,11 +1160,12 @@ pub(crate) async fn dispatch_request(
                 }
             }
 
-            // #198 Part 2: Check eager attribution for sessions that accumulated signals
-            // Collect unique session IDs that had topic signals
+            // #198 Part 2: Check eager attribution for sessions that accumulated signals.
+            // Collect unique session IDs that had topic signals (stamped events excluded —
+            // they neither fed the tally above nor should trigger eager attribution).
             let signal_sessions: std::collections::HashSet<&str> = events
                 .iter()
-                .filter(|e| e.topic_signal.is_some())
+                .filter(|e| e.topic_signal.is_some() && e.cycle_stamp.is_none())
                 .map(|e| e.session_id.as_str())
                 .collect();
             for sid in signal_sessions {
@@ -1109,13 +1237,10 @@ pub(crate) async fn dispatch_request(
                 .iter()
                 .filter(|event| event.event_type != TRANSCRIPT_DELTA_EVENT)
                 .map(|event| {
+                    // vnc-030 Site C (ADR-004 §4, R-06): shared apply_stamp_to_row per
+                    // batch member sets topic_signal, phase, and topic_source together.
                     let mut obs = extract_observation_fields(event);
-                    obs.topic_signal =
-                        enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
-                    // crt-043: capture phase per-event, before batch enters spawn_blocking.
-                    obs.phase = session_registry
-                        .get_state(&event.session_id)
-                        .and_then(|s| s.current_phase.clone());
+                    apply_stamp_to_row(&mut obs, event, session_registry);
                     obs
                 })
                 .collect();
@@ -1251,8 +1376,12 @@ pub(crate) async fn dispatch_request(
 
             if let Some(ref sid) = session_id {
                 if !query.is_empty() {
-                    // col-024: enrich before recording; registry-enriched signals also accumulate.
-                    let enriched_signal = enrich_topic_signal(topic_signal, sid, session_registry);
+                    // col-024 / vnc-030: enrich-with-source before recording. ContextSearch
+                    // carries no cycle_stamp (it is a query, not a RecordEvent frame), so it
+                    // takes the heuristic decision tree directly — topic_source comes from the
+                    // same path that sets topic_signal (ADR-005 §2; signal/source agree).
+                    let (enriched_signal, enriched_source) =
+                        enrich_topic_signal_with_source(topic_signal, sid, session_registry);
 
                     if let Some(ref signal) = enriched_signal {
                         session_registry.record_topic_signal(sid, signal.clone(), unix_now_secs());
@@ -1273,7 +1402,8 @@ pub(crate) async fn dispatch_request(
                         response_size: None,
                         response_snippet: None,
                         topic_signal: enriched_signal,
-                        phase, // crt-043
+                        phase,                         // crt-043
+                        topic_source: enriched_source, // vnc-030 (ADR-005)
                     };
 
                     let store_for_obs = Arc::clone(store);
@@ -1947,16 +2077,26 @@ async fn process_session_close(
 ) -> HookResponse {
     // col-010: capture session metadata before drain (state is removed by drain)
     // col-017: also capture topic_signals for majority vote resolution
-    let (feature_cycle, injection_count, compaction_count, topic_signals) = {
+    // vnc-030 inversion flip 2 (ADR-004 §6, FR-17): capture feature_source in the
+    // EXISTING get_state snapshot (minimal diff) so a Declared feature can short-circuit
+    // the vote + content fallback below — declared wins at close (mirror of the sweep fix).
+    let (feature_cycle, injection_count, compaction_count, topic_signals, feature_source) = {
         if let Some(state) = session_registry.get_state(session_id) {
             (
                 state.feature.clone(),
                 state.injection_history.len() as u32,
                 state.compaction_count,
                 state.topic_signals.clone(),
+                state.feature_source.clone(),
             )
         } else {
-            (None, 0u32, 0u32, std::collections::HashMap::new())
+            (
+                None,
+                0u32,
+                0u32,
+                std::collections::HashMap::new(),
+                FeatureSource::Inferred(InferredOrigin::Registered),
+            )
         }
     };
 
@@ -2007,33 +2147,47 @@ async fn process_session_close(
         };
         // col-017: Determine final feature_cycle — majority vote wins, else fallback to
         // content-based attribution, else use the registered feature from SessionStart.
-        let final_feature_cycle = if let Some(ref topic) = resolved_topic {
-            // Majority vote produced a result — use it
-            tracing::info!(
-                session_id,
-                topic = %topic,
-                "col-017: topic resolved via majority vote"
-            );
-            Some(topic.clone())
-        } else {
-            // No hook-side signals — fallback to content-based attribution (FR-06.2)
-            let store_clone = Arc::clone(store);
-            let sid = session_id.to_string();
-            let fallback = tokio::task::spawn_blocking(move || {
-                content_based_attribution_fallback(&store_clone, &sid)
-            })
-            .await
-            .unwrap_or(None);
-
-            if fallback.is_some() {
+        // vnc-030 inversion flip 2 (ADR-004 §6, FR-17): a Declared-and-present feature
+        // short-circuits the vote + content fallback (declared can no longer be
+        // vote-inverted at close). The vote path below is reached ONLY for non-Declared
+        // sessions — today's order, now NULL-gated. Minimal-diff (C-10): crt-052 rebases
+        // over this single short-circuit; majority_vote, content fallback, sweep loop,
+        // drain, and purge emission are UNTOUCHED.
+        let final_feature_cycle =
+            if matches!(feature_source, FeatureSource::Declared) && feature_cycle.is_some() {
                 tracing::info!(
                     session_id,
-                    topic = ?fallback,
-                    "col-017: topic resolved via content-based fallback"
+                    topic = ?feature_cycle,
+                    "vnc-030: declared feature wins at close (vote + content fallback skipped)"
                 );
-            }
-            fallback.or(feature_cycle.clone())
-        };
+                feature_cycle.clone()
+            } else if let Some(ref topic) = resolved_topic {
+                // Majority vote produced a result — use it
+                tracing::info!(
+                    session_id,
+                    topic = %topic,
+                    "col-017: topic resolved via majority vote"
+                );
+                Some(topic.clone())
+            } else {
+                // No hook-side signals — fallback to content-based attribution (FR-06.2)
+                let store_clone = Arc::clone(store);
+                let sid = session_id.to_string();
+                let fallback = tokio::task::spawn_blocking(move || {
+                    content_based_attribution_fallback(&store_clone, &sid)
+                })
+                .await
+                .unwrap_or(None);
+
+                if fallback.is_some() {
+                    tracing::info!(
+                        session_id,
+                        topic = ?fallback,
+                        "col-017: topic resolved via content-based fallback"
+                    );
+                }
+                fallback.or(feature_cycle.clone())
+            };
 
         // col-010: update SESSIONS record (fire-and-forget)
         // col-017: include resolved feature_cycle
@@ -2903,6 +3057,10 @@ struct ObservationRow {
     /// Active session phase at observation write time (crt-043).
     /// NULL when no active cycle or current_phase not yet set (FR-C-05).
     phase: Option<String>,
+    /// Per-row attribution provenance (vnc-030, ADR-005).
+    /// 'declared'|'extracted'|'registry-fill'|'vote'|NULL. Set at insert time only;
+    /// never updated afterward (rows are immutable — ADR-005 §1).
+    topic_source: Option<String>,
 }
 
 /// Extract observation fields from an ImplantEvent for SQL insertion.
@@ -2999,6 +3157,7 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
         response_snippet,
         topic_signal: event.topic_signal.clone(),
         phase: None, // crt-043: captured at call site before spawn_blocking (FR-C-05)
+        topic_source: None, // vnc-030: set by apply_stamp_to_row before insert (ADR-005)
     }
 }
 
@@ -3070,8 +3229,8 @@ fn insert_observation(
     tokio::runtime::Handle::current()
         .block_on(
             sqlx::query(
-                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase, topic_source)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             )
             .bind(&obs.session_id)
             .bind(obs.ts_millis)
@@ -3082,6 +3241,7 @@ fn insert_observation(
             .bind(&obs.response_snippet)
             .bind(&obs.topic_signal)
             .bind(&obs.phase) // crt-043: ?9
+            .bind(&obs.topic_source) // vnc-030: ?10 — topic content via parameterized bind, never interpolation (ADR-005)
             .execute(pool),
         )
         .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
@@ -3110,8 +3270,8 @@ fn insert_observations_batch(
             .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
         for obs in batch {
             sqlx::query(
-                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase, topic_source)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             )
             .bind(&obs.session_id)
             .bind(obs.ts_millis)
@@ -3122,6 +3282,7 @@ fn insert_observations_batch(
             .bind(&obs.response_snippet)
             .bind(&obs.topic_signal)
             .bind(&obs.phase) // crt-043: ?9
+            .bind(&obs.topic_source) // vnc-030: ?10 — parameterized bind, never interpolation (ADR-005)
             .execute(&mut *txn)
             .await
             .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
@@ -6888,24 +7049,47 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    /// T-ENR-02 + T-ENR-03: extracted = Some("bugfix-342"), registry feature = "col-024"
-    /// → returns Some("bugfix-342") unchanged; debug log fires with both values (AC-08).
-    #[tracing_test::traced_test]
+    /// T-ENR-02 + T-ENR-03 (vnc-030 ADR-004): extracted = Some("bugfix-342") against an
+    /// `Inferred(Registered)` registry feature "col-024" → extraction STILL wins (the
+    /// "explicit wins" arm survives against non-declared registry); no inverted-log fires.
     #[test]
-    fn test_enrich_explicit_signal_unchanged() {
+    fn test_enrich_explicit_signal_unchanged_against_inferred() {
         let registry = make_registry();
+        // register_session defaults feature_source to Inferred(Registered).
         registry.register_session("sess-1", None, Some("col-024".to_string()));
 
         let result = enrich_topic_signal(Some("bugfix-342".to_string()), "sess-1", &registry);
 
-        // Explicit signal wins — registry feature must not replace it.
+        // Explicit signal wins against an Inferred registry feature (ADR-004 case 2).
         assert_eq!(result, Some("bugfix-342".to_string()));
-        // AC-08: debug log must fire because extracted ≠ registry feature.
+    }
+
+    /// vnc-030 (ADR-004 §4, FR-14): a DECLARED registry feature beats a contradicting
+    /// extraction (the unstamped-window #588 remedy); the forensics log INVERTS — it now
+    /// fires when the declared feature overrides extraction, carrying both values.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_enrich_declared_overrides_extraction_inverted_log() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, None);
+        // Promote to Declared via the cycle_start path (set_feature_force).
+        registry.set_feature_force("sess-1", "col-024");
+
+        let (signal, source) =
+            enrich_topic_signal_with_source(Some("bugfix-342".to_string()), "sess-1", &registry);
+
+        // Declared registry feature wins over the contradicting extraction.
+        assert_eq!(signal, Some("col-024".to_string()));
+        assert_eq!(source, Some("declared".to_string()));
+        // Inverted forensics log fires with both values.
         assert!(
             logs_contain("bugfix-342"),
-            "log must contain extracted signal"
+            "inverted log must contain the overridden extraction"
         );
-        assert!(logs_contain("col-024"), "log must contain registry feature");
+        assert!(
+            logs_contain("col-024"),
+            "inverted log must contain the declared feature"
+        );
     }
 
     /// T-ENR-05: extracted = None, session registered but feature = None → returns None (FR-13)
@@ -8946,4 +9130,8 @@ mod tests {
 
     // vnc-027 (#680): listener-preformatted UDS Text-negotiation component tests.
     mod preformatted;
+
+    // vnc-030 (#699): cycle_stamp 3-site read, topic_source taxonomy, close-path
+    // inversion flip, enrich FeatureSource guard (ADR-004/005). 500-line rule.
+    mod stamp_read;
 }
