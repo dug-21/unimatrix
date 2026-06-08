@@ -41,8 +41,11 @@ const transportUds = require("../../lib/hook-client/transport-uds");
 const ENTRY = path.resolve(__dirname, "../../lib/hook-client/index.js");
 const INJECTION_HEADER = "--- Unimatrix Context ---\n";
 
+const IS_WINDOWS = process.platform === "win32"; // UDS is Unix-only (vnc-027)
+
 let server;
 before(async () => {
+  if (IS_WINDOWS) return; // no live UDS daemon on Windows
   server = await startRealServer({ startTimeoutMs: 60000 });
 });
 after(async () => {
@@ -195,7 +198,7 @@ function newWarnErrors(before, after) {
 
 // ── AC-03: live round-trip framing + sync I/O ──────────────────────────────
 
-describe("AC-03 — live UDS round-trip: frames decode, sync trio behaves", () => {
+describe("AC-03 — live UDS round-trip: frames decode, sync trio behaves", { skip: IS_WINDOWS }, () => {
   it("test_uds_ping_sync_roundtrip_pong", async () => {
     const res = await server.udsPost({ type: "Ping" }, { sync: true });
     assert.ok(res.ok, "Ping round-trips over the live socket");
@@ -236,7 +239,7 @@ describe("AC-03 — live UDS round-trip: frames decode, sync trio behaves", () =
 
 // ── AC-07: transcript_delta over UDS merges into the F2 buffer ──────────────
 
-describe("AC-07 — transcript_delta over UDS merges into the F2 buffer (content)", () => {
+describe("AC-07 — transcript_delta over UDS merges into the F2 buffer (content)", { skip: IS_WINDOWS }, () => {
   it("test_transcript_delta_over_uds_merges_into_f2_buffer", async () => {
     const sid = "ac07-merge";
     let bytes = "";
@@ -253,7 +256,7 @@ describe("AC-07 — transcript_delta over UDS merges into the F2 buffer (content
 
 // ── AC-06: PreCompact single server-built block over UDS ────────────────────
 
-describe("AC-06 / R-17 — PreCompact single server-built block over UDS", () => {
+describe("AC-06 / R-17 — PreCompact single server-built block over UDS", { skip: IS_WINDOWS }, () => {
   it("test_uds_precompact_single_server_built_block", async () => {
     const sid = "ac06-single";
     let bytes = "";
@@ -278,7 +281,7 @@ describe("AC-06 / R-17 — PreCompact single server-built block over UDS", () =>
 
 // ── AC-11 / R-08 s4: frozen Rust hook vs TS client, same daemon ─────────────
 
-describe("AC-11 / R-08 s4 — FROZEN Rust hook e2e vs TS client (byte-identical)", () => {
+describe("AC-11 / R-08 s4 — FROZEN Rust hook e2e vs TS client (byte-identical)", { skip: IS_WINDOWS }, () => {
   it("test_frozen_rust_hook_precompact_byte_identical_to_ts_client", async () => {
     // THE deployed-frozen-hook safety proof. The frozen Rust binary sends NO
     // `accept` → the daemon returns typed BriefingContent (never Text), and the
@@ -322,7 +325,7 @@ describe("AC-11 / R-08 s4 — FROZEN Rust hook e2e vs TS client (byte-identical)
 
 // ── R-01 / R-18: FNF large frame + truncation contract ─────────────────────
 
-describe("R-01 / R-18 — FNF frame size + truncation contract", () => {
+describe("R-01 / R-18 — FNF frame size + truncation contract", { skip: IS_WINDOWS }, () => {
   it("test_frame_cap_boundary_exact_and_over", () => {
     // The wire cap is byte-shared with wire.rs: exactly 1,048,576 B payload
     // encodes; one byte over rejects BEFORE any write (live framing boundary;
@@ -399,7 +402,7 @@ describe("R-01 / R-18 — FNF frame size + truncation contract", () => {
 
 // ── AC-08 / R-12: no-SubagentStop full lifecycle ───────────────────────────
 
-describe("AC-08 / R-12 — full lifecycle with SubagentStop NEVER sent", () => {
+describe("AC-08 / R-12 — full lifecycle with SubagentStop NEVER sent", { skip: IS_WINDOWS }, () => {
   it("test_no_subagentstop_full_lifecycle", async () => {
     const sid = "r12-lifecycle";
     const logBefore = server.serverLog();
@@ -435,7 +438,7 @@ describe("AC-08 / R-12 — full lifecycle with SubagentStop NEVER sent", () => {
 
 // ── AC-04 / R-10: cross-transport replay, both directions ──────────────────
 
-describe("AC-04 / R-10 — cross-transport replay (both directions), session-id split", () => {
+describe("AC-04 / R-10 — cross-transport replay (both directions), session-id split", { skip: IS_WINDOWS }, () => {
   it("test_replay_uds_origin_frames_over_http", async () => {
     // A queue staged with transport-agnostic frames (their UDS origin is
     // immaterial — frames carry no transport state, no `accept`) replays over
@@ -526,7 +529,7 @@ describe("AC-04 / R-10 — cross-transport replay (both directions), session-id 
 
 // ── AC-05 / R-15: latency over UDS ─────────────────────────────────────────
 
-describe("AC-05 / R-15 — latency over UDS (p95 < 20 ms), separate FNF/sync", () => {
+describe("AC-05 / R-15 — latency over UDS (p95 < 20 ms), separate FNF/sync", { skip: IS_WINDOWS }, () => {
   it("test_timeout_constant_is_40ms", () => {
     assert.strictEqual(transportUds.TIMEOUT_MS, 40, "40 ms parity timeout constant (not load-bearing for p95)");
   });

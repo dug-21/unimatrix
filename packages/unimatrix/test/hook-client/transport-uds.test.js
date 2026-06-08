@@ -25,6 +25,8 @@ const {
 
 const FAILURE_CLASSES = new Set(["auth", "connect", "timeout", "http_4xx", "http_5xx"]);
 
+const IS_WINDOWS = process.platform === "win32";
+
 function cfg(socketPath) {
   return { socketPath };
 }
@@ -42,7 +44,7 @@ function textResponseOfExactBodySize(total) {
   return { type: "Text", body: "a".repeat(total - base) };
 }
 
-describe("transport-uds", function () {
+describe("transport-uds", { skip: IS_WINDOWS }, function () { // UDS is Unix-only (vnc-027)
   // ── Framing — AC-01 / R-18 (wire.rs byte authority) ───────────────────────
 
   describe("framing", function () {
