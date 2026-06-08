@@ -11,6 +11,26 @@ use unimatrix_engine::wire::{HookRequest, HookResponse};
 use super::internal_error_response;
 use crate::uds::hook::{MAX_INJECTION_BYTES, format_injection};
 
+/// Single formatting truth shared by the HTTP `/observe` text/plain path and the UDS
+/// `Text` branch (`listener.rs::handle_connection`) — vnc-027 ADR-001 §5.
+///
+/// Returns `Some(text)` for the two injection-bearing variants, `None` otherwise (the
+/// caller maps `None` -> 204 / `Ack`). The allowlist is exactly `{Entries, BriefingContent}`;
+/// `Pong`/`Ack`/`Error` never convert. Because BOTH transports call this one function,
+/// UDS `Text` bodies and HTTP `text/plain` bodies are byte-identical by construction
+/// (R-09 s3, parity-by-construction — vnc-025 ADR-005 lesson).
+///
+/// - `Entries`   -> `format_injection(items, MAX_INJECTION_BYTES)` (includes the load-bearing
+///   `--- Unimatrix Context ---\n` header; `None` when empty / over-budget).
+/// - `BriefingContent` -> `content` verbatim (NO header prepended).
+pub(crate) fn response_injection_text(resp: &HookResponse) -> Option<String> {
+    match resp {
+        HookResponse::Entries { items, .. } => format_injection(items, MAX_INJECTION_BYTES),
+        HookResponse::BriefingContent { content, .. } => Some(content.clone()),
+        _ => None,
+    }
+}
+
 /// Map a HookResponse to an HTTP response (ADR-004; ADR-003 content negotiation, vnc-024).
 ///
 /// JSON path (`wants_text == false`, or non-injection response):
@@ -19,30 +39,25 @@ use crate::uds::hook::{MAX_INJECTION_BYTES, format_injection};
 /// - Error -> 400 Bad Request + JSON body
 ///
 /// Text path (`wants_text == true`, HTTP-only): the two injection-bearing responses are
-/// formatted as `text/plain` via the single formatting truth `format_injection`
-/// (`hook.rs`, Constraint 4 / AC-07 byte-identity). `Pong`/`Ack`/`Error` fall through to
-/// JSON regardless of `Accept` (the allowlist is exactly `{Entries, BriefingContent}`, R-06).
+/// formatted as `text/plain` via the single formatting truth `response_injection_text`
+/// (-> `format_injection`, Constraint 4 / AC-07 byte-identity, shared with the UDS `Text`
+/// branch). `Pong`/`Ack`/`Error` fall through to JSON regardless of `Accept` (the allowlist
+/// is exactly `{Entries, BriefingContent}`, R-06).
 pub(crate) fn observe_response_to_http(
     resp: HookResponse,
     wants_text: bool,
 ) -> Response<BoxBody<Bytes, Infallible>> {
-    // Content-negotiated text path: Entries / BriefingContent only (ADR-003).
+    // Content-negotiated text path: Entries / BriefingContent only (ADR-003), via the
+    // shared injection-text core so HTTP and UDS bodies are byte-identical (ADR-001 §5).
     if wants_text {
-        match resp {
-            HookResponse::Entries { ref items, .. } => {
-                // Reuse the PRODUCTION injection budget so the text is byte-identical to the
-                // UDS hook path (AC-07). `None` (empty / over-budget) -> 204, not 200/500.
-                return match format_injection(items, MAX_INJECTION_BYTES) {
-                    Some(text) => http_200_text_plain(text),
-                    None => http_204_no_content(),
-                };
-            }
-            HookResponse::BriefingContent { content, .. } => {
-                return http_200_text_plain(content);
-            }
-            // Pong / Ack / Error under text/plain: not text-eligible. Fall through to the
-            // unchanged JSON envelope below (Pong.server_version is parsed structured, R-06).
-            _ => {}
+        if let Some(text) = response_injection_text(&resp) {
+            return http_200_text_plain(text);
+        }
+        // Entries that formatted to None (empty / over-budget) -> 204, not 200/500.
+        // Pong / Ack / Error fall through to the unchanged JSON envelope below
+        // (Pong.server_version is parsed structured, R-06).
+        if matches!(resp, HookResponse::Entries { .. }) {
+            return http_204_no_content();
         }
     }
 

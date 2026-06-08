@@ -280,7 +280,10 @@ fn map_health_response(resp: Response<String>) -> Response<BoxBody<Bytes, Infall
     )
 }
 
-mod observe;
+// `pub(crate)` so the UDS listener can reach the shared injection-text core
+// (`response_injection_text`) — the single formatting truth shared by both transports
+// (vnc-027 ADR-001 §5).
+pub(crate) mod observe;
 use observe::{json_error_response, observe_response_to_http, prefix_session_id};
 
 // ---------------------------------------------------------------------------
