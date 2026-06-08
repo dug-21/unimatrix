@@ -337,6 +337,227 @@ describe("dispatch split (sync vs fire-and-forget)", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────
+// 2b. vnc-027 wiring: transport selection, null sentinel, FR-16 rekey, prune
+//     (in-process; hand-built config so all state lands inside tmpRoot)
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("vnc-027 transport selection (FR-14, ADR-002 §4)", () => {
+  const index2 = require("../../lib/hook-client/index");
+  const transportHttp = require("../../lib/hook-client/transport-http");
+  const transportUds = require("../../lib/hook-client/transport-uds");
+
+  it("test_selects_uds_transport_when_mode_uds", () => {
+    assert.strictEqual(index2.selectTransport({ mode: "uds" }), transportUds);
+  });
+
+  it("test_selects_http_transport_when_mode_http", () => {
+    assert.strictEqual(index2.selectTransport({ mode: "http" }), transportHttp);
+  });
+
+  it("test_selects_http_when_mode_absent_or_config_null", () => {
+    // Defensive: missing mode / null config never selects UDS (HTTP is the oracle).
+    assert.strictEqual(index2.selectTransport({}), transportHttp);
+    assert.strictEqual(index2.selectTransport(null), transportHttp);
+  });
+});
+
+describe("vnc-027 FNF wiring (FR-16 rekey, pruneOffsets, replay seam)", () => {
+  const index2 = require("../../lib/hook-client/index");
+  const state = require("../../lib/hook-client/state");
+  const queue = require("../../lib/hook-client/queue");
+
+  let stateDir;
+  let okPost;
+
+  function fnfConfig() {
+    return { ok: true, mode: "http", stateDir, urlHost: "" };
+  }
+  function okResult() {
+    return { ok: true, status: 0, contentType: null, body: null, failureClass: null };
+  }
+  const sessionClose = { type: "SessionClose", session_id: "s1", outcome: "success", duration_secs: 0 };
+  const noTranscript = { transcript_path: null };
+
+  beforeEach(() => {
+    freshProject();
+    stateDir = path.join(tmpRoot, "hook-state");
+    state.ensureStateDir(stateDir);
+    okPost = { post: () => Promise.resolve(okResult()) };
+  });
+  afterEach(cleanup);
+
+  it("test_sessionclose_delete_removed", async () => {
+    // A Stop→SessionClose successful FNF must NOT delete the offset (canonical
+    // "Stop"); the per-turn delete is gone (assertable negative, ADR-006).
+    state.writeOffset(stateDir, "s1", 42);
+    const offPath = state.offsetPath(stateDir, "s1");
+    assert.ok(fs.existsSync(offPath));
+    await index2.runFireAndForget(sessionClose, noTranscript, fnfConfig(), okPost, "Stop");
+    assert.ok(fs.existsSync(offPath), "Stop must not delete the offset");
+  });
+
+  it("test_taskcompleted_event_deletes_offset_after_successful_send", async () => {
+    // Canonical "TaskCompleted" + successful carrying send → delete (the retained
+    // but currently-unreachable forward provision, proven functional).
+    state.writeOffset(stateDir, "s1", 42);
+    const offPath = state.offsetPath(stateDir, "s1");
+    assert.ok(fs.existsSync(offPath));
+    await index2.runFireAndForget(sessionClose, noTranscript, fnfConfig(), okPost, "TaskCompleted");
+    assert.ok(!fs.existsSync(offPath), "TaskCompleted must delete the offset");
+  });
+
+  it("test_taskcompleted_failed_send_does_not_delete", async () => {
+    // Delete fires ONLY when the carrying send succeeded (ADR-006 §3).
+    state.writeOffset(stateDir, "s1", 42);
+    const offPath = state.offsetPath(stateDir, "s1");
+    const failPost = {
+      post: () =>
+        Promise.resolve({ ok: false, status: 0, contentType: null, body: null, failureClass: "connect" }),
+    };
+    await index2.runFireAndForget(sessionClose, noTranscript, fnfConfig(), failPost, "TaskCompleted");
+    assert.ok(fs.existsSync(offPath), "failed send must not delete the offset");
+  });
+
+  it("test_canonical_event_flag_passed_not_frame_type", async () => {
+    // Discrimination is by canonical event NAME, never frame type: a SessionClose
+    // frame with canonical "Stop" keeps the offset; the SAME frame with canonical
+    // "TaskCompleted" deletes it.
+    state.writeOffset(stateDir, "s1", 1);
+    await index2.runFireAndForget(sessionClose, noTranscript, fnfConfig(), okPost, "Stop");
+    assert.ok(fs.existsSync(state.offsetPath(stateDir, "s1")));
+    await index2.runFireAndForget(sessionClose, noTranscript, fnfConfig(), okPost, "TaskCompleted");
+    assert.ok(!fs.existsSync(state.offsetPath(stateDir, "s1")));
+  });
+
+  it("test_pruneoffsets_wired_alongside_queue_prune", async () => {
+    const origPrune = state.pruneOffsets;
+    const origQPrune = queue.prune;
+    let pruneCalled = false;
+    let qpruneCalled = false;
+    state.pruneOffsets = (d) => {
+      pruneCalled = true;
+      return origPrune(d);
+    };
+    queue.prune = (d) => {
+      qpruneCalled = true;
+      return origQPrune(d);
+    };
+    try {
+      await index2.runFireAndForget(sessionClose, noTranscript, fnfConfig(), okPost, "Stop");
+    } finally {
+      state.pruneOffsets = origPrune;
+      queue.prune = origQPrune;
+    }
+    assert.ok(pruneCalled, "pruneOffsets must run on the FNF path");
+    assert.ok(qpruneCalled, "queue.prune must run on the FNF path");
+  });
+
+  it("test_pruneoffsets_fnf_path_only", async () => {
+    // NFR-4: the sync trio gains NO extra file I/O — pruneOffsets must NOT run.
+    const origPrune = state.pruneOffsets;
+    let pruneCalled = false;
+    state.pruneOffsets = (d) => {
+      pruneCalled = true;
+      return origPrune(d);
+    };
+    try {
+      await index2.runSync({ type: "Ping" }, null, fnfConfig(), okPost);
+    } finally {
+      state.pruneOffsets = origPrune;
+    }
+    assert.strictEqual(pruneCalled, false, "sync path must not prune offsets");
+  });
+
+  it("test_pruneoffsets_fail_open_unusable_state_dir", async () => {
+    // Unusable stateDir (null HOME) → pruneOffsets no-ops; spawn proceeds, carrying
+    // send still attempted, no throw (R-14 s2, NFR-3).
+    let posted = false;
+    const cfg = { ok: true, mode: "http", stateDir: null, urlHost: "" };
+    const spyPost = {
+      post: () => {
+        posted = true;
+        return Promise.resolve(okResult());
+      },
+    };
+    await index2.runFireAndForget(sessionClose, noTranscript, cfg, spyPost, "Stop");
+    assert.ok(posted, "carrying send still attempted despite unusable state dir");
+  });
+
+  it("test_queue_replay_receives_injected_post", async () => {
+    // queue.replay(config, post) is called with the SELECTED transport's post; the
+    // SAME post flows to the carrying send (cross-transport replay by construction).
+    const origReplay = queue.replay;
+    let replayPost = null;
+    queue.replay = (config, post) => {
+      replayPost = post;
+      return origReplay(config, post);
+    };
+    let carryingPost = null;
+    const myTransport = {
+      post: function injected() {
+        carryingPost = injected;
+        return Promise.resolve(okResult());
+      },
+    };
+    try {
+      await index2.runFireAndForget(sessionClose, noTranscript, fnfConfig(), myTransport, "Stop");
+    } finally {
+      queue.replay = origReplay;
+    }
+    assert.strictEqual(replayPost, myTransport.post, "replay gets the injected post");
+    assert.strictEqual(carryingPost, myTransport.post, "same post drives the carrying send");
+  });
+});
+
+describe("vnc-027 null-sentinel + canonical wiring (spawn-level)", () => {
+  let stub;
+  const state = require("../../lib/hook-client/state");
+
+  beforeEach(() => freshProject());
+  afterEach(async () => {
+    if (stub) {
+      await stub.close();
+      stub = null;
+    }
+    cleanup();
+  });
+
+  it("test_null_request_returns_before_transport_selection", async () => {
+    // A non-cycle PreToolUse → null build-request sentinel → immediate return:
+    // no network, no stdout, exit 0, no breadcrumb (R-11 s4, AC-08).
+    stub = await startStubServer();
+    stub.respondWith({ status: 204 });
+    writeRemoteConfig(stub.url, "tok"); // http mode resolves OK
+    const r = await runEntry("PreToolUse", JSON.stringify({ session_id: "s1", tool_name: "Bash" }));
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(r.stdout.length, 0);
+    assert.strictEqual(stub.requests.length, 0, "null sentinel makes no network call");
+    assert.ok(!findHealthFile(tmpRoot), "null spawn writes no send-outcome breadcrumb");
+  });
+
+  it("test_stop_spawn_preserves_offset_taskcompleted_deletes", async () => {
+    // End-to-end proof that index.js passes the CANONICAL event (not frame type)
+    // into runFireAndForget: Stop keeps the offset, TaskCompleted deletes it —
+    // both build SessionClose frames (AC-10, R-04 s1/s2).
+    stub = await startStubServer();
+    stub.respondWith({ status: 204 });
+    writeRemoteConfig(stub.url, "tok");
+    const sd = childStateDir();
+    state.ensureStateDir(sd);
+    state.writeOffset(sd, "s1", 7);
+    const offPath = state.offsetPath(sd, "s1");
+
+    const r1 = await runEntry("Stop", JSON.stringify({ session_id: "s1" }));
+    assert.strictEqual(r1.status, 0);
+    assert.ok(fs.existsSync(offPath), "Stop spawn must preserve the offset");
+
+    const r2 = await runEntry("TaskCompleted", JSON.stringify({ session_id: "s1" }));
+    assert.strictEqual(r2.status, 0);
+    assert.ok(!fs.existsSync(offPath), "TaskCompleted spawn must delete the offset");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
 // 3. Spawn-level exit-0 / no-stdout matrix (C-05, FR-05)
 // ─────────────────────────────────────────────────────────────────────────
 
