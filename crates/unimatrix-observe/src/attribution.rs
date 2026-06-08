@@ -40,7 +40,9 @@ fn extract_from_path(s: &str) -> Option<String> {
 
 /// Extract feature ID pattern from text (word-boundary aware).
 ///
-/// Accepts any feature ID matching the `alpha-digits` pattern (e.g., "col-002", "eng-001").
+/// Accepts any token passing the structural `is_valid_feature_id` filter:
+/// a hyphen is required and only `[A-Za-z0-9\-_.]` characters are allowed —
+/// there is NO digit requirement (e.g. accepts "col-002" AND "foo-bar").
 /// No prefix allowlist — the structural pattern validated by `is_valid_feature_id` is sufficient.
 fn extract_feature_id_pattern(s: &str) -> Option<String> {
     for word in
@@ -73,7 +75,8 @@ fn extract_from_git_checkout(s: &str) -> Option<String> {
 ///
 /// Priority order (first match wins):
 /// 1. File path: `product/features/{id}/...`
-/// 2. Feature ID pattern: word-boundary `{alpha}-{digits}` tokens
+/// 2. Feature ID pattern: word-boundary feature-id tokens (structural filter:
+///    hyphen required, `[A-Za-z0-9\-_.]`, no digit requirement)
 /// 3. Git checkout: `feature/{id}` in git commands
 ///
 /// Individual extractors stay private (ADR-017-001). This facade is the

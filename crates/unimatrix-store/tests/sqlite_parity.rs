@@ -1018,14 +1018,15 @@ async fn test_sql_analytics_query() {
 // Updated to 25 for vnc-014 (ASS-050 audit_log four-column migration + append-only triggers).
 // Updated to 26 for bugfix-587 (audit counter rename: next_audit_event_id → next_audit_id).
 // Updated to 27 for vnc-018 (four indexes for context_graph CTE and neighbor queries).
+// Updated to 28 for vnc-030 (observations.topic_source column, ADR-005).
 #[tokio::test]
-async fn test_schema_version_is_27() {
+async fn test_schema_version_is_28() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 27,
-        "schema version must be 27 after vnc-018 (was 26 after bugfix-587)"
+        version, 28,
+        "schema version must be 28 after vnc-030 (was 27 after vnc-018)"
     );
     store.close().await.unwrap();
 }

@@ -583,9 +583,11 @@ async fn test_v26_to_v27_schema_version_updated() {
         .expect("open after migration");
 
     let version = read_schema_version(&store).await;
-    assert_eq!(
-        version, 27,
-        "schema_version must be exactly 27 after v26→v27 migration, got {version}"
+    // >= 27: a later migration (vnc-030 v28) bumps CURRENT_SCHEMA_VERSION past 27,
+    // so a v26 DB opened now cascades to the current version (#4153/#4373).
+    assert!(
+        version >= 27,
+        "schema_version must be >= 27 after v26→v27 migration, got {version}"
     );
 
     store.close().await.unwrap();

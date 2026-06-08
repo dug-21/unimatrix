@@ -20,6 +20,7 @@ const fs = require("fs");
 const normalize = require("./normalize");
 const configMod = require("./config");
 const buildRequestMod = require("./build-request");
+const cycles = require("./cycles");
 const transcript = require("./transcript");
 const transportHttp = require("./transport-http");
 const transportUds = require("./transport-uds");
@@ -27,6 +28,10 @@ const transform = require("./transform");
 const delta = require("./delta");
 const queue = require("./queue");
 const state = require("./state");
+// vnc-030 ADR-002: FNF cycle-stamp decoration seam (lifecycle dispatch, stamp
+// attach, suppression strip, subagent-gated canary). Split out for the
+// modular-file limit; mutates `request` upstream of selectTransport.
+const cycleDecoration = require("./cycle-decoration");
 
 /**
  * Select the transport module once per spawn from config.mode (ADR-002 §4,
@@ -265,6 +270,7 @@ async function runFireAndForget(
   canonicalEvent
 ) {
   state.pruneOffsets(config.stateDir); // ADR-006 §2: 7-day offset prune, FNF path ONLY (NFR-4 — sync trio gains no extra I/O); wrapped/best-effort
+  cycles.pruneCycles(config.stateDir); // vnc-030 ADR-002: 7-day tracker prune, FNF path ONLY (C-06); piggybacks the prune trio, wrapped/best-effort
   queue.prune(config.stateDir); // 24 h age prune (wrapped, best-effort)
   await queue.replay(config, transport.post); // ≤32 frames / 256 KiB, stop-at-first-failure
 
@@ -410,6 +416,12 @@ async function main() {
     const transport = selectTransport(config);
 
     if (isFnf) {
+      // vnc-030 ADR-002: FNF-only decoration seam. Mutates `request` in place
+      // upstream of transport.post AND queue.replay (both run inside
+      // runFireAndForget), so the enqueue-on-failure stores the post-decoration
+      // request and both transports serialize the same stamped object (AC-10).
+      // Sync trio is NOT decorated (C-06 — zero tracker I/O on the sync path).
+      cycleDecoration.decorateCycleStamp(request, input, config, sessionIdOf);
       // canonical (NOT effectiveEvent, NOT request.type) keys the FR-16 delete.
       await runFireAndForget(request, input, config, transport, canonical);
     } else {
@@ -433,6 +445,15 @@ module.exports = {
   settledDeltaOutcome,
   runSync,
   runFireAndForget,
+  // vnc-030 decoration seam — re-exported from cycle-decoration.js for test
+  // locality (the seam is invoked from main(); index.test/index-decoration.test
+  // exercise it through these re-exports). decorateCycleStamp here binds
+  // sessionIdOf so callers/tests use the same 3-arg shape as production.
+  decorateCycleStamp: (request, input, config) =>
+    cycleDecoration.decorateCycleStamp(request, input, config, sessionIdOf),
+  frameEvents: cycleDecoration.frameEvents,
+  isCycleEvent: cycleDecoration.isCycleEvent,
+  subagentContext: cycleDecoration.subagentContext,
   STDIN_CAP,
 };
 

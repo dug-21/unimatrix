@@ -72,6 +72,7 @@ The Delivery Leader:
      agent_id: "{feature-id}-delivery-leader"
    )
    ```
+   > **Resuming an interrupted session**: On re-entering a broken or resumed session, the leader's FIRST action is to re-issue `context_cycle(type:"start", topic:"{feature-id}")` (idempotent server-side — `AlreadyMatches`; recreates the client tracker).
 7. Plans Stage 3b waves from the IMPLEMENTATION-BRIEF before spawning any implementation agents
 
 ---

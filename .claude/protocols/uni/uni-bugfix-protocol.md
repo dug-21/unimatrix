@@ -75,6 +75,7 @@ The Bugfix Manager:
      "agent_id": "{issue-number}-bugfix-leader"
    })
    ```
+   > **Resuming an interrupted session**: On re-entering a broken or resumed session, the leader's FIRST action is to re-issue `context_cycle(type:"start", topic:"{feature-id}")` (idempotent server-side — `AlreadyMatches`; recreates the client tracker).
 4. Passes relevant info & goal to the investigator in Phase 1
 
 Worker agents are spawned with `isolation: "worktree"` for branch isolation (see `/uni-git` Worktree Isolation).

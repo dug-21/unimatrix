@@ -130,6 +130,7 @@ fn generate_framing(out_dir: &Path) -> (Vec<String>, Vec<String>) {
                 payload: serde_json::json!({ "tool_name": "Bash" }),
                 topic_signal: Some("bash".to_string()),
                 provider: Some("claude-code".to_string()),
+                cycle_stamp: None,
             },
         },
     ));

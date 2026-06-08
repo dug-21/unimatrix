@@ -5,7 +5,8 @@
  *
  * Priority chain (first match wins):
  *   1. extractFromPath         — `product/features/{id}/...`
- *   2. extractFeatureIdPattern — word-boundary `{alpha}-{digits}` tokens
+ *   2. extractFeatureIdPattern — word-boundary feature-id tokens
+ *      (structural filter: hyphen required, `[A-Za-z0-9\-_.]`, no digit requirement)
  *   3. extractFromGitCheckout  — `feature/{id}` in git commands
  *
  * Length checks are BYTE length (Buffer.byteLength) to match Rust str::len(),

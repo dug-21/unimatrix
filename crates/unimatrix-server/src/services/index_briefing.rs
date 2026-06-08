@@ -349,6 +349,9 @@ mod tests {
             session_id: "test-session".to_string(),
             role: None,
             feature: feature.map(str::to_string),
+            feature_source: crate::infra::session::FeatureSource::Inferred(
+                crate::infra::session::InferredOrigin::Registered,
+            ), // vnc-030
             injection_history: vec![],
             coaccess_seen: HashSet::new(),
             compaction_count: 0,

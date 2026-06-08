@@ -274,6 +274,13 @@ pub struct ImplantEvent {
     /// produce wire frames without this field; the listener handles missing field as None.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
+
+    /// F4b client-declared cycle attribution (ADR-003). Some => this row
+    /// attributes from the stamp (topic_source='declared'); None => legacy
+    /// heuristic chain. Additive/frozen-F1: skip_serializing_if so it never
+    /// appears in pre-existing fixtures; no deny_unknown_fields anywhere.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cycle_stamp: Option<CycleStampPayload>,
 }
 
 // -- EntryPayload (stub for future search results) --
@@ -312,6 +319,29 @@ pub struct TranscriptDeltaPayload {
     pub offset: u64,
     /// Verbatim transcript text for this span.
     pub bytes: String,
+}
+
+// -- CycleStampPayload (vnc-030 ADR-003) --
+
+/// F4b: client-declared cycle attribution (contract, not inference).
+///
+/// Presence on an [`ImplantEvent`] (via [`ImplantEvent::cycle_stamp`]) means the row
+/// attributes from the stamp, not the heuristic chain (ADR-004): the server's precedence
+/// becomes structural (presence-gated), not re-orderable. `topic` is the declared feature
+/// id; `phase` is the optional declared phase (omitted when the client tracker file has no
+/// phase). Additive/frozen-F1: rides [`ImplantEvent`] under `skip_serializing_if`, so it
+/// never appears in pre-existing fixtures and needs no `deny_unknown_fields`.
+///
+/// The 7th ts-rs export. Verified dual-sided (Rust↔TS) by AC-02.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(test, derive(ts_rs::TS))]
+#[cfg_attr(test, ts(export, export_to = "../bindings/"))]
+pub struct CycleStampPayload {
+    /// Declared feature id (e.g. "vnc-030"). Required — a stamp with no topic is meaningless.
+    pub topic: String,
+    /// Declared phase (e.g. "delivery"). Omitted when the client tracker has no phase.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase: Option<String>,
 }
 
 // -- TransportError --
@@ -459,14 +489,15 @@ mod tests {
 
     // -- vnc-024 Component 1: ts-rs codegen sentinel (AC-02) --
 
-    /// Force-export all six `#[ts(export)]` wire types and assert each committed
+    /// Force-export all seven `#[ts(export)]` wire types and assert each committed
     /// `bindings/<Name>.ts` exists and is non-empty after `cargo test` (AC-02 / FR-02).
     ///
     /// `export_all()` writes the type plus its transitive dependencies to its `export_to`
-    /// path. Referencing all six explicitly guarantees a partial build cannot skip one so
+    /// path. Referencing all seven explicitly guarantees a partial build cannot skip one so
     /// the CI diff-gate (`git diff --exit-code bindings/`) compares against full output.
+    /// The 7th export (`CycleStampPayload`) was added by vnc-030 (ADR-003).
     #[test]
-    fn test_export_bindings_all_six_written_and_nonempty() {
+    fn test_export_bindings_all_seven_written_and_nonempty() {
         let cfg = ts_rs::Config::default();
         HookInput::export_all(&cfg).expect("export HookInput bindings");
         HookRequest::export_all(&cfg).expect("export HookRequest bindings");
@@ -474,6 +505,7 @@ mod tests {
         ImplantEvent::export_all(&cfg).expect("export ImplantEvent bindings");
         EntryPayload::export_all(&cfg).expect("export EntryPayload bindings");
         TranscriptDeltaPayload::export_all(&cfg).expect("export TranscriptDeltaPayload bindings");
+        CycleStampPayload::export_all(&cfg).expect("export CycleStampPayload bindings");
 
         let bindings_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/bindings");
         for name in [
@@ -483,6 +515,7 @@ mod tests {
             "ImplantEvent",
             "EntryPayload",
             "TranscriptDeltaPayload",
+            "CycleStampPayload",
         ] {
             let path = std::path::Path::new(bindings_dir).join(format!("{name}.ts"));
             let meta = std::fs::metadata(&path)
@@ -563,6 +596,7 @@ mod tests {
             payload: serde_json::json!({"tool": "Read"}),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let req = HookRequest::RecordEvent { event };
         let bytes = serialize_request(&req).unwrap();
@@ -587,6 +621,7 @@ mod tests {
                 payload: serde_json::json!({}),
                 topic_signal: None,
                 provider: None,
+                cycle_stamp: None,
             },
             ImplantEvent {
                 event_type: "context_read".to_string(),
@@ -595,6 +630,7 @@ mod tests {
                 payload: serde_json::json!({"entry_id": 42}),
                 topic_signal: None,
                 provider: None,
+                cycle_stamp: None,
             },
         ];
         let req = HookRequest::RecordEvents { events };
@@ -1006,6 +1042,7 @@ mod tests {
             payload: serde_json::json!({"tool": "Bash", "duration_ms": 150}),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let bytes = serde_json::to_vec(&event).unwrap();
         let decoded: ImplantEvent = serde_json::from_slice(&bytes).unwrap();
@@ -1410,6 +1447,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(
@@ -1427,6 +1465,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: Some("col-017".to_string()),
             provider: None,
+            cycle_stamp: None,
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(
@@ -1434,6 +1473,135 @@ mod tests {
             "Some should include the field: {json}"
         );
         assert!(json.contains("col-017"));
+    }
+
+    // -- vnc-030: ImplantEvent cycle_stamp serde tests (ADR-003, AC-02) --
+    //
+    // Mirrors the col-017 topic_signal trio: additive, frozen-F1
+    // (skip_serializing_if so None never appears on the wire), null-tolerant,
+    // and tolerant in both directions (old<->new client/server). No
+    // deny_unknown_fields anywhere on the deserialize path.
+
+    fn cycle_stamp_event(cycle_stamp: Option<CycleStampPayload>) -> ImplantEvent {
+        ImplantEvent {
+            event_type: "tool_use".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({}),
+            topic_signal: None,
+            provider: None,
+            cycle_stamp,
+        }
+    }
+
+    #[test]
+    fn implant_event_without_cycle_stamp_deserializes_to_none() {
+        // FR-11: old JSON without the field -> None (backward compat).
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{}}"#;
+        let event: ImplantEvent = serde_json::from_str(json).unwrap();
+        assert!(event.cycle_stamp.is_none());
+    }
+
+    #[test]
+    fn implant_event_with_cycle_stamp_deserializes() {
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{},"cycle_stamp":{"topic":"vnc-030","phase":"delivery"}}"#;
+        let event: ImplantEvent = serde_json::from_str(json).unwrap();
+        let stamp = event.cycle_stamp.expect("cycle_stamp should be Some");
+        assert_eq!(stamp.topic, "vnc-030");
+        assert_eq!(stamp.phase.as_deref(), Some("delivery"));
+    }
+
+    #[test]
+    fn implant_event_with_cycle_stamp_null_deserializes_to_none() {
+        // Null-tolerant.
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{},"cycle_stamp":null}"#;
+        let event: ImplantEvent = serde_json::from_str(json).unwrap();
+        assert!(event.cycle_stamp.is_none());
+    }
+
+    #[test]
+    fn implant_event_serialize_none_omits_cycle_stamp() {
+        // skip_serializing_if: None must never appear -> pre-existing fixtures unchanged.
+        let event = cycle_stamp_event(None);
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(
+            !json.contains("cycle_stamp"),
+            "None should omit the field: {json}"
+        );
+    }
+
+    #[test]
+    fn implant_event_serialize_some_includes_cycle_stamp() {
+        let event = cycle_stamp_event(Some(CycleStampPayload {
+            topic: "vnc-030".to_string(),
+            phase: Some("delivery".to_string()),
+        }));
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("cycle_stamp"), "Some should include: {json}");
+        assert!(json.contains("vnc-030"));
+        assert!(json.contains("delivery"));
+    }
+
+    #[test]
+    fn cycle_stamp_payload_phase_none_omits_phase() {
+        // Omit-when-null parity with the JS client's implantEvent shape.
+        let stamp = CycleStampPayload {
+            topic: "vnc-030".to_string(),
+            phase: None,
+        };
+        let json = serde_json::to_string(&stamp).unwrap();
+        assert!(json.contains("topic"));
+        assert!(
+            !json.contains("phase"),
+            "phase: None must be omitted: {json}"
+        );
+    }
+
+    #[test]
+    fn cycle_stamp_payload_phase_absent_deserializes_to_none() {
+        // A stamp with only a topic deserializes phase to None (phase is optional).
+        let json = r#"{"topic":"vnc-030"}"#;
+        let stamp: CycleStampPayload = serde_json::from_str(json).unwrap();
+        assert_eq!(stamp.topic, "vnc-030");
+        assert!(stamp.phase.is_none());
+    }
+
+    #[test]
+    fn cycle_stamp_payload_missing_topic_fails() {
+        // `topic` is required (a stamp with no topic is meaningless); serde
+        // rejects it exactly as any other required-field violation. No new error path.
+        let json = r#"{"phase":"delivery"}"#;
+        let result: Result<CycleStampPayload, _> = serde_json::from_str(json);
+        assert!(result.is_err(), "missing required topic must fail to parse");
+    }
+
+    /// Old-server simulation: a struct WITHOUT the field defined still accepts a
+    /// stamped frame (no deny_unknown_fields rejects the unknown `cycle_stamp`).
+    #[test]
+    fn old_server_simulation_tolerates_unknown_cycle_stamp() {
+        #[derive(Deserialize)]
+        struct LegacyImplantEvent {
+            event_type: String,
+            #[allow(dead_code)]
+            session_id: String,
+        }
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{},"cycle_stamp":{"topic":"vnc-030","phase":"delivery"}}"#;
+        let legacy: LegacyImplantEvent = serde_json::from_str(json)
+            .expect("old server must tolerate the unknown cycle_stamp field");
+        assert_eq!(legacy.event_type, "tool_use");
+    }
+
+    /// Steady-state production mix: an unstamped Rust-hook-shaped frame (hook.rs
+    /// untouched, no flag) yields None -> legacy heuristic chain (ADR-004).
+    #[test]
+    fn unstamped_rust_hook_frame_yields_none_legacy_chain() {
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{},"topic_signal":"col-017","provider":"claude-code"}"#;
+        let event: ImplantEvent = serde_json::from_str(json).unwrap();
+        assert!(
+            event.cycle_stamp.is_none(),
+            "unstamped frame must route to the legacy chain"
+        );
+        assert_eq!(event.provider.as_deref(), Some("claude-code"));
     }
 
     // -- crt-027: ContextSearch source field tests (ADR-001) --
@@ -1663,6 +1831,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: Some("gemini-cli".to_string()),
+            cycle_stamp: None,
         };
         let json = serde_json::to_string(&event).expect("serialize");
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -1686,6 +1855,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let json = serde_json::to_string(&event).expect("serialize");
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -1774,6 +1944,7 @@ mod tests {
                         payload: serde_json::json!({ "tool": "Read", "path": "src/wire.rs" }),
                         topic_signal: Some("vnc-024".to_string()),
                         provider: Some("claude-code".to_string()),
+                        cycle_stamp: None,
                     },
                 },
             ),
@@ -1788,6 +1959,7 @@ mod tests {
                         payload: serde_json::json!({ "tool": "Read" }),
                         topic_signal: None,
                         provider: None,
+                        cycle_stamp: None,
                     },
                 },
             ),
@@ -1802,6 +1974,7 @@ mod tests {
                             payload: serde_json::json!({ "tool": "Bash" }),
                             topic_signal: Some("vnc-024".to_string()),
                             provider: Some("claude-code".to_string()),
+                            cycle_stamp: None,
                         },
                         ImplantEvent {
                             event_type: "context_read".to_string(),
@@ -1810,6 +1983,7 @@ mod tests {
                             payload: serde_json::json!({ "entry_id": 42 }),
                             topic_signal: None,
                             provider: None,
+                            cycle_stamp: None,
                         },
                     ],
                 },
@@ -2023,6 +2197,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            cycle_stamp: None,
         };
         let ev_val = serde_json::to_value(&ev_none).unwrap();
         let ev_obj = ev_val.as_object().unwrap();
@@ -2315,7 +2490,8 @@ mod tests {
     #[test]
     fn test_no_deny_unknown_fields() {
         // A frame with an unrecognized extra key still deserializes (no deny_unknown_fields).
-        let json = br#"{"type":"ContextSearch","query":"q","accept":"text/plain","future_field":42}"#;
+        let json =
+            br#"{"type":"ContextSearch","query":"q","accept":"text/plain","future_field":42}"#;
         match deserialize_request(json).unwrap() {
             HookRequest::ContextSearch { query, accept, .. } => {
                 assert_eq!(query, "q");

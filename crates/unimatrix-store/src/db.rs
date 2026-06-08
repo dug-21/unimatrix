@@ -863,7 +863,8 @@ pub(crate) async fn create_tables_if_needed(
             response_size    INTEGER,
             response_snippet TEXT,
             topic_signal     TEXT,
-            phase            TEXT    -- crt-043: active session phase at write time, NULL when no cycle active
+            phase            TEXT,   -- crt-043: active session phase at write time, NULL when no cycle active
+            topic_source     TEXT    -- vnc-030: topic_signal provenance (declared/extracted/registry-fill/vote/NULL), F6 #682 evidence base
         )",
     )
     .execute(&mut *conn)

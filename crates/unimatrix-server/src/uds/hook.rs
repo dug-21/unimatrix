@@ -546,6 +546,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         payload: input.extra.clone(),
                         topic_signal,
                         provider: input.provider.clone(),
+                        cycle_stamp: None,
                     },
                 };
             }
@@ -571,6 +572,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         payload: input.extra.clone(),
                         topic_signal,
                         provider: input.provider.clone(),
+                        cycle_stamp: None,
                     },
                 };
             }
@@ -587,6 +589,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             payload: input.extra.clone(),
                             topic_signal,
                             provider: input.provider.clone(),
+                            cycle_stamp: None,
                         },
                     };
                 }
@@ -605,6 +608,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         }),
                         topic_signal: topic_signal.clone(),
                         provider: input.provider.clone(),
+                        cycle_stamp: None,
                     })
                     .collect();
                 return HookRequest::RecordEvents { events };
@@ -632,6 +636,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     }),
                     topic_signal,
                     provider: input.provider.clone(),
+                    cycle_stamp: None,
                 },
             }
         }
@@ -659,6 +664,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     payload: input.extra.clone(),
                     topic_signal,
                     provider: input.provider.clone(),
+                    cycle_stamp: None,
                 },
             }
         }
@@ -860,6 +866,7 @@ fn build_cycle_event_or_fallthrough(
             payload,
             topic_signal,
             provider: input.provider.clone(),
+            cycle_stamp: None,
         },
     }
 }
@@ -877,6 +884,7 @@ fn generic_record_event(event: &str, session_id: String, input: &HookInput) -> H
             payload: input.extra.clone(),
             topic_signal,
             provider: input.provider.clone(),
+            cycle_stamp: None,
         },
     }
 }
