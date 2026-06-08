@@ -229,11 +229,11 @@ Task(subagent_type: "uni-bug-investigator",
 
 **Prerequisite**: Human has approved the diagnosis.  You are STILL the scrum master.
 
-**Agent**: uni-rust-dev
+**Agent**: uni-rust-dev or uni-js-dev — select by the language of the code being fixed (Rust `crates/**/*.rs` → uni-rust-dev; JS/TS edge client + Node tooling `packages/unimatrix/**` → uni-js-dev). A fix spanning both languages spawns one of each, scoped to its own files.
 
 The Bugfix Manager:
 1. Creates the bug fix branch: `git checkout -b bugfix/{issue-number}-{short-description}`
-2. Spawns `uni-rust-dev` with the agreed fix approach:
+2. Spawns the matching dev agent with the agreed fix approach:
 
 ```
 Task(subagent_type: "uni-rust-dev",

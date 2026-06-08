@@ -48,7 +48,8 @@ The workflow executes across distinct session types. One coordinator reads the p
 |-------|-------|-------------|
 | `uni-pseudocode` | 3a | Per-component pseudocode from source docs |
 | `uni-tester` | 3a + 3c | Test plan design (3a) + test execution with RISK-COVERAGE-REPORT.md (3c) |
-| `uni-rust-dev` | 3b | Code implementation from validated pseudocode |
+| `uni-rust-dev` | 3b | Rust implementation (`crates/**/*.rs`) from validated pseudocode |
+| `uni-js-dev` | 3b | JS/TS edge-client + Node tooling (`packages/unimatrix/**`) from validated pseudocode |
 
 ### Shared Specialists
 
@@ -57,7 +58,7 @@ The workflow executes across distinct session types. One coordinator reads the p
 | `uni-bug-investigator` | Bugfix Phase 1 | Diagnoses root cause, proposes fix, identifies missing tests |
 | `uni-security-reviewer` | `/uni-review-pr` skill | Fresh-context security review of PR diff, OWASP assessment |
 
-**Total: 14 agents** (1 coordinator + 1 validator + 6 design + 3 delivery + 2 shared specialists) + 1 architect in retro mode
+**Total: 15 agents** (1 coordinator + 1 validator + 6 design + 4 delivery + 2 shared specialists) + 1 architect in retro mode
 
 ## Swarm Composition Templates
 
@@ -82,7 +83,7 @@ Coordinator:  uni-scrum-master (reads uni-delivery-protocol.md)
 Stage 3a:     uni-pseudocode + uni-tester                          (parallel)
               UPDATE Component Map
 Gate 3a:      uni-validator                                        (MANDATORY BLOCK)
-Stage 3b:     uni-rust-dev × N (one per component)                 (parallel)
+Stage 3b:     uni-rust-dev / uni-js-dev × N (per component lang)   (parallel)
 Gate 3b:      uni-validator
 Stage 3c:     uni-tester                                           (execution)
 Gate 3c:      uni-validator
@@ -137,7 +138,8 @@ These are produced in Session 1 and validated against throughout Session 2:
 ├── uni-synthesizer.md         # Brief + maps + GH Issue (Phase 2c)
 ├── uni-pseudocode.md          # Per-component pseudocode (Stage 3a)
 ├── uni-tester.md              # Test plans (3a) + execution (3c)
-├── uni-rust-dev.md            # Code implementation (Stage 3b)
+├── uni-rust-dev.md            # Rust implementation (Stage 3b)
+├── uni-js-dev.md              # JS/TS edge-client implementation (Stage 3b)
 ├── uni-bug-investigator.md    # Bug root cause diagnosis
 └── uni-security-reviewer.md   # Security review of PRs
 

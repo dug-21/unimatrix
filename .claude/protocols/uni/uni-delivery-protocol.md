@@ -204,9 +204,20 @@ Task(subagent_type: "uni-validator",
 
 ## Stage 3b: Code Implementation (Wave-Based)
 
-**Agents**: uni-rust-dev (one per component per wave)
+**Agents**: uni-rust-dev or uni-js-dev (one per component per wave, selected by the component's target language)
 
 **Prerequisite**: Gate 3a PASSED. Component Map in IMPLEMENTATION-BRIEF.md is updated with actual pseudocode/test-plan file paths.
+
+### Dev-Agent Selection (per component, by language)
+
+Each component's target files are listed in the IMPLEMENTATION-BRIEF Component Map. Select the developer agent by the component's target language:
+
+| Component target | Agent |
+|------------------|-------|
+| Rust source (`crates/**/*.rs`) | `uni-rust-dev` |
+| JS/TS edge client + Node tooling (`packages/unimatrix/**/*.{js,mjs,cjs,ts}`) | `uni-js-dev` |
+
+A single wave commonly mixes both (e.g., a server-side `.rs` component and a hook-client `.js` component): spawn the matching agent type per component in the **same** message. A well-formed component is single-language (one-component-one-concern); if a component genuinely spans both `crates/` and `packages/`, that is a Stage 3a split defect — flag it rather than routing one agent across both.
 
 ### Wave Planning (MANDATORY — before spawning any agent)
 
@@ -223,10 +234,10 @@ The Delivery Leader reads the IMPLEMENTATION-BRIEF and groups components into **
 
 For each wave (in order):
 
-1. **Spawn all agents in the wave in ONE message** — one agent per component, no worktree isolation (agents work directly on the feature branch):
+1. **Spawn all agents in the wave in ONE message** — one agent per component, no worktree isolation (agents work directly on the feature branch). `subagent_type` is `uni-rust-dev` or `uni-js-dev` per the Dev-Agent Selection table above:
 
 ```
-Task(subagent_type: "uni-rust-dev",
+Task(subagent_type: "uni-rust-dev",      ← Rust component (crates/**/*.rs)
   prompt: "Your agent ID: {feature-id}-agent-3-{component-1}
 
     Before implementing, search Unimatrix for relevant patterns and this feature's ADRs:
@@ -253,7 +264,7 @@ Task(subagent_type: "uni-rust-dev",
     2. Tests: pass/fail count
     3. Issues: [blockers]")
 
-Task(subagent_type: "uni-rust-dev",
+Task(subagent_type: "uni-js-dev",        ← JS component (packages/unimatrix/**/*.js)
   prompt: "Your agent ID: {feature-id}-agent-4-{component-2}
     ...same structure, with {component-2}'s pseudocode and test plan...")
 ```
@@ -578,7 +589,8 @@ DELIVERY LEADER (you):
                         → commit → Stage 3b
               ...FAIL → rework or stop...
   Stage 3b:   PLAN waves from IMPLEMENTATION-BRIEF (1 wave = all parallel, N waves = sequential)
-              FOR EACH WAVE: Task(uni-rust-dev × components-in-wave) — ONE message, no worktree isolation
+              FOR EACH WAVE: Task(uni-rust-dev / uni-js-dev × components-in-wave) — ONE message, no worktree isolation
+                             dev agent per component by target language (.rs → uni-rust-dev, packages JS/TS → uni-js-dev)
               Each agent gets ONLY its component's pseudocode + test plan
               ...wait for wave... commit wave... spawn next wave...
               ...wait...
@@ -609,7 +621,7 @@ DELIVERY LEADER (you):
 
 The uni-tester agent has full integration harness knowledge (suite selection, triage rules, commands). The delivery protocol does not duplicate those details. Key rules for the Design Leader:
 
-- **uni-rust-dev** (Stage 3b): Do NOT run or modify integration tests. Stage 3c handles this.
+- **uni-rust-dev / uni-js-dev** (Stage 3b): Do NOT run or modify integration tests. Stage 3c handles this.
 - **uni-tester** (Stage 3a): Include integration harness plan in test-plan/OVERVIEW.md — which suites apply, new tests needed.
 - **uni-tester** (Stage 3c): Run smoke (mandatory gate) + relevant suites. Triage failures per USAGE-PROTOCOL.md. Report results in RISK-COVERAGE-REPORT.md.
 - **uni-validator** (Gate 3c): Verify smoke passed, xfail markers have GH Issues, no tests deleted, RISK-COVERAGE-REPORT includes integration counts.
