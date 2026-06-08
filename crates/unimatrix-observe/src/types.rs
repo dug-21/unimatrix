@@ -562,6 +562,106 @@ pub struct CurationHealthBlock {
     pub baseline: Option<CurationBaselineComparison>,
 }
 
+// ---------------------------------------------------------------------------
+// crt-052: Transcript candidate / response-section types (C4, Wave A)
+//
+// Response-transient types for the `transcript_candidates` cycle-review section.
+// These are NEVER persisted (AC-06): the section is attached at response-assembly
+// level by the distill handler (C6), strictly OUTSIDE the memoized
+// `RetrospectiveReport` (ADR-004). `RetrospectiveReport` deliberately gains NO
+// candidate field — the leak is structurally impossible because the persisted
+// type has no slot for it.
+//
+// Wave A: this module has ZERO reference to `transcript_hold.rs` (R-11).
+// ---------------------------------------------------------------------------
+
+/// Advisory marker-family hint for a selected transcript block (crt-052).
+///
+/// Rules SELECT, the agent EXTRACTS — these hints are advisory only and the
+/// server is never authoritative over family classification (Non-Goal).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FamilyHint {
+    Decision,
+    Rework,
+    Lesson,
+    PhaseGate,
+}
+
+/// Provenance of a session's candidates: the primary buffer path, or the
+/// degraded reconstruction fallback (crt-052, ADR-006/ADR-007).
+///
+/// Provenance is per-SESSION (whole-session either/or, ADR-006), surfaced via
+/// [`SessionLossInfo`]. It is intentionally NOT a field on [`TranscriptCandidate`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CandidateProvenance {
+    /// Selected from live transcript buffer bytes.
+    Primary,
+    /// Rebuilt from already-loaded `ObservationRecord`s at the 0.81 fidelity floor.
+    Reconstructed,
+}
+
+/// A whole marker-matched user/assistant block selected from a session transcript (crt-052).
+///
+/// `Debug` MAY show `text`: it IS the response content the agent consumes, and it
+/// structurally cannot reach a persisted/log/audit surface (ADR-004). The R-19
+/// metadata-only-`Debug` rule targets `TranscriptSnapshot` / `HeldBuffer` (raw-buffer
+/// types), NOT this response value (Gate 3a ratification, ADR-007).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TranscriptCandidate {
+    /// Session this block came from.
+    pub session_id: String,
+    /// LOGICAL stream offset = `snapshot.base_offset + in_snapshot_offset` (R-12).
+    /// Meaningful across ring-tail elision; NOT array-relative.
+    pub byte_offset: u64,
+    /// Block timestamp from the JSONL record; the primary ordering key.
+    pub ts: Option<String>,
+    /// Advisory marker families (non-empty); server never authoritative.
+    pub family_hints: Vec<FamilyHint>,
+    /// The whole matched user/assistant block, unwindowed.
+    pub text: String,
+}
+
+/// Per-session loss/degradation visibility for the candidate section (crt-052, ADR-007).
+///
+/// A session appears in `loss` whenever ANY of: `elided_bytes > 0`, `has_holes`,
+/// `provenance == Reconstructed`, OR `dropped_candidates > 0`. A clean Primary
+/// session with no loss and no cap-drop is OMITTED (silence = nothing to report).
+///
+/// `Debug` is content-free — no transcript bytes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionLossInfo {
+    /// Session this loss row describes.
+    pub session_id: String,
+    /// Lifetime ring-tail elision counter from the snapshot.
+    pub elided_bytes: u64,
+    /// Whether the snapshot had one or more holes.
+    pub has_holes: bool,
+    /// Primary (buffer) | Reconstructed (observations); per-session (ADR-006).
+    pub provenance: CandidateProvenance,
+    /// Cap-forced truncation count (per-session OR per-cycle aggregate cap).
+    /// Content-free count required to satisfy AC-08 (no silent cap-drop). Populated by C6.
+    pub dropped_candidates: u64,
+}
+
+/// The additive cycle-review response section carrying selected candidates and
+/// per-session loss visibility (crt-052, ADR-004/ADR-007).
+///
+/// `candidates` and `loss` are two PARALLEL collections: a reconstructed session
+/// with zero candidates can still carry a `loss` row, so loss is never invisible.
+///
+/// Attached at response-assembly level by C6, NEVER onto the memoized
+/// `RetrospectiveReport`. `candidates` is ordered chronologically by
+/// `(ts, session_id, byte_offset)` (C6 re-sorts the cross-session union; R-15).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TranscriptCandidatesSection {
+    /// Selected candidate blocks, chronologically ordered.
+    pub candidates: Vec<TranscriptCandidate>,
+    /// Per-session loss/degradation rows (independent of `candidates`).
+    pub loss: Vec<SessionLossInfo>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1603,5 +1703,308 @@ mod tests {
         assert_eq!(reuse.cross_feature_reuse, 0);
         assert_eq!(reuse.intra_cycle_reuse, 0);
         assert!(reuse.top_cross_feature_entries.is_empty());
+    }
+
+    // ── crt-052 C4: transcript candidate / response-section types ───────────
+
+    /// Local stand-in for the cycle-review RESPONSE struct the handler (C6)
+    /// assembles. The real additive field is attached at response-assembly level
+    /// in `tools.rs`, NOT on `RetrospectiveReport` (ADR-004). This mirrors the
+    /// exact `serde` attribute the assembly site uses, so the omit-when-None
+    /// contract (AC-04) is provable here in the type-owning crate.
+    #[derive(Debug, Serialize, Deserialize)]
+    struct AssemblyResponseProbe {
+        feature_cycle: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        transcript_candidates: Option<TranscriptCandidatesSection>,
+    }
+
+    fn sample_section() -> TranscriptCandidatesSection {
+        TranscriptCandidatesSection {
+            candidates: vec![
+                TranscriptCandidate {
+                    session_id: "sess-a".to_string(),
+                    byte_offset: 1024,
+                    ts: Some("2026-06-08T10:00:00Z".to_string()),
+                    family_hints: vec![FamilyHint::Decision, FamilyHint::PhaseGate],
+                    text: "We decided to adopt Option B for held buffers.".to_string(),
+                },
+                TranscriptCandidate {
+                    session_id: "sess-b".to_string(),
+                    byte_offset: 0,
+                    ts: None,
+                    family_hints: vec![FamilyHint::Rework],
+                    text: "Reworking the seam after lock-discipline review.".to_string(),
+                },
+            ],
+            loss: vec![SessionLossInfo {
+                session_id: "sess-b".to_string(),
+                elided_bytes: 4096,
+                has_holes: true,
+                provenance: CandidateProvenance::Reconstructed,
+                dropped_candidates: 2,
+            }],
+        }
+    }
+
+    #[test]
+    fn test_transcript_candidates_section_serde_roundtrip() {
+        let section = sample_section();
+        let json = serde_json::to_string(&section).expect("serialize");
+        let back: TranscriptCandidatesSection = serde_json::from_str(&json).expect("deserialize");
+
+        assert_eq!(back.candidates.len(), 2);
+        assert_eq!(back.candidates[0].session_id, "sess-a");
+        assert_eq!(back.candidates[0].byte_offset, 1024);
+        assert_eq!(
+            back.candidates[0].ts.as_deref(),
+            Some("2026-06-08T10:00:00Z")
+        );
+        assert_eq!(
+            back.candidates[0].family_hints,
+            vec![FamilyHint::Decision, FamilyHint::PhaseGate]
+        );
+        assert_eq!(back.candidates[1].ts, None);
+        assert_eq!(back.loss.len(), 1);
+        assert_eq!(back.loss[0].session_id, "sess-b");
+        assert_eq!(back.loss[0].elided_bytes, 4096);
+        assert!(back.loss[0].has_holes);
+        assert_eq!(back.loss[0].provenance, CandidateProvenance::Reconstructed);
+        assert_eq!(back.loss[0].dropped_candidates, 2);
+    }
+
+    #[test]
+    fn test_response_field_omitted_when_none() {
+        // AC-04: the additive field is ABSENT (not null, not empty) when None.
+        let probe = AssemblyResponseProbe {
+            feature_cycle: "crt-052".to_string(),
+            transcript_candidates: None,
+        };
+        let json = serde_json::to_string(&probe).expect("serialize");
+        assert!(
+            !json.contains("transcript_candidates"),
+            "transcript_candidates key must be absent when None: {json}"
+        );
+        assert!(!json.contains("null"), "must not serialize null: {json}");
+
+        // And present when Some.
+        let probe_some = AssemblyResponseProbe {
+            feature_cycle: "crt-052".to_string(),
+            transcript_candidates: Some(sample_section()),
+        };
+        let json_some = serde_json::to_string(&probe_some).expect("serialize");
+        assert!(
+            json_some.contains("transcript_candidates"),
+            "transcript_candidates key must be present when Some: {json_some}"
+        );
+
+        // Round-trips back to a populated section.
+        let back: AssemblyResponseProbe = serde_json::from_str(&json_some).expect("deserialize");
+        assert!(back.transcript_candidates.is_some());
+
+        // Absent in JSON deserializes to None (additive/backward-compatible).
+        let bare = r#"{"feature_cycle":"crt-052"}"#;
+        let back_bare: AssemblyResponseProbe =
+            serde_json::from_str(bare).expect("missing field should default to None");
+        assert!(back_bare.transcript_candidates.is_none());
+    }
+
+    #[test]
+    fn test_candidate_fields_populated() {
+        let c = TranscriptCandidate {
+            session_id: "sess-x".to_string(),
+            byte_offset: 8192,
+            ts: Some("2026-06-08T12:00:00Z".to_string()),
+            family_hints: vec![FamilyHint::Lesson],
+            text: "A lesson worth keeping.".to_string(),
+        };
+        assert_eq!(c.session_id, "sess-x");
+        assert_eq!(c.byte_offset, 8192);
+        assert_eq!(c.ts.as_deref(), Some("2026-06-08T12:00:00Z"));
+        assert!(
+            !c.family_hints.is_empty(),
+            "family_hints must be non-empty (advisory contract)"
+        );
+        assert_eq!(c.family_hints, vec![FamilyHint::Lesson]);
+        assert_eq!(c.text, "A lesson worth keeping.");
+    }
+
+    #[test]
+    fn test_family_hint_variants() {
+        // FamilyHint is exactly {Decision, Rework, Lesson, PhaseGate}.
+        let cases = [
+            (FamilyHint::Decision, "\"decision\""),
+            (FamilyHint::Rework, "\"rework\""),
+            (FamilyHint::Lesson, "\"lesson\""),
+            (FamilyHint::PhaseGate, "\"phase_gate\""),
+        ];
+        for (variant, expected_json) in cases {
+            let json = serde_json::to_string(&variant).expect("serialize");
+            assert_eq!(json, expected_json, "variant {variant:?} serialized wrong");
+            let back: FamilyHint = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, variant, "variant {variant:?} did not round-trip");
+        }
+    }
+
+    #[test]
+    fn test_provenance_variants() {
+        // CandidateProvenance is exactly {Primary, Reconstructed}.
+        let cases = [
+            (CandidateProvenance::Primary, "\"primary\""),
+            (CandidateProvenance::Reconstructed, "\"reconstructed\""),
+        ];
+        for (variant, expected_json) in cases {
+            let json = serde_json::to_string(&variant).expect("serialize");
+            assert_eq!(json, expected_json, "variant {variant:?} serialized wrong");
+            let back: CandidateProvenance = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, variant, "variant {variant:?} did not round-trip");
+        }
+    }
+
+    #[test]
+    fn test_retrospective_report_has_no_candidate_field() {
+        // AC-06(a) content-leak MERGE GATE (compile-level / structural):
+        // RetrospectiveReport — the memoized type persisted by store_cycle_review()
+        // into cycle_review_index — must have NO candidate-bearing field. Candidates
+        // ride ONLY the response, attached at assembly level (ADR-004). The leak is
+        // structurally impossible because the persisted struct has no slot.
+        //
+        // This serializes a fully-populated report and asserts the candidate keys
+        // are absent. If a future migration folds candidates onto the report, the
+        // struct literal below fails to compile (unknown field) OR this assertion
+        // fires — either way the gate trips.
+        let report = RetrospectiveReport {
+            feature_cycle: "crt-052".to_string(),
+            session_count: 1,
+            total_records: 5,
+            metrics: MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+            curation_health: None,
+        };
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(
+            !json.contains("transcript_candidate"),
+            "RetrospectiveReport must NOT carry transcript candidates (ADR-004): {json}"
+        );
+        assert!(
+            !json.contains("\"loss\""),
+            "RetrospectiveReport must NOT carry a candidate loss section: {json}"
+        );
+    }
+
+    #[test]
+    fn test_candidate_debug_present_text_is_intentional() {
+        // AC-06(e) / R-19 boundary: TranscriptCandidate.text IS response data the
+        // agent consumes; its Debug MAY show text (ADR-007 ratification). This guards
+        // against an over-broad grep gate falsely flagging this response value. The
+        // no-content-Debug rule targets TranscriptSnapshot / HeldBuffer, NOT this type.
+        let c = TranscriptCandidate {
+            session_id: "sess-d".to_string(),
+            byte_offset: 0,
+            ts: None,
+            family_hints: vec![FamilyHint::Decision],
+            text: "INTENTIONAL_RESPONSE_CONTENT_MARKER".to_string(),
+        };
+        let dbg = format!("{c:?}");
+        assert!(
+            dbg.contains("INTENTIONAL_RESPONSE_CONTENT_MARKER"),
+            "TranscriptCandidate Debug intentionally shows text (response data): {dbg}"
+        );
+    }
+
+    #[test]
+    fn test_session_loss_info_debug_metadata_only() {
+        // SessionLossInfo Debug is metadata only — no transcript bytes.
+        let loss = SessionLossInfo {
+            session_id: "sess-e".to_string(),
+            elided_bytes: 128,
+            has_holes: false,
+            provenance: CandidateProvenance::Primary,
+            dropped_candidates: 0,
+        };
+        let dbg = format!("{loss:?}");
+        assert!(dbg.contains("sess-e"));
+        assert!(dbg.contains("elided_bytes"));
+        assert!(dbg.contains("has_holes"));
+        assert!(dbg.contains("Primary"));
+        // No mechanism for transcript bytes to appear — the struct carries none.
+    }
+
+    #[test]
+    fn test_session_loss_info_shape() {
+        let loss = SessionLossInfo {
+            session_id: "sess-f".to_string(),
+            elided_bytes: 64,
+            has_holes: true,
+            provenance: CandidateProvenance::Reconstructed,
+            dropped_candidates: 3,
+        };
+        let json = serde_json::to_string(&loss).expect("serialize");
+        let back: SessionLossInfo = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.session_id, "sess-f");
+        assert_eq!(back.elided_bytes, 64);
+        assert!(back.has_holes);
+        assert_eq!(back.provenance, CandidateProvenance::Reconstructed);
+        assert_eq!(back.dropped_candidates, 3);
+    }
+
+    #[test]
+    fn test_section_two_parallel_collections() {
+        // A reconstructed session with ZERO candidates can still carry a loss row,
+        // so loss is never invisible (ADR-007 / AC-08).
+        let section = TranscriptCandidatesSection {
+            candidates: vec![],
+            loss: vec![SessionLossInfo {
+                session_id: "empty-recon".to_string(),
+                elided_bytes: 0,
+                has_holes: true,
+                provenance: CandidateProvenance::Reconstructed,
+                dropped_candidates: 0,
+            }],
+        };
+        assert!(section.candidates.is_empty());
+        assert_eq!(section.loss.len(), 1);
+
+        let json = serde_json::to_string(&section).expect("serialize");
+        let back: TranscriptCandidatesSection = serde_json::from_str(&json).expect("deserialize");
+        assert!(back.candidates.is_empty());
+        assert_eq!(back.loss[0].provenance, CandidateProvenance::Reconstructed);
+    }
+
+    #[test]
+    fn test_provenance_is_per_session() {
+        // Provenance lives on SessionLossInfo (per-session), NOT on TranscriptCandidate.
+        // This test is the structural witness: TranscriptCandidate has no provenance
+        // field, so candidates within one session cannot carry mixed provenance.
+        // (If a `provenance` field were ever added to TranscriptCandidate, the absence
+        // asserted below — via the serialized candidate — would fail.)
+        let c = TranscriptCandidate {
+            session_id: "sess-g".to_string(),
+            byte_offset: 0,
+            ts: None,
+            family_hints: vec![FamilyHint::Lesson],
+            text: "x".to_string(),
+        };
+        let json = serde_json::to_string(&c).expect("serialize");
+        assert!(
+            !json.contains("provenance"),
+            "TranscriptCandidate must NOT carry provenance (it is per-session): {json}"
+        );
     }
 }
