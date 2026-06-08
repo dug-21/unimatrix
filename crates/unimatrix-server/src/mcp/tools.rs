@@ -2098,11 +2098,24 @@ impl UnimatrixServer {
                                 metadata: metadata_json,
                             });
                             let fmt = params.format.as_deref().unwrap_or("markdown");
-                            let result = dispatch_review_with_advisory(
+                            let mut result = dispatch_review_with_advisory(
                                 report,
                                 fmt,
                                 params.evidence_limit,
                                 Some(note),
+                            );
+                            // crt-052 (C6, ADR-005/AC-05): distill STRICTLY
+                            // BEFORE purge, attach at assembly level (ADR-004),
+                            // then purge — same order at all four returns.
+                            let section = crate::mcp::distill_handler::distill_before_purge(
+                                &self.session_registry,
+                                &feature_cycle,
+                                &attributed,
+                                &self.retention_config,
+                            );
+                            crate::mcp::distill_handler::attach_to_response_assembly(
+                                &mut result,
+                                section,
                             );
                             // vnc-025 (#670, FR-15/FR-16): purge AFTER the success
                             // response is built; error paths keep transcripts.
@@ -2218,7 +2231,7 @@ impl UnimatrixServer {
 
                         // Cached path also respects format (vnc-011)
                         let format = params.format.as_deref().unwrap_or("markdown");
-                        let result = match format {
+                        let mut result = match format {
                             "markdown" | "summary" => Ok(format_retrospective_markdown(&report)),
                             "json" => Ok(format_retrospective_report(&report)),
                             _ => Err(rmcp::model::ErrorData::new(
@@ -2230,6 +2243,18 @@ impl UnimatrixServer {
                                 None,
                             )),
                         };
+                        // crt-052 (C6, ADR-005/AC-05): distill BEFORE purge,
+                        // attach at assembly level (ADR-004), then purge.
+                        let section = crate::mcp::distill_handler::distill_before_purge(
+                            &self.session_registry,
+                            &feature_cycle,
+                            &attributed,
+                            &self.retention_config,
+                        );
+                        crate::mcp::distill_handler::attach_to_response_assembly(
+                            &mut result,
+                            section,
+                        );
                         // vnc-025 (#670, FR-15/FR-16): purge AFTER the success
                         // response is built; error paths keep transcripts.
                         if result.is_ok() {
@@ -2911,13 +2936,24 @@ impl UnimatrixServer {
                 metadata: metadata_json,
             });
             let fmt = params.format.as_deref().unwrap_or("markdown");
-            let result = dispatch_review_with_advisory_and_parse_failures(
+            let mut result = dispatch_review_with_advisory_and_parse_failures(
                 memo_report,
                 fmt,
                 params.evidence_limit,
                 advisory,
                 parse_failure_count,
             );
+            // crt-052 (C6, ADR-005/AC-05, OQ-4): on a memoization HIT candidates
+            // are distilled FRESH from call-time buffer content and attached to
+            // the RESPONSE — the cached report (memo_report) is unchanged and may
+            // diverge (documented). Distill strictly before purge.
+            let section = crate::mcp::distill_handler::distill_before_purge(
+                &self.session_registry,
+                &feature_cycle,
+                &attributed,
+                &self.retention_config,
+            );
+            crate::mcp::distill_handler::attach_to_response_assembly(&mut result, section);
             // vnc-025 (#670, FR-15/FR-16): the cached re-review also purges —
             // idempotent (second call finds empty buffers → no audit rows).
             // Error paths keep transcripts.
@@ -3016,13 +3052,23 @@ impl UnimatrixServer {
                 ))
             }
         };
+        // crt-052 (C6, ADR-005/AC-05): distill STRICTLY before purge, attach the
+        // section at assembly level (ADR-004) — outside the memoized report — then
+        // purge. Same shared helper + ordering as the other three returns.
+        let mut result = result;
+        let section = crate::mcp::distill_handler::distill_before_purge(
+            &self.session_registry,
+            &feature_cycle,
+            &attributed,
+            &self.retention_config,
+        );
+        crate::mcp::distill_handler::attach_to_response_assembly(&mut result, section);
         // vnc-025 (#670, FR-15/FR-16): purge transcript buffers for the reviewed
         // cycle AFTER the success response is built (the last step before
         // returning Ok). Error paths keep transcripts for the retry (Gate 3a
         // disposition 2). The retention gate + audit emission live in
         // `purge_cycle_transcripts` (server.rs) — exhaustive TranscriptRetention
-        // match, ADR-004 pinned audit shape, trigger=cycle_review. Pure side
-        // effect: the review response is UNCHANGED (AC-09).
+        // match, ADR-004 pinned audit shape, trigger=cycle_review.
         if result.is_ok() {
             self.purge_cycle_transcripts(&feature_cycle);
         }
