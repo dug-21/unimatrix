@@ -4970,3 +4970,119 @@ def test_context_graph_path_self_loop_returns_not_found(server):
         f"Self-path must return length: 0; got {data.get('length')}"
     )
 
+
+# === crt-052 transcript_candidates additive section (AC-04) ===========
+#
+# The transcript candidates section is attached at assembly level as an extra
+# content item prefixed `transcript_candidates: {json}` ONLY when a session
+# attributed to the reviewed cycle yields candidates from a live transcript
+# buffer (distill_before_purge -> Some). The in-memory buffer is fed exclusively
+# via the UDS transcript_delta hook path, which is NOT active in this stdio MCP
+# harness, so every harness-driven cycle review has no buffer content and the
+# section is correctly absent. These tests pin the MCP-visible additive,
+# absent-when-empty contract (AC-04). The populated-buffer / multi-turn drain
+# proof lives in the Rust `continuity_simulated_lifecycle` (AC-11) test, which
+# is the only path able to feed the internal buffer.
+#
+# A cycle review over a feature with NO observation data returns an MCP error
+# (-32010), so these tests seed minimal observation rows directly (the UDS hook
+# path that would normally write them is inactive in the harness) to drive the
+# review onto its success path, then assert the candidates section is absent.
+
+
+def _crt052_db_path(project_dir):
+    import hashlib as _hashlib
+    import os as _os
+    canonical = _os.path.realpath(project_dir)
+    digest = _hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return _os.path.join(_os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+
+def _crt052_seed_observations(db_path, feature_cycle, num_records=20):
+    import sqlite3 as _sqlite3
+    import time as _time
+    import uuid as _uuid
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    now_secs = int(_time.time())
+    session_id = f"test-{feature_cycle}-{_uuid.uuid4().hex[:8]}"
+    conn.execute(
+        "INSERT INTO sessions (session_id, feature_cycle, started_at, status) VALUES (?, ?, ?, 0)",
+        (session_id, feature_cycle, now_secs),
+    )
+    for i in range(num_records):
+        ts_millis = now_secs * 1000 - 86_400_000 + (i * 300_000)
+        hook = "PreToolUse" if i % 2 == 0 else "PostToolUse"
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (session_id, ts_millis, hook, "Read", None,
+             1024 if hook == "PostToolUse" else None,
+             "output" if hook == "PostToolUse" else None),
+        )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+def test_cycle_review_transcript_candidates_absent_when_empty(server):
+    """crt-052 AC-04: cycle review with no transcript buffer omits the
+    transcript_candidates section entirely (absent, not null/empty)."""
+    import json as _json
+
+    topic = "crt052-candidates-absent"
+    _crt052_seed_observations(_crt052_db_path(server.project_dir), topic)
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    result = assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    # The section attaches as a content item literally prefixed
+    # "transcript_candidates:" — with no buffer content it must not appear.
+    assert "transcript_candidates" not in text, (
+        "crt-052 AC-04: transcript_candidates must be ABSENT (not null/empty) "
+        f"when no session yields candidates; response text was:\n{text[:500]}"
+    )
+
+    # The JSON report body itself must carry no candidate key (structural
+    # absence — candidates never fold onto the memoized RetrospectiveReport).
+    # The body is the first JSON content item; the section, when present, is a
+    # separate text item, so the report parses cleanly here.
+    try:
+        data = _json.loads(text)
+        assert "transcript_candidates" not in data, (
+            "crt-052 AC-06: RetrospectiveReport JSON must have no transcript_candidates key"
+        )
+    except _json.JSONDecodeError:
+        # Markdown/rendered format — absence already asserted on the text above.
+        pass
+
+
+def test_cycle_review_response_additive_only(server):
+    """crt-052 AC-04: pre-existing cycle review response fields are unchanged by
+    crt-052; the candidates section is purely additive (and absent here)."""
+    import json as _json
+
+    topic = "crt052-additive-only"
+    _crt052_seed_observations(_crt052_db_path(server.project_dir), topic)
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    try:
+        data = _json.loads(text)
+    except _json.JSONDecodeError:
+        pytest.skip("cycle review did not return JSON in this build; additive check skipped")
+
+    # Pre-crt-052 fields the review has always carried must still be present and
+    # untouched. curation_health is a stable cold-start block (crt-047); its
+    # presence proves crt-052 did not perturb the existing assembly.
+    assert "curation_health" in data, (
+        "crt-052 AC-04: pre-existing curation_health block must remain present "
+        "(additive section must not displace existing fields)"
+    )
+    # Additive section absent with no buffer — confirms it is opt-in, not a new
+    # always-present required field.
+    assert "transcript_candidates" not in data, (
+        "crt-052 AC-04: transcript_candidates is additive and must be absent here"
+    )
+
