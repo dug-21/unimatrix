@@ -26,7 +26,7 @@ mechanisms** (both mandatory — neither alone bounds memory):
 ```rust
 struct TranscriptHold { /* session_id -> HeldBuffer { arc, feature_cycle, last_activity_at } */ }
 fn hold_on_drain(&self, session_id, arc, feature_cycle);          // called from drain, minimal diff
-fn readopt(&self, session_id) -> Option<Arc<Mutex<TranscriptBuffer>>>; // re-register reclaims the held buffer
+fn readopt(&self, session_id, registering_feature_cycle) -> Option<Arc<Mutex<TranscriptBuffer>>>; // re-register reclaims ONLY on cycle match (SR-02)
 fn sweep_expired(&self, ttl_secs) -> Vec<TranscriptPurgeRecord>;  // independent TTL stale-sweep
 fn purge_held_for_feature(&self, feature_cycle) -> Vec<TranscriptPurgeRecord>; // post-distill at review
 ```
@@ -40,8 +40,11 @@ fn purge_held_for_feature(&self, feature_cycle) -> Vec<TranscriptPurgeRecord>; /
    depend on cycle-review ever firing. The two mechanisms (cap, TTL) are independent; either bounds
    memory alone, and both run.
 3. **Re-adoption is loud (SR-02):** on `SessionRegister`, if a held buffer exists for the session,
-   `readopt` rebinds it **only if** the re-registering `feature_cycle` matches the held
-   `feature_cycle`. On mismatch: **fail loud** — do NOT silently re-adopt under the wrong cycle; drop
+   `readopt(session_id, registering_feature_cycle)` rebinds it **only if** the re-registering
+   `feature_cycle` matches the held `feature_cycle`. The caller MUST pass the re-registering cycle —
+   hence `readopt` is **2-arg** (Gate 3a ratification: supersedes the earlier 1-arg
+   `readopt(session_id)` form; the match is impossible without the registering cycle, R-01/AC-11(b)).
+   On mismatch: **fail loud** — do NOT silently re-adopt under the wrong cycle; drop
    the held buffer (treat as a fresh session) and emit a diagnostic (metadata-only, no content). The
    re-adoption key is derived from the contract-attributed `feature_cycle` (vnc-030 ADR-007 §2 makes a
    declared cycle un-flippable), and the spec cites #981. Held buffers keep merging deltas for held

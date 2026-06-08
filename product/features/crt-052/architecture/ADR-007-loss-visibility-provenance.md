@@ -18,9 +18,11 @@ pub enum CandidateProvenance { Primary, Reconstructed }
 
 pub struct SessionLossInfo {
     pub session_id: String,
-    pub elided_bytes: u64,    // from TranscriptSnapshot.elided_bytes (ADR-002)
-    pub has_holes: bool,      // from TranscriptSnapshot.holes (ADR-002)
+    pub elided_bytes: u64,        // from TranscriptSnapshot.elided_bytes (ADR-002)
+    pub has_holes: bool,          // from TranscriptSnapshot.holes (ADR-002)
     pub provenance: CandidateProvenance,
+    pub dropped_candidates: u64,  // content-free count of candidates dropped to the per-session
+                                  // OR per-cycle aggregate cap (AC-08 no-silent-cap-drop)
 }
 
 pub struct TranscriptCandidatesSection {
@@ -30,8 +32,13 @@ pub struct TranscriptCandidatesSection {
 ```
 
 - Every session that contributes candidates appears in `loss` whenever it has non-zero `elided_bytes`,
-  holes, OR reconstructed provenance (AC-08). A clean primary session with no loss may be omitted from
-  `loss` (silence only means "no loss to report").
+  holes, reconstructed provenance, OR `dropped_candidates > 0` (AC-08). A clean primary session with no
+  loss and no cap-drop may be omitted from `loss` (silence only means "no loss to report").
+- `dropped_candidates` (Gate 3a ratification) is the content-free count of candidates this session lost
+  to the per-session OR per-cycle aggregate cap. AC-08 forbids silent cap-forced truncation; the
+  original `SessionLossInfo` could not surface aggregate-cap drops, so this count is added. It is a
+  number, not content, and rides the same response-transient never-persisted path (AC-06). C6 populates
+  it (it holds both caps and the pre-/post-cap counts).
 - `provenance` is per-session (consistent with ADR-006's whole-session either/or trigger): a session is
   `Primary` or `Reconstructed`, never mixed.
 - The loss metadata is derived entirely from the `TranscriptSnapshot` fields (ADR-002) and the
@@ -39,6 +46,16 @@ pub struct TranscriptCandidatesSection {
 
 The section is additive and absent when empty (ADR-004 / AC-04); `loss` is part of it, so loss
 visibility rides the same response-transient, never-persisted path (AC-06).
+
+**`TranscriptCandidate` Debug contract (Gate 3a ratification — closes the response-types.md
+pseudocode↔test-plan contradiction):** `TranscriptCandidate`'s `Debug` MAY show `text`. The
+R-19/AC-06 metadata-only-Debug rule targets the SNAPSHOT and held-buffer types
+(`TranscriptSnapshot`/`HoleInfo` per ADR-002, `HeldBuffer` per ADR-008) to prevent raw-buffer-content
+leak — it does NOT apply to `TranscriptCandidate.text`, which IS the response content the agent
+consumes and which structurally cannot reach a persisted/log surface (ADR-004; the AC-06 leak gate
+tests SQL/log/audit/persisted surfaces, where candidates never land). `SessionLossInfo`, `FamilyHint`,
+and `CandidateProvenance` carry no content and may `derive(Debug)`. The response-types.md pseudocode's
+metadata-only-Debug-for-`TranscriptCandidate` line is superseded by this ruling.
 
 ### Consequences
 Easier: AC-08 maps directly onto `SessionLossInfo`; the consumer guidance (ADR-009 / AC-13) can instruct

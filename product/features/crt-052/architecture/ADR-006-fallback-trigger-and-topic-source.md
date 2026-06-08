@@ -23,6 +23,13 @@ NOT against an assumed lossless buffer (SR-08), and is tested at the cap boundar
 overflow. The trigger is per-session and whole-session: a session is either primary or reconstructed,
 not a byte-level mix (OQ-2).
 
+**Threshold is a config knob, not a compile-time constant (Gate 3a ratification):** the hole-fraction
+threshold is `transcript_fallback_hole_fraction: f64` (default 0.5) on `RetentionConfig` (C9), merged
+and `validate()`-checked with the same pattern as the other retention knobs. ADR-006 already names it a
+"configured fraction" and a "tuning parameter that must be boundary-tested"; making it runtime-tunable
+(rather than a `const`) lets dogfooding calibrate it against real ring-tail overflow without a rebuild
+and keeps all transcript-distillation tuning in one config surface.
+
 **Reconstruction (`unimatrix-observe/src/distill/reconstruct.rs`):**
 ```rust
 fn reconstruct_from_observations(
