@@ -1592,6 +1592,17 @@ impl StatusService {
             let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(&self.store)));
             crate::uds::listener::emit_purge_audits(&audit, transcript_purges, "stale_sweep");
         }
+        // crt-052 Wave B (ADR-008 / R-02 / SR-01): sweep the held-buffer store by
+        // TTL here too, so a never-reviewed / never-re-registered held buffer is
+        // reclaimed INDEPENDENTLY of cycle review. Same `stale_sweep` trigger,
+        // emitted exactly once per held session at its terminal purge (ADR-009).
+        let held_purges = session_registry.sweep_held_buffers(std::time::Duration::from_secs(
+            retention_config.transcript_hold_ttl_secs,
+        ));
+        if !held_purges.is_empty() {
+            let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(&self.store)));
+            crate::uds::listener::emit_purge_audits(&audit, held_purges, "stale_sweep");
+        }
         if !stale_outputs.is_empty() {
             let store_for_sweep = Arc::clone(&self.store);
             let entry_store_for_sweep = Arc::clone(entry_store);

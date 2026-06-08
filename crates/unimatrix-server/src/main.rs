@@ -641,12 +641,31 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // crt-052 Wave B (ADR-008): build the bounded held-buffer store and inject
+    // it into the registry as the `HeldBufferScan` handle so the snapshot seam
+    // scans held buffers and the drain/register/delta paths route through it.
+    // The SAME `Arc` is also held on the server for `purge_held_for_feature`
+    // (cycle review) and by the background tick for `sweep_expired`.
+    let transcript_hold = Arc::new(
+        unimatrix_server::infra::transcript_hold::TranscriptHold::new(
+            config.retention.transcript_hold_max_sessions,
+            Arc::new(
+                unimatrix_server::infra::transcript_hold::AuditLogPurgeSink::new(Arc::clone(
+                    &audit,
+                )),
+            ),
+        ),
+    );
+
     // Create session registry for hook IPC (col-008).
     // vnc-025 (ADR-006): inject the configured per-session transcript buffer cap.
+    // crt-052 Wave B: inject the held-buffer scan handle (R-11 severable seam).
     let session_registry = Arc::new(
         unimatrix_server::infra::session::SessionRegistry::with_transcript_cap(
             config.retention.transcript_buffer_max_bytes,
-        ),
+        )
+        .with_transcript_hold(Arc::clone(&transcript_hold)
+            as Arc<dyn unimatrix_server::infra::session::HeldBufferScan>),
     );
 
     // Create pending entries analysis accumulator (col-009).
@@ -764,6 +783,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // vnc-025 (#670, FR-16): thread retention config for the cycle-review
     // transcript purge gate (reuses the snapshot taken for the GC tick).
     server.retention_config = Arc::clone(&retention_config);
+    // crt-052 Wave B (ADR-008): share the held-buffer store so the cycle-review
+    // purge (`purge_held_for_feature`) and the background sweep (`sweep_expired`)
+    // act on the SAME store the registry routes drains/deltas through.
+    server.transcript_hold = Arc::clone(&transcript_hold);
 
     // Extract state handles before services is moved.
     let confidence_state_handle = services.confidence_state_handle();
@@ -1072,12 +1095,28 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // crt-052 Wave B (ADR-008): held-buffer store, injected into the registry as
+    // the `HeldBufferScan` handle (mirrors the daemon path).
+    let transcript_hold = Arc::new(
+        unimatrix_server::infra::transcript_hold::TranscriptHold::new(
+            config.retention.transcript_hold_max_sessions,
+            Arc::new(
+                unimatrix_server::infra::transcript_hold::AuditLogPurgeSink::new(Arc::clone(
+                    &audit,
+                )),
+            ),
+        ),
+    );
+
     // Create session registry for hook IPC (col-008).
     // vnc-025 (ADR-006): inject the configured per-session transcript buffer cap.
+    // crt-052 Wave B: inject the held-buffer scan handle (R-11 severable seam).
     let session_registry = Arc::new(
         unimatrix_server::infra::session::SessionRegistry::with_transcript_cap(
             config.retention.transcript_buffer_max_bytes,
-        ),
+        )
+        .with_transcript_hold(Arc::clone(&transcript_hold)
+            as Arc<dyn unimatrix_server::infra::session::HeldBufferScan>),
     );
 
     // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009).
@@ -1194,6 +1233,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // vnc-025 (#670, FR-16): thread retention config for the cycle-review
     // transcript purge gate (reuses the snapshot taken for the GC tick).
     server.retention_config = Arc::clone(&retention_config);
+    // crt-052 Wave B (ADR-008): share the held-buffer store (mirrors daemon path).
+    server.transcript_hold = Arc::clone(&transcript_hold);
 
     // crt-019: extract ConfidenceStateHandle before services is moved.
     let confidence_state_handle = services.confidence_state_handle();

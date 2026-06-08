@@ -1608,6 +1608,33 @@ pub struct RetentionConfig {
     /// Range: [0.0, 1.0]. Default: 0.5.
     #[serde(default = "default_transcript_fallback_hole_fraction")]
     pub transcript_fallback_hole_fraction: f64,
+
+    /// Held-buffer count ceiling (crt-052 Wave B, ADR-008 / SR-01, OQ-1).
+    ///
+    /// The Option B held-buffer store keeps drained multi-turn buffers alive
+    /// across the per-turn drain so the primary distillation path is non-empty.
+    /// This caps how many sessions may be held at once: on the (cap+1)th hold,
+    /// the oldest-`last_activity_at` held buffer is evicted (every eviction
+    /// audited — R-16). Memory is bounded by `transcript_buffer_max_bytes ×
+    /// transcript_hold_max_sessions` regardless of cycle-review cadence. One of
+    /// two INDEPENDENT reclamation mechanisms (the other is the TTL sweep).
+    ///
+    /// Range: [1, usize::MAX]. Default: 64.
+    #[serde(default = "default_transcript_hold_max_sessions")]
+    pub transcript_hold_max_sessions: usize,
+
+    /// Held-buffer stale-sweep TTL in seconds (crt-052 Wave B, ADR-008 / SR-01,
+    /// OQ-1).
+    ///
+    /// A held buffer untouched for longer than this is reclaimed by the
+    /// maintenance-tick stale sweep (`sweep_expired`) — INDEPENDENT of whether
+    /// cycle review ever fires (a never-reviewed, never-re-registered session
+    /// cannot leak its buffer). The second of two independent reclamation
+    /// mechanisms (the first is the held-count cap); either alone bounds memory.
+    ///
+    /// Range: [1, u64::MAX]. Default: 86400 (24 h).
+    #[serde(default = "default_transcript_hold_ttl_secs")]
+    pub transcript_hold_ttl_secs: u64,
 }
 
 fn default_activity_detail_retention_cycles() -> u32 {
@@ -1640,6 +1667,14 @@ fn default_transcript_fallback_hole_fraction() -> f64 {
     // crt-052 ADR-006: reconstruction fallback fires at >= 50% hole fraction.
     0.5
 }
+fn default_transcript_hold_max_sessions() -> usize {
+    // crt-052 ADR-008 / OQ-1: held-count ceiling (R-02 memory bound).
+    64
+}
+fn default_transcript_hold_ttl_secs() -> u64 {
+    // crt-052 ADR-008 / OQ-1: 24 h independent stale-sweep TTL (R-02 memory bound).
+    86_400
+}
 
 impl Default for RetentionConfig {
     fn default() -> Self {
@@ -1653,6 +1688,8 @@ impl Default for RetentionConfig {
             ),
             transcript_candidate_cycle_cap_bytes: default_transcript_candidate_cycle_cap_bytes(),
             transcript_fallback_hole_fraction: default_transcript_fallback_hole_fraction(),
+            transcript_hold_max_sessions: default_transcript_hold_max_sessions(),
+            transcript_hold_ttl_secs: default_transcript_hold_ttl_secs(),
         }
     }
 }
@@ -1767,6 +1804,28 @@ impl RetentionConfig {
                 field: "transcript_fallback_hole_fraction",
                 value: self.transcript_fallback_hole_fraction.to_string(),
                 reason: "must be in range [0.0, 1.0]",
+            });
+        }
+
+        // crt-052 ADR-008 / SR-01: a zero held-count cap would evict every held
+        // buffer immediately and defeat the continuity remedy. Floor at 1.
+        if self.transcript_hold_max_sessions == 0 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_hold_max_sessions",
+                value: self.transcript_hold_max_sessions.to_string(),
+                reason: "must be >= 1",
+            });
+        }
+
+        // crt-052 ADR-008 / SR-01: a zero TTL would sweep held buffers on the
+        // next tick before they could be re-adopted or reviewed. Floor at 1.
+        if self.transcript_hold_ttl_secs == 0 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_hold_ttl_secs",
+                value: self.transcript_hold_ttl_secs.to_string(),
+                reason: "must be >= 1",
             });
         }
 
@@ -3543,6 +3602,22 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.retention.transcript_fallback_hole_fraction
             } else {
                 global.retention.transcript_fallback_hole_fraction
+            },
+            // crt-052 ADR-008: per-field project-wins merge for the held-count cap.
+            transcript_hold_max_sessions: if project.retention.transcript_hold_max_sessions
+                != default.retention.transcript_hold_max_sessions
+            {
+                project.retention.transcript_hold_max_sessions
+            } else {
+                global.retention.transcript_hold_max_sessions
+            },
+            // crt-052 ADR-008: per-field project-wins merge for the held-buffer TTL.
+            transcript_hold_ttl_secs: if project.retention.transcript_hold_ttl_secs
+                != default.retention.transcript_hold_ttl_secs
+            {
+                project.retention.transcript_hold_ttl_secs
+            } else {
+                global.retention.transcript_hold_ttl_secs
             },
         },
         // #561: per-field project-wins merge for store config
@@ -8885,6 +8960,115 @@ transcript_fallback_hole_fraction = 0.25
         RetentionConfig::default()
             .validate(Path::new("config.toml"))
             .expect("default RetentionConfig must validate");
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-052 C9 Wave B: held-buffer hold knobs (ADR-008) —
+    // transcript_hold_max_sessions, transcript_hold_ttl_secs.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_config_defaults_hold_knobs() {
+        // serde(default): absent [retention] applies the compiled hold defaults.
+        let parsed: UnimatrixConfig =
+            toml::from_str("").expect("empty config must parse with defaults");
+        assert_eq!(
+            parsed.retention.transcript_hold_max_sessions, 64,
+            "held-count cap defaults to 64"
+        );
+        assert_eq!(
+            parsed.retention.transcript_hold_ttl_secs, 86_400,
+            "held TTL defaults to 24h (86400s)"
+        );
+        // present-but-field-absent still defaults.
+        let partial: UnimatrixConfig =
+            toml::from_str("[retention]\nmax_cycles_per_tick = 5\n").expect("partial parses");
+        assert_eq!(partial.retention.transcript_hold_max_sessions, 64);
+        assert_eq!(partial.retention.transcript_hold_ttl_secs, 86_400);
+    }
+
+    #[test]
+    fn test_config_hold_knobs_explicit_values_respected() {
+        let toml_str = "[retention]\n\
+            transcript_hold_max_sessions = 8\n\
+            transcript_hold_ttl_secs = 3600\n";
+        let parsed: UnimatrixConfig =
+            toml::from_str(toml_str).expect("explicit hold knobs must parse");
+        assert_eq!(parsed.retention.transcript_hold_max_sessions, 8);
+        assert_eq!(parsed.retention.transcript_hold_ttl_secs, 3600);
+    }
+
+    #[test]
+    fn test_config_validate_rejects_zero_hold_max_sessions() {
+        let cfg = RetentionConfig {
+            transcript_hold_max_sessions: 0,
+            ..RetentionConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("zero held-count cap must fail validate");
+        assert!(
+            matches!(
+                err,
+                ConfigError::RetentionFieldOutOfRange {
+                    field: "transcript_hold_max_sessions",
+                    ..
+                }
+            ),
+            "got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_config_validate_rejects_zero_hold_ttl() {
+        let cfg = RetentionConfig {
+            transcript_hold_ttl_secs: 0,
+            ..RetentionConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("zero held TTL must fail validate");
+        assert!(
+            matches!(
+                err,
+                ConfigError::RetentionFieldOutOfRange {
+                    field: "transcript_hold_ttl_secs",
+                    ..
+                }
+            ),
+            "got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_config_validate_accepts_hold_knob_floors() {
+        let cfg = RetentionConfig {
+            transcript_hold_max_sessions: 1,
+            transcript_hold_ttl_secs: 1,
+            ..RetentionConfig::default()
+        };
+        cfg.validate(Path::new("config.toml"))
+            .expect("hold-knob floors (1, 1) must validate");
+    }
+
+    #[test]
+    fn test_config_merge_hold_knobs_project_wins() {
+        let mut global = UnimatrixConfig::default();
+        global.retention.transcript_hold_max_sessions = 128; // non-default
+        global.retention.transcript_hold_ttl_secs = 7200; // non-default
+        let mut project = UnimatrixConfig::default();
+        project.retention.transcript_hold_max_sessions = 16; // project sets, wins
+        // project leaves ttl at default → global's ttl applies.
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.retention.transcript_hold_max_sessions, 16,
+            "project's non-default held-count cap wins"
+        );
+        assert_eq!(
+            merged.retention.transcript_hold_ttl_secs, 7200,
+            "global ttl applies when project leaves it at default"
+        );
     }
 
     // -----------------------------------------------------------------------

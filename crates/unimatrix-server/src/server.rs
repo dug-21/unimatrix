@@ -215,6 +215,13 @@ pub struct UnimatrixServer {
     /// Session registry for stale session sweep (col-009, FR-09.2).
     /// Shared with UDS listener; swept by the background tick.
     pub session_registry: Arc<SessionRegistry>,
+    /// crt-052 Wave B (ADR-008): bounded server-only held-buffer store. The SAME
+    /// `Arc` is injected into `session_registry` as the `HeldBufferScan` handle,
+    /// so the snapshot seam scans held buffers and the drain/register/delta paths
+    /// route through it — all behind the optional handle (R-11 severable). Used
+    /// directly here for `purge_held_for_feature` at cycle review and by the
+    /// background tick for `sweep_expired`.
+    pub transcript_hold: Arc<crate::infra::transcript_hold::TranscriptHold>,
     /// Transport-agnostic service layer (vnc-006).
     pub(crate) services: ServiceLayer,
     /// crt-018b: effectiveness classification cache shared across search, briefing,
@@ -330,7 +337,8 @@ impl UnimatrixServer {
             vector_store,
             embed_service,
             registry,
-            audit,
+            // crt-052: clone — `audit` is reused below for the held-store sink.
+            audit: Arc::clone(&audit),
             categories,
             store,
             vector_index,
@@ -338,6 +346,18 @@ impl UnimatrixServer {
             adapt_service,
             pending_entries_analysis: Arc::new(Mutex::new(PendingEntriesAnalysis::new())),
             session_registry: Arc::new(SessionRegistry::new()),
+            // crt-052 Wave B (ADR-008): default test-server held store. The
+            // daemon/stdio paths in main.rs build the registry+hold pair and
+            // overwrite both `session_registry` and `transcript_hold` with a
+            // SHARED store; the test-server pair here is independent (the test
+            // registry is `SessionRegistry::new()` with no hold wired), which is
+            // fine — tests that exercise Wave B wire the pair explicitly.
+            transcript_hold: Arc::new(crate::infra::transcript_hold::TranscriptHold::new(
+                64,
+                Arc::new(crate::infra::transcript_hold::AuditLogPurgeSink::new(
+                    Arc::clone(&audit),
+                )),
+            )),
             services,
             effectiveness_state,
             tick_metadata,
@@ -547,12 +567,17 @@ impl UnimatrixServer {
                 // ADR-004: locks already released inside clear_transcripts_for_feature;
                 // content-free audit, purge success never depends on audit success.
                 crate::uds::listener::emit_purge_audits(&self.audit, records, "cycle_review");
-                // crt-052 Wave B seam (C8, ADR-008/ADR-009): the held-buffer purge
-                // (`purge_held_for_feature(feature_cycle)` + its own emit_purge_audits)
-                // is added HERE inside this arm — held buffers are purged in lockstep
-                // with registered buffers, only under PurgeOnCycleClose. Wave A adds
-                // nothing referencing transcript_hold.rs (R-11); reverting Wave B
-                // removes only that single addition and leaves this arm correct.
+                // crt-052 Wave B seam (C8, ADR-008/ADR-009): purge held buffers
+                // for this cycle in lockstep with the registered buffers, only
+                // under PurgeOnCycleClose. This is AFTER distill (the cycle-review
+                // handler calls `distill_before_purge` before this method), so the
+                // snapshot seam has already read the held buffers' cross-turn
+                // content. The audit fires EXACTLY ONCE per held session here
+                // (`trigger=cycle_review`) — the per-turn `session_close` emission
+                // moved off drain for held buffers (ADR-009). Reverting Wave B
+                // removes only this single addition and leaves the arm correct.
+                let held_records = self.transcript_hold.purge_held_for_feature(feature_cycle);
+                crate::uds::listener::emit_purge_audits(&self.audit, held_records, "cycle_review");
             }
             TranscriptRetention::RetainDays(_) => {
                 // Enterprise-only; OSS `validate()` rejects this value at startup,

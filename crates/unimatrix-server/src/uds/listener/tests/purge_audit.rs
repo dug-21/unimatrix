@@ -3,6 +3,21 @@
 //! Test plan: product/features/vnc-025/test-plan/purge-audit.md.
 //! (The cycle_review trigger is owned by the cycle-review-purge component —
 //! emission mechanics in `mcp/tools.rs` tests.)
+//!
+//! crt-052 Wave B audit-shape move (ADR-009, no-consumer survey CLEAN at
+//! product/features/crt-052/reports/adr-009-no-consumer-survey.md): the per-turn
+//! `session_close` emission MOVES off drain ONLY for HELD buffers (Option B,
+//! ADR-008) — they now purge once at review/sweep/cap-evict. The close-time drain
+//! of a NON-HELD buffer (no hold wired) still purges immediately and emits the
+//! `session_close` row, exactly as vnc-025. Every test in this file uses
+//! `make_registry()` (no `with_transcript_hold`), so every buffer here is
+//! NON-HELD and these `session_close` / `stale_sweep` assertions remain valid
+//! unchanged (survey disposition: "non-held assertions stay"). The HELD-buffer
+//! lifecycle — drain holds instead of purging; `session_close` does NOT fire;
+//! the audit fires exactly once per held session at the terminal purge — is
+//! proved by the AC-11 merge-gate test `continuity_simulated_lifecycle`
+//! (`infra/transcript_hold_tests.rs`), where the disposition is "held-case
+//! assertions move to the AC-11 lifecycle test."
 
 use super::transcript::{Deps, buffer_contents, capture_tracing, dispatch_delta};
 use super::*;

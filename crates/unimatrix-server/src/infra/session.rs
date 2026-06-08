@@ -216,6 +216,49 @@ pub trait HeldBufferScan: Send + Sync {
         &self,
         feature_cycle: &str,
     ) -> Vec<(String, Arc<Mutex<TranscriptBuffer>>)>;
+
+    /// Hold a drained buffer instead of dropping it (crt-052 Wave B, ADR-008
+    /// 3-arg form). `feature_cycle` is REQUIRED for SR-02 loud re-adoption; an
+    /// empty cycle is NOT held (the buffer degrades to the Wave A fallback).
+    /// Called from `drain_and_signal_session` via the optional handle — the
+    /// trait keeps `session.rs` free of any `transcript_hold` import (R-11).
+    /// Default: no-op (a `HeldBufferScan` impl that only scans need not hold).
+    fn hold_on_drain(
+        &self,
+        _session_id: &str,
+        _arc: Arc<Mutex<TranscriptBuffer>>,
+        _feature_cycle: &str,
+    ) {
+    }
+
+    /// Re-adopt a held buffer on `SessionRegister` (crt-052 Wave B, ADR-008
+    /// 2-arg form). Returns the held `Arc` ONLY on `feature_cycle` MATCH; on
+    /// mismatch/empty it fails loud (drops + audits) and returns `None`
+    /// (R-01 / SR-02, cite #981). Default: `None` (no held buffer to re-adopt).
+    fn readopt(
+        &self,
+        _session_id: &str,
+        _registering_feature_cycle: &str,
+    ) -> Option<Arc<Mutex<TranscriptBuffer>>> {
+        None
+    }
+
+    /// The held buffer handle for `session_id`, bumping its activity (crt-052
+    /// Wave B). Used by the listener delta route so deltas keep merging into a
+    /// held (drained, not re-registered) buffer. O(1) keyed (R-17). Default:
+    /// `None` (no held buffer for this session).
+    fn held_arc_for_session(&self, _session_id: &str) -> Option<Arc<Mutex<TranscriptBuffer>>> {
+        None
+    }
+
+    /// Reclaim held buffers older than `ttl` (crt-052 Wave B, ADR-008 / R-02).
+    /// Returns counts-only purge records the caller emits with
+    /// `trigger=stale_sweep`. Reached on the maintenance tick via
+    /// [`SessionRegistry::sweep_held_buffers`] so the held store is swept by TTL
+    /// INDEPENDENTLY of cycle review (SR-01). Default: empty (nothing held).
+    fn sweep_expired(&self, _ttl: std::time::Duration) -> Vec<TranscriptPurgeRecord> {
+        Vec::new()
+    }
 }
 
 pub struct SessionRegistry {
@@ -262,6 +305,25 @@ impl SessionRegistry {
         feature: Option<String>,
     ) {
         let now = now_secs();
+
+        // crt-052 Wave B (ADR-008 / R-01 / SR-02): loud re-adoption. If a buffer
+        // was held for this session at a prior drain AND the re-registering
+        // `feature_cycle` matches the held cycle, rebind the LIVE held buffer so
+        // its cross-turn content survives this re-register (the primary path is
+        // non-empty at review). On mismatch/empty cycle `readopt` fails loud
+        // (drops + audits the held buffer) and returns `None` — we then start a
+        // fresh empty buffer (the #981 mis-scope is impossible). Wave A (handle
+        // `None`) always yields a fresh buffer. Reached only through the
+        // `HeldBufferScan` trait — no `transcript_hold` import (R-11).
+        let transcript = match (self.transcript_hold.as_ref(), feature.as_deref()) {
+            (Some(hold), Some(feature_cycle)) if !feature_cycle.is_empty() => {
+                hold.readopt(session_id, feature_cycle).unwrap_or_else(|| {
+                    Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap)))
+                })
+            }
+            _ => Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap))),
+        };
+
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
         sessions.insert(
             session_id.to_string(),
@@ -287,7 +349,10 @@ impl SessionRegistry {
                 confirmed_entries: HashSet::new(), // col-028: empty on session start
                 // vnc-025: fresh empty buffer. Re-registration replaces the old Arc;
                 // the old buffer frees on last drop — no ghost content (ADR-001).
-                transcript: Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap))),
+                // crt-052 Wave B (ADR-008): a held buffer re-adopted on cycle
+                // MATCH is rebound here instead (loud re-adoption above); Wave A
+                // and mismatch/empty paths still get a fresh empty buffer.
+                transcript,
             },
         );
     }
@@ -307,11 +372,27 @@ impl SessionRegistry {
             let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
             let key = session_key("default", "", session_id); // ADR-007 seam
             match sessions.get_mut(&key) {
-                None => return, // silent no-op (FR-04, AC-03)
                 Some(state) => {
                     state.last_activity_at = state.last_activity_at.max(now_secs());
                     Arc::clone(&state.transcript)
                 }
+                // crt-052 Wave B (ADR-008 / R-17): the session is no longer in
+                // the registry (drained at a per-turn close) but its buffer may
+                // be HELD. Route the delta to the held buffer so it keeps
+                // merging across drains (the primary path is non-empty at
+                // review). O(1) keyed lookup, activity bumped inside the hold
+                // (R-17 — no linear scan). Reached only through the
+                // `HeldBufferScan` trait — no `transcript_hold` import (R-11).
+                // Wave A (handle `None`) or an unheld session is a silent no-op
+                // exactly as vnc-025 (FR-04, AC-03).
+                None => match self
+                    .transcript_hold
+                    .as_ref()
+                    .and_then(|hold| hold.held_arc_for_session(session_id))
+                {
+                    Some(arc) => arc,
+                    None => return, // silent no-op (FR-04, AC-03)
+                },
             }
         }; // registry lock RELEASED here
 
@@ -760,10 +841,27 @@ impl SessionRegistry {
         // If session absent, already cleared — no-op (FR-04.2, AC-03)
         let state = sessions.remove(session_id)?;
 
-        // vnc-025: snapshot purge metadata BEFORE state is consumed. Buffer lock
-        // taken while holding the registry lock — permitted order (registry →
-        // buffer), bounded work (ADR-001).
-        let purge = purge_record_for(&state);
+        // crt-052 Wave B (ADR-008 / Constraint 13 — minimal diff over the
+        // vnc-030 §2 drain shape, cited not reworked): if a held store is wired
+        // AND this session carries an attributed `feature_cycle`, hand the live
+        // buffer Arc to the hold INSTEAD of purging it. The buffer survives the
+        // per-turn drain, keeps merging deltas, and purges later at review /
+        // sweep / cap-evict. No `session_close` purge record is returned for a
+        // held buffer (its audit MOVES to the terminal purge — ADR-009), so the
+        // listener emits NO `session_close` audit for it.
+        //
+        // Wave A (handle `None`) or an unattributed session (empty cycle) keeps
+        // the vnc-025 behavior exactly: purge here, return the counts-only
+        // record. `session.rs` never imports `transcript_hold` — the hold is
+        // reached only through the `HeldBufferScan` trait (R-11).
+        let purge = match (self.transcript_hold.as_ref(), state.feature.as_deref()) {
+            (Some(hold), Some(feature_cycle)) if !feature_cycle.is_empty() => {
+                hold.hold_on_drain(session_id, Arc::clone(&state.transcript), feature_cycle);
+                None // held buffer not purged at close (ADR-009)
+            }
+            // Wave A path, or no attributed cycle: purge at close as vnc-025.
+            _ => purge_record_for(&state),
+        };
 
         // Build signal output from the removed state (lock still held — ADR-003)
         let output = build_signal_output_from_state(state, hook_outcome);
@@ -834,6 +932,20 @@ impl SessionRegistry {
         }
 
         (results, purges)
+    }
+
+    /// crt-052 Wave B (ADR-008 / R-02): reclaim held buffers older than `ttl`
+    /// via the optional [`HeldBufferScan`] handle. Called on the maintenance
+    /// tick alongside [`sweep_stale_sessions`] so the held store is swept by TTL
+    /// independently of cycle review (SR-01). Returns the counts-only purge
+    /// records; the caller emits them with `trigger=stale_sweep`. Wave A (handle
+    /// `None`) returns empty — this method has zero compile-time dependency on
+    /// `transcript_hold.rs` (R-11).
+    pub fn sweep_held_buffers(&self, ttl: std::time::Duration) -> Vec<TranscriptPurgeRecord> {
+        match self.transcript_hold.as_ref() {
+            Some(hold) => hold.sweep_expired(ttl),
+            None => Vec::new(),
+        }
     }
 
     /// Return the number of currently tracked sessions (used in tests).
