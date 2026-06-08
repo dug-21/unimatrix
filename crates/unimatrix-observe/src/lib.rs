@@ -7,6 +7,7 @@
 pub mod attribution;
 pub mod baseline;
 pub mod detection;
+pub mod distill;
 pub mod domain;
 pub mod error;
 pub mod extraction;
@@ -34,11 +35,12 @@ pub use source::ObservationSource;
 pub use synthesis::synthesize_narratives;
 pub use types::{
     AttributionMetadata, BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
-    CurationBaselineComparison, CurationHealthBlock, CurationHealthSummary, CurationSnapshot,
-    CycleEventRecord, EntryAnalysis, EntryRef, EvidenceCluster, EvidenceRecord,
-    FeatureKnowledgeReuse, GateResult, HotspotCategory, HotspotFinding, HotspotNarrative,
-    MetricVector, ObservationRecord, ObservationStats, ParsedSession, PhaseCategoryComparison,
-    PhaseCategoryDist, PhaseMetrics, PhaseNarrative, PhaseStats, Recommendation,
-    RetrospectiveReport, SessionSummary, Severity, ToolDistribution, TrendDirection,
+    CandidateProvenance, CurationBaselineComparison, CurationHealthBlock, CurationHealthSummary,
+    CurationSnapshot, CycleEventRecord, EntryAnalysis, EntryRef, EvidenceCluster, EvidenceRecord,
+    FamilyHint, FeatureKnowledgeReuse, GateResult, HotspotCategory, HotspotFinding,
+    HotspotNarrative, MetricVector, ObservationRecord, ObservationStats, ParsedSession,
+    PhaseCategoryComparison, PhaseCategoryDist, PhaseMetrics, PhaseNarrative, PhaseStats,
+    Recommendation, RetrospectiveReport, SessionLossInfo, SessionSummary, Severity,
+    ToolDistribution, TranscriptCandidate, TranscriptCandidatesSection, TrendDirection,
     UniversalMetrics,
 };

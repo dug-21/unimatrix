@@ -11,7 +11,7 @@ import threading
 import time
 import pytest
 from pathlib import Path
-from harness.assertions import assert_tool_success, assert_tool_error, extract_entry_id, parse_entries
+from harness.assertions import assert_tool_success, assert_tool_error, extract_entry_id, parse_entries, get_result_text
 from harness.conftest import get_binary_path
 
 
@@ -426,3 +426,150 @@ def test_nli_hash_mismatch_graceful_degradation(server):
         f"Stored entry must be findable via cosine fallback. "
         f"entry_id={entry_id} not in results: {result_ids}"
     )
+
+
+# === crt-052 untrusted-buffer no-panic + no-leak through MCP =============
+#
+# The transcript buffer is untrusted client-disk JSONL fed via the UDS
+# transcript_delta hook path (not active in this stdio MCP harness). The
+# module- and handler-level fuzz corpus (truncated JSON, non-UTF-8, oversized
+# line, unknown record type, embedded NUL, fully-corrupt snapshot) is exercised
+# in Rust: distill::jsonl corpus_tests and
+# distill_handler::test_handler_fully_corrupt_snapshot_normal_response
+# (AC-V-FUZZ, R-10) — those are the authoritative no-panic proofs since they can
+# inject buffer bytes. These MCP tests assert the handler-boundary guarantee
+# observable through the protocol: a cycle review over the no-live-buffer
+# degrade path returns a normal response, candidates absent, the MCP call never
+# errors or crashes; and no candidate/transcript bytes reach any read tool or
+# persisted/queryable surface (AC-06, R-04 — extends vnc-025 AC-12).
+#
+# A review over a feature with no observation data returns an MCP error
+# (-32010); these tests seed minimal observation rows directly (the UDS hook
+# path is inactive in the harness) to drive the review onto its success path.
+
+
+def _crt052_sec_db_path(project_dir):
+    import hashlib as _hashlib
+    import os as _os
+    canonical = _os.path.realpath(project_dir)
+    digest = _hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return _os.path.join(_os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+
+def _crt052_sec_seed_observations(db_path, feature_cycle, num_records=20):
+    import sqlite3 as _sqlite3
+    import time as _time
+    import uuid as _uuid
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    now_secs = int(_time.time())
+    session_id = f"sec-{feature_cycle}-{_uuid.uuid4().hex[:8]}"
+    conn.execute(
+        "INSERT INTO sessions (session_id, feature_cycle, started_at, status) VALUES (?, ?, ?, 0)",
+        (session_id, feature_cycle, now_secs),
+    )
+    for i in range(num_records):
+        ts_millis = now_secs * 1000 - 86_400_000 + (i * 300_000)
+        hook = "PreToolUse" if i % 2 == 0 else "PostToolUse"
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (session_id, ts_millis, hook, "Read", None,
+             1024 if hook == "PostToolUse" else None,
+             "output" if hook == "PostToolUse" else None),
+        )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+@pytest.mark.security
+def test_cycle_review_corrupt_buffer_no_panic(server):
+    """crt-052 AC-V-FUZZ / R-10: a cycle review over the buffer-degrade path
+    returns a normal MCP response (candidates absent), never errors/crashes.
+
+    The deep adversarial-JSONL no-panic proof is the Rust handler test
+    `test_handler_fully_corrupt_snapshot_normal_response`; the buffer cannot be
+    fed corrupt bytes through stdio MCP. This pins the MCP-observable invariant:
+    the review handler degrades gracefully and the call does not become an error
+    or kill the server."""
+    topic = "crt052-corrupt-buffer-no-panic"
+    _crt052_sec_seed_observations(_crt052_sec_db_path(server.project_dir), topic)
+
+    # Two reviews back-to-back — a panic in the distill path would surface as a
+    # tool error, a dropped connection, or a server death on the second call.
+    resp1 = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(resp1), (
+        "crt-052 AC-V-FUZZ: cycle review must return a normal (non-error) MCP "
+        "response on the buffer-degrade path"
+    )
+    text1 = get_result_text(resp1)
+    assert "transcript_candidates" not in text1, (
+        "crt-052 AC-V-FUZZ: degraded review must carry no candidates"
+    )
+
+    # Server still alive and responsive after the review — no panic/crash.
+    resp2 = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(resp2), (
+        "crt-052 AC-V-FUZZ: server must remain responsive after a cycle review "
+        "(no handler panic took down the process)"
+    )
+    status = server.context_status(agent_id="human", format="json")
+    assert_tool_success(status), (
+        "crt-052 AC-V-FUZZ: server must answer subsequent MCP calls — proves the "
+        "review handler never panicked"
+    )
+
+
+@pytest.mark.security
+def test_cycle_review_no_candidate_content_in_query_surface(server):
+    """crt-052 AC-06 / R-04: no transcript/candidate content is returned by any
+    read tool or persisted record after a cycle review (extends vnc-025 AC-12).
+
+    With no live buffer the section is absent; this test guards the negative
+    invariant at the MCP surface — search, status, and the memoized cycle review
+    index expose no candidate marker (`transcript_candidates`) or transcript
+    byte_offset provenance."""
+    import sqlite3 as _sqlite3
+    import hashlib as _hashlib
+    import os as _os
+    import json as _json
+
+    topic = "crt052-no-candidate-leak"
+    _crt052_sec_seed_observations(_crt052_sec_db_path(server.project_dir), topic)
+    review = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(review)
+
+    # No read tool surfaces candidate content.
+    search = server.context_search("transcript_candidates byte_offset", format="json", agent_id="human")
+    assert_tool_success(search)
+    search_text = get_result_text(search)
+    assert "transcript_candidates" not in search_text, (
+        "crt-052 AC-06: context_search must not surface a transcript_candidates section"
+    )
+
+    status = server.context_status(agent_id="human", format="json")
+    assert_tool_success(status)
+    assert "transcript_candidates" not in get_result_text(status), (
+        "crt-052 AC-06: context_status must not surface transcript candidate content"
+    )
+
+    # No persisted/queryable record carries candidate content. A row may or may
+    # not exist (depends on whether signals were available); if present, assert
+    # it is candidate-free.
+    canonical = _os.path.realpath(server.project_dir)
+    digest = _hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    db_path = _os.path.join(_os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+    if _os.path.isfile(db_path):
+        conn = _sqlite3.connect(db_path)
+        try:
+            rows = conn.execute(
+                "SELECT summary_json FROM cycle_review_index WHERE feature_cycle = ?", (topic,)
+            ).fetchall()
+        finally:
+            conn.close()
+        for (summary_json,) in rows:
+            assert "transcript_candidates" not in summary_json, (
+                "crt-052 AC-06: persisted summary_json must contain no "
+                "transcript_candidates field (structural absence from the memoized report)"
+            )

@@ -4,6 +4,7 @@
 //! and ToolContext for handler ceremony reduction.
 
 pub(crate) mod context;
+pub(crate) mod distill_handler;
 pub(crate) mod edge_write;
 pub(crate) mod graph_read;
 pub mod identity;

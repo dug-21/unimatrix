@@ -44,6 +44,11 @@ Gather all evidence about the shipped feature:
    ```
    This returns structured data: metrics, hotspots, baseline comparisons, narratives, and recommendations.
 
+   **If the response carries a `transcript_candidates` section** (added by crt-052), read
+   [Consuming `transcript_candidates`](#consuming-transcript_candidates) below before analyzing it.
+   When the section is ABSENT (no transcripts / nothing to harvest), proceed normally — the cycle
+   review still produces its standard report.
+
 2. **Analyze the retrospective data** — extract actionable findings:
 
    a. **Hotspots by severity** — Classify each hotspot:
@@ -94,6 +99,89 @@ Gather all evidence about the shipped feature:
 
 ---
 
+## Consuming `transcript_candidates`
+
+The cycle-review response may carry a transient `transcript_candidates` section (crt-052). The server
+SELECTS whole marker-matched user/assistant blocks from the reviewed feature's session buffers and
+attaches them to the response; **the agent EXTRACTS all semantics.** Rules select, the agent extracts —
+there is no server-side semantic extraction or family classification.
+
+The section is response-transient only: it is NOT persisted, NOT part of the memoized
+`RetrospectiveReport`, and reaches the knowledge base ONLY through your `context_store` writes below.
+
+### Shape
+
+```
+transcript_candidates:
+  candidates: [ TranscriptCandidate ... ]   # session_id, byte_offset, ts, family_hints, text (whole block)
+  loss:       [ SessionLossInfo ... ]        # session_id, elided_bytes, has_holes, provenance, dropped_candidates
+```
+
+### The four marker families (hints are ADVISORY)
+
+Each candidate carries one or more `family_hints` drawn from four families. The hints are a STARTING
+POINT only — **you decide the family and re-classify as needed.** Map each candidate to a knowledge store
+with feature attribution (`feature` / tags scoped to `{feature-id}`):
+
+| Family hint | Where it usually goes |
+|-------------|-----------------------|
+| `Decision`  | ADR — `/uni-store-adr` |
+| `Rework`    | pattern or lesson, as appropriate |
+| `Lesson`    | `/uni-store-lesson` |
+| `PhaseGate` | procedure or gate-narrative, as appropriate |
+
+### How candidates fold into extraction (the ass-070 Q8 folds)
+
+These candidates feed the same Q8-class narratives this skill already builds in Phase 2. Fold them in:
+
+- **Rework-why narratives** — join `Warning`-level hotspots to TIMESTAMP-ADJACENT candidates (`ts` /
+  `byte_offset`) to recover the reasoning behind the rework.
+- **Gate-failure units** — treat a gate-failure narrative as a single UNIT. Do not fragment one gate
+  failure across multiple stores.
+- **Human-intervention ledger** — build a ledger from USER-block candidate content (human redirections,
+  constraint changes, deferrals).
+- **Phase narration** — narrate phase transitions from `PhaseGate`-family candidates.
+
+### Provenance weighting (ADR-007) — read `loss` before you trust a candidate
+
+`SessionLossInfo.provenance` is `Primary` or `Reconstructed`:
+
+- **`Reconstructed`** candidates came from the fidelity-floor fallback (0.81 ceiling, DEC-weakest). Weight
+  them LOWER and temper decision-family extraction from them.
+- **High `elided_bytes`** means buffer head was clipped. Elision clips the HEAD of the stream — the
+  highest-value early `Decision` (DEC) content (ass-070 Q5). When `elided_bytes > 0`, assume early
+  decisions may be lost and temper decision-family confidence for that session.
+- **`has_holes: true`** means the readable window is non-contiguous; narratives spanning a hole may be
+  incomplete.
+
+### Cap-drop awareness (AC-08)
+
+`SessionLossInfo.dropped_candidates > 0` means the per-session or per-cycle volume caps truncated
+candidates for that session. Note in the resulting narrative that it may be incomplete for that session —
+the drop is reported, never silent.
+
+### Call-time vs cached (OQ-4 / AC-05) — IMPORTANT
+
+Candidates reflect the buffer content present **AT CALL TIME**, not the memoized report. On a memoization
+HIT, the standard `RetrospectiveReport` is served from cache, but the candidates are distilled FRESH and
+**may differ from the cached metrics.** Treat candidates as call-time content; do not assume they line up
+with the cached report.
+
+### Extraction is your job, not the server's
+
+Every store you make from these candidates goes through `context_store` (`/uni-store-adr`,
+`/uni-store-lesson`, `/uni-store-pattern`, `/uni-store-procedure`) with feature attribution to
+`{feature-id}`. This is the ONLY path distillation output reaches the knowledge base — the server never
+writes it (two-pipe boundary, AC-09).
+
+### Dependency-posture review gate (AC-13 / NFR-6)
+
+crt-052 adds a regex-class crate only — no LLM/NLP runtime. When reviewing the crt-052 cycle, confirm
+`cargo audit` passes and the `Cargo.toml` / `Cargo.lock` dependency diff shows only a regex-class
+addition. This is a review-gate check, not agent extraction work.
+
+---
+
 ## Phase 2: Pattern & Procedure Extraction (MUST be a subagent)
 
 **Before spawning the architect**, prepare a structured retrospective briefing from Phase 1. This replaces the vague "paste summary" — give the architect concrete data to work with.
@@ -123,6 +211,12 @@ POST-GATE REWORK (commits after the last gate report → merge, Phase 1 step 5b-
 {For each commit: "- {sha} {headline} — {what it fixed; lesson candidate?}"}
 {For each post-gate decision from PR/issue comments: "- {decision} — {source}"}
 {Mid-delivery knowledge entries obsoleted by post-gate decisions: "- #{id} {title} — {what changed}"}
+
+TRANSCRIPT CANDIDATES (only if the response carried a transcript_candidates section — crt-052):
+{Pass the candidates + loss verbatim. Note for the architect: family_hints are ADVISORY (re-classify);
+ weight Reconstructed/elided sessions lower (ADR-007); candidates are call-time content that may differ
+ from the cached report (OQ-4); fold per "Consuming transcript_candidates" — rework-why hotspot joins,
+ gate-failure units, human-intervention ledger, phase narration.}
 ```
 
 Spawn `uni-architect` to review what was built and extract reusable knowledge:
@@ -201,6 +295,18 @@ Agent(uni-architect, "
           the gates missed it, not just what was fixed. That root cause is the lesson.
         - For each mid-delivery entry obsoleted by a post-gate decision: correct it via
           context_correct (or deprecate) NOW — stale guidance is worse than none.
+
+     E. From the transcript_candidates section (briefing section TRANSCRIPT CANDIDATES, if present):
+        - family_hints are ADVISORY — you decide the family. Decision→ADR, Lesson→lesson,
+          Rework→pattern/lesson, PhaseGate→procedure/gate-narrative. Store with feature attribution.
+        - Read the loss list first (ADR-007): weight Reconstructed-provenance candidates lower
+          (0.81 floor); when elided_bytes > 0 assume early Decision content may be lost and temper
+          decision extraction; note dropped_candidates > 0 as a possible incomplete narrative.
+        - Fold per "Consuming transcript_candidates": join Warning hotspots to timestamp-adjacent
+          candidates for rework-why; keep gate failures as single units; build a human-intervention
+          ledger from USER blocks; narrate phase transitions from PhaseGate candidates.
+        - Candidates are call-time content (OQ-4) — they may differ from the cached report; do not
+          reconcile them against the cached metrics.
 
   Return:
   1. Patterns: [new entries with IDs, updated entries with IDs, skipped with reason]

@@ -1574,6 +1574,67 @@ pub struct RetentionConfig {
     /// Range: [65_536, usize::MAX]. Default: 4_194_304 (4 MiB).
     #[serde(default = "default_transcript_buffer_max_bytes")]
     pub transcript_buffer_max_bytes: usize,
+
+    /// Per-session candidate volume cap in bytes (crt-052 ADR-005, FR-4, OQ-3).
+    ///
+    /// Governs how many bytes of selected transcript candidates a SINGLE session may
+    /// contribute to a cycle-review distillation pass. Consumed by C3 selection
+    /// (`select.rs`) and the C5 reconstruction fallback. Independent of
+    /// `transcript_buffer_max_bytes` (which caps the live in-memory buffer) — this
+    /// caps the distilled output volume, not the raw buffer.
+    ///
+    /// Range: [1, transcript_candidate_cycle_cap_bytes]. Default: 24576 (24 KiB).
+    #[serde(default = "default_transcript_candidate_session_cap_bytes")]
+    pub transcript_candidate_session_cap_bytes: usize,
+
+    /// Per-cycle aggregate candidate cap in bytes (crt-052 ADR-005, ARCH OQ-2, FR-4).
+    ///
+    /// Governs the TOTAL bytes of selected candidates across all sessions in one
+    /// cycle-review distillation pass. Consumed by C6 (`distill_handler.rs`) as the
+    /// aggregate truncation ceiling (deterministic chronological keep-earliest, R-15).
+    /// Derived from the ass-070 ~58 KB/6-session envelope with headroom.
+    ///
+    /// Range: [transcript_candidate_session_cap_bytes, usize::MAX]. Default: 262144 (256 KiB).
+    #[serde(default = "default_transcript_candidate_cycle_cap_bytes")]
+    pub transcript_candidate_cycle_cap_bytes: usize,
+
+    /// Hole-fraction threshold for the reconstruction fallback trigger
+    /// (crt-052 ADR-006; ratified as a config knob at Gate 3a, not a compile-time constant).
+    ///
+    /// When the fraction of a session's snapshot window lost to holes/elision meets or
+    /// exceeds this ratio, C5/C6 mark the session `fallback_triggered` and route it
+    /// through the reconstruction path at the documented 0.81 fidelity floor.
+    ///
+    /// Range: [0.0, 1.0]. Default: 0.5.
+    #[serde(default = "default_transcript_fallback_hole_fraction")]
+    pub transcript_fallback_hole_fraction: f64,
+
+    /// Held-buffer count ceiling (crt-052 Wave B, ADR-008 / SR-01, OQ-1).
+    ///
+    /// The Option B held-buffer store keeps drained multi-turn buffers alive
+    /// across the per-turn drain so the primary distillation path is non-empty.
+    /// This caps how many sessions may be held at once: on the (cap+1)th hold,
+    /// the oldest-`last_activity_at` held buffer is evicted (every eviction
+    /// audited — R-16). Memory is bounded by `transcript_buffer_max_bytes ×
+    /// transcript_hold_max_sessions` regardless of cycle-review cadence. One of
+    /// two INDEPENDENT reclamation mechanisms (the other is the TTL sweep).
+    ///
+    /// Range: [1, usize::MAX]. Default: 64.
+    #[serde(default = "default_transcript_hold_max_sessions")]
+    pub transcript_hold_max_sessions: usize,
+
+    /// Held-buffer stale-sweep TTL in seconds (crt-052 Wave B, ADR-008 / SR-01,
+    /// OQ-1).
+    ///
+    /// A held buffer untouched for longer than this is reclaimed by the
+    /// maintenance-tick stale sweep (`sweep_expired`) — INDEPENDENT of whether
+    /// cycle review ever fires (a never-reviewed, never-re-registered session
+    /// cannot leak its buffer). The second of two independent reclamation
+    /// mechanisms (the first is the held-count cap); either alone bounds memory.
+    ///
+    /// Range: [1, u64::MAX]. Default: 86400 (24 h).
+    #[serde(default = "default_transcript_hold_ttl_secs")]
+    pub transcript_hold_ttl_secs: u64,
 }
 
 fn default_activity_detail_retention_cycles() -> u32 {
@@ -1594,6 +1655,26 @@ fn default_transcript_buffer_max_bytes() -> usize {
     // test_transcript_buffer_max_bytes_default_when_absent).
     4_194_304
 }
+fn default_transcript_candidate_session_cap_bytes() -> usize {
+    // crt-052 OQ-3 / FR-4: 24 KiB per-session candidate volume cap.
+    24 * 1024
+}
+fn default_transcript_candidate_cycle_cap_bytes() -> usize {
+    // crt-052 ARCH OQ-2 / FR-4: ~256 KiB per-cycle aggregate cap.
+    256 * 1024
+}
+fn default_transcript_fallback_hole_fraction() -> f64 {
+    // crt-052 ADR-006: reconstruction fallback fires at >= 50% hole fraction.
+    0.5
+}
+fn default_transcript_hold_max_sessions() -> usize {
+    // crt-052 ADR-008 / OQ-1: held-count ceiling (R-02 memory bound).
+    64
+}
+fn default_transcript_hold_ttl_secs() -> u64 {
+    // crt-052 ADR-008 / OQ-1: 24 h independent stale-sweep TTL (R-02 memory bound).
+    86_400
+}
 
 impl Default for RetentionConfig {
     fn default() -> Self {
@@ -1603,6 +1684,12 @@ impl Default for RetentionConfig {
             max_cycles_per_tick: default_max_cycles_per_tick(),
             transcript_retention: default_transcript_retention(),
             transcript_buffer_max_bytes: default_transcript_buffer_max_bytes(),
+            transcript_candidate_session_cap_bytes: default_transcript_candidate_session_cap_bytes(
+            ),
+            transcript_candidate_cycle_cap_bytes: default_transcript_candidate_cycle_cap_bytes(),
+            transcript_fallback_hole_fraction: default_transcript_fallback_hole_fraction(),
+            transcript_hold_max_sessions: default_transcript_hold_max_sessions(),
+            transcript_hold_ttl_secs: default_transcript_hold_ttl_secs(),
         }
     }
 }
@@ -1675,6 +1762,70 @@ impl RetentionConfig {
                 field: "transcript_buffer_max_bytes",
                 value: self.transcript_buffer_max_bytes.to_string(),
                 reason: "must be >= 65536 (64 KiB — one max client delta)",
+            });
+        }
+
+        // crt-052 ADR-005 / R-18: candidate caps must be positive — a zero cap would
+        // suppress all distillation. The per-session cap may not exceed the per-cycle
+        // aggregate (a single session cannot logically exceed the whole-cycle ceiling).
+        if self.transcript_candidate_session_cap_bytes == 0 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_candidate_session_cap_bytes",
+                value: self.transcript_candidate_session_cap_bytes.to_string(),
+                reason: "must be > 0",
+            });
+        }
+
+        if self.transcript_candidate_cycle_cap_bytes == 0 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_candidate_cycle_cap_bytes",
+                value: self.transcript_candidate_cycle_cap_bytes.to_string(),
+                reason: "must be > 0",
+            });
+        }
+
+        if self.transcript_candidate_session_cap_bytes > self.transcript_candidate_cycle_cap_bytes {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_candidate_session_cap_bytes",
+                value: self.transcript_candidate_session_cap_bytes.to_string(),
+                reason: "must not exceed transcript_candidate_cycle_cap_bytes",
+            });
+        }
+
+        // crt-052 ADR-006 / R-18: the fallback trigger is a ratio of the session window
+        // lost to holes/elision — it is only meaningful in [0.0, 1.0]. NaN/Inf and
+        // out-of-range values are rejected at startup (the range check excludes NaN).
+        if !(0.0..=1.0).contains(&self.transcript_fallback_hole_fraction) {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_fallback_hole_fraction",
+                value: self.transcript_fallback_hole_fraction.to_string(),
+                reason: "must be in range [0.0, 1.0]",
+            });
+        }
+
+        // crt-052 ADR-008 / SR-01: a zero held-count cap would evict every held
+        // buffer immediately and defeat the continuity remedy. Floor at 1.
+        if self.transcript_hold_max_sessions == 0 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_hold_max_sessions",
+                value: self.transcript_hold_max_sessions.to_string(),
+                reason: "must be >= 1",
+            });
+        }
+
+        // crt-052 ADR-008 / SR-01: a zero TTL would sweep held buffers on the
+        // next tick before they could be re-adopted or reviewed. Floor at 1.
+        if self.transcript_hold_ttl_secs == 0 {
+            return Err(ConfigError::RetentionFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "transcript_hold_ttl_secs",
+                value: self.transcript_hold_ttl_secs.to_string(),
+                reason: "must be >= 1",
             });
         }
 
@@ -3422,6 +3573,51 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.retention.transcript_buffer_max_bytes
             } else {
                 global.retention.transcript_buffer_max_bytes
+            },
+            // crt-052 ADR-005: per-field project-wins merge for the candidate caps.
+            transcript_candidate_session_cap_bytes: if project
+                .retention
+                .transcript_candidate_session_cap_bytes
+                != default.retention.transcript_candidate_session_cap_bytes
+            {
+                project.retention.transcript_candidate_session_cap_bytes
+            } else {
+                global.retention.transcript_candidate_session_cap_bytes
+            },
+            transcript_candidate_cycle_cap_bytes: if project
+                .retention
+                .transcript_candidate_cycle_cap_bytes
+                != default.retention.transcript_candidate_cycle_cap_bytes
+            {
+                project.retention.transcript_candidate_cycle_cap_bytes
+            } else {
+                global.retention.transcript_candidate_cycle_cap_bytes
+            },
+            // crt-052 ADR-006: per-field project-wins merge for the fallback hole fraction.
+            transcript_fallback_hole_fraction: if project
+                .retention
+                .transcript_fallback_hole_fraction
+                != default.retention.transcript_fallback_hole_fraction
+            {
+                project.retention.transcript_fallback_hole_fraction
+            } else {
+                global.retention.transcript_fallback_hole_fraction
+            },
+            // crt-052 ADR-008: per-field project-wins merge for the held-count cap.
+            transcript_hold_max_sessions: if project.retention.transcript_hold_max_sessions
+                != default.retention.transcript_hold_max_sessions
+            {
+                project.retention.transcript_hold_max_sessions
+            } else {
+                global.retention.transcript_hold_max_sessions
+            },
+            // crt-052 ADR-008: per-field project-wins merge for the held-buffer TTL.
+            transcript_hold_ttl_secs: if project.retention.transcript_hold_ttl_secs
+                != default.retention.transcript_hold_ttl_secs
+            {
+                project.retention.transcript_hold_ttl_secs
+            } else {
+                global.retention.transcript_hold_ttl_secs
             },
         },
         // #561: per-field project-wins merge for store config
@@ -8547,6 +8743,331 @@ transcript_buffer_max_bytes = 131072
         assert_eq!(
             merged.retention.transcript_buffer_max_bytes, 8_388_608,
             "global's value must apply when project leaves the field at default"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-052 C9: transcript candidate-cap + fallback-hole-fraction knobs
+    // (AC-02, AC-10). Wave A only — hold knobs are Wave B.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_config_defaults_candidate_knobs() {
+        // serde(default): absent [retention] block applies the compiled defaults.
+        let parsed: UnimatrixConfig =
+            toml::from_str("").expect("empty config must parse with defaults");
+        assert_eq!(
+            parsed.retention.transcript_candidate_session_cap_bytes,
+            24 * 1024,
+            "session cap defaults to 24 KiB"
+        );
+        assert_eq!(
+            parsed.retention.transcript_candidate_cycle_cap_bytes,
+            256 * 1024,
+            "cycle cap defaults to 256 KiB"
+        );
+        assert_eq!(
+            parsed.retention.transcript_fallback_hole_fraction, 0.5,
+            "fallback hole fraction defaults to 0.5"
+        );
+
+        // present-but-field-absent: a [retention] block missing these fields still defaults.
+        let partial: UnimatrixConfig = toml::from_str("[retention]\nmax_cycles_per_tick = 5\n")
+            .expect("partial [retention] must parse");
+        assert_eq!(
+            partial.retention.transcript_candidate_session_cap_bytes,
+            24 * 1024
+        );
+        assert_eq!(
+            partial.retention.transcript_candidate_cycle_cap_bytes,
+            256 * 1024
+        );
+        assert_eq!(partial.retention.transcript_fallback_hole_fraction, 0.5);
+
+        // Default impl agrees with the serde defaults (dual-site consistency).
+        let d = RetentionConfig::default();
+        assert_eq!(d.transcript_candidate_session_cap_bytes, 24 * 1024);
+        assert_eq!(d.transcript_candidate_cycle_cap_bytes, 256 * 1024);
+        assert_eq!(d.transcript_fallback_hole_fraction, 0.5);
+    }
+
+    #[test]
+    fn test_config_serde_roundtrip_candidate_knobs() {
+        let toml_str = "\
+[retention]
+transcript_candidate_session_cap_bytes = 12288
+transcript_candidate_cycle_cap_bytes = 131072
+transcript_fallback_hole_fraction = 0.25
+";
+        let parsed: UnimatrixConfig =
+            toml::from_str(toml_str).expect("explicit candidate knobs must parse");
+        assert_eq!(
+            parsed.retention.transcript_candidate_session_cap_bytes,
+            12_288
+        );
+        assert_eq!(
+            parsed.retention.transcript_candidate_cycle_cap_bytes,
+            131_072
+        );
+        assert_eq!(parsed.retention.transcript_fallback_hole_fraction, 0.25);
+    }
+
+    #[test]
+    fn test_config_merge_candidate_knobs_project_wins() {
+        // crt-052 ADR-005/006: per-field project-wins; unset (default) project field → global wins.
+        let mut global = UnimatrixConfig::default();
+        global.retention.transcript_candidate_session_cap_bytes = 16_384; // non-default
+        global.retention.transcript_candidate_cycle_cap_bytes = 524_288; // non-default
+        global.retention.transcript_fallback_hole_fraction = 0.9; // non-default
+
+        let mut project = UnimatrixConfig::default();
+        project.retention.transcript_candidate_session_cap_bytes = 8_192; // project sets, wins
+        // cycle cap + hole fraction left at default in project → global must win.
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.retention.transcript_candidate_session_cap_bytes, 8_192,
+            "project's non-default session cap wins"
+        );
+        assert_eq!(
+            merged.retention.transcript_candidate_cycle_cap_bytes, 524_288,
+            "global cycle cap applies when project leaves it at default"
+        );
+        assert_eq!(
+            merged.retention.transcript_fallback_hole_fraction, 0.9,
+            "global hole fraction applies when project leaves it at default"
+        );
+    }
+
+    #[test]
+    fn test_config_validate_rejects_zero_session_cap() {
+        let cfg = RetentionConfig {
+            transcript_candidate_session_cap_bytes: 0,
+            ..RetentionConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("zero session cap must fail validate");
+        assert!(
+            matches!(
+                err,
+                ConfigError::RetentionFieldOutOfRange {
+                    field: "transcript_candidate_session_cap_bytes",
+                    ..
+                }
+            ),
+            "got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_config_validate_rejects_zero_cycle_cap() {
+        let cfg = RetentionConfig {
+            // session cap must be <= cycle cap, so drop it to 0 too to isolate the cycle check.
+            transcript_candidate_session_cap_bytes: 0,
+            transcript_candidate_cycle_cap_bytes: 0,
+            ..RetentionConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("zero caps must fail validate");
+        // Session-cap-zero check fires first; both are RetentionFieldOutOfRange.
+        assert!(
+            matches!(err, ConfigError::RetentionFieldOutOfRange { .. }),
+            "got: {err:?}"
+        );
+
+        // Cycle cap zero with a positive session cap → the cycle-zero check fires
+        // (before the ordering check) and names the cycle-cap field.
+        let cfg2 = RetentionConfig {
+            transcript_candidate_session_cap_bytes: 1,
+            transcript_candidate_cycle_cap_bytes: 0,
+            ..RetentionConfig::default()
+        };
+        let err2 = cfg2
+            .validate(Path::new("config.toml"))
+            .expect_err("zero cycle cap must fail validate");
+        assert!(
+            matches!(
+                err2,
+                ConfigError::RetentionFieldOutOfRange {
+                    field: "transcript_candidate_cycle_cap_bytes",
+                    ..
+                }
+            ),
+            "got: {err2:?}"
+        );
+    }
+
+    #[test]
+    fn test_config_validate_rejects_session_cap_exceeding_cycle_cap() {
+        let cfg = RetentionConfig {
+            transcript_candidate_session_cap_bytes: 300_000,
+            transcript_candidate_cycle_cap_bytes: 262_144,
+            ..RetentionConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("session cap > cycle cap must fail validate");
+        assert!(
+            matches!(
+                err,
+                ConfigError::RetentionFieldOutOfRange {
+                    field: "transcript_candidate_session_cap_bytes",
+                    ..
+                }
+            ),
+            "got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_config_validate_rejects_hole_fraction_out_of_range() {
+        for bad in [-0.1_f64, 1.1, f64::NAN, f64::INFINITY] {
+            let cfg = RetentionConfig {
+                transcript_fallback_hole_fraction: bad,
+                ..RetentionConfig::default()
+            };
+            let err = cfg.validate(Path::new("config.toml")).unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    ConfigError::RetentionFieldOutOfRange {
+                        field: "transcript_fallback_hole_fraction",
+                        ..
+                    }
+                ),
+                "hole fraction {bad} must be rejected; got: {err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_config_validate_accepts_hole_fraction_boundaries() {
+        for ok in [0.0_f64, 0.5, 1.0] {
+            let cfg = RetentionConfig {
+                transcript_fallback_hole_fraction: ok,
+                ..RetentionConfig::default()
+            };
+            cfg.validate(Path::new("config.toml"))
+                .unwrap_or_else(|e| panic!("hole fraction {ok} must validate; got: {e:?}"));
+        }
+    }
+
+    #[test]
+    fn test_config_validate_defaults_pass() {
+        // The shipped defaults must themselves be a valid config.
+        RetentionConfig::default()
+            .validate(Path::new("config.toml"))
+            .expect("default RetentionConfig must validate");
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-052 C9 Wave B: held-buffer hold knobs (ADR-008) —
+    // transcript_hold_max_sessions, transcript_hold_ttl_secs.
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_config_defaults_hold_knobs() {
+        // serde(default): absent [retention] applies the compiled hold defaults.
+        let parsed: UnimatrixConfig =
+            toml::from_str("").expect("empty config must parse with defaults");
+        assert_eq!(
+            parsed.retention.transcript_hold_max_sessions, 64,
+            "held-count cap defaults to 64"
+        );
+        assert_eq!(
+            parsed.retention.transcript_hold_ttl_secs, 86_400,
+            "held TTL defaults to 24h (86400s)"
+        );
+        // present-but-field-absent still defaults.
+        let partial: UnimatrixConfig =
+            toml::from_str("[retention]\nmax_cycles_per_tick = 5\n").expect("partial parses");
+        assert_eq!(partial.retention.transcript_hold_max_sessions, 64);
+        assert_eq!(partial.retention.transcript_hold_ttl_secs, 86_400);
+    }
+
+    #[test]
+    fn test_config_hold_knobs_explicit_values_respected() {
+        let toml_str = "[retention]\n\
+            transcript_hold_max_sessions = 8\n\
+            transcript_hold_ttl_secs = 3600\n";
+        let parsed: UnimatrixConfig =
+            toml::from_str(toml_str).expect("explicit hold knobs must parse");
+        assert_eq!(parsed.retention.transcript_hold_max_sessions, 8);
+        assert_eq!(parsed.retention.transcript_hold_ttl_secs, 3600);
+    }
+
+    #[test]
+    fn test_config_validate_rejects_zero_hold_max_sessions() {
+        let cfg = RetentionConfig {
+            transcript_hold_max_sessions: 0,
+            ..RetentionConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("zero held-count cap must fail validate");
+        assert!(
+            matches!(
+                err,
+                ConfigError::RetentionFieldOutOfRange {
+                    field: "transcript_hold_max_sessions",
+                    ..
+                }
+            ),
+            "got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_config_validate_rejects_zero_hold_ttl() {
+        let cfg = RetentionConfig {
+            transcript_hold_ttl_secs: 0,
+            ..RetentionConfig::default()
+        };
+        let err = cfg
+            .validate(Path::new("config.toml"))
+            .expect_err("zero held TTL must fail validate");
+        assert!(
+            matches!(
+                err,
+                ConfigError::RetentionFieldOutOfRange {
+                    field: "transcript_hold_ttl_secs",
+                    ..
+                }
+            ),
+            "got: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_config_validate_accepts_hold_knob_floors() {
+        let cfg = RetentionConfig {
+            transcript_hold_max_sessions: 1,
+            transcript_hold_ttl_secs: 1,
+            ..RetentionConfig::default()
+        };
+        cfg.validate(Path::new("config.toml"))
+            .expect("hold-knob floors (1, 1) must validate");
+    }
+
+    #[test]
+    fn test_config_merge_hold_knobs_project_wins() {
+        let mut global = UnimatrixConfig::default();
+        global.retention.transcript_hold_max_sessions = 128; // non-default
+        global.retention.transcript_hold_ttl_secs = 7200; // non-default
+        let mut project = UnimatrixConfig::default();
+        project.retention.transcript_hold_max_sessions = 16; // project sets, wins
+        // project leaves ttl at default → global's ttl applies.
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.retention.transcript_hold_max_sessions, 16,
+            "project's non-default held-count cap wins"
+        );
+        assert_eq!(
+            merged.retention.transcript_hold_ttl_secs, 7200,
+            "global ttl applies when project leaves it at default"
         );
     }
 

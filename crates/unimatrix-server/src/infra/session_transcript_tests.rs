@@ -16,6 +16,9 @@ use rand::{Rng, SeedableRng};
 #[path = "session_transcript_tests_overflow.rs"]
 mod overflow;
 
+#[path = "session_transcript_tests_snapshot.rs"]
+mod snapshot;
+
 // ---------------------------------------------------------------- harness --
 
 /// Deterministic source bytes; never zero. Zero is the hole fill, so any zero

@@ -3838,6 +3838,7 @@ name = "unimatrix-observe"
 version = "0.7.2"
 dependencies = [
  "bincode 2.0.1",
+ "regex",
  "serde",
  "serde_json",
  "sqlx",

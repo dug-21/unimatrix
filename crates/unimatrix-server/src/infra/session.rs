@@ -12,7 +12,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::infra::session_transcript::{
-    DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES, TranscriptBuffer, TranscriptPurgeRecord, session_key,
+    DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES, TranscriptBuffer, TranscriptPurgeRecord,
+    TranscriptSnapshot, session_key,
 };
 
 // -- Constants (ADR-002, ADR-003) --
@@ -199,11 +200,76 @@ pub struct SessionState {
 /// Wraps `HashMap<String, SessionState>` behind a `Mutex`. Contention is
 /// minimal -- lock is held for microseconds per operation, and hook events
 /// are serialized per-session by Claude Code.
+/// Severable Wave-A/B seam for the held-buffer scan (crt-052 ADR-008 §4 / R-11).
+///
+/// Owned by Wave A (this module) so `take_transcripts_for_feature` carries the
+/// held-scan branch without importing `transcript_hold.rs`. Wave B's held store
+/// implements this trait and is injected via [`SessionRegistry::with_transcript_hold`].
+/// The dependency direction is one-way: C8 depends on this module, never the
+/// reverse. With Wave B reverted the handle is `None` and the seam scans the
+/// registered set only.
+pub trait HeldBufferScan: Send + Sync {
+    /// Buffer handles for sessions held under `feature_cycle`, as
+    /// `(session_id, Arc<Mutex<TranscriptBuffer>>)`. Called under the registry
+    /// lock during phase 1 — must do scan + `Arc::clone` only, no parse/I/O.
+    fn held_arcs_for_feature(
+        &self,
+        feature_cycle: &str,
+    ) -> Vec<(String, Arc<Mutex<TranscriptBuffer>>)>;
+
+    /// Hold a drained buffer instead of dropping it (crt-052 Wave B, ADR-008
+    /// 3-arg form). `feature_cycle` is REQUIRED for SR-02 loud re-adoption; an
+    /// empty cycle is NOT held (the buffer degrades to the Wave A fallback).
+    /// Called from `drain_and_signal_session` via the optional handle — the
+    /// trait keeps `session.rs` free of any `transcript_hold` import (R-11).
+    /// Default: no-op (a `HeldBufferScan` impl that only scans need not hold).
+    fn hold_on_drain(
+        &self,
+        _session_id: &str,
+        _arc: Arc<Mutex<TranscriptBuffer>>,
+        _feature_cycle: &str,
+    ) {
+    }
+
+    /// Re-adopt a held buffer on `SessionRegister` (crt-052 Wave B, ADR-008
+    /// 2-arg form). Returns the held `Arc` ONLY on `feature_cycle` MATCH; on
+    /// mismatch/empty it fails loud (drops + audits) and returns `None`
+    /// (R-01 / SR-02, cite #981). Default: `None` (no held buffer to re-adopt).
+    fn readopt(
+        &self,
+        _session_id: &str,
+        _registering_feature_cycle: &str,
+    ) -> Option<Arc<Mutex<TranscriptBuffer>>> {
+        None
+    }
+
+    /// The held buffer handle for `session_id`, bumping its activity (crt-052
+    /// Wave B). Used by the listener delta route so deltas keep merging into a
+    /// held (drained, not re-registered) buffer. O(1) keyed (R-17). Default:
+    /// `None` (no held buffer for this session).
+    fn held_arc_for_session(&self, _session_id: &str) -> Option<Arc<Mutex<TranscriptBuffer>>> {
+        None
+    }
+
+    /// Reclaim held buffers older than `ttl` (crt-052 Wave B, ADR-008 / R-02).
+    /// Returns counts-only purge records the caller emits with
+    /// `trigger=stale_sweep`. Reached on the maintenance tick via
+    /// [`SessionRegistry::sweep_held_buffers`] so the held store is swept by TTL
+    /// INDEPENDENTLY of cycle review (SR-01). Default: empty (nothing held).
+    fn sweep_expired(&self, _ttl: std::time::Duration) -> Vec<TranscriptPurgeRecord> {
+        Vec::new()
+    }
+}
+
 pub struct SessionRegistry {
     sessions: Mutex<HashMap<String, SessionState>>,
     /// Per-session transcript buffer cap in bytes (vnc-025, ADR-006).
     /// Immutable for the registry lifetime; injected into each new buffer.
     transcript_cap: usize,
+    /// Optional held-buffer scan handle (crt-052 Wave B, ADR-008 §4). `None` in
+    /// Wave A — the held-scan branch in `take_transcripts_for_feature` is then
+    /// inert and the seam scans registered buffers only (R-11 severable seam).
+    transcript_hold: Option<Arc<dyn HeldBufferScan>>,
 }
 
 impl SessionRegistry {
@@ -219,7 +285,16 @@ impl SessionRegistry {
         SessionRegistry {
             sessions: Mutex::new(HashMap::new()),
             transcript_cap: max_bytes,
+            transcript_hold: None, // Wave A: no held store; held-scan branch inert.
         }
+    }
+
+    /// Inject the Wave B held-buffer scan handle (crt-052 ADR-008 §4). Wave A
+    /// never calls this; without it the held-scan branch in
+    /// `take_transcripts_for_feature` is inert (R-11 severable seam).
+    pub fn with_transcript_hold(mut self, hold: Arc<dyn HeldBufferScan>) -> Self {
+        self.transcript_hold = Some(hold);
+        self
     }
 
     /// Create or overwrite session state. Handles reconnection (FR-02.4).
@@ -230,6 +305,25 @@ impl SessionRegistry {
         feature: Option<String>,
     ) {
         let now = now_secs();
+
+        // crt-052 Wave B (ADR-008 / R-01 / SR-02): loud re-adoption. If a buffer
+        // was held for this session at a prior drain AND the re-registering
+        // `feature_cycle` matches the held cycle, rebind the LIVE held buffer so
+        // its cross-turn content survives this re-register (the primary path is
+        // non-empty at review). On mismatch/empty cycle `readopt` fails loud
+        // (drops + audits the held buffer) and returns `None` — we then start a
+        // fresh empty buffer (the #981 mis-scope is impossible). Wave A (handle
+        // `None`) always yields a fresh buffer. Reached only through the
+        // `HeldBufferScan` trait — no `transcript_hold` import (R-11).
+        let transcript = match (self.transcript_hold.as_ref(), feature.as_deref()) {
+            (Some(hold), Some(feature_cycle)) if !feature_cycle.is_empty() => {
+                hold.readopt(session_id, feature_cycle).unwrap_or_else(|| {
+                    Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap)))
+                })
+            }
+            _ => Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap))),
+        };
+
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
         sessions.insert(
             session_id.to_string(),
@@ -255,7 +349,10 @@ impl SessionRegistry {
                 confirmed_entries: HashSet::new(), // col-028: empty on session start
                 // vnc-025: fresh empty buffer. Re-registration replaces the old Arc;
                 // the old buffer frees on last drop — no ghost content (ADR-001).
-                transcript: Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap))),
+                // crt-052 Wave B (ADR-008): a held buffer re-adopted on cycle
+                // MATCH is rebound here instead (loud re-adoption above); Wave A
+                // and mismatch/empty paths still get a fresh empty buffer.
+                transcript,
             },
         );
     }
@@ -275,11 +372,27 @@ impl SessionRegistry {
             let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
             let key = session_key("default", "", session_id); // ADR-007 seam
             match sessions.get_mut(&key) {
-                None => return, // silent no-op (FR-04, AC-03)
                 Some(state) => {
                     state.last_activity_at = state.last_activity_at.max(now_secs());
                     Arc::clone(&state.transcript)
                 }
+                // crt-052 Wave B (ADR-008 / R-17): the session is no longer in
+                // the registry (drained at a per-turn close) but its buffer may
+                // be HELD. Route the delta to the held buffer so it keeps
+                // merging across drains (the primary path is non-empty at
+                // review). O(1) keyed lookup, activity bumped inside the hold
+                // (R-17 — no linear scan). Reached only through the
+                // `HeldBufferScan` trait — no `transcript_hold` import (R-11).
+                // Wave A (handle `None`) or an unheld session is a silent no-op
+                // exactly as vnc-025 (FR-04, AC-03).
+                None => match self
+                    .transcript_hold
+                    .as_ref()
+                    .and_then(|hold| hold.held_arc_for_session(session_id))
+                {
+                    Some(arc) => arc,
+                    None => return, // silent no-op (FR-04, AC-03)
+                },
             }
         }; // registry lock RELEASED here
 
@@ -322,6 +435,76 @@ impl SessionRegistry {
             }
         }
         records
+    }
+
+    /// Snapshot transcript buffer CONTENT for every session attributed to
+    /// `feature_cycle`, returning owned raw `TranscriptSnapshot`s (crt-052 C1,
+    /// ADR-001). Sibling to [`clear_transcripts_for_feature`]: snapshot reads,
+    /// purge clears — they do not merge (Constraint 5/13, vnc-030 ADR-007 §2
+    /// #4819 — cited, not reworked). The buffers are NOT cleared here.
+    ///
+    /// Two-phase lock discipline (Constraint 1 / NFR-1 / AC-01 / R-08, pattern
+    /// #3753), microsecond-class holds, NO parse / marker-match / I/O under any
+    /// lock:
+    ///
+    /// - Phase 1 (registry lock): linear scan `feature == Some(feature_cycle)`
+    ///   (`None` never matches — vnc-030 §2); `Arc::clone` each matching buffer
+    ///   handle; release the registry lock before any buffer lock.
+    /// - Phase 2 (per-buffer lock): for each Arc, take the buffer lock, call
+    ///   `snapshot()` (byte copy + metadata only), release. Poison-recovers per
+    ///   #4764 via [`lock_buffer`] (treat-as-empty + `clear_poison`), so a
+    ///   poisoned buffer yields an empty/lossy snapshot, never a silent drop
+    ///   (R-16).
+    ///
+    /// All JSONL parse / marker match / dedup / caps happen in the C6→C3/C5
+    /// consumer, strictly after this method returns its owned `Vec`. No
+    /// downstream step re-acquires a buffer lock (#3753).
+    ///
+    /// Wave A scans REGISTERED buffers only. The held-buffer scan (Wave B,
+    /// ADR-008 §4 / R-13) is a severable branch reached only through the
+    /// optional [`HeldBufferScan`] handle — `None` in Wave A, so this method has
+    /// zero compile-time dependency on `transcript_hold.rs` (R-11). With Wave B
+    /// reverted the handle is absent and the seam degrades cleanly to the
+    /// registered set.
+    pub fn take_transcripts_for_feature(
+        &self,
+        feature_cycle: &str,
+    ) -> Vec<(String, TranscriptSnapshot)> {
+        // Phase 1 — registry lock: scan + Arc-clone only (microsecond-class).
+        let arcs: Vec<(String, Arc<Mutex<TranscriptBuffer>>)> = {
+            let sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+            let mut arcs: Vec<(String, Arc<Mutex<TranscriptBuffer>>)> = sessions
+                .values()
+                .filter(|s| s.feature.as_deref() == Some(feature_cycle)) // None never matches
+                .map(|s| (s.session_id.clone(), Arc::clone(&s.transcript)))
+                .collect();
+
+            // Held-scan branch (Wave B, SEVERABLE — ADR-008 §4 / R-11 / R-13).
+            // Reached only through the optional handle; absent in Wave A. Dedup
+            // by Arc identity so a buffer that is BOTH registered and held is
+            // snapshotted once.
+            if let Some(hold) = self.transcript_hold.as_ref() {
+                for (sid, arc) in hold.held_arcs_for_feature(feature_cycle) {
+                    if !arcs.iter().any(|(_, a)| Arc::ptr_eq(a, &arc)) {
+                        arcs.push((sid, arc));
+                    }
+                }
+            }
+            arcs
+        }; // registry lock RELEASED — before any buffer lock, before any parse
+
+        // Phase 2 — per-buffer lock: byte copy + metadata via snapshot() only.
+        // `lock_buffer` poison-recovers (treat-as-empty + clear_poison, #4764)
+        // so a poisoned buffer still yields a (lossy) snapshot — never dropped.
+        let mut out = Vec::with_capacity(arcs.len());
+        for (sid, arc) in arcs {
+            let snap = {
+                let buf = lock_buffer(&arc);
+                buf.snapshot()
+            }; // buffer lock RELEASED
+            out.push((sid, snap));
+        }
+        out
     }
 
     /// Record injected entries from a ContextSearch response.
@@ -658,10 +841,27 @@ impl SessionRegistry {
         // If session absent, already cleared — no-op (FR-04.2, AC-03)
         let state = sessions.remove(session_id)?;
 
-        // vnc-025: snapshot purge metadata BEFORE state is consumed. Buffer lock
-        // taken while holding the registry lock — permitted order (registry →
-        // buffer), bounded work (ADR-001).
-        let purge = purge_record_for(&state);
+        // crt-052 Wave B (ADR-008 / Constraint 13 — minimal diff over the
+        // vnc-030 §2 drain shape, cited not reworked): if a held store is wired
+        // AND this session carries an attributed `feature_cycle`, hand the live
+        // buffer Arc to the hold INSTEAD of purging it. The buffer survives the
+        // per-turn drain, keeps merging deltas, and purges later at review /
+        // sweep / cap-evict. No `session_close` purge record is returned for a
+        // held buffer (its audit MOVES to the terminal purge — ADR-009), so the
+        // listener emits NO `session_close` audit for it.
+        //
+        // Wave A (handle `None`) or an unattributed session (empty cycle) keeps
+        // the vnc-025 behavior exactly: purge here, return the counts-only
+        // record. `session.rs` never imports `transcript_hold` — the hold is
+        // reached only through the `HeldBufferScan` trait (R-11).
+        let purge = match (self.transcript_hold.as_ref(), state.feature.as_deref()) {
+            (Some(hold), Some(feature_cycle)) if !feature_cycle.is_empty() => {
+                hold.hold_on_drain(session_id, Arc::clone(&state.transcript), feature_cycle);
+                None // held buffer not purged at close (ADR-009)
+            }
+            // Wave A path, or no attributed cycle: purge at close as vnc-025.
+            _ => purge_record_for(&state),
+        };
 
         // Build signal output from the removed state (lock still held — ADR-003)
         let output = build_signal_output_from_state(state, hook_outcome);
@@ -732,6 +932,20 @@ impl SessionRegistry {
         }
 
         (results, purges)
+    }
+
+    /// crt-052 Wave B (ADR-008 / R-02): reclaim held buffers older than `ttl`
+    /// via the optional [`HeldBufferScan`] handle. Called on the maintenance
+    /// tick alongside [`sweep_stale_sessions`] so the held store is swept by TTL
+    /// independently of cycle review (SR-01). Returns the counts-only purge
+    /// records; the caller emits them with `trigger=stale_sweep`. Wave A (handle
+    /// `None`) returns empty — this method has zero compile-time dependency on
+    /// `transcript_hold.rs` (R-11).
+    pub fn sweep_held_buffers(&self, ttl: std::time::Duration) -> Vec<TranscriptPurgeRecord> {
+        match self.transcript_hold.as_ref() {
+            Some(hold) => hold.sweep_expired(ttl),
+            None => Vec::new(),
+        }
     }
 
     /// Return the number of currently tracked sessions (used in tests).
@@ -3081,5 +3295,275 @@ mod tests {
         seed_stale_with_vote(&reg, "s2", "crt-052", 5);
         let (results2, _purges2) = reg.sweep_stale_sessions();
         assert_eq!(results2[0].resolved_feature, Some("vnc-030".to_string()));
+    }
+
+    // -- crt-052 C1: take_transcripts_for_feature snapshot seam (ADR-001) --
+
+    /// Minimal Wave-B held store stub for seam tests: holds explicit
+    /// `(session_id, Arc)` pairs keyed by feature. Lives in the test module so
+    /// the seam is exercised through the `HeldBufferScan` trait WITHOUT any
+    /// reference to `transcript_hold.rs` (R-11 severable seam).
+    struct TestHold {
+        entries: Vec<(String, String, Arc<Mutex<TranscriptBuffer>>)>, // (feature, sid, arc)
+    }
+    impl HeldBufferScan for TestHold {
+        fn held_arcs_for_feature(
+            &self,
+            feature_cycle: &str,
+        ) -> Vec<(String, Arc<Mutex<TranscriptBuffer>>)> {
+            self.entries
+                .iter()
+                .filter(|(f, _, _)| f == feature_cycle)
+                .map(|(_, sid, arc)| (sid.clone(), Arc::clone(arc)))
+                .collect()
+        }
+    }
+
+    /// AC-V-SEAM (seam half): returns owned snapshots carrying all four metadata
+    /// fields for exactly the matching feature; non-matching excluded.
+    #[test]
+    fn test_seam_returns_owned_snapshots_with_metadata() {
+        let reg = make_registry();
+        reg.register_session("match", None, Some("crt-052".to_string()));
+        reg.register_session("other", None, Some("col-099".to_string()));
+        reg.apply_transcript_delta("match", 0, b"decision content");
+        reg.apply_transcript_delta("other", 0, b"unrelated");
+
+        let snaps = reg.take_transcripts_for_feature("crt-052");
+        assert_eq!(snaps.len(), 1, "only the matching feature is snapshotted");
+        let (sid, snap) = &snaps[0];
+        assert_eq!(sid, "match");
+        // Owned bytes, no buffer borrow held; metadata present.
+        assert_eq!(snap.bytes, b"decision content");
+        assert_eq!(snap.base_offset, 0);
+        assert_eq!(snap.high_water, 16);
+        assert_eq!(snap.elided_bytes, 0);
+        assert!(snap.holes.is_empty());
+    }
+
+    /// Non-matching feature + None-feature sessions excluded (vnc-030 ADR-007 §2
+    /// #4819 — None never matches; declared attribution not reworked here).
+    #[test]
+    fn test_seam_none_feature_never_matches() {
+        let reg = make_registry();
+        reg.register_session("none", None, None);
+        reg.register_session("match", None, Some("crt-052".to_string()));
+        reg.apply_transcript_delta("none", 0, b"orphan bytes");
+        reg.apply_transcript_delta("match", 0, b"kept");
+
+        let snaps = reg.take_transcripts_for_feature("crt-052");
+        assert_eq!(snaps.len(), 1);
+        assert_eq!(snaps[0].0, "match");
+        assert!(
+            !snaps.iter().any(|(sid, _)| sid == "none"),
+            "None-feature session must be excluded"
+        );
+    }
+
+    /// Empty registry → empty Vec (drives AC-04 absent-when-empty downstream).
+    #[test]
+    fn test_seam_empty_registry_returns_empty() {
+        let reg = make_registry();
+        assert!(reg.take_transcripts_for_feature("crt-052").is_empty());
+    }
+
+    /// Zero sessions match the feature → empty Vec.
+    #[test]
+    fn test_seam_no_match_returns_empty() {
+        let reg = make_registry();
+        reg.register_session("a", None, Some("col-099".to_string()));
+        reg.apply_transcript_delta("a", 0, b"bytes");
+        assert!(reg.take_transcripts_for_feature("crt-052").is_empty());
+    }
+
+    /// The seam READS only — it must NOT clear/purge buffers (ADR-005: snapshot
+    /// reads; purge is the separate clear step). Buffer content survives.
+    #[test]
+    fn test_seam_does_not_clear_buffers() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("crt-052".to_string()));
+        reg.apply_transcript_delta("s1", 0, b"survives");
+
+        let snaps = reg.take_transcripts_for_feature("crt-052");
+        assert_eq!(snaps[0].1.bytes, b"survives");
+        // Buffer still holds the bytes after the snapshot.
+        let state = reg.get_state("s1").unwrap();
+        assert_eq!(
+            lock_buffer(&state.transcript).contiguous_tail(8).as_deref(),
+            Some(b"survives".as_slice()),
+            "snapshot must not clear the buffer"
+        );
+    }
+
+    /// AC-01(a) MERGE GATE — source assertion that no JSONL parse / marker-match
+    /// symbol is referenced inside any lock-guard scope of the seam. Enforced by
+    /// reading this source file and asserting the registry-lock and buffer-lock
+    /// blocks of `take_transcripts_for_feature` contain only scan/Arc-clone and
+    /// `snapshot()` respectively (no parse/select/marker/regex symbol). Pattern
+    /// #3753: consumers read the owned snapshot; locks never wrap parsing.
+    #[test]
+    fn test_seam_no_parse_under_lock() {
+        let src = include_str!("session.rs");
+        // Isolate the method body.
+        let start = src
+            .find("pub fn take_transcripts_for_feature(")
+            .expect("seam method present");
+        let body = &src[start..];
+        let end = body
+            .find("\n    /// Record injected entries")
+            .expect("method end marker present");
+        let body = &body[..end];
+
+        // Strip line comments so the assertion targets executable code only —
+        // the surrounding prose legitimately discusses "no parse under lock".
+        let code: String = body
+            .lines()
+            .map(|l| match l.find("//") {
+                Some(idx) => &l[..idx],
+                None => l,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        // The byte copy via snapshot() is the ONLY content-bearing work under a
+        // lock. No parse/marker/select symbol may appear in the seam's code.
+        for forbidden in [
+            "select_candidates",
+            "reconstruct",
+            "parse",
+            "marker",
+            "Regex",
+            "from_utf8",
+        ] {
+            assert!(
+                !code.contains(forbidden),
+                "AC-01: forbidden parse/marker symbol '{forbidden}' must not appear in the seam"
+            );
+        }
+        // Structural: the registry lock block Arc-clones, and the buffer lock
+        // block calls snapshot() — both present.
+        assert!(body.contains("Arc::clone(&s.transcript)"));
+        assert!(body.contains("buf.snapshot()"));
+    }
+
+    /// R-16: a poisoned buffer is recovered (treat-as-empty + clear_poison via
+    /// `lock_buffer`, #4764) and still appears in the result as an empty/lossy
+    /// snapshot — never silently dropped.
+    #[test]
+    fn test_seam_poisoned_buffer_recovers_treat_as_empty() {
+        let reg = make_registry();
+        reg.register_session("s1", None, Some("crt-052".to_string()));
+        reg.apply_transcript_delta("s1", 0, b"pre-poison");
+
+        // Poison the buffer mutex.
+        let arc = reg.get_state("s1").unwrap().transcript;
+        let arc2 = Arc::clone(&arc);
+        let _ = std::thread::spawn(move || {
+            let _g = arc2.lock().unwrap();
+            panic!("poison the buffer lock");
+        })
+        .join();
+        assert!(arc.is_poisoned(), "buffer lock should be poisoned");
+
+        let snaps = reg.take_transcripts_for_feature("crt-052");
+        assert_eq!(snaps.len(), 1, "poisoned session still appears");
+        assert_eq!(snaps[0].0, "s1");
+        assert!(
+            snaps[0].1.bytes.is_empty(),
+            "poison recovery yields an empty (lossy) snapshot"
+        );
+        assert!(!arc.is_poisoned(), "clear_poison must have run (#4764)");
+    }
+
+    /// AC-01(b) MERGE GATE — concurrency/stress: stream deltas concurrently
+    /// while snapshotting the same buffer. No deadlock (two-phase release:
+    /// registry then buffer, never held together for parsing), no torn read
+    /// (each `snapshot()` byte copy is taken atomically under the buffer lock).
+    #[test]
+    fn test_concurrent_deltas_during_seam_consistent() {
+        let reg = Arc::new(make_registry());
+        reg.register_session("hot", None, Some("crt-052".to_string()));
+
+        let mut writers = Vec::new();
+        for t in 0..4u64 {
+            let reg = Arc::clone(&reg);
+            writers.push(std::thread::spawn(move || {
+                for i in 0..200u64 {
+                    let offset = (t * 200 + i) * 4;
+                    reg.apply_transcript_delta("hot", offset, b"wxyz");
+                }
+            }));
+        }
+
+        // Snapshot repeatedly during the stream. Each snapshot must be a
+        // self-consistent prefix-run of 'wxyz' repeats (no torn 4-byte frame).
+        for _ in 0..50 {
+            let snaps = reg.take_transcripts_for_feature("crt-052");
+            assert_eq!(snaps.len(), 1);
+            let bytes = &snaps[0].1.bytes;
+            assert_eq!(bytes.len() % 4, 0, "no torn 4-byte frame in snapshot");
+            assert!(
+                bytes.chunks(4).all(|c| c == b"wxyz"),
+                "snapshot must be a consistent run of full 'wxyz' frames"
+            );
+        }
+
+        for h in writers {
+            h.join().expect("no deadlock under stream + seam");
+        }
+    }
+
+    /// R-13 Wave B: a registered session AND a held session under the same
+    /// feature → BOTH appear (registered ∪ held), through the injected handle.
+    #[test]
+    fn test_seam_scans_registered_and_held() {
+        let held_arc = Arc::new(Mutex::new(TranscriptBuffer::new(4096)));
+        lock_buffer(&held_arc).apply_delta(0, b"held content");
+        let hold = Arc::new(TestHold {
+            entries: vec![("crt-052".to_string(), "held".to_string(), held_arc)],
+        });
+        let reg = make_registry().with_transcript_hold(hold);
+        reg.register_session("reg", None, Some("crt-052".to_string()));
+        reg.apply_transcript_delta("reg", 0, b"registered");
+
+        let snaps = reg.take_transcripts_for_feature("crt-052");
+        let ids: Vec<&str> = snaps.iter().map(|(s, _)| s.as_str()).collect();
+        assert_eq!(snaps.len(), 2, "registered ∪ held");
+        assert!(ids.contains(&"reg"));
+        assert!(ids.contains(&"held"));
+    }
+
+    /// R-13: a session that is BOTH registered and held (SAME Arc) is
+    /// snapshotted ONCE — Arc identity dedup (Arc::ptr_eq).
+    #[test]
+    fn test_seam_no_double_snapshot_arc_identity() {
+        let reg = make_registry();
+        reg.register_session("dup", None, Some("crt-052".to_string()));
+        reg.apply_transcript_delta("dup", 0, b"shared");
+        // Hold the SAME Arc the registry holds.
+        let shared = reg.get_state("dup").unwrap().transcript;
+        let hold = Arc::new(TestHold {
+            entries: vec![("crt-052".to_string(), "dup".to_string(), shared)],
+        });
+        let reg = reg.with_transcript_hold(hold);
+
+        let snaps = reg.take_transcripts_for_feature("crt-052");
+        assert_eq!(snaps.len(), 1, "same Arc snapshotted once (ptr_eq dedup)");
+        assert_eq!(snaps[0].0, "dup");
+    }
+
+    /// R-11: with Wave B absent (no hold handle), the seam scans the registry
+    /// only and still returns correct snapshots. This module references the
+    /// `HeldBufferScan` trait (Wave A owned) but NEVER `transcript_hold.rs`.
+    #[test]
+    fn test_seam_wave_a_only_registered_scan() {
+        let reg = make_registry(); // no with_transcript_hold → handle is None
+        reg.register_session("s1", None, Some("crt-052".to_string()));
+        reg.apply_transcript_delta("s1", 0, b"wave-a");
+
+        let snaps = reg.take_transcripts_for_feature("crt-052");
+        assert_eq!(snaps.len(), 1);
+        assert_eq!(snaps[0].0, "s1");
+        assert_eq!(snaps[0].1.bytes, b"wave-a");
     }
 }

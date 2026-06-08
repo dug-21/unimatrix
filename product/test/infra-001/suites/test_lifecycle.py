@@ -3650,3 +3650,105 @@ def test_declared_survives_vote_at_close(server):
     assert_tool_success(store_resp)
     # Close the declared cycle — the path the close-inversion flip guards.
     assert_tool_success(server.context_cycle("stop", topic, phase="delivery", outcome="success", agent_id="human"))
+
+
+# === crt-052 re-review carries no persisted transcript candidates =========
+#
+# AC-06 / R-04: candidates are response-transient. They never fold onto the
+# memoized RetrospectiveReport and therefore never reach the persisted
+# cycle_review_index.summary_json. A re-review (memoization hit, including after
+# restart) deserializes the stored report and must surface no stale candidate
+# content, and the persisted row must contain no transcript/candidate bytes.
+
+
+def test_cycle_review_rereview_no_persisted_candidates(tmp_path):
+    """L-CRT052-01: re-review of a stored cycle_review_index record returns no
+    candidates, and the persisted summary_json carries no candidate/transcript
+    content — across a server restart (memoization-hit path, #3800)."""
+    import sqlite3 as _sqlite3
+    import hashlib as _hashlib
+    import os as _os
+    import uuid as _uuid
+    import json as _json
+    import time as _time
+
+    binary = get_binary_path()
+    topic = f"crt052-rereview-{_uuid.uuid4().hex[:8]}"
+
+    client1 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client1.initialize()
+    client1.wait_until_ready()
+
+    canonical = _os.path.realpath(str(tmp_path))
+    digest = _hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    db_path = _os.path.join(_os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+    # Seed observation data so the review computes and memoizes a row.
+    now_secs = int(_time.time())
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    session_id = f"test-{topic}-{_uuid.uuid4().hex[:8]}"
+    conn.execute(
+        "INSERT INTO sessions (session_id, feature_cycle, started_at, status) VALUES (?, ?, ?, 0)",
+        (session_id, topic, now_secs),
+    )
+    for i in range(20):
+        ts_millis = now_secs * 1000 - 86_400_000 + (i * 300_000)
+        hook = "PreToolUse" if i % 2 == 0 else "PostToolUse"
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (session_id, ts_millis, hook, "Read", None,
+             1024 if hook == "PostToolUse" else None,
+             "output" if hook == "PostToolUse" else None),
+        )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+    # First review: computes + memoizes the row.
+    resp1 = client1.call_tool("context_cycle_review", {
+        "feature_cycle": topic, "agent_id": "human", "format": "json",
+    }, timeout=30.0)
+    assert_tool_success(resp1), "L-CRT052-01: first cycle review must succeed"
+    text1 = get_result_text(resp1)
+    assert "transcript_candidates" not in text1, (
+        "L-CRT052-01: first review (no live buffer) must carry no candidates"
+    )
+
+    # The persisted memoized row must contain no candidate/transcript content.
+    conn2 = _sqlite3.connect(db_path)
+    row = conn2.execute(
+        "SELECT summary_json FROM cycle_review_index WHERE feature_cycle = ?", (topic,)
+    ).fetchone()
+    conn2.close()
+    assert row is not None, "L-CRT052-01: cycle_review_index row must exist after first review"
+    summary_json = row[0]
+    assert "transcript_candidates" not in summary_json, (
+        "L-CRT052-01 (AC-06): persisted summary_json must not contain a "
+        "transcript_candidates field — candidates are structurally absent from "
+        "the memoized report"
+    )
+    # Defensive: the memoized report carries no candidate/byte_offset provenance keys.
+    persisted = _json.loads(summary_json)
+    assert "transcript_candidates" not in persisted, (
+        "L-CRT052-01 (AC-06): deserialized memoized report has no candidates key"
+    )
+
+    client1.shutdown()
+
+    # Restart and re-review the SAME cycle — memoization hit deserializes the
+    # stored report (#3800). It must still surface no candidates.
+    client2 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client2.initialize()
+    client2.wait_until_ready()
+    resp2 = client2.call_tool("context_cycle_review", {
+        "feature_cycle": topic, "agent_id": "human", "format": "json",
+    }, timeout=30.0)
+    assert_tool_success(resp2), "L-CRT052-01: re-review after restart must succeed"
+    text2 = get_result_text(resp2)
+    assert "transcript_candidates" not in text2, (
+        "L-CRT052-01 (AC-06): re-review of the stored record must carry no "
+        "stale candidates from the memoized report"
+    )
+    client2.shutdown()

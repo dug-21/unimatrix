@@ -1,0 +1,14 @@
+{
+  "_comment": "Independent human-reader family labels for labeled_corpus.jsonl (AC-03, OQ-6). line_index is 0-based over JSONL lines. Only user/assistant TEXT blocks that a human reader judges to carry a family are listed as positives. Lines NOT listed are negatives: neutral chatter, doc-tidy noise, tool_use/tool_result/thinking (the parser drops the latter three). See PROVENANCE.md for independence mode (anchors-before-port). raw_bytes is the size of labeled_corpus.jsonl, used by the <=10% volume check.",
+  "raw_bytes": 30177,
+  "labels": [
+    { "line_index": 1, "family": "decision", "desc": "decided to go with redb after trade-off" },
+    { "line_index": 4, "family": "rework", "desc": "broke build, reverted, will retry" },
+    { "line_index": 5, "family": "lesson", "desc": "lesson learned: never hold lock across await" },
+    { "line_index": 7, "family": "phasegate", "desc": "stage 3b gate passed, retrospective phase" },
+    { "line_index": 8, "family": "decision", "desc": "will go with pure-module approach" },
+    { "line_index": 10, "family": "rework", "desc": "fix didn't work, redo truncation" },
+    { "line_index": 12, "family": "lesson", "desc": "gotcha to remember, watch out" },
+    { "line_index": 14, "family": "phasegate", "desc": "design session approved/ratified, Wave A boundary" }
+  ]
+}
