@@ -38,12 +38,28 @@ const HOOK_EVENTS = [
   "SubagentStop",
 ];
 
+/**
+ * PreToolUse matcher (ADR-004 §1, vnc-027). Narrowed from "*" to the cycle
+ * tools so the hook process no longer spawns for ordinary tool calls — the real
+ * noise win is one fewer hook-process spawn per non-cycle tool invocation.
+ * PreToolUse stays in HOOK_EVENTS; only the matcher narrows. Claude Code
+ * regex-matcher semantics are load-bearing for cycle interception (R-11); the
+ * client-side exact-equality sentinel is the defense-in-depth backstop.
+ */
+const PRETOOLUSE_CYCLE_MATCHER = "context_cycle|mcp__unimatrix__context_cycle";
+
+/**
+ * SubagentStop opt-in key (ADR-004 §2, vnc-027). Resolved from
+ * {root}/.claude/settings.local.json. snake_case, matching unimatrix.remote.*.
+ */
+const SUBAGENT_STOP_EVENT = "SubagentStop";
+
 /** Matcher per event: "" for session-level, "*" for tool/agent-level */
 const EVENT_MATCHERS = {
   SessionStart: "",
   Stop: "",
   UserPromptSubmit: "",
-  PreToolUse: "*",
+  PreToolUse: PRETOOLUSE_CYCLE_MATCHER, // ADR-004 §1: narrowed from "*"
   PostToolUse: "*",
   PostToolUseFailure: "*",
   PreCompact: "",
@@ -110,6 +126,68 @@ function isUnimatrixHook(hookEntry) {
 }
 
 /**
+ * Read the SubagentStop opt-in key from settings.local.json (ADR-004 §2).
+ *
+ * Fail-open: an unreadable, missing, or malformed file, or a non-boolean value,
+ * is treated as unset (false / default off). ONLY the literal boolean `true`
+ * enables registration — string "true", 1, null, {} are all "unset" (the AC-08
+ * type-confusion guard, R-12 security surface). This is an install-set decision,
+ * not a hook-runtime path, so it never throws to the host.
+ *
+ * @param {string} optInFile - Path to {root}/.claude/settings.local.json.
+ * @returns {boolean} true iff unimatrix.hooks.subagent_stop === true.
+ */
+function subagentStopEnabled(optInFile) {
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(optInFile, "utf8"));
+  } catch (readOrParseError) {
+    return false;
+  }
+  const hooks =
+    parsed && typeof parsed === "object" && parsed.unimatrix && typeof parsed.unimatrix === "object"
+      ? parsed.unimatrix.hooks
+      : undefined;
+  const value = hooks && typeof hooks === "object" ? hooks.subagent_stop : undefined;
+  return value === true;
+}
+
+/**
+ * Strip Unimatrix-owned hook entries for a single event from already-merged
+ * content (ADR-004 §2 opt-out path). Scoped to Unimatrix-owned entries via
+ * isUnimatrixHook — foreign hooks are never touched. Matcher groups we empty are
+ * dropped, and the event key is removed if nothing remains, keeping the opt-in
+ * matrix bidirectional and idempotent (AC-08).
+ *
+ * @param {object} content - The settings object (content.hooks must be an object).
+ * @param {string} event - The hook event to prune.
+ * @param {string[]} actions - Mutated: a line is pushed per removed entry.
+ */
+function pruneUnimatrixEvent(content, event, actions) {
+  const eventArray = content.hooks[event];
+  if (!Array.isArray(eventArray)) {
+    return;
+  }
+  for (const group of eventArray) {
+    if (!group || !Array.isArray(group.hooks)) {
+      continue;
+    }
+    const before = group.hooks.length;
+    group.hooks = group.hooks.filter((hook) => !isUnimatrixHook(hook));
+    if (group.hooks.length !== before) {
+      actions.push("Removed unimatrix hook: " + event + " (opt-out)");
+    }
+  }
+  // Drop matcher groups we just emptied, then the event key if nothing remains.
+  content.hooks[event] = eventArray.filter(
+    (group) => group && Array.isArray(group.hooks) && group.hooks.length > 0
+  );
+  if (content.hooks[event].length === 0) {
+    delete content.hooks[event];
+  }
+}
+
+/**
  * Merge Unimatrix hook configuration into .claude/settings.json.
  *
  * Implements ADR-004 prefix-match identification. Preserves all non-unimatrix
@@ -127,6 +205,15 @@ function mergeSettings(filePath, commandSource, options) {
   const source = normalizeCommandSource(commandSource);
   const actions = [];
   let content = {};
+
+  // ADR-004 §2: SubagentStop is opt-in. Resolve the durable key from the
+  // settings.local.json sibling of filePath (dirname(filePath) is {root}/.claude)
+  // and filter it out of the registered event list unless explicitly enabled.
+  const optInFile = path.join(path.dirname(filePath), "settings.local.json");
+  let events = source.events;
+  if (events.includes(SUBAGENT_STOP_EVENT) && !subagentStopEnabled(optInFile)) {
+    events = events.filter((event) => event !== SUBAGENT_STOP_EVENT);
+  }
 
   // Step 1: Read existing file
   if (fs.existsSync(filePath)) {
@@ -168,7 +255,7 @@ function mergeSettings(filePath, commandSource, options) {
   }
 
   // Step 3: For each hook event, merge the unimatrix entry
-  for (const event of source.events) {
+  for (const event of events) {
     const hookCommand = source.commandForEvent(event);
     const matcher = EVENT_MATCHERS[event];
 
@@ -234,6 +321,17 @@ function mergeSettings(filePath, commandSource, options) {
     }
   }
 
+  // Step 3b: Opt-out pruning (ADR-004 §2). Remove Unimatrix-owned entries for
+  // any HOOK_EVENT we are NOT registering this run so a previously-registered
+  // SubagentStop entry is stripped when the opt-in key is absent/false. In the
+  // common path (source.events === HOOK_EVENTS) this only ever touches
+  // SubagentStop; foreign hooks are preserved (isUnimatrixHook scope).
+  for (const event of HOOK_EVENTS) {
+    if (!events.includes(event)) {
+      pruneUnimatrixEvent(content, event, actions);
+    }
+  }
+
   // Step 4: Write file (or prefix actions with [dry-run])
   if (!dryRun) {
     const dir = path.dirname(filePath);
@@ -251,7 +349,9 @@ module.exports = {
   isUnimatrixHook,
   buildHookClientCommand,
   normalizeCommandSource,
+  subagentStopEnabled,
   HOOK_EVENTS,
   EVENT_MATCHERS,
   UNIMATRIX_PATTERNS,
+  PRETOOLUSE_CYCLE_MATCHER,
 };

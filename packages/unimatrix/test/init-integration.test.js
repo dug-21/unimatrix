@@ -293,6 +293,16 @@ describe("init (integration with mocks)", () => {
   it("test_init_idempotent", () => {
     const dir = makeTempProject();
 
+    // vnc-027 ADR-004 §2: SubagentStop is opt-in. This dedup check covers the
+    // full registered set, so opt in via settings.local.json.
+    const claudeDir = path.join(dir, ".claude");
+    fs.mkdirSync(claudeDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(claudeDir, "settings.local.json"),
+      JSON.stringify({ unimatrix: { hooks: { subagent_stop: true } } }, null, 2),
+      "utf8"
+    );
+
     // Binary must be named "unimatrix" so merge-settings recognizes
     // existing hooks via the /unimatrix\s+hook\s/ pattern (ADR-004).
     const binDir = path.join(dir, "bin");
