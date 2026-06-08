@@ -100,7 +100,7 @@ test-plan/
 
 ### What You Do
 
-1. Execute unit tests: `cargo test --workspace 2>&1 | tail -30`
+1. Execute unit tests via the hardened convention (see "Cargo Output Truncation" below): `setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc`
 2. Execute integration smoke tests (MANDATORY gate): `cd product/test/infra-001 && python -m pytest suites/ -v -m smoke --timeout=60`
 3. Execute relevant integration suites based on what the feature touches (see suite selection table below)
 4. Execute feature-level tests mapped to the Risk Strategy
@@ -254,11 +254,15 @@ When an integration test fails, determine causation:
 ## Cargo Output Truncation (CRITICAL)
 
 ```bash
-# Test: summary only
-cargo test --workspace 2>&1 | tail -30
+# Test: hardened workspace run — own process group + hard ceiling + file-not-pipe.
+# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
+setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
 ```
 
-NEVER pipe full cargo output into context.
+NEVER pipe full cargo output into context. NEVER rewrite the line above as a pipeline
+(`cargo test ... | tail`) or background it — `rc=$?` must capture `cargo test`, not `tail`,
+or gates read false-green. `timeout` rc=124 = killed-at-ceiling (investigate the hang),
+not an ordinary test failure. See `.claude/rules/rust-workspace.md` for the full rationale.
 
 ## What You Return
 

@@ -252,11 +252,15 @@ When checking compilation (Gate 3b):
 cargo build --workspace 2>&1 | grep -A5 "^error" | head -20
 cargo build --workspace 2>&1 | tail -3
 
-# Tests: summary only
-cargo test --workspace 2>&1 | tail -30
+# Tests: hardened workspace run — own process group + hard ceiling + file-not-pipe.
+# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
+setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
 ```
 
-NEVER pipe full cargo output into context.
+NEVER pipe full cargo output into context. NEVER rewrite the test line as a pipeline
+(`cargo test ... | tail`) or background it — `rc=$?` must capture `cargo test`, not `tail`,
+or gates read false-green. `timeout` rc=124 = killed-at-ceiling (investigate the hang),
+not an ordinary test failure. See `.claude/rules/rust-workspace.md` for the full rationale.
 
 ---
 
