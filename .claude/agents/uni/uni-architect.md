@@ -106,6 +106,19 @@ If your decision supersedes an existing ADR:
 2. Reference the superseded ADR in your new ADR's Context section
 3. Store the new ADR via `/uni-store-adr`
 
+### Asserting Relationships Between ADRs (Typed Edges)
+
+Most relationships between decisions belong in the ADR's **prose**. A typed graph edge is the rare,
+high-value exception, and the bar is HIGH. `/uni-store-adr` holds the full convention — the essentials:
+
+- **Default is no edge.** Zero-edge ADRs are normal. NEVER assert edges for "connectedness" — over-linking destroys the graph's signal. There is no coverage target.
+- **Traversal-necessity test:** assert only if a future agent must *follow* the link to avoid a wrong decision (missed prerequisite, acting on a contradicted decision, repeating a logged failure).
+- **Three types only:** `Prerequisite` (must-read-first), `Contradicts` (real conflict), `Supports` (a lesson/pattern that directly validates the decision). Nothing else — not `RelatedTo`/`Mentions`/`About`/`Informs`.
+- **Supersession is `context_correct`, never an edge.**
+- **At authoring:** assert edges only to predecessors that *already exist* (known IDs), via the `edges` param of `context_store`. Do NOT force forward-references to sibling ADRs that lack IDs — leave those for retro.
+- **At retro (retro mode):** complete the graph — add the intra-feature `Prerequisite` spine and `Supports` links from lessons/patterns now that all IDs and outcomes exist.
+- One-clause justification per edge, or don't assert it.
+
 ### What You Search For vs What You Store
 
 | Action | Skill | When |
@@ -193,4 +206,5 @@ This block is validated by the gate. Missing it causes a REWORKABLE FAIL.
 - [ ] Called context_briefing before designing and applied relevant prior decisions
 - [ ] Every ADR stored in Unimatrix via `/uni-store-adr` (file-only ADR = incomplete)
 - [ ] Any superseded ADRs have deprecation notices stored in Unimatrix
+- [ ] Any typed relationship edges meet the HIGH bar (traversal-necessary, one of the three allowed types, one-clause justified) — default is none; supersession uses `context_correct`, not an edge
 - [ ] Knowledge Stewardship report block included in agent report AND GH Issue comment

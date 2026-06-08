@@ -86,6 +86,56 @@ This automatically:
 
 ---
 
+## Typed Relationship Edges (HIGH bar — default is NO edge)
+
+ADRs relate to other entries. **Most of that belongs in prose** (the Context section). A typed
+graph edge is the rare exception — assert one ONLY when a future agent would have to *follow* it
+to avoid a wrong decision. This is the canonical convention; other skills/agents reference it.
+
+**The bar — all three must hold:**
+
+1. **Default is no edge.** An ADR with zero edges is correct and normal. There is NO coverage
+   target — never assert edges to "show connectedness." Over-linking destroys the graph's signal.
+2. **Traversal-necessity.** If you deleted this edge, would someone miss a prerequisite, act on a
+   contradicted decision, or repeat a logged failure? If no → it's prose, not an edge.
+3. **Don't duplicate the inference layer.** Similarity (search) and `CoAccess` (auto-inferred)
+   already cover topical relatedness. Author edges only the *directional, causal* relationships
+   inference cannot derive.
+
+**The ONLY edge types an ADR author asserts:**
+
+| Edge | Assert when |
+|------|-------------|
+| `Prerequisite` | The target must be read / acted-on *before* this decision is correct — intra-feature ordering, or a must-read cross-feature predecessor. |
+| `Contradicts` | A real, decision-blocking conflict with another entry. |
+| `Supports` | A lesson or pattern that *directly caused or validates* this decision (usually asserted at retro, once the lesson exists). |
+
+Do NOT use `RelatedTo`, `Mentions`, `About`, or `Informs` for ADR authoring — those are the
+"everything is connected" trap. **Supersession is NOT an edge — use `context_correct` (above).**
+
+**Each edge needs a one-clause justification.** If you can't write "X is a `Prerequisite` of Y
+because you'll act wrongly without reading it first," don't assert it.
+
+**Two moments to assert:**
+
+- **At authoring** — only to targets that *already exist* (typically cross-feature predecessors
+  with known IDs). Declare them in the `edges` param of `context_store`:
+  ```
+  mcp__unimatrix__context_store({
+    ... (title, content, topic, category, tags, source, feature_cycle, agent_id as above) ...,
+    "edges": [{"edge_type": "Prerequisite", "target_id": 4742}]
+  })
+  ```
+  Do NOT force edges to sibling ADRs that lack IDs yet — forward references fail. Leave those for retro.
+- **At retro** — the graph-completion pass. Now that all IDs and outcomes exist, add the high-bar
+  edges you couldn't make at authoring (the intra-feature `Prerequisite` spine; `Supports` from a
+  lesson/pattern to the decision it validates) via:
+  ```
+  mcp__unimatrix__context_edge({"mode": "add", "source_id": <from>, "edge_type": "Supports", "target_id": <to>})
+  ```
+
+---
+
 ## ADR Content Guidelines
 
 **Keep ADRs to 300-800 characters.** They capture the decision, not the implementation.

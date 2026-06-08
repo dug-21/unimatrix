@@ -308,12 +308,25 @@ Agent(uni-architect, "
         - Candidates are call-time content (OQ-4) — they may differ from the cached report; do not
           reconcile them against the cached metrics.
 
+  5. RELATIONSHIP EDGES (retro graph-completion — HIGH bar, default none):
+     Retro is the moment to assert the typed edges that COULDN'T be made at authoring — every ID
+     and outcome in this cycle now exists. See /uni-store-adr for the full convention. Assert ONLY
+     when a future agent must TRAVERSE the link to avoid a wrong decision; most entries get ZERO
+     edges and that is correct. Three types only:
+        - Supports: a lesson/pattern from this cycle that DIRECTLY caused or validates an ADR
+          (context_edge add, source = lesson/pattern, target = decision).
+        - Prerequisite: an intra-feature ADR that must be read before another is correct.
+        - Contradicts: a real, decision-blocking conflict surfaced this cycle.
+     Do NOT assert RelatedTo/Mentions/About/Informs; do NOT use edges for supersession (that is
+     context_correct); do NOT aim for coverage. One-clause justification per edge or don't assert it.
+
   Return:
   1. Patterns: [new entries with IDs, updated entries with IDs, skipped with reason]
   2. Procedures: [new/updated with IDs]
   3. ADR status: [validated ADRs, flagged-for-supersession ADRs with reason]
   4. Lessons: [new entries with IDs]
-  5. Retrospective findings: [hotspot-derived lessons, recommendation actions taken, outlier notes]")
+  5. Retrospective findings: [hotspot-derived lessons, recommendation actions taken, outlier notes]
+  6. Relationship edges: [edges asserted: source -> type -> target + one-clause why, or 'none — bar not met']")
 ```
 
 ---
