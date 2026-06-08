@@ -1,0 +1,1 @@
+{"type":"RecordEvent","event_type":"PostToolUse","session_id":"sess-uds","timestamp":0,"payload":{"tool_name":"Bash"},"topic_signal":"bash","provider":"claude-code"}

@@ -518,6 +518,32 @@ describe("config root walk + hash", function () {
     assert.strictEqual(walkToProjectRoot(root), root);
   });
 
+  it("test_symlinked_root_resolves_to_realpath_same_hash", function () {
+    // ADR-007 §3 healthy layout: a symlink pointing at the repo root. Both Rust
+    // (canonicalize) and TS (realpathSync) resolve through the link, so a spawn
+    // whose cwd is the symlink shares the main project's hash / socket / state
+    // dir. Without realpath parity the symlink alias would hash to a second
+    // state dir and queued frames would never replay.
+    if (process.platform === "win32") return; // POSIX symlink semantics
+    const real = makeProject();
+    const linkParent = fs.realpathSync(
+      fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-link-"))
+    );
+    const link = path.join(linkParent, "linked-project");
+    fs.symlinkSync(real, link);
+
+    assert.strictEqual(walkToProjectRoot(link), real, "symlink resolves to the real root");
+    assert.strictEqual(
+      computeProjectHash(walkToProjectRoot(link)),
+      computeProjectHash(real),
+      "symlinked path hashes identically to the real root"
+    );
+    const viaLink = resolve(link);
+    const viaReal = resolve(real);
+    assert.strictEqual(viaLink.projectHash, viaReal.projectHash);
+    assert.strictEqual(viaLink.socketPath, viaReal.socketPath);
+  });
+
   it("test_hash_parity_with_rust", function () {
     // Goldens generated from project.rs::compute_project_hash — never hand-written.
     assert.ok(GOLDENS.cases.length >= 3, "fixture must carry at least 3 golden cases");

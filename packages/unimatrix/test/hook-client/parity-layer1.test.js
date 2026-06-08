@@ -344,7 +344,6 @@ describe("Layer 1 parity - ADR-001 edge-case inventory present (R-01)", () => {
     "event-precompact",
     "event-subagent-stop",
     "event-task-completed",
-    "alias-before-tool",
     "alias-after-tool",
     "alias-session-end",
     "event-unknown-passthrough",
@@ -382,12 +381,12 @@ describe("Layer 1 parity - ADR-001 edge-case inventory present (R-01)", () => {
     "ptuf-null-extra",
     "ptuf-missing-tool-name",
     "ptuf-null-error",
-    // PreToolUse context_cycle interception
+    // PreToolUse context_cycle interception (post-reduction: surviving cycle
+    // frames only; vnc-027 ADR-004 §4 retires the non-cycle/near-miss/invalid
+    // PreToolUse observation paths — they resolve to the null no-send sentinel,
+    // so there is no frame to parity-check).
     "cycle-start-bare",
     "cycle-start-prefixed",
-    "cycle-near-miss",
-    "cycle-near-miss-suffixed",
-    "cycle-invalid-type",
     "cycle-mcp-context-promotion",
     "cycle-goal-overflow-multibyte",
     // SubagentStart snippet + transcript tail

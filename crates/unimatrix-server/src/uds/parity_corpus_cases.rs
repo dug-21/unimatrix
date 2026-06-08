@@ -12,7 +12,6 @@ use serde_json::json;
 /// Manifest arm keys owned by this table.
 pub(crate) const ARM_KEYS_A: &[&str] = &[
     // normalize_event_name
-    "normalize_event_name::alias::BeforeTool",
     "normalize_event_name::alias::AfterTool",
     "normalize_event_name::alias::SessionEnd",
     "normalize_event_name::canonical::PreToolUse",
@@ -49,7 +48,6 @@ pub(crate) const ARM_KEYS_A: &[&str] = &[
     "build_request::session_id_ppid_fallback",
     "build_request::cwd_fallback",
     // extract_event_topic_signal arms exercised by this table
-    "topic_signal::pre_tool_use",
     "topic_signal::generic",
     "topic_signal::generic_null_extra",
 ];
@@ -165,20 +163,12 @@ pub(crate) fn cases() -> Vec<Case> {
         "",
     ));
 
-    v.push(Case::new(
-        "alias-before-tool",
-        "BeforeTool",
-        &[
-            "normalize_event_name::alias::BeforeTool",
-            "topic_signal::pre_tool_use",
-        ],
-        json!({
-            "session_id": "gem-1",
-            "tool_name": "some_mcp_tool",
-            "tool_input": { "arg": "value" }
-        })
-        .to_string(),
-    ));
+    // NOTE (vnc-027 ADR-004 §4): the `alias-before-tool` case (Gemini BeforeTool
+    // alias → non-cycle PreToolUse observation) is RETIRED. The TS client returns
+    // a null no-send sentinel for non-cycle PreToolUse, so there is no frame to
+    // parity-check; the corpus excludes retired PreToolUse observation by design.
+    // The BeforeTool alias path that DOES survive (cycle interception) is covered
+    // by `cycle-mcp-context-promotion`.
 
     v.push(Case::new(
         "alias-after-tool",

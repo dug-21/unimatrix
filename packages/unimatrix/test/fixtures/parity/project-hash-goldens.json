@@ -1,5 +1,5 @@
 {
-  "generated_by": "crates/unimatrix-engine/src/project.rs::compute_project_hash (temporary dev test, vnc-026 #679)",
+  "generated_by": "parity_corpus_uds.rs::generate_hash_goldens (project.rs::compute_project_hash oracle, vnc-027 ADR-007 §3)",
   "algorithm": "first 16 hex chars of SHA-256 over the UTF-8 bytes of the normalized root path string",
   "cases": [
     {

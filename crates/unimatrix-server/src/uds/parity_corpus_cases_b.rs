@@ -15,16 +15,15 @@ use serde_json::json;
 
 /// Manifest arm keys owned by this table.
 pub(crate) const ARM_KEYS_B: &[&str] = &[
-    // PreToolUse routing
-    "build_request::PreToolUse::no_promotion",
+    // PreToolUse routing. vnc-027 ADR-004 §4: non-cycle PreToolUse observation is
+    // RETIRED (TS returns a null no-send sentinel), so `no_promotion`,
+    // `not_context_cycle`, `near_miss_not_intercepted`, `missing_tool_input`, and
+    // `validation_failed` arms (all null-sentinel paths) are excluded from the
+    // post-reduction corpus. Only the surviving cycle-interception arms remain.
     "build_request::PreToolUse::mcp_context_promotion",
-    // build_cycle_event_or_fallthrough
-    "cycle::not_context_cycle",
-    "cycle::near_miss_not_intercepted",
+    // build_cycle_event_or_fallthrough (surviving cycle frames)
     "cycle::bare_name",
     "cycle::prefixed_name",
-    "cycle::missing_tool_input",
-    "cycle::validation_failed",
     "cycle::start",
     "cycle::phase_end",
     "cycle::stop",
@@ -69,27 +68,20 @@ pub(crate) fn cases() -> Vec<Case> {
     let mut v: Vec<Case> = Vec::new();
 
     // -- PreToolUse / context_cycle interception --
-
-    v.push(Case::new(
-        "ptu-pre-non-cycle",
-        "PreToolUse",
-        &[
-            "cycle::not_context_cycle",
-            "build_request::PreToolUse::no_promotion",
-            "normalize_event_name::canonical::PreToolUse",
-        ],
-        json!({
-            "session_id": "sess-corpus",
-            "tool_name": "Bash",
-            "tool_input": { "command": "ls -la /tmp" }
-        })
-        .to_string(),
-    ));
+    //
+    // vnc-027 ADR-004 §4: non-cycle PreToolUse observation is retired (TS returns
+    // a null no-send sentinel), so `ptu-pre-non-cycle` is removed. The
+    // `normalize_event_name::canonical::PreToolUse` arm stays live (PreToolUse
+    // still fires for cycle interception) and is now anchored on `cycle-start-bare`.
 
     v.push(Case::new(
         "cycle-start-bare",
         "PreToolUse",
-        &["cycle::bare_name", "cycle::start"],
+        &[
+            "cycle::bare_name",
+            "cycle::start",
+            "normalize_event_name::canonical::PreToolUse",
+        ],
         json!({
             "session_id": "sess-corpus",
             "tool_name": "context_cycle",
@@ -146,61 +138,12 @@ pub(crate) fn cases() -> Vec<Case> {
         .to_string(),
     ));
 
-    v.push(Case::new(
-        "cycle-near-miss",
-        "PreToolUse",
-        &["cycle::near_miss_not_intercepted"],
-        json!({
-            "session_id": "sess-corpus",
-            "tool_name": "evil_context_cycle_bypass",
-            "tool_input": { "type": "start", "topic": "vnc-026" }
-        })
-        .to_string(),
-    ));
-
-    v.push(Case::new(
-        "cycle-near-miss-suffixed",
-        "PreToolUse",
-        &["cycle::near_miss_not_intercepted"],
-        json!({
-            "session_id": "sess-corpus",
-            "tool_name": "mcp__unimatrix__context_cycle_extra",
-            "tool_input": { "type": "start", "topic": "vnc-026" }
-        })
-        .to_string(),
-    ));
-
-    v.push(Case::new(
-        "cycle-invalid-type",
-        "PreToolUse",
-        &["cycle::validation_failed"],
-        json!({
-            "session_id": "sess-corpus",
-            "tool_name": "context_cycle",
-            "tool_input": { "type": "begin", "topic": "vnc-026" }
-        })
-        .to_string(),
-    ));
-
-    v.push(Case::new(
-        "cycle-invalid-topic",
-        "PreToolUse",
-        &["cycle::validation_failed"],
-        // Topic without a hyphen fails the feature-id structural check.
-        json!({
-            "session_id": "sess-corpus",
-            "tool_name": "context_cycle",
-            "tool_input": { "type": "start", "topic": "nohyphen" }
-        })
-        .to_string(),
-    ));
-
-    v.push(Case::new(
-        "cycle-missing-tool-input",
-        "PreToolUse",
-        &["cycle::missing_tool_input"],
-        json!({ "session_id": "sess-corpus", "tool_name": "context_cycle" }).to_string(),
-    ));
+    // vnc-027 ADR-004 §4: the near-miss (F-02 not-intercepted), invalid-type,
+    // invalid-topic, and missing-tool-input cases all resolve to the null no-send
+    // sentinel in the TS client, so they are retired from the post-reduction
+    // corpus. The F-02 exact-equality security gate is preserved as
+    // defense-in-depth and pinned by build-request-tools unit tests, not by a
+    // parity golden (there is no frame to compare).
 
     v.push(Case::new(
         "cycle-goal-overflow-multibyte",

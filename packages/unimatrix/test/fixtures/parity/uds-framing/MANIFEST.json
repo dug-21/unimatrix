@@ -1,0 +1,22 @@
+{
+  "generated_by": "parity_corpus_uds.rs (wire.rs write_frame/serialize_* oracle)",
+  "frame_format": "4-byte big-endian u32 length prefix + payload bytes",
+  "max_payload_size": 1048576,
+  "requests": [
+    "req-ping",
+    "req-record-event",
+    "req-context-search-sync",
+    "req-context-search-fnf",
+    "req-compact-payload-sync",
+    "req-boundary-1mib"
+  ],
+  "responses": [
+    "res-text-entries",
+    "res-text-briefing",
+    "res-ack",
+    "res-pong",
+    "res-error-4xx",
+    "res-error-5xx",
+    "res-boundary-1mib"
+  ]
+}
