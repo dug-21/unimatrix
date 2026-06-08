@@ -175,7 +175,7 @@ When creating a new agent, determine where it fits:
 | Session 1 | Phase 2b (Vision Check) | uni-vision-guardian |
 | Session 1 | Phase 2c (Synthesis) | uni-synthesizer |
 | Session 2 | Stage 3a (Component Design) | uni-pseudocode, uni-tester |
-| Session 2 | Stage 3b (Implementation) | uni-rust-dev |
+| Session 2 | Stage 3b (Implementation) | uni-rust-dev (Rust), uni-js-dev (JS/TS edge client) |
 | Session 2 | Stage 3c (Testing) | uni-tester |
 | Session 2 | Gates 3a/3b/3c | uni-validator |
 | Both | Coordination | uni-scrum-master |

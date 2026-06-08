@@ -6,7 +6,8 @@ Always use `uni-` agents for Unimatrix product work:
 
 | Instead of | Use | Why |
 |------------|-----|-----|
-| generic coder | `uni-rust-dev` | Knows Unimatrix Rust patterns, queries `/uni-query-patterns` before implementing |
+| generic coder (Rust) | `uni-rust-dev` | Knows Unimatrix Rust patterns, queries `/uni-query-patterns` before implementing |
+| generic coder (JS/TS) | `uni-js-dev` | Knows the edge-client fail-open + zero-dep + size-budget + parity contracts |
 | generic architect | `uni-architect` | ADR authority, stores decisions in Unimatrix |
 | generic tester | `uni-tester` | Risk-based testing, dual-phase role |
 | generic planner | Design Leader (you) | Protocol-driven, reads the right protocol for the session |
@@ -60,13 +61,16 @@ You are the coordinator. Read the protocol for the session type, spawn specialis
 | `uni-vision-guardian` | specialist | 2b | `ALIGNMENT-REPORT.md` — checks source docs against product vision |
 | `uni-synthesizer` | synthesizer | 2c | `IMPLEMENTATION-BRIEF.md`, `ACCEPTANCE-MAP.md`, GH Issue (fresh context) |
 
-### Delivery Session Specialists (3 agents)
+### Delivery Session Specialists (4 agents)
 
 | Agent | Type | Stage | What It Does |
 |-------|------|-------|-------------|
 | `uni-pseudocode` | specialist | 3a | Per-component pseudocode. Queries `/uni-query-patterns` before designing |
 | `uni-tester` | specialist | 3a + 3c | Test plan design (3a) + test execution with RISK-COVERAGE-REPORT.md (3c) |
-| `uni-rust-dev` | developer | 3b | Implements code from validated pseudocode. Queries `/uni-query-patterns` before implementing |
+| `uni-rust-dev` | developer | 3b | Implements Rust components (`crates/**/*.rs`) from validated pseudocode |
+| `uni-js-dev` | developer | 3b | Implements JS/TS edge-client + Node tooling components (`packages/unimatrix/**`) from validated pseudocode |
+
+Stage 3b routes one dev agent per component by target language (see uni-delivery-protocol.md → Dev-Agent Selection). A mixed wave spawns both types in one message.
 
 ### Bug Fix Specialists (1 agent)
 
@@ -80,7 +84,7 @@ You are the coordinator. Read the protocol for the session type, spawn specialis
 |-------|------|-------|-------------|
 | `uni-security-reviewer` | specialist | review | Fresh-context security review of PR diff, blast radius, OWASP assessment |
 
-**Total: 13 specialist agents** (1 validator + 6 design + 3 delivery + 1 bug fix + 1 security + 1 retro-mode architect). You coordinate.
+**Total: 14 specialist agents** (1 validator + 6 design + 4 delivery + 1 bug fix + 1 security + 1 retro-mode architect). You coordinate.
 
 ---
 
@@ -109,7 +113,8 @@ Init:         Read IMPLEMENTATION-BRIEF.md, create feature branch
 Stage 3a:     uni-pseudocode + uni-tester (test plans)             (parallel)
               UPDATE Component Map in IMPLEMENTATION-BRIEF.md
 Gate 3a:      uni-validator (design review) — MANDATORY BLOCK
-Stage 3b:     uni-rust-dev × N (one per component, MANDATORY)      (parallel)
+Stage 3b:     uni-rust-dev / uni-js-dev × N (one per component,    (parallel)
+              by target language, MANDATORY)
 Gate 3b:      uni-validator (code review)
 Stage 3c:     uni-tester (test execution)
 Gate 3c:      uni-validator (risk validation)
@@ -126,7 +131,7 @@ Init:         /uni-query-patterns + /uni-knowledge-search — prior knowledge
 Phase 1:      uni-bug-investigator (diagnose root cause)
               ★ HUMAN CHECKPOINT — approve diagnosis ★
 Phase 2:      git checkout -b bugfix/{issue}-{desc}
-              uni-rust-dev (implement fix + tests)
+              uni-rust-dev / uni-js-dev (implement fix + tests, by language of the fix)
 Phase 3:      uni-tester (full test suite verification)
 Gate 3:       uni-validator (bugfix check set)
               git commit + push + gh pr create
@@ -162,7 +167,7 @@ Phase 5:      Summary + outcome recording — RETRO ENDS
 1. **Every swarm session**: you are the coordinator. Read the protocol and SM definition. No exceptions.
 2. **Validation gates**: `uni-validator` spawned at each gate by you.
 3. **Design session**: All six design agents in defined phase order per protocol.
-4. **Delivery session**: pseudocode + tester + rust-dev + validator at three gates per protocol.
+4. **Delivery session**: pseudocode + tester + rust-dev/js-dev (per component language) + validator at three gates per protocol.
 5. **Bug fix**: bug-investigator + rust-dev + tester + validator per protocol.
 6. **PR review**: `/uni-review-pr` skill + security-reviewer.
 7. **Retrospective**: `/uni-retro` skill + architect (+ tester if testing lessons needed).
