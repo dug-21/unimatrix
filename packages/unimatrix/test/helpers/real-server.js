@@ -30,6 +30,13 @@ const os = require("os");
 const path = require("path");
 const crypto = require("crypto");
 
+// vnc-027: the live UDS hook transport (the SAME module the client ships). The
+// daemon starts the hook UDS listener unconditionally on `serve` at
+// {dataDir}/unimatrix.sock (main.rs::start_uds_listener → paths.socket_path).
+// Layer 2 UDS round-trip / FNF / delta-merge / cross-transport tests drive it
+// through this real transport — cumulative infra, never a parallel framer.
+const transportUds = require("../../lib/hook-client/transport-uds");
+
 // Resolve the cargo-built binary. Prefer release (Layer 2 plan: `cargo build
 // --release`); fall back to debug so a developer who only ran `cargo build`
 // still gets a green Layer 2 run. A hard error (never a skip — vacuous-pass
@@ -246,12 +253,61 @@ async function startRealServer(opts) {
 
   await waitForServer(url, token, Math.max(1000, tokenDeadline - Date.now()));
 
+  // vnc-027: the hook UDS listener binds {dataDir}/unimatrix.sock during serve
+  // startup (paths.socket_path). Poll the socket file into existence so Layer 2
+  // UDS suites never race the bind. Hard-fail (never skip — #4452) if it never
+  // appears: that is a real regression, not a reason to silently pass.
+  const socketPath = path.join(dataDir, "unimatrix.sock");
+  const sockDeadline = Date.now() + Math.max(5000, startTimeoutMs);
+  for (;;) {
+    if (fs.existsSync(socketPath)) break;
+    if (Date.now() > sockDeadline) {
+      throw new Error(
+        "UDS hook socket not bound within " +
+          startTimeoutMs +
+          "ms at " +
+          socketPath +
+          "\n--- server log ---\n" +
+          Buffer.concat(serverLog).toString("utf8")
+      );
+    }
+    await sleep(50);
+  }
+
   return {
     url,
     token,
     home,
     projectDir,
+    socketPath,
     serverLog: () => Buffer.concat(serverLog).toString("utf8"),
+    /**
+     * vnc-027 UDS connect helper — post a HookRequest frame to the live hook
+     * listener over the daemon's Unix socket via the SHIPPED transport-uds
+     * module (cumulative infra; identical framing/lifecycle the client uses).
+     *
+     * @param {object} frame  HookRequest object (serde-tagged, as for HTTP post)
+     * @param {object} [opts] { sync: boolean } — sync half-closes + reads a reply
+     *                        (Text/Ack/Pong/Error); FNF write-then-FIN, status 0
+     * @returns {Promise<object>} SendResult { ok, status, contentType, body, failureClass }
+     */
+    udsPost(frame, opts) {
+      return transportUds.post({ socketPath }, frame, opts || {});
+    },
+    /**
+     * vnc-027 raw UDS connection — for adversarial framing tests (e.g. declared
+     * length > bytes actually sent, then destroy: the server-side truncation
+     * contract, ADR-003 §6 / R-01 s2). Resolves a net.Socket already connected.
+     *
+     * @returns {Promise<import("net").Socket>}
+     */
+    udsConnectRaw() {
+      const net = require("net");
+      return new Promise((resolve, reject) => {
+        const sock = net.connect(socketPath, () => resolve(sock));
+        sock.once("error", reject);
+      });
+    },
     post(frame, accept) {
       return postObserve(url, token, frame, accept);
     },
