@@ -1,16 +1,12 @@
 "use strict";
 
 /**
- * config.js — Spawn-time config resolution, project root walk, hash, state dir.
- *
- * ADR-006: env vars UNIMATRIX_REMOTE_URL/UNIMATRIX_REMOTE_TOKEN win outright
- * (partial pair = misconfiguration); otherwise exactly ONE file is read:
- * {project_root}/.claude/settings.local.json, key unimatrix.remote. The SAME
- * projectRoot string feeds the config lookup and the state-dir hash (ADR-003) so
- * config identity and state identity never disagree.
- *
- * Hash parity oracle: project.rs::compute_project_hash (first 16 hex of SHA-256
- * over the UTF-8 path string). Never throws; no network I/O.
+ * config.js — spawn-time config resolution, project root walk, hash, state dir.
+ * ADR-006: env pair UNIMATRIX_REMOTE_URL/_TOKEN wins outright (partial pair =
+ * misconfig); else ONE file: {root}/.claude/settings.local.json key
+ * unimatrix.remote. The SAME projectRoot feeds config lookup and state-dir
+ * hash (ADR-003). Hash oracle: project.rs::compute_project_hash. Never
+ * throws; no network I/O.
  */
 
 const crypto = require("crypto");
@@ -18,10 +14,10 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const ENV_URL = "UNIMATRIX_REMOTE_URL"; // pinned at gate (Delivery Notes 4)
+const ENV_URL = "UNIMATRIX_REMOTE_URL"; // pinned at gate
 const ENV_TOKEN = "UNIMATRIX_REMOTE_TOKEN";
 
-// ADR-005 defaults: connect 750 ms / sync 2,000 ms / fire-and-forget 3,000 ms.
+// ADR-005 defaults: connect / sync / fire-and-forget, in ms.
 const DEFAULT_TIMEOUTS = Object.freeze({
   connectMs: 750,
   syncMs: 2000,
@@ -37,17 +33,11 @@ const TIMEOUT_KEY_MAP = [
 const MAX_TIMEOUT_MS = 600000;
 
 /**
- * Non-throwing port of init.js detectProjectRoot / Rust detect_project_root:
- * walk up from startDir to the first directory containing `.git` (dir OR file —
- * worktrees). No `.git` found → resolved startDir (ADR-006). The result is
- * canonicalized (realpath) like project.rs `.canonicalize()` — otherwise the
- * same project reached via a symlink alias (macOS /var → /private/var, stdin
- * cwd vs process.cwd()) hashes to TWO state dirs and queued frames are never
- * replayed.
- *
- * Divergence from project.rs: Rust resolves `.git` worktree FILES to the real
- * gitdir; this walk stops at the containing directory. The hash is client-only
- * (state-dir identity), so worktree users get a per-worktree state dir.
+ * Non-throwing port of Rust detect_project_root: walk up to the first dir
+ * with `.git`. Dir → root; FILE (worktree) → resolveGitFile → MAIN repo root.
+ * None → resolved startDir (ADR-006). Realpath'd like `.canonicalize()` —
+ * else a symlink alias (macOS /var) hashes to TWO state dirs and queued
+ * frames are never replayed.
  */
 function walkToProjectRoot(startDir) {
   let current;
@@ -57,12 +47,16 @@ function walkToProjectRoot(startDir) {
     return startDir;
   }
   for (;;) {
+    let st = null;
     try {
-      if (fs.existsSync(path.join(current, ".git"))) {
-        return realpathOrSelf(current);
-      }
+      st = fs.statSync(path.join(current, ".git"));
     } catch (_err) {
-      // non-throwing contract (existsSync should not throw)
+      // .git absent — keep walking
+    }
+    if (st) {
+      return st.isFile()
+        ? resolveGitFile(path.join(current, ".git"), current)
+        : realpathOrSelf(current);
     }
     const parent = path.dirname(current);
     if (parent === current) {
@@ -73,9 +67,44 @@ function walkToProjectRoot(startDir) {
 }
 
 /**
- * fs.realpathSync with non-throwing fallback (nonexistent path, permission) —
- * project.rs propagates canonicalize errors via io::Result; the JS client's
- * fail-open contract returns the resolved string instead.
+ * project.rs::resolve_git_file port. A `.git` FILE marks a worktree; its
+ * `gitdir:` line points at <main>/.git/worktrees/<name> (relative paths
+ * resolve against the containing dir). Realpath the target, walk UP to the
+ * `.git` DIRECTORY ancestor, return its parent (realpath'd) — the main repo
+ * root — so every worktree shares ONE hash and ONE settings.local.json. ANY
+ * failure (unreadable, no gitdir line, dangling target, no .git-dir ancestor)
+ * → realpath of the containing dir (project.rs:112-113; Rust errors on a
+ * missing gitdir line, hook.rs then uses raw cwd — benign divergence).
+ */
+function resolveGitFile(gitFile, worktreeDir) {
+  try {
+    const line = fs
+      .readFileSync(gitFile, "utf8")
+      .split("\n")
+      .find((l) => l.startsWith("gitdir:"));
+    if (line) {
+      const raw = line.slice("gitdir:".length).trim();
+      let ancestor = fs.realpathSync(
+        path.isAbsolute(raw) ? raw : path.join(worktreeDir, raw)
+      );
+      for (;;) {
+        if (path.basename(ancestor) === ".git" && fs.statSync(ancestor).isDirectory()) {
+          return realpathOrSelf(path.dirname(ancestor));
+        }
+        const parent = path.dirname(ancestor);
+        if (parent === ancestor) break;
+        ancestor = parent;
+      }
+    }
+  } catch (_err) {
+    // fall through
+  }
+  return realpathOrSelf(worktreeDir);
+}
+
+/**
+ * fs.realpathSync with non-throwing fallback — project.rs propagates
+ * canonicalize errors; the fail-open JS contract returns the input instead.
  */
 function realpathOrSelf(p) {
   try {
@@ -86,8 +115,8 @@ function realpathOrSelf(p) {
 }
 
 /**
- * project.rs::compute_project_hash: first 16 hex of SHA-256 over the UTF-8 path
- * string from walkToProjectRoot (native separators, no trailing slash).
+ * project.rs::compute_project_hash: first 16 hex of SHA-256 over the UTF-8
+ * path from walkToProjectRoot (native separators, no trailing slash).
  */
 function computeProjectHash(projectRoot) {
   return crypto
@@ -98,9 +127,8 @@ function computeProjectHash(projectRoot) {
 }
 
 /**
- * Merge config timeout overrides over ADR-005 defaults. Keys:
- * unimatrix.remote.timeouts.{connect_ms,sync_ms,fnf_ms}. Invalid values ignored
- * (fail-open) — only finite numbers in [1, 600000] apply.
+ * Merge unimatrix.remote.timeouts.{connect_ms,sync_ms,fnf_ms} over ADR-005
+ * defaults. Invalid values ignored — only finite numbers in [1, 600000] apply.
  */
 function mergeTimeouts(t) {
   const out = {
@@ -124,10 +152,7 @@ function nonEmpty(v) {
   return typeof v === "string" && v.length > 0;
 }
 
-/**
- * Host of a URL for the content-free breadcrumb. Parse failure → "" — not
- * rejected here; transport.post classifies it "connect" at send time (fail-open).
- */
+/** URL host for the breadcrumb; parse failure → "" (transport classifies). */
 function safeHostOf(url) {
   try {
     return new URL(url).host;
@@ -137,9 +162,8 @@ function safeHostOf(url) {
 }
 
 /**
- * State dir per ADR-003: ~/.unimatrix/{hash}/hook-client. os.homedir() throwing
- * or empty (no HOME) → null; state.js treats null as "persistence disabled,
- * sends still attempted".
+ * ADR-003 state dir: ~/.unimatrix/{hash}/hook-client. No/empty homedir →
+ * null (state.js: persistence disabled, sends still attempted).
  */
 function stateDirFor(projectHash) {
   let home;
@@ -154,7 +178,7 @@ function stateDirFor(projectHash) {
   return path.join(home, ".unimatrix", projectHash, "hook-client");
 }
 
-/** Build a successful ResolvedConfig (url, token, timeouts, source, root, hash, stateDir). */
+/** Build a successful ResolvedConfig. */
 function ok(url, token, timeouts, source, projectRoot, projectHash, stateDir) {
   return {
     ok: true,
@@ -170,15 +194,10 @@ function ok(url, token, timeouts, source, projectRoot, projectHash, stateDir) {
 }
 
 /**
- * Resolve remote config per ADR-006 (first hit wins):
- *   1. env pair (partial pair = misconfiguration, reason "partial_env")
- *   2. {project_root}/.claude/settings.local.json → unimatrix.remote
- *   3. neither → { ok:false, reason:"missing" } (caller breadcrumbs + exits 0)
- * Never throws. No network I/O. Single file read, no probing.
- *
- * @param {string} cwd - resolved cwd (stdin.cwd if non-empty, else process.cwd()).
- * @returns {object} ResolvedConfig — { ok:true, ... } or { ok:false, reason,
- *   projectRoot, projectHash, stateDir }.
+ * Resolve remote config per ADR-006 (first hit wins): 1. env pair (partial →
+ * "partial_env") 2. {root}/.claude/settings.local.json → unimatrix.remote
+ * 3. neither → { ok:false, reason:"missing" }. Never throws; no network; one
+ * file read. @param {string} cwd stdin.cwd if non-empty, else process.cwd().
  */
 function resolve(cwd) {
   const startDir = nonEmpty(cwd) ? cwd : safeProcessCwd();
@@ -189,15 +208,15 @@ function resolve(cwd) {
   const envUrl = process.env[ENV_URL];
   const envTok = process.env[ENV_TOKEN];
   if (nonEmpty(envUrl) && nonEmpty(envTok)) {
-    // Env wins outright; the file is never consulted for url/token.
+    // Env wins outright; file never consulted.
     return ok(envUrl, envTok, mergeTimeouts(null), "env", projectRoot, projectHash, stateDir);
   }
   if (nonEmpty(envUrl) || nonEmpty(envTok)) {
-    // ADR-006: partial pair = misconfiguration (breadcrumb class "auth", exit 0).
+    // ADR-006: partial pair = misconfig (breadcrumb "auth", exit 0).
     return { ok: false, reason: "partial_env", projectRoot, projectHash, stateDir };
   }
 
-  // Single file, single read — no probing (ADR-006).
+  // Single read, no probing (ADR-006).
   const filePath = path.join(projectRoot, ".claude", "settings.local.json");
   let parsed;
   try {
@@ -219,7 +238,7 @@ function resolve(cwd) {
     !nonEmpty(remote.url) ||
     !nonEmpty(remote.token)
   ) {
-    // File present but key absent/incomplete → same as missing.
+    // Key absent/incomplete → same as missing.
     return { ok: false, reason: "missing", projectRoot, projectHash, stateDir };
   }
 
@@ -242,6 +261,7 @@ module.exports = {
   DEFAULT_TIMEOUTS,
   resolve,
   walkToProjectRoot,
+  resolveGitFile,
   computeProjectHash,
   mergeTimeouts,
   safeHostOf,

@@ -73,14 +73,18 @@ function walkToProjectRoot(startDir):
   try: current = path.resolve(startDir)
   catch: return startDir
   loop:
-    if fs.existsSync(path.join(current, ".git")): return current   // dir OR file (worktree)
+    if `.git` at current is a DIR: return current                  // normal repo root
+    if `.git` at current is a FILE: return resolveGitFile(...)     // worktree → MAIN repo root
     parent = path.dirname(current)
     if parent === current: return path.resolve(startDir)           // no .git → resolved cwd (ADR-006)
     current = parent
-// Documented divergence: Rust resolves `.git` worktree FILES to the real gitdir; this
-// walk stops at the directory containing `.git`. The hash is consumed only by THIS
-// client (state-dir identity), so internal consistency is what matters. Worktree users
-// get a per-worktree state dir — accepted.
+// (corrected post-delivery: ported resolve_git_file — see agent-26/27 reports.)
+// The original "accepted divergence" (stop at the dir containing a `.git` FILE) was
+// wrong: the root also anchors the settings.local.json lookup, so worktrees silently
+// lost config AND fragmented state dirs. resolveGitFile now mirrors
+// project.rs::resolve_git_file (parse `gitdir:`, resolve relative against the
+// containing dir, walk up to the `.git` DIRECTORY ancestor, return its parent;
+// any failure → fallback to the containing dir).
 ```
 
 ### computeProjectHash(projectRoot) -> string
