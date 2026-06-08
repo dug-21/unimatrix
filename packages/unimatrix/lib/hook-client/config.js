@@ -1,12 +1,14 @@
 "use strict";
 
 /**
- * config.js — spawn-time config resolution, project root walk, hash, state dir.
- * ADR-006: env pair UNIMATRIX_REMOTE_URL/_TOKEN wins outright (partial pair =
- * misconfig); else ONE file: {root}/.claude/settings.local.json key
- * unimatrix.remote. The SAME projectRoot feeds config lookup and state-dir
- * hash (ADR-003). Hash oracle: project.rs::compute_project_hash. Never
- * throws; no network I/O.
+ * config.js — spawn-time config + transport resolution, project root walk,
+ * hash, state dir, socket path. ADR-002 §3: env pair UNIMATRIX_REMOTE_URL/
+ * _TOKEN → http (partial pair = terminal misconfig); else ONE file:
+ * {root}/.claude/settings.local.json key unimatrix.remote → http; else local
+ * "uds" mode with a derived socketPath (ADR-007). The terminal "missing" path
+ * is retired. The SAME projectRoot feeds config lookup, state-dir hash, and
+ * socketPath (ADR-003, ADR-007 single derivation). Hash oracle:
+ * project.rs::compute_project_hash. Never throws; no network I/O.
  */
 
 const crypto = require("crypto");
@@ -178,10 +180,30 @@ function stateDirFor(projectHash) {
   return path.join(home, ".unimatrix", projectHash, "hook-client");
 }
 
-/** Build a successful ResolvedConfig. */
-function ok(url, token, timeouts, source, projectRoot, projectHash, stateDir) {
+/**
+ * ADR-007 §1 UDS socket path: ~/.unimatrix/{hash}/unimatrix.sock. SAME home +
+ * projectHash root as stateDirFor — single derivation, so state dir and socket
+ * path can never disagree (invariant: dirname(socketPath)===dirname(stateDir)).
+ * No/empty homedir → null (no socket can be derived → honest terminal misconfig).
+ */
+function socketPathFor(projectHash) {
+  let home;
+  try {
+    home = os.homedir();
+  } catch (_err) {
+    return null;
+  }
+  if (!nonEmpty(home)) {
+    return null;
+  }
+  return path.join(home, ".unimatrix", projectHash, "unimatrix.sock");
+}
+
+/** Build a successful HTTP-mode ResolvedConfig (ADR-002 §3). */
+function okHttp(url, token, timeouts, source, projectRoot, projectHash, stateDir) {
   return {
     ok: true,
+    mode: "http",
     url,
     token,
     timeouts,
@@ -194,10 +216,43 @@ function ok(url, token, timeouts, source, projectRoot, projectHash, stateDir) {
 }
 
 /**
- * Resolve remote config per ADR-006 (first hit wins): 1. env pair (partial →
- * "partial_env") 2. {root}/.claude/settings.local.json → unimatrix.remote
- * 3. neither → { ok:false, reason:"missing" }. Never throws; no network; one
- * file read. @param {string} cwd stdin.cwd if non-empty, else process.cwd().
+ * Build a successful UDS-mode ResolvedConfig (ADR-002 §3, ADR-007). urlHost ""
+ * (no remote host) keeps state.recordSendOutcomes/breadcrumbs working unchanged.
+ */
+function okUds(socketPath, projectRoot, projectHash, stateDir) {
+  return {
+    ok: true,
+    mode: "uds",
+    socketPath,
+    source: "local",
+    projectRoot,
+    projectHash,
+    stateDir,
+    urlHost: "",
+  };
+}
+
+/**
+ * UDS fall-through (ADR-002 §3, ADR-007): no remote config → local mode.
+ * Derives socketPath from the SAME projectHash as stateDir. No HOME → cannot
+ * derive a socket → honest terminal "malformed" (not the retired "missing").
+ */
+function resolveUds(projectRoot, projectHash, stateDir) {
+  const socketPath = socketPathFor(projectHash);
+  if (socketPath === null) {
+    return { ok: false, reason: "malformed", projectRoot, projectHash, stateDir };
+  }
+  return okUds(socketPath, projectRoot, projectHash, stateDir);
+}
+
+/**
+ * Resolve transport config (ADR-002 §3, first hit wins): 1. env pair → http
+ * (partial → terminal "partial_env") 2. {root}/.claude/settings.local.json
+ * unimatrix.remote → http (parse error other than ENOENT → terminal
+ * "malformed") 3. no remote config (ENOENT / no remote key / incomplete) →
+ * local "uds" mode with a derived socketPath. The terminal "missing" breadcrumb
+ * is retired: absent config now means local UDS, not a failure. Never throws;
+ * no network; one file read. @param {string} cwd stdin.cwd if non-empty.
  */
 function resolve(cwd) {
   const startDir = nonEmpty(cwd) ? cwd : safeProcessCwd();
@@ -208,22 +263,27 @@ function resolve(cwd) {
   const envUrl = process.env[ENV_URL];
   const envTok = process.env[ENV_TOKEN];
   if (nonEmpty(envUrl) && nonEmpty(envTok)) {
-    // Env wins outright; file never consulted.
-    return ok(envUrl, envTok, mergeTimeouts(null), "env", projectRoot, projectHash, stateDir);
+    // Env pair → HTTP, wins outright even if a local socket is live (OQ1); file
+    // never consulted, no probe (ADR-002 §3).
+    return okHttp(envUrl, envTok, mergeTimeouts(null), "env", projectRoot, projectHash, stateDir);
   }
   if (nonEmpty(envUrl) || nonEmpty(envTok)) {
-    // ADR-006: partial pair = misconfig (breadcrumb "auth", exit 0).
+    // Partial pair = misconfig: signals intent to use remote → terminal.
     return { ok: false, reason: "partial_env", projectRoot, projectHash, stateDir };
   }
 
-  // Single read, no probing (ADR-006).
+  // Single read, no probing (ADR-002 §3).
   const filePath = path.join(projectRoot, ".claude", "settings.local.json");
   let parsed;
   try {
     parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
   } catch (err) {
-    const reason = err && err.code === "ENOENT" ? "missing" : "malformed";
-    return { ok: false, reason, projectRoot, projectHash, stateDir };
+    if (err && err.code === "ENOENT") {
+      // File absent is NOT a misconfig → fall through to local UDS.
+      return resolveUds(projectRoot, projectHash, stateDir);
+    }
+    // Parse failure signals intent to use remote → terminal.
+    return { ok: false, reason: "malformed", projectRoot, projectHash, stateDir };
   }
 
   const remote =
@@ -238,12 +298,12 @@ function resolve(cwd) {
     !nonEmpty(remote.url) ||
     !nonEmpty(remote.token)
   ) {
-    // Key absent/incomplete → same as missing.
-    return { ok: false, reason: "missing", projectRoot, projectHash, stateDir };
+    // Remote key absent/incomplete → no longer "missing"; fall through to UDS.
+    return resolveUds(projectRoot, projectHash, stateDir);
   }
 
   const timeouts = mergeTimeouts(remote.timeouts);
-  return ok(remote.url, remote.token, timeouts, "file", projectRoot, projectHash, stateDir);
+  return okHttp(remote.url, remote.token, timeouts, "file", projectRoot, projectHash, stateDir);
 }
 
 /** process.cwd() guarded — non-throwing module contract. */
@@ -263,6 +323,7 @@ module.exports = {
   walkToProjectRoot,
   resolveGitFile,
   computeProjectHash,
+  socketPathFor,
   mergeTimeouts,
   safeHostOf,
 };

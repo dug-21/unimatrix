@@ -14,6 +14,7 @@ const {
   resolve,
   walkToProjectRoot,
   computeProjectHash,
+  socketPathFor,
   mergeTimeouts,
 } = config;
 
@@ -166,31 +167,31 @@ describe("config.resolve — FR-06 resolution matrix", function () {
   });
 
   it("test_missing_file", function () {
+    // ADR-002 §3: absent settings file is NOT a failure → local UDS mode.
     const root = makeProject();
     const result = resolve(root);
-    assert.strictEqual(result.ok, false);
-    assert.strictEqual(result.reason, "missing");
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.mode, "uds");
     assert.strictEqual(result.projectRoot, root);
     assert.ok(result.projectHash);
-    // Distinct from the misconfigured (partial_env) class.
-    assert.notStrictEqual(result.reason, "partial_env");
+    assert.notStrictEqual(result.reason, "missing", "the 'missing' reason is retired");
   });
 
   it("test_file_without_remote_key", function () {
-    const root = makeProject();
     // Claude Code key-drop simulation: file present, unimatrix.remote absent.
+    const root = makeProject();
     writeLocalSettings(root, { permissions: { allow: ["Read"] } });
     const result = resolve(root);
-    assert.strictEqual(result.ok, false);
-    assert.strictEqual(result.reason, "missing");
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.mode, "uds");
   });
 
   it("test_file_with_incomplete_remote_key", function () {
     const root = makeProject();
     writeLocalSettings(root, { unimatrix: { remote: { url: "https://x.example.com" } } });
     const result = resolve(root);
-    assert.strictEqual(result.ok, false);
-    assert.strictEqual(result.reason, "missing");
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.mode, "uds");
   });
 
   it("test_malformed_settings_json", function () {
@@ -240,6 +241,156 @@ describe("config.resolve — FR-06 resolution matrix", function () {
         const r = resolve(junk);
         assert.strictEqual(typeof r.ok, "boolean");
       });
+    }
+  });
+});
+
+// ── Transport selection — mode matrix + single derivation (ADR-002 §3,
+//    ADR-007, AC-02, R-05) ────────────────────────────────────────────
+
+describe("config.resolve — transport selection (ADR-002 §3, ADR-007)", function () {
+  it("test_remote_env_pair_yields_http_mode", function () {
+    const root = makeProject();
+    process.env[ENV_URL] = "https://env.example.com";
+    process.env[ENV_TOKEN] = "env-token";
+    const result = resolve(root);
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.mode, "http");
+    assert.strictEqual(result.url, "https://env.example.com");
+    assert.strictEqual(result.token, "env-token");
+    assert.strictEqual(result.socketPath, undefined, "no socketPath in http mode");
+  });
+
+  it("test_settings_local_remote_yields_http_mode", function () {
+    const root = makeProject();
+    writeLocalSettings(root, remoteSettings("https://file.example.com:8443", "tok"));
+    const result = resolve(root);
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.mode, "http");
+    assert.strictEqual(result.source, "file");
+    assert.strictEqual(result.socketPath, undefined);
+  });
+
+  it("test_http_wins_even_if_local_socket_live", function () {
+    // Remote config present → HTTP unconditionally; no probe for a live local
+    // socket, no override knob (FR-13, OQ1). The socket dir exists on disk here.
+    const root = makeProject();
+    const sockDir = path.join(os.homedir(), ".unimatrix", computeProjectHash(root));
+    fs.mkdirSync(sockDir, { recursive: true });
+    writeLocalSettings(root, remoteSettings("https://remote.example.com", "tok"));
+    const result = resolve(root);
+    assert.strictEqual(result.mode, "http", "remote config wins regardless of local socket");
+    assert.strictEqual(result.socketPath, undefined);
+  });
+
+  it("test_no_remote_yields_uds_mode_with_socketpath", function () {
+    const root = makeProject();
+    const result = resolve(root);
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.mode, "uds");
+    assert.strictEqual(result.source, "local");
+    assert.strictEqual(result.urlHost, "", "no remote host in uds mode");
+    assert.strictEqual(
+      result.socketPath,
+      path.join(os.homedir(), ".unimatrix", result.projectHash, "unimatrix.sock")
+    );
+  });
+
+  it("test_missing_breadcrumb_path_removed", function () {
+    // The former terminal { ok:false, reason:"missing" } no longer exists: every
+    // no-remote layout now resolves to UDS, never a "missing" breadcrumb.
+    const noFile = makeProject();
+    const noKey = makeProject();
+    writeLocalSettings(noKey, { permissions: { allow: ["Read"] } });
+    const incomplete = makeProject();
+    writeLocalSettings(incomplete, { unimatrix: { remote: { url: "https://x.example.com" } } });
+    for (const r of [resolve(noFile), resolve(noKey), resolve(incomplete)]) {
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.mode, "uds");
+      assert.notStrictEqual(r.reason, "missing");
+    }
+  });
+
+  it("test_partial_env_stays_terminal", function () {
+    const root = makeProject();
+    process.env[ENV_URL] = "https://env.example.com";
+    const result = resolve(root);
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.reason, "partial_env");
+    assert.strictEqual(result.mode, undefined, "no transport mode on a terminal result");
+  });
+
+  it("test_malformed_config_stays_terminal", function () {
+    const root = makeProject();
+    writeLocalSettings(root, "{ not json !!!");
+    const result = resolve(root);
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.reason, "malformed");
+    assert.strictEqual(result.mode, undefined);
+  });
+
+  it("test_no_home_uds_is_terminal_malformed", function () {
+    // No HOME → no socket can be derived → honest terminal, never "missing".
+    const root = makeProject();
+    const origHomedir = os.homedir;
+    os.homedir = function () {
+      throw new Error("no home directory");
+    };
+    let result;
+    try {
+      assert.doesNotThrow(function () {
+        result = resolve(root);
+      });
+    } finally {
+      os.homedir = origHomedir;
+    }
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.reason, "malformed");
+  });
+
+  it("test_no_remote_no_daemon_resolves_uds_not_terminal", function () {
+    // R-13: resolution succeeds in UDS mode even with no daemon present (the
+    // enqueue path owns the no-daemon UX, not a terminal config breadcrumb).
+    const root = makeProject();
+    const result = resolve(root);
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.mode, "uds");
+    assert.ok(result.socketPath, "socketPath derived even with no live daemon");
+  });
+
+  // ── Single-derivation invariant (ADR-007 §1, R-05 s3) ─────────────
+
+  it("test_socketpath_dirname_equals_statedir_parent", function () {
+    // Both live under ~/.unimatrix/{projectHash}/ — they can never disagree.
+    for (const opts of [{}, { git: false }]) {
+      const root = makeProject(opts);
+      const result = resolve(root);
+      assert.strictEqual(result.mode, "uds");
+      assert.strictEqual(path.dirname(result.socketPath), path.dirname(result.stateDir));
+    }
+  });
+
+  it("test_socketpath_uses_same_projecthash_as_statedir", function () {
+    const root = makeProject();
+    const sub = path.join(root, "deep", "er");
+    fs.mkdirSync(sub, { recursive: true });
+    const result = resolve(sub);
+    // One computeProjectHash(walkToProjectRoot(cwd)); socketPathFor consumes it.
+    assert.strictEqual(result.projectHash, computeProjectHash(root));
+    assert.strictEqual(result.socketPath, socketPathFor(result.projectHash));
+    assert.ok(result.socketPath.includes(result.projectHash));
+    assert.ok(result.stateDir.includes(result.projectHash));
+  });
+
+  it("test_socketpathfor_null_on_no_home", function () {
+    const origHomedir = os.homedir;
+    os.homedir = function () {
+      return "";
+    };
+    try {
+      assert.strictEqual(socketPathFor("deadbeefdeadbeef"), null);
+    } finally {
+      os.homedir = origHomedir;
     }
   });
 });
