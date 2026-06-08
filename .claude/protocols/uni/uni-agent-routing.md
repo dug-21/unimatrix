@@ -154,6 +154,9 @@ Step 4:       Return to human — REVIEW ENDS
 ```
 Human invokes: /uni-retro {feature-id} {pr-number}
 Phase 1:      Data gathering (context_cycle_review + artifact review)
+              — if the response carries a transcript_candidates section (crt-052), consume it
+                per uni-retro "Consuming transcript_candidates": advisory family_hints, Q8 folds,
+                provenance/loss weighting, call-time-vs-cached, feature-attributed context_store
 Phase 2:      uni-architect (pattern/procedure extraction + ADR validation)
 Phase 3:      ADR supersession (if flagged, requires human approval)
 Phase 4:      Worktree cleanup
