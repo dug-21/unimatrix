@@ -68,6 +68,8 @@ context_cycle(
 
 This sets session-level feature attribution so all subsequent tool calls are tracked against this feature.
 
+> **Resuming an interrupted session**: On re-entering a broken or resumed session, the leader's FIRST action is to re-issue `context_cycle(type:"start", topic:"{feature-id}")` (idempotent server-side — `AlreadyMatches`; recreates the client tracker).
+
 ---
 
 ## Flow: Phase 1 + Phase 2
