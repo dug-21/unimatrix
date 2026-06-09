@@ -286,6 +286,21 @@ impl EmbedServiceHandle {
         *state = EmbedState::Ready(adapter);
     }
 
+    /// Inject a ready adapter built from a caller-supplied embedding provider.
+    ///
+    /// nan-018 (eval-only): the fixture-corpus sweep (`eval/runner/sweep.rs`) embeds
+    /// the corpus with an INJECTED [`EmbeddingProvider`] (ADR-002 branch (b)). The
+    /// SearchService embeds the *query* through this handle, so it MUST use the same
+    /// provider — otherwise query and corpus vectors come from different models and
+    /// retrieval is empty (the R-15 vacuous-proof failure). This seam wires the same
+    /// provider into the search path. It is `pub(crate)` and used ONLY on the
+    /// eval/measurement path; production keeps the ONNX loading path (`start_loading`).
+    pub(crate) async fn set_ready_with_provider(&self, provider: Arc<dyn EmbeddingProvider>) {
+        let adapter = Arc::new(EmbedAdapter::new(provider));
+        let mut state = self.state.write().await;
+        *state = EmbedState::Ready(adapter);
+    }
+
     /// Set state directly for testing.
     #[cfg(test)]
     async fn set_failed_for_test(&self, msg: String, attempts: u32) {

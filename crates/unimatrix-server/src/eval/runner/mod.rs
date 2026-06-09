@@ -20,8 +20,11 @@ mod metrics;
 mod output;
 pub(crate) mod profile_meta;
 mod replay;
+pub mod sweep;
 pub mod trust;
 
+#[cfg(test)]
+mod sweep_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -33,6 +36,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 pub use output::{ComparisonMetrics, ProfileResult, RankChange, ScenarioResult, ScoredEntry};
+pub use sweep::{SweepOutcome, default_fixtures_dir, run_fixture_sweep};
 
 use crate::eval::profile::{EvalError, EvalProfile, EvalServiceLayer, parse_profile_toml};
 use crate::export::block_export_sync;

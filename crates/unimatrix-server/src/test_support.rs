@@ -190,6 +190,8 @@ impl TestHarness {
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
             // crt-031: default lifecycle policy for test harness.
             Arc::new(crate::infra::categories::CategoryAllowlist::new()),
+            // nan-018 (ADR-006): default penalties for the test harness (production parity).
+            unimatrix_engine::graph::GraphPenaltyParams::default(),
         );
 
         Some(TestHarness { layer, store })

@@ -353,6 +353,9 @@ impl ServiceLayer {
             observation_registry,
             confidence_params,
             category_allowlist,
+            // nan-018 (ADR-006): production deployment keeps fixed default penalties.
+            // The swept `[graph_penalty]` levers are eval-only; production never tunes.
+            unimatrix_engine::graph::GraphPenaltyParams::default(),
         )
     }
 
@@ -375,6 +378,12 @@ impl ServiceLayer {
         observation_registry: Arc<DomainPackRegistry>,
         confidence_params: Arc<unimatrix_engine::confidence::ConfidenceParams>,
         category_allowlist: Arc<CategoryAllowlist>, // crt-031: NEW
+        // nan-018 (ADR-001/ADR-006): topology-penalty levers for the SearchService.
+        // Production callers (ServiceLayer::new) pass `GraphPenaltyParams::default()`
+        // so deployed ranking stays bit-for-bit fixed (eval-only exposure boundary).
+        // The eval profile layer (eval/profile/layer.rs) passes the profile's resolved
+        // `graph_penalty.resolve_params()` so a swept TOML lever is LIVE on the eval path.
+        graph_penalty_params: unimatrix_engine::graph::GraphPenaltyParams,
     ) -> Self {
         let gateway = Arc::new(SecurityGateway::with_rate_config(
             Arc::clone(&audit),
@@ -429,10 +438,11 @@ impl ServiceLayer {
             inference_config.ppr_expander_enabled, // crt-042
             inference_config.expansion_depth,      // crt-042
             inference_config.max_expansion_candidates, // crt-042
-            // nan-018 (ADR-001): production deployment keeps fixed default penalties
-            // (eval-only exposure boundary, ADR-006). The swept `[graph_penalty]` levers
-            // are resolved and threaded at the eval profile site (eval/profile/layer.rs).
-            unimatrix_engine::graph::GraphPenaltyParams::default(),
+            // nan-018 (ADR-001/ADR-006): caller-supplied topology-penalty levers.
+            // `ServiceLayer::new` (production) supplies `GraphPenaltyParams::default()`
+            // so deployed ranking is fixed bit-for-bit; the eval profile layer supplies
+            // the profile's resolved swept params so the lever is LIVE on the eval path.
+            graph_penalty_params,
         );
 
         let store_ops = StoreService::new(
