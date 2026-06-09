@@ -17,4 +17,6 @@ mod types;
 mod tests;
 
 pub use output::run_scenarios;
-pub use types::{ScenarioBaseline, ScenarioContext, ScenarioRecord, ScenarioSource};
+pub use types::{
+    EntryRef, ExpectedAssertions, ScenarioBaseline, ScenarioContext, ScenarioRecord, ScenarioSource,
+};

@@ -45,6 +45,7 @@ fn make_scenario(
         }),
         source: "mcp".to_string(),
         expected,
+        assertions: None,
     }
 }
 

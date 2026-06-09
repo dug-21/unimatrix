@@ -13,6 +13,7 @@
 
 use std::path::{Path, PathBuf};
 
+pub mod corpus;
 pub mod profile;
 pub mod report;
 pub mod runner;

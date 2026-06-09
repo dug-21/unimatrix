@@ -33,6 +33,67 @@ impl ScenarioSource {
 }
 
 // ---------------------------------------------------------------------------
+// Property-based assertions (nan-018, ADR-004) — shared on-disk types
+// ---------------------------------------------------------------------------
+
+/// A stable handle to a corpus entry: a fixture alias such as `"chainA.head"`.
+///
+/// Authored against in fixture TOML and resolved to a concrete entry id at load
+/// time by the corpus loader (`eval/corpus/`). Using an alias rather than a
+/// literal id means property assertions survive a re-snapshot / id renumber
+/// (nan-018 R-10).
+pub type EntryRef = String;
+
+/// Property-based ground truth for a primary-corpus scenario (nan-018, ADR-004).
+///
+/// The primary fixture corpus asserts *outcomes*, never literal ids (C-04):
+/// every assertion below is authored against a corpus alias (`EntryRef`) and
+/// resolved at load. This is the on-disk shape; evaluation lives in
+/// `eval/runner/trust.rs::evaluate_trust`. The three property families are:
+///
+/// - `redirect_to_head` — the terminal-active chain head must be present at or
+///   above each of its queried (superseded) members.
+/// - `forbidden_absent` — each alias must be absent from the result top-k.
+/// - `rank_below` — for `(A, B)`, A must rank strictly below B (or A absent).
+///
+/// Field names and shape are the load-bearing Integration Surface
+/// (architecture §6); downstream components import this type rather than
+/// redefining it.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ExpectedAssertions {
+    /// Chain-head aliases that must surface at/above their superseded members.
+    #[serde(default)]
+    pub redirect_to_head: Vec<EntryRef>,
+    /// Aliases that must NOT appear in the result top-k.
+    #[serde(default)]
+    pub forbidden_absent: Vec<EntryRef>,
+    /// `(A, B)` pairs where A must rank strictly below B.
+    #[serde(default)]
+    pub rank_below: Vec<(EntryRef, EntryRef)>,
+}
+
+impl ExpectedAssertions {
+    /// Every alias referenced by any assertion in this set.
+    ///
+    /// Used by the loader to validate that each referenced alias resolves
+    /// (nan-018 R-10) — a missing alias is a hard load error, never a silent
+    /// vacuous pass.
+    pub fn referenced_aliases(&self) -> impl Iterator<Item = &EntryRef> {
+        self.redirect_to_head
+            .iter()
+            .chain(self.forbidden_absent.iter())
+            .chain(self.rank_below.iter().flat_map(|(a, b)| [a, b]))
+    }
+
+    /// True when this set carries no assertions of any kind.
+    pub fn is_empty(&self) -> bool {
+        self.redirect_to_head.is_empty()
+            && self.forbidden_absent.is_empty()
+            && self.rank_below.is_empty()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // ScenarioRecord and sub-types
 // ---------------------------------------------------------------------------
 
@@ -55,6 +116,14 @@ pub struct ScenarioRecord {
     pub source: String,
     /// Hard labels for the expected result set. Always `null` for log-sourced scenarios.
     pub expected: Option<Vec<u64>>,
+    /// Property-based ground truth for primary-corpus scenarios (nan-018, ADR-004).
+    ///
+    /// Additive and orthogonal to `expected`: log-sourced scenarios never set it,
+    /// and the primary fixture corpus uses `assertions` and NEVER `expected`
+    /// (C-04, loader-enforced). `#[serde(default)]` so existing JSONL without the
+    /// field deserializes unchanged (backward wire-compat).
+    #[serde(default)]
+    pub assertions: Option<ExpectedAssertions>,
 }
 
 /// Execution context metadata extracted from the query log row.
