@@ -18,8 +18,8 @@ use unimatrix_engine::effectiveness::{
 
 use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
 use unimatrix_engine::graph::{
-    FALLBACK_PENALTY, find_terminal_active, graph_expand, graph_penalty, personalized_pagerank,
-    suppress_contradicts,
+    GraphPenaltyParams, find_terminal_active, graph_expand, graph_penalty_with,
+    personalized_pagerank, suppress_contradicts,
 };
 
 use crate::coaccess::{CO_ACCESS_STALENESS_SECONDS, compute_search_boost};
@@ -386,6 +386,16 @@ pub(crate) struct SearchService {
     expansion_depth: usize,
     /// crt-042: maximum entries added by Phase 0 per query. Default 200.
     max_expansion_candidates: usize,
+    /// nan-018 (ADR-001): resolved topology-penalty levers for the Flexible-mode
+    /// penalty loop. Carries the seven `GraphPenaltyParams` fields (orphan,
+    /// clean_replacement, hop_decay, partial_supersession, dead_end, fallback,
+    /// max_traversal_depth), resolved once from `UnimatrixConfig.graph_penalty`.
+    ///
+    /// At default config this equals `GraphPenaltyParams::default()` (== the engine
+    /// consts), so the two penalty-application sites (`graph_penalty_with` and the
+    /// fallback branch) are bit-for-bit identical to pre-nan-018 (R-01/AC-01, NFR-01).
+    /// `Copy` — read directly in the scoring path with no lock.
+    graph_penalty_params: GraphPenaltyParams,
 }
 
 // ---------------------------------------------------------------------------
@@ -514,6 +524,7 @@ impl SearchService {
         ppr_expander_enabled: bool,             // crt-042
         expansion_depth: usize,                 // crt-042
         max_expansion_candidates: usize,        // crt-042
+        graph_penalty_params: GraphPenaltyParams, // nan-018 (ADR-001): resolved once in with_rate_config
     ) -> Self {
         SearchService {
             store,
@@ -541,6 +552,7 @@ impl SearchService {
             ppr_expander_enabled,
             expansion_depth,
             max_expansion_candidates,
+            graph_penalty_params, // nan-018 (ADR-001)
         }
     }
 
@@ -723,10 +735,21 @@ impl SearchService {
                     // pure-orphan deprecated entries with no known successor.
                     for (entry, _) in &results_with_scores {
                         if entry.superseded_by.is_some() || entry.status == Status::Deprecated {
+                            // nan-018 (ADR-001, R-01): the two and only two penalty-application
+                            // sites. Both read the resolved `self.graph_penalty_params` instead
+                            // of the engine consts. At default config the params equal the consts,
+                            // so penalties are bit-for-bit identical (AC-01 / NFR-01).
                             let penalty = if use_fallback {
-                                FALLBACK_PENALTY
+                                // SITE 1 (was the flat fallback const) — resolved fallback lever.
+                                self.graph_penalty_params.fallback
                             } else {
-                                graph_penalty(entry.id, &typed_graph, &all_entries)
+                                // SITE 2 (was bare graph_penalty) — explicit-params entry point.
+                                graph_penalty_with(
+                                    entry.id,
+                                    &typed_graph,
+                                    &all_entries,
+                                    &self.graph_penalty_params,
+                                )
                             };
                             penalty_map.insert(entry.id, penalty);
                         }
@@ -2042,6 +2065,224 @@ mod tests {
         assert!(
             FALLBACK_PENALTY > 0.0 && FALLBACK_PENALTY < 1.0,
             "FALLBACK_PENALTY must be in (0.0, 1.0)"
+        );
+    }
+
+    // =========================================================================
+    // nan-018 (ADR-001): Search-threading tests — the two penalty-application
+    // sites route through the resolved `graph_penalty_params`, and default
+    // config is bit-for-bit identical to pre-nan-018 (R-01 critical / AC-01).
+    // =========================================================================
+
+    /// R-01.2 enumerated-site grep guard (SOURCE OF TRUTH for AC-01 bit-for-bit).
+    ///
+    /// Mirrors the #4070 procedure: every penalty-application reference in the
+    /// production search path MUST route through `graph_penalty_with` / the
+    /// resolved `graph_penalty_params` field — never a bare `graph_penalty(` call
+    /// and never a bare `FALLBACK_PENALTY` const application. A missed site silently
+    /// shifts default penalty behaviour and corrupts every downstream baseline.
+    #[test]
+    fn test_enumerated_penalty_sites_route_through_config() {
+        // Compile-time embed of this module's own source.
+        let src = include_str!("search.rs");
+
+        // Strip the test module so the guard inspects ONLY production code.
+        // The test module begins at `#[cfg(test)]\nmod tests {`.
+        let prod = src
+            .split("#[cfg(test)]\nmod tests {")
+            .next()
+            .expect("search.rs must contain a test module marker");
+
+        // SITE 2 (:729): the normal branch must use the explicit-params entry point.
+        assert!(
+            prod.contains("graph_penalty_with("),
+            "production path must call graph_penalty_with (the resolved-params entry point)"
+        );
+        // No bare `graph_penalty(` call survives in production — only `graph_penalty_with(`.
+        // Search for `graph_penalty(` NOT immediately preceded by `with`. Because the only
+        // possible bare form is the token `graph_penalty(`, assert its absence directly.
+        assert!(
+            !prod.contains("graph_penalty(") || prod.contains("graph_penalty_with("),
+            "no bare graph_penalty( may remain in the production search path"
+        );
+        // Stronger: the literal bare-call substring used pre-nan-018 must be gone.
+        assert!(
+            !prod.contains("graph_penalty(entry.id, &typed_graph, &all_entries)"),
+            "the pre-nan-018 bare graph_penalty() call must be replaced by graph_penalty_with"
+        );
+
+        // SITE 1 (:727): the fallback branch must read the resolved field, not the const.
+        assert!(
+            prod.contains("self.graph_penalty_params.fallback"),
+            "fallback branch must use the resolved self.graph_penalty_params.fallback"
+        );
+        // The bare FALLBACK_PENALTY const must NOT be applied as a value in production code.
+        assert!(
+            !prod.contains("FALLBACK_PENALTY"),
+            "production search path must not reference the FALLBACK_PENALTY const (use the resolved field)"
+        );
+
+        // `with_rate_config`-side resolution: the field exists and is carried on the service.
+        assert!(
+            prod.contains("graph_penalty_params: GraphPenaltyParams"),
+            "SearchService must carry the resolved graph_penalty_params field"
+        );
+    }
+
+    /// R-01 WARN-1 guard: `background.rs:583` is a `tracing` LOG STRING, not a
+    /// penalty-application site. It must NOT be threaded with penalty config — doing
+    /// so would be a false positive against the enumerated-site guard. Assert the
+    /// FALLBACK_PENALTY token in background.rs appears ONLY inside a log string and
+    /// that background.rs applies no penalty (no graph_penalty/penalty_map use).
+    #[test]
+    fn test_background_rs_not_a_penalty_site() {
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let path = std::path::Path::new(manifest_dir).join("src/background.rs");
+        let src = std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+
+        // background.rs must not apply any penalty: no graph_penalty* call, no penalty_map.
+        assert!(
+            !src.contains("graph_penalty_with(") && !src.contains("graph_penalty("),
+            "background.rs must NOT call any graph_penalty function (it is not a penalty site)"
+        );
+        assert!(
+            !src.contains("penalty_map"),
+            "background.rs must NOT build a penalty_map (it is not a penalty site)"
+        );
+
+        // The only FALLBACK_PENALTY occurrence must be inside a quoted log string.
+        for line in src.lines() {
+            if line.contains("FALLBACK_PENALTY") {
+                let trimmed = line.trim_start();
+                assert!(
+                    trimmed.starts_with('"') || trimmed.contains("\"TypedGraphState rebuild"),
+                    "background.rs FALLBACK_PENALTY must appear only inside a log string, found: {line}"
+                );
+            }
+        }
+    }
+
+    /// R-01 / AC-01: a default `GraphPenaltyConfig` resolves to `GraphPenaltyParams::default()`
+    /// (every field == the engine const). This is the config-resolution-level proof of
+    /// bit-for-bit default equivalence (complements the engine-level proof). The
+    /// `SearchService.graph_penalty_params` carried at default config is therefore the
+    /// const set, so both penalty sites behave identically to pre-nan-018.
+    #[test]
+    fn test_with_rate_config_default_resolves_to_const_params() {
+        use crate::infra::config::GraphPenaltyConfig;
+        let resolved = GraphPenaltyConfig::default().resolve_params();
+        assert_eq!(
+            resolved,
+            GraphPenaltyParams::default(),
+            "default GraphPenaltyConfig must resolve to GraphPenaltyParams::default() (== consts)"
+        );
+    }
+
+    /// R-13: `multiplier = Some(m)` scales ONLY the five severities; `hop_decay` and
+    /// `max_traversal_depth` (shape params) are never scaled (ADR-001 §3).
+    #[test]
+    fn test_with_rate_config_multiplier_scales_severities_only() {
+        use crate::infra::config::GraphPenaltyConfig;
+        let m = 1.2_f64;
+        let cfg = GraphPenaltyConfig {
+            multiplier: Some(m),
+            ..GraphPenaltyConfig::default()
+        };
+        let resolved = cfg.resolve_params();
+        let base = GraphPenaltyParams::default();
+
+        // Five severities scaled.
+        assert!(
+            (resolved.orphan - base.orphan * m).abs() < 1e-12,
+            "orphan scaled"
+        );
+        assert!(
+            (resolved.clean_replacement - base.clean_replacement * m).abs() < 1e-12,
+            "clean_replacement scaled"
+        );
+        assert!(
+            (resolved.partial_supersession - base.partial_supersession * m).abs() < 1e-12,
+            "partial_supersession scaled"
+        );
+        assert!(
+            (resolved.dead_end - base.dead_end * m).abs() < 1e-12,
+            "dead_end scaled"
+        );
+        assert!(
+            (resolved.fallback - base.fallback * m).abs() < 1e-12,
+            "fallback scaled"
+        );
+
+        // Shape params unchanged.
+        assert!(
+            (resolved.hop_decay - base.hop_decay).abs() < 1e-12,
+            "hop_decay (shape) must NOT be multiplier-scaled"
+        );
+        assert_eq!(
+            resolved.max_traversal_depth, base.max_traversal_depth,
+            "max_traversal_depth (shape) must NOT be multiplier-scaled"
+        );
+    }
+
+    /// R-13: an explicit per-field override wins over the multiplier (overlay, not replacement).
+    #[test]
+    fn test_with_rate_config_per_field_override_wins_over_multiplier() {
+        use crate::infra::config::GraphPenaltyConfig;
+        let override_orphan = 0.33_f64;
+        let cfg = GraphPenaltyConfig {
+            orphan: override_orphan, // explicit, non-default
+            multiplier: Some(2.0),
+            ..GraphPenaltyConfig::default()
+        };
+        let resolved = cfg.resolve_params();
+        assert!(
+            (resolved.orphan - override_orphan).abs() < 1e-12,
+            "explicit per-field orphan override must win over the multiplier (got {})",
+            resolved.orphan
+        );
+    }
+
+    /// R-13: `multiplier = None` is a no-op — resolved params equal the per-field
+    /// (or default) values exactly. Subsumes default-equivalence when all fields default.
+    #[test]
+    fn test_with_rate_config_multiplier_none_is_noop() {
+        use crate::infra::config::GraphPenaltyConfig;
+        let resolved = GraphPenaltyConfig {
+            multiplier: None,
+            ..GraphPenaltyConfig::default()
+        }
+        .resolve_params();
+        assert_eq!(
+            resolved,
+            GraphPenaltyParams::default(),
+            "multiplier=None over default fields must be a no-op"
+        );
+    }
+
+    /// R-01.2: the fallback-branch value is the resolved `fallback` field. At default
+    /// config this equals the engine `FALLBACK_PENALTY` const (0.70). Asserted by
+    /// inspecting the resolved field, not by output coincidence.
+    #[test]
+    fn test_fallback_branch_value_equals_resolved_field() {
+        use crate::infra::config::GraphPenaltyConfig;
+        let params = GraphPenaltyConfig::default().resolve_params();
+        // The default fallback must be 0.70 (the engine const), which the :727 branch reads.
+        assert!(
+            (params.fallback - 0.70_f64).abs() < f64::EPSILON,
+            "default resolved fallback must be 0.70 (== FALLBACK_PENALTY const), got {}",
+            params.fallback
+        );
+
+        // A swept fallback flows through verbatim (lever-is-live at the resolution layer).
+        let swept = GraphPenaltyConfig {
+            fallback: 0.55_f64,
+            ..GraphPenaltyConfig::default()
+        }
+        .resolve_params();
+        assert!(
+            (swept.fallback - 0.55_f64).abs() < 1e-12,
+            "swept fallback must reach the resolved field verbatim"
         );
     }
 

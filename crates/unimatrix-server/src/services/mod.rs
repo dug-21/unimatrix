@@ -429,6 +429,10 @@ impl ServiceLayer {
             inference_config.ppr_expander_enabled, // crt-042
             inference_config.expansion_depth,      // crt-042
             inference_config.max_expansion_candidates, // crt-042
+            // nan-018 (ADR-001): production deployment keeps fixed default penalties
+            // (eval-only exposure boundary, ADR-006). The swept `[graph_penalty]` levers
+            // are resolved and threaded at the eval profile site (eval/profile/layer.rs).
+            unimatrix_engine::graph::GraphPenaltyParams::default(),
         );
 
         let store_ops = StoreService::new(
