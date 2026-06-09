@@ -1,0 +1,51 @@
+# Shape 1 — multi-correction chain (depth > 1, single Active terminal).
+#
+# Topology:  jwt.v1 -> jwt.v2 -> jwt.v3 -> jwt.head   (Active terminal at head)
+# Penalty branch exercised: clean_replacement x hop_decay^(d-1) + clamp.
+#   - jwt.v3 is depth 1 from head (hop_decay^0).
+#   - jwt.v2 is depth 2 (hop_decay^1).
+#   - jwt.v1 is depth 3 (hop_decay^2) -> clamp territory.
+# Property assertions ONLY: redirect-to-head + rank-below (no literal ids, no null).
+
+[[entries]]
+alias = "jwt.v1"
+title = "JWT validation original"
+content = "validate the exp claim and reject expired tokens before trusting the subject"
+status = "Deprecated"
+superseded_by = ["jwt.v2"]
+category = "auth"
+
+[[entries]]
+alias = "jwt.v2"
+title = "JWT validation revised"
+content = "validate exp and nbf claims and verify the issuer before trusting the subject"
+status = "Deprecated"
+superseded_by = ["jwt.v3"]
+category = "auth"
+
+[[entries]]
+alias = "jwt.v3"
+title = "JWT validation hardened"
+content = "validate exp nbf aud and iss claims and pin the signing algorithm before trust"
+status = "Deprecated"
+superseded_by = ["jwt.head"]
+category = "auth"
+
+[[entries]]
+alias = "jwt.head"
+title = "JWT validation current guidance"
+content = "validate exp nbf aud iss claims pin the signing algorithm and reject none alg"
+status = "Active"
+superseded_by = []
+category = "auth"
+
+[[scenarios]]
+id = "multi-correction-chain.redirect"
+query = "how should I validate a JWT token"
+[scenarios.assertions]
+redirect_to_head = ["jwt.head"]
+rank_below = [
+  ["jwt.v1", "jwt.head"],
+  ["jwt.v2", "jwt.head"],
+  ["jwt.v3", "jwt.head"],
+]

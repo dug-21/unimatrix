@@ -1,0 +1,103 @@
+# Shape 4 — deprecated-but-connected (absence / rank-below under connectivity).
+#
+# THE high-variation shape (ADR-004 §5). The downstream ass-073 steepness sweep
+# (varying clean_replacement / the deprecation multiplier) must find the crossover
+# — the point where a connected-deprecated entry crosses the weakest-active
+# threshold — inside a BRACKETED RANGE of points, not at a single exemplar.
+#
+# To make that bracket real this shape authors:
+#   * FIVE connected-deprecated entries (db.dep1..db.dep5) spanning a spread of
+#     query-similarity (verbatim query terms -> few shared terms) AND a spread of
+#     connectivity (standalone-deprecated, depth-1 chain, depth-2 chain).
+#   * THREE active entries (db.actStrong / db.actMid / db.actWeak) forming the
+#     active band so "the weakest active" is itself a spread, not a single line.
+# A penalty sweep over these pairs therefore crosses the threshold at a sequence
+# of distinct points -> a bracketed range, the §5 obligation.
+#
+# Property assertions ONLY. forbidden-absent for the clearly-stale; rank-below
+# (deprecated, weakest_active) for the connected-deprecated band.
+
+# --- active band (the "weakest-active threshold" is a spread, not one line) ----
+
+[[entries]]
+alias = "db.actStrong"
+title = "Connection pool sizing current and recommended"
+content = "size the database connection pool to cores times two and recycle idle connections on a timer"
+status = "Active"
+superseded_by = []
+category = "database"
+
+[[entries]]
+alias = "db.actMid"
+title = "Connection pool health checks"
+content = "validate pooled database connections with a lightweight ping before checkout under load"
+status = "Active"
+superseded_by = []
+category = "database"
+
+[[entries]]
+alias = "db.actWeak"
+title = "Connection pool metrics"
+content = "export pool saturation and checkout wait metrics so the database pool can be tuned"
+status = "Active"
+superseded_by = []
+category = "database"
+
+# --- connected-deprecated band: spread of similarity x connectivity -----------
+
+# dep1 — HIGH query-similarity, standalone deprecated (orphan connectivity).
+[[entries]]
+alias = "db.dep1"
+title = "Connection pool sizing deprecated"
+content = "size the database connection pool to a single fixed connection shared across all request threads"
+status = "Deprecated"
+superseded_by = []
+category = "database"
+
+# dep2 — HIGH similarity, depth-1 chain into actStrong (clean replacement, d=1).
+[[entries]]
+alias = "db.dep2"
+title = "Connection pool sizing earlier guidance"
+content = "size the database connection pool to a static count of ten and never recycle idle connections"
+status = "Deprecated"
+superseded_by = ["db.actStrong"]
+category = "database"
+
+# dep3 — MID similarity, depth-2 chain (hop_decay region, d=2).
+[[entries]]
+alias = "db.dep3"
+title = "Connection pool original draft"
+content = "open one database connection per request and close it immediately afterwards without pooling"
+status = "Deprecated"
+superseded_by = ["db.dep2"]
+category = "database"
+
+# dep4 — MID similarity, standalone deprecated.
+[[entries]]
+alias = "db.dep4"
+title = "Connection handling deprecated note"
+content = "share a global database handle across worker threads and rely on the driver for safety"
+status = "Deprecated"
+superseded_by = []
+category = "database"
+
+# dep5 — LOW similarity, standalone deprecated (far end of the bracket).
+[[entries]]
+alias = "db.dep5"
+title = "Legacy datastore access note"
+content = "access the datastore directly from the controller layer with ad hoc inline queries"
+status = "Deprecated"
+superseded_by = []
+category = "database"
+
+[[scenarios]]
+id = "deprecated-connected.rank-below-band"
+query = "how should I size the database connection pool"
+[scenarios.assertions]
+forbidden_absent = ["db.dep5"]
+rank_below = [
+  ["db.dep1", "db.actWeak"],
+  ["db.dep2", "db.actWeak"],
+  ["db.dep3", "db.actMid"],
+  ["db.dep4", "db.actStrong"],
+]

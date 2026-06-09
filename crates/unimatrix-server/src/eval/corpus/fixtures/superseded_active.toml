@@ -1,0 +1,33 @@
+# Shape 3 — superseded-but-Active (status/topology conflict path).
+#
+# Topology:  retry.legacy  is marked superseded (it points at retry.head via
+#            superseded_by) YET its own status is Active — the conflict case
+#            where lifecycle status and supersession topology disagree.
+#            retry.head is the Active terminal it is superseded by.
+# Penalty branch exercised: status/topology conflict (Active node that is also
+#            a superseded predecessor).
+# Property assertions ONLY: rank-below (the still-Active-but-superseded node must
+#            rank below the terminal head) + redirect-to-head.
+
+[[entries]]
+alias = "retry.legacy"
+title = "Retry policy still in rotation"
+content = "retry failed requests three times with a fixed one second delay between attempts"
+status = "Active"
+superseded_by = ["retry.head"]
+category = "resilience"
+
+[[entries]]
+alias = "retry.head"
+title = "Retry policy current"
+content = "retry failed requests with exponential backoff full jitter and a capped ceiling"
+status = "Active"
+superseded_by = []
+category = "resilience"
+
+[[scenarios]]
+id = "superseded-active.rank-below"
+query = "what retry policy should failed requests use"
+[scenarios.assertions]
+redirect_to_head = ["retry.head"]
+rank_below = [["retry.legacy", "retry.head"]]
