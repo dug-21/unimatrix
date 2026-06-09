@@ -54,6 +54,7 @@ fn make_entries(ids: &[u64]) -> Vec<ScoredEntry> {
         .map(|&id| ScoredEntry {
             id,
             title: format!("Entry {id}"),
+            content: String::new(),
             category: String::new(),
             final_score: 0.9,
             similarity: 0.85,
@@ -306,6 +307,7 @@ fn make_entries_with_categories(pairs: &[(u64, &str)]) -> Vec<ScoredEntry> {
         .map(|&(id, cat)| ScoredEntry {
             id,
             title: format!("Entry {id}"),
+            content: String::new(),
             category: cat.to_string(),
             final_score: 0.9,
             similarity: 0.85,
@@ -324,6 +326,8 @@ fn make_profile_result_for_comparison(cc_at_k: f64, icd: f64) -> ProfileResult {
         mrr: 0.5,
         cc_at_k,
         icd,
+        cost_tokens: 0.0,
+        trust: crate::eval::runner::trust::TrustOutcome::trivial_pass(),
     }
 }
 

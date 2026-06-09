@@ -5,6 +5,7 @@
 //! 6. Phase-Stratified Metrics (omitted when all phases None), 7. Distribution Analysis.
 //! Section 5+6 helpers live in render_zero_regression.rs / render_distribution_gate.rs.
 
+use super::render_correlated::render_correlated_trust_cost;
 use super::render_distribution_gate::{HeadingLevel, render_distribution_gate_section};
 use super::render_phase::render_phase_section;
 use super::render_zero_regression::render_zero_regression_block;
@@ -212,6 +213,14 @@ pub(super) fn render_report(
             }
         }
     }
+
+    // ----------------------------------------------------------------
+    // SECTION 5.C: Correlated Trust / Relevance / Cost (nan-018, AC-04/AC-14)
+    // One table showing trust + P@5/MRR + cost for the SAME scenarios in one
+    // run, so the sweep reads as "steepness X -> trust held AND relevance did
+    // not regress AND cost moved by delta".
+    // ----------------------------------------------------------------
+    md.push_str(&render_correlated_trust_cost(results));
 
     // ----------------------------------------------------------------
     // SECTION 6: Phase-Stratified Metrics (nan-009)

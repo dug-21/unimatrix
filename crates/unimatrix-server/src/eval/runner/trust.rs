@@ -31,6 +31,8 @@
 
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 use crate::eval::corpus::AliasMap;
 use crate::eval::runner::ScoredEntry;
 use crate::eval::scenarios::{EntryRef, ExpectedAssertions};
@@ -44,7 +46,7 @@ use crate::eval::scenarios::{EntryRef, ExpectedAssertions};
 ///
 /// A scenario with no assertions yields the trivially-passing
 /// `TrustOutcome { absence_pass: true, rank_pass: true, violations: vec![] }`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TrustOutcome {
     /// All `forbidden_absent` assertions held.
     pub absence_pass: bool,
@@ -62,6 +64,15 @@ impl TrustOutcome {
             rank_pass: true,
             violations: Vec::new(),
         }
+    }
+}
+
+/// `Default` == [`TrustOutcome::trivial_pass`]: a pre-nan-018 `ProfileResult` JSON
+/// missing the `trust` key deserializes (via `#[serde(default)]`) to the
+/// trivially-passing outcome — the #3548 named-backward-compat boundary.
+impl Default for TrustOutcome {
+    fn default() -> Self {
+        TrustOutcome::trivial_pass()
     }
 }
 
@@ -245,6 +256,7 @@ mod tests {
         ScoredEntry {
             id,
             title: format!("entry-{id}"),
+            content: String::new(),
             category: "pattern".to_string(),
             final_score: 0.0,
             similarity: 0.0,

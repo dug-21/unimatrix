@@ -191,7 +191,9 @@ async fn run_eval_async(
     // 4. Replay each scenario through each profile.
     // NOTE: profiles and layers may now differ in length if NLI profiles were SKIPPED.
     // run_replay_loop works on the layers slice; use layer.profile_name() for labelling.
-    replay::run_replay_loop(&profiles, &layers, &scenario_records, k, out).await?;
+    // JSONL-driven runs are log-sourced: no corpus alias map, so trust trivially
+    // passes (fixture-corpus runs thread `Some(alias_map)` through their own path).
+    replay::run_replay_loop(&profiles, &layers, &scenario_records, k, out, None).await?;
 
     // 5. Write profile metadata sidecar after replay completes (nan-010).
     // Passes the full profiles slice (including NLI-skipped profiles) so that all

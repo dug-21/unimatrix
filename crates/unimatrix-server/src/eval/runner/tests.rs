@@ -153,6 +153,7 @@ fn test_output_json_schema_completeness() {
             entries: vec![ScoredEntry {
                 id: 1,
                 title: "T".to_string(),
+                content: String::new(),
                 category: String::new(),
                 final_score: 0.9,
                 similarity: 0.8,
@@ -165,6 +166,8 @@ fn test_output_json_schema_completeness() {
             mrr: 1.0,
             cc_at_k: 0.0,
             icd: 0.0,
+            cost_tokens: 0.0,
+            trust: crate::eval::runner::trust::TrustOutcome::trivial_pass(),
         },
     );
 

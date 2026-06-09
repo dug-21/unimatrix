@@ -22,6 +22,7 @@
 
 mod aggregate;
 mod render;
+mod render_correlated;
 mod render_distribution_gate;
 mod render_phase;
 mod render_zero_regression;
@@ -64,10 +65,14 @@ use render::render_report;
 // ---------------------------------------------------------------------------
 
 /// A scored entry in a profile result.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub(crate) struct ScoredEntry {
     pub id: u64,
     pub title: String,
+    /// Snippet/content text (nan-018 carry-flag). `#[serde(default)]` tolerates
+    /// pre-nan-018 result JSON that carried only `title`.
+    #[serde(default)]
+    pub content: String,
     #[serde(default)]
     pub category: String,
     #[serde(default)]
@@ -80,6 +85,31 @@ pub(crate) struct ScoredEntry {
     pub status: String,
     #[serde(default)]
     pub nli_rerank_delta: Option<f64>,
+}
+
+/// Trust verdict mirror (nan-018 ADR-004) — the report-side dual copy of the
+/// runner's `TrustOutcome` (dual-type constraint #3574). `#[serde(default)]` on the
+/// `ProfileResult.trust` field tolerates pre-nan-018 JSON; the field defaults here
+/// derive from `bool`/`Vec` defaults, which is the trivially-passing outcome
+/// (`absence_pass: false` would be wrong for a missing key, so `Default` is overridden).
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+pub(crate) struct TrustOutcome {
+    pub absence_pass: bool,
+    pub rank_pass: bool,
+    #[serde(default)]
+    pub violations: Vec<String>,
+}
+
+impl Default for TrustOutcome {
+    /// Missing `trust` key ⇒ the trivially-passing outcome (both verdicts pass),
+    /// matching the runner-side `TrustOutcome::trivial_pass`.
+    fn default() -> Self {
+        TrustOutcome {
+            absence_pass: true,
+            rank_pass: true,
+            violations: Vec::new(),
+        }
+    }
 }
 
 /// A rank change between baseline and candidate.
@@ -110,7 +140,7 @@ pub(crate) struct ComparisonMetrics {
 }
 
 /// Metrics for one profile on one scenario.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub(crate) struct ProfileResult {
     #[serde(default)]
     pub entries: Vec<ScoredEntry>,
@@ -124,6 +154,14 @@ pub(crate) struct ProfileResult {
     pub cc_at_k: f64,
     #[serde(default)]
     pub icd: f64,
+    /// Token-weighted cost (nan-018 ADR-003). `#[serde(default)]` ⇒ 0.0 for
+    /// pre-nan-018 result JSON.
+    #[serde(default)]
+    pub cost_tokens: f64,
+    /// Property-based trust verdict (nan-018 ADR-004). `#[serde(default)]` ⇒ the
+    /// trivially-passing outcome for pre-nan-018 result JSON.
+    #[serde(default)]
+    pub trust: TrustOutcome,
 }
 
 /// Per-scenario result JSON file schema.
@@ -205,7 +243,19 @@ pub(super) struct RegressionRecord {
     pub candidate_mrr: f64,
     pub baseline_p_at_k: f64,
     pub candidate_p_at_k: f64,
+    /// Human-readable summary of the OR-folded regression reasons (nan-018: the
+    /// existing MRR/P@K reasons plus trust-flip + cost-growth).
     pub reason: String,
+    /// Structured reason flags in fixed order (nan-018 R-12): one of
+    /// `"mrr"`, `"p@k"`, `"trust"`, `"cost"` per fired condition. The `reason`
+    /// string is derived from these; the vec is surfaced for triage/diffing.
+    pub reasons: Vec<String>,
+    /// Trust violation strings from the candidate's `TrustOutcome` (nan-018), for
+    /// triage when a trust flip fired. Empty when no trust flip.
+    pub trust_violations: Vec<String>,
+    /// `candidate.cost_tokens - baseline.cost_tokens` (nan-018 ADR-003, advisory).
+    /// Positive ⇒ cost grew; surfaced even when cost is not the sole reason.
+    pub cost_delta: f64,
 }
 
 #[derive(Debug)]

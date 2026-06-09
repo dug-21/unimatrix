@@ -31,6 +31,7 @@ fn make_result_with_phase(
             mrr,
             cc_at_k,
             icd,
+            ..Default::default()
         },
     );
     ScenarioResult {
@@ -212,6 +213,7 @@ fn test_report_section_2_includes_phase_label_when_non_null() {
             mrr: 0.5,
             cc_at_k: 0.4,
             icd: 0.8,
+            ..Default::default()
         },
     );
     profiles.insert(
@@ -223,6 +225,7 @@ fn test_report_section_2_includes_phase_label_when_non_null() {
             mrr: 0.6,
             cc_at_k: 0.5,
             icd: 0.9,
+            ..Default::default()
         },
     );
     let result = ScenarioResult {
@@ -272,6 +275,7 @@ fn test_report_section_2_phase_label_null_absent() {
             mrr: 0.5,
             cc_at_k: 0.4,
             icd: 0.8,
+            ..Default::default()
         },
     );
     profiles.insert(
@@ -283,6 +287,7 @@ fn test_report_section_2_phase_label_null_absent() {
             mrr: 0.3,
             cc_at_k: 0.3,
             icd: 0.7,
+            ..Default::default()
         },
     );
     let result = ScenarioResult {
@@ -342,6 +347,8 @@ fn test_report_round_trip_phase_section_7_distribution() {
             mrr: 0.650,
             cc_at_k: 0.600,
             icd: 1.100,
+            cost_tokens: 0.0,
+            trust: crate::eval::runner::trust::TrustOutcome::trivial_pass(),
         },
     );
     let runner_result = RunnerScenarioResult {

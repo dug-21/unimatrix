@@ -38,6 +38,7 @@ fn make_result_with_phase(
             mrr,
             cc_at_k,
             icd,
+            ..Default::default()
         },
     );
     ScenarioResult {

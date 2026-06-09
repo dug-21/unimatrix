@@ -19,16 +19,12 @@
 //! downstream consumers read cost figures with the right confidence.
 //!
 //! Run-loop wiring (populating `ProfileResult.cost_tokens`) lives in the report /
-//! metrics layer (Wave-4); the functions here stand alone and are unit-tested directly.
+//! metrics layer (report-extensions); the functions here stand alone and are unit-tested.
 //!
-//! **Flagged discrepancy (do not silently deviate).** ADR-003 / the pseudocode define
-//! the agent-read payload as `title` + `content`. The current `ScoredEntry` (nan-007)
-//! carries only `title` — there is no `content` field yet, and adding one touches
-//! `output.rs` / `replay.rs`, which are explicitly OUT of this component's scope
-//! (Wave-4, report-extensions). The payload is therefore assembled in one place
-//! ([`payload_text`]) over the available `title`; appending `content` there is a
-//! one-line change once Wave-4 adds the field. The metric is correct and token-weighted
-//! over the materialized payload today; it becomes title+content with that one edit.
+//! **Payload = `title + content` (ADR-003).** The agent-read payload is the entry's
+//! `title` plus its snippet `content`. As of nan-018 report-extensions, `ScoredEntry`
+//! carries both fields (the cost-metric carry-flag), and [`payload_text`] is the single
+//! place that assembles them — so the metric counts the full payload an agent reads.
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -139,16 +135,12 @@ fn fallback_tokens(text: &str) -> f64 {
 /// Assemble the agent-read payload text for a result: the snippet text the search
 /// surfaces, NOT the score metadata.
 ///
-/// ADR-003 / the pseudocode define the payload as `title` + `content`. The current
-/// `ScoredEntry` (nan-007) materializes only `title`; `content` is not yet carried
-/// on the result. This helper is the single place that assembles the payload — when
-/// Wave-4 (report-extensions) adds `content` to `ScoredEntry`, append it here and
-/// the rest of the metric is unchanged. See the module-level note and the agent
-/// report for the flagged discrepancy.
+/// ADR-003 / the pseudocode define the payload as `title` + `content`. As of nan-018
+/// report-extensions (the cost-metric carry-flag), `ScoredEntry` carries both: the
+/// payload is the full `title + content` an agent reads. This helper is the single
+/// place that assembles it, so the rest of the metric is unchanged.
 fn payload_text(entry: &ScoredEntry) -> String {
-    // When `ScoredEntry` gains `content`, this becomes:
-    //   format!("{} {}", entry.title, entry.content)
-    entry.title.clone()
+    format!("{} {}", entry.title, entry.content)
 }
 
 /// Token-weighted cost of a single result — the noise an agent pays to read it.
@@ -182,13 +174,14 @@ mod tests {
 
     /// Build a `ScoredEntry` whose agent-read payload carries `payload`.
     ///
-    /// The payload lives in `title` (the only text field `ScoredEntry` materializes
-    /// today — see the module-level flagged discrepancy). All non-text fields are
-    /// inert: `token_proxy` reads only the payload.
+    /// The payload lives in `content` (title left empty) so the assembled
+    /// `payload_text` (`"{title} {content}"`) carries exactly the `payload` words.
+    /// All non-text fields are inert: `token_proxy` reads only the payload.
     fn entry_with(payload: &str) -> ScoredEntry {
         ScoredEntry {
             id: 1,
-            title: payload.to_string(),
+            title: String::new(),
+            content: payload.to_string(),
             category: String::new(),
             final_score: 0.0,
             similarity: 0.0,
@@ -196,6 +189,32 @@ mod tests {
             status: String::new(),
             nli_rerank_delta: None,
         }
+    }
+
+    /// The cost payload is `title + content` (nan-018 carry-flag): both fields
+    /// contribute tokens. A result with content costs strictly more than the
+    /// same title alone.
+    #[test]
+    fn test_payload_includes_title_and_content() {
+        let title_only = ScoredEntry {
+            id: 1,
+            title: "alpha beta gamma".to_string(),
+            content: String::new(),
+            category: String::new(),
+            final_score: 0.0,
+            similarity: 0.0,
+            confidence: 0.0,
+            status: String::new(),
+            nli_rerank_delta: None,
+        };
+        let title_and_content = ScoredEntry {
+            content: "delta epsilon zeta eta theta".to_string(),
+            ..title_only.clone()
+        };
+        assert!(
+            token_proxy(&title_and_content) > token_proxy(&title_only),
+            "title+content payload must cost more than title alone"
+        );
     }
 
     fn short_text() -> &'static str {

@@ -8,6 +8,8 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use super::trust::TrustOutcome;
+
 // ---------------------------------------------------------------------------
 // Result types
 // ---------------------------------------------------------------------------
@@ -17,6 +19,12 @@ use serde::{Deserialize, Serialize};
 pub struct ScoredEntry {
     pub id: u64,
     pub title: String,
+    /// Snippet/content text the agent reads (nan-018 ADR-003 carry-flag).
+    /// Populated from `se.entry.content` in replay.rs. Part of the cost-metric
+    /// payload (`title + content`); `#[serde(default)]` for backward-compat with
+    /// pre-nan-018 result JSON that carried only `title`.
+    #[serde(default)]
+    pub content: String,
     /// Knowledge category of this entry — populated from `se.entry.category` in replay.rs.
     pub category: String,
     pub final_score: f64,
@@ -38,6 +46,16 @@ pub struct ProfileResult {
     pub cc_at_k: f64,
     /// Raw Shannon entropy (natural log) over result category distribution — range [0.0, ln(n)].
     pub icd: f64,
+    /// Token-weighted cost of the result set (nan-018 ADR-003): `Σ token_proxy(entry)`.
+    /// Primary cost axis; `k` is secondary (= `entries.len()`). `#[serde(default)]`
+    /// for backward-compat with pre-nan-018 result JSON.
+    #[serde(default)]
+    pub cost_tokens: f64,
+    /// Property-based trust verdict for this profile/scenario (nan-018 ADR-004).
+    /// Trivially-passing when the scenario carries no assertions (log-sourced runs).
+    /// `#[serde(default)]` for backward-compat (the #3548 named-backward-compat boundary).
+    #[serde(default)]
+    pub trust: TrustOutcome,
 }
 
 /// Rank change record for a single entry between baseline and candidate profiles.
@@ -117,6 +135,7 @@ mod tests {
         ScoredEntry {
             id: 1,
             title: "Entry 1".to_string(),
+            content: "entry one body".to_string(),
             category: category.to_string(),
             final_score: 0.9,
             similarity: 0.85,
@@ -134,6 +153,8 @@ mod tests {
             mrr: 1.0,
             cc_at_k,
             icd,
+            cost_tokens: 0.0,
+            trust: TrustOutcome::trivial_pass(),
         }
     }
 
@@ -202,6 +223,61 @@ mod tests {
         let decoded: ProfileResult = serde_json::from_str(&json).expect("deserialization failed");
         assert_eq!(decoded.cc_at_k, 0.857);
         assert_eq!(decoded.icd, 1.234);
+    }
+
+    /// Producer side (#3557): `cost_tokens` + `trust` round-trip with NON-TRIVIAL
+    /// values (cost != 0, a populated `TrustOutcome` with a violation).
+    #[test]
+    fn test_profile_result_cost_trust_roundtrip_nontrivial() {
+        let mut result = make_profile_result(0.5, 0.9);
+        result.cost_tokens = 42.5;
+        result.trust = TrustOutcome {
+            absence_pass: false,
+            rank_pass: true,
+            violations: vec!["absence: forbidden 'F' present at rank 0".to_string()],
+        };
+
+        let json = serde_json::to_string(&result).expect("serialize");
+        assert!(json.contains("\"cost_tokens\""), "missing cost_tokens key");
+        assert!(json.contains("\"trust\""), "missing trust key");
+        assert!(json.contains("42.5"), "missing non-trivial cost value");
+
+        let decoded: ProfileResult = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(decoded.cost_tokens, 42.5);
+        assert!(!decoded.trust.absence_pass);
+        assert!(decoded.trust.rank_pass);
+        assert_eq!(decoded.trust.violations.len(), 1);
+    }
+
+    /// Backward-compat (#3548 named test): a pre-nan-018 `ProfileResult` JSON missing
+    /// `cost_tokens` and `trust` (and the new `ScoredEntry.content`) deserializes via
+    /// `#[serde(default)]` — cost defaults 0.0, trust defaults to the trivial pass.
+    #[test]
+    fn test_profile_result_backward_compat_pre_nan018_json() {
+        // Note: no `cost_tokens`, no `trust`, and an entry without `content`.
+        let legacy = r#"{
+            "entries": [
+                {"id": 7, "title": "legacy", "category": "decision",
+                 "final_score": 0.5, "similarity": 0.4, "confidence": 0.3,
+                 "status": "Active", "nli_rerank_delta": null}
+            ],
+            "latency_ms": 5, "p_at_k": 0.5, "mrr": 0.5, "cc_at_k": 0.0, "icd": 0.0
+        }"#;
+        let decoded: ProfileResult =
+            serde_json::from_str(legacy).expect("legacy ProfileResult must deserialize");
+        assert_eq!(
+            decoded.cost_tokens, 0.0,
+            "missing cost_tokens defaults to 0.0"
+        );
+        assert_eq!(
+            decoded.trust,
+            TrustOutcome::trivial_pass(),
+            "missing trust defaults to trivial pass"
+        );
+        assert_eq!(
+            decoded.entries[0].content, "",
+            "missing ScoredEntry.content defaults to empty string"
+        );
     }
 
     #[test]
