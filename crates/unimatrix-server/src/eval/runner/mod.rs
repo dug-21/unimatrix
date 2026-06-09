@@ -19,6 +19,7 @@ mod metrics;
 mod output;
 pub(crate) mod profile_meta;
 mod replay;
+pub mod trust;
 
 #[cfg(test)]
 mod tests;

@@ -73,6 +73,22 @@ impl AliasMap {
     pub fn is_empty(&self) -> bool {
         self.alias_to_id.is_empty()
     }
+
+    /// Construct an `AliasMap` directly from resolved maps (TEST-ONLY seam).
+    ///
+    /// The production path builds an `AliasMap` only via [`load_fixture_corpus`],
+    /// which validates alias existence (R-10). This constructor lets the trust
+    /// evaluator's truth-table tests assemble a map without materializing a DB.
+    #[cfg(test)]
+    pub fn for_test(
+        alias_to_id: BTreeMap<EntryRef, u64>,
+        head_members: BTreeMap<EntryRef, BTreeSet<u64>>,
+    ) -> Self {
+        AliasMap {
+            alias_to_id,
+            head_members,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
