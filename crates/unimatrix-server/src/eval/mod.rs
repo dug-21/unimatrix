@@ -18,6 +18,7 @@ pub mod profile;
 pub mod report;
 pub mod runner;
 pub mod scenarios;
+pub mod shape;
 
 // Re-export core eval types for downstream modules.
 pub use profile::{AnalyticsMode, EvalError, EvalProfile, EvalServiceLayer};
