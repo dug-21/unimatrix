@@ -1033,7 +1033,41 @@ def _seed_observation_sql(db_path, feature_ids, num_records=20):
     return seeded
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#305 — baseline_comparison null when synthetic features lack delivery counter registration")
+def _wait_for_metrics_committed(db_path, feature_ids, deadline_secs=10.0, poll_interval=0.05):
+    """Poll until MetricVectors for all `feature_ids` are committed to observation_metrics.
+
+    store_metrics is fire-and-forget through the analytics queue, drained only
+    every DRAIN_FLUSH_INTERVAL (500ms). A test that reads baseline history right
+    after generating MetricVectors races that drain (GH#305). This polls the
+    committed observation_metrics table (feature_cycle is its PRIMARY KEY) until
+    every feature_id is present, with a bounded deadline — deterministic rather
+    than a fixed sleep that can lag past 500ms on a loaded host.
+
+    Returns the committed count on success; raises AssertionError on timeout.
+    """
+    placeholders = ",".join("?" for _ in feature_ids)
+    sql = (
+        f"SELECT COUNT(*) FROM observation_metrics WHERE feature_cycle IN ({placeholders})"
+    )
+    deadline = time.monotonic() + deadline_secs
+    committed = 0
+    while time.monotonic() < deadline:
+        conn = sqlite3.connect(db_path)
+        try:
+            committed = conn.execute(sql, tuple(feature_ids)).fetchone()[0]
+        finally:
+            conn.close()
+        if committed >= len(feature_ids):
+            return committed
+        time.sleep(poll_interval)
+
+    raise AssertionError(
+        f"Timed out after {deadline_secs}s waiting for MetricVectors to commit: "
+        f"expected {len(feature_ids)} rows in observation_metrics for {feature_ids}, "
+        f"saw {committed}"
+    )
+
+
 def test_retrospective_baseline_present(server):
     """T-R04 (col-002b): Baseline comparison present with 3+ prior MetricVectors.
 
@@ -1049,6 +1083,12 @@ def test_retrospective_baseline_present(server):
     for fid in features[:3]:
         resp = server.context_cycle_review(fid, agent_id="human", format="json", timeout=30.0)
         result = assert_tool_success(resp)
+
+    # store_metrics is fire-and-forget via the analytics queue (500ms drain).
+    # Wait until the 3 MetricVectors are actually committed before the 4th read,
+    # otherwise col-804's baseline history is < MIN_HISTORY=3 and the (correct)
+    # baseline is null. Deterministic poll-until-committed, not a fixed sleep.
+    _wait_for_metrics_committed(db_path, features[:3])
 
     # Now run on 4th feature -- should have baseline from 3 prior
     resp = server.context_cycle_review(features[3], agent_id="human", format="json", timeout=30.0)
