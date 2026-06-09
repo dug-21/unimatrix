@@ -96,7 +96,9 @@ describe("writeMcpJson", () => {
     const content = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
     assert.strictEqual(content.mcpServers.unimatrix.command, BINARY);
     assert.deepStrictEqual(content.mcpServers.unimatrix.args, []);
-    assert.deepStrictEqual(content.mcpServers.unimatrix.env, {});
+    assert.deepStrictEqual(content.mcpServers.unimatrix.env, {
+      LD_LIBRARY_PATH: path.dirname(BINARY),
+    });
 
     assert.ok(
       actions.some((a) => a.includes("Created .mcp.json")),
