@@ -1171,7 +1171,6 @@ def test_retrospective_json_explicit(server):
     assert "feature_cycle" in parsed, f"Expected feature_cycle in JSON, got keys: {list(parsed.keys())}"
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#575 — error message is 'Invalid parameter format: must be summary, markdown, or json' not 'Unknown format'")
 def test_retrospective_format_invalid(server):
     """T-R09 (vnc-011): Invalid format returns error with descriptive message."""
     features = ["col-833"]
@@ -1179,7 +1178,7 @@ def test_retrospective_format_invalid(server):
     _seed_observation_sql(db_path, features)
 
     resp = server.context_cycle_review(features[0], agent_id="human", format="xml", timeout=30.0)
-    assert_tool_error(resp, "Unknown format")
+    assert_tool_error(resp, "must be summary, markdown, or json")
 
 
 # === context_status observation extension (col-002) =======================
