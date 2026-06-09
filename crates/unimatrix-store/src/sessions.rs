@@ -118,15 +118,27 @@ fn session_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<SessionRecord> {
 impl SqlxStore {
     /// Insert a new SessionRecord directly into the write pool.
     ///
-    /// Uses `INSERT OR REPLACE` semantics — if a record with the same
-    /// session_id already exists, it is fully overwritten.
+    /// Uses `INSERT OR IGNORE` semantics — if a record with the same
+    /// session_id already exists, the existing row is left fully intact and
+    /// this call is a no-op. This makes SessionStart idempotent: a
+    /// context-compaction resume re-fires the hook with the same stable
+    /// session_id, and the re-fire must NOT overwrite accumulated state (#300).
+    /// In particular `started_at` is write-once (no path ever rewrites it), so
+    /// the original session-age/attribution window is preserved.
+    ///
+    /// Columns that legitimately change on a live session are written via the
+    /// separate `update_session` UPDATE path, never here: `status`/`ended_at`/
+    /// `outcome`/`total_injections`/`compaction_count` at SessionClose, and
+    /// `feature_cycle` by the cycle path (`update_session_feature_cycle`).
+    /// `feature_cycle` is therefore owned-by-the-cycle-path (mutable-by-owner),
+    /// NOT immutable — IGNORE only prevents SessionStart from clobbering it.
     ///
     /// Writes directly (not via analytics drain) to ensure immediate read
     /// visibility. Session records are read immediately after insert by
     /// callers that need to verify or update them (e.g. `dispatch_cycle_start`).
     pub async fn insert_session(&self, record: &SessionRecord) -> Result<()> {
         sqlx::query(
-            "INSERT OR REPLACE INTO sessions (
+            "INSERT OR IGNORE INTO sessions (
                 session_id, feature_cycle, agent_role, started_at, ended_at,
                 status, compaction_count, outcome, total_injections, keywords
             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -346,5 +358,202 @@ impl SqlxStore {
             deleted_session_count: deleted_sessions.rows_affected() as u32,
             timed_out_count: timed_out.rows_affected() as u32,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_helpers::open_test_store;
+
+    /// Inception record as built by the SessionStart hook arm: all
+    /// non-identity columns are default/inception values.
+    fn inception_record(session_id: &str, started_at: u64) -> SessionRecord {
+        SessionRecord {
+            session_id: session_id.to_string(),
+            feature_cycle: None,
+            agent_role: Some("delivery".to_string()),
+            started_at,
+            ended_at: None,
+            status: SessionLifecycleStatus::Active,
+            compaction_count: 0,
+            outcome: None,
+            total_injections: 0,
+            keywords: None,
+        }
+    }
+
+    /// First SessionStart creates the row exactly as supplied.
+    #[tokio::test]
+    async fn test_insert_session_first_insert_creates_row() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let rec = inception_record("sess-first", 1_700_000_000);
+        store.insert_session(&rec).await.expect("first insert");
+
+        let got = store
+            .get_session("sess-first")
+            .await
+            .expect("get_session")
+            .expect("row exists");
+        assert_eq!(got, rec, "first insert stores the record verbatim");
+    }
+
+    /// #300: a second `insert_session` for an EXISTING session_id (compaction
+    /// resume re-fire) must be a no-op — `started_at` is write-once and must
+    /// NOT be reset to the resume time.
+    #[tokio::test]
+    async fn test_insert_session_resume_preserves_started_at() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let t0 = 1_700_000_000;
+        store
+            .insert_session(&inception_record("sess-resume", t0))
+            .await
+            .expect("first insert");
+
+        // Compaction resume: same session_id, later started_at candidate.
+        let t1 = t0 + 9_999;
+        store
+            .insert_session(&inception_record("sess-resume", t1))
+            .await
+            .expect("resume re-fire (IGNORE no-op)");
+
+        let got = store
+            .get_session("sess-resume")
+            .await
+            .expect("get_session")
+            .expect("row exists");
+        assert_eq!(
+            got.started_at, t0,
+            "started_at is write-once: resume must not reset it to t1"
+        );
+    }
+
+    /// #300: a `Declared` feature_cycle set by the cycle path (an UPDATE,
+    /// modeled here via `update_session`) AFTER the first insert must SURVIVE
+    /// a subsequent SessionStart re-fire that carries feature_cycle = None.
+    #[tokio::test]
+    async fn test_insert_session_resume_preserves_declared_feature_cycle() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let t0 = 1_700_000_000;
+        store
+            .insert_session(&inception_record("sess-fc", t0))
+            .await
+            .expect("first insert");
+
+        // Cycle path declares the feature via the UPDATE path (owner-written).
+        store
+            .update_session("sess-fc", |r| {
+                r.feature_cycle = Some("col-300".to_string());
+            })
+            .await
+            .expect("cycle-path UPDATE");
+
+        // Compaction resume re-fire with no feature (inception default None).
+        store
+            .insert_session(&inception_record("sess-fc", t0 + 50))
+            .await
+            .expect("resume re-fire (IGNORE no-op)");
+
+        let got = store
+            .get_session("sess-fc")
+            .await
+            .expect("get_session")
+            .expect("row exists");
+        assert_eq!(
+            got.feature_cycle.as_deref(),
+            Some("col-300"),
+            "Declared feature_cycle must survive the SessionStart re-fire"
+        );
+        assert_eq!(got.started_at, t0, "started_at still write-once");
+    }
+
+    /// #300 NB-1: a Completed/closed row (status + ended_at set via the close
+    /// UPDATE path) must NOT be revived to Active by a SessionStart re-fire.
+    #[tokio::test]
+    async fn test_insert_session_resume_does_not_revive_closed_row() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let t0 = 1_700_000_000;
+        store
+            .insert_session(&inception_record("sess-closed", t0))
+            .await
+            .expect("first insert");
+
+        // SessionClose: mark Completed with an ended_at and an outcome.
+        let closed_at = t0 + 100;
+        store
+            .update_session("sess-closed", |r| {
+                r.status = SessionLifecycleStatus::Completed;
+                r.ended_at = Some(closed_at);
+                r.outcome = Some("success".to_string());
+            })
+            .await
+            .expect("close UPDATE");
+
+        // Resume re-fire carries status = Active, ended_at = None.
+        store
+            .insert_session(&inception_record("sess-closed", t0 + 200))
+            .await
+            .expect("resume re-fire (IGNORE no-op)");
+
+        let got = store
+            .get_session("sess-closed")
+            .await
+            .expect("get_session")
+            .expect("row exists");
+        assert_eq!(
+            got.status,
+            SessionLifecycleStatus::Completed,
+            "closed row must NOT be revived to Active"
+        );
+        assert_eq!(
+            got.ended_at,
+            Some(closed_at),
+            "ended_at must stay intact (no zombie revival)"
+        );
+        assert_eq!(got.outcome.as_deref(), Some("success"));
+    }
+
+    /// #300 NB-3: a persisted compaction_count set on the row must not be
+    /// zeroed by a SessionStart re-fire (which always carries 0).
+    #[tokio::test]
+    async fn test_insert_session_resume_does_not_zero_compaction_count() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let t0 = 1_700_000_000;
+        store
+            .insert_session(&inception_record("sess-cc", t0))
+            .await
+            .expect("first insert");
+
+        store
+            .update_session("sess-cc", |r| {
+                r.compaction_count = 7;
+            })
+            .await
+            .expect("set compaction_count");
+
+        store
+            .insert_session(&inception_record("sess-cc", t0 + 5))
+            .await
+            .expect("resume re-fire (IGNORE no-op)");
+
+        let got = store
+            .get_session("sess-cc")
+            .await
+            .expect("get_session")
+            .expect("row exists");
+        assert_eq!(
+            got.compaction_count, 7,
+            "compaction_count must not be zeroed by the re-fire"
+        );
     }
 }
