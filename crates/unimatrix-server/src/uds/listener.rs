@@ -5305,6 +5305,46 @@ mod tests {
             .collect()
     }
 
+    /// Deadline-poll for a fire-and-forget `spawn_blocking` observation write to land,
+    /// then return the session's rows. Modeled on the canonical loop in
+    /// `tests/transcript.rs` (5s deadline + 100ms settle): polls `query_observations`
+    /// every ~10ms until it reaches `expected` rows, then settles 100ms so callers can
+    /// still assert the EXACT final count. Uses `tokio::time::sleep().await` (never
+    /// `std::thread::sleep`) to keep the current-thread `#[tokio::test]` reactor alive so
+    /// the in-flight `Handle::current().block_on` INSERT completes before teardown (the
+    /// "A Tokio 1.x context ... is being shutdown" race). Positive-assertion only —
+    /// never poll for an absence.
+    #[allow(clippy::type_complexity)]
+    async fn await_observations(
+        store: &Store,
+        session_id: &str,
+        expected: usize,
+    ) -> Vec<(
+        String,
+        i64,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    )> {
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            let rows = query_observations(store, session_id).await;
+            if rows.len() >= expected {
+                break;
+            }
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "timed out waiting for {expected} observation row(s) for {session_id} (got {})",
+                rows.len()
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        // Settle so a trailing row would still fail an exact-count assertion.
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        query_observations(store, session_id).await
+    }
+
     #[tokio::test]
     async fn col018_context_search_creates_observation() {
         // T-01, AC-01: ContextSearch with valid session_id produces observation row
@@ -5338,11 +5378,7 @@ mod tests {
         )
         .await;
 
-        // Allow spawn_blocking to complete
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let rows = query_observations(&store, "sess-obs-1").await;
+        let rows = await_observations(&store, "sess-obs-1", 1).await;
         assert_eq!(rows.len(), 1, "expected exactly 1 observation row");
         let (sid, ts, hook, tool, input, topic) = &rows[0];
         assert_eq!(sid, "sess-obs-1");
@@ -5386,10 +5422,7 @@ mod tests {
         )
         .await;
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let rows = query_observations(&store, "sess-topic-1").await;
+        let rows = await_observations(&store, "sess-topic-1", 1).await;
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].5.as_deref(), Some("col-018"));
     }
@@ -5427,10 +5460,7 @@ mod tests {
         )
         .await;
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let rows = query_observations(&store, "sess-generic-1").await;
+        let rows = await_observations(&store, "sess-generic-1", 1).await;
         assert_eq!(rows.len(), 1);
         assert!(
             rows[0].5.is_none(),
@@ -5471,10 +5501,7 @@ mod tests {
         )
         .await;
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let rows = query_observations(&store, "sess-path-1").await;
+        let rows = await_observations(&store, "sess-path-1", 1).await;
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].5.as_deref(), Some("col-018"));
     }
@@ -5513,10 +5540,7 @@ mod tests {
         )
         .await;
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let rows = query_observations(&store, "sess-trunc-1").await;
+        let rows = await_observations(&store, "sess-trunc-1", 1).await;
         assert_eq!(rows.len(), 1);
         let input = rows[0].4.as_ref().expect("input should be present");
         assert_eq!(input.len(), 4096, "input should be truncated to 4096 chars");
@@ -5556,10 +5580,7 @@ mod tests {
         )
         .await;
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
-        let rows = query_observations(&store, "sess-exact-1").await;
+        let rows = await_observations(&store, "sess-exact-1", 1).await;
         assert_eq!(rows.len(), 1);
         let input = rows[0].4.as_ref().expect("input should be present");
         assert_eq!(input.len(), 4096);
@@ -5599,8 +5620,11 @@ mod tests {
         )
         .await;
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        // Negative assertion (count must stay 0) — cannot poll for an absence. Keep a
+        // bounded fixed settle, but use `tokio::time::sleep().await` (not
+        // `std::thread::sleep`) so the reactor stays alive and any erroneously-spawned
+        // write lands (and would be caught) instead of being killed by runtime teardown.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         // No observation written
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM observations")
@@ -5652,8 +5676,9 @@ mod tests {
         )
         .await;
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        // Negative assertion (no row) — cannot poll for an absence. Bounded fixed settle
+        // via `tokio::time::sleep().await` keeps the reactor alive for any in-flight write.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         let rows = query_observations(&store, "sess-empty-1").await;
         assert_eq!(rows.len(), 0, "no observation for empty query");
@@ -5828,8 +5853,10 @@ mod tests {
         .await;
 
         // Allow any (erroneously) spawned blocking write to land before we count.
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        // Negative assertion (zero rows) — cannot poll for an absence; keep a bounded
+        // fixed settle, but via `tokio::time::sleep().await` (not `std::thread::sleep`) so
+        // the reactor stays alive for the in-flight write instead of teardown killing it.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
         assert!(
             matches!(resp, HookResponse::Ack),
@@ -5892,11 +5919,19 @@ mod tests {
         )
         .await;
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
         assert!(matches!(resp, HookResponse::Ack), "batch must Ack");
-        // The two non-delta events persist; the delta persists nothing.
+        // The two non-delta events persist (fire-and-forget — poll); the delta persists
+        // nothing. Canonical deadline-poll (5s) + 100ms settle, then assert EXACTLY 2 so a
+        // trailing delta-derived row would still fail.
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+        while count_all_observations(&store).await < 2 {
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "timed out waiting for the 2 non-delta rows"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         assert_eq!(
             count_all_observations(&store).await,
             2,
@@ -5954,8 +5989,9 @@ mod tests {
             );
         }
 
-        tokio::task::yield_now().await;
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        // Negative assertion (zero rows) — cannot poll for an absence; bounded fixed
+        // settle via `tokio::time::sleep().await` keeps the reactor alive for any write.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         assert_eq!(
             count_all_observations(&store).await,
             0,

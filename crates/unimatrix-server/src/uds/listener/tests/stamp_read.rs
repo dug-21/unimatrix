@@ -72,10 +72,35 @@ async fn query_attribution(
         .collect()
 }
 
-/// Settle any fire-and-forget spawn_blocking write before reading rows.
-async fn settle() {
-    tokio::task::yield_now().await;
-    std::thread::sleep(std::time::Duration::from_millis(50));
+/// Deadline-poll for a fire-and-forget spawn_blocking write to land, then return the
+/// session's attribution rows. Modeled on the canonical loop in `tests/transcript.rs`
+/// (5s deadline + 100ms settle): polls `query_attribution` every ~10ms until it reaches
+/// `expected` rows, then settles 100ms so callers can still assert the EXACT final count.
+/// `tokio::time::sleep().await` (never `std::thread::sleep`) keeps the current-thread
+/// `#[tokio::test]` reactor alive so the in-flight `block_on` INSERT completes before
+/// teardown (the "being shutdown" race). Positive-assertion only — never poll for an
+/// absence.
+async fn await_attribution(
+    store: &Store,
+    session_id: &str,
+    expected: usize,
+) -> Vec<(Option<String>, Option<String>, Option<String>)> {
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let rows = query_attribution(store, session_id).await;
+        if rows.len() >= expected {
+            break;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "timed out waiting for {expected} attribution row(s) for {session_id} (got {})",
+            rows.len()
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    // Settle so a trailing row would still fail an exact-count assertion.
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    query_attribution(store, session_id).await
 }
 
 // Boilerplate dispatch wrapper to keep the per-test arrange blocks short.
@@ -122,10 +147,9 @@ async fn stamp_read_site_b_records_declared() {
     );
 
     let resp = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
     assert!(matches!(resp, HookResponse::Ack));
-    let rows = query_attribution(&store, "sess-b").await;
+    let rows = await_attribution(&store, "sess-b", 1).await;
     assert_eq!(rows.len(), 1, "exactly one row");
     assert_eq!(
         rows[0].0,
@@ -172,10 +196,9 @@ async fn stamp_read_site_a_records_declared() {
     );
 
     let resp = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
     assert!(matches!(resp, HookResponse::Ack));
-    let rows = query_attribution(&store, "sess-a").await;
+    let rows = await_attribution(&store, "sess-a", 1).await;
     assert_eq!(rows.len(), 1, "exactly one row");
     assert_eq!(rows[0].0, Some("vnc-030".to_string()));
     assert_eq!(
@@ -204,10 +227,9 @@ async fn stamp_read_batch_n_declared_rows() {
         .collect();
 
     let resp = dispatch!(HookRequest::RecordEvents { events }, &store, &registry);
-    settle().await;
 
     assert!(matches!(resp, HookResponse::Ack));
-    let rows = query_attribution(&store, "sess-c").await;
+    let rows = await_attribution(&store, "sess-c", 3).await;
     assert_eq!(rows.len(), 3, "N stamped events → N rows (R-06)");
     for r in &rows {
         assert_eq!(r.0, Some("vnc-030".to_string()));
@@ -241,9 +263,8 @@ async fn unstamped_frame_legacy_chain_not_declared() {
     );
 
     let _ = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
-    let rows = query_attribution(&store, "sess-unstamped").await;
+    let rows = await_attribution(&store, "sess-unstamped", 1).await;
     assert_eq!(rows.len(), 1);
     assert_ne!(
         rows[0].2,
@@ -268,9 +289,8 @@ async fn stamped_event_declared_even_with_empty_registry() {
 
     let event = make_stamped_event("PostToolUse", "sess-empty", "vnc-030", None, None);
     let _ = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
-    let rows = query_attribution(&store, "sess-empty").await;
+    let rows = await_attribution(&store, "sess-empty", 1).await;
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].0, Some("vnc-030".to_string()));
     assert_eq!(rows[0].2, Some("declared".to_string()));
@@ -296,9 +316,8 @@ async fn topic_source_extracted_from_unstamped_with_signal() {
     );
 
     let _ = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
-    let rows = query_attribution(&store, "sess-ext").await;
+    let rows = await_attribution(&store, "sess-ext", 1).await;
     assert_eq!(rows[0].0, Some("col-099".to_string()));
     assert_eq!(rows[0].2, Some("extracted".to_string()));
 }
@@ -318,9 +337,8 @@ async fn topic_source_registry_fill_from_enrich() {
     );
 
     let _ = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
-    let rows = query_attribution(&store, "sess-fill").await;
+    let rows = await_attribution(&store, "sess-fill", 1).await;
     assert_eq!(rows[0].0, Some("col-100".to_string()));
     assert_eq!(rows[0].2, Some("registry-fill".to_string()));
 }
@@ -346,9 +364,8 @@ async fn topic_source_vote_from_inferred_voted_fill() {
         None, // no extraction → fills from the Voted registry feature
     );
     let _ = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
-    let rows = query_attribution(&store, "sess-vote").await;
+    let rows = await_attribution(&store, "sess-vote", 1).await;
     assert_eq!(rows[0].0, Some("col-101".to_string()));
     assert_eq!(
         rows[0].2,
@@ -373,9 +390,8 @@ async fn topic_source_declared_overrides_extraction_unstamped() {
         Some("wrong-feature".to_string()), // contradicting extraction
     );
     let _ = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
-    let rows = query_attribution(&store, "sess-decl").await;
+    let rows = await_attribution(&store, "sess-decl", 1).await;
     assert_eq!(
         rows[0].0,
         Some("vnc-030".to_string()),
@@ -396,9 +412,8 @@ async fn topic_source_null_when_unattributed() {
         None,
     );
     let _ = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
-    let rows = query_attribution(&store, "sess-null").await;
+    let rows = await_attribution(&store, "sess-null", 1).await;
     assert_eq!(rows[0].2, None, "unattributed → topic_source NULL");
 }
 
@@ -414,10 +429,9 @@ async fn topic_with_sql_metachars_binds_parameterized() {
     let event = make_stamped_event("PostToolUse", "sess-sql", evil, None, None);
 
     let _ = dispatch!(HookRequest::RecordEvent { event }, &store, &registry);
-    settle().await;
 
     // The observations table still exists and holds the literal topic.
-    let rows = query_attribution(&store, "sess-sql").await;
+    let rows = await_attribution(&store, "sess-sql", 1).await;
     assert_eq!(rows.len(), 1, "table intact; one row written");
     assert_eq!(
         rows[0].0,
