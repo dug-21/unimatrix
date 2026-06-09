@@ -14,6 +14,7 @@
 //! - Live-DB path guard applied in `run_eval` before async work begins (C-13)
 //! - Embed model readiness polled before scenario replay (pseudocode lines 148-158)
 
+pub mod cost;
 mod layer;
 mod metrics;
 mod output;

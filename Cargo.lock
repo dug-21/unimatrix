@@ -3881,6 +3881,7 @@ dependencies = [
  "subtle",
  "tempfile",
  "thiserror 2.0.18",
+ "tokenizers",
  "tokio",
  "tokio-rustls",
  "tokio-util",
