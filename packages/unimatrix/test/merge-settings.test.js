@@ -734,3 +734,644 @@ describe("ADR-004 reduced set applies to both command shapes", function () {
     assert.strictEqual(group.matcher, PRETOOLUSE_CYCLE_MATCHER);
   });
 });
+
+// ── vnc-031 Step 3c: cross-matcher-group stale-uni prune ─────────────
+//
+// For each MANAGED event, every uni-owned hook that is NOT the freshly-written
+// keep-target is removed across ALL matcher groups — identity keep test
+// (ADR-001), registered events only (ADR-002), Step 3b opt-out untouched.
+
+describe("vnc-031 Step 3c cross-matcher-group prune", function () {
+  // Count uni-owned hooks for an event across all matcher groups.
+  function countUni(content, event) {
+    let count = 0;
+    for (const group of content.hooks[event] || []) {
+      for (const hook of group.hooks || []) {
+        if (isUnimatrixHook(hook)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  // The single uni hook command for a managed event, asserting exactly one.
+  function soleUniHook(content, event) {
+    const uni = [];
+    for (const group of content.hooks[event] || []) {
+      for (const hook of group.hooks || []) {
+        if (isUnimatrixHook(hook)) {
+          uni.push({ matcher: group.matcher, command: hook.command });
+        }
+      }
+    }
+    assert.strictEqual(uni.length, 1, "expected exactly one uni hook for " + event);
+    return uni[0];
+  }
+
+  // Cumulative helper (#4263): derive everything from one source. Seeds the
+  // fresh-shaped managed group AND an extra stale uni hook under a DIFFERENT
+  // (non-managed) matcher group. staleCommand defaults to a Rust "*"-PreToolUse
+  // legacy form; `foreign` optionally adds a foreign hook into the stale group.
+  function seedWithCrossGroupStale(
+    fp,
+    { event = "PreToolUse", staleMatcher = "*", staleCommand, foreign } = {}
+  ) {
+    const cmd = staleCommand || "/old/path/unimatrix hook " + event;
+    const staleHooks = [{ type: "command", command: cmd }];
+    if (foreign) {
+      staleHooks.push({ type: "command", command: foreign });
+    }
+    const managedMatcher = EVENT_MATCHERS[event];
+    const hooks = {};
+    hooks[event] = [
+      {
+        matcher: managedMatcher,
+        hooks: [{ type: "command", command: "unimatrix-server hook " + event }],
+      },
+      { matcher: staleMatcher, hooks: staleHooks },
+    ];
+    writeSettings(fp, { hooks });
+  }
+
+  // ── AC-01: legacy "*" PreToolUse migrates clean (R-01) ──────────────
+
+  it("test_legacy_star_pretooluse_migrates_clean", function () {
+    const fp = tempSettingsPath();
+    writeSettings(fp, {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: "*",
+            hooks: [{ type: "command", command: "/old/path/unimatrix hook PreToolUse" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const cycleGroup = result.content.hooks.PreToolUse.find(
+      (g) => g.matcher === PRETOOLUSE_CYCLE_MATCHER
+    );
+    assert.ok(cycleGroup, "cycle matcher group must exist");
+    const uniInCycle = cycleGroup.hooks.filter(isUnimatrixHook);
+    assert.strictEqual(uniInCycle.length, 1);
+    assert.strictEqual(uniInCycle[0].command, expectedLocalCommand("PreToolUse"));
+    // No uni hook survives under any "*" matcher.
+    const star = result.content.hooks.PreToolUse.find(
+      (g) => g.matcher === "*" && g.hooks.some(isUnimatrixHook)
+    );
+    assert.strictEqual(star, undefined, "no uni hook may survive under '*'");
+    assert.strictEqual(countUni(result.content, "PreToolUse"), 1);
+  });
+
+  // ── R-01 (Critical): identity must not degrade to string compare ────
+  // A `command ===` reimplementation must turn at least one of these red.
+
+  it("test_cross_group_stale_twin_differing_only_by_shape_pruned", function () {
+    const fp = tempSettingsPath();
+    // No fresh managed group on input; the only uni hook is a stale near-twin
+    // under a non-managed matcher whose command differs from fresh ONLY by shape
+    // (collapsible whitespace / arg spacing) yet still classifies as uni.
+    writeSettings(fp, {
+      hooks: {
+        SessionStart: [
+          {
+            matcher: "Foreign",
+            hooks: [{ type: "command", command: "unimatrix  hook   SessionStart" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "SessionStart");
+    assert.strictEqual(sole.matcher, EVENT_MATCHERS.SessionStart);
+    assert.strictEqual(sole.command, expectedLocalCommand("SessionStart"));
+    // The near-twin's group no longer holds a uni hook.
+    const foreignGroup = result.content.hooks.SessionStart.find(
+      (g) => g.matcher === "Foreign"
+    );
+    assert.ok(
+      !foreignGroup || !foreignGroup.hooks.some(isUnimatrixHook),
+      "near-twin uni hook must be pruned"
+    );
+  });
+
+  it("test_cross_group_pretooluse_star_shares_prefix_with_cycle_survivor", function () {
+    const fp = tempSettingsPath();
+    // Stale "*" Rust uni hook sharing a long common prefix with the fresh command.
+    writeSettings(fp, {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: PRETOOLUSE_CYCLE_MATCHER,
+            hooks: [{ type: "command", command: "unimatrix-server hook PreToolUse" }],
+          },
+          {
+            matcher: "*",
+            hooks: [
+              {
+                type: "command",
+                command: BINARY + " hook PreToolUse --legacy-star-suffix",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "PreToolUse");
+    assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
+    assert.strictEqual(sole.command, expectedLocalCommand("PreToolUse"));
+  });
+
+  it("test_cross_group_survivor_is_exact_fresh_command_not_substring", function () {
+    const fp = tempSettingsPath();
+    seedWithCrossGroupStale(fp, {
+      event: "PreToolUse",
+      // Shape-varying twin: a substring/includes keep-rule would mis-handle this.
+      staleCommand: "unimatrix   hook    PreToolUse",
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "PreToolUse");
+    assert.strictEqual(sole.command, expectedLocalCommand("PreToolUse")); // exact, not includes
+    assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
+  });
+
+  // ── AC-02: exactly one uni hook per managed event, never zero ───────
+
+  it("test_each_event_has_exactly_one_unimatrix_entry_cross_group", function () {
+    const fp = tempSettingsPath();
+    // Seed every event with the fresh-shaped managed group AND an extra stale uni
+    // hook under a non-managed matcher group, then merge.
+    const hooks = {};
+    for (const event of DEFAULT_EVENTS) {
+      hooks[event] = [
+        {
+          matcher: EVENT_MATCHERS[event],
+          hooks: [{ type: "command", command: "unimatrix-server hook " + event }],
+        },
+        {
+          matcher: "StaleMatcher",
+          hooks: [{ type: "command", command: "/old/dir/unimatrix hook " + event }],
+        },
+      ];
+    }
+    writeSettings(fp, { hooks });
+    const result = mergeSettings(fp, BINARY, {});
+    for (const event of DEFAULT_EVENTS) {
+      const count = countUni(result.content, event);
+      assert(count !== 0, "managed event " + event + " dropped to zero uni hooks");
+      assert.strictEqual(count, 1, "expected exactly 1 uni hook for " + event);
+      const sole = soleUniHook(result.content, event);
+      assert.strictEqual(sole.matcher, EVENT_MATCHERS[event]);
+      assert.strictEqual(sole.command, expectedLocalCommand(event));
+    }
+  });
+
+  it("test_cross_group_only_stale_on_input_managed_entry_created_then_kept", function () {
+    const fp = tempSettingsPath();
+    // The ONLY uni hook pre-merge is a stale one under a non-managed matcher; no
+    // uni hook in the managed group on input. Step 3 must CREATE the managed entry
+    // and Step 3c must NOT prune it (guards a capture-before-create refactor bug).
+    writeSettings(fp, {
+      hooks: {
+        Stop: [
+          {
+            matcher: "Foreign",
+            hooks: [{ type: "command", command: "/old/path/unimatrix hook Stop" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "Stop");
+    assert.strictEqual(sole.matcher, EVENT_MATCHERS.Stop);
+    assert.strictEqual(sole.command, expectedLocalCommand("Stop"));
+  });
+
+  // ── R-03: wrong-scope prune in/out managed group ────────────────────
+
+  it("test_cross_group_in_group_dup_plus_cross_group_stale", function () {
+    const fp = tempSettingsPath();
+    writeSettings(fp, {
+      hooks: {
+        SessionStart: [
+          {
+            matcher: "", // managed group with TWO uni entries (in-group dup)
+            hooks: [
+              { type: "command", command: "unimatrix-server hook SessionStart" },
+              { type: "command", command: "/other/path/unimatrix hook SessionStart" },
+            ],
+          },
+          {
+            matcher: "Foreign",
+            hooks: [{ type: "command", command: "/old/path/unimatrix hook SessionStart" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "SessionStart");
+    assert.strictEqual(sole.matcher, EVENT_MATCHERS.SessionStart);
+    assert.strictEqual(sole.command, expectedLocalCommand("SessionStart"));
+    assert.ok(result.actions.some((a) => a.includes("Removed duplicate")), "Step 3 dedup");
+    assert.ok(
+      result.actions.some((a) => a.includes("(cross-matcher migration)")),
+      "Step 3c cross-matcher"
+    );
+  });
+
+  it("test_cross_group_multiple_stale_groups_all_pruned", function () {
+    const fp = tempSettingsPath();
+    writeSettings(fp, {
+      hooks: {
+        PostToolUse: [
+          {
+            matcher: "*", // managed
+            hooks: [{ type: "command", command: "unimatrix-server hook PostToolUse" }],
+          },
+          {
+            matcher: "StaleA",
+            hooks: [{ type: "command", command: "/a/unimatrix hook PostToolUse" }],
+          },
+          {
+            matcher: "StaleB",
+            hooks: [{ type: "command", command: "/b/unimatrix hook PostToolUse" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "PostToolUse");
+    assert.strictEqual(sole.matcher, "*");
+    assert.strictEqual(sole.command, expectedLocalCommand("PostToolUse"));
+    const crossActions = result.actions.filter((a) =>
+      a.includes("PostToolUse (cross-matcher migration)")
+    );
+    assert.strictEqual(crossActions.length, 2, "one action per stale group");
+  });
+
+  // ── AC-03: foreign + near-miss + non-command preserved (R-07) ───────
+
+  it("test_cross_group_preserves_foreign_star_hook", function () {
+    const fp = tempSettingsPath();
+    seedWithCrossGroupStale(fp, {
+      event: "PreToolUse",
+      staleMatcher: "*",
+      foreign: "my-tool pre-check",
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const star = result.content.hooks.PreToolUse.find((g) => g.matcher === "*");
+    assert.ok(star, "foreign-retaining group must NOT be dropped");
+    assert.ok(!star.hooks.some(isUnimatrixHook), "stale uni hook gone from '*'");
+    assert.strictEqual(star.hooks.length, 1);
+    assert.strictEqual(star.hooks[0].command, "my-tool pre-check");
+  });
+
+  it("test_cross_group_preserves_near_miss_foreign_hook", function () {
+    const fp = tempSettingsPath();
+    // uni-LOOKING but isUnimatrixHook === false (no anchor match) — must survive
+    // byte-for-byte (SR-02 / R-07).
+    const nearMiss = "my-unimatrix-wrapper run";
+    assert.ok(!isUnimatrixHook({ command: nearMiss }), "precondition: near-miss is not uni");
+    seedWithCrossGroupStale(fp, {
+      event: "PreToolUse",
+      staleMatcher: "Foreign",
+      staleCommand: nearMiss,
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const foreignGroup = result.content.hooks.PreToolUse.find((g) => g.matcher === "Foreign");
+    assert.ok(foreignGroup, "near-miss foreign group must survive");
+    assert.strictEqual(foreignGroup.hooks.length, 1);
+    assert.strictEqual(foreignGroup.hooks[0].command, nearMiss);
+  });
+
+  it("test_cross_group_preserves_non_command_entry", function () {
+    const fp = tempSettingsPath();
+    writeSettings(fp, {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: PRETOOLUSE_CYCLE_MATCHER,
+            hooks: [{ type: "command", command: "unimatrix-server hook PreToolUse" }],
+          },
+          {
+            matcher: "Foreign",
+            hooks: [{ type: "url", url: "https://example.com/webhook" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const foreignGroup = result.content.hooks.PreToolUse.find((g) => g.matcher === "Foreign");
+    assert.ok(foreignGroup, "non-command entry group must survive");
+    assert.strictEqual(foreignGroup.hooks.length, 1);
+    assert.strictEqual(foreignGroup.hooks[0].type, "url");
+    assert.strictEqual(foreignGroup.hooks[0].url, "https://example.com/webhook");
+  });
+
+  // ── AC-04: emptied group dropped, event key retained (R-08) ─────────
+
+  it("test_cross_group_drops_emptied_group_keeps_event", function () {
+    const fp = tempSettingsPath();
+    seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
+    const result = mergeSettings(fp, BINARY, {});
+    assert.ok(result.content.hooks.PreToolUse, "event key retained");
+    const star = result.content.hooks.PreToolUse.find((g) => g.matcher === "*");
+    assert.strictEqual(star, undefined, "emptied '*' group dropped");
+    const cycle = result.content.hooks.PreToolUse.find(
+      (g) => g.matcher === PRETOOLUSE_CYCLE_MATCHER
+    );
+    assert.ok(cycle, "cycle group present");
+  });
+
+  it("test_cross_group_foreign_retaining_group_not_dropped", function () {
+    const fp = tempSettingsPath();
+    seedWithCrossGroupStale(fp, {
+      event: "PreToolUse",
+      staleMatcher: "*",
+      foreign: "my-tool pre-check",
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const star = result.content.hooks.PreToolUse.find((g) => g.matcher === "*");
+    assert.ok(star, "group with surviving foreign hook not dropped");
+    assert.strictEqual(star.hooks.length, 1);
+    assert.strictEqual(star.hooks[0].command, "my-tool pre-check");
+  });
+
+  // ── AC-05: idempotency incl. stale-"*"-on-first-run (R-06) ──────────
+
+  it("test_cross_group_migration_idempotent", function () {
+    const fp = tempSettingsPath();
+    seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
+    const first = mergeSettings(fp, BINARY, {});
+    const second = mergeSettings(fp, BINARY, {});
+    assert.deepStrictEqual(first.content, second.content);
+  });
+
+  it("test_cross_group_three_run_stability", function () {
+    const fp = tempSettingsPath();
+    // Multi-stale seed: "*" + .bak + old-dir uni hooks under one event.
+    writeSettings(fp, {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: "*",
+            hooks: [{ type: "command", command: "/old/path/unimatrix hook PreToolUse" }],
+          },
+          {
+            matcher: "BakMatcher",
+            hooks: [
+              {
+                type: "command",
+                command: "node /a/lib/hook-client/index.js.bak PreToolUse",
+              },
+            ],
+          },
+          {
+            matcher: "OldDir",
+            hooks: [
+              {
+                type: "command",
+                command: "node /dogfood-client-OLD/lib/hook-client/index.js PreToolUse",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    mergeSettings(fp, BINARY, {});
+    const second = mergeSettings(fp, BINARY, {});
+    const third = mergeSettings(fp, BINARY, {});
+    assert.ok(
+      !second.actions.some((a) => a.includes("(cross-matcher migration)")),
+      "run 2 emits no cross-matcher action"
+    );
+    assert.deepStrictEqual(second.content, third.content);
+  });
+
+  // ── AC-06: both call arms identical (R-05, R-15) ────────────────────
+
+  it("test_cross_group_migration_string_arm", function () {
+    const fp = tempSettingsPath();
+    seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "PreToolUse");
+    assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
+    assert.strictEqual(sole.command, expectedLocalCommand("PreToolUse"));
+  });
+
+  it("test_cross_group_migration_object_arm", function () {
+    const fp = tempSettingsPath();
+    const clientPath = "/abs/lib/hook-client/index.js";
+    seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
+    const result = mergeSettings(
+      fp,
+      {
+        events: HOOK_EVENTS,
+        commandForEvent: (e) => buildHookClientCommand(clientPath, e),
+      },
+      {}
+    );
+    const sole = soleUniHook(result.content, "PreToolUse");
+    assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
+    assert.strictEqual(sole.command, buildHookClientCommand(clientPath, "PreToolUse"));
+  });
+
+  // ── AC-07: opt-out path unchanged + partition seam (R-09) ───────────
+
+  it("test_partition_combined_subagentstop_optout_and_pretooluse_cross_group", function () {
+    const fp = tempSettingsPath();
+    // No opt-in. Stale SubagentStop uni (non-registered → Step 3b opt-out) AND
+    // stale "*" PreToolUse uni (registered → Step 3c cross-matcher) in one file.
+    writeSettings(fp, {
+      hooks: {
+        SubagentStop: [
+          {
+            matcher: "*",
+            hooks: [{ type: "command", command: "unimatrix hook SubagentStop" }],
+          },
+        ],
+        PreToolUse: [
+          {
+            matcher: "*",
+            hooks: [{ type: "command", command: "/old/path/unimatrix hook PreToolUse" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    assert.ok(!result.content.hooks.SubagentStop, "SubagentStop opt-out pruned");
+    assert.strictEqual(countUni(result.content, "PreToolUse"), 1);
+    const sole = soleUniHook(result.content, "PreToolUse");
+    assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
+    // Each removal emits its OWN phrase; neither path emits the other's.
+    const optOut = result.actions.filter((a) => a.includes("(opt-out)"));
+    const cross = result.actions.filter((a) => a.includes("(cross-matcher migration)"));
+    assert.strictEqual(optOut.length, 1, "exactly one opt-out action");
+    assert.ok(optOut.every((a) => a.includes("SubagentStop")));
+    assert.strictEqual(cross.length, 1, "exactly one cross-matcher action");
+    assert.ok(cross.every((a) => a.includes("PreToolUse")));
+    assert.ok(!cross.some((a) => a.includes("(opt-out)")), "no double emission");
+  });
+
+  // ── R-10: vnc-027 adjacency preserved ───────────────────────────────
+
+  it("test_cross_group_pretooluse_survivor_under_cycle_matcher", function () {
+    const fp = tempSettingsPath();
+    seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "PreToolUse");
+    assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
+  });
+
+  it("test_cross_group_subagentstop_optin_composes", function () {
+    const fp = tempSettingsPath();
+    writeOptIn(fp, true);
+    writeSettings(fp, {
+      hooks: {
+        SubagentStop: [
+          {
+            matcher: "Foreign",
+            hooks: [{ type: "command", command: "/old/path/unimatrix hook SubagentStop" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "SubagentStop");
+    // SubagentStop is opted in → managed "*" survivor; stale cross-group pruned.
+    assert.strictEqual(sole.matcher, "*");
+    assert.strictEqual(sole.command, expectedLocalCommand("SubagentStop"));
+    const foreign = result.content.hooks.SubagentStop.find((g) => g.matcher === "Foreign");
+    assert.ok(!foreign || !foreign.hooks.some(isUnimatrixHook), "stale cross-group pruned");
+  });
+
+  // ── AC-08: action string contract (R-11) ────────────────────────────
+
+  it("test_cross_group_emits_action_and_dry_run_prefix", function () {
+    const fp = tempSettingsPath();
+    seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
+    const result = mergeSettings(fp, BINARY, {});
+    const phrase = "Removed stale unimatrix hook: PreToolUse (cross-matcher migration)";
+    assert.ok(result.actions.includes(phrase), "exact cross-matcher action present");
+    // Disjoint from the other action phrases.
+    assert.ok(!phrase.includes("(opt-out)"));
+    assert.ok(!phrase.includes("Updated hook"));
+    assert.ok(!phrase.includes("Added hook"));
+    assert.ok(!phrase.includes("Removed duplicate"));
+
+    // Dry-run arm: action prefixed; the seeded file is left exactly as seeded
+    // (dry-run never re-writes). Re-read confirms no write side effect occurred.
+    const fp2 = tempSettingsPath();
+    seedWithCrossGroupStale(fp2, { event: "PreToolUse", staleMatcher: "*" });
+    const before = fs.readFileSync(fp2, "utf8");
+    const dry = mergeSettings(fp2, BINARY, { dryRun: true });
+    assert.ok(dry.actions.includes("[dry-run] " + phrase), "dry-run prefixed action");
+    assert.strictEqual(fs.readFileSync(fp2, "utf8"), before, "dry-run must not write");
+  });
+
+  // ── P6 quoted-spaced-path keep-target (GATE C P6, unit-level) ───────
+
+  it("test_cross_group_quoted_spaced_path_target_kept", function () {
+    const fp = tempSettingsPath();
+    const clientPath = "/a b/lib/hook-client/index.js"; // spaced → quoted by builder
+    const freshCmd = buildHookClientCommand(clientPath, "PreToolUse");
+    assert.ok(freshCmd.includes('"'), "precondition: spaced path is quoted");
+    // Managed group already holds the quoted keep-target; a stale uni hook under "*".
+    writeSettings(fp, {
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: PRETOOLUSE_CYCLE_MATCHER,
+            hooks: [{ type: "command", command: freshCmd }],
+          },
+          {
+            matcher: "*",
+            hooks: [{ type: "command", command: "/old/path/unimatrix hook PreToolUse" }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(
+      fp,
+      {
+        events: HOOK_EVENTS,
+        commandForEvent: (e) => buildHookClientCommand(clientPath, e),
+      },
+      {}
+    );
+    const sole = soleUniHook(result.content, "PreToolUse");
+    assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
+    assert.strictEqual(sole.command, freshCmd); // quoting irrelevant — object identity
+  });
+
+  // ── Edge cases (Risk Strategy §Edge Cases) ──────────────────────────
+
+  it("test_cross_group_coincidentally_identical_command_pruned", function () {
+    const fp = tempSettingsPath();
+    // A uni hook in a foreign group whose command byte-equals the FRESH command is
+    // still pruned (different object, FR-04) — no "two identical commands" state.
+    writeSettings(fp, {
+      hooks: {
+        SessionStart: [
+          {
+            matcher: "Foreign",
+            hooks: [{ type: "command", command: expectedLocalCommand("SessionStart") }],
+          },
+        ],
+      },
+    });
+    const result = mergeSettings(fp, BINARY, {});
+    const sole = soleUniHook(result.content, "SessionStart");
+    assert.strictEqual(sole.matcher, EVENT_MATCHERS.SessionStart);
+    const foreign = result.content.hooks.SessionStart.find((g) => g.matcher === "Foreign");
+    assert.ok(!foreign || !foreign.hooks.some(isUnimatrixHook), "coincidental twin pruned");
+  });
+
+  it("test_cross_group_malformed_entry_treated_as_foreign", function () {
+    const fp = tempSettingsPath();
+    writeSettings(fp, {
+      hooks: {
+        SessionStart: [
+          {
+            matcher: EVENT_MATCHERS.SessionStart,
+            hooks: [{ type: "command", command: "unimatrix-server hook SessionStart" }],
+          },
+          {
+            matcher: "Foreign",
+            hooks: [null, { type: "command", command: 42 }],
+          },
+        ],
+      },
+    });
+    let result;
+    assert.doesNotThrow(() => {
+      result = mergeSettings(fp, BINARY, {});
+    });
+    const foreign = result.content.hooks.SessionStart.find((g) => g.matcher === "Foreign");
+    assert.ok(foreign, "malformed-entry group untouched");
+    assert.strictEqual(foreign.hooks.length, 2);
+  });
+
+  it("test_cross_group_group_missing_hooks_key_skipped", function () {
+    const fp = tempSettingsPath();
+    writeSettings(fp, {
+      hooks: {
+        SessionStart: [
+          {
+            matcher: EVENT_MATCHERS.SessionStart,
+            hooks: [{ type: "command", command: "unimatrix-server hook SessionStart" }],
+          },
+          { matcher: "EmptyHooks", hooks: [] },
+          { matcher: "NoHooksKey" },
+        ],
+      },
+    });
+    let result;
+    assert.doesNotThrow(() => {
+      result = mergeSettings(fp, BINARY, {});
+    });
+    assert.strictEqual(countUni(result.content, "SessionStart"), 1);
+  });
+});
