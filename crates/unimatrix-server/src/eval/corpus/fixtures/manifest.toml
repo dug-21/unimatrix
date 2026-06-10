@@ -9,6 +9,6 @@
 #                    shape module (compute_shape_hash) over the LIVE schema this
 #                    corpus targets. The drift guard recomputes the running hash
 #                    and HARD-ERRORS on mismatch for this primary corpus.
-manifest_version = 1
+manifest_version = 2
 migration_number = 47
-shape_hash = "25b2a18c442107c8d192b24ff3d9cb4966d6ca6ed68903b35395375e252fc0d8"
+shape_hash = "3ec3fa759436b818c464b09d061e18474a796e2c2299dda440ec18cac8e0443d"

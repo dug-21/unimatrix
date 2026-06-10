@@ -27,7 +27,7 @@ use crate::infra::config::InferenceConfig;
 /// Manifest schema version. Bumped ONLY when the input *set* changes (a new
 /// declared column / edge type / confidence dim / embedding field), NOT per
 /// corpus. Distinct from the per-corpus `migration_number` (legibility only).
-pub const MANIFEST_VERSION: u32 = 1;
+pub const MANIFEST_VERSION: u32 = 2;
 
 /// DECLARED retrieval-relevant `entries` columns — `(column_name, sql_type)`.
 ///
@@ -53,6 +53,7 @@ pub const RETRIEVAL_RELEVANT_COLUMNS: &[(&str, &str)] = &[
     ("created_at", "INTEGER"), // confidence: freshness fallback reference
     ("helpful_count", "INTEGER"), // confidence: helpfulness (Bayesian) input
     ("unhelpful_count", "INTEGER"), // confidence: helpfulness (Bayesian) input
+    ("correction_count", "INTEGER"), // confidence: correction (corr) component input
 ];
 
 /// DECLARED retrieval-participating `RelationType` variants.
