@@ -51,8 +51,8 @@ size/zero-deps gate scripts. See "Integration Harness Plan" below.
 | R-06 rollback drift | High | dogfood-switchover / dogfood-effect | promote→rollback round-trip reproduces exact Rust form over correct events; idempotent; shipped legacy arm |
 | R-07 daemon-absent re-fire non-zero | High | dogfood-effect | re-fire on socket-less scratch hash exits 0; malformed/empty stdin exits 0; emitted form == `buildHookClientCommand` |
 | R-08 live-settings breach | High | dogfood-effect | pre/post suite hash of live `.claude/settings.json` (untouched); tmpdir guard + negative guard test; live read-only |
-| R-09 matcher delta not asserted / drifts | Medium | dogfood-effect | PreToolUse asserted == **imported** `PRETOOLUSE_CYCLE_MATCHER` (not a literal); runbook documents delta |
-| R-10 event-set 8-vs-9 / dup / foreign | Medium | dogfood-effect | event count asserted against actual opt-in state; no-duplicate; foreign-hook preserved |
+| R-09 matcher delta not asserted / drifts | Medium | dogfood-effect | PreToolUse asserted == **imported** `PRETOOLUSE_CYCLE_MATCHER` (not a literal); stale `"*"` Rust uni group PRUNED (clean-switch), not left as a documented delta; runbook documents narrowing |
+| R-10 event-set 8-vs-9 / dup / foreign | Medium | dogfood-effect | event count asserted against actual opt-in state; no-duplicate; foreign-hook preserved (never pruned) |
 | R-11 npm pack drift / postinstall side-effect | High | dogfood-install | full `files`-array set present, binary ABSENT; postinstall inert (no ONNX/host mutation); mechanism is `npm pack` |
 | R-12 container-rebuild non-durability | Medium | dogfood-install / dogfood-effect | fixed `~/.unimatrix/dogfood-client/` target; emitted command embeds fixed absolute path |
 | R-13 in-repo edit not restored | Medium | dogfood-effect | working tree provably clean after isolation test, incl. failure paths (restore in teardown) |
@@ -64,7 +64,7 @@ size/zero-deps gate scripts. See "Integration Harness Plan" below.
 | AC | Components carrying it | Critical risks anchored |
 |----|------------------------|--------------------------|
 | AC-01 idempotent copy-install | dogfood-install | R-02, R-11, R-12 |
-| AC-02 switchover by effect | dogfood-switchover, dogfood-effect | R-01, R-03, R-07, R-08, R-09, R-10 |
+| AC-02 switchover by effect (CLEAN post-state: every uni hook → installed entrypoint, stale `"*"` Rust uni hook pruned, foreign preserved) | dogfood-switchover, dogfood-effect | R-01, R-03, R-07, R-08, R-09, R-10 |
 | AC-03 isolation (code-freeze) | dogfood-effect | R-04, R-13 |
 | AC-04 runbook + rollback | runbook, dogfood-switchover, dogfood-effect | R-06 |
 | AC-05 init byte-identical | cross-cutting regression | R-14 |
@@ -96,8 +96,11 @@ nan-016 tests). Stage 3c MUST run, in order:
 - **`node --test packages/unimatrix/test/dogfood-effect.test.js`** — the AC-02/AC-03/AC-04
   effect harness. New tests this file adds (none exist today):
   1. `install_*` precondition tests (or `before`-hook install into test-scoped temp `--target`).
-  2. `promote_*` — repoint-by-effect: installed-path commands, **imported**
-     `PRETOOLUSE_CYCLE_MATCHER`, foreign-hook survival, no duplicates, actual event count.
+  2. `promote_*` — repoint-by-effect on a **live-shaped seed** (real `"*"` Rust uni hook +
+     foreign): CLEAN post-state — every uni hook → installed-path command, stale `"*"` Rust uni
+     hook PRUNED (count == 0), **imported** `PRETOOLUSE_CYCLE_MATCHER`, foreign-hook survival, no
+     duplicates, actual event count. PLUS a **prune negative control** that FAILS if the prune is
+     removed (proves the prune is real — clean-switch rework).
   3. `refire_*` — `execFileSync` real re-fire of installed entrypoint, exit-0/empty-stdout
      (daemon-absent), malformed-stdin exit-0.
   4. `refire_negative-control_*` — **broken install path makes the re-fire assertion FAIL**
@@ -107,7 +110,8 @@ nan-016 tests). Stage 3c MUST run, in order:
   6. `isolation_*` — installed byte/behavior invariance under a behavior-changing in-repo edit
      in a throwaway copy; non-symlink assertion; **negative control** that a leaked symlink
      install WOULD be detected (R-04); working tree clean in teardown (R-13).
-  7. `rollback_*` — promote→rollback round-trip == exact Rust form, idempotent, foreign-hook
+  7. `rollback_*` — promote→rollback round-trip == exact Rust form (every uni hook), NO stale
+     node-client uni hook survives (rollback-side prune, count == 0), idempotent, foreign-hook
      preserved, shipped legacy arm (R-06).
   8. `live-settings_*` — tmpdir guard + negative guard test; pre/post suite hash of live
      settings unchanged (R-08).

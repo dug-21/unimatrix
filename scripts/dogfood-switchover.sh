@@ -6,12 +6,24 @@
 #               `node <client>/lib/hook-client/index.js <EVENT>`
 #   rollback -> Rust binary path STRING -> normalizeCommandSource legacy arm ->
 #               `LD_LIBRARY_PATH=<binDir> <binary> hook <EVENT>`
-#   --dry-run -> forwarded to mergeSettings's dryRun (computes actions, no write).
+#   --dry-run -> computes actions + planned prunes, writes nothing.
 #
 # Repoints through the shipped, frozen mergeSettings so the merge is idempotent
 # and ownership-aware (isUnimatrixHook): re-running produces no duplicate/stale
 # hooks, foreign hooks are preserved, and the PreToolUse matcher is narrowed
 # from "*" to PRETOOLUSE_CYCLE_MATCHER (vnc-027 semantics).
+#
+# Stale-uni-hook prune (Stage 3b). mergeSettings keys every op on
+# EVENT_MATCHERS[event] (PreToolUse => PRETOOLUSE_CYCLE_MATCHER, never "*"), so a
+# uni-owned hook living under a DIFFERENT matcher group — e.g. this repo's legacy
+# "*" PreToolUse Rust hook (#4930) — is invisible to it and survives un-repointed.
+# After mergeSettings (always called {dryRun:true} = pure compute of {actions,
+# content}), the one-liner prunes every uni-owned hook (per shipped
+# isUnimatrixHook) whose command does NOT reference the mode's targetToken as a
+# whole shell token, drops emptied matcher groups + event keys, then owns the
+# SINGLE writeFile — gated by this script's own --dry-run. Foreign hooks are
+# never pruned. targetToken: promote => <client>/lib/hook-client/index.js;
+# rollback => <repo>/target/release/unimatrix.
 #
 # This is TOOLING: it MAY be loud and exit non-zero on failure. The hook
 # COMMANDS it writes are themselves fail-open (C-7); the script never starts /
@@ -133,39 +145,127 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "required tool not found: $1" 1
 }
 
-# run_promote: node one-liner — object commandSource arm. Emits
-# `node <client>/lib/hook-client/index.js <EVENT>`; isUnimatrixHook recognizes
-# any existing Rust commands and updates them in place (no dupes); foreign hooks
-# untouched; PreToolUse "*" narrowed to PRETOOLUSE_CYCLE_MATCHER. mergeSettings
-# writes SETTINGS unless DRYRUN.
-run_promote() {
-  node - <<'NODE'
-const { mergeSettings, buildHookClientCommand, HOOK_EVENTS } = require(process.env.MERGE_JS);
+# Shared node prune + write fragment, sourced into both one-liners. mergeSettings
+# is ALWAYS called {dryRun:true} (pure compute of {actions, content}); the prune
+# mutates `content`; this fragment owns the single writeFile, gated by the
+# script's own DRYRUN. commandReferencesTarget is a whole-shell-token match
+# (quote-stripped, whitespace-split token-equality), NOT naive includes — so a
+# stale hook at .../index.js.bak or .../dogfood-client-OLD/.../index.js is a
+# DIFFERENT token and is correctly pruned, while the genuine post-switchover
+# command is kept. Rollback (MODE=rollback) also accepts a dirname-level token
+# match for the LD_LIBRARY_PATH=<dirname(rustBinary)> prefix.
+PRUNE_FRAGMENT='
+const fs = require("fs");
 const path = require("path");
+// Split a command into whole shell tokens, honoring "..." / '"'"'...'"'"' quoting so
+// a quoted path containing whitespace (buildHookClientCommand quotes iff the path
+// has whitespace) is ONE token with the surrounding quotes stripped — not split at
+// the internal space. Unquoted runs split on ASCII whitespace.
+function shellTokens(cmd) {
+  const out = [];
+  const re = /"([^"]*)"|'"'"'([^'"'"']*)'"'"'|(\S+)/g;
+  let mm;
+  while ((mm = re.exec(String(cmd))) !== null) {
+    if (mm[1] !== undefined) out.push(mm[1]);
+    else if (mm[2] !== undefined) out.push(mm[2]);
+    else out.push(mm[3]);
+  }
+  return out;
+}
+function commandReferencesTarget(cmd, targetToken, allowDirname) {
+  const targetDir = allowDirname ? path.dirname(targetToken) : null;
+  for (const tok of shellTokens(cmd)) {
+    const eq = tok.indexOf("=");
+    if (eq >= 0) {
+      // env-assignment token (e.g. LD_LIBRARY_PATH=<dir>): test the value side too.
+      const val = tok.slice(eq + 1);
+      if (val === targetToken) return true;
+      if (targetDir !== null && val === targetDir) return true;
+    }
+    if (tok === targetToken) return true;
+    if (targetDir !== null && tok === targetDir) return true;
+  }
+  return false;
+}
+function pruneStaleUniHooks(content, targetToken, isUnimatrixHook, allowDirname) {
+  const prunes = [];
+  if (!content || !content.hooks) return prunes;
+  for (const event of Object.keys(content.hooks)) {
+    const groups = content.hooks[event];
+    if (!Array.isArray(groups)) continue;
+    for (const group of groups) {
+      const entries = group && group.hooks;
+      if (!Array.isArray(entries)) continue;
+      group.hooks = entries.filter((entry) => {
+        const cmd = (entry && entry.command) || "";
+        if (isUnimatrixHook(entry) && !commandReferencesTarget(cmd, targetToken, allowDirname)) {
+          prunes.push({ event: event, matcher: group.matcher, command: cmd });
+          return false;
+        }
+        return true;
+      });
+    }
+    content.hooks[event] = groups.filter(
+      (g) => g && Array.isArray(g.hooks) && g.hooks.length > 0
+    );
+    if (content.hooks[event].length === 0) delete content.hooks[event];
+  }
+  return prunes;
+}
+function emitAndWrite(settingsPath, result, prunes, dryRun) {
+  process.stdout.write(JSON.stringify({
+    actions: result.actions,
+    prunes: prunes,
+    pruneCount: prunes.length,
+    dryRun: dryRun,
+  }));
+  if (!dryRun) {
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+    fs.writeFileSync(settingsPath, JSON.stringify(result.content, null, 2) + "\n", "utf8");
+  }
+}
+'
+
+# run_promote: object commandSource arm. Emits `node <client>/lib/hook-client/
+# index.js <EVENT>`; isUnimatrixHook updates existing Rust commands under the
+# cycle matcher in place (no dupes), foreign hooks untouched, PreToolUse narrowed
+# to PRETOOLUSE_CYCLE_MATCHER. The stale "*" Rust uni hook left by mergeSettings
+# is pruned (it is a uni hook NOT referencing the installed entrypoint token).
+run_promote() {
+  node - <<NODE
+$PRUNE_FRAGMENT
+const { mergeSettings, buildHookClientCommand, HOOK_EVENTS, isUnimatrixHook } = require(process.env.MERGE_JS);
 const settingsPath = process.env.SETTINGS;
 const clientDir = process.env.CLIENT;
 const dryRun = process.env.DRYRUN === "true";
 const entry = path.join(clientDir, "lib/hook-client/index.js");
+const targetToken = entry;
 const result = mergeSettings(settingsPath, {
   events: HOOK_EVENTS,
   commandForEvent: (event) => buildHookClientCommand(entry, event),
-}, { dryRun });
-process.stdout.write(JSON.stringify(result.actions));
+}, { dryRun: true });
+const prunes = pruneStaleUniHooks(result.content, targetToken, isUnimatrixHook, false);
+emitAndWrite(settingsPath, result, prunes, dryRun);
 NODE
 }
 
-# run_rollback: node one-liner — STRING commandSource (legacy arm). The shipped
+# run_rollback: STRING commandSource (legacy arm). The shipped
 # normalizeCommandSource owns the exact `LD_LIBRARY_PATH=<binDir> <binary> hook
 # <EVENT>` form over HOOK_EVENTS, so promote<->rollback round-trips cannot drift
-# (no bespoke revert string). Idempotent re-point; foreign hooks preserved.
+# (no bespoke revert string). A stale node-client uni hook is pruned (it does NOT
+# reference the Rust binary token); the legacy command DOES reference rustBinary
+# (bare arg AND LD_LIBRARY_PATH dir prefix) -> kept. Idempotent; foreign preserved.
 run_rollback() {
-  node - <<'NODE'
-const { mergeSettings } = require(process.env.MERGE_JS);
+  node - <<NODE
+$PRUNE_FRAGMENT
+const { mergeSettings, isUnimatrixHook } = require(process.env.MERGE_JS);
 const settingsPath = process.env.SETTINGS;
 const dryRun = process.env.DRYRUN === "true";
 const rustBinary = process.env.RUST_BINARY;
-const result = mergeSettings(settingsPath, rustBinary, { dryRun });
-process.stdout.write(JSON.stringify(result.actions));
+const targetToken = rustBinary;
+const result = mergeSettings(settingsPath, rustBinary, { dryRun: true });
+const prunes = pruneStaleUniHooks(result.content, targetToken, isUnimatrixHook, true);
+emitAndWrite(settingsPath, result, prunes, dryRun);
 NODE
 }
 
