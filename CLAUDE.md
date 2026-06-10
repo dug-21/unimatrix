@@ -41,7 +41,7 @@ Features use `{phase}-{NNN}` naming. Track via **GitHub Issues**; commits refere
 | Assimilate | `ass` | Research spikes |
 | Nexus | `nxs` | Storage, vectors, embedding, schema |
 | Collective | `col` | Orchestration & flow |
-| Vinculum | `vnc` | MCP server |
+| Vinculum | `vnc` | MCP server & Connectivity |
 | Alcove | `alc` | Agent management |
 | Cortical | `crt` | Learning & drift |
 | Matrix | `mtx` | UI & dashboards |
