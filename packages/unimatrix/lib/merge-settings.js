@@ -206,6 +206,12 @@ function mergeSettings(filePath, commandSource, options) {
   const actions = [];
   let content = {};
 
+  // vnc-031 ADR-001: per-managed-event map of the kept entry BY OBJECT REFERENCE
+  // (never a command string). Step 3 captures the newHookEntry it placed; Step 3c
+  // keeps exactly that object and prunes every other uni-owned entry. Identity is
+  // the load-bearing keep test — a command compare is forbidden (SR-01 / R-01).
+  const keptEntryByEvent = {};
+
   // ADR-004 §2: SubagentStop is opt-in. Resolve the durable key from the
   // settings.local.json sibling of filePath (dirname(filePath) is {root}/.claude)
   // and filter it out of the registered event list unless explicitly enabled.
@@ -319,6 +325,52 @@ function mergeSettings(filePath, commandSource, options) {
       });
       actions.push("Added hook: " + event + " (new matcher group)");
     }
+
+    // vnc-031 ADR-001: capture the kept entry BY REFERENCE, once per event after
+    // the merge resolves. newHookEntry is the same object placed in all three
+    // branches (repoint / append / new group), so capturing here is correct and
+    // branch-independent — including the R-02 case where the only pre-merge uni
+    // hook is a stale cross-group one and Step 3 just created the managed entry.
+    keptEntryByEvent[event] = newHookEntry;
+  }
+
+  // Step 3c: Cross-matcher-group stale-uni prune for MANAGED events (vnc-031,
+  // ADR-002). After Step 3 has composed the managed EVENT_MATCHERS[event] group
+  // and captured keptEntryByEvent[event], walk EVERY matcher group of this event
+  // and remove every uni-owned entry that is NOT the kept object. This migrates a
+  // legacy "*" (or any foreign-matcher) uni hook cleanly from mergeSettings alone.
+  // Runs AFTER Step 3 and BEFORE Step 3b — the partition is load-bearing (SR-03):
+  // Step 3c = managed events; Step 3b = HOOK_EVENTS \ events. The keep test is
+  // OBJECT IDENTITY (hook !== kept) — never a command-string compare (ADR-001).
+  for (const event of events) {
+    const eventArray = content.hooks[event];
+    if (!Array.isArray(eventArray)) {
+      continue; // managed group guarantees presence; defensive.
+    }
+    const kept = keptEntryByEvent[event];
+
+    for (const group of eventArray) {
+      if (!group || !Array.isArray(group.hooks)) {
+        continue; // mirror pruneUnimatrixEvent guard.
+      }
+      const before = group.hooks.length;
+      group.hooks = group.hooks.filter(
+        (hook) => !(isUnimatrixHook(hook) && hook !== kept)
+      );
+      if (group.hooks.length !== before) {
+        actions.push(
+          "Removed stale unimatrix hook: " + event + " (cross-matcher migration)"
+        );
+      }
+    }
+
+    // Drop matcher groups emptied solely by the uni removal; RETAIN the event key
+    // (the managed group always holds `kept`). Reuse pruneUnimatrixEvent's filter
+    // idiom but NEVER delete content.hooks[event] — unlike Step 3b, Step 3c can
+    // never empty a managed event.
+    content.hooks[event] = eventArray.filter(
+      (group) => group && Array.isArray(group.hooks) && group.hooks.length > 0
+    );
   }
 
   // Step 3b: Opt-out pruning (ADR-004 §2). Remove Unimatrix-owned entries for
