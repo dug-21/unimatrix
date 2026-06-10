@@ -101,6 +101,11 @@ isUnimatrixHook(entry) / UNIMATRIX_PATTERNS   (verified 5 patterns)
     matches: ^unimatrix hook , ^unimatrix-server hook , /unimatrix hook , /unimatrix-server hook ,
              node[.exe] <path>/hook-client/index.js  (quoted-double | quoted-single | bare; / or \)
     ⇒ promote updates Rust commands in place (no duplicates); rollback re-owns them.
+    ALSO imported by Component 2's one-liner (Stage 3b) as the ownership predicate for the
+    post-mergeSettings stale-uni-hook prune (#4930): a uni hook NOT referencing the mode's
+    targetToken is removed. mergeSettings keys on EVENT_MATCHERS[event] only, so a uni hook
+    under a non-canonical matcher (the live "*" PreToolUse Rust hook) is invisible to it and
+    must be pruned by Component 2, not by mergeSettings.
 
 HOOK_EVENTS = ["SessionStart","Stop","UserPromptSubmit","PreToolUse","PostToolUse",
                "PostToolUseFailure","PreCompact","SubagentStart","SubagentStop"]   (9; SubagentStop opt-in)
@@ -130,14 +135,21 @@ never hardcode the version (the version bumps; #4328 lesson).
             v
 [2] dogfood-switchover.sh promote --settings S --client <target>
       require(<target>/lib/merge-settings.js)             boundary IN: InstalledClientTree.mergeApi
-      mergeSettings(S, promoteCommandSource(<target>), {dryRun})
-      -> writes S with `node <target>/lib/hook-client/index.js <EVENT>`  boundary OUT: repointed settings
+                                                            (imports mergeSettings + isUnimatrixHook)
+      mergeSettings(S, promoteCommandSource(<target>), {dryRun:true})  -> {actions, content}
+      pruneStaleUniHooks(content, targetToken, isUnimatrixHook)        -- Stage 3b amendment
+         targetToken = <target>/lib/hook-client/index.js (promote) | <repo>/target/release/unimatrix (rollback)
+         removes uni-owned hooks NOT referencing targetToken (e.g. the stale "*" PreToolUse Rust
+         uni hook mergeSettings leaves behind, #4930); drops emptied matcher groups + event keys
+      -> one-liner writes S (unless --dry-run) with `node <target>/lib/hook-client/index.js <EVENT>`
+         and NO stale uni hook; foreign hooks preserved      boundary OUT: repointed + pruned settings
             |
             v
 [3] dogfood-effect.test.js   (before: runs [1] into temp --target)
       builds ScratchFixture
       runs [2] promote/rollback --settings <scratch> --client <temp-target>
-      asserts settings shape (matcher === PRETOOLUSE_CYCLE_MATCHER, 8 events, foreign survives)
+      asserts settings shape (matcher === PRETOOLUSE_CYCLE_MATCHER, 8 events, foreign survives,
+              NO stale "*" Rust uni hook survives post-promote — the Stage 3b prune postcondition)
       RE-FIRES: execFileSync("node",[<target>/lib/hook-client/index.js,"SessionStart"],
                              {cwd:scratchRoot, input:JSON}) -> assert exit 0 / empty stdout
             |

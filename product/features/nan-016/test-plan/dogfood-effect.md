@@ -16,7 +16,16 @@
 - **Scratch project root** (per test, under `os.tmpdir()`, `realpath`-resolved): a temp dir
   with a real `.git/` **directory** (so `walkToProjectRoot` treats it as a real root and hashes
   it to its own `~/.unimatrix/{scratchHash}/`) and a scratch `.claude/settings.json` seeded with
-  the current Rust-hook shape (`"*"` PreToolUse) plus a **foreign hook** to prove preservation.
+  the **live-shaped** Rust-hook shape — INCLUDING the real legacy `"*"` PreToolUse Rust uni hook
+  (the shape this repo's actual `.claude/settings.json` carries) — plus a **foreign hook** to
+  prove preservation. This live-shaped seed is the load-bearing fixture for the prune: an
+  unpruned promote would leave the stale `"*"` Rust uni hook alongside the new
+  `PRETOOLUSE_CYCLE_MATCHER` group (see #4930), which the CLEAN post-state now forbids.
+- **Rework note (clean-switch):** the switchover is extended with a stale-uni-hook PRUNE so the
+  soak is CLEAN. The prior "8-of-9 / documented stale-`"*"` delta" reality (#4930) is REPLACED:
+  AC-02 now asserts the CLEAN post-state — every uni-owned hook (per the shipped `isUnimatrixHook`)
+  points at the installed entrypoint and the count of stale `"*"` Rust uni hooks == 0. Foreign
+  hooks are still preserved untouched.
 - **Installed client**: `before`-hook runs `dogfood-install.sh --target <test-scoped temp dir>`
   (R-15 — NEVER the real `~/.unimatrix/dogfood-client/`). If install cannot be staged, the
   harness **skips with a clear message** (R-05) — never hard-crashes.
@@ -33,10 +42,18 @@
     {cwd:scratchRoot, input:JSON.stringify(payload)})`.
   - Assert: exit 0 AND empty stdout — a REAL invocation of the installed entrypoint, not a parse
     of settings.
-- `promote_scratch_commands-point-at-real-installed-entrypoint`
-  - Assert: every Unimatrix command in the parsed scratch settings ==
+- `promote_live-shaped-seed_every-uni-hook-points-at-installed-entrypoint-clean`  ← AC-02 CLEAN post-state
+  - Arrange: live-shaped seed (real `"*"` PreToolUse Rust uni hook + foreign hook).
+  - Act: run the real `promote`.
+  - Assert: (a) EVERY uni-owned command (those for which the shipped `isUnimatrixHook` returns
+    true, enumerated over ALL hook groups/events, NOT scoped to one matcher group) ==
     `node <installed>/lib/hook-client/index.js <EVENT>`, and `<installed>` is the real
-    test-scoped install dir (not a placeholder/literal).
+    test-scoped install dir (not a placeholder/literal); (b) the count of stale `"*"` Rust uni
+    hooks == 0 — the pre-existing legacy `"*"` PreToolUse Rust uni hook has been PRUNED, not left
+    alongside the new group (inverts #4930's "stale `"*"` survives" reality); (c) the PreToolUse
+    cycle-matcher group's matcher === the imported `PRETOOLUSE_CYCLE_MATCHER`; (d) the foreign
+    hook is preserved unchanged with no duplicates; (e) the registered uni event count matches
+    the actual opt-in state (8 without `SubagentStop` opt-in, 9 with).
 - `refire_negative-control_broken-install-path-FAILS-the-assertion`  ← **R-01 negative control (MANDATORY)**
   - Arrange: point the re-fire at a deliberately broken path (non-existent
     `index.js` / a corrupted copy that throws non-zero).
@@ -129,9 +146,39 @@ no-op bytes-unchanged check alone is insufficient.
 - `promote_PreToolUse-equals-imported-PRETOOLUSE_CYCLE_MATCHER` — asserted against the IMPORTED
   constant, not a literal (R-09).
 - `promote_event-count-matches-actual-optin-state` — 8 without `SubagentStop` opt-in; 9 with
-  opt-in (R-10).
-- `promote_foreign-hook-survives_no-duplicates` — foreign preserved; Rust commands updated in
-  place, no duplicate Unimatrix entries (R-10).
+  opt-in (R-10), asserted against the actual scratch opt-in state.
+- `promote_foreign-hook-survives_no-duplicates` — foreign preserved; uni commands updated/pruned
+  to a single installed-entrypoint group per event, no duplicate Unimatrix entries (R-10).
+
+## Stale-uni-hook PRUNE — CLEAN post-state (rework: clean-switch; R-09 context)
+
+> The switchover is extended with a prune so the dogfood soak runs entirely on the installed
+> entrypoint. `mergeSettings` alone keys every op on `EVENT_MATCHERS[event]` and never touches a
+> stale `"*"` PreToolUse Rust uni hook (#4930); the prune removes any uni-owned hook group whose
+> command form does NOT match the post-promote target form, leaving foreign groups untouched.
+> These are MANDATORY non-vacuous assertions — the prune must be PROVEN real, not assumed.
+
+- `promote_prunes-stale-star-rust-uni-hook_count-zero`  ← prune core (positive)
+  - Arrange: live-shaped seed with the real `"*"` PreToolUse Rust uni hook + foreign hook.
+  - Act: real `promote`.
+  - Assert: after promote, enumerating ALL hook groups, the number of uni-owned hooks (per shipped
+    `isUnimatrixHook`) whose command is the stale Rust `"*"` form == 0; the only surviving uni
+    PreToolUse group is under `PRETOOLUSE_CYCLE_MATCHER` with the installed-entrypoint command; the
+    foreign hook is byte-unchanged.
+- `promote_prune-NEGATIVE-CONTROL_removing-prune-leaves-stale-hook-FAILS`  ← **prune negative control (MANDATORY)**
+  - Purpose: prove the prune assertion is non-vacuous — that it FAILS if the prune is removed
+    (i.e. the prune is real, not a tautology against a seed that never had a stale hook).
+  - Arrange: the SAME live-shaped seed carrying the stale `"*"` Rust uni hook, but exercise the
+    no-prune path — either by invoking the switchover with the prune disabled (a test-only
+    `--no-prune` / env shim if the implementation exposes one) OR, if no such shim exists, by
+    constructing the post-state mergeSettings ALONE would produce (call the installed
+    `mergeSettings` directly on the seed, with NO prune step) and feeding it to the SAME prune
+    assertion helper used by the positive test.
+  - Assert: against that no-prune post-state, the prune assertion (`count of stale "*" Rust uni
+    hooks == 0`) FAILS (the stale `"*"` Rust uni hook is still present). This proves the positive
+    `promote_prunes-stale-star-rust-uni-hook_count-zero` assertion can actually detect an unpruned
+    leftover and is not vacuously green. The positive and negative controls MUST share the same
+    assertion helper so a regression to a no-op check surfaces here.
 
 ## R-13 — Working tree provably clean after isolation test (Medium)
 
@@ -151,15 +198,35 @@ no-op bytes-unchanged check alone is insufficient.
 
 ## Rollback (AC-04 effect half — R-06)
 
-- `rollback_promote-then-rollback_restores-exact-rust-form` — see dogfood-switchover.md R-06;
-  executed here on the scratch settings. Assert exact Rust command over correct events,
-  idempotent, foreign preserved, shipped legacy arm.
+- `rollback_live-shaped-seed_promote-then-rollback_restores-exact-rust-form-clean`  ← R-06 + clean-switch
+  - Arrange: live-shaped seed (real `"*"` Rust uni hook + foreign hook); run `promote` then
+    `rollback`.
+  - Assert: (a) EVERY uni-owned hook (per shipped `isUnimatrixHook`, enumerated over ALL groups)
+    is exactly `LD_LIBRARY_PATH=<repo>/target/release <repo>/target/release/unimatrix hook <EVENT>`
+    over the correct event set; (b) NO stale node-client uni hook survives — the count of
+    uni-owned hooks still in the `node <installed>/lib/hook-client/index.js <EVENT>` form == 0
+    (the promote-side node-client group is PRUNED on rollback, mirror of the promote-side prune of
+    the Rust group); (c) the foreign hook is preserved unchanged, no duplicates; (d) emitted by
+    the shipped `normalizeCommandSource` legacy arm, NOT a nan-016 bespoke revert string.
+- `rollback_idempotent_twice-equals-once` — running rollback twice yields byte-identical settings
+  (idempotent re-point + idempotent prune; a stale node-client group is gone after the first
+  rollback and stays gone).
+- `rollback_prune-NEGATIVE-CONTROL_removing-prune-leaves-stale-node-hook-FAILS` (optional but
+  recommended) — the rollback-side analogue: against the no-prune post-rollback state, the "no
+  stale node-client uni hook survives" assertion FAILS, proving the rollback prune is real.
 
 ## Coverage Requirement (Critical risks — all mandatory)
 
-- R-01: real `execFileSync` re-fire + negative control that fails on broken install.
+- R-01: real `execFileSync` re-fire + negative control that fails on broken install. (The R-01
+  re-fire + its broken-install negative control are UNCHANGED by the clean-switch rework — the
+  vacuous-test guard still holds.)
 - R-03: scratch hash distinct from live; no scratch socket; realpath-mirrors-config.js.
 - R-04: behavior-changing edit + byte/behavior invariance + non-symlink + leak-detecting
   negative control.
 - Plus R-07 (exit-0 daemon-absent + malformed stdin), R-08 (pre/post live hash + tmpdir guard),
   R-13 (clean tree on failure paths), R-15 (tmpdir-only install).
+- **Clean-switch prune (rework):** AC-02 asserts the CLEAN post-promote state — every uni-owned
+  hook points at the installed entrypoint, stale `"*"` Rust uni hook count == 0, foreign
+  preserved; PLUS a prune negative control that FAILS if the prune is removed. Rollback asserts
+  the CLEAN post-rollback state — every uni hook is the exact Rust form, no stale node-client uni
+  hook survives, foreign preserved, idempotent.
