@@ -19,16 +19,26 @@
 // merge-settings / init / config, no package.json. This is cumulative node --test
 // infra under packages/unimatrix/test/.
 //
-// AC-02 CLEAN post-switch state (clean-switch rework): the switchover now PRUNES
-// stale uni hooks (scripts/dogfood-switchover.sh, Stage 3b), so the prior 8-of-9
-// "documented stale-'*' delta" reality (#4930) is REPLACED. The fixture still
-// seeds the live-shaped real "*" PreToolUse Rust uni hook + a foreign hook, but
-// the assertions now require the CLEAN post-state: EVERY uni-owned hook points at
-// the installed entrypoint, the stale "*" Rust uni hook count == 0, foreign hooks
-// preserved untouched. A prune NEGATIVE CONTROL (sharing ONE assertion helper with
-// the positive check) feeds the mergeSettings-ALONE / no-prune post-state to the
-// SAME helper and asserts it FAILS — so a regression to a no-op prune surfaces
-// (non-vacuous per R-01).
+// AC-02 CLEAN post-switch state: the migration now PRUNES stale uni hooks at the
+// SOURCE — vnc-031 mergeSettings Step 3c (cross-matcher migration) — so the prior
+// 8-of-9 "documented stale-'*' delta" reality (#4930) is REPLACED. The fixture
+// seeds REAL legacy-shaped input: the live-shaped "*" PreToolUse Rust uni hook
+// plus .bak / old-client-dir uni hooks and a foreign hook. The assertions require
+// the CLEAN post-state: EVERY uni-owned hook points at the installed entrypoint,
+// the stale "*" Rust uni hook count == 0, foreign hooks preserved untouched.
+//
+// vnc-031 GATE C: T-PARITY proves Step 3c ALONE (calling mergeSettings directly,
+// NOT the script-with-fragment) cleanly migrates this real legacy input for both
+// the promote (object) and rollback (string) arms (P1–P5/P7/P8) — the proof that
+// unblocks deleting the dogfood-switchover.sh PRUNE_FRAGMENT in the next wave.
+//
+// vnc-031 GATE B: the prune NEGATIVE CONTROL (T1d) shares ONE assertion helper
+// with the positive check; it feeds an UNPRUNED (no-Step-3c) post-state —
+// reconstructed from the seed directly via unprunedPromoteContent, NOT via the
+// now-pruning mergeSettings — to the SAME helper and asserts it FAILS. Routing the
+// reconstruction through mergeSettings would make the control vacuous (#4932), so
+// it is deliberately rebuilt without Step 3c. A regression to a no-op Step 3c then
+// surfaces as a RED positive check (non-vacuous per R-01 / R-13).
 
 const assert = require("assert");
 const crypto = require("crypto");
@@ -130,8 +140,23 @@ function installToTemp() {
  * SEED_RUST_SHAPE: the live settings *shape* (read live settings READ-ONLY and
  * mirror its structure — never write live; R-08-3), reduced to Rust-binary
  * commands with a "*" PreToolUse matcher PLUS one clearly-foreign hook. This is
- * THIS REPO'S real-world shape: a stale "*" PreToolUse uni hook that mergeSettings
- * does NOT auto-prune on promote (see the AC-02 stale-"*" banner at T1).
+ * THIS REPO'S real-world shape: a stale "*" PreToolUse uni hook that legacy
+ * mergeSettings did NOT auto-prune on promote (#4930) and that vnc-031 Step 3c
+ * now prunes from mergeSettings alone (the GATE C parity proof, T-PARITY).
+ *
+ * GATE C real-legacy P-shapes (vnc-031): the seed is a REAL legacy-shaped input,
+ * never a pre-narrowed cycle-matcher seed. It carries, under managed events,
+ * every uni-owned stale shape the retired script PRUNE_FRAGMENT used to handle:
+ *   P1  stale "*" PreToolUse Rust uni hook                              (PreToolUse "*")
+ *   P3  a ".bak" backup-dir uni hook (different whole token)            (PreToolUse "Backup")
+ *   P4  an old-client-dir uni hook (dogfood-client-OLD/...)             (PreToolUse "Legacy")
+ *   P7  a clearly-foreign hook alongside the stale uni hooks            (PreToolUse "Bash")
+ *   P8  a managed event whose SOLE entry is a stale uni hook, alone in
+ *       a non-managed matcher group (group dropped, event key retained) (UserPromptSubmit "Legacy")
+ * P2/P5 (node-client pruned / Rust kept-by-identity on rollback) are exercised by
+ * the rollback arm of the parity proof. P6 (quoted spaced-path keep) is proven at
+ * UNIT level in merge-settings.test.js (test_cross_group_quoted_spaced_path_target_kept):
+ * a spaced install path is not realizable in the os.tmpdir() harness install dir.
  */
 const FOREIGN_COMMAND = "/usr/bin/foreign-linter check --no-unimatrix";
 
@@ -151,16 +176,35 @@ function buildSeedSettings() {
     // Live unreadable — fixture is still valid; we never depend on writing it.
   }
   const rustCmd = (event) => "/repo/target/release/unimatrix hook " + event;
+  // P3: a backed-up old install dir — a uni-classified node-client hook whose
+  // whole path token differs from the freshly-written entrypoint (the script's
+  // whole-shell-token matcher pruned it; Step 3c prunes it by object identity).
+  const bakCmd = (event) =>
+    "node /old/dogfood-client.bak/lib/hook-client/index.js " + event;
+  // P4: an old-client-dir uni hook from a prior install.
+  const oldDirCmd = (event) =>
+    "node /old/dogfood-client-OLD/lib/hook-client/index.js " + event;
   return {
     model: liveModel,
     hooks: {
       SessionStart: [
         { matcher: "", hooks: [{ type: "command", command: rustCmd("SessionStart") }] },
       ],
+      // P8: a managed event whose SOLE entry is a stale uni hook living alone in
+      // a NON-managed matcher group ("Legacy" ≠ EVENT_MATCHERS.UserPromptSubmit
+      // which is ""). Step 3c empties + drops that group; the managed group Step 3
+      // creates holds the fresh entry, so the event key is retained.
+      UserPromptSubmit: [
+        { matcher: "Legacy", hooks: [{ type: "command", command: rustCmd("UserPromptSubmit") }] },
+      ],
       PreToolUse: [
-        // The stale "*" Rust uni hook — the real-world shape under test.
+        // P1: the stale "*" Rust uni hook — the real-world shape under test.
         { matcher: "*", hooks: [{ type: "command", command: rustCmd("PreToolUse") }] },
-        // A clearly-foreign hook to prove preservation / no-clobber.
+        // P3: a ".bak" backup-dir uni hook (different whole token).
+        { matcher: "Backup", hooks: [{ type: "command", command: bakCmd("PreToolUse") }] },
+        // P4: an old-client-dir uni hook (dogfood-client-OLD/...).
+        { matcher: "Legacy", hooks: [{ type: "command", command: oldDirCmd("PreToolUse") }] },
+        // P7: a clearly-foreign hook to prove preservation / no-clobber.
         { matcher: "Bash", hooks: [{ type: "command", command: FOREIGN_COMMAND }] },
       ],
     },
@@ -371,23 +415,59 @@ function assertCleanPromoteState(settings, clientDir, expectedEventCount) {
 }
 
 /**
- * noPrunePromoteContent — reconstructs the post-state mergeSettings ALONE would
- * produce (NO prune step), by calling the installed mergeSettings exactly as the
- * switchover one-liner does ({dryRun:true} = pure compute) but WITHOUT
- * pruneStaleUniHooks. Feeds the prune negative control (T1d). This mirrors the
- * script's run_promote node fragment minus the prune.
+ * unprunedPromoteContent — reconstructs the post-promote state as mergeSettings
+ * WOULD have produced it BEFORE vnc-031 Step 3c existed: the fresh managed-group
+ * entry is repointed/added under EVENT_MATCHERS[event], but the legacy stale
+ * cross-group uni hooks (the "*" PreToolUse Rust hook, .bak, old-client-dir) are
+ * NOT pruned — they lived OUTSIDE the managed group, and Step 3's in-group-only
+ * repoint never touched them.
+ *
+ * GATE B / R-13 (#4932): this MUST NOT call installed.merge.mergeSettings — that
+ * now bakes in Step 3c and would return a CLEAN state, making the negative control
+ * vacuous (its assert.throws would stop throwing). We reconstruct the no-Step-3c
+ * state directly from the SEED instead: apply ONLY the managed-matcher repoint per
+ * event, leaving every other matcher group (foreign AND stale-uni) intact. This is
+ * the pre-Step-3c mergeSettings behavior, reconstructed without invoking the
+ * (now-pruning) mergeSettings. The fixture-sanity assertion in T1d
+ * (staleNoPrune.length >= 1) guards that the stale hook genuinely survives here.
  */
-function noPrunePromoteContent(settingsPath, clientDir) {
+function unprunedPromoteContent(settingsPath, clientDir) {
   const indexJs = path.join(clientDir, "lib", "hook-client", "index.js");
-  const result = installed.merge.mergeSettings(
-    settingsPath,
-    {
-      events: installed.merge.HOOK_EVENTS,
-      commandForEvent: (event) => installed.merge.buildHookClientCommand(indexJs, event),
-    },
-    { dryRun: true }
-  );
-  return result.content;
+  const merge = installed.merge;
+  const content = JSON.parse(fs.readFileSync(settingsPath, "utf8")); // the makeScratchRoot seed
+  if (!content.hooks || typeof content.hooks !== "object") content.hooks = {};
+
+  // SubagentStop opt-in filtering, mirroring mergeSettings' registered-event set
+  // (the scratch seed has no settings.local.json, so SubagentStop stays out).
+  let events = merge.HOOK_EVENTS;
+  const optInFile = path.join(path.dirname(settingsPath), "settings.local.json");
+  if (events.includes("SubagentStop") && !merge.subagentStopEnabled(optInFile)) {
+    events = events.filter((e) => e !== "SubagentStop");
+  }
+
+  // Mirror Step 3 ONLY (in-group repoint/append under the managed matcher),
+  // DELIBERATELY skipping the Step 3c cross-group prune so stale uni hooks under
+  // other matcher groups survive.
+  for (const event of events) {
+    const matcher = merge.EVENT_MATCHERS[event];
+    const freshEntry = {
+      type: "command",
+      command: merge.buildHookClientCommand(indexJs, event),
+    };
+    if (!Array.isArray(content.hooks[event])) content.hooks[event] = [];
+    const eventArray = content.hooks[event];
+    let group = eventArray.find((g) => g && g.matcher === matcher);
+    if (!group) {
+      eventArray.push({ matcher, hooks: [freshEntry] });
+      continue;
+    }
+    if (!Array.isArray(group.hooks)) group.hooks = [];
+    const idx = group.hooks.findIndex((h) => merge.isUnimatrixHook(h));
+    if (idx >= 0) group.hooks[idx] = freshEntry;
+    else group.hooks.push(freshEntry);
+    // NOTE: no walk over the other groups — stale cross-group uni hooks survive.
+  }
+  return content;
 }
 
 // ── suite lifecycle ───────────────────────────────────────────────────────────
@@ -503,15 +583,19 @@ describe("dogfood-effect: AC-02 switchover by effect", () => {
     if (suiteSkipReason) return t.skip(suiteSkipReason);
     const { settingsPath } = makeScratchRoot();
 
-    // Reconstruct the post-state mergeSettings ALONE produces (NO prune step) —
-    // the stale "*" Rust uni hook survives un-repointed (#4930). Feeding it to the
+    // Reconstruct the post-state as mergeSettings produced it BEFORE vnc-031 Step
+    // 3c existed (managed-group repoint only, NO cross-group prune) — the stale
+    // "*" Rust uni hook + .bak + old-client-dir hooks survive un-repointed (#4930).
+    // GATE B / R-13 (#4932): this reconstruction MUST NOT route through
+    // mergeSettings (which now bakes in Step 3c and would return a CLEAN state,
+    // making this control vacuous). Feeding the genuinely-unpruned state to the
     // SAME helper the positive T1 uses MUST throw: this proves the positive
     // assertion can detect an unpruned leftover and is not vacuously green. A
-    // regression to a no-op prune would make the real promote produce THIS state.
-    const noPruneContent = noPrunePromoteContent(settingsPath, installed.dir);
+    // regression to a no-op Step 3c would make the real promote produce THIS state.
+    const unprunedContent = unprunedPromoteContent(settingsPath, installed.dir);
 
-    // sanity: the no-prune content really still carries the stale "*" uni hook.
-    const staleNoPrune = uniHooks(noPruneContent).filter(
+    // sanity: the no-Step-3c content really still carries the stale uni hooks.
+    const staleNoPrune = uniHooks(unprunedContent).filter(
       (h) => !h.command.startsWith(entryPrefixFor(installed.dir))
     );
     assert.ok(
@@ -520,7 +604,7 @@ describe("dogfood-effect: AC-02 switchover by effect", () => {
     );
 
     assert.throws(
-      () => assertCleanPromoteState(noPruneContent, installed.dir, 8),
+      () => assertCleanPromoteState(unprunedContent, installed.dir, 8),
       "the clean-state helper MUST fail on the unpruned post-state (prune is non-vacuous)"
     );
   });
@@ -596,6 +680,161 @@ describe("dogfood-effect: AC-02 switchover by effect", () => {
     rollback(settingsPath, installed.dir);
     const after2 = fs.readFileSync(settingsPath, "utf8");
     assert.strictEqual(after2, after1, "second rollback must be idempotent (byte-identical)");
+  });
+
+  // ── GATE C parity proof (vnc-031 ADR-003 / SR-04 / R-04 / #4938) ──
+  // Proves the source prune (mergeSettings Step 3c) subsumes EVERY case the
+  // retired script PRUNE_FRAGMENT handled, on REAL legacy-shaped input — a
+  // settings file carrying a genuine "*" Rust PreToolUse uni hook plus .bak /
+  // old-client-dir uni hooks. This calls installed.merge.mergeSettings DIRECTLY
+  // (NOT promote()/rollback() — which still run the script-with-fragment in this
+  // wave), so a GREEN result is attributable to Step 3c ALONE and not to the
+  // script's bespoke prune. This is the proof that unblocks the fragment-deletion
+  // commit in the next wave. P6 (quoted spaced-path keep) is proven at unit level
+  // in merge-settings.test.js; this harness owns P1–P5/P7/P8 on real install.
+  it("T-PARITY: mergeSettings ALONE (Step 3c, no script fragment) cleanly migrates real legacy input for BOTH arms (GATE C P1–P5/P7/P8)", (t) => {
+    if (suiteSkipReason) return t.skip(suiteSkipReason);
+
+    const indexJs = path.join(installed.dir, "lib", "hook-client", "index.js");
+    const entryPrefix = entryPrefixFor(installed.dir);
+    const rustBinary = path.join(REPO, "target", "release", "unimatrix");
+    const binDir = path.dirname(rustBinary);
+    const expectedRust = (event) =>
+      "LD_LIBRARY_PATH=" + binDir + " " + rustBinary + " hook " + event;
+
+    // ── PROMOTE arm (object commandSource) — P1/P3/P4/P7/P8 ──
+    {
+      const { settingsPath } = makeScratchRoot();
+      // Pre-condition: the seed really is real legacy-shaped (not pre-narrowed) —
+      // a genuine "*" PreToolUse Rust uni hook plus .bak and old-client-dir hooks.
+      const seed = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+      const seedStaleStar = (seed.hooks.PreToolUse || []).find(
+        (g) => g.matcher === "*" && (g.hooks || []).some((h) => installed.merge.isUnimatrixHook(h))
+      );
+      assert.ok(seedStaleStar, "GATE C precondition: seed carries a genuine '*' PreToolUse uni hook");
+      const seedUni = uniHooks(seed);
+      assert.ok(
+        seedUni.some((h) => h.command.indexOf("dogfood-client.bak") !== -1),
+        "GATE C precondition: seed carries a .bak uni hook (P3)"
+      );
+      assert.ok(
+        seedUni.some((h) => h.command.indexOf("dogfood-client-OLD") !== -1),
+        "GATE C precondition: seed carries an old-client-dir uni hook (P4)"
+      );
+
+      const result = installed.merge.mergeSettings(
+        settingsPath,
+        {
+          events: installed.merge.HOOK_EVENTS,
+          commandForEvent: (event) => installed.merge.buildHookClientCommand(indexJs, event),
+        },
+        { dryRun: true } // pure compute — attribute the clean state to Step 3c only.
+      );
+      const s = result.content;
+
+      // P1/P3/P4: every stale cross-group uni hook (Rust "*", .bak, old-dir) is
+      // pruned; the SAME shared clean-state helper the script-driven T1 uses passes
+      // on the mergeSettings-ALONE post-state. (No script, no fragment touched it.)
+      assertCleanPromoteState(s, installed.dir, 8);
+
+      // Explicit P1: no uni hook survives under the legacy "*" PreToolUse matcher.
+      assert.ok(
+        !(s.hooks.PreToolUse || []).some(
+          (g) => g.matcher === "*" && (g.hooks || []).some((h) => installed.merge.isUnimatrixHook(h))
+        ),
+        "P1: no uni hook may survive under the legacy '*' PreToolUse matcher (Step 3c)"
+      );
+      const promoteUni = uniHooks(s);
+      // P3: no .bak survivor.
+      assert.ok(
+        !promoteUni.some((h) => h.command.indexOf("dogfood-client.bak") !== -1),
+        "P3: the .bak uni hook must be pruned"
+      );
+      // P4: no old-client-dir survivor.
+      assert.ok(
+        !promoteUni.some((h) => h.command.indexOf("dogfood-client-OLD") !== -1),
+        "P4: the old-client-dir uni hook must be pruned"
+      );
+      // P7: foreign preserved byte-for-byte.
+      assert.ok(foreignPresent(s), "P7: foreign hook preserved through promote (Step 3c)");
+      // P8: the UserPromptSubmit stale "Legacy" group is dropped (emptied of its
+      // sole uni hook) while the event key is retained (managed "" group holds it).
+      const ups = s.hooks.UserPromptSubmit || [];
+      assert.ok(ups.length >= 1, "P8: UserPromptSubmit event key retained");
+      assert.ok(
+        !ups.some((g) => g.matcher === "Legacy"),
+        "P8: the emptied non-managed 'Legacy' group must be dropped"
+      );
+      assert.ok(
+        ups.some((g) => g.matcher === installed.merge.EVENT_MATCHERS.UserPromptSubmit),
+        "P8: the managed UserPromptSubmit group survives with the fresh entry"
+      );
+
+      // The clean state is attributable to Step 3c: the cross-matcher action fired.
+      assert.ok(
+        result.actions.some((a) => a.indexOf("(cross-matcher migration)") !== -1),
+        "Step 3c emitted the cross-matcher migration action (attribution)"
+      );
+    }
+
+    // ── ROLLBACK arm (string commandSource) — P2/P3/P5/P7/P8 ──
+    {
+      const { settingsPath } = makeScratchRoot();
+      // First repoint to node-client form (promote) WITHOUT the script, so the
+      // rollback faces a genuine stale node-client uni hook to prune (P2) — again
+      // attributable to mergeSettings alone.
+      installed.merge.mergeSettings(
+        settingsPath,
+        {
+          events: installed.merge.HOOK_EVENTS,
+          commandForEvent: (event) => installed.merge.buildHookClientCommand(indexJs, event),
+        },
+        {} // write the node-client post-state so rollback has a real input.
+      );
+
+      // Rollback = legacy Rust binary STRING arm (normalizeCommandSource legacy form).
+      const result = installed.merge.mergeSettings(settingsPath, rustBinary, { dryRun: true });
+      const s = result.content;
+      const all = uniHooks(s);
+
+      // P5: every uni hook is EXACTLY the legacy Rust form — the just-written Rust
+      // command is KEPT by object identity (no dirname heuristic, no tokenizer).
+      for (const h of all) {
+        assert.strictEqual(
+          h.command,
+          expectedRust(h.event),
+          "P5: rolled-back uni hook for " + h.event + " must be the exact legacy Rust form (kept by identity)"
+        );
+      }
+      assert.ok(new Set(all.map((h) => h.event)).size >= 8, "rollback re-owns the registered events");
+      // P2: no stale node-client uni hook survives the rollback.
+      const staleNode = all.filter((h) => h.command.startsWith(entryPrefix));
+      assert.strictEqual(staleNode.length, 0, "P2: no node-client uni hook may survive rollback");
+      // P3: no .bak survivor (carried through from the seed if any remained).
+      assert.ok(
+        !all.some((h) => h.command.indexOf("dogfood-client.bak") !== -1),
+        "P3: the .bak uni hook must not survive rollback"
+      );
+      // P7: foreign preserved; no duplicates.
+      assert.ok(foreignPresent(s), "P7: foreign hook preserved through rollback (Step 3c)");
+      const cmds = all.map((h) => h.command);
+      assert.strictEqual(new Set(cmds).size, cmds.length, "no duplicate rolled-back commands");
+      // P8: UserPromptSubmit event key retained, no stale non-managed group.
+      const ups = s.hooks.UserPromptSubmit || [];
+      assert.ok(ups.length >= 1, "P8: UserPromptSubmit event key retained on rollback");
+      assert.ok(
+        !ups.some((g) => g.matcher === "Legacy"),
+        "P8: the emptied non-managed 'Legacy' group must be dropped on rollback"
+      );
+
+      // Idempotent: a second mergeSettings rollback is a no-op on content.
+      const r2 = installed.merge.mergeSettings(settingsPath, rustBinary, { dryRun: true });
+      assert.deepStrictEqual(
+        r2.content,
+        s,
+        "rollback migration is idempotent (Step 3c stable on second run)"
+      );
+    }
   });
 });
 
