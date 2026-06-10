@@ -234,13 +234,19 @@ Unimatrix #4888).
 
 ---
 
-## Open Questions (resolved at delivery, not blockers)
+## Open Questions (RESOLVED in Stage 3a)
 
-- **OQ-1 (tester/architect):** Does the nan-018 fixture corpus contain a deprecated entry with a
-  positive out-edge to a non-active-reachable neighbor (the ass-073 positive-edge revision)? If not,
-  satisfy AC-01/AC-05 via the Python integration suite **or** extend the fixture first — do NOT
-  silently skip the AC. Confirm which surface delivers AC-01/AC-05.
-- **OQ-2 (architect):** Confirm `results_with_scores` at ~`:915` is the sole seed source for
-  `graph_expand` inside the enabled branch (asserted confirmed at `:915`). If any other path
-  contributes seeds, FR-01 scope must include it (R-09). Note Unimatrix #4886: the live scoring path
-  is rewritten frequently — verify the line numbers at delivery rather than trusting them.
+- **OQ-1 (RESOLVED — tester):** Neither the nan-018 fixture corpus nor the Python MCP suite can host
+  AC-01/AC-05 — fixtures author only `superseded_by`→`Supersedes` edges (excluded from positive BFS)
+  with an empty positive-edge slice, and the MCP layer cannot toggle the expander or author a positive
+  deprecated→neighbor edge. **Chosen surface: the Rust full-pipeline harness
+  `crates/unimatrix-server/tests/pipeline_e2e.rs`** (live `SearchService::search`, positive edges via
+  `TestHarness::insert_graph_edge` + `rebuild_typed_graph`, supports the R-04 control arm). Requires
+  one cumulative **test-support-only** extension: an expander-enabling `TestHarness` constructor
+  variant (current `new()` wires `ppr_expander_enabled = false`). Test-support only — does NOT touch
+  C-01. Control-arm form: forcing the deprecated seed Active is recommended (no second code path).
+- **OQ-2 (RESOLVED — pseudocode):** `results_with_scores` **is** the sole seed source for
+  `graph_expand` inside the enabled branch (verified live: `seed_ids`@915 from it alone, `graph_expand`
+  receives exactly `&seed_ids`, `in_pool`@929 derives from it). R-09 cleared. Edit-site line numbers
+  hold exactly (911 branch, 915 build). Refinement: `Status` is already imported (search.rs:10) — the
+  diff is the filter clause **alone**, no import edit; C-01 is tighter than the brief stated.
