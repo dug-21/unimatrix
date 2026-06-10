@@ -912,7 +912,13 @@ impl SearchService {
                 let phase0_start = std::time::Instant::now();
 
                 // Collect seed IDs from current results_with_scores (post Steps 6a + 6b).
-                let seed_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
+                // crt-053: seed graph_expand from ACTIVE entries only — drops Deprecated,
+                // Proposed, and Quarantined seeds so the BFS anchors only on current knowledge.
+                let seed_ids: Vec<u64> = results_with_scores
+                    .iter()
+                    .filter(|(e, _)| e.status == Status::Active)
+                    .map(|(e, _)| e.id)
+                    .collect();
 
                 // BFS traversal: collect entry IDs reachable from seeds via positive edges.
                 // Synchronous, pure, no I/O (C-05, NFR-05).

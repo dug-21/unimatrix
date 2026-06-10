@@ -101,13 +101,31 @@ pub fn skip_if_no_model() -> bool {
 pub struct TestHarness {
     layer: ServiceLayer,
     store: Arc<Store>,
+    // crt-053: retained so tests can author real embeddings into the HNSW pool
+    // (`embed_and_index`) — required for PPR Phase 0 seed-filter coverage where a
+    // seed must actually surface from the HNSW candidate set.
+    vector_index: Arc<VectorIndex>,
+    embed_handle: Arc<EmbedServiceHandle>,
 }
 
 impl TestHarness {
-    /// Construct a fully-wired test harness.
+    /// Construct a fully-wired test harness (PPR expander OFF — production default).
     ///
     /// Returns `None` if the ONNX model is not available.
     pub async fn new(store_path: &Path) -> Option<Self> {
+        Self::new_with_expander(store_path, false).await
+    }
+
+    /// Construct a fully-wired test harness with the PPR expander flag set explicitly.
+    ///
+    /// crt-053 (test support only — NOT a production edit, does not count against C-01):
+    /// `TestHarness::new()` wires `InferenceConfig::default()` (`ppr_expander_enabled = false`).
+    /// AC-01/AC-04/AC-05 require the Phase 0 expander ON, so this variant threads a non-default
+    /// `InferenceConfig` into `ServiceLayer::with_rate_config`. Everything else is identical to
+    /// `new()`.
+    ///
+    /// Returns `None` if the ONNX model is not available.
+    pub async fn new_with_expander(store_path: &Path, ppr_expander_enabled: bool) -> Option<Self> {
         if skip_if_no_model() {
             return None;
         }
@@ -166,12 +184,23 @@ impl TestHarness {
                 .expect("test RayonPool construction must succeed"),
         );
 
+        // crt-053: start from the production default config and toggle only the expander flag,
+        // so OFF (default) construction stays bit-identical to pre-crt-053 behavior. All PPR knobs
+        // (alpha, blend weight, inclusion threshold, depth, ceilings) remain at production defaults
+        // — the seed-filter tests observe the Phase 0 `graph_expand` injection at production parity,
+        // isolating it via a topic filter (which excludes graph-injectable neighbors from the HNSW
+        // pool) rather than by altering scoring config.
+        let inference_config = crate::infra::config::InferenceConfig {
+            ppr_expander_enabled,
+            ..crate::infra::config::InferenceConfig::default()
+        };
+
         let layer = ServiceLayer::with_rate_config(
             Arc::clone(&store),
-            vector_index,
+            Arc::clone(&vector_index),
             vector_store,
             entry_store,
-            embed_handle,
+            Arc::clone(&embed_handle),
             adapt_service,
             audit,
             usage_dedup,
@@ -182,8 +211,8 @@ impl TestHarness {
             crate::infra::nli_handle::NliServiceHandle::new(),
             20,    // nli_top_k default
             false, // nli_enabled: disabled for tests
-            // crt-023: default InferenceConfig for tests (NLI disabled via nli_enabled=false above)
-            Arc::new(crate::infra::config::InferenceConfig::default()),
+            // crt-023/crt-053: InferenceConfig with expander flag threaded in.
+            Arc::new(inference_config),
             // col-023: built-in default registry for test harness
             Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code()),
             // GH #311: default params for test harness.
@@ -194,12 +223,46 @@ impl TestHarness {
             unimatrix_engine::graph::GraphPenaltyParams::default(),
         );
 
-        Some(TestHarness { layer, store })
+        Some(TestHarness {
+            layer,
+            store,
+            vector_index,
+            embed_handle,
+        })
     }
 
     /// Get a reference to the underlying store.
     pub fn store(&self) -> &Store {
         &self.store
+    }
+
+    /// crt-053 (test support): embed each entry's stored text and insert it into the HNSW
+    /// vector index so it can surface as an HNSW candidate (and therefore a PPR Phase 0 seed).
+    ///
+    /// Unlike the legacy `rebuild_embeddings` no-op in `pipeline_e2e.rs`, this authors real
+    /// embeddings — required for seed-filter tests where a seed must actually reach
+    /// `results_with_scores`. Panics on any store/embed/index error (test setup must succeed).
+    pub async fn embed_and_index(&self, entry_ids: &[u64]) {
+        use unimatrix_core::EmbedService;
+        let adapter = self
+            .embed_handle
+            .get_adapter()
+            .await
+            .expect("embed adapter must be loaded for embed_and_index");
+        for &id in entry_ids {
+            let entry = self
+                .store
+                .get(id)
+                .await
+                .expect("entry must exist for embed_and_index");
+            let embedding = adapter
+                .embed_entry(&entry.title, &entry.content)
+                .expect("embed_entry must succeed");
+            self.vector_index
+                .insert(id, &embedding)
+                .await
+                .expect("vector_index insert must succeed");
+        }
     }
 
     /// Execute a search query through the full pipeline.
