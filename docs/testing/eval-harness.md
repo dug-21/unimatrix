@@ -10,6 +10,7 @@ are demonstrated, not assumed; the human reviewer sees exactly what changed and 
 
 - [When to use it](#when-to-use-it)
 - [Overview](#overview)
+- [nan-018 capabilities — tunability, trust, cost, fixture corpus, drift guard](#nan-018-capabilities)
 - [Step 1 — Snapshot the database](#step-1--snapshot-the-database)
 - [Step 2 — Extract eval scenarios](#step-2--extract-eval-scenarios)
 - [Step 3 — Run the evaluation](#step-3--run-the-evaluation)
@@ -66,6 +67,57 @@ D1–D4 are **offline**: they operate against a frozen snapshot, require no runn
 daemon during evaluation, and produce no writes to any live database. D5–D6 are
 **live**: they connect to a running daemon and are used for integration-level
 observation and pipeline testing.
+
+---
+
+## nan-018 capabilities
+
+nan-018 upgraded the harness from a positive-relevance-only instrument into one
+that also measures **trust** (correctness/negative properties), **cost**
+(token-weighted noise), and **tunability** (sweepable status-penalty levers),
+validated against a **durable fixture corpus** guarded by a **retrieval-shape
+hash**. This section is the capability-level overview; each capability links to a
+Band-2 guide with the detail needed to author / migrate / sweep.
+
+| Capability | What it adds | Detail |
+|---|---|---|
+| **Tunable `[graph_penalty]` config** | The crt-014 status-penalty `const`s become per-profile, sweepable levers (7 levers + an optional multiplier). Defaults reproduce current behavior **bit-for-bit**; the section is **eval-only**, not a deploy re-tune. | [Config-knob reference](./eval-config-knobs.md) |
+| **Trust / negative metric class** | `forbidden_absent` (absence) + `rank_below` (relative rank) assertions, plus `redirect_to_head`, evaluated **in the harness** so they ride A/B sweeps and the regression gate. | [Fixture-corpus authoring guide](./eval-fixture-authoring.md) |
+| **Token-weighted cost** | `cost_tokens = Σ token_proxy(result)` — the tokens an agent pays to read the set; `k` is a secondary axis. `token_proxy` is a documented **proxy**, not a real tokenizer. | [Config-knob reference §cost](./eval-config-knobs.md) |
+| **Fixture corpus + property assertions** | Hand-authored entry-graphs (the five status shapes) with property-based ground truth, never literal ids. The durable primary corpus. | [Fixture-corpus authoring guide](./eval-fixture-authoring.md) |
+| **Two-corpus model** | Fixture = primary/durable (trust authority, carries the stamp); snapshot = realism/ephemeral (P@5/MRR baselines, re-snapshot on drift). | [Two-corpus model](./eval-two-corpus-model.md) |
+| **Drift guard (retrieval-shape hash)** | The fixture corpus carries a shape-hash stamp; the harness **hard-errors** (primary) / **warns** (snapshot) on a mismatch with the running schema's shape. | [Schema-migration runbook](./eval-corpus-migration.md) |
+
+### The new metrics in the report
+
+The report adds a correlated section **`## 5C. Correlated Trust / Relevance /
+Cost`** — for the same scenarios in one table, the trust verdict (PASS only when
+both `absence_pass` and `rank_pass` hold) + P@K + MRR + cost + Δ cost vs baseline.
+This is what makes a steepness sweep read as "steepness X → trust held AND
+relevance did not regress AND cost did not inflate" in a single run.
+
+The Zero-Regression Check (Section 5) is extended: a candidate is flagged as a
+regression for any of `mrr`, `p@k`, **`trust`** (a trust verdict flips
+pass→fail), or **`cost`** (cost grew vs baseline). Trust-flip and cost-growth
+follow the same **OR / fail-in-body-only** semantics as the existing MRR/P@K
+check — `eval report` exit code is unchanged.
+
+<a id="cost-growth-is-advisory"></a>
+**Cost growth is advisory (ε = 0.0).** Any cost growth vs baseline (`cost_delta >
+0.0`) is *reported* in the regression block, but it **blocks nothing** — eval is
+the instrument, not a workflow gate. The ε = 0.0 threshold means "report any
+growth"; it introduces no passing tolerance band and does not affect the exit
+code. A non-zero blocking threshold would be premature tuning (the cost threshold
+is ASS-037 authority, and no cost distribution yet exists to set a defensible
+number against).
+
+> **Eval is NOT a workflow quality gate.** Wiring eval execution into the dev
+> workflow as a standing decision gate (CI-on-every-PR, blocking regression
+> policy) is a separate future design, explicitly out of scope. The drift guard's
+> hard-error is the one exception, and it protects *corpus validity* (a
+> precondition), not the body-only *quality verdict* — re-stamping a drifted
+> corpus is asset maintenance, not gating eval results. A migration may run the
+> corpus **once** to validate; it does not make eval results a standing gate.
 
 ---
 
@@ -440,6 +492,31 @@ When `distribution_change = false` (the default, applies when the key is absent)
 the standard zero-regression check applies for that profile. Multiple non-baseline
 profiles in a single run can mix zero-regression and distribution-change profiles —
 each is dispatched independently.
+
+**Candidate — penalty steepness sweep (`[graph_penalty]`):**
+
+The crt-014 topology-penalty constants are exposed as per-profile levers, so a
+profile can sweep penalty steepness. An omitted field (or an omitted section)
+resolves to its engine `const` default, reproducing current behavior bit-for-bit.
+
+```toml
+[profile]
+name = "steeper-clean-replacement"
+description = "Sweep clean_replacement harsher"
+
+[graph_penalty]
+clean_replacement = 0.25   # was 0.40 (default); the rest omitted -> engine consts
+# multiplier = 0.5         # optional one-knob overlay scaling the 5 severities
+```
+
+This section is **eval/measurement-only** — it is **not** license to re-tune
+deployed defaults (ASS-037 is the formula authority). Out-of-range values abort
+config load with `ConfigError::GraphPenaltyFieldOutOfRange`. `clean_replacement`
+is an **amplified knob** (it moves both the depth-1 base penalty and the depth-≥2
+clamp ceiling together), and the `multiplier` has a documented "deliberate
+set-to-default is ambiguous" caveat. See the
+[config-knob reference](./eval-config-knobs.md) for every lever's meaning, range,
+default, and effect.
 
 **Future: inference overrides** (`[inference]` section) will be used for NLI/GGUF
 model path configuration when those features land (W1-4, W2-4). The section is

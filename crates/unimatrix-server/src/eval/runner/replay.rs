@@ -7,15 +7,18 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
 
+use crate::eval::corpus::AliasMap;
 use crate::eval::profile::{EvalProfile, EvalServiceLayer};
 use crate::eval::scenarios::ScenarioRecord;
 use crate::services::{AuditContext, AuditSource, CallerId, RetrievalMode, ServiceSearchParams};
 
+use super::cost::profile_cost_tokens;
 use super::metrics::{
     compute_cc_at_k, compute_comparison, compute_icd, compute_mrr, compute_p_at_k,
     determine_ground_truth,
 };
 use super::output::{ProfileResult, ScenarioResult, ScoredEntry, write_scenario_result};
+use super::trust::{TrustOutcome, evaluate_trust};
 
 // ---------------------------------------------------------------------------
 // Scenario loading
@@ -54,6 +57,7 @@ pub(super) async fn replay_scenario(
     profiles: &[EvalProfile],
     layers: &[EvalServiceLayer],
     k: usize,
+    alias_map: Option<&AliasMap>,
 ) -> Result<ScenarioResult, Box<dyn std::error::Error>> {
     let mut profile_results: HashMap<String, ProfileResult> = HashMap::new();
 
@@ -63,6 +67,7 @@ pub(super) async fn replay_scenario(
             layer,
             k,
             &profile.config_overrides.knowledge.categories,
+            alias_map,
         )
         .await?;
         profile_results.insert(profile.name.clone(), result);
@@ -86,6 +91,7 @@ async fn run_single_profile(
     layer: &EvalServiceLayer,
     k: usize,
     configured_categories: &[String],
+    alias_map: Option<&AliasMap>,
 ) -> Result<ProfileResult, Box<dyn std::error::Error>> {
     // 1. Build search params from scenario context
     let retrieval_mode = match record.context.retrieval_mode.as_str() {
@@ -133,13 +139,16 @@ async fn run_single_profile(
         .map_err(|e| format!("search failed for scenario {}: {e}", record.id))?;
     let latency_ms = start.elapsed().as_millis() as u64;
 
-    // 3. Build ScoredEntry list
+    // 3. Build ScoredEntry list. `content` is carried from the search result's
+    //    entry body (nan-018 ADR-003 carry-flag) so the cost metric can count the
+    //    full title+content payload an agent reads.
     let entries: Vec<ScoredEntry> = search_result
         .entries
         .into_iter()
         .map(|se| ScoredEntry {
             id: se.entry.id as u64,
             title: se.entry.title.clone(),
+            content: se.entry.content.clone(),
             category: se.entry.category.clone(),
             final_score: se.final_score,
             similarity: se.similarity,
@@ -160,6 +169,18 @@ async fn run_single_profile(
     let cc_at_k = compute_cc_at_k(&entries, configured_categories);
     let icd = compute_icd(&entries);
 
+    // 7. Cost + trust in the SAME pass as P@5/MRR (C-03, AC-14), so one run
+    //    correlates all four metric families.
+    let cost_tokens = profile_cost_tokens(&entries);
+
+    // Trust: only fixture-corpus scenarios carry assertions AND a resolved
+    // `AliasMap`. Log-sourced scenarios (no assertions) — and any run without a
+    // corpus alias map — trivially pass and do not pollute regression counts.
+    let trust = match (&record.assertions, alias_map) {
+        (Some(assertions), Some(map)) => evaluate_trust(&entries, assertions, map),
+        _ => TrustOutcome::trivial_pass(),
+    };
+
     Ok(ProfileResult {
         entries,
         latency_ms,
@@ -167,6 +188,8 @@ async fn run_single_profile(
         mrr,
         cc_at_k,
         icd,
+        cost_tokens,
+        trust,
     })
 }
 
@@ -175,15 +198,20 @@ async fn run_single_profile(
 // ---------------------------------------------------------------------------
 
 /// Replay all scenarios through all profiles and write per-scenario JSON results.
+///
+/// `alias_map` carries the resolved corpus aliases for property-based trust
+/// evaluation. Fixture-corpus runs pass `Some(map)`; log-sourced runs pass `None`
+/// (their scenarios have no assertions and trust trivially passes).
 pub(super) async fn run_replay_loop(
     profiles: &[EvalProfile],
     layers: &[EvalServiceLayer],
     scenario_records: &[ScenarioRecord],
     k: usize,
     out: &Path,
+    alias_map: Option<&AliasMap>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     for record in scenario_records {
-        let result = replay_scenario(record, profiles, layers, k).await?;
+        let result = replay_scenario(record, profiles, layers, k, alias_map).await?;
         write_scenario_result(result, out)?;
     }
     Ok(())

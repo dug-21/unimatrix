@@ -55,6 +55,9 @@ tower = { version = "0.5", features = ["util"] }
 hyper = { version = "1", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "http1"] }
 hex = "0.4"
+# tokenizers: faithful subword tier for the eval cost metric (nan-018 ADR-003).
+# Mirrors the version/features already in the unimatrix-embed dependency tree.
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 bytes = "1"
 http-body = "1"
 http-body-util = "0.1"

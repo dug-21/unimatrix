@@ -1,0 +1,31 @@
+# Shape 2 — dangling / superseded chain with a deprecated, successor-less node.
+#
+# Topology:  cache.stale  (Deprecated, NO successor) — the orphan/dangling case.
+#            cache.head   (Active) provides a non-empty result set so the
+#                         absence assertion is checked against real results,
+#                         not vacuously satisfied (R-15).
+# Penalty branch exercised: orphan (Deprecated with no terminal-active head).
+# Property assertions ONLY: forbidden-absent (stale must not surface) + rank-below.
+
+[[entries]]
+alias = "cache.stale"
+title = "Caching strategy deprecated"
+content = "use a global mutable cache keyed by request path with no eviction policy"
+status = "Deprecated"
+superseded_by = []
+category = "performance"
+
+[[entries]]
+alias = "cache.head"
+title = "Caching strategy current"
+content = "use a bounded LRU cache keyed by request path with a per-entry TTL and eviction"
+status = "Active"
+superseded_by = []
+category = "performance"
+
+[[scenarios]]
+id = "dangling-deprecated.absence"
+query = "what caching strategy should the request path use"
+[scenarios.assertions]
+forbidden_absent = ["cache.stale"]
+rank_below = [["cache.stale", "cache.head"]]

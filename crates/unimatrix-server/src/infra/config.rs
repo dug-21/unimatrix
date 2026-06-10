@@ -33,6 +33,10 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use unimatrix_engine::confidence::{COLD_START_ALPHA, COLD_START_BETA, ConfidenceParams};
+use unimatrix_engine::graph::{
+    CLEAN_REPLACEMENT_PENALTY, DEAD_END_PENALTY, FALLBACK_PENALTY, GraphPenaltyParams,
+    HOP_DECAY_FACTOR, MAX_TRAVERSAL_DEPTH, ORPHAN_PENALTY, PARTIAL_SUPERSESSION_PENALTY,
+};
 
 use crate::infra::categories::INITIAL_CATEGORIES;
 use crate::infra::scanning::ContentScanner;
@@ -86,6 +90,10 @@ pub struct UnimatrixConfig {
     pub http: HttpConfig,
     #[serde(default)]
     pub tls: TlsConfig,
+    /// `[graph_penalty]` section — eval-only topology-penalty levers (nan-018 ADR-001).
+    /// Absent section ⇒ engine consts ⇒ deployed behavior unchanged bit-for-bit (C-02, ADR-006).
+    #[serde(default)]
+    pub graph_penalty: GraphPenaltyConfig,
     // CycleConfig is intentionally absent (ADR-004: stub removed, rename is hardcoded).
 }
 
@@ -127,6 +135,205 @@ pub struct DomainPackConfig {
 pub struct ProfileConfig {
     /// The knowledge-lifecycle preset. Default: `Preset::Collaborative`.
     pub preset: Preset,
+}
+
+// ---------------------------------------------------------------------------
+// `[graph_penalty]` section — eval-only topology-penalty levers (nan-018 ADR-001)
+// ---------------------------------------------------------------------------
+
+/// `[graph_penalty]` section — sweepable topology-penalty levers for the eval harness.
+///
+/// nan-018 ADR-001 (#4897): the crt-014 topology-penalty `const`s become per-profile
+/// levers so `unimatrix eval` can sweep penalty steepness. ADR-006 (#4894): this is an
+/// **eval/measurement-only** surface — it is NOT license to re-tune deployed defaults.
+/// An absent `[graph_penalty]` section resolves every field to its engine const, so
+/// default behavior is reproduced **bit-for-bit** (C-02, NFR-02).
+///
+/// # Dual-default discipline (#4064 — LOAD-BEARING)
+///
+/// For every lever the serde `default_*()` fn AND the [`Default`] impl resolve to the
+/// **engine const** (`unimatrix_engine::graph::*`) — one numeric source of truth. A
+/// literal `0.75` is NEVER inlined here; it is imported from the engine. The triangulation
+/// test (`graph_penalty_with(.., &Default::default())` == const == `GraphPenaltyConfig`
+/// default field) is the regression sentinel guarding this.
+///
+/// # Multiplier overlay (OQ-2, R-13)
+///
+/// `multiplier = Some(m)` scales the **five severities** (orphan, clean_replacement,
+/// partial_supersession, dead_end, fallback) by `*m` toward harsher; `hop_decay` and
+/// `max_traversal_depth` are SHAPE params and are NEVER scaled (ADR-001 §3). A per-field
+/// override wins over the multiplier — implemented via the equals-default heuristic in
+/// [`GraphPenaltyConfig::resolve_params`].
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct GraphPenaltyConfig {
+    /// Deprecated entry with no successors (orphan). Default: [`ORPHAN_PENALTY`].
+    #[serde(default = "default_orphan")]
+    pub orphan: f64,
+    /// Cleanly replaced at depth 1; also the hop-decay clamp ceiling.
+    /// Default: [`CLEAN_REPLACEMENT_PENALTY`].
+    #[serde(default = "default_clean_replacement")]
+    pub clean_replacement: f64,
+    /// Per-additional-hop decay multiplier (SHAPE — never multiplier-scaled).
+    /// Default: [`HOP_DECAY_FACTOR`].
+    #[serde(default = "default_hop_decay")]
+    pub hop_decay: f64,
+    /// Ambiguous (multi-successor) supersession. Default: [`PARTIAL_SUPERSESSION_PENALTY`].
+    #[serde(default = "default_partial_supersession")]
+    pub partial_supersession: f64,
+    /// Chain leads nowhere active. Default: [`DEAD_END_PENALTY`].
+    #[serde(default = "default_dead_end")]
+    pub dead_end: f64,
+    /// Flat fallback applied by the search layer on cycle detection.
+    /// Default: [`FALLBACK_PENALTY`].
+    #[serde(default = "default_fallback")]
+    pub fallback: f64,
+    /// Maximum traversal depth (SHAPE — never multiplier-scaled).
+    /// Default: [`MAX_TRAVERSAL_DEPTH`].
+    #[serde(default = "default_max_traversal_depth")]
+    pub max_traversal_depth: usize,
+    /// Optional convenience overlay scaling the five severities toward harsher.
+    /// `None` (default) ⇒ no scaling. Per-field overrides win (R-13).
+    #[serde(default)]
+    pub multiplier: Option<f64>,
+}
+
+// Dual-default serde fns (#4064): each references the engine const — single source of truth.
+fn default_orphan() -> f64 {
+    ORPHAN_PENALTY
+}
+fn default_clean_replacement() -> f64 {
+    CLEAN_REPLACEMENT_PENALTY
+}
+fn default_hop_decay() -> f64 {
+    HOP_DECAY_FACTOR
+}
+fn default_partial_supersession() -> f64 {
+    PARTIAL_SUPERSESSION_PENALTY
+}
+fn default_dead_end() -> f64 {
+    DEAD_END_PENALTY
+}
+fn default_fallback() -> f64 {
+    FALLBACK_PENALTY
+}
+fn default_max_traversal_depth() -> usize {
+    MAX_TRAVERSAL_DEPTH
+}
+
+impl Default for GraphPenaltyConfig {
+    fn default() -> Self {
+        // SINGLE SOURCE OF TRUTH: every field resolves to the engine const via the
+        // serde default fn, so `GraphPenaltyConfig::default()` == the const set ==
+        // `GraphPenaltyParams::default()` (dual-default discipline, #4064).
+        GraphPenaltyConfig {
+            orphan: default_orphan(),
+            clean_replacement: default_clean_replacement(),
+            hop_decay: default_hop_decay(),
+            partial_supersession: default_partial_supersession(),
+            dead_end: default_dead_end(),
+            fallback: default_fallback(),
+            max_traversal_depth: default_max_traversal_depth(),
+            multiplier: None,
+        }
+    }
+}
+
+impl GraphPenaltyConfig {
+    /// Resolve this config into an engine [`GraphPenaltyParams`] for the search layer.
+    ///
+    /// Called once in `with_rate_config` (see `search-threading.md`). Applies the
+    /// multiplier overlay (OQ-2, R-13): the multiplier scales only the FIVE severities
+    /// and only where the field is at its const default — an explicit per-field override
+    /// wins. `hop_decay` and `max_traversal_depth` are SHAPE params and are never scaled.
+    ///
+    /// # Known caveat (documented — Band-2 config doc)
+    ///
+    /// Override detection uses the equals-default heuristic: a field is treated as
+    /// "overridden" iff it differs from its const default. A deliberate set-to-default
+    /// is therefore indistinguishable from "unset" and will be multiplier-scaled. The
+    /// Integration Surface fixes the struct shape at plain `f64` (not `Option<f64>`), so
+    /// this ambiguity is accepted and documented rather than removed.
+    pub fn resolve_params(&self) -> GraphPenaltyParams {
+        // Start from per-field values (already defaulted to consts when unset).
+        let mut p = GraphPenaltyParams {
+            orphan: self.orphan,
+            clean_replacement: self.clean_replacement,
+            hop_decay: self.hop_decay, // SHAPE — never multiplier-scaled
+            partial_supersession: self.partial_supersession,
+            dead_end: self.dead_end,
+            fallback: self.fallback,
+            max_traversal_depth: self.max_traversal_depth, // SHAPE — never scaled
+        };
+
+        // Multiplier overlay: scale a severity ONLY if it is still at its const default
+        // (i.e. not explicitly overridden). Explicit per-field override wins (R-13).
+        if let Some(m) = self.multiplier {
+            if self.orphan == default_orphan() {
+                p.orphan *= m;
+            }
+            if self.clean_replacement == default_clean_replacement() {
+                p.clean_replacement *= m;
+            }
+            if self.partial_supersession == default_partial_supersession() {
+                p.partial_supersession *= m;
+            }
+            if self.dead_end == default_dead_end() {
+                p.dead_end *= m;
+            }
+            if self.fallback == default_fallback() {
+                p.fallback *= m;
+            }
+            // hop_decay, max_traversal_depth: NOT scaled (shape, not severity).
+        }
+        p
+    }
+}
+
+/// Range-validate a `[graph_penalty]` section. Reject NaN/non-finite, out-of-`[0,1]`
+/// severities, zero `max_traversal_depth`, and a `multiplier` outside `(0,1]`.
+///
+/// An out-of-range value aborts config load — it is never silently used or clamped.
+/// The engine's `graph_penalty_with` guards the depth clamp against a sub-floor
+/// `clean_replacement` (carry-flag from Wave 1); this validation keeps config values in
+/// sane bounds at the load boundary — it does not re-implement that clamp.
+fn validate_graph_penalty(cfg: &GraphPenaltyConfig, path: &Path) -> Result<(), ConfigError> {
+    for (field, v) in [
+        ("orphan", cfg.orphan),
+        ("clean_replacement", cfg.clean_replacement),
+        ("hop_decay", cfg.hop_decay),
+        ("partial_supersession", cfg.partial_supersession),
+        ("dead_end", cfg.dead_end),
+        ("fallback", cfg.fallback),
+    ] {
+        if !v.is_finite() || !(0.0..=1.0).contains(&v) {
+            return Err(ConfigError::GraphPenaltyFieldOutOfRange {
+                path: path.into(),
+                field,
+                value: v.to_string(),
+                reason: "must be a finite value in range [0.0, 1.0]",
+            });
+        }
+    }
+    if cfg.max_traversal_depth == 0 {
+        return Err(ConfigError::GraphPenaltyFieldOutOfRange {
+            path: path.into(),
+            field: "max_traversal_depth",
+            value: cfg.max_traversal_depth.to_string(),
+            reason: "must be >= 1",
+        });
+    }
+    if let Some(m) = cfg.multiplier
+        && (!m.is_finite() || m <= 0.0 || m > 1.0)
+    {
+        return Err(ConfigError::GraphPenaltyFieldOutOfRange {
+            path: path.into(),
+            field: "multiplier",
+            value: m.to_string(),
+            reason: "must be a finite value in range (0.0, 1.0]",
+        });
+    }
+    Ok(())
 }
 
 // Private serde default functions — govern what a config file omitting the field receives.
@@ -2238,6 +2445,20 @@ pub enum ConfigError {
         /// Human-readable reason.
         reason: &'static str,
     },
+    /// A `[graph_penalty]` config field is outside its valid range (nan-018).
+    ///
+    /// Severities must be finite in `[0.0, 1.0]`; `max_traversal_depth` >= 1;
+    /// `multiplier` (if set) finite in `(0.0, 1.0]`. An out-of-range value aborts
+    /// config load — never silently used or clamped.
+    GraphPenaltyFieldOutOfRange {
+        path: PathBuf,
+        /// Field name, e.g. "orphan" or "multiplier".
+        field: &'static str,
+        /// Actual value that failed (displayed to operator).
+        value: String,
+        /// Human-readable valid range.
+        reason: &'static str,
+    },
 }
 
 impl fmt::Display for ConfigError {
@@ -2502,6 +2723,19 @@ impl fmt::Display for ConfigError {
                 f,
                 "config error in {}: [tls] configuration is invalid: {}",
                 path.display(),
+                reason
+            ),
+            ConfigError::GraphPenaltyFieldOutOfRange {
+                path,
+                field,
+                value,
+                reason,
+            } => write!(
+                f,
+                "config error in {}: [graph_penalty] {} = {} is out of range: {}",
+                path.display(),
+                field,
+                value,
                 reason
             ),
         }
@@ -2909,6 +3143,9 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
 
     // --- Validate [tls] fields (vnc-021) ---
     validate_tls_config(&config.tls, path)?;
+
+    // --- Validate [graph_penalty] fields (nan-018) — UNCONDITIONAL (#4070) ---
+    validate_graph_penalty(&config.graph_penalty, path)?;
 
     Ok(())
 }
@@ -3640,6 +3877,13 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             project.tls
         } else {
             global.tls
+        },
+        // nan-018: graph_penalty — section-level replace semantics (project replaces
+        // entire section when non-default), mirroring http/tls.
+        graph_penalty: if project.graph_penalty != default.graph_penalty {
+            project.graph_penalty
+        } else {
+            global.graph_penalty
         },
     }
 }
@@ -11183,3 +11427,9 @@ connection_timeout_secs = 60
         assert_eq!(config.connection_timeout_secs, 60);
     }
 }
+
+// nan-018: `[graph_penalty]` config tests live in a focused sibling file to avoid
+// bloating the inline `mod tests` further (rust-workspace 500-line guidance).
+#[cfg(test)]
+#[path = "graph_penalty_config_tests.rs"]
+mod graph_penalty_config_tests;

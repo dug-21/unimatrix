@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use super::{
     AggregateStats, CcAtKScenarioRow, EntryRankSummary, LatencyBucket, PhaseAggregateStats,
-    RegressionRecord, ScenarioResult,
+    ScenarioResult,
 };
 
 // ---------------------------------------------------------------------------
@@ -114,100 +114,6 @@ pub(super) fn compute_aggregate_stats(results: &[ScenarioResult]) -> Vec<Aggrega
     }
 
     stats
-}
-
-// ---------------------------------------------------------------------------
-// find_regressions
-// ---------------------------------------------------------------------------
-
-/// Detect regressions using OR semantics (AC-09, R-12).
-///
-/// A scenario-profile pair is a regression if the candidate MRR < baseline MRR
-/// OR the candidate P@K < baseline P@K. Strict less-than: equal is NOT a regression.
-///
-/// WARN-C mitigation: uses sorted profile names to ensure stable baseline selection.
-pub(super) fn find_regressions(
-    results: &[ScenarioResult],
-    query_map: &HashMap<String, String>,
-) -> Vec<RegressionRecord> {
-    let mut regressions: Vec<RegressionRecord> = Vec::new();
-
-    for result in results {
-        // Build a sorted list of profile names for this result to ensure
-        // deterministic baseline selection (WARN-C mitigation).
-        let mut profile_names: Vec<&str> = result.profiles.keys().map(|s| s.as_str()).collect();
-        profile_names.sort();
-
-        // "baseline" forced first; otherwise alphabetical first entry is baseline.
-        if let Some(pos) = profile_names
-            .iter()
-            .position(|n| n.to_lowercase() == "baseline")
-        {
-            let baseline = profile_names.remove(pos);
-            profile_names.insert(0, baseline);
-        }
-
-        let baseline_name = match profile_names.first() {
-            Some(n) => *n,
-            None => continue,
-        };
-
-        let baseline_result = match result.profiles.get(baseline_name) {
-            Some(r) => r,
-            None => continue,
-        };
-
-        for profile_name in &profile_names {
-            if *profile_name == baseline_name {
-                continue;
-            }
-
-            let prof_result = match result.profiles.get(*profile_name) {
-                Some(r) => r,
-                None => continue,
-            };
-
-            // OR semantics: regression if MRR OR P@K is strictly lower.
-            let mrr_regressed = prof_result.mrr < baseline_result.mrr;
-            let p_at_k_regressed = prof_result.p_at_k < baseline_result.p_at_k;
-
-            if mrr_regressed || p_at_k_regressed {
-                let reason = match (mrr_regressed, p_at_k_regressed) {
-                    (true, true) => "both MRR and P@K dropped".to_string(),
-                    (true, false) => "MRR dropped".to_string(),
-                    (false, true) => "P@K dropped".to_string(),
-                    _ => unreachable!(),
-                };
-
-                let query_text = query_map
-                    .get(&result.scenario_id)
-                    .cloned()
-                    .unwrap_or_else(|| result.query.clone());
-
-                regressions.push(RegressionRecord {
-                    scenario_id: result.scenario_id.clone(),
-                    query: query_text,
-                    profile_name: profile_name.to_string(),
-                    baseline_mrr: baseline_result.mrr,
-                    candidate_mrr: prof_result.mrr,
-                    baseline_p_at_k: baseline_result.p_at_k,
-                    candidate_p_at_k: prof_result.p_at_k,
-                    reason,
-                });
-            }
-        }
-    }
-
-    // Sort by MRR delta descending (worst regression first).
-    regressions.sort_by(|a, b| {
-        let delta_a = a.baseline_mrr - a.candidate_mrr;
-        let delta_b = b.baseline_mrr - b.candidate_mrr;
-        delta_b
-            .partial_cmp(&delta_a)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    regressions
 }
 
 // ---------------------------------------------------------------------------
@@ -490,3 +396,6 @@ fn baseline_metrics(result: &ScenarioResult) -> Option<(f64, f64, f64, f64)> {
 
 pub(super) mod distribution;
 pub(super) use distribution::{DistributionGateResult, MetricGateRow, check_distribution_targets};
+
+mod regression;
+pub(super) use regression::find_regressions;

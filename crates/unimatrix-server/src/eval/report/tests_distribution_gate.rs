@@ -406,6 +406,7 @@ fn test_distribution_gate_exit_code_zero() {
             mrr: 0.7,
             cc_at_k: 0.5,
             icd: 0.9,
+            ..Default::default()
         },
     );
     profiles.insert(
@@ -417,6 +418,7 @@ fn test_distribution_gate_exit_code_zero() {
             mrr: 0.4,
             cc_at_k: 0.3,
             icd: 0.6,
+            ..Default::default()
         },
     );
     let scenario = ScenarioResult {

@@ -382,6 +382,13 @@ impl EvalServiceLayer {
             Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
             // crt-031: lifecycle policy from profile config overrides.
             eval_category_allowlist,
+            // nan-018 (ADR-001/ADR-006): MAKE THE LEVER LIVE on the eval path. Resolve
+            // the profile's `[graph_penalty]` TOML (per-field + multiplier overlay) into
+            // engine params and thread them into the SearchService. At default config this
+            // equals `GraphPenaltyParams::default()` (bit-for-bit baseline, AC-01); a swept
+            // profile produces a DIFFERENT penalty ⇒ observable ranking/penalty delta (AC-14).
+            // Production `ServiceLayer::new` stays at default() — eval-only boundary (ADR-006).
+            profile.config_overrides.graph_penalty.resolve_params(),
         );
 
         // ----------------------------------------------------------------

@@ -93,5 +93,6 @@ pub(crate) fn build_scenario_record(
         baseline,
         source,
         expected: None,
+        assertions: None,
     })
 }

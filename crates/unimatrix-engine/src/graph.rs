@@ -58,6 +58,59 @@ pub const FALLBACK_PENALTY: f64 = 0.70;
 /// Maximum DFS depth for find_terminal_active. Chains beyond this return None.
 pub const MAX_TRAVERSAL_DEPTH: usize = 10;
 
+/// Hop-decay clamp lower bound. A literal floor (NOT a tunable lever — ADR-001 nan-018).
+const HOP_DECAY_CLAMP_FLOOR: f64 = 0.10;
+
+/// Explicit penalty parameters threaded through [`graph_penalty_with`].
+///
+/// nan-018 ADR-001 (#4897): the crt-014 penalty `const`s become sweepable per-profile
+/// levers for the eval harness. This `Copy` struct carries one resolved set of values;
+/// its [`Default`] impl references the existing `pub const`s, making them the **single
+/// source of truth** for default behavior (dual-default discipline, #4064).
+///
+/// `fallback` rides on the struct even though [`graph_penalty_with`] never reads it —
+/// the fallback branch is applied at the search layer (`search.rs:727`), not inside the
+/// engine fn. Keeping it here lets the search layer resolve one params object.
+///
+/// `hop_decay` and `max_traversal_depth` are **shape** parameters, not severities; the
+/// server-side multiplier overlay must never scale them (ADR-001 §3).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct GraphPenaltyParams {
+    /// Deprecated entry with no successors (orphan). Default: [`ORPHAN_PENALTY`].
+    pub orphan: f64,
+    /// Cleanly replaced at depth 1; also the hop-decay clamp ceiling.
+    /// Default: [`CLEAN_REPLACEMENT_PENALTY`].
+    pub clean_replacement: f64,
+    /// Per-additional-hop decay multiplier. Default: [`HOP_DECAY_FACTOR`].
+    pub hop_decay: f64,
+    /// Ambiguous (multi-successor) supersession. Default: [`PARTIAL_SUPERSESSION_PENALTY`].
+    pub partial_supersession: f64,
+    /// Chain leads nowhere active. Default: [`DEAD_END_PENALTY`].
+    pub dead_end: f64,
+    /// Flat fallback applied by the search layer on cycle detection.
+    /// Default: [`FALLBACK_PENALTY`].
+    pub fallback: f64,
+    /// Maximum traversal depth (shape param). Default: [`MAX_TRAVERSAL_DEPTH`].
+    pub max_traversal_depth: usize,
+}
+
+impl Default for GraphPenaltyParams {
+    fn default() -> Self {
+        // SINGLE SOURCE OF TRUTH: every field references the existing const so that
+        // graph_penalty(..) == graph_penalty_with(.., &Default::default()) bit-for-bit
+        // (NFR-01), and the server config's Default triangulates to these (#4064).
+        GraphPenaltyParams {
+            orphan: ORPHAN_PENALTY,
+            clean_replacement: CLEAN_REPLACEMENT_PENALTY,
+            hop_decay: HOP_DECAY_FACTOR,
+            partial_supersession: PARTIAL_SUPERSESSION_PENALTY,
+            dead_end: DEAD_END_PENALTY,
+            fallback: FALLBACK_PENALTY,
+            max_traversal_depth: MAX_TRAVERSAL_DEPTH,
+        }
+    }
+}
+
 // -- Error type --
 
 /// Error returned when the supersession graph contains a cycle.
@@ -475,7 +528,40 @@ pub fn build_typed_relation_graph(
 /// 6. Defensive fallback → `DEAD_END_PENALTY`
 ///
 /// Pure function: no I/O, deterministic, no side effects.
+///
+/// This is a **thin wrapper** over [`graph_penalty_with`] with
+/// [`GraphPenaltyParams::default()`] (the crt-014 consts). It exists so every existing
+/// caller and ordering-invariant test stays bit-for-bit identical (nan-018 ADR-001,
+/// NFR-01).
 pub fn graph_penalty(node_id: u64, graph: &TypedRelationGraph, entries: &[EntryRecord]) -> f64 {
+    graph_penalty_with(node_id, graph, entries, &GraphPenaltyParams::default())
+}
+
+/// Topology-derived penalty multiplier for a node, with explicit penalty parameters.
+///
+/// Identical branch structure to [`graph_penalty`]; every const is replaced by the
+/// matching `params.*` field. The hop-decay clamp **ceiling tracks
+/// `params.clean_replacement`** (NOT the const) — see the clamp-coupling note below.
+///
+/// nan-018 ADR-001 (#4897): this is the parameterized entry point the eval harness
+/// sweeps per profile. `params.fallback` is carried for the search layer but unread here.
+///
+/// ## Clamp coupling (LOAD-BEARING — ADR-001, R-13)
+///
+/// At depth `d >= 2`: `raw = clean_replacement * hop_decay^(d-1)`, clamped to
+/// `[0.10, params.clean_replacement]`. The upper bound is **`params.clean_replacement`
+/// itself**, not the const: because `hop_decay < 1`, `raw <= clean_replacement` so the
+/// ceiling is the monotonicity cap (depth-2 never harsher than depth-1). If the ceiling
+/// stayed the const while `clean_replacement` is swept higher, a depth-2 entry could be
+/// clamped MORE harshly than depth-1, inverting the formula. The lower bound `0.10` stays
+/// a literal floor. Consequence: `clean_replacement` is an **amplified** sweep knob (base
+/// and ceiling move together).
+pub fn graph_penalty_with(
+    node_id: u64,
+    graph: &TypedRelationGraph,
+    entries: &[EntryRecord],
+    params: &GraphPenaltyParams,
+) -> f64 {
     // Guard: node not in graph → no penalty
     let node_idx = match graph.node_index.get(&node_id) {
         Some(&idx) => idx,
@@ -499,40 +585,50 @@ pub fn graph_penalty(node_id: u64, graph: &TypedRelationGraph, entries: &[EntryR
 
     // Priority 1: orphan
     if is_orphan {
-        return ORPHAN_PENALTY;
+        return params.orphan;
     }
 
     // Signal 2: active_reachable via Supersedes edges
-    let active_reachable = dfs_active_reachable(node_idx, graph, entries);
+    let active_reachable =
+        dfs_active_reachable(node_idx, graph, entries, params.max_traversal_depth);
 
     // Priority 2: no active terminal reachable
     if !active_reachable {
-        return DEAD_END_PENALTY;
+        return params.dead_end;
     }
 
     // Priority 3: partial supersession — multiple direct Supersedes successors
     if successor_count > 1 {
-        return PARTIAL_SUPERSESSION_PENALTY;
+        return params.partial_supersession;
     }
 
     // Signal 3: chain_depth via Supersedes edges
-    let chain_depth = bfs_chain_depth(node_idx, graph, entries);
+    let chain_depth = bfs_chain_depth(node_idx, graph, entries, params.max_traversal_depth);
 
     // Priority 4: clean replacement at depth 1
     if chain_depth == Some(1) {
-        return CLEAN_REPLACEMENT_PENALTY;
+        return params.clean_replacement;
     }
 
     // Priority 5: hop decay at depth >= 2
     if let Some(d) = chain_depth
         && d >= 2
     {
-        let raw = CLEAN_REPLACEMENT_PENALTY * HOP_DECAY_FACTOR.powi((d - 1) as i32);
-        return raw.clamp(0.10, CLEAN_REPLACEMENT_PENALTY);
+        let raw = params.clean_replacement * params.hop_decay.powi((d - 1) as i32);
+        // Clamp ceiling = params.clean_replacement (NOT the const) — clamp coupling, ADR-001.
+        // Guard the `min > max` case: a swept clean_replacement below the literal floor
+        // would make `clamp(0.10, clean_replacement)` panic (std::f64::clamp requires
+        // min <= max). When the ceiling sits below the floor, the ceiling dominates (the
+        // base penalty is already smaller than the floor) — never panic.
+        let ceiling = params.clean_replacement;
+        if ceiling <= HOP_DECAY_CLAMP_FLOOR {
+            return ceiling;
+        }
+        return raw.clamp(HOP_DECAY_CLAMP_FLOOR, ceiling);
     }
 
     // Priority 6: defensive fallback — should not be reached in valid data
-    DEAD_END_PENALTY
+    params.dead_end
 }
 
 /// DFS from `node_id`; returns the id of the first node where
@@ -594,16 +690,28 @@ pub fn find_terminal_active(
 /// DFS following outgoing Supersedes edges from `start_idx`.
 /// Returns `true` if any reachable successor is `Active && superseded_by.is_none()`.
 /// Does NOT check `start_idx` itself — checks successors only.
+///
+/// Traversal is capped at `max_traversal_depth` hops from `start_idx` (a **shape**
+/// parameter, default [`MAX_TRAVERSAL_DEPTH`]). A successor beyond the cap is not
+/// visited, so a depth set below the deepest chain truncates the search to a defined
+/// "no active terminal reachable" result — never a panic (nan-018 R-TEST).
 fn dfs_active_reachable(
     start_idx: NodeIndex,
     graph: &TypedRelationGraph,
     entries: &[EntryRecord],
+    max_traversal_depth: usize,
 ) -> bool {
-    let mut stack: Vec<NodeIndex> = vec![start_idx];
+    // Stack entries: (NodeIndex, depth_from_start).
+    let mut stack: Vec<(NodeIndex, usize)> = vec![(start_idx, 0)];
     let mut visited: HashSet<NodeIndex> = HashSet::new();
 
-    while let Some(current_idx) = stack.pop() {
+    while let Some((current_idx, depth)) = stack.pop() {
         if !visited.insert(current_idx) {
+            continue;
+        }
+
+        // Do not traverse beyond the depth cap (same convention as bfs_chain_depth).
+        if depth > max_traversal_depth {
             continue;
         }
 
@@ -619,7 +727,7 @@ fn dfs_active_reachable(
             {
                 return true;
             }
-            stack.push(neighbor_idx);
+            stack.push((neighbor_idx, depth + 1));
         }
     }
 
@@ -631,11 +739,13 @@ fn dfs_active_reachable(
 ///
 /// Returns `Some(depth)` where depth >= 1 (start node not counted as terminal
 /// since `graph_penalty` is called on entries needing penalizing).
-/// Returns `None` if no active terminal reachable or depth exceeds `MAX_TRAVERSAL_DEPTH`.
+/// Returns `None` if no active terminal reachable or depth exceeds `max_traversal_depth`
+/// (a **shape** parameter, default [`MAX_TRAVERSAL_DEPTH`]).
 fn bfs_chain_depth(
     start_idx: NodeIndex,
     graph: &TypedRelationGraph,
     entries: &[EntryRecord],
+    max_traversal_depth: usize,
 ) -> Option<usize> {
     let mut queue: VecDeque<(NodeIndex, usize)> = VecDeque::new();
     let mut visited: HashSet<NodeIndex> = HashSet::new();
@@ -644,7 +754,7 @@ fn bfs_chain_depth(
     visited.insert(start_idx);
 
     while let Some((current_idx, depth)) = queue.pop_front() {
-        if depth > MAX_TRAVERSAL_DEPTH {
+        if depth > max_traversal_depth {
             continue;
         }
 
@@ -689,3 +799,7 @@ fn entry_by_id(id: u64, entries: &[EntryRecord]) -> Option<&EntryRecord> {
 #[cfg(test)]
 #[path = "graph_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "graph_penalty_params_tests.rs"]
+mod penalty_params_tests;

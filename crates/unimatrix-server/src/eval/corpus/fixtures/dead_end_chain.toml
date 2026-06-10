@@ -1,0 +1,54 @@
+# Shape 5 (optional) — dead-end chain (superseded chain reaching NO Active terminal).
+#
+# Topology:  flag.v1 -> flag.v2 -> flag.terminal   where flag.terminal is itself
+#            Deprecated (no Active head anywhere in the chain).
+# Penalty branch exercised: dead_end (DEAD_END_PENALTY) — keeps the §5 sweep over
+#            DEAD_END_PENALTY non-degenerate (a real chain that decays to nothing).
+#
+# This scenario's redirect-to-head names a terminal that is NOT Active, so the
+# redirect assertion is a DEFINED FAIL at eval time (head resolves but is absent
+# from any live-head result) — it exercises the edge, it is not a passing
+# scenario. It still carries a valid (non-null, non-literal) property assertion,
+# so it passes the R-09 corpus audit. A rank-below pairs the chain root against
+# the unrelated Active anchor below to keep a non-vacuous evaluated assertion.
+
+[[entries]]
+alias = "flag.v1"
+title = "Feature flag rollout original"
+content = "toggle features with a single global boolean flipped manually during deploys"
+status = "Deprecated"
+superseded_by = ["flag.v2"]
+category = "delivery"
+
+[[entries]]
+alias = "flag.v2"
+title = "Feature flag rollout revised"
+content = "toggle features with a per environment boolean flipped through a config file"
+status = "Deprecated"
+superseded_by = ["flag.terminal"]
+category = "delivery"
+
+[[entries]]
+alias = "flag.terminal"
+title = "Feature flag rollout abandoned draft"
+content = "toggle features with a per request override header that was never finished"
+status = "Deprecated"
+superseded_by = []
+category = "delivery"
+
+# Unrelated live anchor so the result set is non-empty and the rank-below pair
+# has a present right-hand side.
+[[entries]]
+alias = "flag.live"
+title = "Feature flag rollout current"
+content = "toggle features with percentage based rollout cohorts evaluated by a flag service"
+status = "Active"
+superseded_by = []
+category = "delivery"
+
+[[scenarios]]
+id = "dead-end-chain.redirect-defined-fail"
+query = "how should feature flags be rolled out"
+[scenarios.assertions]
+redirect_to_head = ["flag.terminal"]
+rank_below = [["flag.v1", "flag.live"]]

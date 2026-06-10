@@ -35,6 +35,7 @@ fn make_scenario_result_with_metrics(
             mrr: baseline_mrr,
             cc_at_k: baseline_cc,
             icd: baseline_icd,
+            ..Default::default()
         },
     );
     profiles.insert(
@@ -46,6 +47,7 @@ fn make_scenario_result_with_metrics(
             mrr: candidate_mrr,
             cc_at_k: candidate_cc,
             icd: candidate_icd,
+            ..Default::default()
         },
     );
     ScenarioResult {
@@ -228,6 +230,7 @@ fn test_cc_at_k_scenario_rows_single_profile_returns_empty() {
             mrr: 0.5,
             cc_at_k: 0.4,
             icd: 0.5,
+            ..Default::default()
         },
     );
 
