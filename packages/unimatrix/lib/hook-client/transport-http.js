@@ -12,7 +12,7 @@
 
 const http = require("http");
 const https = require("https");
-const { applyCertPin } = require("./cert-pin.js");
+const { applyCertPin, verifyPeerFingerprint } = require("./cert-pin.js");
 
 // ADR-005 defaults (config-overridable via unimatrix.remote.timeouts). config.js
 // supplies resolved values; these back pingForInit and override-less callers.
@@ -104,11 +104,17 @@ function post(config, frame, opts) {
       resolve(result);
     };
 
+    // C2 cert pin (ADR-002 / F1): a TLS request with a configured fingerprint
+    // does NOT flush its body (which carries the Bearer token) until the leaf
+    // fingerprint is verified on secureConnect. A mismatched/MITM server is
+    // destroyed before it ever receives the token.
+    const pinned = isTls && !!config.pinnedFp;
+
     let req;
     try {
-      // C2 cert pin (ADR-002): for a TLS request with a configured fingerprint,
-      // thread a custom checkServerIdentity that pins sha256(cert.raw) to
-      // config.pinnedFp. No-op for plain http or when unpinned.
+      // For an unpinned/plain request applyCertPin is a no-op; for a pinned TLS
+      // request it sets rejectUnauthorized:false so the self-signed handshake
+      // completes — the fingerprint is then verified manually below.
       const reqOptions = applyCertPin(
         {
           protocol: u.protocol,
@@ -136,7 +142,31 @@ function post(config, frame, opts) {
     if (connectTimer.unref) connectTimer.unref();
 
     req.on("socket", (s) => {
-      s.once(isTls ? "secureConnect" : "connect", () => clearTimeout(connectTimer));
+      if (pinned) {
+        // Pinned TLS: verify the leaf fingerprint the instant the handshake
+        // completes. On mismatch, destroy the socket and settle as a connect
+        // failure BEFORE the body (and its Authorization: Bearer token) is
+        // written — the token never reaches a mismatched/MITM server. The body
+        // is flushed (req.end) ONLY after a successful pin, so flush ordering is
+        // not relied upon: an unwritten request cannot leak the token.
+        s.once("secureConnect", () => {
+          clearTimeout(connectTimer);
+          let err;
+          try {
+            err = verifyPeerFingerprint(s, config.pinnedFp);
+          } catch (_e) {
+            err = new Error("pinned certificate verification failed");
+          }
+          if (err) {
+            req.destroy(err);
+            done({ ok: false, status: 0, contentType: null, body: null, failureClass: "connect", message: err.message });
+            return;
+          }
+          if (!settled) req.end(body); // pin OK — now flush the token-bearing body
+        });
+      } else {
+        s.once(isTls ? "secureConnect" : "connect", () => clearTimeout(connectTimer));
+      }
     });
 
     // Total deadline.
@@ -174,7 +204,10 @@ function post(config, frame, opts) {
       });
     });
 
-    req.end(body);
+    // Unpinned (plain http or https without a pin): flush immediately. The
+    // pinned path defers req.end(body) into the secureConnect handler so the
+    // token-bearing body is only ever written after the fingerprint matches.
+    if (!pinned) req.end(body);
   });
 }
 
@@ -214,7 +247,11 @@ async function pingForInit(url, token, timeouts, pinnedFp) {
     { sync: true }
   );
   if (!res.ok) {
-    return { ok: false, message: actionable(res.failureClass, res.status, host) };
+    // A pinned-TLS cert-fingerprint mismatch carries its own diagnosable message
+    // (expected-vs-presented + re-bundle guidance, FR-A11 / AC-CT-ROT); surface
+    // it verbatim instead of the generic "cannot reach host" line.
+    const message = res.message || actionable(res.failureClass, res.status, host);
+    return { ok: false, message };
   }
   let obj;
   try {
