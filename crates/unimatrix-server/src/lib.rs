@@ -20,6 +20,7 @@ pub use unimatrix_engine::project;
 
 pub mod background;
 pub mod bridge;
+pub mod client_bundle;
 pub mod embed_reconstruct;
 pub mod error;
 pub mod eval;
