@@ -12,6 +12,7 @@
 
 const http = require("http");
 const https = require("https");
+const { applyCertPin } = require("./cert-pin.js");
 
 // ADR-005 defaults (config-overridable via unimatrix.remote.timeouts). config.js
 // supplies resolved values; these back pingForInit and override-less callers.
@@ -51,7 +52,7 @@ function classifyErrno(err) {
  * POST a HookRequest frame to {config.url}/observe. Always resolves a SendResult,
  * never rejects.
  *
- * @param {object} config  { url, token, timeouts: {connectMs, syncMs, fnfMs} }
+ * @param {object} config  { url, token, timeouts: {connectMs, syncMs, fnfMs}, pinnedFp? }
  * @param {object} frame   HookRequest object (ignored when opts.bodyBuf set)
  * @param {object} opts    { sync: boolean, bodyBuf?: Buffer }
  */
@@ -105,15 +106,23 @@ function post(config, frame, opts) {
 
     let req;
     try {
-      req = mod.request({
-        protocol: u.protocol,
-        hostname: u.hostname.replace(/^\[|\]$/g, ""), // IPv6 literal: strip brackets
-        port: u.port || undefined,
-        path: pathName + u.search,
-        method: "POST",
-        headers,
-        agent: false, // fresh socket per request (per-event process semantics)
-      });
+      // C2 cert pin (ADR-002): for a TLS request with a configured fingerprint,
+      // thread a custom checkServerIdentity that pins sha256(cert.raw) to
+      // config.pinnedFp. No-op for plain http or when unpinned.
+      const reqOptions = applyCertPin(
+        {
+          protocol: u.protocol,
+          hostname: u.hostname.replace(/^\[|\]$/g, ""), // IPv6 literal: strip brackets
+          port: u.port || undefined,
+          path: pathName + u.search,
+          method: "POST",
+          headers,
+          agent: false, // fresh socket per request (per-event process semantics)
+        },
+        isTls,
+        config.pinnedFp
+      );
+      req = mod.request(reqOptions);
     } catch (_err) {
       done(fail("connect", 0));
       return;
@@ -191,13 +200,16 @@ function actionable(failureClass, status, host) {
 
 /**
  * Strict Ping/Pong validation for `init --remote` (FR-19 / R-18) — the ONE loud
- * path (ADR-005). Returns { ok, message }; never throws.
+ * path (ADR-005). Returns { ok, message }; never throws. When `pinnedFp` is set,
+ * the Ping runs over the PINNED TLS connection so a cert-fingerprint mismatch
+ * surfaces HERE, diagnosably (FR-A11 / AC-CT-ROT), classified as a connect error.
  * @param {object} [timeouts] { connectMs, syncMs, fnfMs }
+ * @param {string} [pinnedFp] sha256:<64 hex> pin for the TLS request.
  */
-async function pingForInit(url, token, timeouts) {
+async function pingForInit(url, token, timeouts, pinnedFp) {
   const host = safeHost(url);
   const res = await post(
-    { url, token, timeouts: timeouts || DEFAULT_TIMEOUTS },
+    { url, token, timeouts: timeouts || DEFAULT_TIMEOUTS, pinnedFp: pinnedFp || null },
     { type: "Ping" },
     { sync: true }
   );

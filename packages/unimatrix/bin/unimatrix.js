@@ -14,12 +14,15 @@ function main() {
       return idx >= 0 && idx + 1 < args.length ? args[idx + 1] : undefined;
     };
     const projectDir = valueAfter("--project-dir");
-    // --remote/--token plumbed through init's own argv (interactive, user-typed).
-    // RQ-3 forbids the token in the HOOK command line / checked-in files, not the
-    // init invocation itself.
+    // --remote/--token (legacy F3) and --bundle/--slug (vnc-034) are plumbed
+    // through init's own argv (interactive, user-typed). RQ-3 forbids the token
+    // in the HOOK command line / checked-in files, not the init invocation
+    // itself (the bundle carries the token, never logged).
     const remote = valueAfter("--remote");
     const token = valueAfter("--token");
-    init({ dryRun: args.includes("--dry-run"), projectDir, remote, token })
+    const bundle = valueAfter("--bundle");
+    const slug = valueAfter("--slug");
+    init({ dryRun: args.includes("--dry-run"), projectDir, remote, token, bundle, slug })
       .then(() => {
         process.exitCode = 0;
       })
