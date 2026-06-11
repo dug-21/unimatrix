@@ -5,6 +5,7 @@
 //! connection-limited listener.
 
 pub(crate) mod auth;
+pub(crate) mod cert_provisioner;
 pub(crate) mod health;
 pub(crate) mod listener;
 pub(crate) mod public_url;
@@ -14,6 +15,9 @@ pub(crate) mod token;
 
 // Re-exports for main.rs (binary crate) HTTP startup wiring.
 pub use auth::StaticTokenAuthLayer;
+// CertProvisioner (vnc-034, SR-01) — first-boot self-signed cert/key provisioner.
+// Wired into the listener startup path in Sub-wave 3.
+pub use cert_provisioner::{CertPem, KeyPem, load_or_generate_cert};
 pub use listener::start_http_listener;
 pub use router::{ObserveContext, PathRouter, ProjectRouter};
 pub use tls::build_tls_acceptor;
