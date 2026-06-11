@@ -1739,3 +1739,321 @@ async fn test_observe_http_delta_empty_bytes_routes_to_drop() {
     assert_eq!(payload.offset, 0);
     assert!(payload.bytes.is_empty());
 }
+
+// ===========================================================================
+// vnc-034 C4 isolation seam — ProjectKey / ProjectSlug / StoreResolver /
+// RouteError + parse_project_key + the resolver-swap boundary.
+//
+// Wave-1 surface only: route-shape parse, the `ProjectSlug::TryFrom` parse-edge
+// guard, `ProjectKey::Slug` -> `UnknownProject` under a default-like resolver,
+// and the resolver-swap seam (the Wave1<->Wave2 boundary IS the trait). Wave-2
+// slug ROUTING (per-slug stores) is out of scope.
+// Lead risks: R-01 (Critical), R-03, R-06, R-13.
+// ===========================================================================
+
+use std::path::Path as StdPath;
+use unimatrix_store::{PoolConfig, SqlxStore};
+
+/// Open a real lightweight `Arc<Store>` for seam tests. No ONNX model, no
+/// `UnimatrixServer` — `SqlxStore::open` is the cheap store handle the resolver
+/// hands back. Used as the Wave-1 single store behind a stub resolver.
+async fn open_seam_test_store(path: &StdPath) -> Arc<Store> {
+    let store = SqlxStore::open(path, PoolConfig::default())
+        .await
+        .expect("open seam test store");
+    Arc::new(store)
+}
+
+/// Wave-1-style resolver: returns the one store for `Default`, `UnknownProject`
+/// for ANY `Slug`. Mirrors `DefaultResolver` semantics (default-resolver.md is a
+/// separate component) so the seam can be exercised without that impl present.
+struct DefaultLikeResolver {
+    store: Arc<Store>,
+}
+
+impl StoreResolver for DefaultLikeResolver {
+    fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError> {
+        match key {
+            ProjectKey::Default => Ok(Arc::clone(&self.store)),
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
+}
+
+/// Stub standing in for a Wave-2 `ProjectRouter`: resolves a single known slug,
+/// `UnknownProject` otherwise. Proves the Wave1<->Wave2 boundary is purely the
+/// trait — no `SlugRouter`/route-grammar change is needed to inject it.
+struct StubProjectRouter {
+    store: Arc<Store>,
+    known_slug: ProjectSlug,
+}
+
+impl StoreResolver for StubProjectRouter {
+    fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError> {
+        match key {
+            ProjectKey::Default => Ok(Arc::clone(&self.store)),
+            ProjectKey::Slug(s) if *s == self.known_slug => Ok(Arc::clone(&self.store)),
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
+}
+
+// ---- R-13 / AC-CT-C4 — route grammar (additive shape) ----
+
+#[test]
+fn test_route_v1_tools_maps_to_default() {
+    assert_eq!(
+        parse_project_key("/v1/tools/call").expect("parse"),
+        ProjectKey::Default
+    );
+    // Bare `/v1/tools` (no trailing segment) is still the default alias.
+    assert_eq!(
+        parse_project_key("/v1/tools").expect("parse"),
+        ProjectKey::Default
+    );
+}
+
+#[test]
+fn test_route_v1_slug_tools_parses_to_slug() {
+    let key = parse_project_key("/v1/myproj/tools/call").expect("parse");
+    assert_eq!(
+        key,
+        ProjectKey::Slug(ProjectSlug::try_from("myproj").expect("valid slug"))
+    );
+}
+
+#[test]
+fn test_route_non_v1_paths_map_to_default() {
+    // Current MCP paths (root, arbitrary) keep default behavior (backward-compat).
+    assert_eq!(parse_project_key("/").expect("parse"), ProjectKey::Default);
+    assert_eq!(
+        parse_project_key("/messages").expect("parse"),
+        ProjectKey::Default
+    );
+}
+
+#[test]
+fn test_route_reserved_tools_never_a_slug() {
+    // The literal `tools` in the slug position is matched as the default alias
+    // BEFORE the slug arm — `tools` can never become a slug.
+    assert_eq!(
+        parse_project_key("/v1/tools/anything").expect("parse"),
+        ProjectKey::Default
+    );
+}
+
+#[test]
+fn test_route_reserved_words_in_slug_position_parse_as_slug_but_inert() {
+    // health/observe/v1 as a 2nd segment pass the charset (so they parse to a
+    // Slug), but under a default-like resolver they are UnknownProject. Refusing
+    // to REGISTER them is a Wave-2 CLI concern, not a parse-edge concern.
+    for word in ["health", "observe", "v1"] {
+        let key = parse_project_key(&format!("/v1/{word}/tools")).expect("parse");
+        assert_eq!(
+            key,
+            ProjectKey::Slug(ProjectSlug::try_from(word).expect("charset-valid")),
+            "reserved word {word} in slug position parses as a slug"
+        );
+    }
+}
+
+// ---- R-03 — slug allowlist parse-edge guard (Wave-1: the guard itself) ----
+
+#[test]
+fn test_projectslug_accepts_valid() {
+    for ok in ["a", "0", "my-proj", "abc123", "a-b-c", "project-1"] {
+        assert!(
+            ProjectSlug::try_from(ok).is_ok(),
+            "expected {ok} to be accepted"
+        );
+    }
+    // 63-char max boundary (1 leading alnum + 62 more).
+    let max = format!("a{}", "b".repeat(62));
+    assert_eq!(max.len(), 63);
+    assert!(
+        ProjectSlug::try_from(max.as_str()).is_ok(),
+        "63-char slug must be accepted"
+    );
+}
+
+#[test]
+fn test_projectslug_rejects_traversal_corpus() {
+    // Path-traversal, encoded separators, absolute paths, separators, leading
+    // hyphen, uppercase, empty, and over-length — every one rejected at the edge.
+    let over_length = format!("a{}", "b".repeat(63)); // 64 chars
+    let rejected: Vec<&str> = vec![
+        "../",
+        "..",
+        "a/../b",
+        "%2e%2e",
+        "%2f",
+        "a%2fb",
+        "%2e",
+        "/etc",
+        "/etc/passwd",
+        ".",
+        "/",
+        "\\",
+        "a\\b",
+        "a.b",
+        "-leading",
+        "Abc",
+        "MyProj",
+        "a b",
+        "a\tb",
+        "",
+        over_length.as_str(),
+    ];
+    for bad in rejected {
+        let result = ProjectSlug::try_from(bad);
+        assert!(
+            matches!(result, Err(RouteError::InvalidSlug(_))),
+            "expected {bad:?} to be rejected as InvalidSlug, got {result:?}"
+        );
+    }
+}
+
+#[test]
+fn test_projectslug_over_length_boundary() {
+    // 63 ok, 64 rejected — exact boundary.
+    let ok63 = "a".repeat(63);
+    let bad64 = "a".repeat(64);
+    assert!(ProjectSlug::try_from(ok63.as_str()).is_ok());
+    assert!(matches!(
+        ProjectSlug::try_from(bad64.as_str()),
+        Err(RouteError::InvalidSlug(_))
+    ));
+}
+
+#[test]
+fn test_projectslug_empty_rejected() {
+    assert!(matches!(
+        ProjectSlug::try_from(""),
+        Err(RouteError::InvalidSlug(_))
+    ));
+}
+
+#[test]
+fn test_projectslug_invalid_slug_carries_input_for_diagnostics() {
+    // The rejected raw value is carried for diagnostics only — never used to
+    // build a path. Proves the value reached the error, not a path join.
+    match ProjectSlug::try_from("../escape") {
+        Err(RouteError::InvalidSlug(s)) => assert_eq!(s, "../escape"),
+        other => panic!("expected InvalidSlug, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_route_grammar_rejects_traversal_slug_before_resolution() {
+    // A traversal candidate in the slug position fails parse_project_key at the
+    // allowlist edge — it never reaches resolve_store / any path join (R-03).
+    let result = parse_project_key("/v1/..%2f/tools");
+    assert!(
+        matches!(result, Err(RouteError::InvalidSlug(_))),
+        "traversal slug must fail at the parse edge, got {result:?}"
+    );
+}
+
+// ---- R-01 — Slug under default-like resolver -> UnknownProject (no panic,
+//      no default store) ----
+
+#[tokio::test]
+async fn test_slug_key_under_default_resolver_returns_unknown_project() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let store = open_seam_test_store(&dir.path().join("seam.db")).await;
+    let resolver = DefaultLikeResolver {
+        store: Arc::clone(&store),
+    };
+
+    let slug = ProjectSlug::try_from("anyslug").expect("valid");
+    let result = resolver.resolve_store(&ProjectKey::Slug(slug));
+    assert_eq!(
+        result.err(),
+        Some(RouteError::UnknownProject),
+        "Slug under Wave-1 resolver must be UnknownProject — never the default store"
+    );
+
+    // And Default still resolves to the one store (the funnel works).
+    let resolved = resolver
+        .resolve_store(&ProjectKey::Default)
+        .expect("default resolves");
+    assert!(
+        Arc::ptr_eq(&resolved, &store),
+        "Default must resolve to the single Wave-1 store"
+    );
+}
+
+// ---- R-01 — resolver-swap: the Wave1<->Wave2 boundary IS the trait ----
+
+#[tokio::test]
+async fn test_resolver_swap_requires_no_callsite_change() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let store = open_seam_test_store(&dir.path().join("seam.db")).await;
+    let known = ProjectSlug::try_from("known").expect("valid");
+
+    // Both resolvers satisfy `StoreResolver` and are injected the SAME way:
+    // `Arc<dyn StoreResolver>`. No route-grammar / SlugRouter change required.
+    let wave1: Arc<dyn StoreResolver> = Arc::new(DefaultLikeResolver {
+        store: Arc::clone(&store),
+    });
+    let wave2: Arc<dyn StoreResolver> = Arc::new(StubProjectRouter {
+        store: Arc::clone(&store),
+        known_slug: known.clone(),
+    });
+
+    // Wave 1: the known slug is inert (UnknownProject).
+    assert_eq!(
+        wave1.resolve_store(&ProjectKey::Slug(known.clone())).err(),
+        Some(RouteError::UnknownProject)
+    );
+    // Wave 2 (stub): the same slug now resolves — purely a resolver swap.
+    assert!(
+        wave2
+            .resolve_store(&ProjectKey::Slug(known.clone()))
+            .is_ok(),
+        "Wave-2 resolver lights up the slug at the SAME trait call site"
+    );
+    // Both still resolve Default identically.
+    assert!(wave1.resolve_store(&ProjectKey::Default).is_ok());
+    assert!(wave2.resolve_store(&ProjectKey::Default).is_ok());
+    // An unknown slug stays UnknownProject under Wave 2 too (no default fallback).
+    let unknown = ProjectSlug::try_from("other").expect("valid");
+    assert_eq!(
+        wave2.resolve_store(&ProjectKey::Slug(unknown)).err(),
+        Some(RouteError::UnknownProject)
+    );
+}
+
+// ---- R-10 / AC-CT-C6 — enterprise seam present, degenerate-but-documented ----
+
+#[test]
+fn test_storeresolver_seam_types_present() {
+    // The C4/C6 enterprise extension surface exists as named interfaces
+    // (documented-but-degenerate per the session_key precedent, NFR-09): the
+    // trait is object-safe (usable as `Arc<dyn StoreResolver>`), ProjectKey has
+    // both arms, RouteError has both variants. Construction here IS the assertion
+    // that the surface is named and reachable.
+    fn _assert_object_safe(_r: &Arc<dyn StoreResolver>) {}
+    let _default = ProjectKey::Default;
+    let _slug = ProjectKey::Slug(ProjectSlug::try_from("p").expect("valid"));
+    let _e1 = RouteError::UnknownProject;
+    let _e2 = RouteError::InvalidSlug("x".to_string());
+}
+
+// ---- RouteError surface ----
+
+#[test]
+fn test_route_error_display_no_input_leak() {
+    // InvalidSlug Display must NOT echo the rejected raw input (avoid reflecting
+    // attacker-controlled bytes into a response line); the variant still carries
+    // it internally for structured diagnostics.
+    let e = RouteError::InvalidSlug("../../etc/passwd".to_string());
+    let msg = format!("{e}");
+    assert_eq!(msg, "invalid project slug");
+    assert!(
+        !msg.contains("etc/passwd"),
+        "must not echo raw input: {msg}"
+    );
+
+    assert_eq!(format!("{}", RouteError::UnknownProject), "unknown project");
+}

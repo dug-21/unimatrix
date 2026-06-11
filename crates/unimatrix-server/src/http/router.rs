@@ -286,6 +286,22 @@ fn map_health_response(resp: Response<String>) -> Response<BoxBody<Bytes, Infall
 pub(crate) mod observe;
 use observe::{json_error_response, observe_response_to_http, prefix_session_id};
 
+// C4 isolation seam (vnc-034 ADR-003/004/005). Extracted to a submodule to keep
+// router.rs under the 500-line limit. Wave-1 MINIMAL: route grammar + trait +
+// SlugRouter layer + the ProjectSlug allowlist parse edge. The Wave 1 <-> Wave 2
+// boundary IS the `StoreResolver` trait — Wave 2 swaps the injected resolver at
+// the SAME `SlugRouter::new` call site, no change to this layer or the grammar.
+pub(crate) mod seam;
+#[cfg(test)]
+pub(crate) use seam::parse_project_key;
+// The seam is built minimal in Wave 1 but only WIRED into `main.rs` in Sub-wave 3
+// (this change must not touch main.rs). Until then the public surface is exercised
+// only by the seam unit tests, so the re-export is legitimately unused in
+// production. Removing the allow once `SlugRouter` is wired at the listener is the
+// Sub-wave-3 follow-up.
+#[allow(unused_imports)]
+pub use seam::{ProjectKey, ProjectSlug, RouteError, SlugRouter, StoreResolver};
+
 // ---------------------------------------------------------------------------
 // ProjectRouter — W2-6 structural seam (single-project default mode)
 // ---------------------------------------------------------------------------
