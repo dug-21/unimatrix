@@ -31,6 +31,7 @@ pub mod http;
 pub mod import;
 pub mod infra;
 pub mod mcp;
+pub mod projects;
 pub mod server;
 pub mod services;
 pub mod snapshot;
