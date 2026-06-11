@@ -125,13 +125,29 @@ ENV HOME=/data \
     UNIMATRIX_MODEL_CACHE=/shared/models
 
 # Volume mount point for persistent data.
+#
+# Bind-mount note (vnc-034 / FR-A9, AC-W1-S8): when /data is supplied as a host
+# bind-mount instead of a named volume, the host directory MUST be writable by
+# UID 65532 (the nonroot runtime user). Otherwise first-boot cert/token
+# provisioning fails loud-and-actionable (the Rust binary reports the path + the
+# UID-65532 requirement and exits non-zero — no shell, no silent fallback).
+#   e.g.  mkdir -p ./data && sudo chown 65532:65532 ./data
 VOLUME ["/data", "/shared"]
 
 # Liveness probe (ADR-003).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD ["unimatrix", "--project-dir", "/data", "health"]
 
-# No EXPOSE — no HTTP listener until W2-2 (C-10).
+# TLS serving port (vnc-034 / ADR-007, FR-A8, AC-W1-S2, R-12).
+# ONLY the TLS port is exposed — there is NO plaintext port. The container serves
+# pinned-TLS HTTPS only; OSS posture has no plaintext-to-client mode.
+# The HTTP listener is gated on UNIMATRIX_HTTP_ENABLED=true (set in compose.yaml,
+# ADR-007). The global binary default http.enabled=false is unchanged — flipping
+# serving on is a container-scoped env concern, not a code-default change.
+# TLS auto-enables from the first-boot-provisioned cert (provisioned in the Rust
+# binary, since distroless has no shell). The token/cert stay 0600 files on the
+# /data volume and are NEVER baked into an image layer (NFR-06).
+EXPOSE 8443
 
 ENTRYPOINT ["unimatrix"]
 CMD ["--project-dir", "/data", "serve", "--foreground"]
