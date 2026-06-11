@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 use tokio_rustls::TlsAcceptor;
 
+use unimatrix_adapt::{AdaptConfig, AdaptationService};
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{CoreError, VectorAdapter, VectorConfig};
 use unimatrix_server::error::ServerError;
@@ -36,7 +37,6 @@ use unimatrix_server::infra::registry::AgentRegistry;
 use unimatrix_server::server::UnimatrixServer;
 use unimatrix_store::{PoolConfig, SqlxStore};
 use unimatrix_vector::VectorIndex;
-use unimatrix_adapt::{AdaptConfig, AdaptationService};
 
 /// Subdirectory under the data dir holding the provisioned TLS material.
 const TLS_DIR_NAME: &str = "tls";
@@ -169,7 +169,11 @@ pub async fn build_project_server(
     };
 
     // Per-slug subsystems (knowledge isolation, FR-C3).
-    let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), permissive, Vec::new())?);
+    let registry = Arc::new(AgentRegistry::new(
+        Arc::clone(&store),
+        permissive,
+        Vec::new(),
+    )?);
     registry.bootstrap_defaults()?;
     let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
