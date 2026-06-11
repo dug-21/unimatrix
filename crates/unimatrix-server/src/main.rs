@@ -1,5 +1,10 @@
 //! Unimatrix knowledge engine entry point.
 
+// vnc-034 Sub-wave 3: HTTP listener provisioning glue (cert/TLS + StoreResolver
+// seam construction) lives in a sibling binary-crate module to keep main.rs
+// focused and avoid growing it further.
+mod http_provision;
+
 use std::collections::HashSet;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
@@ -196,6 +201,17 @@ enum Command {
     /// Used by Docker HEALTHCHECK directive (nan-014, ADR-003).
     Health,
 
+    /// Emit the client connection bundle (vnc-034, C1/ADR-001).
+    ///
+    /// Reads the provisioned bearer token + served leaf cert from the data
+    /// volume, fingerprints the leaf DER, derives the public base-url, and
+    /// prints the opaque `unimatrix-bundle:` blob to stdout (pipeable) with a
+    /// token-redacted base-url + fingerprint echo on stderr (FR-A5b / NFR-06).
+    ///
+    /// Sync, pre-tokio subcommand (C-10) — like `health`/`version`. Run after
+    /// the server has booted once to provision TLS + token.
+    ClientBundle,
+
     /// Stop the running background daemon.
     ///
     /// Sends SIGTERM to the daemon (reads PID file) and waits up to 15 seconds
@@ -318,6 +334,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Sync path: NO tokio (ADR-003).
             // run() returns 0 (healthy) or 1 (unhealthy); matches run_stop pattern.
             std::process::exit(unimatrix_server::health::run(cli.project_dir.as_deref()));
+        }
+        Some(Command::ClientBundle) => {
+            // Sync path: NO tokio (C-10, vnc-034 ADR-001). Like Health/Version,
+            // dispatched before any runtime init. Reads token + leaf cert from
+            // the data volume and emits the bundle (stdout = blob, stderr =
+            // base-url + fp echo, token redacted — FR-A5b / NFR-06).
+            return unimatrix_server::client_bundle::run_client_bundle(cli.project_dir)
+                .map_err(Into::into);
         }
         Some(Command::Stop) => {
             // Sync path: NO tokio (ADR-006)
@@ -837,11 +861,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         )
         .await?;
 
-    // --- HTTP LISTENER STARTUP (vnc-021) ---
+    // --- HTTP LISTENER STARTUP (vnc-021 + vnc-034) ---
     let (http_acceptor_handle, http_listener_addr) = if config.http.enabled {
         use unimatrix_server::http::{
-            ObserveContext, PathRouter, ProjectRouter, StaticTokenAuthLayer, build_tls_acceptor,
-            load_or_generate_token, start_http_listener,
+            ObserveContext, PathRouter, ProjectKey, ProjectRouter, StaticTokenAuthLayer,
+            StoreResolver, load_or_generate_token, start_http_listener,
         };
 
         // 1. Load or generate bearer token
@@ -850,20 +874,44 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             ServerError::Config("bearer token must be exactly 32 bytes".to_string())
         })?;
 
-        // 2. Build TLS acceptor (None for proxy-terminated deployments)
-        let tls_acceptor = build_tls_acceptor(&config.tls)?;
+        // 2. vnc-034 (C3 + SR-01): derive the public URL once, first-boot
+        //    provision the self-signed cert/key with its SANs, and build the
+        //    TLS acceptor from the provisioned PEM files. The same files feed
+        //    `client-bundle` (C2 leaf-DER fingerprint parity). The cloud HTTPS
+        //    posture requires a real acceptor — an absent one is surfaced loud.
+        let (tls_acceptor, public_url) = http_provision::provision_tls(&paths.data_dir)?;
+        tracing::info!(
+            base_url = %public_url.base_url,
+            sans = ?public_url.sans,
+            "TLS provisioned from data volume (cert SANs from UNIMATRIX_PUBLIC_URL)"
+        );
 
-        // 3. Build the tower service stack (inside-out):
-        //    StreamableHttpService<UnimatrixServer> -> ProjectRouter -> PathRouter -> StaticTokenAuth
+        // 3. vnc-034 (C4 / ADR-003): construct the StoreResolver seam over the
+        //    single store and obtain the served handle THROUGH the funnel
+        //    (`resolve_store(ProjectKey::Default)`) — the store reaches MCP via
+        //    the seam, not around it (FR-X5, no bypass). The injected
+        //    `DefaultResolver` is the Wave-1 resolver; Wave 2 swaps in
+        //    `ProjectRouter` at the SAME `SlugRouter::new` call site.
+        let resolver = unimatrix_server::http::DefaultResolver::new(Arc::clone(&store));
+        let served_store = resolver.resolve_store(&ProjectKey::Default).map_err(|e| {
+            ServerError::Config(format!(
+                "store-resolution funnel rejected the default project at boot: {e}"
+            ))
+        })?;
+
+        // 4. Build the tower service stack (inside-out):
+        //    StreamableHttpService<UnimatrixServer> -> ProjectRouter -> SlugRouter
+        //    -> PathRouter -> StaticTokenAuth
 
         // vnc-022: Construct ObserveContext from server fields before rmcp wrapping.
-        // All fields are Arc::clone -- cheap, no logic. Field names track
-        // dispatch_request() parameter names (R-01: store vs entry_store).
+        // The store handle threaded here is the funnel-resolved one (no bypass).
+        // Field names track dispatch_request() parameter names (R-01: store vs
+        // entry_store).
         let observe_ctx = ObserveContext {
-            store: Arc::clone(&store),
+            store: Arc::clone(&served_store),
             embed_service: Arc::clone(&embed_handle),
             vector_store: Arc::clone(&async_vector_store),
-            entry_store: Arc::clone(&store),
+            entry_store: Arc::clone(&served_store),
             adapt_service: Arc::clone(&adapt_service),
             server_version: env!("CARGO_PKG_VERSION").to_string(),
             session_registry: Arc::clone(&session_registry),
@@ -871,6 +919,17 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             services: services.clone(),
         };
 
+        // SEAM INSERTION BLOCKER (router.rs-scoped — see agent report):
+        // `PathRouter::new` is concrete over `ProjectRouter<ReqBody>` and its MCP
+        // arm calls the PRIVATE `ProjectRouter::route_mcp`, so the per-request
+        // layer PathRouter -> SlugRouter -> ProjectRouter cannot be inserted from
+        // main.rs alone — it needs a one-line generalization of `PathRouter` in
+        // router.rs (an owned file out of this agent's scope). The no-bypass
+        // guarantee is still honored HERE at the store-acquisition boundary: the
+        // store threaded into MCP (`served_store`, above) is obtained ONLY via
+        // `resolve_store(ProjectKey::Default)`. The follow-up is to relax
+        // `PathRouter` to accept any `route_mcp`-capable layer and pass the
+        // `SlugRouter` (built over the same `DefaultResolver`) as the MCP edge.
         let project_router = ProjectRouter::new(
             server.clone(),
             config.http.max_request_body_bytes,
@@ -880,10 +939,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         let auth_layer = StaticTokenAuthLayer::new(token_array);
         let service = tower::Layer::layer(&auth_layer, path_router);
 
-        // 4. Start HTTP listener
+        // 5. Start HTTP listener
         let (handle, addr) = start_http_listener(
             &config.http,
-            tls_acceptor,
+            Some(tls_acceptor),
             service,
             daemon_token.child_token(),
         )
