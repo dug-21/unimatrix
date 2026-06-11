@@ -887,12 +887,17 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         );
 
         // 3. vnc-034 (C4 / ADR-003): construct the StoreResolver seam over the
-        //    single store and obtain the served handle THROUGH the funnel
-        //    (`resolve_store(ProjectKey::Default)`) — the store reaches MCP via
-        //    the seam, not around it (FR-X5, no bypass). The injected
+        //    single store as `Arc<dyn StoreResolver>` (the injection point) and
+        //    obtain the `/observe` store handle THROUGH the funnel
+        //    (`resolve_store(ProjectKey::Default)`) — `/observe` is NOT on the
+        //    per-request MCP seam (ADR-005), so it acquires its handle through the
+        //    funnel once at boot. The SAME resolver is injected into `SlugRouter`
+        //    below, where it serves the MCP path per request. The injected
         //    `DefaultResolver` is the Wave-1 resolver; Wave 2 swaps in
         //    `ProjectRouter` at the SAME `SlugRouter::new` call site.
-        let resolver = unimatrix_server::http::DefaultResolver::new(Arc::clone(&store));
+        let resolver: Arc<dyn StoreResolver> = Arc::new(
+            unimatrix_server::http::DefaultResolver::new(Arc::clone(&store)),
+        );
         let served_store = resolver.resolve_store(&ProjectKey::Default).map_err(|e| {
             ServerError::Config(format!(
                 "store-resolution funnel rejected the default project at boot: {e}"
@@ -919,23 +924,19 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             services: services.clone(),
         };
 
-        // SEAM INSERTION BLOCKER (router.rs-scoped — see agent report):
-        // `PathRouter::new` is concrete over `ProjectRouter<ReqBody>` and its MCP
-        // arm calls the PRIVATE `ProjectRouter::route_mcp`, so the per-request
-        // layer PathRouter -> SlugRouter -> ProjectRouter cannot be inserted from
-        // main.rs alone — it needs a one-line generalization of `PathRouter` in
-        // router.rs (an owned file out of this agent's scope). The no-bypass
-        // guarantee is still honored HERE at the store-acquisition boundary: the
-        // store threaded into MCP (`served_store`, above) is obtained ONLY via
-        // `resolve_store(ProjectKey::Default)`. The follow-up is to relax
-        // `PathRouter` to accept any `route_mcp`-capable layer and pass the
-        // `SlugRouter` (built over the same `DefaultResolver`) as the MCP edge.
+        // vnc-034 (ADR-003): `SlugRouter` is the per-request MCP edge.
+        // `PathRouter::new` takes the injected `StoreResolver` + the existing
+        // `ProjectRouter` and builds the `SlugRouter` internally, so every MCP
+        // request runs `parse_project_key -> resolve_store -> dispatch` — the
+        // store reaches MCP only THROUGH the funnel, never around it (FR-X5).
+        // Wave 2 swaps the `resolver` arg (`DefaultResolver` -> `ProjectRouter`)
+        // at this SAME call site with no other change (R-01 sc.2).
         let project_router = ProjectRouter::new(
             server.clone(),
             config.http.max_request_body_bytes,
             config.http.allowed_origins.clone(),
         );
-        let path_router = PathRouter::new(project_router, observe_ctx);
+        let path_router = PathRouter::new(resolver, project_router, observe_ctx);
         let auth_layer = StaticTokenAuthLayer::new(token_array);
         let service = tower::Layer::layer(&auth_layer, path_router);
 
