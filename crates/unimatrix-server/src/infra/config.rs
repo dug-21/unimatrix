@@ -2866,10 +2866,24 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<ConfigLoadResult,
 
     // Step 3b: if env_config exists, merge it ON TOP (highest priority).
     // env_config fields win over project, global, and compiled defaults.
-    let merged = match env_config {
+    let mut merged = match env_config {
         Some(env_cfg) => merge_configs(merged, env_cfg),
         None => merged,
     };
+
+    // Step 3c: UNIMATRIX_HTTP_ENABLED env override (ADR-007 / vnc-034).
+    // Container-scoped boolean that flips the HTTP serving posture WITHOUT a
+    // config file — set alongside UNIMATRIX_PUBLIC_URL in compose.yaml. Applied
+    // AFTER the file/env-config merge so the env wins over file + global +
+    // compiled default (parallels the UNIMATRIX_CONFIG step above). The compiled
+    // default `http.enabled = false` stays clean for the local UDS install; only
+    // this env var flips it. The boolean is non-sensitive — the token/cert stay
+    // `0600` files (NFR-05/NFR-06), never carried in env.
+    if let Some(enabled) =
+        resolve_http_enabled_override(std::env::var(HTTP_ENABLED_VAR).ok().as_deref())
+    {
+        merged.http.enabled = enabled;
+    }
 
     // Step 4: post-merge validation — catches constraint violations that only appear
     // when two individually-valid configs are combined (e.g., fusion weight sum > 1.0).
@@ -2919,6 +2933,47 @@ fn resolve_env_config_path(env_value: Option<&str>) -> Option<PathBuf> {
 #[cfg(test)]
 pub(crate) fn resolve_env_config_path_for_test(env_value: Option<&str>) -> Option<PathBuf> {
     resolve_env_config_path(env_value)
+}
+
+/// Environment variable that flips the container into HTTP-serving posture.
+///
+/// Container-scoped (set in the image / `compose.yaml`), surface-consistent with
+/// `UNIMATRIX_PUBLIC_URL` (ADR-007). Carries only the non-sensitive boolean; the
+/// token/cert remain `0600` files (NFR-05/NFR-06).
+const HTTP_ENABLED_VAR: &str = "UNIMATRIX_HTTP_ENABLED";
+
+/// Resolve the `UNIMATRIX_HTTP_ENABLED` env override of `HttpConfig.enabled`.
+///
+/// Returns `Some(true)` for `"true"`/`"1"`, `Some(false)` for `"false"`/`"0"`
+/// (case-insensitive, surrounding whitespace trimmed). Returns `None` — meaning
+/// "no override, leave the merged value untouched" — when the value is absent,
+/// empty, or unrecognized. The function is total: an unrecognized value logs at
+/// debug and yields `None`; it NEVER panics (R-11). The compiled default
+/// `http.enabled = false` is preserved when no override applies (ADR-007).
+///
+/// This is a pure function — it takes the env var value as a parameter so it can
+/// be tested without `std::env::set_var` (which is unsafe in Rust 2024 edition
+/// with `#![forbid(unsafe_code)]`).
+fn resolve_http_enabled_override(env_value: Option<&str>) -> Option<bool> {
+    let raw = env_value?;
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "true" | "1" => Some(true),
+        "false" | "0" => Some(false),
+        "" => None,
+        other => {
+            tracing::debug!(
+                value = %other,
+                "UNIMATRIX_HTTP_ENABLED set to an unrecognized value; ignoring (no override)"
+            );
+            None
+        }
+    }
+}
+
+/// Expose `resolve_http_enabled_override` for unit tests.
+#[cfg(test)]
+pub(crate) fn resolve_http_enabled_override_for_test(env_value: Option<&str>) -> Option<bool> {
+    resolve_http_enabled_override(env_value)
 }
 
 /// Post-parse field validation for a single config file.
@@ -10723,6 +10778,132 @@ nli_informs_ppr_weight = 0.4
             merged.profile.preset,
             Preset::Operational,
             "UNIMATRIX_CONFIG preset (operational) must override per-project preset (authoritative)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // UNIMATRIX_HTTP_ENABLED env override tests (ADR-007, vnc-034)
+    //
+    // Tests target resolve_http_enabled_override_for_test() to avoid env var
+    // mutation (forbidden by #![forbid(unsafe_code)] on std::env::set_var
+    // in Rust 2024 edition). The override flips HttpConfig.enabled; the
+    // compiled default stays false (local UDS install unaffected).
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_http_enabled_env_override() {
+        // UNIMATRIX_HTTP_ENABLED=true overrides the compiled default (false),
+        // exactly as load_config applies it after the merge. Global binary
+        // default stays false (local-UDS unaffected).
+        let mut config = UnimatrixConfig::default();
+        assert!(
+            !config.http.enabled,
+            "compiled default http.enabled must be false (ADR-007 / local UDS)"
+        );
+
+        if let Some(enabled) = resolve_http_enabled_override_for_test(Some("true")) {
+            config.http.enabled = enabled;
+        }
+        assert!(
+            config.http.enabled,
+            "UNIMATRIX_HTTP_ENABLED=true must flip http.enabled to true"
+        );
+    }
+
+    #[test]
+    fn test_http_enabled_default_false_without_env() {
+        // Env unset -> no override -> http.enabled remains false. No accidental
+        // HTTP exposure for the local install.
+        let mut config = UnimatrixConfig::default();
+        if let Some(enabled) = resolve_http_enabled_override_for_test(None) {
+            config.http.enabled = enabled;
+        }
+        assert!(
+            !config.http.enabled,
+            "absent UNIMATRIX_HTTP_ENABLED must leave http.enabled false"
+        );
+    }
+
+    #[test]
+    fn test_http_enabled_override_parses_true_values() {
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("true")),
+            Some(true)
+        );
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("1")),
+            Some(true)
+        );
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("TRUE")),
+            Some(true)
+        );
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("  true  ")),
+            Some(true),
+            "surrounding whitespace must be trimmed"
+        );
+    }
+
+    #[test]
+    fn test_http_enabled_override_parses_false_values() {
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("false")),
+            Some(false)
+        );
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("0")),
+            Some(false)
+        );
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("False")),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn test_http_enabled_override_unset_or_empty_yields_none() {
+        assert_eq!(
+            resolve_http_enabled_override_for_test(None),
+            None,
+            "absent env var must yield None (no override)"
+        );
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("")),
+            None,
+            "empty env var must yield None (no override)"
+        );
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("   ")),
+            None,
+            "whitespace-only env var must yield None (no override)"
+        );
+    }
+
+    #[test]
+    fn test_http_enabled_override_garbage_yields_none_no_panic() {
+        // Unrecognized values are total: no override, no panic (R-11).
+        assert_eq!(resolve_http_enabled_override_for_test(Some("yes")), None);
+        assert_eq!(resolve_http_enabled_override_for_test(Some("on")), None);
+        assert_eq!(resolve_http_enabled_override_for_test(Some("2")), None);
+        assert_eq!(
+            resolve_http_enabled_override_for_test(Some("enabled")),
+            None
+        );
+    }
+
+    #[test]
+    fn test_http_enabled_false_override_keeps_disabled() {
+        // An explicit =false override leaves http.enabled false (and would flip
+        // a file-enabled config back off — env is highest priority).
+        let mut config = UnimatrixConfig::default();
+        config.http.enabled = true; // pretend a file enabled it
+        if let Some(enabled) = resolve_http_enabled_override_for_test(Some("false")) {
+            config.http.enabled = enabled;
+        }
+        assert!(
+            !config.http.enabled,
+            "UNIMATRIX_HTTP_ENABLED=false must win over a file-enabled config"
         );
     }
 

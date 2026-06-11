@@ -2,6 +2,9 @@
 # Start: docker compose up -d
 # Logs:  docker compose logs -f
 # Stop:  docker compose down
+#
+# Client attach:    docs/client-setup.md
+# Cert rotation:    docs/cert-rotation.md  (rotate cert -> client-bundle -> re-init clients)
 
 services:
   unimatrix:
@@ -9,23 +12,47 @@ services:
     # To build locally instead of pulling:
     #   build: .
     restart: unless-stopped
+    # Container serving posture (vnc-034 / ADR-007, C3). Both knobs are env vars
+    # in this file — one mechanism, one place the operator edits. Secrets are NOT
+    # here: the bearer token and TLS cert/key stay as 0600 files on the /data
+    # volume (NFR-05/NFR-06); env carries only the non-sensitive boolean + URL.
+    environment:
+      # Flip the HTTP(S) serving posture on (ADR-007). The global binary default
+      # is http.enabled=false (clean for the local UDS install); this
+      # container-scoped env var overrides it without an image rebuild — critical
+      # for the distroless no-shell image. Remove this line for a UDS-only
+      # container.
+      UNIMATRIX_HTTP_ENABLED: "true"
+      # Public URL the clients dial (C3). Feeds the client-bundle base-url, the
+      # allowed_hosts default, and the TLS cert SAN via derive_public_url().
+      # MUST be set to your reachable host:8443 BEFORE running `client-bundle`,
+      # or the bundle base-url is the loud <EDIT-ME> placeholder (FR-A5b).
+      # Use the service name for sibling-container reachability (AC-W1-S1),
+      # or the externally reachable host for off-host clients.
+      UNIMATRIX_PUBLIC_URL: "https://cloud.example:8443"
+      # For external config (Kubernetes ConfigMap, secrets manager):
+      #   UNIMATRIX_CONFIG: /path/to/config.toml
+    ports:
+      # TLS port ONLY — pinned-TLS HTTPS (ADR-007, FR-A8, AC-W1-S2, R-12).
+      # There is NO plaintext port: OSS posture has no plaintext-to-client mode.
+      - "8443:8443"
     volumes:
       - unimatrix-data:/data
-      - unimatrix-shared:/shared
-      # Security hardening (optional, after initial model download):
-      #   - unimatrix-shared:/shared:ro
+      # Preserve the nan-014 :ro hardening on /shared (re-downloadable models;
+      # read-only prevents model tampering after first populate).
+      - unimatrix-shared:/shared:ro
       # unimatrix-data: databases, vector indexes, config, logs (integrity-critical, back up).
       # unimatrix-shared: ONNX models (re-downloadable, backup optional).
       # Config: per-project config.toml lives inside the data volume.
       # Written automatically on first run. Edit via:
       #   docker run --rm -v unimatrix-data:/data busybox vi /data/.unimatrix/<hash>/config.toml
-    # For external config (Kubernetes ConfigMap, secrets manager):
-    # environment:
-    #   - UNIMATRIX_CONFIG=/path/to/config.toml
-    # No port mappings — UDS mode only until W2-2 (HTTPS transport).
-    # When W2-2 lands, add:
-    #   ports:
-    #     - "8443:8443"
+      #
+      # Bind-mount note (vnc-034 / FR-A9, AC-W1-S8): if you replace the named
+      # `unimatrix-data` volume with a host bind-mount, the host directory MUST be
+      # writable by UID 65532 (the nonroot runtime user) or first-boot cert/token
+      # provisioning fails loud-and-actionable and the container exits non-zero:
+      #   mkdir -p ./data && sudo chown 65532:65532 ./data
+      #   then:  - ./data:/data
 
 volumes:
   unimatrix-data:
@@ -36,12 +63,13 @@ volumes:
     #     busybox tar czf /backup/unimatrix-backup.tar.gz /data
   unimatrix-shared:
     # Re-downloadable assets: ONNX models (~166 MB).
-    # Auto-populated on first start (requires internet).
     # Backup optional -- models re-download from HuggingFace if lost.
-    # Air-gap: pre-populate before first start.
     #
     # Security notes:
-    #   - After initial download, mount :ro to prevent model tampering.
+    #   - Mounted :ro above (nan-014 hardening) to prevent model tampering.
+    #   - First populate: with :ro the models must already be present. Pre-populate
+    #     once with a writable mount (drop the :ro, start, let models download),
+    #     then restore :ro; or pre-seed the volume for air-gapped hosts.
     #   - Set nli_model_sha256 in config.toml to pin NLI model integrity.
     #   - Embedding model hash enforcement tracked as #651.
 
