@@ -24,6 +24,7 @@ const {
 const {
   computeFingerprint,
   makeCheckServerIdentity,
+  verifyPeerFingerprint,
   applyCertPin,
 } = require("../lib/hook-client/cert-pin.js");
 
@@ -145,19 +146,46 @@ describe("cert pin — checkServerIdentity (R-02 / AC-W1-C2 / AC-CT-ROT)", () =>
     assert.ok(check("h", {}) instanceof Error);
   });
 
-  it("test_pin_bypasses_ca_chain — applyCertPin sets pin path, clears CA trust", () => {
+  it("test_pin_completes_self_signed_handshake — applyCertPin sets rejectUnauthorized:false, clears CA trust (F1)", () => {
+    // F1 fix: the self-signed handshake must COMPLETE (rejectUnauthorized:false)
+    // so the manual secureConnect fingerprint check can run; rejectUnauthorized
+    // true + ca:undefined rejected the legitimate leaf before the pin ran.
     const opts = {};
     applyCertPin(opts, true, pinnedFp);
-    assert.strictEqual(typeof opts.checkServerIdentity, "function");
-    assert.strictEqual(opts.rejectUnauthorized, true);
+    assert.strictEqual(opts.rejectUnauthorized, false, "self-signed handshake must complete");
     assert.strictEqual(opts.ca, undefined, "no CA trust path is supplied");
-    // Non-TLS / unpinned → no-op (no identity override on plain http).
+    // Non-TLS / unpinned → no-op (no override on plain http).
     const plain = {};
     applyCertPin(plain, false, pinnedFp);
-    assert.strictEqual(plain.checkServerIdentity, undefined);
+    assert.strictEqual(plain.rejectUnauthorized, undefined);
     const unpinned = {};
     applyCertPin(unpinned, true, null);
-    assert.strictEqual(unpinned.checkServerIdentity, undefined);
+    assert.strictEqual(unpinned.rejectUnauthorized, undefined);
+  });
+
+  it("test_verify_peer_fingerprint_match — null on a matching live peer cert", () => {
+    const fakeSocket = { getPeerCertificate: () => ({ raw: leafDer }) };
+    assert.strictEqual(verifyPeerFingerprint(fakeSocket, pinnedFp), null);
+  });
+
+  it("test_verify_peer_fingerprint_mismatch — diagnosable Error naming both fps", () => {
+    const wrongDer = Buffer.from(FINGERPRINT_GOLDEN[3].der_hex, "hex");
+    const presented = FINGERPRINT_GOLDEN[3].fp;
+    const fakeSocket = { getPeerCertificate: () => ({ raw: wrongDer }) };
+    const err = verifyPeerFingerprint(fakeSocket, pinnedFp);
+    assert.ok(err instanceof Error, "mismatch must return an Error");
+    assert.ok(err.message.includes(pinnedFp), "names expected (pinned) fp");
+    assert.ok(err.message.includes(presented), "names presented (server) fp");
+    assert.ok(
+      err.message.includes("client-bundle") && err.message.includes("init --remote"),
+      "points at re-bundle remediation"
+    );
+  });
+
+  it("test_verify_peer_fingerprint_no_cert — Error, not a crash", () => {
+    assert.ok(verifyPeerFingerprint({ getPeerCertificate: () => ({}) }, pinnedFp) instanceof Error);
+    assert.ok(verifyPeerFingerprint({ getPeerCertificate: () => null }, pinnedFp) instanceof Error);
+    assert.ok(verifyPeerFingerprint({}, pinnedFp) instanceof Error);
   });
 });
 
