@@ -7,6 +7,7 @@
 pub(crate) mod auth;
 pub(crate) mod health;
 pub(crate) mod listener;
+pub(crate) mod public_url;
 pub(crate) mod router;
 pub(crate) mod tls;
 pub(crate) mod token;
@@ -16,4 +17,7 @@ pub use auth::StaticTokenAuthLayer;
 pub use listener::start_http_listener;
 pub use router::{ObserveContext, PathRouter, ProjectRouter};
 pub use tls::build_tls_acceptor;
+// C2 fingerprint oracle (vnc-034, ADR-002) — consumed by client-bundle wiring and the
+// cross-stack parity corpus test (tests/fingerprint_parity.rs).
+pub use tls::{FP_PREFIX, fingerprint_leaf_der, leaf_der_from_pem};
 pub use token::load_or_generate_token;

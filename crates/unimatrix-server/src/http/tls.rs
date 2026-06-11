@@ -10,6 +10,7 @@ use std::io::BufReader;
 use std::path::Path;
 use std::sync::Arc;
 
+use sha2::{Digest, Sha256};
 use tokio_rustls::TlsAcceptor;
 use tokio_rustls::rustls::ServerConfig;
 use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer};
@@ -104,6 +105,55 @@ fn load_private_key(path: &Path) -> Result<PrivateKeyDer<'static>, ServerError> 
     rustls_pemfile::private_key(&mut reader)
         .map_err(|e| ServerError::Config(format!("invalid PEM key in {}: {e}", path.display())))?
         .ok_or_else(|| ServerError::Config(format!("no private key found in {}", path.display())))
+}
+
+/// Canonical algorithm prefix for the cert-fingerprint wire form (C2, ADR-002).
+///
+/// The full fingerprint is `FP_PREFIX` followed by 64 lowercase hex characters.
+pub const FP_PREFIX: &str = "sha256:";
+
+/// Compute the canonical cert-fingerprint over a served leaf certificate's DER bytes.
+///
+/// Returns `"sha256:" + lowercase_hex(sha256(der))` — exactly 7 + 64 characters.
+/// This is the **single oracle** for the C1/C2 cross-stack parity contract (ADR-002,
+/// SR-02): the JS client recomputes `sha256(cert.raw)` in `checkServerIdentity` and
+/// constant-form-compares to this value.
+///
+/// Contract (LOCKED, ADR-002):
+/// - **DER in, not PEM.** Callers MUST pass the raw DER bytes (the `CertificateDer`
+///   rustls serves), never PEM text — use [`leaf_der_from_pem`] to extract them.
+/// - **Leaf only**, not a chain. Callers holding a chain pass `chain[0]`.
+/// - **Lowercase hex, always.** `hex::encode` yields lowercase; comparison downstream
+///   is case-sensitive on this canonical form.
+///
+/// Total function — it hashes bytes and cannot fail.
+pub fn fingerprint_leaf_der(der: &[u8]) -> String {
+    let digest = Sha256::digest(der);
+    let mut out = String::with_capacity(FP_PREFIX.len() + 64);
+    out.push_str(FP_PREFIX);
+    out.push_str(&hex::encode(digest));
+    out
+}
+
+/// Extract the leaf certificate's DER bytes from PEM, for fingerprinting the served cert.
+///
+/// `client-bundle` and the listener wiring hold PEM (from `load_or_generate_cert`);
+/// rustls serves DER. To fingerprint the *served* leaf (AC-W1-S4 — the bundle `fp` must
+/// equal the served cert, not a stale on-disk one), this extracts DER from the same PEM
+/// the acceptor loads, reusing the existing `rustls_pemfile` parse path.
+///
+/// # Errors
+///
+/// Returns `ServerError::Config` when the PEM is invalid or contains no certificate.
+pub fn leaf_der_from_pem(cert_pem: &[u8]) -> Result<Vec<u8>, ServerError> {
+    let mut reader = BufReader::new(cert_pem);
+    let certs = rustls_pemfile::certs(&mut reader)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| ServerError::Config(format!("invalid cert PEM: {e}")))?;
+    let leaf = certs
+        .first()
+        .ok_or_else(|| ServerError::Config("no certificate in PEM".to_string()))?;
+    Ok(leaf.as_ref().to_vec())
 }
 
 #[cfg(test)]
@@ -372,6 +422,9 @@ mod tests {
             "error should mention read failure: {msg}"
         );
     }
+
+    // FingerprintComputer (C2, ADR-002) unit + oracle/parity tests live in
+    // tests/fingerprint_parity.rs (integration), keeping this source file <500 lines.
 
     // Empty cert file (valid PEM structure but no certs) returns error
     #[test]
