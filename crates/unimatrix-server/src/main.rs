@@ -239,6 +239,22 @@ enum Command {
         out: PathBuf,
     },
 
+    /// Project lifecycle (vnc-034 Wave 2, FR-C4): register / list / delete.
+    ///
+    /// `register <slug>` creates the per-slug store (own DB + vector + hash chain
+    /// + analytics under `/data/.unimatrix/{slug}/`); `list` enumerates registered
+    /// slugs; `delete <slug>` de-registers (data preserved) and `delete <slug>
+    /// --purge --confirm <slug>` destroys the on-disk store + hash chain. Operator-
+    /// only — a client NEVER auto-creates a project (C5 / ADR-004).
+    ///
+    /// Synchronous path (pre-tokio, C-10) — like `health`/`version`/`client-bundle`.
+    /// Async `Store::open` is bridged via a current-thread runtime internally.
+    Project {
+        /// Project lifecycle subcommand (register, list, delete).
+        #[command(subcommand)]
+        command: unimatrix_server::projects::ProjectCommand,
+    },
+
     /// Offline evaluation harness for Unimatrix intelligence changes.
     ///
     /// Subcommands: scenarios, run, report
@@ -358,6 +374,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Sync path: dispatched pre-tokio (C-10, ADR-005).
             // run_eval_command uses block_export_sync internally for async subcommands.
             return unimatrix_server::eval::run_eval_command(eval_cmd, cli.project_dir.as_deref());
+        }
+        Some(Command::Project { command }) => {
+            // Sync path: NO tokio (C-10, vnc-034 Wave 2). Like Health/Version/
+            // ClientBundle, dispatched before any runtime init. run_project_command
+            // bridges the async Store::open via a current-thread runtime internally.
+            return unimatrix_server::projects::run_project_command(command, cli.project_dir)
+                .map_err(Into::into);
         }
         Some(Command::Serve {
             foreground: true, ..
