@@ -22,12 +22,16 @@ pub use listener::start_http_listener;
 // C3 public-URL derivation (vnc-034) — single source for bundle base-url,
 // cert SANs, and allowed_hosts. Wired into the listener cert provisioning.
 pub use public_url::{Env, PublicUrl, derive_public_url};
-pub use router::{ObserveContext, PathRouter, ProjectRouter};
-// C4 isolation seam (vnc-034 ADR-003/005) — the single store-resolution funnel.
-// Constructed in the listener wiring so the served store reaches MCP only via
-// `resolve_store` (no bypass). Wave 2 swaps `DefaultResolver` -> `ProjectRouter`
-// at the same `SlugRouter::new` call site.
-pub use router::{DefaultResolver, ProjectKey, ProjectSlug, RouteError, SlugRouter, StoreResolver};
+pub use router::{ObserveContext, PathRouter};
+// C4 isolation seam (vnc-034 ADR-003/005) — the single store-resolution + dispatch
+// funnel. Constructed in the listener wiring so the served store reaches MCP only
+// via `resolve_store`/`adapter_for` (no bypass). Wave 2 swaps `DefaultResolver` ->
+// `MultiProjectRouter` at the same `SlugRouter::new` call site; the resolver owns
+// per-key MCP dispatch (the fixed single-project router is gone — funnel-elimination).
+pub use router::{
+    DefaultResolver, MultiProjectRouter, ProjectKey, ProjectServerInput, ProjectSlug, RouteError,
+    SlugRouter, StoreResolver,
+};
 pub use tls::build_tls_acceptor;
 // C2 fingerprint oracle (vnc-034, ADR-002) — consumed by client-bundle wiring and the
 // cross-stack parity corpus test (tests/fingerprint_parity.rs).
