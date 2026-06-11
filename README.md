@@ -63,6 +63,8 @@ The container runs `unimatrix serve --foreground` as PID 1 (non-root, UID 65532)
 
 **HTTPS serving (personal cloud).** To serve the container as a reachable, operator-run cloud over pinned TLS, set two environment variables in `compose.yaml`: `UNIMATRIX_HTTP_ENABLED=true` activates the HTTPS listener (the global binary default `http.enabled` stays `false`), and `UNIMATRIX_PUBLIC_URL` declares the URL clients connect to (e.g. `https://uni.example.com:8443`) — the single knob from which the bundle base-url, the `allowed_hosts` default, and the certificate SAN all derive. The published port is **TLS-only port 8443** — no plaintext port is exposed. On first boot the binary auto-generates both a 32-byte bearer token and a self-signed cert+key (key mode `0600`), persisting them to the data volume; subsequent boots load (not regenerate) them, and an operator may mount their own cert/key read-only to override. The only unauthenticated endpoint on the published port is `GET /health`. Host bind-mounted `/data` must be writable by UID 65532 (`chown 65532` the host directory; named volumes need no setup) — the binary fails loud and actionable if it is not. After the container is up, run `unimatrix client-bundle` to emit the connection bundle for clients.
 
+**Serving multiple projects.** One container can serve N fully-isolated projects from a single bundle and bearer token. The operator declares projects with `unimatrix project register <slug>`; each registered slug is then reachable at `https://host:8443/v1/{slug}/...` with its own database, vector index, hash chain, and analytics under `/data/.unimatrix/{slug}/` — no cross-project read or write. Slugs are operator-declared, never client-minted: a client attaches to an existing slug and never auto-creates a project. A slug must match `^[a-z0-9][a-z0-9-]{0,62}$` (lowercase alphanumeric and hyphen, 1–63 chars, starting alphanumeric) and may not be a reserved route segment (`v1`, `health`, `observe`, `tools`). When no projects are registered (`[[projects]]` absent), the server serves the single default project at `/v1/tools/...` exactly as before — existing single-project installs see zero behavior change.
+
 ### Build from Source
 
 Prerequisites:
@@ -122,6 +124,14 @@ npx @dug-21/unimatrix init --remote unimatrix-bundle:<blob>
 ```
 
 The bundle carries `{base-url, token, cert-fingerprint}` in one opaque string. The client pins the server's exact certificate by its `sha256:` fingerprint (no CA-trust path), so a self-signed cert is trusted by pinning rather than by a certificate authority. A wrong or rotated certificate is rejected with a clear, diagnosable fingerprint-mismatch error directing you to re-bundle. This is a pure-JS, copy-installed remote attach (under 250 KB — no platform binary, no ONNX model) and works on Linux, macOS (Apple Silicon), and Windows with Node >= 18; `init` copies skills and prints the `/uni-init` pointer (it does not append the CLAUDE.md knowledge block — `/uni-init` owns that). Each client instance is bound to exactly one project: a different project means a separate client instance. Multiple distinct LLM CLIs (Claude Code, Codex CLI, Gemini CLI) attach the same server identically — each is a separate client connection.
+
+When the server serves multiple projects, append the operator-supplied slug to the remote URL so the client binds to that one project:
+
+```bash
+npx @dug-21/unimatrix init --remote unimatrix-bundle:<blob> --slug <slug>
+```
+
+The bundle is cloud-wide (one per container); the slug is per-project and supplied at attach time. The client attaches to an already-registered slug and errors if the slug is unregistered — it never creates a project. Multiple clients may attach the same slug (N clients sharing one project, attributed per session); a single client never spans multiple projects.
 
 When the operator rotates the server certificate, re-run `client-bundle` and re-run `init --remote` on each client with the new bundle. See [docs/cert-rotation.md](docs/cert-rotation.md) for the operator rotation procedure.
 
@@ -536,6 +546,9 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `hook <EVENT>` | Handle a lifecycle hook event from Claude Code, Gemini CLI, or Codex CLI. Reads JSON from stdin, connects to the running server via UDS. Provider-specific event names (e.g., Gemini's `BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary. Designed for use in hook configuration files, not direct user invocation. | Event name as positional arg. `--provider <name>` (`claude-code` \| `gemini-cli` \| `codex-cli`) — required for Codex (shares event names with Claude Code); optional for Gemini (inferred from event name); omit for Claude Code (backward-compatible default). |
 | `health` | Check daemon liveness by connecting to the MCP UDS socket. Exit 0 when the daemon is running and responsive, exit 1 otherwise. 5-second timeout. No output on success; brief diagnostic on stderr on failure. Used by Docker HEALTHCHECK. | None |
 | `client-bundle` | Emit a connection bundle for attaching a remote client to this server over pinned TLS. Reads the data-volume token and the served leaf certificate, and prints a single-line `unimatrix-bundle:` blob carrying `{base-url, token, cert-fingerprint}`. **stdout** is the opaque bundle blob only (pipeable); **stderr** echoes the decoded base-url and `sha256:` cert-fingerprint for the operator to eyeball, with the token redacted (never printed). Pre-tokio synchronous subcommand, like `health` and `version`. Consume the bundle on the client with `init --remote <bundle>`. | `--project-dir <PATH>` |
+| `project register <slug>` | Register a project slug for multi-project serving. Creates the per-slug store (DB, vector index, hash chain, analytics) under `/data/.unimatrix/{slug}/` and adds the slug to `[[projects]]` routing, making it reachable at `/v1/{slug}/...`. Rejects a slug that fails the allowlist (`^[a-z0-9][a-z0-9-]{0,62}$`) or equals a reserved route segment (`v1`, `health`, `observe`, `tools`). Errors loudly if the slug is already registered and routing. If the slug was previously de-registered but its data dir persists, register **re-attaches** to the preserved store rather than starting a new chain. | `<slug>` (positional) |
+| `project list` | List the registered project slugs. | None |
+| `project delete <slug>` | De-register a slug: removes it from `[[projects]]` routing while **preserving** its on-disk data (DB, vector index, hash chain, analytics). Re-registering the same slug re-attaches to the preserved store. To destroy the data as well, pass `--purge`, which requires re-typing the slug via `--confirm <slug>` — the only operation that destroys a hash chain, and it is deliberately loud. | `<slug>` (positional), `--purge`, `--confirm <slug>` |
 | `export` | Export the knowledge base to JSONL format (format_version 2, 11 tables). No running server required. | `--output <PATH>` (defaults to stdout), `--skip-quarantined` (omit quarantined entries and their dependents from the export — requires `--confirm`), `--confirm` (acknowledge non-exact snapshot when `--skip-quarantined` is active) |
 | `import` | Import a knowledge base from a JSONL export file (accepts format_version 1 and 2). Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data including graph_edges, observations, cycle_events, and derived metric tables) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
@@ -580,7 +593,7 @@ Two transport surfaces: Unix Domain Socket (local) and HTTPS (network).
 
 **UDS (local):** Daemon mode (default): Unimatrix runs as a persistent background daemon (`unimatrix serve --daemon`) that accepts MCP connections over a Unix Domain Socket (`unimatrix-mcp.sock`, 0600 permissions). Claude Code spawns a lightweight bridge process (the default `unimatrix` invocation) per session; the bridge connects stdin/stdout to the daemon's UDS socket. The daemon survives client disconnection — background tick, vector index, and all in-memory state persist across sessions. Up to 32 concurrent MCP sessions are supported.
 
-**HTTPS (network):** When `[http] enabled = true` in config.toml, the server starts an HTTPS listener on the content port (default 8443). Any MCP-compatible client (Claude Code, Codex CLI, Gemini CLI) can connect over the network using a static bearer token for authentication. TLS termination via rustls is default-on when cert/key paths are configured; set `[tls] enabled = false` for reverse-proxy deployments. A path-dispatching tower service routes requests: `GET /health` (unauthenticated, returns version and schema version), `POST /observe` (remote telemetry — content-negotiated: `Accept: text/plain` returns server-formatted injection text for injection-bearing responses, while `application/json` or no `Accept` header returns the JSON envelope as the default), and `/*` (MCP protocol). Up to 32 concurrent HTTP sessions (configurable). See [docs/client-setup.md](docs/client-setup.md) for per-client connection instructions.
+**HTTPS (network):** When `[http] enabled = true` in config.toml, the server starts an HTTPS listener on the content port (default 8443). Any MCP-compatible client (Claude Code, Codex CLI, Gemini CLI) can connect over the network using a static bearer token for authentication. TLS termination via rustls is default-on when cert/key paths are configured; set `[tls] enabled = false` for reverse-proxy deployments. A path-dispatching tower service routes requests: `GET /health` (unauthenticated, returns version and schema version), `POST /observe` (remote telemetry — content-negotiated: `Accept: text/plain` returns server-formatted injection text for injection-bearing responses, while `application/json` or no `Accept` header returns the JSON envelope as the default), and `/*` (MCP protocol). When projects are registered, the MCP path carries the project slug — `/v1/{slug}/...` routes to that slug's isolated store, while `/v1/tools/...` (no slug) remains the single-project default; the slug is validated and resolved to a store at the routing edge before any store access, so cross-project mis-targeting is unrepresentable rather than merely rejected. Up to 32 concurrent HTTP sessions (configurable). See [docs/client-setup.md](docs/client-setup.md) for per-client connection instructions.
 
 Foreground mode (container): `unimatrix serve --foreground` runs the full daemon (UDS listener, HTTP listener when enabled, tick loop, ML inference) as PID 1 without fork/setsid. Used by the container `ENTRYPOINT`. SIGTERM triggers graceful shutdown.
 
@@ -610,6 +623,8 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
     health.json              # Content-free health breadcrumb (no token, no transcript bytes)
 ~/.cache/unimatrix/models/   # ONNX model files (downloaded once)
 ```
+
+In a multi-project container, each registered slug gets its own isolated subtree under the data volume — `/data/.unimatrix/{slug}/` holds that project's `unimatrix.db`, `vector/` index, hash chain, and analytics, with no cross-project sharing. A single-project install (no registered slugs) keeps the layout above unchanged.
 
 ### Crate Workspace (9 crates)
 
@@ -644,6 +659,10 @@ Four-tier model: System > Privileged > Internal > Restricted. Unknown agents aut
 ### Capabilities
 
 Four capabilities gate tool access: `read`, `write`, `search`, `admin`.
+
+### Project Scoping
+
+Token authorizes, slug scopes data, certificate secures transport — three separate concerns. In OSS single-tenant serving the slug is a **knowledge-integrity boundary, not an access-control boundary**: project identity is taken from the transport (the URL-path slug, validated at the routing edge against `^[a-z0-9][a-z0-9-]{0,62}$` and the reserved set `v1`/`health`/`observe`/`tools`), never from the request payload, so an agent has no field in which to name another project and a wrong slug cannot escape `/data/.unimatrix/{slug}/`. Binding each client to exactly one project removes the ability to mis-target a write into another project's hash chain. The `BearerValidator` trait remains the seam where enterprise adds per-project JWT/RBAC authorization on top of this scoping.
 
 ### Content Scanning
 
