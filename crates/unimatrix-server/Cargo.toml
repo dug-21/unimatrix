@@ -55,12 +55,19 @@ tower = { version = "0.5", features = ["util"] }
 hyper = { version = "1", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "http1"] }
 hex = "0.4"
+# base64: C1 bundle wire form (vnc-034, ADR-001) — base64url no-pad encode/decode.
+# Same workspace version already used by unimatrix-store; no new lockfile entry.
+base64 = "0.22"
 # tokenizers: faithful subword tier for the eval cost metric (nan-018 ADR-003).
 # Mirrors the version/features already in the unimatrix-embed dependency tree.
 tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 bytes = "1"
 http-body = "1"
 http-body-util = "0.1"
+# rcgen: first-boot self-signed cert/key generation (vnc-034 CertProvisioner, SR-01).
+# Promoted from a dev-dependency when the test-only generate_self_signed helper
+# became the production load_or_generate_cert provisioner.
+rcgen = "0.13"
 
 [features]
 default = ["mcp-briefing"]
@@ -72,4 +79,3 @@ tempfile = "3"
 tokio = { version = "1", features = ["full", "test-util"] }
 unimatrix-server = { path = ".", features = ["test-support"] }
 tracing-test = "0.2"
-rcgen = "0.13"
