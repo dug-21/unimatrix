@@ -302,6 +302,15 @@ pub(crate) use seam::parse_project_key;
 #[allow(unused_imports)]
 pub use seam::{ProjectKey, ProjectSlug, RouteError, SlugRouter, StoreResolver};
 
+// The Wave-1 `StoreResolver` impl (vnc-034 ADR-003/005). Returns the one store for
+// `ProjectKey::Default`, `UnknownProject` for any `Slug`. Extracted to its own
+// submodule to keep router.rs under the 500-line limit. Like the seam, it is only
+// WIRED into `main.rs` in Sub-wave 3 (this change must not touch main.rs), so it has
+// no production caller yet — re-export allowed-unused until that wiring lands.
+pub(crate) mod default_resolver;
+#[allow(unused_imports)]
+pub use default_resolver::DefaultResolver;
+
 // ---------------------------------------------------------------------------
 // ProjectRouter — W2-6 structural seam (single-project default mode)
 // ---------------------------------------------------------------------------

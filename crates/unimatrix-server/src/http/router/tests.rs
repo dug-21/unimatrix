@@ -2057,3 +2057,178 @@ fn test_route_error_display_no_input_leak() {
 
     assert_eq!(format!("{}", RouteError::UnknownProject), "unknown project");
 }
+
+// ===========================================================================
+// vnc-034 DefaultResolver — the REAL Wave-1 `StoreResolver` impl
+// (crates/unimatrix-server/src/http/router/default_resolver.rs).
+//
+// Distinct from `DefaultLikeResolver` above (a stub mirroring the semantics so the
+// seam could be exercised before this component existed): these tests drive the
+// shipped `DefaultResolver`. Lead risks: R-01 (Critical), R-04 (local/cloud parity).
+// AC-W1-X1 (one store THROUGH the seam), AC-W1-X2 (local-UDS path-hash parity, NFR-10).
+// ===========================================================================
+
+// ---- R-01 — Wave-1 store served THROUGH the seam (FR-X5, AC-W1-X1) ----
+
+#[tokio::test]
+async fn test_default_resolver_returns_the_one_store() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let store = open_seam_test_store(&dir.path().join("store.db")).await;
+    let resolver = DefaultResolver::new(Arc::clone(&store));
+
+    let resolved = resolver
+        .resolve_store(&ProjectKey::Default)
+        .expect("Default resolves");
+    // The resolved handle is the SAME underlying store, not a re-opened one.
+    assert!(
+        Arc::ptr_eq(&resolved, &store),
+        "Default must resolve to the one injected store (Arc identity)"
+    );
+}
+
+#[tokio::test]
+async fn test_default_resolver_same_arc_each_call() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let store = open_seam_test_store(&dir.path().join("store.db")).await;
+    let resolver = DefaultResolver::new(store);
+
+    let a = resolver.resolve_store(&ProjectKey::Default).expect("first");
+    let b = resolver
+        .resolve_store(&ProjectKey::Default)
+        .expect("second");
+    // One store, not a re-opened handle per request — repeated resolutions are
+    // clones of the SAME Arc.
+    assert!(
+        Arc::ptr_eq(&a, &b),
+        "repeated Default resolutions must clone the same underlying store"
+    );
+}
+
+#[tokio::test]
+async fn test_default_resolver_slug_returns_unknown_project() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let store = open_seam_test_store(&dir.path().join("store.db")).await;
+    let resolver = DefaultResolver::new(store);
+
+    // ANY slug -> UnknownProject in Wave 1: never the default store, never a panic
+    // (R-01 sc.3 — no silent fall-through). Pairs with the swap test for full R-01.
+    for slug in ["myproj", "other", "a", "health"] {
+        let key = ProjectKey::Slug(ProjectSlug::try_from(slug).expect("valid slug"));
+        let err = resolver
+            .resolve_store(&key)
+            .expect_err("slug must be inert in Wave 1");
+        assert_eq!(
+            err,
+            RouteError::UnknownProject,
+            "slug {slug} must resolve to UnknownProject, not the default store"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_default_resolver_slug_immediately_after_boot_is_deterministic() {
+    // Edge case (assigned here): a Slug request before any Wave-2 config could exist
+    // -> UnknownProject, deterministically (no boot-order dependence).
+    let dir = tempfile::tempdir().expect("tempdir");
+    let store = open_seam_test_store(&dir.path().join("store.db")).await;
+    let resolver = DefaultResolver::new(store);
+
+    let key = ProjectKey::Slug(ProjectSlug::try_from("freshboot").expect("valid"));
+    assert_eq!(
+        resolver
+            .resolve_store(&key)
+            .expect_err("slug inert at boot"),
+        RouteError::UnknownProject
+    );
+}
+
+// ---- R-04 — local-UDS path-hash parity (AC-W1-X2, NFR-10 — IN the Wave-1 set) ----
+
+#[tokio::test]
+async fn test_local_install_resolves_path_hash_store_through_seam() {
+    // The non-negotiable local-install regression test. Construct `DefaultResolver`
+    // exactly as the local UDS daemon does — over a store opened at a path-hash data
+    // dir — and assert a `ProjectKey::Default` request reaches that store THROUGH
+    // `resolve_store`, the SAME code path the cloud single-project alias uses (SR-08).
+    let dir = tempfile::tempdir().expect("tempdir");
+    // Local daemon shape: ~/.unimatrix/{path-hash}/store.db. We model the path-hash
+    // segment as a hex dir; the derivation lives upstream (ADR-004 #80) and never
+    // enters `resolve_store`. What matters for parity is that the SAME resolver +
+    // SAME method hand back this store.
+    let path_hash_dir = dir.path().join("a1b2c3d4e5f60718");
+    std::fs::create_dir_all(&path_hash_dir).expect("mk path-hash dir");
+    let path_hash_store = open_seam_test_store(&path_hash_dir.join("store.db")).await;
+
+    let resolver = DefaultResolver::new(Arc::clone(&path_hash_store));
+
+    let resolved = resolver
+        .resolve_store(&ProjectKey::Default)
+        .expect("local install resolves Default through the seam");
+    assert!(
+        Arc::ptr_eq(&resolved, &path_hash_store),
+        "local path-hash store must be reached THROUGH resolve_store (NFR-10)"
+    );
+}
+
+#[tokio::test]
+async fn test_local_and_cloud_single_project_byte_identical_route() {
+    // The local UDS request and the cloud single-project request both traverse
+    // `/v1/tools/...` -> ProjectKey::Default -> resolve_store -> the one store. Assert
+    // the route is byte-identical: same parsed key, same resolver type, same method
+    // entry — no cloud-only branch (SR-08).
+    let local_dir = tempfile::tempdir().expect("local tempdir");
+    let cloud_dir = tempfile::tempdir().expect("cloud tempdir");
+
+    // Local UDS install: path-hash store. Cloud single-project: the one project store.
+    let local_store = open_seam_test_store(&local_dir.path().join("store.db")).await;
+    let cloud_store = open_seam_test_store(&cloud_dir.path().join("store.db")).await;
+
+    let local: Arc<dyn StoreResolver> = Arc::new(DefaultResolver::new(local_store));
+    let cloud: Arc<dyn StoreResolver> = Arc::new(DefaultResolver::new(cloud_store));
+
+    // Both modes parse `/v1/tools/...` to the SAME key — there is no cloud-only arm.
+    let local_key = parse_project_key("/v1/tools/call").expect("local parse");
+    let cloud_key = parse_project_key("/v1/tools/call").expect("cloud parse");
+    assert_eq!(local_key, cloud_key);
+    assert_eq!(local_key, ProjectKey::Default);
+
+    // Both resolve that one key through the SAME `resolve_store` entry; only the
+    // store's provenance differs. The slug never leaks into the local path and the
+    // path-hash never leaks into a cloud slug — both are simply `Default` here.
+    assert!(local.resolve_store(&local_key).is_ok());
+    assert!(cloud.resolve_store(&cloud_key).is_ok());
+}
+
+#[tokio::test]
+async fn test_default_resolver_is_the_same_trait_as_wave2_resolver() {
+    // Source/call-graph assertion (AC-W1-X2): the Wave-1 `DefaultResolver` and a
+    // Wave-2-shaped resolver implement the SAME `StoreResolver` trait and are usable
+    // at the SAME `Arc<dyn StoreResolver>` call site. The path-hash logic lives behind
+    // the trait, never in a parallel cloud-only path (R-04 sc.2).
+    let dir = tempfile::tempdir().expect("tempdir");
+    let store = open_seam_test_store(&dir.path().join("store.db")).await;
+
+    let wave1: Arc<dyn StoreResolver> = Arc::new(DefaultResolver::new(Arc::clone(&store)));
+    let wave2: Arc<dyn StoreResolver> = Arc::new(StubProjectRouter {
+        store,
+        known_slug: ProjectSlug::try_from("known").expect("valid"),
+    });
+
+    // Both satisfy the funnel for Default; the unknown slug behaves identically
+    // (UnknownProject) under both. The trait, not the route grammar, is the boundary.
+    assert!(wave1.resolve_store(&ProjectKey::Default).is_ok());
+    assert!(wave2.resolve_store(&ProjectKey::Default).is_ok());
+    let unknown = ProjectKey::Slug(ProjectSlug::try_from("nope").expect("valid"));
+    assert_eq!(
+        wave1
+            .resolve_store(&unknown)
+            .expect_err("wave1 unknown slug"),
+        RouteError::UnknownProject
+    );
+    assert_eq!(
+        wave2
+            .resolve_store(&unknown)
+            .expect_err("wave2 unknown slug"),
+        RouteError::UnknownProject
+    );
+}
