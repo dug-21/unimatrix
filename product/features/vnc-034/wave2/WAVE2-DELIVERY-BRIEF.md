@@ -51,6 +51,43 @@ network health/topology surface is the slug-listing surface already rejected in 
 ("no unauthenticated endpoint beyond `GET /health`"). Any over-the-wire per-slug health gets the same
 out-of-band/authenticated discipline as slug-listing and is **split**, not drifted in.
 
+## LOCKED DECISIONS — Stage 3a refinements (human, 2026-06-11)
+
+### D4 — `delete` is de-register-only; `--purge` destroys, loudly; re-register RE-ATTACHES
+
+The per-slug hash chain is sacred and unrollbackable — destroying it must NEVER be the default.
+- **`delete <slug>` = DE-REGISTER only.** Removes the slug from `[[projects]]` routing; the on-disk
+  data dir (`/data/.unimatrix/{slug}/` — DB, vector, hash chain, analytics) is **preserved**.
+- **`--purge` destroys** the on-disk store + hash chain, and MUST be **loud**: require the operator to
+  **re-type / confirm the slug name** (not just a bare flag). It is the one operation that destroys integrity.
+- **Re-attach edge (integrity — insist):** after de-register the data dir persists. **Re-registering that
+  slug MUST re-attach to the preserved store/hash chain, NOT clobber it with a fresh store.**
+  De-register → re-register is a RESTORE path; it must never silently start a new chain over old data.
+
+### D5 — Reserved-slug refusal at `register` (route-grammar set; separate from the D1 charset check)
+
+`register` MUST reject any slug equal to a reserved route segment: **`v1`, `health`, `observe`, `tools`.**
+**`tools` is the critical one** — `/v1/tools/...` is the default-project alias (ADR-005); a slug named
+`tools` would shadow the default project entirely. This is a **separate** check from the D1 charset
+allowlist: a slug can be charset-valid (`tools` is) and still must be rejected as reserved.
+
+### D6 — `register` idempotence is two-state (interacts with D4)
+
+- **Already registered AND routing** → **loud error** (no silent re-register).
+- **Data dir exists but de-registered** → **re-attach** path (D4), **NOT an error**.
+- Do NOT collapse the two into one "already exists" message — they are different states.
+
+### Seam-funnel honesty record (cycle note — do not mis-remember Wave 1)
+
+Wave-1 `SlugRouter::route_mcp` discarded the resolved store (`let _store`) and dispatched through a
+parallel **fixed** adapter holding the same single store. Harmless for N=1, but it means **AC-W1-X1
+proved the seam's SHAPE, not the funnel** — the resolved handle was ceremonial. **Wave 2 is where the
+single-funnel invariant becomes genuinely load-bearing.**
+- **Gate 3a / Stage 3b VERIFY:** the Wave-2 change must **eliminate the discard path entirely** — no
+  residual fixed-adapter fallback that can still bypass `adapter_for`. The real two-store
+  `crates/unimatrix-server/tests/project_routing_integration.rs` is the instrument; infra-001 is the
+  backward-compat gate (it cannot reach the `/v1/{slug}/` edge).
+
 ## Wave 2 Component Map → output paths (this wave's Stage 3a writes here)
 
 | Component | Target source | Pseudocode (write here) | Test Plan (write here) |
