@@ -16,13 +16,11 @@
 //! store is *opened* upstream; it never enters `resolve_store` and never leaks into
 //! cloud mode, and the cloud slug never leaks into the local path (R-04 sc.2).
 //!
-//! Wave-1 degenerate-but-genuine seam (NFR-09): this resolver, the trait, and
-//! `SlugRouter` are defined and unit-tested in Wave 1 but only WIRED into the listener
-//! (`main.rs`) in Sub-wave 3. Until that wiring lands `DefaultResolver` has no
-//! production caller, so this module allows `dead_code` (mirroring the seam) —
-//! present-but-unwired, not abandoned. The allow is removed when Sub-wave 3 constructs
-//! `DefaultResolver` at the listener.
-#![allow(dead_code)]
+//! Wave-1 degenerate-but-genuine seam (NFR-09): this resolver is the genuine, but
+//! degenerate, Wave-1 case of the trait — one store, no slug map. It is constructed
+//! at the listener (`main.rs`) and injected into `SlugRouter`, so it is the live
+//! per-request funnel for `ProjectKey::Default`. Wave 2 substitutes a `ProjectRouter`
+//! at the same call site with no interface re-cut.
 
 use std::sync::Arc;
 

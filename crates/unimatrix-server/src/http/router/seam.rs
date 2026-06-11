@@ -9,13 +9,11 @@
 //! `SlugRouter::new` call site, with no change to `SlugRouter`,
 //! `parse_project_key`, `ProjectKey`, or `ProjectSlug`.
 //!
-//! Documented-but-degenerate-seam note (NFR-09): the seam types and the
-//! `SlugRouter` layer are defined and unit-tested in Wave 1 but only WIRED into
-//! the listener (`main.rs`) in Sub-wave 3. Until that wiring lands they have no
-//! production caller, so this module allows `dead_code` — the items are
-//! intentionally present-but-unwired, not abandoned. The allow is removed when
-//! Sub-wave 3 inserts `SlugRouter` between `PathRouter` and `McpAdapter`.
-#![allow(dead_code)]
+//! Documented-but-degenerate-seam note (NFR-09): the seam types are degenerate in
+//! Wave 1 (only `ProjectKey::Default` is exercised end-to-end; `Slug(_)` parses but
+//! the Wave-1 resolver is inert). The `SlugRouter` layer is now WIRED as
+//! `PathRouter`'s per-request MCP edge, so every MCP request flows
+//! `parse_project_key -> resolve_store -> dispatch` through this seam.
 
 use std::convert::Infallible;
 use std::sync::Arc;

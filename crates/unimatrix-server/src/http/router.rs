@@ -91,14 +91,20 @@ pub struct ObserveContext {
 ///
 /// - `GET /health` -> JSON health response
 /// - `POST /observe` -> observation handler (vnc-022)
-/// - `/* (everything else)` -> MCP via ProjectRouter
+/// - `/* (everything else)` -> MCP via the `SlugRouter` single-funnel seam
+///
+/// vnc-034 (ADR-003): the MCP fall-through arm dispatches through `SlugRouter`
+/// (the per-request `parse_project_key -> resolve_store -> dispatch` funnel),
+/// NOT `ProjectRouter` directly — the store reaches MCP only THROUGH the seam
+/// (FR-X5, no bypass). Wave 2 swaps the injected resolver at the same call site
+/// (R-01 sc.2).
 pub struct PathRouter<ReqBody>
 where
     ReqBody: Body + Send + 'static,
     ReqBody::Data: Send + 'static,
     ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    project_router: ProjectRouter<ReqBody>,
+    slug_router: SlugRouter<ReqBody>,
     observe_ctx: ObserveContext,
 }
 
@@ -110,7 +116,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PathRouter")
-            .field("project_router", &self.project_router)
+            .field("slug_router", &self.slug_router)
             .field("observe_ctx", &"ObserveContext{..}")
             .finish()
     }
@@ -122,10 +128,19 @@ where
     ReqBody::Data: Send + 'static,
     ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    /// Create a new PathRouter wrapping a ProjectRouter and an ObserveContext.
-    pub fn new(project_router: ProjectRouter<ReqBody>, observe_ctx: ObserveContext) -> Self {
+    /// Create a `PathRouter` whose MCP edge is the `SlugRouter` single funnel.
+    ///
+    /// Takes the injected `StoreResolver` (Wave 1: `DefaultResolver`; Wave 2:
+    /// `ProjectRouter`) plus the existing `ProjectRouter`, and builds the
+    /// `SlugRouter` internally. The `resolver` argument alone is the Wave 1 <->
+    /// Wave 2 swap point (R-01 sc.2).
+    pub fn new(
+        resolver: Arc<dyn StoreResolver>,
+        project_router: ProjectRouter<ReqBody>,
+        observe_ctx: ObserveContext,
+    ) -> Self {
         PathRouter {
-            project_router,
+            slug_router: SlugRouter::new(resolver, project_router),
             observe_ctx,
         }
     }
@@ -139,7 +154,7 @@ where
 {
     fn clone(&self) -> Self {
         PathRouter {
-            project_router: self.project_router.clone(),
+            slug_router: self.slug_router.clone(),
             observe_ctx: self.observe_ctx.clone(),
         }
     }
@@ -261,8 +276,10 @@ where
                 })
             }
             (_, _) => {
-                // Route everything else to MCP via ProjectRouter.
-                let mut router = self.project_router.clone();
+                // Route everything else to MCP via the SlugRouter single funnel
+                // (vnc-034 ADR-003): parse_project_key -> resolve_store -> dispatch.
+                // The store reaches MCP only THROUGH the seam (FR-X5, no bypass).
+                let mut router = self.slug_router.clone();
                 Box::pin(async move { router.route_mcp(request).await })
             }
         }
@@ -294,21 +311,18 @@ use observe::{json_error_response, observe_response_to_http, prefix_session_id};
 pub(crate) mod seam;
 #[cfg(test)]
 pub(crate) use seam::parse_project_key;
-// The seam is built minimal in Wave 1 but only WIRED into `main.rs` in Sub-wave 3
-// (this change must not touch main.rs). Until then the public surface is exercised
-// only by the seam unit tests, so the re-export is legitimately unused in
-// production. Removing the allow once `SlugRouter` is wired at the listener is the
-// Sub-wave-3 follow-up.
-#[allow(unused_imports)]
+// vnc-034: the seam is now WIRED — `PathRouter` holds a `SlugRouter<ReqBody>` as
+// its per-request MCP edge (above), so `SlugRouter`/`StoreResolver` have a real
+// production caller and the placeholder `#[allow(unused_imports)]` is removed.
+// `ProjectKey`/`ProjectSlug`/`RouteError` remain re-exported as the public seam
+// surface (consumed by `main.rs` via `http/mod.rs` and by the resolver impls).
 pub use seam::{ProjectKey, ProjectSlug, RouteError, SlugRouter, StoreResolver};
 
 // The Wave-1 `StoreResolver` impl (vnc-034 ADR-003/005). Returns the one store for
 // `ProjectKey::Default`, `UnknownProject` for any `Slug`. Extracted to its own
-// submodule to keep router.rs under the 500-line limit. Like the seam, it is only
-// WIRED into `main.rs` in Sub-wave 3 (this change must not touch main.rs), so it has
-// no production caller yet — re-export allowed-unused until that wiring lands.
+// submodule to keep router.rs under the 500-line limit. Constructed in the listener
+// wiring (`main.rs`) and injected into `SlugRouter` as the Wave-1 resolver.
 pub(crate) mod default_resolver;
-#[allow(unused_imports)]
 pub use default_resolver::DefaultResolver;
 
 // ---------------------------------------------------------------------------
