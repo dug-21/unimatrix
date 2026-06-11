@@ -1,0 +1,29 @@
+[
+  {
+    "fields": {
+      "v": 1,
+      "base_url": "https://cloud.example:8443",
+      "token": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "fp": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+    },
+    "wire": "unimatrix-bundle:eyJ2IjoxLCJiYXNlX3VybCI6Imh0dHBzOi8vY2xvdWQuZXhhbXBsZTo4NDQzIiwidG9rZW4iOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmIiwiZnAiOiJzaGEyNTY6YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OSJ9"
+  },
+  {
+    "fields": {
+      "v": 1,
+      "base_url": "https://host.internal:9000",
+      "token": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "fp": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "wire": "unimatrix-bundle:eyJ2IjoxLCJiYXNlX3VybCI6Imh0dHBzOi8vaG9zdC5pbnRlcm5hbDo5MDAwIiwidG9rZW4iOiJmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmIiwiZnAiOiJzaGEyNTY6MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCJ9"
+  },
+  {
+    "fields": {
+      "v": 1,
+      "base_url": "https://[2001:db8::1]:8443",
+      "token": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "fp": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "wire": "unimatrix-bundle:eyJ2IjoxLCJiYXNlX3VybCI6Imh0dHBzOi8vWzIwMDE6ZGI4OjoxXTo4NDQzIiwidG9rZW4iOiJhMWIyYzNkNGU1ZjZhMWIyYzNkNGU1ZjZhMWIyYzNkNGU1ZjZhMWIyYzNkNGU1ZjZhMWIyYzNkNGU1ZjZhMWIyIiwiZnAiOiJzaGEyNTY6MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMSJ9"
+  }
+]
