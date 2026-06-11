@@ -1778,6 +1778,12 @@ impl StoreResolver for DefaultLikeResolver {
             ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
         }
     }
+
+    // These seam-only stubs prove `resolve_store` semantics and never dispatch,
+    // so they own no `McpAdapter` and return `None` (vnc-034 Wave 2).
+    fn adapter_for(&self, _key: &ProjectKey) -> Option<&McpAdapter> {
+        None
+    }
 }
 
 /// Stub standing in for a Wave-2 `ProjectRouter`: resolves a single known slug,
@@ -1795,6 +1801,10 @@ impl StoreResolver for StubProjectRouter {
             ProjectKey::Slug(s) if *s == self.known_slug => Ok(Arc::clone(&self.store)),
             ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
         }
+    }
+
+    fn adapter_for(&self, _key: &ProjectKey) -> Option<&McpAdapter> {
+        None
     }
 }
 
@@ -2317,6 +2327,12 @@ impl StoreResolver for CountingResolver {
         // that leg is covered by the DefaultResolver tests above.)
         Err(RouteError::UnknownProject)
     }
+
+    // Errors on every key, so `route_mcp` returns at the funnel before dispatch;
+    // `adapter_for` is never consulted. `None` keeps it `StoreResolver`-complete.
+    fn adapter_for(&self, _key: &ProjectKey) -> Option<&McpAdapter> {
+        None
+    }
 }
 
 /// Build a real `SlugRouter` over a `CountingResolver` and the real
@@ -2370,10 +2386,11 @@ async fn test_per_request_funnel_consults_resolver_with_transport_key() {
 /// loud, not silent (R-01 sc.1).
 #[test]
 fn test_path_router_mcp_edge_is_the_slug_router_seam() {
-    // `PathRouter::new(resolver, project_router, observe_ctx)` builds the
-    // SlugRouter internally — the resolver argument is the ONLY Wave-1<->Wave-2
-    // swap point (R-01 sc.2). Type-level: `new` accepts `Arc<dyn StoreResolver>`,
-    // proving the funnel is injected at the per-request edge.
+    // `PathRouter::new(resolver, observe_ctx)` builds the SlugRouter internally —
+    // the resolver argument is the ONLY Wave-1<->Wave-2 swap point (R-01 sc.2) and,
+    // post funnel-elimination, the SOLE dispatch owner (no fixed project_router
+    // param). Type-level: `new` accepts `Arc<dyn StoreResolver>`, proving the
+    // funnel is injected at the per-request edge.
     fn _accepts_resolver_at_mcp_edge<ReqBody>(_: Arc<dyn StoreResolver>)
     where
         ReqBody: Body + Send + 'static,

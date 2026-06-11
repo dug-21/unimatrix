@@ -551,7 +551,9 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // ── dsn-001 + #635: Load config, build allowlist, filter domain packs ──────
-    let (config, categories, observation_registry) =
+    // vnc-034 Wave 2: also surface the validated `[[projects]]` slugs for the
+    // HTTP listener's `MultiProjectRouter` wiring.
+    let (config, categories, observation_registry, project_slugs) =
         load_config_and_build_allowlist(&paths.data_dir)?;
 
     // Resolve ConfidenceParams from preset/weights.
@@ -793,7 +795,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
-        server_instructions,
+        // vnc-034 Wave 2: clone so the per-slug `build_project_server` wiring can
+        // reuse the configured instructions for each slug's UnimatrixServer
+        // (daemon path); harmless for the stdio path.
+        server_instructions.clone(),
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
@@ -864,8 +869,9 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // --- HTTP LISTENER STARTUP (vnc-021 + vnc-034) ---
     let (http_acceptor_handle, http_listener_addr) = if config.http.enabled {
         use unimatrix_server::http::{
-            ObserveContext, PathRouter, ProjectKey, ProjectRouter, StaticTokenAuthLayer,
-            StoreResolver, load_or_generate_token, start_http_listener,
+            DefaultResolver, MultiProjectRouter, ObserveContext, PathRouter, ProjectKey,
+            ProjectServerInput, StaticTokenAuthLayer, StoreResolver, load_or_generate_token,
+            start_http_listener,
         };
 
         // 1. Load or generate bearer token
@@ -886,18 +892,66 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             "TLS provisioned from data volume (cert SANs from UNIMATRIX_PUBLIC_URL)"
         );
 
-        // 3. vnc-034 (C4 / ADR-003): construct the StoreResolver seam over the
-        //    single store as `Arc<dyn StoreResolver>` (the injection point) and
-        //    obtain the `/observe` store handle THROUGH the funnel
-        //    (`resolve_store(ProjectKey::Default)`) — `/observe` is NOT on the
-        //    per-request MCP seam (ADR-005), so it acquires its handle through the
-        //    funnel once at boot. The SAME resolver is injected into `SlugRouter`
-        //    below, where it serves the MCP path per request. The injected
-        //    `DefaultResolver` is the Wave-1 resolver; Wave 2 swaps in
-        //    `ProjectRouter` at the SAME `SlugRouter::new` call site.
-        let resolver: Arc<dyn StoreResolver> = Arc::new(
-            unimatrix_server::http::DefaultResolver::new(Arc::clone(&store)),
-        );
+        // 3. vnc-034 (C4 / ADR-003 + Wave 2 funnel-elimination): construct the
+        //    StoreResolver seam as `Arc<dyn StoreResolver>` (the injection point).
+        //    The resolver now OWNS per-key MCP dispatch (`adapter_for`) — the
+        //    Wave-1 `let _store` discard and the fixed single-project
+        //    `ProjectRouter` dispatcher are GONE; `adapter_for` is the SOLE
+        //    dispatch route. Selection (OQ-PR-8/9):
+        //      * `[[projects]]` ABSENT  -> `DefaultResolver::with_adapter`
+        //        (single-project; byte-identical to Wave-1 observable behavior).
+        //      * `[[projects]]` PRESENT -> `MultiProjectRouter::from_servers`
+        //        (per-slug isolation; the default `/v1/tools/...` alias + one
+        //        per-slug entry each with its OWN store + adapter).
+        //    The default MCP adapter is OWNED by the resolver in both modes, never
+        //    held as a separate fixed dispatcher behind the seam.
+        let max_body = config.http.max_request_body_bytes;
+        let allowed_origins = config.http.allowed_origins.clone();
+
+        let resolver: Arc<dyn StoreResolver> = if project_slugs.is_empty() {
+            // Single-project: the default adapter is the sole dispatch route.
+            Arc::new(DefaultResolver::with_adapter(
+                Arc::clone(&store),
+                server.clone(),
+                max_body,
+                allowed_origins.clone(),
+            ))
+        } else {
+            // Multi-project: build a per-slug `UnimatrixServer` for each validated
+            // slug over its OWN `/data/.unimatrix/{slug}/` store + subsystems
+            // (FR-C3 isolation). The store must already exist — `register` is the
+            // sole creator (C5, OQ-PR-5); a missing store fails loud, no auto-create.
+            let base_dir = paths.data_dir.parent().unwrap_or(&paths.data_dir);
+            let mut slug_servers: Vec<ProjectServerInput> = Vec::new();
+            for slug in &project_slugs {
+                let input = http_provision::build_project_server(
+                    base_dir,
+                    slug,
+                    &embed_handle,
+                    permissive,
+                    server_instructions.clone(),
+                )
+                .await?;
+                slug_servers.push(input);
+            }
+            let router = MultiProjectRouter::from_servers(
+                Arc::clone(&store),
+                server.clone(),
+                slug_servers,
+                max_body,
+                allowed_origins.clone(),
+            )
+            .map_err(ServerError::Config)?;
+            tracing::info!(
+                slug_count = project_slugs.len(),
+                "multi-project routing active ([[projects]] declared)"
+            );
+            Arc::new(router)
+        };
+
+        // `/observe` is NOT on the per-request MCP seam (ADR-005); it acquires its
+        // store handle THROUGH the funnel once at boot (`resolve_store(Default)`),
+        // which is not a bypass.
         let served_store = resolver.resolve_store(&ProjectKey::Default).map_err(|e| {
             ServerError::Config(format!(
                 "store-resolution funnel rejected the default project at boot: {e}"
@@ -905,8 +959,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         })?;
 
         // 4. Build the tower service stack (inside-out):
-        //    StreamableHttpService<UnimatrixServer> -> ProjectRouter -> SlugRouter
-        //    -> PathRouter -> StaticTokenAuth
+        //    resolver (owns per-key McpAdapter) -> SlugRouter -> PathRouter
+        //    -> StaticTokenAuth
 
         // vnc-022: Construct ObserveContext from server fields before rmcp wrapping.
         // The store handle threaded here is the funnel-resolved one (no bypass).
@@ -924,19 +978,14 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             services: services.clone(),
         };
 
-        // vnc-034 (ADR-003): `SlugRouter` is the per-request MCP edge.
-        // `PathRouter::new` takes the injected `StoreResolver` + the existing
-        // `ProjectRouter` and builds the `SlugRouter` internally, so every MCP
-        // request runs `parse_project_key -> resolve_store -> dispatch` — the
-        // store reaches MCP only THROUGH the funnel, never around it (FR-X5).
-        // Wave 2 swaps the `resolver` arg (`DefaultResolver` -> `ProjectRouter`)
-        // at this SAME call site with no other change (R-01 sc.2).
-        let project_router = ProjectRouter::new(
-            server.clone(),
-            config.http.max_request_body_bytes,
-            config.http.allowed_origins.clone(),
-        );
-        let path_router = PathRouter::new(resolver, project_router, observe_ctx);
+        // vnc-034 (ADR-003 + Wave 2): `SlugRouter` is the per-request MCP edge.
+        // `PathRouter::new` takes ONLY the injected `StoreResolver` and builds the
+        // `SlugRouter` internally, so every MCP request runs `parse_project_key ->
+        // resolve_store -> adapter_for -> dispatch` — the store reaches MCP only
+        // THROUGH the funnel, dispatch only through the per-key adapter the
+        // resolver owns (FR-X5, no fixed-adapter fallback). The `resolver` arg is
+        // the sole swap point (R-01 sc.2).
+        let path_router = PathRouter::new(resolver, observe_ctx);
         let auth_layer = StaticTokenAuthLayer::new(token_array);
         let service = tower::Layer::layer(&auth_layer, path_router);
 
@@ -1040,7 +1089,9 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // ── dsn-001 + #635: Load config, build allowlist, filter domain packs ──────
-    let (config, categories, observation_registry) =
+    // stdio transport has no HTTP listener, so the validated `[[projects]]` slugs
+    // are unused here (vnc-034 Wave 2).
+    let (config, categories, observation_registry, _project_slugs) =
         load_config_and_build_allowlist(&paths.data_dir)?;
 
     // Resolve ConfidenceParams from preset/weights.
@@ -1279,7 +1330,10 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&store),
         Arc::clone(&vector_index),
         Arc::clone(&adapt_service),
-        server_instructions,
+        // vnc-034 Wave 2: clone so the per-slug `build_project_server` wiring can
+        // reuse the configured instructions for each slug's UnimatrixServer
+        // (daemon path); harmless for the stdio path.
+        server_instructions.clone(),
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
@@ -1457,18 +1511,25 @@ fn load_config_and_build_allowlist(
         UnimatrixConfig,
         Arc<CategoryAllowlist>,
         Arc<DomainPackRegistry>,
+        Vec<unimatrix_server::http::ProjectSlug>,
     ),
     ServerError,
 > {
     // ── dsn-001: Load external config ─────────────────────────────────────────────
     // dirs::home_dir() returns None in rootless/container environments.
     // When None: log a warning and proceed with compiled defaults (R-15).
-    let config = match dirs::home_dir() {
+    //
+    // vnc-034 Wave 2: `load_config` returns the validated, deduped `[[projects]]`
+    // slugs (`Vec<ProjectSlug>`) alongside the effective config. Surface them so the
+    // HTTP listener wiring can build the per-slug `MultiProjectRouter`. Empty when
+    // `[[projects]]` is absent (single-project backward-compat) or on config-load
+    // fallback (compiled defaults declare no projects).
+    let (config, project_slugs) = match dirs::home_dir() {
         Some(home) => match load_config(&home, data_dir) {
             Ok(result) => {
                 log_config_provenance(&result.provenance);
                 tracing::info!(preset = ?result.config.profile.preset, "config loaded");
-                result.config
+                (result.config, result.projects)
             }
             Err(e) => {
                 tracing::error!(
@@ -1476,12 +1537,12 @@ fn load_config_and_build_allowlist(
                     "CONFIG LOAD FAILED: {e} — falling back to compiled defaults. \
                      Review the config file for syntax errors."
                 );
-                UnimatrixConfig::default()
+                (UnimatrixConfig::default(), Vec::new())
             }
         },
         None => {
             tracing::warn!("home directory not found; using compiled defaults (R-15)");
-            UnimatrixConfig::default()
+            (UnimatrixConfig::default(), Vec::new())
         }
     };
 
@@ -1530,7 +1591,7 @@ fn load_config_and_build_allowlist(
         "effective config"
     );
 
-    Ok((config, categories, observation_registry))
+    Ok((config, categories, observation_registry, project_slugs))
 }
 
 /// Log provenance of each config source at appropriate levels.

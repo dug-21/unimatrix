@@ -24,7 +24,7 @@ use http_body::Body;
 use http_body_util::combinators::BoxBody;
 use unimatrix_core::Store;
 
-use super::ProjectRouter;
+use super::McpAdapter;
 use super::observe::json_error_response;
 
 /// Transport-derived project identity (ADR-003 C4 invariant 1).
@@ -114,6 +114,28 @@ pub trait StoreResolver: Send + Sync + 'static {
     /// returned `Arc<Store>` is the sole write capability threaded from the
     /// routing edge (invariant 2).
     fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError>;
+
+    /// Per-key MCP dispatch selection (vnc-034 Wave 2 — funnel-elimination).
+    ///
+    /// THE SOLE MCP dispatch route. `SlugRouter::route_mcp` dispatches through
+    /// this and nothing else — there is no fixed-adapter fallback. Returns
+    /// `Some(adapter)` for any key the resolver can resolve, and `None` ONLY for
+    /// a key that does not resolve (same domain as `resolve_store`'s
+    /// `UnknownProject`); the caller then 404s, it does NOT fall back to a fixed
+    /// adapter.
+    ///
+    /// **No default impl (deliberate).** A `{ None }` default would re-introduce
+    /// the Wave-1 bypass: a resolver could resolve a store yet return `None`, and
+    /// a caller's fixed-adapter fallback would dispatch it. Requiring every impl
+    /// to provide `adapter_for` forces the resolved identity and the dispatch
+    /// adapter to come from the SAME map (OQ-PR-9).
+    ///
+    /// `McpAdapter` is a deliberately-opaque dispatch handle (`pub(crate)`, no
+    /// public constructor): external crates inject a resolver and drive HTTP, but
+    /// never name or build an adapter (OQ-PR-3). The `private_interfaces` lint is
+    /// allowed here because the type is intentionally crate-internal.
+    #[allow(private_interfaces)]
+    fn adapter_for(&self, key: &ProjectKey) -> Option<&McpAdapter>;
 }
 
 /// Store-resolution failure at the routing edge (ADR-003/004).
@@ -175,87 +197,74 @@ pub(crate) fn parse_project_key(path: &str) -> Result<ProjectKey, RouteError> {
 // SlugRouter — the single-funnel call site (the C4 seam layer)
 // ---------------------------------------------------------------------------
 
-/// Tower-style MCP layer between `PathRouter` and `McpAdapter` (ADR-003).
+/// Tower-style MCP layer between `PathRouter` and the per-key `McpAdapter`
+/// (ADR-003).
 ///
 /// Per request it (1) parses the path into a transport-derived `ProjectKey`,
-/// (2) calls `resolve_store(&key)` on the injected `StoreResolver` — the single
-/// funnel — and (3) threads the resolved store into MCP dispatch. The resolver
-/// is held as `Arc<dyn StoreResolver>` so Wave 2 swaps `DefaultResolver` for
-/// `ProjectRouter` at the `SlugRouter::new` call site with NO change to this
-/// layer or the route grammar (R-01 scenario 2).
+/// (2) calls `resolve_store(&key)` on the injected `StoreResolver` — THE single
+/// funnel that proves identity — and (3) dispatches through the per-key adapter
+/// `adapter_for(&key)` returns. The resolver is held as `Arc<dyn StoreResolver>`
+/// so Wave 2 swaps `DefaultResolver` for `MultiProjectRouter` at the
+/// `SlugRouter::new` call site with NO change to this layer or the route grammar
+/// (R-01 scenario 2).
 ///
-/// **Per-slug hot-path routing lives INSIDE `resolve_store` (Wave 2), not in a
-/// new edge here (ADR-003, SR-07).** Wave 1 keeps this layer thin: parse ->
-/// resolve -> dispatch. The source-assertion gate (R-01) sees ONE funnel.
-pub struct SlugRouter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
-    /// Injected store-resolution funnel. Wave 1 = `DefaultResolver`; Wave 2 =
-    /// `ProjectRouter`. Same trait, same call site.
+/// **Funnel-elimination (vnc-034 Wave 2):** the Wave-1 `let _store` discard and
+/// the parallel fixed-adapter dispatch are GONE. The resolved key drives BOTH the
+/// store funnel AND adapter selection; `adapter_for` is the SOLE dispatch route.
+/// There is no residual fixed `ProjectRouter` that a request could still reach,
+/// so with two real stores a slug request can never silently serve the wrong
+/// store (the bug Wave 1 could not catch under N=1). Per-slug hot-path routing
+/// lives INSIDE the seam (`resolve_store` / `adapter_for`), not a new edge
+/// (ADR-003, SR-07).
+pub struct SlugRouter {
+    /// Injected store-resolution + dispatch funnel. Wave 1 = `DefaultResolver`;
+    /// Wave 2 = `MultiProjectRouter`. Same trait, same call site.
     resolver: Arc<dyn StoreResolver>,
-    /// Existing MCP dispatch (holds the `McpAdapter` over the same store).
-    project_router: ProjectRouter<ReqBody>,
 }
 
-impl<ReqBody> std::fmt::Debug for SlugRouter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
+impl std::fmt::Debug for SlugRouter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SlugRouter")
             .field("resolver", &"Arc<dyn StoreResolver>")
-            .field("project_router", &self.project_router)
             .finish()
     }
 }
 
-impl<ReqBody> Clone for SlugRouter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
+impl Clone for SlugRouter {
     fn clone(&self) -> Self {
         SlugRouter {
             resolver: Arc::clone(&self.resolver),
-            project_router: self.project_router.clone(),
         }
     }
 }
 
-impl<ReqBody> SlugRouter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
-    /// Build a `SlugRouter` over an injected resolver and the existing
-    /// `ProjectRouter`. The Wave 1 <-> Wave 2 swap happens here: pass a
-    /// `DefaultResolver` (Wave 1) or a `ProjectRouter` resolver (Wave 2) as
-    /// `resolver` — nothing else in this layer changes.
-    pub fn new(resolver: Arc<dyn StoreResolver>, project_router: ProjectRouter<ReqBody>) -> Self {
-        SlugRouter {
-            resolver,
-            project_router,
-        }
+impl SlugRouter {
+    /// Build a `SlugRouter` over an injected resolver. The Wave 1 <-> Wave 2 swap
+    /// happens here: pass a `DefaultResolver` (Wave 1) or a `MultiProjectRouter`
+    /// (Wave 2) as `resolver` — nothing else in this layer changes. The resolver
+    /// now owns per-key dispatch (`adapter_for`), so there is no separate
+    /// fixed-adapter argument.
+    pub fn new(resolver: Arc<dyn StoreResolver>) -> Self {
+        SlugRouter { resolver }
     }
 
     /// Route an MCP request through the single resolution funnel.
     ///
     /// Only MCP-bound paths reach here (`PathRouter` already split off `/health`
-    /// and `/observe`). Parse -> `resolve_store` -> dispatch. A parse rejection
-    /// or an unknown project becomes a JSON error response — never a panic,
-    /// never a path join, never the default store on `UnknownProject`
-    /// (R-01 sc.3 / R-03).
-    pub async fn route_mcp(
+    /// and `/observe`). Parse -> `resolve_store` (the funnel) -> `adapter_for`
+    /// (the SOLE dispatch route) -> dispatch. A parse rejection or an unknown
+    /// project becomes a JSON error response — never a panic, never a path join,
+    /// never the default store on `UnknownProject`, never a fixed-adapter
+    /// fallback (R-01 sc.3 / R-03 / funnel-elimination record).
+    pub async fn route_mcp<ReqBody>(
         &mut self,
         request: Request<ReqBody>,
-    ) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
+    ) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible>
+    where
+        ReqBody: Body + Send + 'static,
+        ReqBody::Data: Send + 'static,
+        ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
         let key = match parse_project_key(request.uri().path()) {
             Ok(k) => k,
             Err(RouteError::InvalidSlug(_)) => {
@@ -274,13 +283,11 @@ where
             }
         };
 
-        // THE single funnel. The resolved `Arc<Store>` is the sole write
-        // capability (FR-X3). Wave 1: `resolve_store(Default)` returns the one
-        // store the `McpAdapter` already holds, so the seam is genuinely
-        // EXERCISED (A4 / FR-X5) — served THROUGH the funnel, not around it.
-        // Wave-2 per-slug `McpAdapter` selection lives INSIDE `resolve_store`,
-        // NOT as a new edge here.
-        let _store: Arc<Store> = match self.resolver.resolve_store(&key) {
+        // THE single funnel — the resolved handle is USED, not discarded. The
+        // `Arc<Store>` is the sole write capability (FR-X3); resolving it proves
+        // transport-derived identity before any dispatch (FR-X5). Wave-2: the
+        // discard (`let _store`) is GONE.
+        let store = match self.resolver.resolve_store(&key) {
             Ok(store) => store,
             Err(RouteError::UnknownProject) => {
                 return Ok(json_error_response(
@@ -296,6 +303,29 @@ where
             }
         };
 
-        self.project_router.route_mcp(request).await
+        // THE SOLE dispatch route — the per-key adapter the resolver owns. No
+        // fixed-adapter fallback: a key that resolved a store but no adapter is
+        // treated as `UnknownProject` (fail closed; unreachable when
+        // `resolve_store` succeeded — both read the same per-entry map).
+        let mut adapter = match self.resolver.adapter_for(&key) {
+            Some(adapter) => adapter.clone(),
+            None => {
+                return Ok(json_error_response(
+                    StatusCode::NOT_FOUND,
+                    "unknown project",
+                ));
+            }
+        };
+
+        // resolve/dispatch agreement: the dispatched adapter wraps the SAME store
+        // `resolve_store` returned, so resolution and dispatch can never diverge
+        // (OQ-PR-4). `store` is consumed here, proving the funnel ran (FR-X5).
+        debug_assert!(
+            adapter.wraps_store(&store),
+            "adapter_for returned an adapter over a different store than resolve_store"
+        );
+        let _ = &store;
+
+        adapter.handle(request).await
     }
 }

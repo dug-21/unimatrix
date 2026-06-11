@@ -104,8 +104,9 @@ where
     ReqBody::Data: Send + 'static,
     ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    slug_router: SlugRouter<ReqBody>,
+    slug_router: SlugRouter,
     observe_ctx: ObserveContext,
+    _phantom: std::marker::PhantomData<fn(ReqBody)>,
 }
 
 impl<ReqBody> std::fmt::Debug for PathRouter<ReqBody>
@@ -130,18 +131,17 @@ where
 {
     /// Create a `PathRouter` whose MCP edge is the `SlugRouter` single funnel.
     ///
-    /// Takes the injected `StoreResolver` (Wave 1: `DefaultResolver`; Wave 2:
-    /// `ProjectRouter`) plus the existing `ProjectRouter`, and builds the
-    /// `SlugRouter` internally. The `resolver` argument alone is the Wave 1 <->
-    /// Wave 2 swap point (R-01 sc.2).
-    pub fn new(
-        resolver: Arc<dyn StoreResolver>,
-        project_router: ProjectRouter<ReqBody>,
-        observe_ctx: ObserveContext,
-    ) -> Self {
+    /// Takes ONLY the injected `StoreResolver` (Wave 1: `DefaultResolver`;
+    /// Wave 2: `MultiProjectRouter`) and builds the `SlugRouter` internally. The
+    /// resolver now OWNS per-key dispatch (`adapter_for`), so there is no longer
+    /// a fixed `ProjectRouter` parameter that could service MCP as a fallback
+    /// (vnc-034 Wave 2 funnel-elimination, OQ-PR-8/9). The `resolver` argument
+    /// alone is the Wave 1 <-> Wave 2 swap point (R-01 sc.2).
+    pub fn new(resolver: Arc<dyn StoreResolver>, observe_ctx: ObserveContext) -> Self {
         PathRouter {
-            slug_router: SlugRouter::new(resolver, project_router),
+            slug_router: SlugRouter::new(resolver),
             observe_ctx,
+            _phantom: std::marker::PhantomData,
         }
     }
 }
@@ -156,6 +156,7 @@ where
         PathRouter {
             slug_router: self.slug_router.clone(),
             observe_ctx: self.observe_ctx.clone(),
+            _phantom: std::marker::PhantomData,
         }
     }
 }
@@ -311,11 +312,12 @@ use observe::{json_error_response, observe_response_to_http, prefix_session_id};
 pub(crate) mod seam;
 #[cfg(test)]
 pub(crate) use seam::parse_project_key;
-// vnc-034: the seam is now WIRED — `PathRouter` holds a `SlugRouter<ReqBody>` as
-// its per-request MCP edge (above), so `SlugRouter`/`StoreResolver` have a real
-// production caller and the placeholder `#[allow(unused_imports)]` is removed.
-// `ProjectKey`/`ProjectSlug`/`RouteError` remain re-exported as the public seam
-// surface (consumed by `main.rs` via `http/mod.rs` and by the resolver impls).
+// vnc-034: the seam is WIRED — `PathRouter` holds a `SlugRouter` as its
+// per-request MCP edge (above), and (Wave 2) `SlugRouter` dispatches through
+// `StoreResolver::adapter_for`, so the resolver is BOTH the store funnel and the
+// sole MCP dispatch route. `ProjectKey`/`ProjectSlug`/`RouteError` remain
+// re-exported as the public seam surface (consumed by `main.rs` via `http/mod.rs`
+// and by the resolver impls).
 pub use seam::{ProjectKey, ProjectSlug, RouteError, SlugRouter, StoreResolver};
 
 // The Wave-1 `StoreResolver` impl (vnc-034 ADR-003/005). Returns the one store for
@@ -326,81 +328,20 @@ pub(crate) mod default_resolver;
 pub use default_resolver::DefaultResolver;
 
 // ---------------------------------------------------------------------------
-// ProjectRouter — W2-6 structural seam (single-project default mode)
+// MultiProjectRouter — the Wave-2 `StoreResolver` (slug -> per-slug entry)
 // ---------------------------------------------------------------------------
-/// Project-aware MCP request router.
-///
-/// In vnc-021, operates in single-project default mode: all MCP requests
-/// route to a single `McpAdapter`. W2-6 will add path-prefix extraction
-/// and multi-project slug lookup via `stores: HashMap<String, Arc<...>>`.
-pub struct ProjectRouter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
-    default_server: McpAdapter,
-    _phantom: std::marker::PhantomData<fn(ReqBody)>,
-}
-
-impl<ReqBody> std::fmt::Debug for ProjectRouter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ProjectRouter")
-            .field("default_server", &self.default_server)
-            .finish()
-    }
-}
-
-impl<ReqBody> ProjectRouter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
-    /// Create a new ProjectRouter in single-project default mode.
-    pub fn new(
-        server: UnimatrixServer,
-        max_body_bytes: usize,
-        allowed_origins: Vec<String>,
-    ) -> Self {
-        let mcp_adapter = McpAdapter::new(server, max_body_bytes, allowed_origins);
-        ProjectRouter {
-            default_server: mcp_adapter,
-            _phantom: std::marker::PhantomData,
-        }
-    }
-
-    /// Route an MCP request through the default project adapter.
-    ///
-    /// In single-project mode (vnc-021), all requests go to default.
-    /// W2-6 seam: extract slug from path prefix, lookup in stores map,
-    /// fall back to default_project.
-    async fn route_mcp(
-        &mut self,
-        request: Request<ReqBody>,
-    ) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible> {
-        self.default_server.handle(request).await
-    }
-}
-
-impl<ReqBody> Clone for ProjectRouter<ReqBody>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
-    fn clone(&self) -> Self {
-        ProjectRouter {
-            default_server: self.default_server.clone(),
-            _phantom: std::marker::PhantomData,
-        }
-    }
-}
+//
+// vnc-034 Wave 2 funnel-elimination: the old single-project HTTP
+// `ProjectRouter<ReqBody>` (a fixed `McpAdapter` behind the seam) is GONE. The
+// per-key `McpAdapter` map now lives INSIDE the resolver (`MultiProjectRouter`,
+// `project_resolver.rs`), and `SlugRouter` dispatches through
+// `StoreResolver::adapter_for` — the SOLE dispatch route, no fixed fallback
+// (ADR-003 "per-slug routing inside the seam"; OQ-PR-8/9).
+//
+// The resolver and its `ProjectEntry` live in the `project_resolver` submodule
+// to keep this file under the 500-line limit (mirrors `default_resolver.rs`).
+pub(crate) mod project_resolver;
+pub use project_resolver::{MultiProjectRouter, ProjectServerInput};
 
 // ---------------------------------------------------------------------------
 // McpAdapter — thin rmcp isolation boundary (ADR-003)
@@ -427,6 +368,13 @@ pub(crate) struct McpAdapter {
     streamable: StreamableHttpService<UnimatrixServer, LocalSessionManager>,
     /// Maximum request body size (bytes). Enforced before rmcp sees the body.
     max_body_bytes: usize,
+    /// The `Arc<Store>` this adapter dispatches against (vnc-034 Wave 2).
+    ///
+    /// Held purely so the `SlugRouter` funnel can assert resolve/dispatch
+    /// agreement (`wraps_store`, OQ-PR-4): the adapter `adapter_for(&key)`
+    /// returns MUST wrap the SAME store `resolve_store(&key)` returned. Not used
+    /// on the dispatch hot path — `streamable` owns the live `UnimatrixServer`.
+    store: Arc<Store>,
 }
 
 impl std::fmt::Debug for McpAdapter {
@@ -449,13 +397,28 @@ impl McpAdapter {
         let mut config = StreamableHttpServerConfig::default();
         config.allowed_origins = allowed_origins;
 
+        // Capture the adapter's store BEFORE `server` is moved into the rmcp
+        // closure (vnc-034 Wave 2 — resolve/dispatch agreement, OQ-PR-4).
+        let store = Arc::clone(&server.store);
+
         let streamable =
             StreamableHttpService::new(move || Ok(server.clone()), session_manager, config);
 
         McpAdapter {
             streamable,
             max_body_bytes,
+            store,
         }
+    }
+
+    /// True iff this adapter dispatches against `store` (`Arc::ptr_eq` identity).
+    ///
+    /// Used only by the `SlugRouter` funnel's `debug_assert!` to prove the
+    /// adapter `adapter_for(&key)` returned wraps the SAME store
+    /// `resolve_store(&key)` returned — resolution and dispatch can never diverge
+    /// (vnc-034 OQ-PR-4). Store has no `PartialEq`; identity is `Arc::ptr_eq`.
+    pub(crate) fn wraps_store(&self, store: &Arc<Store>) -> bool {
+        Arc::ptr_eq(&self.store, store)
     }
 
     /// Handle an MCP request with body size enforcement and error mapping.
