@@ -78,9 +78,7 @@ async fn test_resolves_slug_to_its_store() {
     let alpha_key = ProjectKey::Slug(ProjectSlug::try_from("alpha").expect("valid"));
     let beta_key = ProjectKey::Slug(ProjectSlug::try_from("beta").expect("valid"));
 
-    let resolved_alpha = resolver
-        .resolve_store(&alpha_key)
-        .expect("alpha resolves");
+    let resolved_alpha = resolver.resolve_store(&alpha_key).expect("alpha resolves");
     let resolved_beta = resolver.resolve_store(&beta_key).expect("beta resolves");
 
     assert!(
