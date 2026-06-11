@@ -1933,6 +1933,42 @@ fn test_projectslug_empty_rejected() {
     ));
 }
 
+// T-SEC-15 (DISCRIMINATOR, vnc-034 D1) — underscore is NOT in the locked charset
+// `^[a-z0-9][a-z0-9-]{0,62}$`. The drifted issue-#727 regex `[a-z0-9_-]` would ACCEPT
+// `my_project` and turn this test red — that is exactly its purpose.
+#[test]
+fn test_slug_reject_underscore_discriminator() {
+    assert!(
+        matches!(
+            ProjectSlug::try_from("my_project"),
+            Err(RouteError::InvalidSlug(_))
+        ),
+        "underscore is not in the D1 charset — a drifted [a-z0-9_-] impl wrongly accepts this"
+    );
+}
+
+// T-SEC-16 (DISCRIMINATOR, vnc-034 D1) — 64 chars is over the 63 (DNS-label) bound. The
+// drifted issue-#727 `{0,63}` (max 64) would ACCEPT this and turn the test red.
+#[test]
+fn test_slug_reject_64_char_discriminator() {
+    let over = "a".repeat(64);
+    assert_eq!(over.len(), 64);
+    assert!(
+        matches!(
+            ProjectSlug::try_from(over.as_str()),
+            Err(RouteError::InvalidSlug(_))
+        ),
+        "64-char slug is over the 63-char D1 bound — a drifted {{0,63}} impl wrongly accepts this"
+    );
+}
+
+// T-SEC-17 — exact 63-char upper bound is valid.
+#[test]
+fn test_slug_accept_63_char_boundary() {
+    let max = "a".repeat(63);
+    assert!(ProjectSlug::try_from(max.as_str()).is_ok());
+}
+
 #[test]
 fn test_projectslug_invalid_slug_carries_input_for_diagnostics() {
     // The rejected raw value is carried for diagnostics only — never used to

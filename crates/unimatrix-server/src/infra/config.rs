@@ -38,6 +38,7 @@ use unimatrix_engine::graph::{
     HOP_DECAY_FACTOR, MAX_TRAVERSAL_DEPTH, ORPHAN_PENALTY, PARTIAL_SUPERSESSION_PENALTY,
 };
 
+use crate::http::ProjectSlug;
 use crate::infra::categories::INITIAL_CATEGORIES;
 use crate::infra::scanning::ContentScanner;
 
@@ -94,7 +95,26 @@ pub struct UnimatrixConfig {
     /// Absent section ⇒ engine consts ⇒ deployed behavior unchanged bit-for-bit (C-02, ADR-006).
     #[serde(default)]
     pub graph_penalty: GraphPenaltyConfig,
+    /// `[[projects]]` array-of-tables — operator-declared multi-project slugs (vnc-034 Wave 2,
+    /// FR-C2). Absent ⇒ empty `Vec` (the FR-C6 / AC-W2-R2 backward-compat path: `/v1/tools/...`
+    /// unchanged). Each entry's raw `slug` is validated to a `ProjectSlug` at config load via the
+    /// merged Wave-1 allowlist (D1) — config does NOT re-implement the regex. See
+    /// [`validate_projects_config`].
+    #[serde(default)]
+    pub projects: Vec<ProjectConfigEntry>,
     // CycleConfig is intentionally absent (ADR-004: stub removed, rename is hardcoded).
+}
+
+/// One `[[projects]]` stanza (vnc-034 Wave 2, FR-C2).
+///
+/// Raw operator input — `slug` is an UNVALIDATED `String` at deserialize time; validation
+/// happens in [`validate_projects_config`] via the existing `ProjectSlug` allowlist (D1).
+/// This struct is intentionally `slug`-ONLY: per-project config-overlay is split to a
+/// follow-up (D2), so adding fields here is out of Wave 2 scope.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+pub struct ProjectConfigEntry {
+    /// Operator-declared project slug. Validated to a `ProjectSlug` at config load.
+    pub slug: String,
 }
 
 /// `[observation]` section — domain pack registration.
@@ -2250,6 +2270,81 @@ pub fn validate_tls_config(config: &TlsConfig, path: &Path) -> Result<(), Config
 }
 
 // ---------------------------------------------------------------------------
+// [[projects]] slug validation (vnc-034 Wave 2 — D1 charset + D5 reserved set)
+// ---------------------------------------------------------------------------
+
+/// Route segments that a slug must NEVER equal (vnc-034 D5 — the single source of
+/// truth for the whole feature; the register CLI imports THIS constant, never a
+/// second list).
+///
+/// A slug equal to any of these would shadow a fixed route. `tools` is the CRITICAL
+/// case: `/v1/tools/...` is the default-project alias (ADR-005), so a slug named
+/// `tools` would shadow the default project entirely. This is a SEPARATE check from
+/// the D1 charset allowlist — every one of these IS charset-valid (`tools`, `health`,
+/// `observe`, `v1` all match `^[a-z0-9][a-z0-9-]{0,62}$`) and MUST still be rejected.
+pub const RESERVED_SLUGS: [&str; 4] = ["v1", "health", "observe", "tools"];
+
+/// Is `slug` equal to a reserved route segment (D5)?
+///
+/// The reserved check is EXACT-match only — `toolsx`, `v1-prod`, `healthcheck`, and
+/// `observer` are NOT reserved (no over-broad prefix/substring rejection). Separate
+/// from and additional to the D1 charset allowlist.
+pub fn is_reserved_slug(slug: &ProjectSlug) -> bool {
+    RESERVED_SLUGS.contains(&slug.as_str())
+}
+
+/// Validate the `[[projects]]` stanzas after TOML parse (vnc-034 Wave 2; FR-C2/FR-C5).
+///
+/// For each entry, in order: (1) the AUTHORITATIVE charset validation is the merged
+/// Wave-1 allowlist — `ProjectSlug::try_from` enforces `^[a-z0-9][a-z0-9-]{0,62}$`
+/// (D1); config does NOT re-implement the regex; (2) reserved-slug refusal (D5), a
+/// SEPARATE check after the charset check — a charset-valid slug equal to a reserved
+/// route segment is still rejected; (3) duplicate-slug refusal — two stanzas with the
+/// same slug is an operator error (ambiguous registry → ambiguous store), failed loud.
+///
+/// Returns the validated, deduped slugs as `Vec<ProjectSlug>` (never raw strings) so
+/// downstream never re-validates. No filesystem access here — this is parse-edge
+/// validation BEFORE any path use (R-03); a rejected slug never reaches a path join,
+/// so the escape-is-unrepresentable guarantee (AC-W2-R6) holds at config-load time.
+pub fn validate_projects_config(
+    entries: &[ProjectConfigEntry],
+    path: &Path,
+) -> Result<Vec<ProjectSlug>, ConfigError> {
+    let mut result = Vec::with_capacity(entries.len());
+    let mut seen = HashSet::new();
+
+    for entry in entries {
+        // 1. Charset allowlist (D1) — the merged Wave-1 newtype, NOT a second validator.
+        let slug = ProjectSlug::try_from(entry.slug.as_str()).map_err(|_| {
+            ConfigError::ProjectSlugInvalid {
+                path: path.to_path_buf(),
+                value: entry.slug.clone(),
+            }
+        })?;
+
+        // 2. Reserved-slug refusal (D5) — SEPARATE from and AFTER the charset check.
+        if is_reserved_slug(&slug) {
+            return Err(ConfigError::ProjectSlugReserved {
+                path: path.to_path_buf(),
+                value: slug.as_str().to_owned(),
+            });
+        }
+
+        // 3. Duplicate refusal — two stanzas with the same slug alias one dir.
+        if !seen.insert(slug.as_str().to_owned()) {
+            return Err(ConfigError::ProjectSlugDuplicate {
+                path: path.to_path_buf(),
+                value: slug.as_str().to_owned(),
+            });
+        }
+
+        result.push(slug);
+    }
+
+    Ok(result)
+}
+
+// ---------------------------------------------------------------------------
 // Preset enum
 // ---------------------------------------------------------------------------
 
@@ -2458,6 +2553,31 @@ pub enum ConfigError {
         value: String,
         /// Human-readable valid range.
         reason: &'static str,
+    },
+    /// A `[[projects]]` slug failed the D1 charset allowlist (vnc-034 Wave 2, FR-C5).
+    ///
+    /// Carries the rejected input for the operator's diagnostics only — never used to
+    /// build a path. SEPARATE from `ProjectSlugReserved`.
+    ProjectSlugInvalid {
+        path: PathBuf,
+        /// The offending slug value (diagnostics only).
+        value: String,
+    },
+    /// A `[[projects]]` slug equals a reserved route segment (vnc-034 Wave 2, D5).
+    ///
+    /// Charset-valid but forbidden because it would shadow a fixed route (`tools`
+    /// shadows the `/v1/tools/...` default-project alias). SEPARATE from
+    /// `ProjectSlugInvalid`.
+    ProjectSlugReserved {
+        path: PathBuf,
+        /// The reserved slug value.
+        value: String,
+    },
+    /// Two `[[projects]]` stanzas declared the same slug (vnc-034 Wave 2).
+    ProjectSlugDuplicate {
+        path: PathBuf,
+        /// The duplicated slug value.
+        value: String,
     },
 }
 
@@ -2738,6 +2858,27 @@ impl fmt::Display for ConfigError {
                 value,
                 reason
             ),
+            ConfigError::ProjectSlugInvalid { path, value } => write!(
+                f,
+                "config error in {}: invalid project slug '{}': must match \
+                 ^[a-z0-9][a-z0-9-]{{0,62}}$ (lowercase alphanumeric and hyphen, \
+                 1-63 chars, must start alphanumeric, no underscore)",
+                path.display(),
+                value
+            ),
+            ConfigError::ProjectSlugReserved { path, value } => write!(
+                f,
+                "config error in {}: project slug '{}' is reserved (v1, health, observe, \
+                 tools); 'tools' would shadow the default-project alias /v1/tools/...",
+                path.display(),
+                value
+            ),
+            ConfigError::ProjectSlugDuplicate { path, value } => write!(
+                f,
+                "config error in {}: duplicate project slug '{}'",
+                path.display(),
+                value
+            ),
         }
     }
 }
@@ -2780,6 +2921,14 @@ pub struct ConfigLoadResult {
     pub config: UnimatrixConfig,
     /// Which sources were loaded, not found, or not applicable.
     pub provenance: ConfigProvenance,
+    /// The validated, deduped `[[projects]]` slugs (vnc-034 Wave 2, OQ-CFG-2).
+    ///
+    /// Derived from `config.projects` via [`validate_projects_config`] at load time so
+    /// validation runs once and downstream (the listener wiring that builds the
+    /// `ProjectRouter`, and the lifecycle CLI) consume the validated `ProjectSlug`
+    /// list without re-validating raw strings. Empty when `[[projects]]` is absent
+    /// (the AC-W2-R2 backward-compat path).
+    pub projects: Vec<ProjectSlug>,
 }
 
 // ---------------------------------------------------------------------------
@@ -2892,6 +3041,13 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<ConfigLoadResult,
     let validation_path = env_config_path.unwrap_or(global_path);
     validate_config(&merged, &validation_path)?;
 
+    // vnc-034 Wave 2 (OQ-CFG-2): re-derive the validated, typed slug list to carry on
+    // the result. `validate_config` above already proved every slug valid (loud startup
+    // failure on a bad slug); this re-run is a pure, allocation-only pass that produces
+    // the `Vec<ProjectSlug>` downstream consumes without touching raw strings. Cannot
+    // fail here — a failure would have aborted in `validate_config` already.
+    let projects = validate_projects_config(&merged.projects, &validation_path)?;
+
     Ok(ConfigLoadResult {
         config: merged,
         provenance: ConfigProvenance {
@@ -2899,6 +3055,7 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<ConfigLoadResult,
             project: project_status,
             env_override: env_status,
         },
+        projects,
     })
 }
 
@@ -3201,6 +3358,11 @@ pub fn validate_config(config: &UnimatrixConfig, path: &Path) -> Result<(), Conf
 
     // --- Validate [graph_penalty] fields (nan-018) — UNCONDITIONAL (#4070) ---
     validate_graph_penalty(&config.graph_penalty, path)?;
+
+    // --- Validate [[projects]] slugs (vnc-034 Wave 2) — D1 charset + D5 reserved +
+    // duplicate refusal. A malformed slug fails server startup loud at config-load,
+    // NOT at first request (NFR-03). Absent section ⇒ empty ⇒ Ok (AC-W2-R2).
+    validate_projects_config(&config.projects, path)?;
 
     Ok(())
 }
@@ -3939,6 +4101,13 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             project.graph_penalty
         } else {
             global.graph_penalty
+        },
+        // vnc-034 Wave 2: [[projects]] — section-level replace semantics (project
+        // replaces the entire list when non-empty), mirroring http/tls/graph_penalty.
+        projects: if project.projects != default.projects {
+            project.projects
+        } else {
+            global.projects
         },
     }
 }
@@ -11614,3 +11783,9 @@ connection_timeout_secs = 60
 #[cfg(test)]
 #[path = "graph_penalty_config_tests.rs"]
 mod graph_penalty_config_tests;
+
+// vnc-034 Wave 2: `[[projects]]` config + slug-validation tests live in a focused sibling
+// file (same rationale as graph_penalty — keep the inline test module from growing further).
+#[cfg(test)]
+#[path = "projects_config_tests.rs"]
+mod projects_config_tests;
