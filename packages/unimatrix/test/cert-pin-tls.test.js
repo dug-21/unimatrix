@@ -17,36 +17,83 @@
 //      AC-CT-ROT), classified as a connect failure.
 //
 // Zero added deps: Node built-in https/tls/crypto only. The self-signed cert is
-// a committed fixture (test/fixtures/tls/{cert,key}.pem); the pinned fingerprint
-// is COMPUTED from the fixture's real DER via the production computeFingerprint
-// (self-consistent, never hand-written — this is not a parity golden).
+// GENERATED at test setup into a per-run temp dir via the openssl CLI (present
+// in CI and the devcontainer) — NOT committed, so the secret scanner never sees
+// a private key. The pinned fingerprint is COMPUTED from the generated leaf's
+// real DER via the production computeFingerprint (self-consistent, never
+// hand-written — this is not a parity golden). If openssl is unavailable the
+// suite skips with a clear reason rather than failing.
 
 const { describe, it, before, after } = require("node:test");
 const assert = require("assert");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const https = require("https");
 const crypto = require("crypto");
+const { spawnSync } = require("child_process");
 
 const {
   computeFingerprint,
 } = require("../lib/hook-client/cert-pin.js");
 const transport = require("../lib/hook-client/transport-http.js");
 
-const FIX = path.join(__dirname, "fixtures", "tls");
-const CERT_PEM = fs.readFileSync(path.join(FIX, "cert.pem"));
-const KEY_PEM = fs.readFileSync(path.join(FIX, "key.pem"));
+// Generate a throwaway self-signed CN=localhost cert+key into a per-run temp
+// dir. Returns { tmpDir, certPem, keyPem } on success, or null if openssl is
+// unavailable / the generation failed (→ the suite skips, never fails).
+function generateSelfSignedCert() {
+  let tmpDir;
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-vnc034-tls-"));
+  } catch (_err) {
+    return null;
+  }
+  const certPath = path.join(tmpDir, "cert.pem");
+  const keyPath = path.join(tmpDir, "key.pem");
+  let r;
+  try {
+    r = spawnSync(
+      "openssl",
+      [
+        "req", "-x509", "-newkey", "rsa:2048",
+        "-keyout", keyPath, "-out", certPath,
+        "-days", "1", "-nodes", "-subj", "/CN=localhost",
+      ],
+      { stdio: "ignore" }
+    );
+  } catch (_err) {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_e) {}
+    return null;
+  }
+  if (r.error || r.status !== 0 || !fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_e) {}
+    return null;
+  }
+  return {
+    tmpDir,
+    certPem: fs.readFileSync(certPath),
+    keyPem: fs.readFileSync(keyPath),
+  };
+}
 
-// The REAL pinned fingerprint = sha256 over the fixture leaf DER, computed with
-// the production helper (the exact bytes rustls/Node serve — ADR-002).
-const REAL_FP = computeFingerprint(new crypto.X509Certificate(CERT_PEM).raw);
+const GEN = generateSelfSignedCert();
+const SKIP = GEN
+  ? false
+  : { skip: "openssl unavailable — cannot generate the self-signed TLS fixture at runtime" };
+
+const CERT_PEM = GEN ? GEN.certPem : null;
+const KEY_PEM = GEN ? GEN.keyPem : null;
+
+// The REAL pinned fingerprint = sha256 over the generated leaf DER, computed
+// with the production helper (the exact bytes rustls/Node serve — ADR-002).
+const REAL_FP = GEN ? computeFingerprint(new crypto.X509Certificate(CERT_PEM).raw) : null;
 // A syntactically valid but WRONG pin (64 hex chars), so the mismatch is the
 // fingerprint compare and not a malformed-fp early-out.
 const WRONG_FP = "sha256:" + "0".repeat(64);
 
 const SHORT_TIMEOUTS = Object.freeze({ connectMs: 2000, syncMs: 4000, fnfMs: 4000 });
 
-describe("cert pin — REAL TLS handshake (F1 regression, R-02 / AC-W1-C2)", () => {
+describe("cert pin — REAL TLS handshake (F1 regression, R-02 / AC-W1-C2)", { skip: SKIP }, () => {
   let server;
   let baseUrl;
   // Records every Authorization header value the server actually received. If a
@@ -77,6 +124,9 @@ describe("cert pin — REAL TLS handshake (F1 regression, R-02 / AC-W1-C2)", () 
 
   after(async () => {
     await new Promise((resolve) => server.close(resolve));
+    if (GEN) {
+      try { fs.rmSync(GEN.tmpDir, { recursive: true, force: true }); } catch (_e) {}
+    }
   });
 
   it("(a) good pin — connects over real TLS and receives a response", async () => {
