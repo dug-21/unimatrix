@@ -59,7 +59,9 @@ docker run -v unimatrix-data:/data ghcr.io/dug-21/unimatrix
 docker compose up
 ```
 
-The container runs `unimatrix serve --foreground` as PID 1 (non-root, UID 65534). Both ONNX models (embedding + NLI) are baked into the image — no internet access required after pull. Data persists in the `unimatrix-data` named volume at `/data`. Config lives in the data volume; customize via `unimatrix config` or set `UNIMATRIX_CONFIG` for external override.
+The container runs `unimatrix serve --foreground` as PID 1 (non-root, UID 65532). Both ONNX models (embedding + NLI) are baked into the image — no internet access required after pull. Data persists in the `unimatrix-data` named volume at `/data`. Config lives in the data volume; customize via `unimatrix config` or set `UNIMATRIX_CONFIG` for external override.
+
+**HTTPS serving (personal cloud).** To serve the container as a reachable, operator-run cloud over pinned TLS, set two environment variables in `compose.yaml`: `UNIMATRIX_HTTP_ENABLED=true` activates the HTTPS listener (the global binary default `http.enabled` stays `false`), and `UNIMATRIX_PUBLIC_URL` declares the URL clients connect to (e.g. `https://uni.example.com:8443`) — the single knob from which the bundle base-url, the `allowed_hosts` default, and the certificate SAN all derive. The published port is **TLS-only port 8443** — no plaintext port is exposed. On first boot the binary auto-generates both a 32-byte bearer token and a self-signed cert+key (key mode `0600`), persisting them to the data volume; subsequent boots load (not regenerate) them, and an operator may mount their own cert/key read-only to override. The only unauthenticated endpoint on the published port is `GET /health`. Host bind-mounted `/data` must be writable by UID 65532 (`chown 65532` the host directory; named volumes need no setup) — the binary fails loud and actionable if it is not. After the container is up, run `unimatrix client-bundle` to emit the connection bundle for clients.
 
 ### Build from Source
 
@@ -110,6 +112,18 @@ npx @dug-21/unimatrix init --remote https://uni.example.com --token <token>
 ```
 
 This configures `.claude/settings.json` hooks to invoke the pure-JS HTTP hook client (`node /abs/path/lib/hook-client/index.js <EVENT>`) for the full remote event set, including `PreCompact` and `PostToolUseFailure`. The URL and token are written to `.claude/settings.local.json` (gitignored, per-project) under the `unimatrix.remote` key — never on the hook command line. The environment variables `UNIMATRIX_REMOTE_URL` and `UNIMATRIX_REMOTE_TOKEN` override the file when set. Init validates connectivity with a `Ping` request before writing config. No platform binary or ONNX model is required, so remote mode works on Linux, macOS, and Windows with Node >= 18. `.mcp.json` is skipped in remote mode with an informative message. The merge is idempotent — re-running preserves non-unimatrix hooks and recognizes its own entries.
+
+##### Bundle-driven attach (pinned TLS)
+
+To attach against an HTTPS server that serves a self-signed certificate (the container HTTPS posture above), use the connection bundle the operator emits with `unimatrix client-bundle` instead of passing the URL and token separately:
+
+```bash
+npx @dug-21/unimatrix init --remote unimatrix-bundle:<blob>
+```
+
+The bundle carries `{base-url, token, cert-fingerprint}` in one opaque string. The client pins the server's exact certificate by its `sha256:` fingerprint (no CA-trust path), so a self-signed cert is trusted by pinning rather than by a certificate authority. A wrong or rotated certificate is rejected with a clear, diagnosable fingerprint-mismatch error directing you to re-bundle. This is a pure-JS, copy-installed remote attach (under 250 KB — no platform binary, no ONNX model) and works on Linux, macOS (Apple Silicon), and Windows with Node >= 18; `init` copies skills and prints the `/uni-init` pointer (it does not append the CLAUDE.md knowledge block — `/uni-init` owns that). Each client instance is bound to exactly one project: a different project means a separate client instance. Multiple distinct LLM CLIs (Claude Code, Codex CLI, Gemini CLI) attach the same server identically — each is a separate client connection.
+
+When the operator rotates the server certificate, re-run `client-bundle` and re-run `init --remote` on each client with the new bundle. See [docs/cert-rotation.md](docs/cert-rotation.md) for the operator rotation procedure.
 
 ### Brownfield Applications
 
@@ -427,6 +441,13 @@ key_path = "/path/to/key.pem"
 
 A 32-byte bearer token is generated automatically at `{data_volume}/token` on first server start with HTTP enabled. The token is printed to stdout once with the `[UNIMATRIX TOKEN]` label. Subsequent starts load it silently. See [docs/client-setup.md](docs/client-setup.md) for client configuration.
 
+**Container HTTPS env vars.** For container deployments, two environment variables drive the HTTPS posture without editing config files (the distroless runtime has no shell, and the global binary default `http.enabled` stays `false`):
+
+- `UNIMATRIX_HTTP_ENABLED=true` — activates the HTTPS listener, container-scoped (an env override of `[http] enabled`).
+- `UNIMATRIX_PUBLIC_URL` — the URL clients connect to (e.g. `https://uni.example.com:8443`). A single derivation feeds three consumers: the connection bundle's base-url, the `allowed_hosts` default, and the generated certificate's SAN. When unset, the server uses a loud `https://<EDIT-ME>:8443` placeholder and a permissive-with-warning posture; socket auto-detection is not used.
+
+On first boot with HTTP enabled the binary auto-generates the self-signed cert+key alongside the token (key mode `0600`), with the SAN derived from `UNIMATRIX_PUBLIC_URL` plus the local set (`localhost`, `127.0.0.1`, `0.0.0.0`); the operator may mount their own cert/key read-only to override.
+
 Config files are validated for security at load time: world-writable files abort startup; group-writable files log a warning. `[server] instructions` is scanned for injection patterns before use.
 
 ---
@@ -514,6 +535,7 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `stop` | Send SIGTERM to the running daemon and wait for it to exit (up to 10 seconds). Exits 0 on success, non-zero if no daemon is running or the PID file is absent/stale. | None |
 | `hook <EVENT>` | Handle a lifecycle hook event from Claude Code, Gemini CLI, or Codex CLI. Reads JSON from stdin, connects to the running server via UDS. Provider-specific event names (e.g., Gemini's `BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary. Designed for use in hook configuration files, not direct user invocation. | Event name as positional arg. `--provider <name>` (`claude-code` \| `gemini-cli` \| `codex-cli`) — required for Codex (shares event names with Claude Code); optional for Gemini (inferred from event name); omit for Claude Code (backward-compatible default). |
 | `health` | Check daemon liveness by connecting to the MCP UDS socket. Exit 0 when the daemon is running and responsive, exit 1 otherwise. 5-second timeout. No output on success; brief diagnostic on stderr on failure. Used by Docker HEALTHCHECK. | None |
+| `client-bundle` | Emit a connection bundle for attaching a remote client to this server over pinned TLS. Reads the data-volume token and the served leaf certificate, and prints a single-line `unimatrix-bundle:` blob carrying `{base-url, token, cert-fingerprint}`. **stdout** is the opaque bundle blob only (pipeable); **stderr** echoes the decoded base-url and `sha256:` cert-fingerprint for the operator to eyeball, with the token redacted (never printed). Pre-tokio synchronous subcommand, like `health` and `version`. Consume the bundle on the client with `init --remote <bundle>`. | `--project-dir <PATH>` |
 | `export` | Export the knowledge base to JSONL format (format_version 2, 11 tables). No running server required. | `--output <PATH>` (defaults to stdout), `--skip-quarantined` (omit quarantined entries and their dependents from the export — requires `--confirm`), `--confirm` (acknowledge non-exact snapshot when `--skip-quarantined` is active) |
 | `import` | Import a knowledge base from a JSONL export file (accepts format_version 1 and 2). Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data including graph_edges, observations, cycle_events, and derived metric tables) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
@@ -610,6 +632,10 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
 ### HTTP Authentication
 
 HTTPS transport uses static bearer token authentication. A 32-byte (256-bit) cryptographically random token is generated on first run, stored at `{data_volume}/token` (mode 0600), and validated on every HTTP request using constant-time comparison (`subtle::ConstantTimeEq`). The `/health` endpoint is the sole unauthenticated path. The `BearerValidator` trait enables enterprise extension (JWT/OAuth) without modifying the core auth path.
+
+### Certificate Pinning
+
+The OSS trust model for the self-signed serving certificate is **fingerprint pinning**, not CA trust. On first boot the server generates a self-signed cert+key and computes its fingerprint as `sha256:<lowercase-hex>` over the served leaf certificate's DER bytes. The `client-bundle` command carries that fingerprint in the connection bundle; the client pins the exact certificate by it (custom `checkServerIdentity` compare, no certificate-authority path), and the fingerprint is computed byte-identically on both stacks. A presented certificate that does not match is rejected with a clear, diagnosable mismatch error. Rotating the certificate therefore requires re-emitting the bundle (`client-bundle`) and re-running `init --remote` on each client — see [docs/cert-rotation.md](docs/cert-rotation.md). CA-trust / SAN-based hostname validation is the enterprise/reverse-proxy path, not the OSS posture.
 
 ### Trust Hierarchy
 
