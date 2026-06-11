@@ -11,6 +11,7 @@ const {
 } = require("./merge-settings.js");
 const transport = require("./hook-client/transport-http.js");
 const { resolveGitFile } = require("./hook-client/config.js");
+const { decodeBundle, assertSlugAllowlist } = require("./hook-client/bundle.js");
 
 /**
  * Detect project root by walking up from startDir to find `.git` (Rust
@@ -203,19 +204,26 @@ function readJsonOrEmpty(filePath, label) {
  * @param {string} projectRoot - Absolute project root.
  * @param {string} remote - Remote URL.
  * @param {string} token - Bearer token.
+ * @param {string|null} pinnedFp - Pinned cert fingerprint (bundle path), or null.
  * @param {boolean} dryRun - If true, do not write.
  * @returns {string[]} Actions taken.
  */
-function writeRemoteSettingsLocal(projectRoot, remote, token, dryRun) {
+function writeRemoteSettingsLocal(projectRoot, remote, token, pinnedFp, dryRun) {
   const actions = [];
   const slPath = path.join(projectRoot, ".claude", "settings.local.json");
   const existing = readJsonOrEmpty(slPath, ".claude/settings.local.json");
 
   existing.unimatrix = existing.unimatrix || {};
-  existing.unimatrix.remote = Object.assign({}, existing.unimatrix.remote, {
-    url: remote,
-    token: token,
-  });
+  existing.unimatrix.remote = Object.assign(
+    {},
+    existing.unimatrix.remote,
+    {
+      url: remote,
+      token: token,
+    },
+    // Bundle path pins the cert; legacy {remote,token} path leaves it absent.
+    pinnedFp ? { fingerprint: pinnedFp } : {}
+  );
 
   if (!dryRun) {
     fs.mkdirSync(path.dirname(slPath), { recursive: true });
@@ -275,22 +283,35 @@ function gitignoreWarning(projectRoot) {
 }
 
 /**
- * Remote-mode init: wire the HTTP hook client into .claude/settings.json,
- * write credentials to settings.local.json (0600), validate via Ping. No
- * local binary, no .mcp.json, no database, no skills (those belong to F5).
+ * Resolve the effective remote endpoint, token, and pinned fingerprint from
+ * either the vnc-034 bundle path (`--bundle` + optional `--slug`) or the legacy
+ * F3 `{remote, token}` path (backward-compat). Bundle decode is the C1 trust
+ * boundary (ADR-001); a guard failure throws BundleError (token never in the
+ * message). The slug is appended CLIENT-SIDE to the base-url (ADR-005 grammar) —
+ * it is never part of the bundle (C1/C5). The result bakes EXACTLY ONE endpoint
+ * into `remote`; there is no field in which a second project can be named
+ * (R-06 / AC-W1-C5 — cross-project fan-out is unrepresentable, not rejected).
  *
- * Failures THROW → bin catches → stderr + exit 1 (init is interactive; the
- * one loud checkpoint, opposite the hook client's exit-0 posture).
- *
- * @param {object} options - { remote, token, dryRun, projectDir }
+ * @param {object} options - { bundle?, slug?, remote?, token? }
+ * @returns {{remote:string, token:string, pinnedFp:(string|null)}}
  */
-async function initRemote(options) {
-  const dryRun = (options && options.dryRun) || false;
+function resolveRemoteTarget(options) {
+  if (options.bundle) {
+    const b = decodeBundle(options.bundle); // throws BundleError on any guard
+    const endpointBase = b.base_url.replace(/\/+$/, "");
+    let remote;
+    if (options.slug) {
+      assertSlugAllowlist(options.slug); // ^[a-z0-9][a-z0-9-]{0,62}$ at parse edge
+      remote = endpointBase + "/v1/" + options.slug;
+    } else {
+      remote = endpointBase + "/v1"; // default alias -> .../v1/tools/... (ADR-005)
+    }
+    return { remote: remote, token: b.token, pinnedFp: b.fp };
+  }
+
+  // Legacy path (F3 backward-compat): {remote, token} provided directly. No pin.
   const remote = options.remote;
   const token = options.token;
-  const actions = [];
-
-  // Step 0: argument validation — LOUD failures.
   if (!remote || !token) {
     throw new Error("--remote and --token are both required");
   }
@@ -301,8 +322,36 @@ async function initRemote(options) {
     throw new Error("invalid --remote URL: " + remote);
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") {
-    throw new Error("--remote URL must be http: or https: (got " + u.protocol + ")");
+    throw new Error(
+      "--remote URL must be http: or https: (got " + u.protocol + ")"
+    );
   }
+  return { remote: remote, token: token, pinnedFp: null };
+}
+
+/**
+ * Remote-mode init: ingest the C1 bundle (or legacy {remote,token}), pin the
+ * server cert by the C2 fingerprint, wire the HTTP hook client into
+ * .claude/settings.json, write credentials to settings.local.json (0600), copy
+ * skills, and validate via a PINNED Ping. No local binary, no .mcp.json, no
+ * database. The CLAUDE.md knowledge block is NOT appended (uni-init owns it);
+ * init prints the /unimatrix-init pointer only (FR-B7 / AC-W1-C6).
+ *
+ * Failures THROW → bin catches → stderr + exit 1 (init is interactive; the one
+ * loud checkpoint, opposite the hook client's exit-0 posture). The token never
+ * appears in any thrown message, stdout, or stderr (NFR-06).
+ *
+ * @param {object} options - { bundle?, slug?, remote?, token?, dryRun, projectDir }
+ */
+async function initRemote(options) {
+  const dryRun = (options && options.dryRun) || false;
+  const actions = [];
+
+  // Step 0: resolve target (bundle path | legacy path) — LOUD on bad input.
+  const target = resolveRemoteTarget(options);
+  const remote = target.remote;
+  const token = target.token;
+  const pinnedFp = target.pinnedFp;
 
   // Step 1: project root (throwing detectProjectRoot — correct for init UX).
   let projectRoot;
@@ -323,9 +372,11 @@ async function initRemote(options) {
     clientPath = path.join(__dirname, "hook-client", "index.js");
   }
 
-  // Step 3: write settings.local.json unimatrix.remote (ADR-006; FR-18).
+  // Step 3: write settings.local.json unimatrix.remote (ADR-006; FR-18). The
+  // pinned fingerprint (bundle path) is persisted so the hook client pins on
+  // every subsequent request.
   actions.push(
-    ...writeRemoteSettingsLocal(projectRoot, remote, token, dryRun)
+    ...writeRemoteSettingsLocal(projectRoot, remote, token, pinnedFp, dryRun)
   );
 
   // Step 3b: gitignore warning (best-effort, no glob engine).
@@ -344,15 +395,20 @@ async function initRemote(options) {
   );
   actions.push(...settingsResult.actions);
 
-  // Step 5: explicit skips with messages (FR-20).
+  // Step 5: copy skills (FR-B7); remote mode DOES copy skills. Do NOT append a
+  // CLAUDE.md knowledge block (uni-init owns it) — the /unimatrix-init pointer
+  // printed by printSummary is the only onboarding pointer (AC-W1-C6).
+  actions.push(...copySkills(projectRoot, dryRun));
   actions.push(
     "Skipped .mcp.json: remote mode does not register a local MCP server"
   );
   actions.push("Skipped binary/database steps: no local binary in remote mode");
 
-  // Step 6: Ping validation — the ONE loud checkpoint (FR-19, ADR-005, R-18).
+  // Step 6: Ping validation over the PINNED TLS connection — the ONE loud
+  // checkpoint (FR-19, ADR-005, R-18). A cert-fingerprint mismatch surfaces
+  // HERE, diagnosably (FR-A11 / AC-CT-ROT).
   if (!dryRun) {
-    const res = await transport.pingForInit(remote, token);
+    const res = await transport.pingForInit(remote, token, undefined, pinnedFp);
     if (!res.ok) {
       throw new Error(
         "Remote validation failed: " +
@@ -362,7 +418,13 @@ async function initRemote(options) {
     }
     actions.push("Ping OK: " + res.message);
   } else {
-    actions.push("[dry-run] Would Ping " + u.host);
+    let host;
+    try {
+      host = new URL(remote).host;
+    } catch (_err) {
+      host = "(invalid URL)";
+    }
+    actions.push("[dry-run] Would Ping " + host);
   }
 
   printSummary(actions, dryRun);
@@ -403,9 +465,9 @@ function printSummary(actions, dryRun) {
 async function init(options) {
   const opts = options || {};
 
-  // Remote mode: --remote / --token routes to the HTTP hook-client wiring.
-  // The local flow below is untouched (C-10 blast radius).
-  if (opts.remote || opts.token) {
+  // Remote mode: --bundle (vnc-034) or --remote / --token (legacy F3) routes to
+  // the HTTP hook-client wiring. The local flow below is untouched (C-10).
+  if (opts.bundle || opts.remote || opts.token) {
     return initRemote(opts);
   }
 
@@ -490,6 +552,7 @@ async function init(options) {
 module.exports = {
   init,
   initRemote,
+  resolveRemoteTarget,
   detectProjectRoot,
   writeMcpJson,
   copySkills,
