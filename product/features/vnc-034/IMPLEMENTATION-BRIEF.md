@@ -57,8 +57,8 @@ Maps architecture §2 components to pseudocode + test-plan files (file paths pop
 | BundleCodec (`client_bundle` + JS mirror) | 1 | pseudocode/bundle-codec.md | test-plan/bundle-codec.md |
 | SlugRouter + StoreResolver/ProjectKey/ProjectSlug (resolve_store seam) | 1 (seam) / 2 (slug resolver) | pseudocode/slug-router.md | test-plan/slug-router.md |
 | DefaultResolver | 1 | pseudocode/default-resolver.md | test-plan/default-resolver.md |
-| ProjectRouter (StoreResolver impl) | 2 | pseudocode/project-router.md | test-plan/project-router.md |
-| ProjectRegistry / lifecycle CLI | 2 | pseudocode/project-registry.md | test-plan/project-registry.md |
+| ProjectRouter (StoreResolver impl) | 2 | _(Wave 2 — deferred, not produced this session)_ | _(deferred)_ |
+| ProjectRegistry / lifecycle CLI | 2 | _(Wave 2 — deferred, not produced this session)_ | _(deferred)_ |
 | RemoteClient (`init --remote`) | 1 | pseudocode/remote-client.md | test-plan/remote-client.md |
 | Container posture (Dockerfile/compose) | 1 | pseudocode/container-posture.md | test-plan/container-posture.md |
 | Cert-rotation runbook (required operator doc — FR-A11) | 1 | (doc deliverable, no pseudocode) | test-plan/cert-rotation-runbook.md |
@@ -69,7 +69,7 @@ Maps architecture §2 components to pseudocode + test-plan files (file paths pop
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
-| C1/C2 cross-stack parity fixtures (Rust oracle → committed corpus) | test fixtures (location per Stage 3a) | #726 server, #725 client, Gate 3c (ADR-002, ADR-006, SR-02) |
+| C1/C2 cross-stack parity fixtures (Rust oracle → committed corpus) | `crates/unimatrix-server/tests/fixtures/c1c2-parity/` (emitted by the single Rust oracle; JS golden never hand-written) | #726 server, #725 client, Gate 3c (ADR-002, ADR-006, SR-02) |
 
 ## Resolved Decisions
 
