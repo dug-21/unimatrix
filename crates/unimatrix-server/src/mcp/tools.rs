@@ -27,7 +27,7 @@ use crate::infra::validation::{
     validated_max_tokens,
 };
 use crate::mcp::response::{
-    format_correct_success, format_deprecate_success, format_duplicate_found,
+    format_correct_success, format_deprecate_success, format_duplicate_found, format_edges_carried,
     format_enroll_success, format_index_table, format_lookup_results, format_quarantine_success,
     format_redirect_summary, format_restore_success, format_search_results, format_single_entry,
     format_status_report, format_store_success, format_store_success_with_note,
@@ -1123,23 +1123,42 @@ impl UnimatrixServer {
         // Edges attach to the NEW (corrected) entry's ID — NOT the deprecated original (AC-02).
         // Phase A validated types and targets before correction. validate_and_write_edges
         // performs self-ref check + writes. Infrastructure failures are logged, not rolled back.
+        //
+        // `now` is the single correction timestamp shared by 8b (params.edges) and 8b′ (carry),
+        // so caller-supplied edges and carried edges land with one created_at (ADR-004 vnc-035).
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         if !correct_edges_slice.is_empty() {
             let corrected_source_id = correct_result.corrected_entry.id;
-            let created_at = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
             if let Err(e) = crate::mcp::edge_write::validate_and_write_edges(
                 &self.entry_store,
                 corrected_source_id,
                 correct_edges_slice,
-                created_at,
+                now,
             )
             .await
             {
                 return Err(rmcp::ErrorData::invalid_params(e.to_string(), None));
             }
         }
+
+        // 8b′. Carry-forward A's eligible outgoing edges onto the new entry (vnc-035).
+        //
+        // Runs AFTER 8b so re-passed params.edges already on B become UNIQUE conflicts here
+        // (not double-counted), and BEFORE 8c so outgoing-carry and incoming-redirect act on
+        // disjoint row sets (A-outgoing vs A-incoming) and never both touch one Contradicts pair
+        // (ADR-001, ADR-005 vnc-035). The correction has already committed (step 8); carry never
+        // rolls it back — run_carry_forward_loop returns CarrySummary by value and cannot error
+        // (ADR-002 vnc-035).
+        let carry_summary = run_carry_forward_loop(
+            &self.entry_store,
+            original_id,
+            correct_result.corrected_entry.id,
+            now,
+        )
+        .await;
 
         // 8c. Auto-redirect incoming edges (vnc-017).
         //
@@ -1164,6 +1183,17 @@ impl UnimatrixServer {
             &correct_result.corrected_entry,
             ctx.format,
         );
+
+        // 10a. Append edges_carried ack (vnc-035, AC-11) — COUNT ONLY, OMITTED when zero.
+        //      carried counts actual inserts (write_graph_edge `true`); a re-passed edge that
+        //      conflicted in 8b′ is NOT counted (SR-02). One logical Contradicts = counted once.
+        //      Appended before the redirect summary so the two ack lines read in pipeline order
+        //      (carry is 8b′, redirect is 8c). The ack is the sole awareness channel — no edge
+        //      identities/content (ADR-003 vnc-035). Presence (>0)/absence (==0) is the contract.
+        if carry_summary.carried > 0 {
+            append_to_first_text(&mut result, &format_edges_carried(carry_summary.carried));
+        }
+
         if let Some(rs) = redirect_summary {
             if let Some(summary_text) = format_redirect_summary(
                 rs.found,
@@ -1174,12 +1204,7 @@ impl UnimatrixServer {
                 rs.total_raw,
             ) {
                 // Append redirect summary line to the first content item's text.
-                if let Some(first) = result.content.first_mut() {
-                    if let rmcp::model::RawContent::Text(ref mut t) = first.raw {
-                        t.text.push('\n');
-                        t.text.push_str(&summary_text);
-                    }
-                }
+                append_to_first_text(&mut result, &summary_text);
             }
         }
         Ok(result)
@@ -4800,6 +4825,300 @@ pub(super) async fn run_redirect_loop(
         truncated,
         total_raw,
     })
+}
+
+// ---------------------------------------------------------------------------
+// vnc-035: carry_forward_loop helpers (sibling of run_redirect_loop above)
+// ---------------------------------------------------------------------------
+
+/// Append a newline-separated line to the first text content item of a `CallToolResult`.
+///
+/// Shared by the `context_correct` ack appends (vnc-035 `edges_carried`, vnc-017 redirect
+/// summary). No-op if the result has no leading text content. Factored out so each call site
+/// is a single guard rather than three nested `if let`s (clippy::collapsible_if).
+fn append_to_first_text(result: &mut CallToolResult, line: &str) {
+    if let Some(rmcp::model::RawContent::Text(t)) = result.content.first_mut().map(|c| &mut c.raw) {
+        t.text.push('\n');
+        t.text.push_str(line);
+    }
+}
+
+/// Accumulator returned by `run_carry_forward_loop` (vnc-035, step 8b′).
+///
+/// Returned BY VALUE (never `Err`) so the handler always observes `found`/`failed`
+/// for logging and `carried` for the `edges_carried` ack. The by-value, no-error
+/// contract structurally guarantees the committed correction is never rolled back
+/// (NFR-01 / ADR-002 vnc-035).
+///
+/// - `found`:   eligible outgoing rows returned by `query_outgoing_edges` (loop input count).
+/// - `carried`: `write_graph_edge` `true` returns — genuinely new carried edges. THE
+///   `edges_carried` ack value. A `Contradicts` logical edge (two rows) counts ONE (forward
+///   direction only — ADR-005).
+/// - `failed`:  distinguished SQL-error writes — the SR-01 observable failure signal (ADR-002).
+// pub(super) for test accessibility — not exported outside this crate module.
+// `found`/`failed` are consumed by the loop's info! log and by tests; the handler reads only
+// `carried`. They are part of the ADR-003 count contract — silence non-test dead-code analysis
+// (which ignores #[cfg(test)] reads of pub(super) fields) without dropping the contract fields.
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct CarrySummary {
+    pub(super) found: usize,
+    pub(super) carried: usize,
+    pub(super) failed: usize,
+}
+
+/// Classification of a single carry write's outcome (ADR-003 vnc-035).
+///
+/// `write_graph_edge` collapses UNIQUE-conflict and SQL-error both to `false`
+/// (pattern #4041). The loop cannot distinguish them from the bool alone, so
+/// `carry_write_edge` returns this richer outcome: in production every `false`
+/// is treated as a UNIQUE conflict (the overwhelming real case), and the only
+/// `SqlError` arises from the `#[cfg(test)]` fault-injection seam — which is the
+/// sole place a `false`-SQL-error is known to the loop deterministically (the
+/// AC-07 test drives it). `carried` keys strictly off `Inserted`, so it is exact
+/// regardless of `failed` precision.
+// `SqlError` is constructed only via the `#[cfg(test)]` fault-injection seam (ADR-003 option a):
+// production `false` returns are all treated as `UniqueConflict`. Silence non-test dead-code.
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CarryWriteOutcome {
+    /// `write_graph_edge` returned `true` — genuinely new row inserted.
+    Inserted,
+    /// `write_graph_edge` returned `false` on the Ok path — UNIQUE conflict; idempotent.
+    UniqueConflict,
+    /// SQL-error path (production: internal warn already fired; test: injected). Counts `failed`.
+    SqlError,
+}
+
+/// Per-edge carry write indirection that hosts the AC-07 fault-injection seam.
+///
+/// Production path: delegates straight to `write_graph_edge` and maps its bool to
+/// `Inserted` (`true`) / `UniqueConflict` (`false`). Zero overhead and no extra
+/// branch when not compiled for test (the seam block is `#[cfg(test)]`-gated).
+///
+/// Test path: a thread-local Nth-call counter (see `carry_fault`) can drive exactly
+/// ONE mid-loop write to a SQL-error, returning `SqlError` and emitting the same
+/// `warn!` shape as `write_graph_edge`'s internal SQL-error path. Earlier writes
+/// complete normally and persist on B (assertion 3 of the mandatory test), and the
+/// loop CONTINUES past the injected failure (R-01 / SR-01 / lesson #4473).
+#[allow(clippy::too_many_arguments)]
+async fn carry_write_edge(
+    store: &unimatrix_core::Store,
+    source_id: u64,
+    target_id: u64,
+    relation_type: &str,
+    weight: f32,
+    created_at: u64,
+    source: &str,
+    metadata: &str,
+) -> CarryWriteOutcome {
+    #[cfg(test)]
+    {
+        if carry_fault::should_fail_next() {
+            // Simulate write_graph_edge's SQL-error false-path: emit the same warn shape,
+            // return SqlError → loop increments `failed`. No DB row is written.
+            tracing::warn!(
+                source_id = source_id,
+                target_id = target_id,
+                relation_type = relation_type,
+                source = source,
+                "write_graph_edge: failed to write graph edge (fault-injected, vnc-035 AC-07)"
+            );
+            return CarryWriteOutcome::SqlError;
+        }
+    }
+
+    let inserted = crate::services::nli_detection::write_graph_edge(
+        store,
+        source_id,
+        target_id,
+        relation_type,
+        weight,
+        created_at,
+        source,
+        metadata,
+    )
+    .await;
+
+    if inserted {
+        CarryWriteOutcome::Inserted
+    } else {
+        // false on the Ok path is a UNIQUE conflict (idempotent); a false on the Err path
+        // already warned inside write_graph_edge. The bool cannot distinguish them — in
+        // production we treat it as UniqueConflict (the dominant case); SqlError is surfaced
+        // only via the test seam above. `carried` is unaffected either way (keys off Inserted).
+        CarryWriteOutcome::UniqueConflict
+    }
+}
+
+/// `#[cfg(test)]` fault-injection registry for the carry write loop (AC-07 seam).
+///
+/// A thread-local Nth-call counter: arm it with the 1-based index of the carry write
+/// that should fail, and `should_fail_next()` returns `true` exactly once — on that
+/// write — so edges before it persist and edges after it still attempt (R-01).
+#[cfg(test)]
+pub(super) mod carry_fault {
+    use std::cell::Cell;
+
+    thread_local! {
+        /// 1-based index of the write to fail; 0 = disarmed. Decrements on every call;
+        /// fires (and disarms) when it reaches 1.
+        static FAIL_ON_NTH: Cell<usize> = const { Cell::new(0) };
+    }
+
+    /// Arm the seam to fail the `nth` (1-based) carry write on this thread.
+    pub(super) fn arm_fail_on_nth(nth: usize) {
+        FAIL_ON_NTH.with(|c| c.set(nth));
+    }
+
+    /// Disarm the seam (clear any pending injection). Call in test teardown for hygiene.
+    pub(super) fn disarm() {
+        FAIL_ON_NTH.with(|c| c.set(0));
+    }
+
+    /// Returns `true` exactly once — on the armed Nth carry write — then disarms.
+    /// `false` (and no state change) when disarmed.
+    pub(super) fn should_fail_next() -> bool {
+        FAIL_ON_NTH.with(|c| {
+            let remaining = c.get();
+            if remaining == 0 {
+                return false;
+            }
+            if remaining == 1 {
+                c.set(0);
+                true
+            } else {
+                c.set(remaining - 1);
+                false
+            }
+        })
+    }
+}
+
+/// Execute the carry-forward loop for `original_id`'s outgoing edges (step 8b′, vnc-035).
+///
+/// Called after `correct_entry` commits (step 8) and the `params.edges` write (step 8b),
+/// before the incoming redirect loop (step 8c). Queries A's eligible outgoing edges
+/// (`query_outgoing_edges` — the SQL predicate is the single source of truth for eligibility,
+/// ADR-002) and copies each onto the freshly-Active new entry B.
+///
+/// OWNS its own write loop (ADR-003 / R-08): it calls `write_graph_edge` (via `carry_write_edge`)
+/// directly and captures each per-edge bool, because `validate_and_write_edges` discards it and
+/// cannot report a carry count. `carried` counts genuine inserts (`true`) ONLY — UNIQUE conflicts
+/// and SQL errors are not carried (pattern #4041).
+///
+/// No outbound ceiling — ALL eligible edges carry (AC-09, unlike `run_redirect_loop`'s
+/// `REDIRECT_CEILING`); eligibility (the SQL predicate) is the sole degree bound (SR-04).
+///
+/// Warn-and-continue posture (NFR-01 / ADR-002): returns `CarrySummary` by value, NEVER `Err`,
+/// and never rolls back the committed correction. `query_outgoing_edges` Err → `CarrySummary{0,0,0}`
+/// + warn; per-edge SQL error → `failed++` + warn (inside `write_graph_edge` / the seam) + continue.
+///
+/// `created_at` is the correction's `now` (re-stamped) — NOT the source row's `created_at`
+/// (ADR-004 / R-11). Carried edges are byte-indistinguishable from fresh agent declarations:
+/// `source`/`created_by = "agent"`, `weight = 1.0`, `bootstrap_only = 0`, `metadata = ""`.
+// pub(super) for test accessibility — not exported outside this crate module.
+pub(super) async fn run_carry_forward_loop(
+    store: &unimatrix_core::Store,
+    original_id: u64,
+    new_entry_id: u64,
+    created_at: u64,
+) -> CarrySummary {
+    use crate::mcp::edge_write::EDGE_SOURCE_AGENT;
+    use unimatrix_engine::graph::RelationType;
+
+    // ── Query eligible outgoing edges (single-source predicate lives in the SQL) ──────────
+    let rows = match store.query_outgoing_edges(original_id).await {
+        Err(e) => {
+            // ADR-002 / SR-01: correction already committed. Warn, return empty summary.
+            // Mirrors run_redirect_loop returning None on query failure.
+            tracing::warn!(
+                entry_id = original_id,
+                error = %e,
+                "vnc-035: query_outgoing_edges failed; skipping carry-forward"
+            );
+            return CarrySummary::default();
+        }
+        Ok(rows) if rows.is_empty() => {
+            // Zero eligible outgoing edges — nothing to carry; no log (mirrors vnc-017 silence).
+            return CarrySummary::default();
+        }
+        Ok(rows) => rows,
+    };
+
+    // NO CEILING (AC-09) — all eligible rows carry; the SQL predicate is the sole degree bound.
+    let found = rows.len();
+    let mut carried: usize = 0;
+    let mut failed: usize = 0;
+
+    for row in &rows {
+        // The stored relation_type came from a prior validated write; from_str should succeed.
+        // Defensive (NFR-05): if it does NOT resolve, skip — do not panic, do not count.
+        let Some(rel) = RelationType::from_str(&row.relation_type) else {
+            tracing::warn!(
+                target_id = row.target_id,
+                relation_type = %row.relation_type,
+                "vnc-035: carried edge has unresolvable relation_type; skipping"
+            );
+            continue;
+        };
+
+        // ── Forward direction write — the counted direction (ADR-003) ─────────────────────
+        let outcome = carry_write_edge(
+            store,
+            new_entry_id,
+            row.target_id,
+            rel.as_str(),
+            1.0,               // weight (ADR-004)
+            created_at,        // correction `now` — NOT preserved (ADR-004 / R-11)
+            EDGE_SOURCE_AGENT, // source AND created_by = "agent" (FR-11)
+            "",                // metadata = "" (ADR-004)
+        )
+        .await;
+
+        match outcome {
+            CarryWriteOutcome::Inserted => carried += 1,
+            CarryWriteOutcome::UniqueConflict => { /* already on B from 8b or duplicate; not counted, not failed */
+            }
+            CarryWriteOutcome::SqlError => failed += 1,
+        }
+
+        // ── Contradicts: write the reverse direction too — ONE logical edge, NOT counted ──
+        // Reuse validate_and_write_edges' bidirectional STRUCTURE (edge_write.rs:211), inline
+        // here so the forward bool stays available for counting (ADR-005). Source validation is
+        // NOT needed: the carry source is B, freshly Active (ADR-005 §3). A reverse SQL-error is
+        // the accepted partial-write posture (ADR-003) — warn already fired; `failed` tracks
+        // logical-edge copy failures via the forward write only, so the reverse is not added.
+        if rel == RelationType::Contradicts {
+            let _reverse = carry_write_edge(
+                store,
+                row.target_id,
+                new_entry_id,
+                "Contradicts",
+                1.0,
+                created_at,
+                EDGE_SOURCE_AGENT,
+                "",
+            )
+            .await;
+        }
+    }
+
+    // Completion log (mirrors run_redirect_loop's single post-loop info log).
+    tracing::info!(
+        entry_id = original_id,
+        new_entry_id = new_entry_id,
+        found = found,
+        carried = carried,
+        failed = failed,
+        "vnc-035: carry-forward loop complete"
+    );
+
+    CarrySummary {
+        found,
+        carried,
+        failed,
+    }
 }
 
 #[cfg(test)]
@@ -10258,5 +10577,660 @@ mod redirect_loop_tests {
             rs.found, 1,
             "AC-04: found must be 1 (one incoming edge was processed)"
         );
+    }
+}
+
+// vnc-035 carry-forward loop tests. Import run_carry_forward_loop / CarrySummary / the
+// fault seam by path (Rust glob imports exclude pub(super) items). Mirrors the
+// redirect_loop_tests module above; helpers are re-declared here rather than shared because
+// the redirect module's helpers are private to it (cumulative infra — same shape, NFR-06).
+#[cfg(test)]
+mod carry_forward_loop_tests {
+    use crate::mcp::tools::{carry_fault, run_carry_forward_loop};
+
+    /// Open a test store and insert a basic Active entry. Returns (store, entry_id).
+    async fn open_store_and_insert_active(
+        dir: &tempfile::TempDir,
+        topic: &str,
+    ) -> (std::sync::Arc<unimatrix_store::SqlxStore>, u64) {
+        let path = dir.path().join(format!("{topic}.db"));
+        let store = std::sync::Arc::new(
+            unimatrix_store::SqlxStore::open(&path, unimatrix_store::PoolConfig::default())
+                .await
+                .expect("open test store"),
+        );
+        let entry_id = store
+            .insert(unimatrix_store::test_helpers::TestEntry::new(topic, "decision").build())
+            .await
+            .expect("insert active entry");
+        (store, entry_id)
+    }
+
+    /// Insert a fresh Active entry and return its id (used as edge targets / the new entry B).
+    async fn insert_active(store: &unimatrix_store::SqlxStore, topic: &str) -> u64 {
+        store
+            .insert(unimatrix_store::test_helpers::TestEntry::new(topic, "decision").build())
+            .await
+            .expect("insert active entry")
+    }
+
+    /// Insert a graph_edge row with explicit created_at / created_by / source (so metadata
+    /// preservation can be distinguished from re-stamping in the R-11 test).
+    #[allow(clippy::too_many_arguments)]
+    async fn insert_edge_full(
+        store: &unimatrix_store::SqlxStore,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+        created_at: u64,
+        created_by: &str,
+        source: &str,
+    ) {
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges \
+             (source_id, target_id, relation_type, weight, created_at, created_by, source, \
+              bootstrap_only, metadata) \
+             VALUES (?1, ?2, ?3, 1.0, ?4, ?5, ?6, 0, '')",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .bind(created_at as i64)
+        .bind(created_by)
+        .bind(source)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert edge full");
+    }
+
+    /// Insert an eligible agent-declared edge with a fixed past created_at.
+    async fn insert_edge(
+        store: &unimatrix_store::SqlxStore,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+    ) {
+        insert_edge_full(
+            store,
+            source_id,
+            target_id,
+            relation_type,
+            1000,
+            "agent",
+            "agent",
+        )
+        .await;
+    }
+
+    /// Check whether a graph_edge row exists by (source_id, target_id, relation_type).
+    async fn edge_exists(
+        store: &unimatrix_store::SqlxStore,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+    ) -> bool {
+        let row = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM graph_edges \
+             WHERE source_id = ?1 AND target_id = ?2 AND relation_type = ?3",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("edge_exists query");
+        row > 0
+    }
+
+    /// Count rows for an exact (source_id, target_id, relation_type) triple.
+    async fn edge_row_count(
+        store: &unimatrix_store::SqlxStore,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+    ) -> i64 {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM graph_edges \
+             WHERE source_id = ?1 AND target_id = ?2 AND relation_type = ?3",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("edge_row_count query")
+    }
+
+    /// Count all outgoing rows from a source (any relation).
+    async fn outgoing_count(store: &unimatrix_store::SqlxStore, source_id: u64) -> i64 {
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM graph_edges WHERE source_id = ?1")
+            .bind(source_id as i64)
+            .fetch_one(store.write_pool_server())
+            .await
+            .expect("outgoing_count query")
+    }
+
+    /// Read (created_at, created_by, source, weight, bootstrap_only, metadata) for one edge row.
+    async fn read_edge_meta(
+        store: &unimatrix_store::SqlxStore,
+        source_id: u64,
+        target_id: u64,
+        relation_type: &str,
+    ) -> (i64, String, String, f64, i64, String) {
+        let row = sqlx::query_as::<_, (i64, String, String, f64, i64, Option<String>)>(
+            "SELECT created_at, created_by, source, weight, bootstrap_only, metadata \
+             FROM graph_edges \
+             WHERE source_id = ?1 AND target_id = ?2 AND relation_type = ?3",
+        )
+        .bind(source_id as i64)
+        .bind(target_id as i64)
+        .bind(relation_type)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("read_edge_meta query");
+        (row.0, row.1, row.2, row.3, row.4, row.5.unwrap_or_default())
+    }
+
+    /// Store-level correction (no ONNX: dummy data_id=0, embedding_dim=0).
+    /// Returns (deprecated_original, corrected_entry) — mirrors correct_entry's tuple order.
+    async fn do_correct_entry(
+        store: &unimatrix_store::SqlxStore,
+        original_id: u64,
+        new_content: &str,
+    ) -> (unimatrix_store::EntryRecord, unimatrix_store::EntryRecord) {
+        let original = store.get(original_id).await.expect("get original");
+        let correction = unimatrix_store::NewEntry {
+            title: original.title.clone(),
+            content: new_content.to_string(),
+            topic: original.topic.clone(),
+            category: original.category.clone(),
+            tags: original.tags.clone(),
+            source: original.source.clone(),
+            status: unimatrix_core::Status::Active,
+            created_by: "test-agent".to_string(),
+            feature_cycle: original.feature_cycle.clone(),
+            trust_source: "test".to_string(),
+        };
+        store
+            .correct_entry(original_id, correction, 0, 0)
+            .await
+            .expect("correct_entry")
+    }
+
+    fn now_secs() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs()
+    }
+
+    // ───────────────────────── R-01 (Critical) — MANDATORY ─────────────────────────
+
+    /// `test_carry_forward_continues_on_edge_copy_failure` (AC-07 / R-01 / SR-01 /
+    /// lesson #4473) — MANDATORY, verified BY NAME at Gate 3b.
+    ///
+    /// Forces ONE mid-loop carry write to a SQL-error via the Nth-call fault seam so the
+    /// first edge persists and a later edge fails. Asserts all four required outcomes.
+    #[tokio::test]
+    #[tracing_test::traced_test]
+    async fn test_carry_forward_continues_on_edge_copy_failure() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carryfail").await;
+        let x = insert_active(&store, "carryfail-x").await;
+        let y = insert_active(&store, "carryfail-y").await;
+
+        // A has ≥2 eligible outgoing edges.
+        insert_edge(&store, original_id, x, "Supports").await;
+        insert_edge(&store, original_id, y, "Supports").await;
+
+        // Commit the correction (step 8) BEFORE carry — proves no rollback on carry failure.
+        let (deprecated, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        // Arm the seam to fail the 2nd carry write (1st succeeds and persists; loop continues).
+        carry_fault::arm_fail_on_nth(2);
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        carry_fault::disarm();
+
+        // (1) Correction returns success — the carry failure never propagates as an error.
+        //     The handler reads CarrySummary by value; do_correct_entry already returned Ok.
+        assert!(
+            deprecated.id == original_id,
+            "correction (step 8) succeeded"
+        );
+
+        // (2) New entry Active + original Deprecated — transaction intact, not rolled back.
+        let b = store.get(new_id).await.expect("get B");
+        let a = store.get(original_id).await.expect("get A");
+        assert_eq!(b.status, unimatrix_core::Status::Active, "B must be Active");
+        assert_eq!(
+            a.status,
+            unimatrix_core::Status::Deprecated,
+            "A must be Deprecated"
+        );
+
+        // (3) Edges copied BEFORE the failing one persist on B. Exactly one of the two
+        //     forward edges succeeded (the other was fault-injected to SqlError).
+        let persisted = outgoing_count(&store, new_id).await;
+        assert_eq!(
+            persisted, 1,
+            "exactly one carried edge persists on B (the write before the injected failure)"
+        );
+
+        // (4) CarrySummary.failed incremented AND a tracing::warn! fired.
+        assert!(
+            summary.failed >= 1,
+            "summary.failed must be incremented (>= 1) by the injected SQL-error"
+        );
+        assert_eq!(summary.found, 2, "both eligible rows were processed");
+        assert_eq!(
+            summary.carried, 1,
+            "only the successful write counts as carried"
+        );
+        assert!(
+            logs_contain("fault-injected, vnc-035 AC-07"),
+            "a tracing::warn! must fire on the failed carry write"
+        );
+    }
+
+    /// `test_carry_query_err_returns_empty_summary` (R-01 #2) — REQUIRED.
+    ///
+    /// Drive `query_outgoing_edges` itself to Err via the full table-rename-to-view seam
+    /// (a SELECT against the column-mismatched view fails). Assert CarrySummary{0,0,0},
+    /// a warn fired, and (correction having been committed first) it still stands.
+    #[tokio::test]
+    #[tracing_test::traced_test]
+    async fn test_carry_query_err_returns_empty_summary() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carryqerr").await;
+        let x = insert_active(&store, "carryqerr-x").await;
+        insert_edge(&store, original_id, x, "Supports").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        // Break the read path: rename the real table and replace with a view that selects a
+        // non-existent column, so query_outgoing_edges' SELECT errors at decode/execute.
+        sqlx::query("ALTER TABLE graph_edges RENAME TO graph_edges_broken")
+            .execute(store.write_pool_server())
+            .await
+            .expect("rename graph_edges");
+        sqlx::query(
+            "CREATE VIEW graph_edges AS \
+             SELECT source_id, target_id, relation_type, weight, \
+                    created_at AS missing_alias_break, created_by, source, bootstrap_only, metadata \
+             FROM graph_edges_broken",
+        )
+        .execute(store.write_pool_server())
+        .await
+        .expect("create breaking view");
+
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+
+        assert_eq!(summary.found, 0, "query Err → found 0");
+        assert_eq!(summary.carried, 0, "query Err → carried 0");
+        assert_eq!(
+            summary.failed, 0,
+            "query Err → failed 0 (CarrySummary default)"
+        );
+        assert!(
+            logs_contain("query_outgoing_edges failed"),
+            "a tracing::warn! must fire when query_outgoing_edges returns Err"
+        );
+
+        // Correction still stands (committed before carry).
+        let a = store.get(original_id).await.expect("get A");
+        assert_eq!(a.status, unimatrix_core::Status::Deprecated);
+    }
+
+    /// `test_correction_committed_before_carry` (R-01 #3 / NFR-01) — REQUIRED.
+    /// Explicit ordering guard: B Active + A Deprecated even though a carry write failed.
+    #[tokio::test]
+    async fn test_correction_committed_before_carry() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carrycommit").await;
+        let x = insert_active(&store, "carrycommit-x").await;
+        insert_edge(&store, original_id, x, "Supports").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        carry_fault::arm_fail_on_nth(1); // fail the only carry write
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        carry_fault::disarm();
+
+        assert!(
+            summary.failed >= 1,
+            "the single carry write was forced to fail"
+        );
+        let b = store.get(new_id).await.expect("get B");
+        let a = store.get(original_id).await.expect("get A");
+        assert_eq!(b.status, unimatrix_core::Status::Active);
+        assert_eq!(a.status, unimatrix_core::Status::Deprecated);
+    }
+
+    // ───────────────────────── R-02 — count contract ─────────────────────────
+
+    /// `test_carry_count_keys_off_true_only` (R-02 #2, R-08) — REQUIRED.
+    #[tokio::test]
+    async fn test_carry_count_keys_off_true_only() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carrycount").await;
+        let x = insert_active(&store, "cc-x").await;
+        let y = insert_active(&store, "cc-y").await;
+        let z = insert_active(&store, "cc-z").await;
+        insert_edge(&store, original_id, x, "Supports").await;
+        insert_edge(&store, original_id, y, "Advances").await;
+        insert_edge(&store, original_id, z, "Prerequisite").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        assert_eq!(summary.found, 3);
+        assert_eq!(summary.carried, 3, "all 3 new edges are genuine inserts");
+        assert_eq!(summary.failed, 0);
+        assert_eq!(
+            outgoing_count(&store, new_id).await,
+            3,
+            "exactly 3 rows on B"
+        );
+    }
+
+    /// `test_carry_count_idempotent_repass` (R-02 #1, AC-08a) — REQUIRED.
+    /// A triple already present on B (simulating 8b's params.edges write) → UNIQUE conflict
+    /// in carry → NOT counted; one row only.
+    #[tokio::test]
+    async fn test_carry_count_idempotent_repass() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carryidem").await;
+        let x = insert_active(&store, "ci-x").await;
+        insert_edge(&store, original_id, x, "Supports").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        // Pre-write the same triple onto B (simulates 8b writing params.edges = [(X, Supports)]).
+        insert_edge(&store, new_id, x, "Supports").await;
+
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        assert_eq!(summary.found, 1);
+        assert_eq!(
+            summary.carried, 0,
+            "the re-passed triple is a UNIQUE conflict in carry → not counted"
+        );
+        assert_eq!(summary.failed, 0, "a UNIQUE conflict is not a failure");
+        assert_eq!(
+            edge_row_count(&store, new_id, x, "Supports").await,
+            1,
+            "no duplicate row for the re-passed triple"
+        );
+    }
+
+    /// `test_carried_edge_metadata_is_fresh_agent` (R-11) — REQUIRED.
+    /// Carried row re-stamps created_at = now and source/created_by = "agent"; the source row's
+    /// past created_at / different author are NOT preserved.
+    #[tokio::test]
+    async fn test_carried_edge_metadata_is_fresh_agent() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carrymeta").await;
+        let x = insert_active(&store, "cm-x").await;
+        // Distinct PAST created_at and a non-agent author on the source edge.
+        insert_edge_full(&store, original_id, x, "Supports", 1000, "human", "human").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        let now_boundary = now_secs();
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_boundary).await;
+        assert_eq!(summary.carried, 1);
+
+        let (created_at, created_by, source, weight, bootstrap_only, metadata) =
+            read_edge_meta(&store, new_id, x, "Supports").await;
+        assert!(
+            created_at as u64 >= now_boundary,
+            "carried created_at must be the correction now ({now_boundary}), not the source's 1000; got {created_at}"
+        );
+        assert_eq!(created_by, "agent", "created_by re-stamped to agent");
+        assert_eq!(source, "agent", "source re-stamped to agent");
+        assert_eq!(weight, 1.0, "weight = 1.0");
+        assert_eq!(bootstrap_only, 0, "bootstrap_only = 0");
+        assert_eq!(metadata, "", "metadata = empty");
+    }
+
+    // ───────────────────────── R-05 — Contradicts bidirectional ─────────────────────────
+
+    /// `test_carry_contradicts_both_directions_exactly_once` (R-05 #1, AC-06) — REQUIRED.
+    #[tokio::test]
+    async fn test_carry_contradicts_both_directions_exactly_once() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carrycontra").await;
+        let x = insert_active(&store, "cn-x").await;
+        insert_edge(&store, original_id, x, "Contradicts").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+
+        assert!(
+            edge_exists(&store, new_id, x, "Contradicts").await,
+            "B→X exists"
+        );
+        assert!(
+            edge_exists(&store, x, new_id, "Contradicts").await,
+            "X→B exists"
+        );
+        assert_eq!(
+            edge_row_count(&store, new_id, x, "Contradicts").await,
+            1,
+            "B→X once"
+        );
+        assert_eq!(
+            edge_row_count(&store, x, new_id, "Contradicts").await,
+            1,
+            "X→B once"
+        );
+    }
+
+    /// `test_carry_contradicts_counts_one` (R-05 #3) — REQUIRED.
+    #[tokio::test]
+    async fn test_carry_contradicts_counts_one() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carrycontra1").await;
+        let x = insert_active(&store, "cn1-x").await;
+        insert_edge(&store, original_id, x, "Contradicts").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        assert_eq!(
+            summary.found, 1,
+            "one outgoing row (the forward Contradicts)"
+        );
+        assert_eq!(
+            summary.carried, 1,
+            "one logical Contradicts = two rows but counts ONCE (forward only)"
+        );
+    }
+
+    /// `test_carry_redirect_contradicts_converge` (R-05 #2) — REQUIRED (loop-level half).
+    /// Contradicts(A,X) stored as A→X (outgoing) and X→A (incoming). Carry then redirect in
+    /// pipeline order; the X→B row written by both converges to ONE via INSERT OR IGNORE.
+    #[tokio::test]
+    async fn test_carry_redirect_contradicts_converge() {
+        use crate::mcp::tools::run_redirect_loop;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carryconv").await;
+        let x = insert_active(&store, "cv-x").await;
+        // Both rows of the Contradicts pair.
+        insert_edge(&store, original_id, x, "Contradicts").await; // A→X (outgoing)
+        insert_edge(&store, x, original_id, "Contradicts").await; // X→A (incoming)
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        // Pipeline order: 8b′ carry, then 8c redirect.
+        run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        let _ = run_redirect_loop(&store, original_id, new_id).await;
+
+        // Final net Contradicts(B,X): both directions exactly once, no orphan, no duplicate.
+        assert_eq!(
+            edge_row_count(&store, new_id, x, "Contradicts").await,
+            1,
+            "B→X once"
+        );
+        assert_eq!(
+            edge_row_count(&store, x, new_id, "Contradicts").await,
+            1,
+            "X→B once"
+        );
+        // Old rows rehomed off A: no A→X remains (carry re-homed it; redirect moved X→A).
+        assert!(
+            !edge_exists(&store, x, original_id, "Contradicts").await,
+            "X→A redirected away from deprecated A"
+        );
+    }
+
+    /// `test_self_referential_edge_rejected_at_write` (R-06 #1) — REQUIRED.
+    /// Regression guard on the existing vnc-015 self-ref rejection in validate_and_write_edges.
+    #[tokio::test]
+    async fn test_self_referential_edge_rejected_at_write() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, a) = open_store_and_insert_active(&dir, "carryselfref").await;
+        let edges = vec![crate::mcp::tools::EdgeInput {
+            target_id: a,
+            edge_type: "Supports".to_string(),
+        }];
+        let result =
+            crate::mcp::edge_write::validate_and_write_edges(&store, a, &edges, now_secs()).await;
+        assert!(
+            result.is_err(),
+            "a self-referential edge (source == target) must be rejected at write time"
+        );
+    }
+
+    /// `test_carry_redirect_no_double_process_on_self_loop` (R-06 #2, defensive) — REQUIRED.
+    /// If a self-loop A→A is force-inserted (bypassing the write guard), running both loops
+    /// must not panic or double-process; they terminate cleanly.
+    #[tokio::test]
+    async fn test_carry_redirect_no_double_process_on_self_loop() {
+        use crate::mcp::tools::run_redirect_loop;
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carryselfloop").await;
+        // Force-insert a self-loop bypassing validate_and_write_edges' guard.
+        insert_edge(&store, original_id, original_id, "Supports").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        // Both loops must terminate cleanly (no panic).
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        let _ = run_redirect_loop(&store, original_id, new_id).await;
+        // The self-loop A→A is in A's outgoing set; carry re-homes it as B→A (target stays A).
+        assert_eq!(
+            summary.found, 1,
+            "the self-loop row is the single outgoing edge"
+        );
+    }
+
+    // ───────────────────────── AC-09 — no outgoing ceiling ─────────────────────────
+
+    /// `test_carry_no_ceiling_all_carry_above_50` (AC-09 loop half) — REQUIRED.
+    #[tokio::test]
+    async fn test_carry_no_ceiling_all_carry_above_50() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carrynocap").await;
+        for i in 0..60u64 {
+            let t = insert_active(&store, &format!("nocap-{i}")).await;
+            insert_edge(&store, original_id, t, "Supports").await;
+        }
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        assert_eq!(
+            summary.found, 60,
+            "all 60 eligible rows found (no ceiling cap)"
+        );
+        assert_eq!(summary.carried, 60, "all 60 carry — no truncation");
+        assert_eq!(outgoing_count(&store, new_id).await, 60, "60 rows on B");
+    }
+
+    // ───────────────────────── AC-01/AC-02/AC-04 — carry-by-default behavior ─────────────────────────
+
+    /// `test_carry_eligible_attach_to_new_id_not_original` (AC-01/AC-02) — REQUIRED.
+    #[tokio::test]
+    async fn test_carry_eligible_attach_to_new_id_not_original() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carrydefault").await;
+        let x = insert_active(&store, "cd-x").await;
+        let y = insert_active(&store, "cd-y").await;
+        insert_edge(&store, original_id, x, "Supports").await;
+        insert_edge(&store, original_id, y, "Advances").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+
+        // AC-01: carried onto B.
+        assert!(edge_exists(&store, new_id, x, "Supports").await);
+        assert!(edge_exists(&store, new_id, y, "Advances").await);
+        // AC-02: still on A too (carry copies, it does not move outgoing edges) — but the
+        // carried rows must exist on B and none must be created with source_id missing.
+        assert_eq!(
+            edge_row_count(&store, new_id, x, "Supports").await,
+            1,
+            "carried row attaches to the new id B"
+        );
+    }
+
+    /// `test_carry_excludes_derived_classes` (AC-04 loop half) — REQUIRED.
+    /// The SQL predicate excludes Supersedes/CoAccess/Informs; only the agent-declared
+    /// Supports carries. (Predicate unit half lives in read_outgoing.rs.)
+    #[tokio::test]
+    async fn test_carry_excludes_derived_classes() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carryderiv").await;
+        let s = insert_active(&store, "cd-s").await;
+        let su = insert_active(&store, "cd-su").await;
+        let co = insert_active(&store, "cd-co").await;
+        let inf = insert_active(&store, "cd-inf").await;
+        insert_edge(&store, original_id, s, "Supports").await;
+        insert_edge(&store, original_id, su, "Supersedes").await;
+        insert_edge(&store, original_id, co, "CoAccess").await;
+        insert_edge(&store, original_id, inf, "Informs").await;
+
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        assert_eq!(
+            summary.found, 1,
+            "only the agent-declared Supports is eligible"
+        );
+        assert_eq!(summary.carried, 1);
+        assert!(edge_exists(&store, new_id, s, "Supports").await);
+        assert!(!edge_exists(&store, new_id, su, "Supersedes").await);
+        assert!(!edge_exists(&store, new_id, co, "CoAccess").await);
+        assert!(!edge_exists(&store, new_id, inf, "Informs").await);
+    }
+
+    /// `test_carry_empty_when_no_eligible_edges` (zero-carry) — REQUIRED.
+    /// No eligible outgoing edges → CarrySummary{0,0,0} (drives the handler's ack-omission).
+    #[tokio::test]
+    async fn test_carry_empty_when_no_eligible_edges() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "carryempty").await;
+        let (_, corrected) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = corrected.id;
+
+        let summary = run_carry_forward_loop(&store, original_id, new_id, now_secs()).await;
+        assert_eq!(summary.found, 0);
+        assert_eq!(summary.carried, 0);
+        assert_eq!(summary.failed, 0);
     }
 }
