@@ -253,6 +253,14 @@ A goal starts thin and matures as research completes and features emerge. The co
 3. Apply via `context_correct`.
 4. Update `PRODUCT-VISION.md` if the goals table needs to reflect the change.
 
+> **Edges carry forward automatically (vnc-035).** `context_correct` copies the original entry's
+> eligible outgoing edges — including a goal's `Advances → {vision_root}` link — onto the new
+> entry **by default**. You do NOT need to re-pass them in `edges`; the response reports an
+> `edges_carried` count so you can confirm the link survived. To intentionally **drop** an edge
+> that no longer holds, use `context_edge remove`/`redirect` with `source_id = {the new entry id}`
+> — the only Active source after correction. Never target the Deprecated original (the pre-correction
+> id): it is frozen and rejects edits as a frozen source.
+
 **What triggers a goal update:**
 - Research completes that reshapes the goal's direction or adds success criteria
 - A strategic direction changes — a goal is no longer relevant or a new one emerges
