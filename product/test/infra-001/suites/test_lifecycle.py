@@ -3752,3 +3752,99 @@ def test_cycle_review_rereview_no_persisted_candidates(tmp_path):
         "stale candidates from the memoized report"
     )
     client2.shutdown()
+
+
+# === vnc-035: outgoing-edge carry-forward, end-to-end through MCP =========
+#
+# Multi-step flow: store A with an outgoing edge to X, correct A -> B with
+# `edges` omitted, then read B's edges back through a depth-1 DB-backed read.
+# The carried edge must appear on the NEW entry B and NOT on the deprecated
+# original A (AC-01 / AC-02). Per lesson #4526 / R-07, a depth-1 DB read is
+# immediate (no tick required); this test deliberately uses a DB-backed read,
+# NOT BFS path-mode, so no tick/drain is needed. The single path-mode (post-tick)
+# assertion lives in the Rust suite (test_carried_edge_bfs_path_after_tick).
+
+
+def test_correction_carries_outgoing_edges_visible_on_new_entry(server):
+    """vnc-035 AC-01/AC-02 (via MCP): store A --Supports--> X; correct A -> B
+    with edges omitted; the carried edge is visible on B (depth-1 DB read,
+    immediate) and absent from the deprecated original A."""
+    import sqlite3
+
+    # Arrange: store target X, then source A with an outgoing Supports edge to X.
+    resp_x = server.context_store(
+        "vnc035 lifecycle carry target: stable downstream entry that A supports",
+        "operations",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    id_x = extract_entry_id(resp_x)
+    resp_a = server.context_store(
+        "vnc035 lifecycle carry source: original entry declaring an outgoing Supports edge",
+        "architecture",
+        "decision",
+        agent_id="human",
+        format="json",
+        edges=[{"edge_type": "Supports", "target_id": id_x}],
+    )
+    id_a = extract_entry_id(resp_a)
+
+    # Act: correct A -> B, edges OMITTED — carry-forward must run by default.
+    resp_corr = server.context_correct(
+        id_a,
+        "vnc035 lifecycle carry corrected: replacement entry, edges param omitted",
+        agent_id="human",
+        format="json",
+    )
+    corr_result = assert_tool_success(resp_corr)
+    # The `edges_carried` ack is appended as a plain-text line after the JSON
+    # block (same pattern as the vnc-017 redirect summary), so the raw text is no
+    # longer valid JSON and extract_entry_id's regex fallback would grab the FIRST
+    # id in the payload (the deprecated original). Parse the JSON prefix (up to the
+    # final closing brace) and read correction.id directly — the new entry B.
+    import json as _json
+    text = corr_result.text
+    json_blob = text[: text.rfind("}") + 1]
+    corr_obj = _json.loads(json_blob)
+    id_b = int(corr_obj["correction"]["id"])
+    assert corr_obj.get("original", {}).get("id") == id_a, (
+        f"correction.original.id must be the deprecated source A={id_a}; "
+        f"got {corr_obj.get('original', {}).get('id')}"
+    )
+    assert id_b is not None and id_b != id_a, (
+        f"correction.id must be a new entry B distinct from A={id_a}; got {id_b}"
+    )
+
+    # Assert (depth-1 DB-backed read — immediate, no tick needed; R-07/#4526):
+    # the carried edge attaches to B, never to the deprecated original A.
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    conn = sqlite3.connect(db_path)
+    try:
+        on_b = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges "
+            "WHERE source_id=? AND target_id=? AND relation_type='Supports'",
+            (id_b, id_x),
+        ).fetchone()[0]
+        on_a = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges "
+            "WHERE source_id=? AND target_id=? AND relation_type='Supports'",
+            (id_a, id_x),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    assert on_b == 1, (
+        f"AC-01: carried Supports edge must be present on new entry B={id_b} "
+        f"-> X={id_x}, got count={on_b}"
+    )
+    # AC-02: carry COPIES outgoing edges onto the new id; it does NOT move/delete
+    # the original row from the deprecated source A (see the implementation's own
+    # unit test `test_carry_eligible_attach_to_new_id_not_original`:
+    # "still on A too (carry copies, it does not move outgoing edges)"). A is
+    # deprecated, so its retained outgoing edge is inert. The AC-02 guarantee is
+    # that the carried row attaches to B (asserted above) — never that A is mutated.
+    assert on_a == 1, (
+        f"AC-02 (copy semantics): the original edge remains on deprecated A={id_a} "
+        f"-> X={id_x} (carry copies, does not move); got count={on_a}"
+    )

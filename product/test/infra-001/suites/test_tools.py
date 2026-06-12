@@ -5125,3 +5125,79 @@ def test_cycle_review_response_additive_only(server):
         "crt-052 AC-04: transcript_candidates is additive and must be absent here"
     )
 
+
+# === vnc-035: context_correct outgoing-edge carry-forward ack (2 tests) ===
+#
+# MCP black-box mirror of AC-11 (the `edges_carried` ack envelope). The Rust
+# unit/handler tests own the count contract; these confirm the ack is visible
+# through the JSON-RPC interface — count line present when N>0, absent at zero.
+# The ack format is "Carried {N} outgoing edges forward" (count only, no edge
+# identities — AC-11c). Uses the default `server` fixture (fresh DB, no leakage).
+
+
+def test_correct_response_includes_edges_carried(server):
+    """vnc-035 AC-11a (via MCP): correcting an entry with an eligible outgoing
+    edge and `edges` omitted surfaces the carry-forward ack in the response."""
+    # Arrange: A --Supports--> X, declared on A at store time.
+    id_x, _ = _store_two_entries(server)
+    resp_a = server.context_store(
+        "vnc035 carry source: original entry with an eligible outgoing Supports edge",
+        "architecture",
+        "decision",
+        agent_id="human",
+        format="json",
+        edges=[{"edge_type": "Supports", "target_id": id_x}],
+    )
+    id_a = extract_entry_id(resp_a)
+
+    # Act: correct A -> B with edges OMITTED (carry-forward must run by default).
+    resp = server.context_correct(
+        id_a,
+        "vnc035 carry corrected: replacement entry, edges param omitted",
+        agent_id="human",
+    )
+    result = assert_tool_success(resp)
+
+    # Assert: the ack line is present with the expected count (N=1).
+    assert "Carried 1 outgoing edges forward" in result.text, (
+        f"Expected edges_carried ack for N=1, got: {result.text!r}"
+    )
+    # AC-11c: count only — the ack line must be EXACTLY the canonical count-only
+    # format with no edge identities/relation types appended. (Substring checks
+    # against id_x are unreliable: a single-digit id collides with the count digit
+    # in "Carried 1 ..."; the structural guarantee is the exact-string match.)
+    carry_line = next(
+        ln.strip() for ln in result.text.splitlines() if "outgoing edges forward" in ln
+    )
+    assert carry_line == "Carried 1 outgoing edges forward", (
+        f"edges_carried ack must be exactly the count-only format (no edge "
+        f"identities/relation types); got line: {carry_line!r}"
+    )
+
+
+def test_correct_omits_edges_carried_when_zero(server):
+    """vnc-035 AC-11b (via MCP): correcting an entry with no eligible outgoing
+    edges omits the carry-forward ack entirely (not 'Carried 0...')."""
+    # Arrange: A with NO outgoing edges.
+    resp_a = server.context_store(
+        "vnc035 zero-carry source: original entry with no outgoing edges whatsoever",
+        "architecture",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+
+    # Act: correct A -> B.
+    resp = server.context_correct(
+        id_a,
+        "vnc035 zero-carry corrected: replacement entry, nothing to carry",
+        agent_id="human",
+    )
+    result = assert_tool_success(resp)
+
+    # Assert: the ack is ABSENT — not present-and-zero.
+    assert "outgoing edges forward" not in result.text, (
+        f"edges_carried ack must be omitted when zero, got: {result.text!r}"
+    )
+
