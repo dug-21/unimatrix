@@ -24,8 +24,10 @@ const TOKEN_HEX_LEN: usize = 64;
 
 /// Load an existing token or generate a new one.
 ///
-/// Returns raw token bytes (32 bytes), not hex. When generating a new token,
-/// prints it to stdout with a `[UNIMATRIX TOKEN]` label exactly once.
+/// Returns raw token bytes (32 bytes), not hex. On first generation, emits a
+/// non-sensitive pointer to the retrieval command on stderr; the token hex is
+/// never written to stdout, stderr, or any log line (NFR-06). The token is
+/// recoverable only from the 0600 file or `unimatrix client-bundle`.
 ///
 /// The flow is generate-first: attempt atomic file creation, and on
 /// `AlreadyExists` fall back to loading the existing file. This eliminates
@@ -97,10 +99,22 @@ fn write_new_token(
         )));
     }
 
-    // Print token to stdout exactly once (FR-08).
-    println!("[UNIMATRIX TOKEN] {hex_string}");
+    // Confirm generation on stderr with a non-sensitive pointer. The token hex
+    // is NEVER emitted (NFR-06) — render-then-emit keeps the message testable.
+    eprintln!("{}", render_first_boot_notice());
 
     Ok(token_bytes.to_vec())
+}
+
+/// Build the first-boot success notice shown after generating a new token.
+///
+/// Pure string builder (render-then-emit): it confirms the token was generated
+/// and stored, and points to the supported retrieval command. It MUST NOT
+/// contain the token hex, the token-file path, or any secret (NFR-06).
+fn render_first_boot_notice() -> String {
+    "[unimatrix] bearer token generated and stored (0600). \
+     Retrieve it with: unimatrix client-bundle"
+        .to_string()
 }
 
 /// Load and validate an existing token file.
@@ -147,6 +161,25 @@ mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
+
+    // T-TM-15: first-boot notice never contains the token hex (NFR-06) and
+    // points to the retrieval command. Mirrors client_bundle.rs token-absence
+    // unit test — render-then-emit makes this a true unit test (no binary spawn).
+    #[test]
+    fn test_first_boot_notice_token_absent_and_points_to_retrieval() {
+        // A representative 64-hex token; the notice must not echo it.
+        let hex_string = "ab".repeat(32);
+        let notice = render_first_boot_notice();
+
+        assert!(
+            !notice.contains(&hex_string),
+            "first-boot notice must never contain the token hex (NFR-06)"
+        );
+        assert!(
+            notice.contains("client-bundle"),
+            "notice must point operators to the retrieval command"
+        );
+    }
 
     // T-TM-01: test_generate_token_creates_file_with_correct_length
     #[test]
