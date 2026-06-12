@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook SessionStart"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js SessionStart"
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook Stop"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js Stop"
           }
         ]
       }
@@ -29,18 +29,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook UserPromptSubmit"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js UserPromptSubmit"
           }
         ]
       }
     ],
     "PreToolUse": [
       {
-        "matcher": "*",
+        "matcher": "context_cycle|mcp__unimatrix__context_cycle",
         "hooks": [
           {
             "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook PreToolUse"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PreToolUse"
           }
         ]
       }
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook PostToolUse"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PostToolUse"
           }
         ]
       }
@@ -62,7 +62,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook PostToolUseFailure"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PostToolUseFailure"
           }
         ]
       }
@@ -73,18 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook SubagentStart"
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook SubagentStop"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js SubagentStart"
           }
         ]
       }
@@ -95,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/workspaces/unimatrix/target/release/unimatrix hook PreCompact"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PreCompact"
           }
         ]
       }
