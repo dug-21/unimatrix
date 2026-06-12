@@ -17,8 +17,8 @@
 //! (model-free, offline) so retrieval returns ranked, non-empty results — exactly
 //! the seam that makes the trust assertions non-vacuous (R-15).
 
-use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
@@ -26,8 +26,8 @@ use tempfile::TempDir;
 
 use super::output::ScenarioResult;
 use super::sweep::{default_fixtures_dir, run_fixture_sweep};
-use crate::eval::profile::{EvalProfile, parse_profile_toml};
-use crate::eval::shape::{CorpusKind, ShapeDriftError, build_running_manifest, check_drift};
+use crate::eval::profile::{parse_profile_toml, EvalProfile};
+use crate::eval::shape::{build_running_manifest, check_drift, CorpusKind, ShapeDriftError};
 use crate::infra::config::InferenceConfig;
 use unimatrix_embed::{EmbeddingModel, EmbeddingProvider};
 
@@ -125,7 +125,20 @@ async fn test_ac14_correlated_sweep_non_vacuous() {
          \n[graph_penalty]\norphan = 0.10\nclean_replacement = 0.10\n\
          partial_supersession = 0.10\ndead_end = 0.10\nfallback = 0.10\n",
     );
-    let profiles = vec![baseline, steep];
+    // BASELINE-REPRO: an IDENTICAL default-penalty profile under a distinct name, run
+    // in the SAME sweep as `baseline`. Cond. 4 compares this against `baseline` to prove
+    // the scoring pipeline reproduces bit-for-bit GIVEN A SINGLE MATERIALIZATION — the
+    // property production actually guarantees (one corpus dump, reloaded by every
+    // profile; pattern #2673). A second independent `run_fixture_sweep` would rebuild a
+    // fresh HNSW index (hnsw_rs 0.3.4 `LayerGenerator` reseeds from OS entropy per build,
+    // no public seeding API) and inject cross-build index nondeterminism the assertion
+    // was never meant to test (742 item 4, design-reviewer-v2).
+    let baseline_repro = profile_from_toml(
+        work.path(),
+        "baseline_repro.toml",
+        "[profile]\nname = \"baseline_repro\"\ndescription = \"default penalties\"\n",
+    );
+    let profiles = vec![baseline, steep, baseline_repro];
 
     // ----- Run the correlated sweep ----------------------------------------------
     let outcome = run_fixture_sweep(
@@ -279,39 +292,26 @@ async fn test_ac14_correlated_sweep_non_vacuous() {
 
     // =============================================================================
     // CONDITION 4 — the swept BASELINE (default penalties) reproduces current
-    // behavior bit-for-bit. Re-run the SAME corpus with the baseline profile ONLY
-    // and a fixed-default `with_rate_config` parity reference: the baseline scores
-    // must equal a second baseline run exactly (deterministic provider + default
-    // penalties ⇒ identical final_scores), and must NOT equal the steep run.
+    // behavior bit-for-bit. The reproduction is the `baseline_repro` profile — an
+    // IDENTICAL default-penalty profile run in the SAME sweep, so it loads the SAME
+    // single materialized corpus/index `baseline` loaded (pattern #2673). The baseline
+    // scores must equal this second default-penalty run exactly (deterministic provider
+    // + default penalties + ONE materialization ⇒ identical final_scores), and must NOT
+    // equal the steep run.
+    //
+    // This asserts what production actually guarantees — pipeline determinism over a
+    // SINGLE materialization — not the incidental cross-build index determinism that
+    // hnsw_rs 0.3.4 cannot provide (no seeding API; reseeds per `VectorIndex::new`).
+    // A prior version re-ran the whole sweep into a second DB (`snap2.db`), rebuilding
+    // a fresh, independently-randomized HNSW index and flaking this assertion ~12% of
+    // runs (742 item 4). Reusing the single materialization removes that nondeterminism
+    // SOURCE; the bit-for-bit check below is preserved verbatim.
     // =============================================================================
-    let out2 = work.path().join("results_baseline_only");
-    let target_db2 = work.path().join("snap2.db");
-    let baseline_only = vec![profile_from_toml(
-        work.path(),
-        "baseline2.toml",
-        "[profile]\nname = \"baseline\"\ndescription = \"default penalties\"\n",
-    )];
-    run_fixture_sweep(
-        &corpus_dir,
-        &target_db2,
-        &baseline_only,
-        5,
-        &out2,
-        Arc::new(DeterministicProvider),
-        None,
-    )
-    .await
-    .expect("baseline-only re-run");
-    let results2 = read_results(&out2);
-    let dep2 = results2
-        .iter()
-        .find(|sr| sr.scenario_id == "deprecated-connected.rank-below-band")
-        .expect("dep scenario in baseline-only run");
     let base2_scores = score_by_id(
-        &dep2
+        &dep_scenario
             .profiles
-            .get("baseline")
-            .expect("baseline result")
+            .get("baseline_repro")
+            .expect("baseline_repro result")
             .entries,
     );
     // Bit-for-bit: the default-penalty run reproduces itself exactly across two runs.
