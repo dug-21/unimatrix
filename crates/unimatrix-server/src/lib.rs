@@ -38,6 +38,8 @@ pub mod snapshot;
 pub mod uds;
 
 #[cfg(any(test, feature = "test-support"))]
+pub mod model_guard;
+#[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 
 // Re-exports for external consumers (main.rs, integration tests).

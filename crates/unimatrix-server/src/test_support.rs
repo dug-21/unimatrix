@@ -78,27 +78,9 @@ pub struct TestSearchResult {
     pub similarity: f64,
 }
 
-/// Check if the ONNX model is available.
-///
-/// Returns `true` if the model is NOT found (i.e., tests should skip).
-pub fn skip_if_no_model() -> bool {
-    let config = EmbedConfig::default();
-    let cache_dir = config.resolve_cache_dir();
-    // Use the canonical helper the downloader/loader use (cache_subdir() ->
-    // `_`-separated), NOT a re-derived separator. Re-deriving the path drifted
-    // to `--` and silently masked model absence (#723).
-    let model_dir = cache_dir.join(config.model.cache_subdir());
-    let model_path = model_dir.join(config.model.onnx_filename());
-
-    if !model_path.exists() {
-        eprintln!(
-            "ONNX model not found at {}, skipping pipeline_e2e test",
-            model_path.display()
-        );
-        return true;
-    }
-    false
-}
+// `skip_if_no_model()` lives in `crate::model_guard` (#723). Re-exported here so
+// existing call sites (`use crate::test_support::skip_if_no_model`) keep working.
+pub use crate::model_guard::skip_if_no_model;
 
 /// Test harness wrapping ServiceLayer with helper methods.
 pub struct TestHarness {
