@@ -72,6 +72,12 @@ async fn query_attribution(
         .collect()
 }
 
+/// Stability interval for the quiescence check layered on top of the #4884 settle.
+/// MUST be >= the 100ms settle width (per #742 Item 3 / design review): two reads
+/// this far apart that observe the same count establish quiescence, so a late
+/// trailing row cannot slip between them undetected.
+const STABLE_INTERVAL_MS: u64 = 100;
+
 /// Deadline-poll for a fire-and-forget spawn_blocking write to land, then return the
 /// session's attribution rows. Modeled on the canonical loop in `tests/transcript.rs`
 /// (5s deadline + 100ms settle): polls `query_attribution` every ~10ms until it reaches
@@ -80,6 +86,14 @@ async fn query_attribution(
 /// `#[tokio::test]` reactor alive so the in-flight `block_on` INSERT completes before
 /// teardown (the "being shutdown" race). Positive-assertion only — never poll for an
 /// absence.
+///
+/// #742 Item 3 HARDENING (held the line per human directive — kept the #4884-verified
+/// settle, did NOT swap to pure quiescence): AFTER the `>= expected` poll + 100ms
+/// settle, ADD a quiescence gate — re-read and require the count be STABLE across two
+/// reads `STABLE_INTERVAL_MS` (>= one settle width) apart before returning. A trailing
+/// delta/enrich row that lands just after the settle (the residual `--workspace`
+/// flake) breaks stability and forces another settle+re-check, rather than being
+/// returned and breaking the caller's exact-count assertion. Bounded by the 5s deadline.
 async fn await_attribution(
     store: &Store,
     session_id: &str,
@@ -98,9 +112,25 @@ async fn await_attribution(
         );
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
-    // Settle so a trailing row would still fail an exact-count assertion.
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    query_attribution(store, session_id).await
+
+    // Settle so a trailing row would still fail an exact-count assertion (#4884),
+    // THEN require quiescence: the count must be unchanged across two reads a
+    // settle-width apart before we trust it (#742 Item 3).
+    loop {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        let first = query_attribution(store, session_id).await;
+        tokio::time::sleep(std::time::Duration::from_millis(STABLE_INTERVAL_MS)).await;
+        let second = query_attribution(store, session_id).await;
+        if first.len() == second.len() {
+            return second;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "attribution row count for {session_id} never stabilized (saw {} then {})",
+            first.len(),
+            second.len()
+        );
+    }
 }
 
 // Boilerplate dispatch wrapper to keep the per-test arrange blocks short.

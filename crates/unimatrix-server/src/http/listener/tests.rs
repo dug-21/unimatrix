@@ -101,6 +101,33 @@ async fn send_http_get(addr: SocketAddr) -> Result<String, Box<dyn std::error::E
     Ok(String::from_utf8_lossy(&buf[..n]).to_string())
 }
 
+/// Deadline-poll a GET until it returns a 200, retrying transient failures.
+///
+/// Per-connection permits are RAII-held by the spawned task and released only
+/// AFTER that task ends — asynchronously, with no happens-before edge a caller
+/// can observe. So the next acquire can legitimately race the prior release: a
+/// not-yet-released permit makes the acceptor drop the stream, surfacing as a
+/// connect/read error or a non-200. Polling the OBSERVABLE (a 200) within a
+/// bounded deadline asserts EVENTUAL recovery without a fixed-sleep guess. A
+/// genuine permit-leak still fails: the deadline expires. Uses
+/// `tokio::time::sleep().await` (never `std::thread::sleep`) to keep the
+/// current-thread reactor alive.
+async fn send_http_get_until_200(addr: SocketAddr) {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match send_http_get(addr).await {
+            Ok(resp) if resp.contains("200") => return,
+            other => {
+                assert!(
+                    tokio::time::Instant::now() < deadline,
+                    "timed out waiting for a 200 (permit never recovered); last: {other:?}"
+                );
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        }
+    }
+}
+
 // T-HL-01: test_listener_binds_and_accepts_connection
 #[tokio::test(flavor = "multi_thread")]
 async fn test_listener_binds_and_accepts_connection() {
@@ -252,14 +279,11 @@ async fn test_semaphore_recovery_sequential_connections() {
         .await
         .expect("listener must bind");
 
-    // Open and close 10 connections sequentially
-    for i in 0..10 {
-        let resp = send_http_get(addr).await;
-        assert!(
-            resp.is_ok(),
-            "connection {i} must succeed; got {:?}",
-            resp.err()
-        );
+    // Open and close 10 connections sequentially. With a single permit, the next
+    // connect can race the prior task's async permit release; poll for EVENTUAL
+    // recovery (a 200) per connection rather than asserting immediate success.
+    for _ in 0..10 {
+        send_http_get_until_200(addr).await;
     }
 
     token.cancel();
@@ -416,17 +440,11 @@ async fn test_semaphore_recovery_after_malformed_http() {
         let _ = tokio::time::timeout(Duration::from_secs(2), stream.read(&mut buf)).await;
     }
 
-    // Give time for permit release
-    tokio::time::sleep(Duration::from_millis(200)).await;
-
-    // Valid connection should succeed (permit was released)
-    let resp = send_http_get(addr)
-        .await
-        .expect("valid request must succeed");
-    assert!(
-        resp.contains("200"),
-        "valid request after garbage must succeed"
-    );
+    // The malformed connection's permit is released asynchronously when its task
+    // ends — no observable happens-before edge. Poll for EVENTUAL recovery (a
+    // 200) within a bounded deadline instead of a fixed 200ms sleep; a genuine
+    // permit-leak still fails when the deadline expires.
+    send_http_get_until_200(addr).await;
 
     token.cancel();
     let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
