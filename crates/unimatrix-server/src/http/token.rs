@@ -22,6 +22,26 @@ const TOKEN_BYTE_LEN: usize = 32;
 /// Expected hex-encoded string length (TOKEN_BYTE_LEN * 2).
 const TOKEN_HEX_LEN: usize = 64;
 
+/// Bounded read-retry budget for `load_existing_token` (loser branch).
+///
+/// The election winner creates the empty final file (O_EXCL) then publishes the
+/// 64 hex bytes via a temp-file + atomic rename. A loser that takes the
+/// `AlreadyExists -> load` arm can observe the file in the brief create->rename
+/// gap (0 bytes, or, transiently, the prior inode mid-rename). It retries reading
+/// for up to this ceiling before surfacing whatever it last read (so a genuinely
+/// malformed token still produces the canonical length error).
+const LOAD_RETRY_CEILING_MS: u64 = 50;
+
+/// Poll interval for the loser's bounded read-retry.
+const LOAD_RETRY_POLL_MS: u64 = 1;
+
+/// Test-only hook: a pause (ms) injected by the winner between creating the empty
+/// final file and publishing the token via temp+rename. Deterministically widens
+/// the loser-reads-mid-write window so the forced-interleave convergence test does
+/// not depend on scheduler luck. Zero in production (the hook is never set).
+#[cfg(test)]
+static WRITE_PAUSE_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Load an existing token or generate a new one.
 ///
 /// Returns raw token bytes (32 bytes), not hex. On first generation, emits a
@@ -46,6 +66,8 @@ pub fn load_or_generate_token(data_dir: &Path) -> Result<Vec<u8>, ServerError> {
     let hex_string = hex::encode(token_bytes);
 
     match create_token_file(&token_path) {
+        // Winner: holds the exclusively-created empty final file. It alone writes
+        // (losers load), so both racers converge on the SAME token.
         Ok(file) => write_new_token(file, &token_path, &token_bytes, &hex_string),
         Err(e) if e.kind() == io::ErrorKind::AlreadyExists => load_existing_token(&token_path),
         Err(e) => Err(ServerError::ProjectInit(format!(
@@ -75,26 +97,71 @@ fn create_token_file(path: &Path) -> io::Result<File> {
     }
 }
 
-/// Generate a new 32-byte token, write hex-encoded to the already-created file.
+/// Publish the new token to the (already exclusively-created) final file via an
+/// ATOMIC temp-file + rename.
 ///
-/// Token bytes and hex encoding are prepared before file creation so the write
-/// follows the open with minimal delay, narrowing the race window for concurrent
-/// creators.
+/// The election winner holds `file`: an empty final-path file it created with
+/// `O_CREAT | O_EXCL`. Writing the hex IN PLACE leaves a window where a concurrent
+/// loser reads the still-empty final file (the "found 0" defect). Instead the
+/// winner writes the 64 hex bytes to a PID-namespaced sibling temp file
+/// (`.token.<pid>.tmp`, mode 0600) and `fs::rename`s it onto the final path. Rename
+/// is atomic on one filesystem, so a reader sees either the prior bytes or the full
+/// 64 — never a partial. Mode 0600 carries through the rename (it is the temp
+/// inode's mode). The empty final file the winner created is replaced by the rename.
 ///
-/// On write failure, cleans up the empty file to prevent a 0-byte token file
-/// persisting on disk.
+/// Temp cleanup: any error / early return removes the temp file so no orphan
+/// `.token.<pid>.tmp` persists on collision or failure.
 fn write_new_token(
-    mut file: File,
+    file: File,
     path: &Path,
     token_bytes: &[u8; TOKEN_BYTE_LEN],
     hex_string: &str,
 ) -> Result<Vec<u8>, ServerError> {
-    // Write token content. On failure, clean up the empty file to prevent
-    // a 0-byte token file persisting on disk.
-    if let Err(e) = file.write_all(hex_string.as_bytes()) {
-        let _ = fs::remove_file(path);
+    // The winner created the empty final file purely to win the election; the
+    // bytes go via temp+rename, so we no longer write through this handle.
+    drop(file);
+
+    let tmp_path = temp_token_path(path);
+
+    // Remove any stale temp from a crashed prior boot reusing this PID (cheap
+    // belt-and-suspenders so the O_EXCL temp create below cannot spuriously fail).
+    let _ = fs::remove_file(&tmp_path);
+
+    // Test-only: widen the create->publish window deterministically.
+    #[cfg(test)]
+    {
+        let pause = WRITE_PAUSE_MS.load(std::sync::atomic::Ordering::SeqCst);
+        if pause > 0 {
+            std::thread::sleep(std::time::Duration::from_millis(pause));
+        }
+    }
+
+    // Create the temp file exclusively at mode 0600, then write the hex.
+    let mut tmp_file = match create_temp_token_file(&tmp_path) {
+        Ok(f) => f,
+        Err(e) => {
+            return Err(ServerError::ProjectInit(format!(
+                "failed to create temp token file {}: {e}",
+                tmp_path.display()
+            )));
+        }
+    };
+
+    if let Err(e) = tmp_file.write_all(hex_string.as_bytes()) {
+        let _ = fs::remove_file(&tmp_path);
         return Err(ServerError::ProjectInit(format!(
-            "failed to write token file {}: {e}",
+            "failed to write temp token file {}: {e}",
+            tmp_path.display()
+        )));
+    }
+    // Drop the handle before rename so all bytes are flushed to the inode.
+    drop(tmp_file);
+
+    // Atomic publish: replace the empty final file with the fully-written temp.
+    if let Err(e) = fs::rename(&tmp_path, path) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(ServerError::ProjectInit(format!(
+            "failed to publish token file {}: {e}",
             path.display()
         )));
     }
@@ -104,6 +171,30 @@ fn write_new_token(
     eprintln!("{}", render_first_boot_notice());
 
     Ok(token_bytes.to_vec())
+}
+
+/// Sibling temp path for the atomic write, PID-namespaced to avoid cross-process
+/// collision (`.token.<pid>.tmp` in the same directory as the final token).
+fn temp_token_path(final_path: &Path) -> std::path::PathBuf {
+    let dir = final_path.parent().unwrap_or_else(|| Path::new("."));
+    dir.join(format!(".{TOKEN_FILE_NAME}.{}.tmp", std::process::id()))
+}
+
+/// Exclusively create the temp token file at mode 0600 (carried through rename).
+fn create_temp_token_file(path: &Path) -> io::Result<File> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path)
+    }
+    #[cfg(not(unix))]
+    {
+        OpenOptions::new().write(true).create_new(true).open(path)
+    }
 }
 
 /// Build the first-boot success notice shown after generating a new token.
@@ -118,10 +209,31 @@ fn render_first_boot_notice() -> String {
 }
 
 /// Load and validate an existing token file.
+///
+/// This is the election LOSER's branch. The winner created the empty final file
+/// (O_EXCL) and publishes the 64 hex bytes via temp+rename; a loser can observe
+/// the file in the brief create->rename gap (0 bytes). This is the PRIMARY
+/// correctness mechanism: poll briefly (bounded by `LOAD_RETRY_CEILING_MS`) until
+/// the file is the published length, instead of panicking on a not-yet-complete
+/// read. On deadline, surface the last read so a genuinely malformed token still
+/// produces the canonical length error.
 fn load_existing_token(path: &Path) -> Result<Vec<u8>, ServerError> {
-    let content = fs::read_to_string(path).map_err(|e| {
-        ServerError::ProjectInit(format!("failed to read token file {}: {e}", path.display()))
-    })?;
+    let deadline =
+        std::time::Instant::now() + std::time::Duration::from_millis(LOAD_RETRY_CEILING_MS);
+
+    let content = loop {
+        let read = fs::read_to_string(path).map_err(|e| {
+            ServerError::ProjectInit(format!("failed to read token file {}: {e}", path.display()))
+        })?;
+
+        // The published token is exactly TOKEN_HEX_LEN hex chars (plus optional
+        // trailing whitespace). A complete read is therefore >= TOKEN_HEX_LEN
+        // after trimming; anything shorter is the create->rename gap — retry.
+        if read.trim_end().len() >= TOKEN_HEX_LEN || std::time::Instant::now() >= deadline {
+            break read;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(LOAD_RETRY_POLL_MS));
+    };
 
     // Strip trailing whitespace (R-15 mitigation: trailing newline tolerance).
     let trimmed = content.trim_end();
@@ -429,5 +541,74 @@ mod tests {
         // Permissions must be 0600
         let mode = fs::metadata(&token_path).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o600);
+    }
+
+    /// Serializes use of the global `WRITE_PAUSE_MS` hook so it cannot perturb
+    /// sibling tests that run concurrently in the same lib binary.
+    static WRITE_PAUSE_GUARD: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    // T-742-01: forced-interleave convergence (#742 Item 1).
+    //
+    // Deterministically widens the winner's create->publish window via the
+    // WRITE_PAUSE hook so the loser ALWAYS reads the file mid-write, then asserts:
+    //   - convergence: both racers return the SAME token (token_a == token_b),
+    //   - the published token is the full 64 hex chars (NO "found 0"),
+    //   - 0600 survives the temp+rename,
+    //   - no orphan `.token.<pid>.tmp` remains.
+    // Looped ~20x to exercise the window repeatedly.
+    #[test]
+    fn test_concurrent_creation_forced_interleave_converges() {
+        use std::sync::atomic::Ordering;
+        use std::sync::{Arc, Barrier};
+
+        let _guard = WRITE_PAUSE_GUARD.lock().unwrap();
+        // 5ms pause between final-file create and temp-write+rename: a loser that
+        // wins the barrier will observe the empty final file and must retry-read.
+        WRITE_PAUSE_MS.store(5, Ordering::SeqCst);
+
+        for _ in 0..20 {
+            let tmp = TempDir::new().unwrap();
+            let data_dir = tmp.path().to_path_buf();
+            let barrier = Arc::new(Barrier::new(2));
+
+            let handles: Vec<_> = (0..2)
+                .map(|_| {
+                    let dir = data_dir.clone();
+                    let bar = Arc::clone(&barrier);
+                    std::thread::spawn(move || {
+                        bar.wait();
+                        load_or_generate_token(&dir)
+                    })
+                })
+                .collect();
+
+            let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+
+            let token_a = results[0].as_ref().expect("thread 0 failed");
+            let token_b = results[1].as_ref().expect("thread 1 failed");
+
+            // Convergence: one wrote, one loaded; both return the SAME token.
+            assert_eq!(token_a, token_b, "racers must converge on same token");
+
+            // Published file is the full 64 hex chars (no "found 0").
+            let token_path = data_dir.join("token");
+            let contents = fs::read_to_string(&token_path).unwrap();
+            assert_eq!(contents.len(), 64, "published token must be 64 hex chars");
+            assert!(contents.chars().all(|c| c.is_ascii_hexdigit()));
+
+            // 0600 survives the rename.
+            let mode = fs::metadata(&token_path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600, "0600 must survive temp+rename");
+
+            // No orphan temp file remains.
+            let tmp_path = temp_token_path(&token_path);
+            assert!(
+                !tmp_path.exists(),
+                "no orphan temp token file must remain: {}",
+                tmp_path.display()
+            );
+        }
+
+        WRITE_PAUSE_MS.store(0, Ordering::SeqCst);
     }
 }

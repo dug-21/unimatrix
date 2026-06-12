@@ -13,7 +13,7 @@ with a hard ceiling, writing to a file instead of a live pipe:
 # CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children.
 # `setsid -w` is REQUIRED: without -w, setsid returns its own fork status (0) instead of
 # the inner command's exit code, producing false-green gates (GH#709). rc=124 = killed at ceiling.
-setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
+log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc
 ```
 
 Follow-up defect (GH#709): the first hardened form shipped `setsid` **without** `-w`.

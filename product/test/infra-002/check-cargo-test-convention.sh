@@ -9,11 +9,11 @@
 # holding target/.cargo-lock and test .db handles -> later runs hang/false-fail.
 #
 # The hardened form runs in its own session/process group with a hard ceiling and
-# writes to a file instead of a live pipe. `setsid -w` is mandatory:
+# writes to an mktemp file instead of a live pipe. `setsid -w` is mandatory:
 #
-#   setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace \
-#     > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; \
-#     rm -f /tmp/uni-test.$$.log; exit $rc
+#   log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout \
+#     "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; \
+#     rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc
 #
 # Second defect (GH#709): bare `setsid` (no -w) forks and returns the *fork's*
 # status (always 0), so `rc=$?` reads 0 even when cargo test FAILS or is killed at
@@ -54,10 +54,22 @@ SCAN_DIR="${REPO_ROOT}/.claude"
 
 # CLASS 1: cargo test as head of a pipe (`|`, not `||`) on the same line,
 # without setsid.
+#
+# --exclude-dir=worktrees: `grep -r` does NOT honor `.gitignore`. The active dev
+# worktree lives at the gitignored path `.claude/worktrees/<branch>/` and is a full
+# nested repo copy whose infra-002 test DATA contains literal `cargo test | tail`
+# strings — recursing into it produces a FALSE failure on an otherwise-clean tree.
+# Excluding the worktrees dir keeps the default scan correct when a worktree is active.
+#
+# The exemption is anchored: `grep -vE 'setsid[^;|&]*cargo test'` drops a line ONLY
+# when `setsid` governs THAT `cargo test` in the SAME separator-free segment (no
+# intervening `;`, `|`, or `&`). A blanket `grep -v 'setsid'` was a false-negative:
+# a line mentioning `setsid` for one command AND a separate bare `cargo test | tail`
+# was silently dropped (GH#742 item 6).
 scan_bare_pipe() {
   local target_dir="$1"
-  grep -rnE 'cargo test([^|]|\|\|)*\|([^|]|$)' "${target_dir}" 2>/dev/null \
-    | grep -v 'setsid' \
+  grep -rnE --exclude-dir=worktrees 'cargo test([^|]|\|\|)*\|([^|]|$)' "${target_dir}" 2>/dev/null \
+    | grep -vE 'setsid[^;|&]*cargo test' \
     | grep -v 'cargo test \.\.\.'
 }
 
@@ -67,7 +79,10 @@ scan_bare_pipe() {
 # `cargo test ...` is excluded as in CLASS 1.
 scan_setsid_no_w() {
   local target_dir="$1"
-  grep -rnE 'setsid[[:space:]]+([^[:space:]-]|-[^w])[^|]*cargo test' "${target_dir}" 2>/dev/null \
+  # --exclude-dir=worktrees: see scan_bare_pipe — `grep -r` ignores `.gitignore`; an
+  # active worktree at `.claude/worktrees/<branch>/` is a nested repo copy that would
+  # otherwise be scanned and could false-fail on its test fixtures.
+  grep -rnE --exclude-dir=worktrees 'setsid[[:space:]]+([^[:space:]-]|-[^w])[^|]*cargo test' "${target_dir}" 2>/dev/null \
     | grep -v 'cargo test \.\.\.'
 }
 
@@ -96,7 +111,7 @@ check() {
   fi
   if [ "${rc}" -ne 0 ]; then
     echo "Use the hardened convention from .claude/rules/rust-workspace.md:" >&2
-    echo "  setsid -w timeout \"\${CARGO_TEST_TIMEOUT_SECS:-600}\" cargo test --workspace > /tmp/uni-test.\$\$.log 2>&1; rc=\$?; tail -30 /tmp/uni-test.\$\$.log; rm -f /tmp/uni-test.\$\$.log; exit \$rc" >&2
+    echo "  log=\"\$(mktemp -t uni-test.XXXXXX.log)\"; setsid -w timeout \"\${CARGO_TEST_TIMEOUT_SECS:-600}\" cargo test --workspace > \"\$log\" 2>&1; rc=\$?; tail -30 \"\$log\"; rm -f \"\$log\"; exit \$rc" >&2
     return 1
   fi
   echo "OK: no bare 'cargo test' pipes and no setsid-without-w under ${SCAN_DIR} (#122 + GH#709 convention intact)."
@@ -109,16 +124,20 @@ check() {
 #   (a) bare-pipe form (no setsid)            -> MUST be flagged (CLASS 1, #122)
 #   (b) setsid WITHOUT -w                     -> MUST be flagged (CLASS 2, GH#709)
 #   (c) setsid -w hardened form               -> MUST pass
+#   (d) setsid substring elsewhere + a SEPARATE bare `cargo test | tail`
+#       -> MUST be flagged (CLASS 1 false-negative, GH#742 item 6)
 self_test() {
-  local tmp bad nowait good
+  local tmp bad nowait good setsid_substr
   tmp="$(mktemp -d)"
   trap 'rm -rf "${tmp}"' RETURN
   bad="${tmp}/bad.md"
   nowait="${tmp}/nowait.md"
   good="${tmp}/good.md"
+  setsid_substr="${tmp}/setsid_substr_bare_pipe.md"
   printf 'cargo test --workspace 2>&1 | tail -30\n' > "${bad}"
-  printf 'setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc\n' > "${nowait}"
-  printf 'setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc\n' > "${good}"
+  printf 'log="$(mktemp -t uni-test.XXXXXX.log)"; setsid timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc\n' > "${nowait}"
+  printf 'log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc\n' > "${good}"
+  printf 'setsid -w echo hi; cargo test --workspace 2>&1 | tail -30\n' > "${setsid_substr}"
 
   # (a) bare-pipe form must be flagged.
   if ! scan "${tmp}" | grep -q 'bad.md'; then
@@ -135,7 +154,13 @@ self_test() {
     echo "SELF-TEST FAIL: guard wrongly flagged the hardened 'setsid -w' form." >&2
     return 2
   fi
-  echo "SELF-TEST OK: flags bare-pipe + setsid-without-w forms, passes 'setsid -w' hardened form."
+  # (d) setsid mentioned elsewhere + a SEPARATE bare `cargo test | tail` must be
+  #     flagged — the anchored exemption must NOT drop it (GH#742 item 6 false-negative).
+  if ! scan "${tmp}" | grep -q 'setsid_substr_bare_pipe.md'; then
+    echo "SELF-TEST FAIL: guard did NOT flag a bare 'cargo test | tail' that merely mentions setsid elsewhere (CLASS 1 false-negative, GH#742 item 6)." >&2
+    return 2
+  fi
+  echo "SELF-TEST OK: flags bare-pipe + setsid-without-w + setsid-substring-bare-pipe forms, passes 'setsid -w' hardened form."
   return 0
 }
 

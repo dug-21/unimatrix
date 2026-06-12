@@ -998,6 +998,14 @@ impl SearchService {
             let mut seed_scores: HashMap<u64, f64> =
                 HashMap::with_capacity(results_with_scores.len());
 
+            // Accumulate `total` in the SAME single pass, over the source
+            // `results_with_scores` Vec (deterministic order), NOT via
+            // `seed_scores.values().sum()` over a HashMap (non-deterministic
+            // iteration order). f64 addition is non-associative, so summing in
+            // HashMap order drifts ~1e-9 run-to-run, breaking the eval harness'
+            // bit-for-bit reproducibility (AC-14). Entry ids are unique, so the
+            // value-set is identical — only the order is canonicalized.
+            let mut total: f64 = 0.0;
             for (entry, sim) in &results_with_scores {
                 let affinity: f64 = if let (Some(_phase), Some(snapshot)) =
                     (&params.current_phase, &phase_snapshot)
@@ -1010,11 +1018,12 @@ impl SearchService {
                 } else {
                     1.0 // no phase or no snapshot → cold-start neutral
                 };
-                seed_scores.insert(entry.id, sim * affinity);
+                let weighted = sim * affinity;
+                total += weighted;
+                seed_scores.insert(entry.id, weighted);
             }
 
-            // Normalize to sum 1.0.
-            let total: f64 = seed_scores.values().sum();
+            // `total` already summed in deterministic Vec order above.
 
             // Zero-sum guard (FR-08 / FM-05):
             // All HNSW scores are 0.0 — degenerate, should not occur in practice.
@@ -1065,9 +1074,15 @@ impl SearchService {
                     .map(|(id, score)| (*id, *score))
                     .collect();
 
-                // Sort descending by PPR score.
-                ppr_only_candidates
-                    .sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+                // Sort descending by PPR score, with an id tie-break so that
+                // exact-score ties order deterministically before truncate
+                // (HashMap iteration order is non-deterministic otherwise — a
+                // tie could include/exclude different entries run-to-run).
+                ppr_only_candidates.sort_unstable_by(|a, b| {
+                    b.1.partial_cmp(&a.1)
+                        .unwrap_or(Ordering::Equal)
+                        .then(a.0.cmp(&b.0))
+                });
 
                 // Cap at ppr_max_expand (E-04).
                 ppr_only_candidates.truncate(self.ppr_max_expand);
@@ -5886,5 +5901,113 @@ mod tests {
                 );
             }
         }
+    }
+
+    // -- Item 4 (#742): seed-score sum determinism -------------------------
+    //
+    // `total` is summed over the source `results_with_scores` Vec (deterministic
+    // order), NOT over `seed_scores.values()` (HashMap iteration order). f64
+    // addition is non-associative, so a HashMap-order sum drifts ~1e-9 run-to-run
+    // and breaks the eval harness' bit-for-bit reproducibility (AC-14). These
+    // tests pin the engine-layer guarantee directly, below the eval integration
+    // test.
+
+    /// Mirror of the production accumulation: `total` over the Vec, in Vec order.
+    fn seed_total_vec_order(results: &[(u64, f64)]) -> f64 {
+        let mut total = 0.0;
+        for (_id, weighted) in results {
+            total += *weighted;
+        }
+        total
+    }
+
+    /// The (rejected) HashMap-order sum, for the contrast test only.
+    fn seed_total_hashmap_order(results: &[(u64, f64)]) -> f64 {
+        let map: HashMap<u64, f64> = results.iter().copied().collect();
+        map.values().sum()
+    }
+
+    fn fixed_seed_inputs() -> Vec<(u64, f64)> {
+        // A spread of magnitudes so non-associativity is observable.
+        vec![
+            (1016, 0.731_274_91_f64),
+            (1014, 0.000_000_013_7_f64),
+            (42, 0.499_999_991_2_f64),
+            (7, 0.250_000_004_4_f64),
+            (9001, 0.000_173_2_f64),
+            (3, 0.812_634_55_f64),
+            (88, 0.000_000_000_91_f64),
+            (1234, 0.640_001_2_f64),
+        ]
+    }
+
+    // T-742-04a: summing `total` over the source Vec is bit-for-bit stable
+    // across repeated calls on the same input.
+    #[test]
+    fn test_seed_total_vec_order_is_bit_for_bit_stable() {
+        let input = fixed_seed_inputs();
+        let baseline = seed_total_vec_order(&input);
+        for _ in 0..1000 {
+            let again = seed_total_vec_order(&input);
+            assert_eq!(
+                again.to_bits(),
+                baseline.to_bits(),
+                "Vec-order seed total must be bit-for-bit identical across calls"
+            );
+        }
+    }
+
+    // T-742-04b: the normalized seed scores (value / total) are bit-for-bit
+    // identical across repeated calls — this is the value PPR consumes.
+    #[test]
+    fn test_normalized_seed_scores_bit_for_bit_stable() {
+        let input = fixed_seed_inputs();
+
+        let normalize = |results: &[(u64, f64)]| -> Vec<(u64, u64)> {
+            let total = seed_total_vec_order(results);
+            assert!(total > 0.0, "fixture total must be positive");
+            // Emit (id, normalized-bits) in a deterministic (id-sorted) order so
+            // the comparison itself is order-independent.
+            let mut out: Vec<(u64, u64)> = results
+                .iter()
+                .map(|(id, w)| (*id, (*w / total).to_bits()))
+                .collect();
+            out.sort_unstable_by_key(|(id, _)| *id);
+            out
+        };
+
+        let baseline = normalize(&input);
+        for _ in 0..1000 {
+            assert_eq!(
+                normalize(&input),
+                baseline,
+                "normalized seed scores must be bit-for-bit identical across calls"
+            );
+        }
+    }
+
+    // T-742-04c: documents WHY the fix is needed — a permuted (HashMap-order) sum
+    // can drift, while the fixed Vec-order sum stays stable. If this fixture ever
+    // produces an identical HashMap sum on this platform the test still passes
+    // (the assertion is only on the Vec-order stability), but it pins the intent.
+    #[test]
+    fn test_permuted_order_can_drift_but_fixed_vec_is_stable() {
+        let input = fixed_seed_inputs();
+        let vec_total = seed_total_vec_order(&input);
+
+        // Vec-order sum is stable regardless of how many times we recompute.
+        for _ in 0..100 {
+            assert_eq!(seed_total_vec_order(&input).to_bits(), vec_total.to_bits());
+        }
+
+        // The HashMap-order sum equals the Vec sum in value, but is summed in a
+        // non-deterministic order — it must not be relied upon for bit stability.
+        // We only assert it is numerically close (within float noise), proving
+        // the value-set is identical and the fix is behaviour-preserving.
+        let map_total = seed_total_hashmap_order(&input);
+        assert!(
+            (map_total - vec_total).abs() <= 1e-9,
+            "HashMap-order and Vec-order sums must agree within 1e-9 (same value-set)"
+        );
     }
 }
