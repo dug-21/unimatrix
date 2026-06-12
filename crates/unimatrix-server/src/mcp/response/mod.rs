@@ -28,8 +28,8 @@ pub mod status;
 
 // Re-export entry formatting
 pub use entries::{
-    format_correct_success, format_duplicate_found, format_lookup_results, format_redirect_summary,
-    format_search_results, format_single_entry, format_store_success,
+    format_correct_success, format_duplicate_found, format_edges_carried, format_lookup_results,
+    format_redirect_summary, format_search_results, format_single_entry, format_store_success,
     format_store_success_with_note,
 };
 
@@ -477,6 +477,23 @@ mod tests {
         assert_eq!(json["supersedes"], 10);
         assert_eq!(json["superseded_by"], 20);
         assert_eq!(json["correction_count"], 3);
+    }
+
+    // -- vnc-035: format_edges_carried --
+
+    #[test]
+    fn test_format_edges_carried_count_only() {
+        let line = format_edges_carried(3);
+        assert!(line.contains('3'), "the count must appear in the ack line");
+        assert!(
+            line.contains("Carried") && line.contains("outgoing"),
+            "ack line describes carried outgoing edges"
+        );
+        // AC-11c: count only — no target ids, no relation types, no edge identities.
+        assert!(
+            !line.contains("Supports") && !line.contains("->") && !line.contains("#"),
+            "the ack must carry the integer only — no edge identities/content"
+        );
     }
 
     // -- vnc-003: format_correct_success --

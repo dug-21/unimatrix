@@ -297,6 +297,15 @@ pub fn format_redirect_summary(
     Some(text)
 }
 
+/// Format the vnc-035 carry-forward ack line. COUNT ONLY — no edge identities/content (AC-11).
+///
+/// The caller guards on `carried > 0` (omit at zero, mirroring `format_redirect_summary`'s
+/// `found == 0 -> None` contract); this returns the bare line unconditionally for `carried >= 1`.
+/// The integer is the sole awareness channel — no DB provenance marker exists (ADR-003 vnc-035).
+pub fn format_edges_carried(carried: usize) -> String {
+    format!("Carried {carried} outgoing edges forward")
+}
+
 /// Format a correction success response showing both deprecated original and new correction.
 pub fn format_correct_success(
     original: &EntryRecord,
