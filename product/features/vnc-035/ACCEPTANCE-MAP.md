@@ -1,0 +1,31 @@
+# vnc-035 Acceptance Criteria Map
+
+> Every AC from SCOPE.md (AC-01..AC-11) appears below with a concrete verification method.
+> AC-IDs are preserved end-to-end (SCOPE → SPEC FR-01..FR-12 → here). Coupling notes:
+> **AC-10 + AC-11** are one acceptance unit (the ack makes docs non-load-bearing — SR-05);
+> **AC-04 + AC-09** share the eligibility predicate ("no ceiling" safe only while
+> eligibility = agent-declared-only — SR-03/SR-04).
+
+| AC-ID | Description | Verification Method | Verification Detail | Status |
+|-------|-------------|--------------------|--------------------|--------|
+| AC-01 | Correcting an entry with eligible outgoing edges, **no `edges` param**, carries those edges to the new entry. | test | Integration: seed A with eligible outgoing edges (e.g. `Supports`, `Advances`); `context_correct(A→B)` with `edges` omitted; assert `graph_edges` rows exist with `source_id = B.id` for each original eligible relation/target. | PENDING |
+| AC-02 | Carried edges attach to the new id, never the Deprecated original. | test | Same test as AC-01: assert **no** carried `graph_edges` row has `source_id = A.id`; all carried rows have `source_id = B.id`. | PENDING |
+| AC-03 | A goal with only `Advances → vision_root`, when corrected, retains it from the new entry with no manual re-declaration (confirmed-live regression closed). | test | Integration: seed a goal entry with a single `Advances → vision_root` edge; correct with `edges` omitted; assert `graph_edges` has `(B.id, vision_root, Advances)`. | PENDING |
+| AC-04 | Derived/auto-generated classes (`Supersedes`, tick-generated `CoAccess`/`Informs`) are **not** copied; only agent-declared edges are eligible. | test | Unit on `query_outgoing_edges` eligibility predicate asserts the exclusion set `('Supersedes','CoAccess','Informs')`. Integration: seed A with a `Supports` + `Supersedes` + `CoAccess`/`Informs` mix; correct; assert carried edges include `Supports` and exclude all three. (Couples to AC-09.) | PENDING |
+| AC-05 | An agent can shed a carried edge via `context_edge remove`/`redirect` against the **new** entry id; the edge is absent afterward. | test | Integration: correct A→B (carries E); `context_edge remove` with `source_id = B.id` for E; assert E absent. Negative: `context_edge remove` against A.id (Deprecated) is rejected as frozen-source — asserting shed targets the new Active id (SR-08). | PENDING |
+| AC-06 | `Contradicts` outgoing edges carry forward with both directions consistent; no double-write or reverse-orphan vs. the redirect path. | test | Integration: seed A with outgoing `Contradicts → X`; correct A→B; assert `B→X` and `X→B` exist **exactly once** each, no duplicate, no orphan vs. incoming-redirect (SR-06). Count: the logical `Contradicts` increments `carried` by **1**, not 2. | PENDING |
+| AC-07 ⚠️ MANDATORY (easy to omit — SR-01 / R-01 / lesson #4473) | An infra failure copying any single outgoing edge does **not** abort/roll back the correction; entry + already-copied edges persist. | test | Named test **`test_carry_forward_continues_on_edge_copy_failure`**: fault-inject the store edge-write so one carry edge mid-loop returns `Err`/`false`-SQL-error. Assert (1) `context_correct` returns success; (2) new entry Active + original Deprecated; (3) edges copied **before** the failure persist; (4) `CarrySummary.failed` incremented + `tracing::warn!` fired. **Must exist by name; verified by name at Gate 3b.** | PENDING |
+| AC-08 | `edges` composition is additive on `(source, target, relation_type)`: idempotent exact re-pass, additive new edge, two-edge changed-target; removal only via shed. | test | Three sub-assertions: (a) **idempotent** — pass an `edges` triple identical to a carried triple; assert one row, `edges_carried` not inflated; (b) **additive** — pass a genuinely new triple; assert added; (c) **changed-target** — pass same `(source, relation)` with a new target; assert **two** edges. Plus: omission of a carried edge from `edges` does **not** remove it. | PENDING |
+| AC-09 | **No outgoing ceiling** — all eligible edges carry with no truncation; eligible = agent-declared only. | test | Integration: seed A with > `REDIRECT_CEILING` (50) eligible outgoing edges; correct; assert **all** carry, no truncation, no ceiling warn. Couples to AC-04: ineligible classes excluded. | PENDING |
+| AC-10 | `uni-zero` SKILL + agent docs no longer instruct manual re-declaration; document carry-forward default + `context_edge remove`/`redirect` (new entry id) as shed. | file-check + grep | Doc review: `uni-zero` SKILL goal-curation section + any agent docs carrying the "re-declare edges on correction" warning are updated; assert the shed path is documented against the **new** entry id and the Deprecated-original-frozen note is present. **Coupled with AC-11.** | PENDING |
+| AC-11 | Response includes `edges_carried` integer — **count only**, **omitted when zero**. | test | Response envelope: (a) a correction carrying N>0 returns `edges_carried = N` (actual inserts, NFR-03); (b) a correction carrying zero **omits** the field entirely; (c) the field carries no edge identities/content. **Coupled with AC-10.** | PENDING |
+
+## Additional Verification (design-mandated, not numbered ACs)
+
+| Check | Method | Detail | Status |
+|-------|--------|--------|--------|
+| Carried-edge metadata (FR-11 / R-11) | test | Assert a carried edge's `created_at == now` (correction timestamp), NOT the source row's `created_at`; `created_by`/`source` = `"agent"`. Guards against accidental preservation / provenance marker. | PENDING |
+| Pipeline order (R-04) | test | Assert handler order 8 → 8b → 8b′ → 8c → 9 → 10; re-passed edge from 8b is a UNIQUE conflict in 8b′ (validates 8b before 8b′). | PENDING |
+| Eligibility single-source (R-03) | grep | Exclusion list exists in exactly one SQL clause; no parallel Rust-side filter; inline superset rationale comment present. | PENDING |
+| `source_id` index (O-1 / R-09) | manual | Developer confirms whether `idx_graph_edges_source_id` exists; note finding (latency only, not correctness). | PENDING |
+| Tick-window staleness (R-07 / NFR-04) | test | DB-read assertion of a carried edge is immediate (no tick); any BFS path-mode assertion forces tick/drain first; expected-staleness documented in-test. | PENDING |
