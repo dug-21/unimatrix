@@ -14,6 +14,7 @@ pub mod metrics;
 pub mod migration;
 mod migration_compat;
 pub mod read;
+pub mod read_outgoing;
 mod write;
 mod write_ext;
 
@@ -50,6 +51,7 @@ pub use read::{
     EDGE_SOURCE_COSINE_SUPPORTS, EDGE_SOURCE_NLI, EDGE_SOURCE_S1, EDGE_SOURCE_S2, EDGE_SOURCE_S8,
     GraphCohesionMetrics, GraphEdgeRow, IncomingEdgeRow, StatusAggregates,
 };
+pub use read_outgoing::OutgoingEdgeRow;
 pub use retention::{CycleGcStats, UnattributedGcStats};
 pub use schema::status_counter_key;
 pub use schema::{AgentRecord, AuditEvent, Capability, Outcome, TrustLevel};
