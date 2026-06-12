@@ -100,7 +100,7 @@ test-plan/
 
 ### What You Do
 
-1. Execute unit tests via the hardened convention (see "Cargo Output Truncation" below): `setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc`
+1. Execute unit tests via the hardened convention (see "Cargo Output Truncation" below): `log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc`
 2. Execute integration smoke tests (MANDATORY gate): `cd product/test/infra-001 && python -m pytest suites/ -v -m smoke --timeout=60`
 3. Execute relevant integration suites based on what the feature touches (see suite selection table below)
 4. Execute feature-level tests mapped to the Risk Strategy
@@ -256,7 +256,7 @@ When an integration test fails, determine causation:
 ```bash
 # Test: hardened workspace run — own process group + hard ceiling + file-not-pipe.
 # CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
-setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc
+log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc
 ```
 
 NEVER pipe full cargo output into context. NEVER rewrite the line above as a pipeline

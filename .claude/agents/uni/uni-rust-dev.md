@@ -146,7 +146,7 @@ Include in your agent report:
 ## Self-Check (Run Before Returning Results)
 
 - [ ] `cargo build --workspace` passes (zero errors)
-- [ ] `cargo test --workspace` passes (no new failures) — run via the hardened convention in `.claude/rules/rust-workspace.md` (`setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > /tmp/uni-test.$$.log 2>&1; rc=$?; tail -30 /tmp/uni-test.$$.log; rm -f /tmp/uni-test.$$.log; exit $rc`), never as a bare `cargo test ... | tail` pipe
+- [ ] `cargo test --workspace` passes (no new failures) — run via the hardened convention in `.claude/rules/rust-workspace.md` (`log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc`), never as a bare `cargo test ... | tail` pipe
 - [ ] No `todo!()`, `unimplemented!()`, `TODO`, `FIXME`, or `HACK` in non-test code
 - [ ] All modified files are within the scope defined in the brief
 - [ ] Error handling uses project error type with context, not `.unwrap()` in non-test code
