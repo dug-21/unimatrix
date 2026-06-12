@@ -84,7 +84,10 @@ pub struct TestSearchResult {
 pub fn skip_if_no_model() -> bool {
     let config = EmbedConfig::default();
     let cache_dir = config.resolve_cache_dir();
-    let model_dir = cache_dir.join(config.model.model_id().replace('/', "--"));
+    // Use the canonical helper the downloader/loader use (cache_subdir() ->
+    // `_`-separated), NOT a re-derived separator. Re-deriving the path drifted
+    // to `--` and silently masked model absence (#723).
+    let model_dir = cache_dir.join(config.model.cache_subdir());
     let model_path = model_dir.join(config.model.onnx_filename());
 
     if !model_path.exists() {
