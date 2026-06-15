@@ -8,9 +8,13 @@ use crate::types::{ObservationRecord, SessionSummary};
 
 /// Compute per-session activity profiles from observation records.
 ///
-/// Groups records by `session_id`, computes tool distribution (PreToolUse only),
+/// Groups records by `session_id`, computes tool distribution (PostToolUse only),
 /// top file zones, agents spawned, and knowledge flow counts. Returns summaries
 /// sorted by `started_at` ascending with lexicographic `session_id` tiebreaker.
+///
+/// Per-tool aggregation reads `PostToolUse` events (the durable per-tool event
+/// under the TS UDS client, ADR-004 / vnc-028). The retired non-cycle `PreToolUse`
+/// event is no longer emitted by the active client (#750).
 pub fn compute_session_summaries(records: &[ObservationRecord]) -> Vec<SessionSummary> {
     // Group records by session_id
     let mut groups: HashMap<&str, Vec<&ObservationRecord>> = HashMap::new();
@@ -48,10 +52,11 @@ pub fn compute_context_reload_pct(
         return 0.0;
     }
 
-    // Build per-session file sets from observation records
+    // Build per-session file sets from observation records.
+    // PostToolUse is the surviving per-tool event under the TS UDS client (#750).
     let mut session_files: HashMap<String, HashSet<String>> = HashMap::new();
     for record in records {
-        if record.event_type != "PreToolUse" {
+        if record.event_type != "PostToolUse" {
             continue;
         }
         let path = record
@@ -109,10 +114,11 @@ fn build_session_summary(
     let max_ts = session_records.iter().map(|r| r.ts).max().unwrap_or(0);
     let duration_secs = (max_ts.saturating_sub(min_ts)) / 1000;
 
-    // Tool distribution: only PreToolUse events (FR-01.2)
+    // Tool distribution: only PostToolUse events (FR-01.2; #750 — PostToolUse is the
+    // durable per-tool event under the TS UDS client, ADR-004 / vnc-028).
     let mut tool_distribution: HashMap<String, u64> = HashMap::new();
     for record in session_records {
-        if record.event_type != "PreToolUse" {
+        if record.event_type != "PostToolUse" {
             continue;
         }
         let tool_name = record.tool.as_deref().unwrap_or("");
@@ -120,10 +126,10 @@ fn build_session_summary(
         *tool_distribution.entry(category.to_string()).or_default() += 1;
     }
 
-    // File zones: only PreToolUse events for file-touching tools
+    // File zones: only PostToolUse events for file-touching tools (#750)
     let mut file_counts: HashMap<String, u64> = HashMap::new();
     for record in session_records {
-        if record.event_type != "PreToolUse" {
+        if record.event_type != "PostToolUse" {
             continue;
         }
         let path = record
@@ -153,11 +159,11 @@ fn build_session_summary(
         }
     }
 
-    // Knowledge flow: PreToolUse events only
+    // Knowledge flow: PostToolUse events only (#750 — surviving per-tool event)
     let knowledge_served = session_records
         .iter()
         .filter(|r| {
-            r.event_type == "PreToolUse"
+            r.event_type == "PostToolUse"
                 && r.tool.as_deref().map(normalize_tool_name).is_some_and(|t| {
                     matches!(t, "context_search" | "context_lookup" | "context_get")
                 })
@@ -167,7 +173,7 @@ fn build_session_summary(
     let knowledge_stored = session_records
         .iter()
         .filter(|r| {
-            r.event_type == "PreToolUse"
+            r.event_type == "PostToolUse"
                 && r.tool
                     .as_deref()
                     .map(normalize_tool_name)
@@ -178,7 +184,7 @@ fn build_session_summary(
     let knowledge_curated = session_records
         .iter()
         .filter(|r| {
-            r.event_type == "PreToolUse"
+            r.event_type == "PostToolUse"
                 && r.tool.as_deref().map(normalize_tool_name).is_some_and(|t| {
                     matches!(
                         t,
@@ -287,17 +293,21 @@ mod tests {
         }
     }
 
-    fn pre_tool(session_id: &str, ts: u64, tool: &str) -> ObservationRecord {
-        make_record(session_id, ts, "PreToolUse", Some(tool), None)
+    /// Per-tool event helper. Emits `PostToolUse` — the durable per-tool event under
+    /// the TS UDS client (ADR-004 / vnc-028, #750). The retired non-cycle `PreToolUse`
+    /// event is no longer emitted by the active client, and the aggregation read-path
+    /// now filters on `PostToolUse`.
+    fn post_tool(session_id: &str, ts: u64, tool: &str) -> ObservationRecord {
+        make_record(session_id, ts, "PostToolUse", Some(tool), None)
     }
 
-    fn pre_tool_with_input(
+    fn post_tool_with_input(
         session_id: &str,
         ts: u64,
         tool: &str,
         input: serde_json::Value,
     ) -> ObservationRecord {
-        make_record(session_id, ts, "PreToolUse", Some(tool), Some(input))
+        make_record(session_id, ts, "PostToolUse", Some(tool), Some(input))
     }
 
     // ---- compute_session_summaries tests ----
@@ -305,12 +315,12 @@ mod tests {
     #[test]
     fn test_session_summaries_groups_by_session_id() {
         let records = vec![
-            pre_tool("s1", 1000, "Read"),
-            pre_tool("s1", 2000, "Read"),
-            pre_tool("s1", 3000, "Edit"),
-            pre_tool("s2", 4000, "Bash"),
-            pre_tool("s2", 5000, "Read"),
-            pre_tool("s2", 6000, "Read"),
+            post_tool("s1", 1000, "Read"),
+            post_tool("s1", 2000, "Read"),
+            post_tool("s1", 3000, "Edit"),
+            post_tool("s2", 4000, "Bash"),
+            post_tool("s2", 5000, "Read"),
+            post_tool("s2", 6000, "Read"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries.len(), 2);
@@ -326,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_session_summaries_single_record() {
-        let records = vec![pre_tool("s1", 5000, "Read")];
+        let records = vec![post_tool("s1", 5000, "Read")];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].duration_secs, 0);
@@ -335,9 +345,9 @@ mod tests {
     #[test]
     fn test_session_summaries_ordered_by_started_at() {
         let records = vec![
-            pre_tool("s3", 300_000, "Read"),
-            pre_tool("s1", 100_000, "Read"),
-            pre_tool("s2", 200_000, "Read"),
+            post_tool("s3", 300_000, "Read"),
+            post_tool("s1", 100_000, "Read"),
+            post_tool("s2", 200_000, "Read"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].session_id, "s1");
@@ -348,8 +358,8 @@ mod tests {
     #[test]
     fn test_session_summaries_tiebreak_by_session_id() {
         let records = vec![
-            pre_tool("beta", 1000, "Read"),
-            pre_tool("alpha", 1000, "Read"),
+            post_tool("beta", 1000, "Read"),
+            post_tool("alpha", 1000, "Read"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].session_id, "alpha");
@@ -359,13 +369,13 @@ mod tests {
     #[test]
     fn test_session_summaries_tool_distribution_categories() {
         let records = vec![
-            pre_tool("s1", 1000, "Read"),
-            pre_tool("s1", 1001, "Edit"),
-            pre_tool("s1", 1002, "Bash"),
-            pre_tool("s1", 1003, "context_search"),
-            pre_tool("s1", 1004, "context_store"),
-            pre_tool("s1", 1005, "SubagentStart"),
-            pre_tool("s1", 1006, "UnknownTool"),
+            post_tool("s1", 1000, "Read"),
+            post_tool("s1", 1001, "Edit"),
+            post_tool("s1", 1002, "Bash"),
+            post_tool("s1", 1003, "context_search"),
+            post_tool("s1", 1004, "context_store"),
+            post_tool("s1", 1005, "SubagentStart"),
+            post_tool("s1", 1006, "UnknownTool"),
         ];
         let summaries = compute_session_summaries(&records);
         let dist = &summaries[0].tool_distribution;
@@ -379,11 +389,14 @@ mod tests {
     }
 
     #[test]
-    fn test_session_summaries_filters_pretooluse_only() {
+    fn test_session_summaries_filters_posttooluse_only() {
+        // #750: per-tool aggregation reads PostToolUse (the surviving event under the
+        // TS UDS client). PreToolUse rows — which the active client no longer emits —
+        // must NOT be counted, so a stray PreToolUse must be ignored.
         let records = vec![
-            pre_tool("s1", 1000, "Read"),
-            pre_tool("s1", 2000, "Read"),
-            make_record("s1", 3000, "PostToolUse", Some("Read"), None),
+            post_tool("s1", 1000, "Read"),
+            post_tool("s1", 2000, "Read"),
+            make_record("s1", 3000, "PreToolUse", Some("Read"), None),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].tool_distribution.get("read"), Some(&2));
@@ -392,17 +405,17 @@ mod tests {
     #[test]
     fn test_session_summaries_knowledge_served_stored() {
         let records = vec![
-            pre_tool("s1", 1000, "context_search"),
-            pre_tool("s1", 1001, "context_search"),
-            pre_tool("s1", 1002, "context_search"),
-            pre_tool("s1", 1003, "context_search"),
-            pre_tool("s1", 1004, "context_search"),
-            pre_tool("s1", 1005, "context_lookup"),
-            pre_tool("s1", 1006, "context_lookup"),
-            pre_tool("s1", 1007, "context_get"),
-            pre_tool("s1", 1008, "context_store"),
-            pre_tool("s1", 1009, "context_store"),
-            pre_tool("s1", 1010, "context_store"),
+            post_tool("s1", 1000, "context_search"),
+            post_tool("s1", 1001, "context_search"),
+            post_tool("s1", 1002, "context_search"),
+            post_tool("s1", 1003, "context_search"),
+            post_tool("s1", 1004, "context_search"),
+            post_tool("s1", 1005, "context_lookup"),
+            post_tool("s1", 1006, "context_lookup"),
+            post_tool("s1", 1007, "context_get"),
+            post_tool("s1", 1008, "context_store"),
+            post_tool("s1", 1009, "context_store"),
+            post_tool("s1", 1010, "context_store"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].knowledge_served, 8);
@@ -427,62 +440,62 @@ mod tests {
     fn test_session_summaries_top_file_zones_max_5() {
         // Create records touching 7 distinct zones
         let records = vec![
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1000,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/a/src/lib.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1001,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/b/src/lib.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1002,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/c/src/lib.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1003,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/d/src/lib.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1004,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/e/src/lib.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1005,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/f/src/lib.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1006,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/g/src/lib.rs"}),
             ),
             // Extra hits for zones a and b to ensure ordering
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1007,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/a/src/main.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1008,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/crates/a/src/types.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1009,
                 "Read",
@@ -503,9 +516,9 @@ mod tests {
     #[test]
     fn test_session_summaries_started_at_and_duration() {
         let records = vec![
-            pre_tool("s1", 1000, "Read"),
-            pre_tool("s1", 2000, "Read"),
-            pre_tool("s1", 5000, "Read"),
+            post_tool("s1", 1000, "Read"),
+            post_tool("s1", 2000, "Read"),
+            post_tool("s1", 5000, "Read"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].started_at, 1000);
@@ -597,15 +610,15 @@ mod tests {
     #[test]
     fn test_session_summaries_mcp_prefixed_knowledge_flow() {
         let records = vec![
-            pre_tool("s1", 1000, "mcp__unimatrix__context_search"),
-            pre_tool("s1", 1001, "mcp__unimatrix__context_search"),
-            pre_tool("s1", 1002, "mcp__unimatrix__context_lookup"),
-            pre_tool("s1", 1003, "mcp__unimatrix__context_get"),
-            pre_tool("s1", 1004, "mcp__unimatrix__context_store"),
-            pre_tool("s1", 1005, "mcp__unimatrix__context_store"),
-            pre_tool("s1", 1006, "mcp__unimatrix__context_correct"),
-            pre_tool("s1", 1007, "mcp__unimatrix__context_deprecate"),
-            pre_tool("s1", 1008, "mcp__unimatrix__context_quarantine"),
+            post_tool("s1", 1000, "mcp__unimatrix__context_search"),
+            post_tool("s1", 1001, "mcp__unimatrix__context_search"),
+            post_tool("s1", 1002, "mcp__unimatrix__context_lookup"),
+            post_tool("s1", 1003, "mcp__unimatrix__context_get"),
+            post_tool("s1", 1004, "mcp__unimatrix__context_store"),
+            post_tool("s1", 1005, "mcp__unimatrix__context_store"),
+            post_tool("s1", 1006, "mcp__unimatrix__context_correct"),
+            post_tool("s1", 1007, "mcp__unimatrix__context_deprecate"),
+            post_tool("s1", 1008, "mcp__unimatrix__context_quarantine"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].knowledge_served, 4);
@@ -616,12 +629,12 @@ mod tests {
     #[test]
     fn test_session_summaries_mixed_bare_and_prefixed() {
         let records = vec![
-            pre_tool("s1", 1000, "context_search"),
-            pre_tool("s1", 1001, "mcp__unimatrix__context_search"),
-            pre_tool("s1", 1002, "context_store"),
-            pre_tool("s1", 1003, "mcp__unimatrix__context_store"),
-            pre_tool("s1", 1004, "context_correct"),
-            pre_tool("s1", 1005, "mcp__unimatrix__context_correct"),
+            post_tool("s1", 1000, "context_search"),
+            post_tool("s1", 1001, "mcp__unimatrix__context_search"),
+            post_tool("s1", 1002, "context_store"),
+            post_tool("s1", 1003, "mcp__unimatrix__context_store"),
+            post_tool("s1", 1004, "context_correct"),
+            post_tool("s1", 1005, "mcp__unimatrix__context_correct"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].knowledge_served, 2);
@@ -632,8 +645,8 @@ mod tests {
     #[test]
     fn test_session_summaries_curate_in_tool_distribution() {
         let records = vec![
-            pre_tool("s1", 1000, "mcp__unimatrix__context_correct"),
-            pre_tool("s1", 1001, "mcp__unimatrix__context_deprecate"),
+            post_tool("s1", 1000, "mcp__unimatrix__context_correct"),
+            post_tool("s1", 1001, "mcp__unimatrix__context_deprecate"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].tool_distribution.get("curate"), Some(&2));
@@ -642,8 +655,8 @@ mod tests {
     #[test]
     fn test_session_summaries_no_curate_without_curation_tools() {
         let records = vec![
-            pre_tool("s1", 1000, "Read"),
-            pre_tool("s1", 1001, "context_search"),
+            post_tool("s1", 1000, "Read"),
+            post_tool("s1", 1001, "context_search"),
         ];
         let summaries = compute_session_summaries(&records);
         assert_eq!(summaries[0].tool_distribution.get("curate"), None);
@@ -763,37 +776,37 @@ mod tests {
     fn test_reload_pct_basic() {
         // Session 1 reads files A, B, C. Session 2 reads B, C, D.
         let records = vec![
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1000,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/a.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1001,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/b.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s1",
                 1002,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/c.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s2",
                 2000,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/b.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s2",
                 2001,
                 "Read",
                 json!({"file_path": "/workspaces/unimatrix/c.rs"}),
             ),
-            pre_tool_with_input(
+            post_tool_with_input(
                 "s2",
                 2002,
                 "Read",
@@ -809,7 +822,7 @@ mod tests {
 
     #[test]
     fn test_reload_pct_single_session() {
-        let records = vec![pre_tool_with_input(
+        let records = vec![post_tool_with_input(
             "s1",
             1000,
             "Read",
@@ -823,9 +836,9 @@ mod tests {
     #[test]
     fn test_reload_pct_no_files_in_later_sessions() {
         let records = vec![
-            pre_tool_with_input("s1", 1000, "Read", json!({"file_path": "/a.rs"})),
-            pre_tool_with_input("s1", 1001, "Read", json!({"file_path": "/b.rs"})),
-            pre_tool("s2", 2000, "Bash"), // no file reads
+            post_tool_with_input("s1", 1000, "Read", json!({"file_path": "/a.rs"})),
+            post_tool_with_input("s1", 1001, "Read", json!({"file_path": "/b.rs"})),
+            post_tool("s2", 2000, "Bash"), // no file reads
         ];
         let summaries = compute_session_summaries(&records);
         let pct = compute_context_reload_pct(&summaries, &records);
@@ -835,10 +848,10 @@ mod tests {
     #[test]
     fn test_reload_pct_full_overlap() {
         let records = vec![
-            pre_tool_with_input("s1", 1000, "Read", json!({"file_path": "/a.rs"})),
-            pre_tool_with_input("s1", 1001, "Read", json!({"file_path": "/b.rs"})),
-            pre_tool_with_input("s2", 2000, "Read", json!({"file_path": "/a.rs"})),
-            pre_tool_with_input("s2", 2001, "Read", json!({"file_path": "/b.rs"})),
+            post_tool_with_input("s1", 1000, "Read", json!({"file_path": "/a.rs"})),
+            post_tool_with_input("s1", 1001, "Read", json!({"file_path": "/b.rs"})),
+            post_tool_with_input("s2", 2000, "Read", json!({"file_path": "/a.rs"})),
+            post_tool_with_input("s2", 2001, "Read", json!({"file_path": "/b.rs"})),
         ];
         let summaries = compute_session_summaries(&records);
         let pct = compute_context_reload_pct(&summaries, &records);
@@ -848,10 +861,10 @@ mod tests {
     #[test]
     fn test_reload_pct_no_overlap() {
         let records = vec![
-            pre_tool_with_input("s1", 1000, "Read", json!({"file_path": "/a.rs"})),
-            pre_tool_with_input("s1", 1001, "Read", json!({"file_path": "/b.rs"})),
-            pre_tool_with_input("s2", 2000, "Read", json!({"file_path": "/c.rs"})),
-            pre_tool_with_input("s2", 2001, "Read", json!({"file_path": "/d.rs"})),
+            post_tool_with_input("s1", 1000, "Read", json!({"file_path": "/a.rs"})),
+            post_tool_with_input("s1", 1001, "Read", json!({"file_path": "/b.rs"})),
+            post_tool_with_input("s2", 2000, "Read", json!({"file_path": "/c.rs"})),
+            post_tool_with_input("s2", 2001, "Read", json!({"file_path": "/d.rs"})),
         ];
         let summaries = compute_session_summaries(&records);
         let pct = compute_context_reload_pct(&summaries, &records);
@@ -862,15 +875,139 @@ mod tests {
     fn test_reload_pct_range() {
         // Verify result is always in [0.0, 1.0]
         let records = vec![
-            pre_tool_with_input("s1", 1000, "Read", json!({"file_path": "/a.rs"})),
-            pre_tool_with_input("s2", 2000, "Read", json!({"file_path": "/a.rs"})),
-            pre_tool_with_input("s2", 2001, "Read", json!({"file_path": "/b.rs"})),
-            pre_tool_with_input("s3", 3000, "Read", json!({"file_path": "/a.rs"})),
-            pre_tool_with_input("s3", 3001, "Read", json!({"file_path": "/c.rs"})),
+            post_tool_with_input("s1", 1000, "Read", json!({"file_path": "/a.rs"})),
+            post_tool_with_input("s2", 2000, "Read", json!({"file_path": "/a.rs"})),
+            post_tool_with_input("s2", 2001, "Read", json!({"file_path": "/b.rs"})),
+            post_tool_with_input("s3", 3000, "Read", json!({"file_path": "/a.rs"})),
+            post_tool_with_input("s3", 3001, "Read", json!({"file_path": "/c.rs"})),
         ];
         let summaries = compute_session_summaries(&records);
         let pct = compute_context_reload_pct(&summaries, &records);
         assert!(pct >= 0.0);
         assert!(pct <= 1.0);
+    }
+
+    // ---- #750 believable-zero guard (ADR-009, #5007) ----
+
+    /// Build a representative TS-client event stream: each tool call appears as a
+    /// `PostToolUse` row carrying `tool` + `input.file_path`, exactly as the TS UDS
+    /// client emits (verified live: Read/Edit/Write PostToolUse rows carry a populated
+    /// `file_path`). The non-cycle `PreToolUse` event is NOT present — the active client
+    /// retired it (ADR-004 / vnc-028). This is the stream that previously folded every
+    /// per-session counter to a believable zero.
+    fn ts_client_stream() -> Vec<ObservationRecord> {
+        vec![
+            // Session 1: reads two files, edits one, stores knowledge.
+            post_tool_with_input(
+                "s1",
+                1000,
+                "Read",
+                json!({"file_path": "/workspaces/unimatrix/crates/store/src/lib.rs"}),
+            ),
+            post_tool_with_input(
+                "s1",
+                1001,
+                "Read",
+                json!({"file_path": "/workspaces/unimatrix/crates/store/src/read.rs"}),
+            ),
+            post_tool_with_input(
+                "s1",
+                1002,
+                "Edit",
+                json!({"file_path": "/workspaces/unimatrix/crates/store/src/lib.rs"}),
+            ),
+            post_tool("s1", 1003, "context_store"),
+            // Session 2 (later): re-reads one file from session 1 (reload) plus a new one.
+            post_tool_with_input(
+                "s2",
+                2000,
+                "Read",
+                json!({"file_path": "/workspaces/unimatrix/crates/store/src/lib.rs"}),
+            ),
+            post_tool_with_input(
+                "s2",
+                2001,
+                "Write",
+                json!({"file_path": "/workspaces/unimatrix/crates/store/src/new.rs"}),
+            ),
+            post_tool("s2", 2002, "context_search"),
+        ]
+    }
+
+    #[test]
+    fn test_session_aggregation_counts_posttooluse_not_zero() {
+        // Regression guard for #750: under the TS UDS client (PostToolUse-only),
+        // per-session Calls/Tools/Knowledge and context_reload must be NON-ZERO.
+        let records = ts_client_stream();
+        let summaries = compute_session_summaries(&records);
+        assert_eq!(summaries.len(), 2, "two sessions expected");
+
+        // Session 1: Calls (tool_distribution non-empty), Tools categorized.
+        let s1 = &summaries[0];
+        assert_eq!(s1.session_id, "s1");
+        let s1_calls: u64 = s1.tool_distribution.values().sum();
+        assert!(
+            s1_calls > 0,
+            "per-session Calls must be non-zero (believable-zero guard, #750)"
+        );
+        assert!(
+            !s1.tool_distribution.is_empty(),
+            "Tools distribution must be non-empty"
+        );
+        assert_eq!(s1.tool_distribution.get("read"), Some(&2));
+        assert_eq!(s1.tool_distribution.get("write"), Some(&1));
+        assert_eq!(s1.tool_distribution.get("store"), Some(&1));
+        assert!(
+            !s1.top_file_zones.is_empty(),
+            "top_file_zones must be populated from PostToolUse file_path"
+        );
+        assert_eq!(
+            s1.knowledge_stored, 1,
+            "knowledge_stored must count context_store"
+        );
+
+        // Session 2: knowledge_served counted from PostToolUse context_search.
+        let s2 = &summaries[1];
+        assert_eq!(
+            s2.knowledge_served, 1,
+            "knowledge_served must count context_search"
+        );
+
+        // context_reload: lib.rs read in s1 and re-read in s2 → non-zero overlap.
+        let reload = compute_context_reload_pct(&summaries, &records);
+        assert!(
+            reload > 0.0,
+            "context_reload must be non-zero on cross-session file overlap (#750), got {reload}"
+        );
+    }
+
+    /// Contract guard: the `event_type` literal the per-session read-path filters on
+    /// MUST be `PostToolUse` — the event the active TS UDS client emits per tool call
+    /// (ADR-004 / vnc-028). If a future client retires/renames `PostToolUse`, the
+    /// aggregation read-path filter must be re-audited rather than silently zeroing
+    /// these metrics. A stream of ONLY the read-path's expected event type must
+    /// produce non-zero aggregation; a stream of the retired `PreToolUse` event must not.
+    #[test]
+    fn test_read_path_filter_matches_active_client_event() {
+        // The event_type the active client emits per tool call.
+        const ACTIVE_CLIENT_PER_TOOL_EVENT: &str = "PostToolUse";
+
+        let active = make_record("s1", 1000, ACTIVE_CLIENT_PER_TOOL_EVENT, Some("Read"), None);
+        let active_summary = compute_session_summaries(std::slice::from_ref(&active));
+        assert_eq!(
+            active_summary[0].tool_distribution.get("read"),
+            Some(&1),
+            "read-path filter must count the active client's per-tool event type ({ACTIVE_CLIENT_PER_TOOL_EVENT})"
+        );
+
+        // The retired event must NOT be counted (it is no longer emitted; counting it
+        // would re-ground the metric on a dead event class).
+        let retired = make_record("s1", 1000, "PreToolUse", Some("Read"), None);
+        let retired_summary = compute_session_summaries(std::slice::from_ref(&retired));
+        assert_eq!(
+            retired_summary[0].tool_distribution.get("read"),
+            None,
+            "retired PreToolUse event must not be counted by the read-path filter"
+        );
     }
 }

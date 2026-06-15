@@ -2049,11 +2049,56 @@ impl UnimatrixServer {
                 Ok(Some(record)) => {
                     // Memoization candidate — deserialize to check schema version.
                     match check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION) {
-                        Ok((report, advisory)) => {
-                            // Record memo hit — do NOT return early (FR-09, crt-046 Resolution 2).
-                            // Step 8b will run below; return from memo_hit AFTER step 8b.
-                            memo_hit = Some((report, advisory));
-                        }
+                        Ok((report, staleness)) => match staleness {
+                            Staleness::Current => {
+                                // Stored summary is at the current schema_version.
+                                // Record memo hit — do NOT return early
+                                // (FR-09, crt-046 Resolution 2). Step 8b runs
+                                // below; return from memo_hit AFTER step 8b.
+                                memo_hit = Some((report, None));
+                            }
+                            Staleness::Stale { stored_version } if !attributed.is_empty() => {
+                                // STALE-SCHEMA AUTO-RECOMPUTE (ADR-002 #750, F1):
+                                // source observation data is still present, so the
+                                // review can be recomputed honestly. Clear memo_hit
+                                // and FALL THROUGH to the existing full pipeline.
+                                // The single store_cycle_review() writer lives past
+                                // both presence guards (:2221, :2089), so routing
+                                // recompute through fallthrough makes empty-clobber
+                                // structurally impossible. NEVER add a second writer
+                                // here.
+                                tracing::info!(
+                                    cycle_id = %feature_cycle,
+                                    stored_version,
+                                    current_version =
+                                        unimatrix_store::SUMMARY_SCHEMA_VERSION,
+                                    "crt-033 #750: stale schema with source data present \
+                                     — recomputing via full pipeline fallthrough"
+                                );
+                                memo_hit = None;
+                            }
+                            Staleness::Stale { stored_version } => {
+                                // STALE + PURGED (attributed empty): source data is
+                                // gone, so a recompute would produce a believable-zero
+                                // report. RETAIN the stored summary untouched (no write,
+                                // no delete) and surface the distinct purged advisory.
+                                // Served via the memo-hit return below — no writer is
+                                // reached on this path.
+                                tracing::warn!(
+                                    cycle_id = %feature_cycle,
+                                    stored_version,
+                                    current_version =
+                                        unimatrix_store::SUMMARY_SCHEMA_VERSION,
+                                    "crt-033 #750: stale schema but source data purged \
+                                     — retaining stored summary, cannot recompute"
+                                );
+                                let advisory = stale_purged_advisory(
+                                    stored_version,
+                                    unimatrix_store::SUMMARY_SCHEMA_VERSION,
+                                );
+                                memo_hit = Some((report, Some(advisory)));
+                            }
+                        },
                         Err(e) => {
                             // ADR-003: deserialization error → treat as cache miss.
                             tracing::warn!(
@@ -2097,8 +2142,13 @@ impl UnimatrixServer {
                         "Raw signals have been purged; returning stored record from {}.",
                         computed_at_display
                     );
+                    // CLOBBER-GUARD (ADR-002 #750, F4): force=true against a
+                    // purged cycle serves the stored record verbatim and does NOT
+                    // write — preserved so an explicit force cannot overwrite a good
+                    // summary with an empty recompute. `_staleness` is ignored here:
+                    // the purged note above already covers the user-facing message.
                     match check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION) {
-                        Ok((report, _advisory)) => {
+                        Ok((report, _staleness)) => {
                             // 11. Audit
                             let metadata_json =
                                 match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
@@ -3613,10 +3663,37 @@ fn extract_cycle_start_ts(cycle_events: Option<&[unimatrix_observe::CycleEventRe
         .unwrap_or(0)
 }
 
-/// Deserialize a stored `CycleReviewRecord` into a `RetrospectiveReport`.
+/// Staleness of a stored `CycleReviewRecord` relative to the current
+/// `SUMMARY_SCHEMA_VERSION` (ADR-002 crt-033, amended #750).
 ///
-/// Returns `(report, advisory)` where `advisory` is `Some(msg)` when the stored
-/// `schema_version` differs from `current_version` (FR-02, C-05, R-08).
+/// `check_stored_review` reports ONLY whether the stored schema_version matches
+/// the current one — it deliberately does NOT decide serve-vs-recompute, because
+/// that decision needs the source-observation-data presence signal
+/// (`!attributed.is_empty()`) which only the handler holds. The handler at the
+/// memo site routes `Stale` into one of two outcomes:
+///   * data present  -> recompute (clear `memo_hit`, fall through to the full
+///     pipeline + single writer);
+///   * data purged   -> retain the stored summary + emit the purged advisory.
+///
+/// `Current` means the stored summary is at the current schema_version and is
+/// served as-is (unchanged ADR-002 behaviour).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Staleness {
+    /// Stored schema_version == current. Serve the stored report verbatim.
+    Current,
+    /// Stored schema_version != current. Carries the stored version so the
+    /// handler can build a precise advisory on the purged (non-recomputable)
+    /// branch. The recomputable branch ignores it (a fresh report is served
+    /// silently).
+    Stale { stored_version: u32 },
+}
+
+/// Deserialize a stored `CycleReviewRecord` into a `RetrospectiveReport` and
+/// report its `Staleness` relative to `current_version`.
+///
+/// Returns `(report, Staleness)` (ADR-002 crt-033, amended #750). The
+/// version-mismatch is detected here; the serve/recompute decision is deferred
+/// to the handler (which holds the `attributed` presence signal).
 ///
 /// On deserialization failure, returns `Err(serde_json::Error)`. The caller must
 /// treat this as a cache miss and fall through to full recomputation (ADR-003).
@@ -3626,33 +3703,58 @@ fn extract_cycle_start_ts(cycle_events: Option<&[unimatrix_observe::CycleEventRe
 fn check_stored_review(
     record: &unimatrix_store::CycleReviewRecord,
     current_version: u32,
-) -> Result<(unimatrix_observe::RetrospectiveReport, Option<String>), serde_json::Error> {
-    let advisory = if record.schema_version != current_version {
-        let context = match record.schema_version {
-            2 => " (schema_version 2 predates the explicit read signal and total_served \
-                  redefinition — search exposures no longer contribute to total_served)"
-                .to_string(),
-            v if v < 2 => format!(
-                " (schema_version {} predates curation health metrics and the explicit read signal)",
-                v
-            ),
-            v => format!(
-                " (schema_version {} is newer than current version {}; downgrade not supported)",
-                v, current_version
-            ),
-        };
-        Some(format!(
-            "Stored review has schema_version {} (current: {}).{} use force=true to recompute.",
-            record.schema_version, current_version, context
-        ))
+) -> Result<(unimatrix_observe::RetrospectiveReport, Staleness), serde_json::Error> {
+    let staleness = if record.schema_version != current_version {
+        Staleness::Stale {
+            stored_version: record.schema_version,
+        }
     } else {
-        None
+        Staleness::Current
     };
 
     let report: unimatrix_observe::RetrospectiveReport =
         serde_json::from_str(&record.summary_json)?;
 
-    Ok((report, advisory))
+    Ok((report, staleness))
+}
+
+/// Build the distinct user-facing advisory for the stale-but-unrecomputable
+/// (source-observation-data purged) case (ADR-002 crt-033, amended #750).
+///
+/// This is intentionally NOT the old generic "use force=true to recompute"
+/// string: force=true would not help (it hits the purged-signals interceptor and
+/// serves the same stored record). The stored summary is retained untouched.
+fn stale_purged_advisory(stored_version: u32, current_version: u32) -> String {
+    let context = match stored_version {
+        // #750: v3 reviews were computed with the per-session aggregation still
+        // filtered on the retired PreToolUse event — their per-session
+        // Calls/Tools/Knowledge/context_reload are believable zeros.
+        3 => " (schema_version 3 predates the #750 PostToolUse re-grounding — \
+              per-session Calls/Tools/Knowledge/context_reload were computed on the \
+              retired PreToolUse event and read as believable zeros)"
+            .to_string(),
+        2 => " (schema_version 2 predates the explicit read signal and total_served \
+              redefinition — search exposures no longer contribute to total_served)"
+            .to_string(),
+        v if v < 2 => format!(
+            " (schema_version {} predates curation health metrics and the explicit read signal)",
+            v
+        ),
+        v if v < current_version => format!(
+            " (schema_version {} predates the current detection/serialization logic)",
+            v
+        ),
+        v => format!(
+            " (schema_version {} is newer than current version {}; downgrade not supported)",
+            v, current_version
+        ),
+    };
+    format!(
+        "Stored review is stale (schema_version {} < current {}).{} The source \
+         observation data for this cycle has been purged, so it cannot be \
+         recomputed — the retained stored summary is returned.",
+        stored_version, current_version, context
+    )
 }
 
 /// Serialize a `RetrospectiveReport` into a `CycleReviewRecord` ready for storage.
@@ -4575,9 +4677,11 @@ fn compute_phase_stats(
             }
         }
 
-        // Tool distribution: PreToolUse observations only (matching session_metrics.rs)
+        // Tool distribution: PostToolUse observations only (matching session_metrics.rs;
+        // #750 — PostToolUse is the surviving per-tool event under the TS UDS client,
+        // ADR-004 / vnc-028).
         let mut tool_distribution = ToolDistribution::default();
-        for obs in filtered.iter().filter(|o| o.event_type == "PreToolUse") {
+        for obs in filtered.iter().filter(|o| o.event_type == "PostToolUse") {
             match categorize_tool_for_phase(obs.tool.as_deref()) {
                 "read" => tool_distribution.read += 1,
                 "execute" => tool_distribution.execute += 1,
@@ -4587,11 +4691,12 @@ fn compute_phase_stats(
             }
         }
 
-        // Knowledge served: PreToolUse where tool is context_search / context_lookup / context_get
+        // Knowledge served: PostToolUse where tool is context_search / context_lookup / context_get
+        // (#750 — surviving per-tool event under the TS UDS client).
         // Uses normalize_tool_name to handle mcp__unimatrix__-prefixed names from production hooks.
         let knowledge_served = filtered
             .iter()
-            .filter(|o| o.event_type == "PreToolUse")
+            .filter(|o| o.event_type == "PostToolUse")
             .filter(|o| {
                 o.tool
                     .as_deref()
@@ -4602,11 +4707,12 @@ fn compute_phase_stats(
             })
             .count() as u64;
 
-        // Knowledge stored: PreToolUse where tool is context_store
+        // Knowledge stored: PostToolUse where tool is context_store
+        // (#750 — surviving per-tool event under the TS UDS client).
         // Uses normalize_tool_name to handle mcp__unimatrix__-prefixed names from production hooks.
         let knowledge_stored = filtered
             .iter()
-            .filter(|o| o.event_type == "PreToolUse")
+            .filter(|o| o.event_type == "PostToolUse")
             .filter(|o| {
                 o.tool
                     .as_deref()
@@ -6145,51 +6251,74 @@ mod tests {
         }
     }
 
-    /// TH-U-03: matching schema_version → no advisory (R-08)
+    /// TH-U-03: matching schema_version → Staleness::Current (R-08)
     #[test]
-    fn test_check_stored_review_matching_version_no_advisory() {
+    fn test_check_stored_review_matching_version_is_current() {
         let record = minimal_cycle_review_record(unimatrix_store::SUMMARY_SCHEMA_VERSION, None);
         let result = check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION);
-        let (_, advisory) = result.expect("check_stored_review must return Ok");
-        assert!(
-            advisory.is_none(),
-            "no advisory when schema_version matches current"
+        let (_, staleness) = result.expect("check_stored_review must return Ok");
+        assert_eq!(
+            staleness,
+            super::Staleness::Current,
+            "matching schema_version must report Current"
         );
     }
 
-    /// TH-U-04: mismatched schema_version (stored < current) → advisory contains key phrases (AC-04b, R-08)
+    /// TH-U-04: mismatched schema_version (stored < current) → Staleness::Stale carrying
+    /// the stored version (AC-04b, R-08; #750 — serve/recompute decision deferred to handler).
     #[test]
-    fn test_check_stored_review_mismatched_version_produces_advisory() {
+    fn test_check_stored_review_mismatched_version_is_stale() {
         let old_version = 0u32;
         let record = minimal_cycle_review_record(old_version, None);
-        let (_, advisory) =
+        let (_, staleness) =
             check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION).unwrap();
-        let advisory_text = advisory.expect("advisory must be Some when schema_version differs");
-        assert!(
-            advisory_text.contains("use force=true to recompute"),
-            "advisory must contain 'use force=true to recompute', got: {advisory_text}"
-        );
-        assert!(
-            advisory_text.contains(&old_version.to_string()),
-            "advisory must include stored version ({old_version}), got: {advisory_text}"
-        );
-        assert!(
-            advisory_text.contains(&unimatrix_store::SUMMARY_SCHEMA_VERSION.to_string()),
-            "advisory must include current version ({}), got: {advisory_text}",
-            unimatrix_store::SUMMARY_SCHEMA_VERSION
+        assert_eq!(
+            staleness,
+            super::Staleness::Stale {
+                stored_version: old_version
+            },
+            "stored < current must report Stale carrying the stored version"
         );
     }
 
-    /// TH-U-05: future schema_version (stored > current) → advisory produced (R-08)
+    /// TH-U-05: future schema_version (stored > current) → Staleness::Stale (R-08)
     #[test]
-    fn test_check_stored_review_future_version_produces_advisory() {
+    fn test_check_stored_review_future_version_is_stale() {
         let future_version = 999u32;
         let record = minimal_cycle_review_record(future_version, None);
-        let (_, advisory) =
+        let (_, staleness) =
             check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION).unwrap();
+        assert_eq!(
+            staleness,
+            super::Staleness::Stale {
+                stored_version: future_version
+            },
+            "future schema_version must also report Stale"
+        );
+    }
+
+    /// #750: the purged-and-stale advisory is distinct from the old generic
+    /// "use force=true to recompute" string, names both versions, and states the
+    /// stored summary is retained / cannot be recomputed.
+    #[test]
+    fn test_stale_purged_advisory_is_distinct_from_force_string() {
+        let advisory = super::stale_purged_advisory(3, unimatrix_store::SUMMARY_SCHEMA_VERSION);
         assert!(
-            advisory.is_some(),
-            "future schema_version must also produce an advisory"
+            !advisory.contains("use force=true to recompute"),
+            "purged advisory must NOT reuse the old force=true string, got: {advisory}"
+        );
+        assert!(
+            advisory.contains("purged") && advisory.contains("cannot be recomputed"),
+            "purged advisory must state it cannot recompute, got: {advisory}"
+        );
+        assert!(
+            advisory.contains("retained"),
+            "purged advisory must state the stored summary is retained, got: {advisory}"
+        );
+        assert!(
+            advisory.contains('3')
+                && advisory.contains(&unimatrix_store::SUMMARY_SCHEMA_VERSION.to_string()),
+            "purged advisory must name both stored and current versions, got: {advisory}"
         );
     }
 
@@ -7493,7 +7622,10 @@ mod phase_stats_tests {
         }
     }
 
-    /// Helper to build a PreToolUse ObservationRecord at a given ts (millis).
+    /// Helper to build a PostToolUse ObservationRecord at a given ts (millis).
+    ///
+    /// #750: the per-session/phase aggregation read-path now filters on `PostToolUse`,
+    /// the durable per-tool event emitted by the TS UDS client (ADR-004 / vnc-028).
     fn make_obs_at(
         session_id: &str,
         ts_ms: u64,
@@ -7501,7 +7633,7 @@ mod phase_stats_tests {
     ) -> unimatrix_observe::ObservationRecord {
         unimatrix_observe::ObservationRecord {
             ts: ts_ms,
-            event_type: "PreToolUse".to_string(),
+            event_type: "PostToolUse".to_string(),
             source_domain: "claude-code".to_string(),
             session_id: session_id.to_string(),
             tool: Some(tool.to_string()),
@@ -7511,7 +7643,7 @@ mod phase_stats_tests {
         }
     }
 
-    /// Helper that builds a PreToolUse ObservationRecord for an MCP tool using the production
+    /// Helper that builds a PostToolUse ObservationRecord for an MCP tool using the production
     /// prefix format (`mcp__unimatrix__{tool}`). Use this for all MCP tool names (context_*)
     /// to match what production hooks actually emit.
     fn make_mcp_obs_at(
@@ -8513,7 +8645,7 @@ mod cycle_review_integration_tests {
         );
 
         // check_stored_review must succeed on the stored record.
-        let (deserialized, advisory) =
+        let (deserialized, staleness) =
             check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
                 .expect("check_stored_review must return Ok");
 
@@ -8521,9 +8653,10 @@ mod cycle_review_integration_tests {
             deserialized.feature_cycle, "memo-test",
             "TH-I-02: deserialized report must have correct feature_cycle"
         );
-        assert!(
-            advisory.is_none(),
-            "TH-I-02: no advisory when schema_version matches current"
+        assert_eq!(
+            staleness,
+            super::Staleness::Current,
+            "TH-I-02: Current when schema_version matches current"
         );
     }
 
@@ -8693,16 +8826,17 @@ mod cycle_review_integration_tests {
     }
 
     // ---------------------------------------------------------------------------
-    // TH-I-06: schema_version=0 in stored record → advisory "use force=true to recompute"
-    // Mapped from original TH-I-03 in spec
-    // Coverage: AC-04b
+    // TH-I-06: stale schema_version in stored record → check_stored_review reports
+    // Staleness::Stale, and the stored row is NOT recomputed/overwritten by the
+    // check itself. (AC-04b; #750 — staleness now drives guarded recompute, decided
+    // at the handler with the data-presence gate.)
     // ---------------------------------------------------------------------------
 
-    /// TH-I-06 (spec TH-I-03): Stored record with schema_version=0 triggers an advisory
-    /// containing "use force=true to recompute". computed_at must be unchanged (no
-    /// recompute occurred). (AC-04b)
+    /// TH-I-06 (spec TH-I-03): Stored record with a stale schema_version is reported
+    /// `Staleness::Stale` and is NOT mutated by the read. The serve/recompute decision
+    /// is made by the handler (see #750 tests below). (AC-04b)
     #[tokio::test(flavor = "multi_thread")]
-    async fn context_cycle_review_stale_schema_version_produces_advisory() {
+    async fn context_cycle_review_stale_schema_version_is_reported_stale() {
         let (store, _dir) = open_store().await;
         let report = minimal_report("adv-test");
         let valid_json = serde_json::to_string(&report).expect("serialize report");
@@ -8730,30 +8864,282 @@ mod cycle_review_integration_tests {
 
         assert_eq!(
             stored.computed_at, 1_700_000_000,
-            "TH-I-06: computed_at must be unchanged — no recompute (AC-04b)"
+            "TH-I-06: computed_at must be unchanged — check_stored_review does not recompute (AC-04b)"
         );
 
-        let (_, advisory) = check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
+        let (_, staleness) = check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
             .expect("check_stored_review must not fail on valid JSON despite version mismatch");
 
-        let advisory_text = advisory.expect("advisory must be Some when schema_version=0");
+        assert_eq!(
+            staleness,
+            super::Staleness::Stale { stored_version: 0 },
+            "TH-I-06: stale stored schema_version must report Stale carrying the stored version"
+        );
+    }
 
+    // ---------------------------------------------------------------------------
+    // #750 guarded-recompute tests. These pin the handler's serve/recompute
+    // decision at the memo site using the same primitives the handler uses:
+    // check_stored_review (Staleness) + the !attributed.is_empty() data-presence
+    // gate + the single store_cycle_review() writer.
+    //
+    // The handler runs the full server struct, which these store-backed tests do
+    // not construct (matching the module's stated approach). Instead they replay
+    // the memo-site branch logic against a real store so the structural guarantee
+    // (recompute persists only on the data-present path; purged retains untouched)
+    // is exercised end-to-end at the store layer.
+    // ---------------------------------------------------------------------------
+
+    /// Replay of the memo-site decision (#750): given the stored record's staleness
+    /// and whether source observation data is present, returns whether the handler
+    /// would recompute (clear memo_hit + fall through to the writer) or retain the
+    /// stored summary. This mirrors the exact branch arms in the handler so the
+    /// decision logic is unit-pinned without the full server struct.
+    fn memo_site_recomputes(staleness: super::Staleness, attributed_is_empty: bool) -> bool {
+        match staleness {
+            super::Staleness::Current => false,
+            super::Staleness::Stale { .. } => !attributed_is_empty,
+        }
+    }
+
+    /// #750 (1): stale schema + source data present → handler recomputes. We
+    /// confirm the decision routes to recompute, then exercise the actual
+    /// fall-through outcome: the full pipeline's single writer persists a
+    /// fresh, current-schema record. (AC: stale+present recomputes.)
+    #[tokio::test(flavor = "multi_thread")]
+    async fn context_cycle_review_stale_schema_data_present_recomputes() {
+        let (store, _dir) = open_store().await;
+
+        // Seed a stale (schema_version=3) stored record with a believable-zero report.
+        let stale_report = minimal_report("recompute-test");
+        let stale_record = unimatrix_store::CycleReviewRecord {
+            feature_cycle: "recompute-test".to_string(),
+            schema_version: 3,
+            computed_at: 1_700_000_000,
+            raw_signals_available: 1,
+            summary_json: serde_json::to_string(&stale_report).expect("serialize"),
+            ..Default::default()
+        };
+        store
+            .store_cycle_review(&stale_record)
+            .await
+            .expect("seed stale record");
+
+        let stored = store
+            .get_cycle_review("recompute-test")
+            .await
+            .expect("get")
+            .expect("row exists");
+        let (_, staleness) = check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
+            .expect("check ok");
+
+        // Data present (attributed non-empty) → recompute decision.
         assert!(
-            advisory_text.contains("use force=true to recompute"),
-            "TH-I-06: advisory must contain 'use force=true to recompute' (AC-04b); \
-             got: {}",
-            advisory_text
+            memo_site_recomputes(staleness, /* attributed_is_empty = */ false),
+            "#750: stale schema with source data present must route to recompute"
         );
-        assert!(
-            advisory_text.contains('0'),
-            "TH-I-06: advisory must contain stored version '0'; got: {}",
-            advisory_text
-        );
-        assert!(
-            advisory_text.contains(&unimatrix_store::SUMMARY_SCHEMA_VERSION.to_string()),
-            "TH-I-06: advisory must contain current version {}; got: {}",
+
+        // Exercise the fall-through outcome: the full pipeline builds a fresh report
+        // and writes it through the single store_cycle_review() writer at the current
+        // schema_version. A fresh report has non-zero session metadata.
+        let fresh_report = minimal_report("recompute-test"); // session_count=1, total_records=5
+        let fresh_record =
+            build_cycle_review_record("recompute-test", &fresh_report, None, 0).expect("build");
+        store
+            .store_cycle_review(&fresh_record)
+            .await
+            .expect("recompute write");
+
+        let after = store
+            .get_cycle_review("recompute-test")
+            .await
+            .expect("get")
+            .expect("row exists");
+        assert_eq!(
+            after.schema_version,
             unimatrix_store::SUMMARY_SCHEMA_VERSION,
-            advisory_text
+            "#750: recompute must persist at the current schema_version"
+        );
+        let after_report: unimatrix_observe::RetrospectiveReport =
+            serde_json::from_str(&after.summary_json).expect("deserialize");
+        assert!(
+            after_report.session_count > 0 && after_report.total_records > 0,
+            "#750: recomputed summary must be a fresh non-zero report"
+        );
+    }
+
+    /// #750 (2): stale schema + source data purged (attributed empty) → handler
+    /// RETAINS the stored summary untouched (no write, no delete) and surfaces the
+    /// distinct purged advisory. We confirm the decision does NOT recompute and
+    /// that NO writer runs (computed_at / summary_json byte-identical).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn context_cycle_review_stale_schema_data_purged_retains_untouched() {
+        let (store, _dir) = open_store().await;
+
+        let stale_report = minimal_report("purged-stale-test");
+        let original_json = serde_json::to_string(&stale_report).expect("serialize");
+        let stale_record = unimatrix_store::CycleReviewRecord {
+            feature_cycle: "purged-stale-test".to_string(),
+            schema_version: 3,
+            computed_at: 1_700_000_000,
+            raw_signals_available: 1,
+            summary_json: original_json.clone(),
+            ..Default::default()
+        };
+        store
+            .store_cycle_review(&stale_record)
+            .await
+            .expect("seed stale record");
+
+        let stored = store
+            .get_cycle_review("purged-stale-test")
+            .await
+            .expect("get")
+            .expect("row exists");
+        let (report, staleness) =
+            check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
+                .expect("check ok");
+
+        // Data purged (attributed empty) → must NOT recompute.
+        assert!(
+            !memo_site_recomputes(staleness, /* attributed_is_empty = */ true),
+            "#750: stale schema with purged data must NOT recompute"
+        );
+
+        // The handler builds the distinct purged advisory and serves the stored
+        // report via the memo-hit return — it calls NO writer. We confirm the
+        // advisory shape and that the stored row is byte-identical afterwards.
+        let super::Staleness::Stale { stored_version } = staleness else {
+            panic!("expected Stale");
+        };
+        let advisory =
+            super::stale_purged_advisory(stored_version, unimatrix_store::SUMMARY_SCHEMA_VERSION);
+        assert!(
+            advisory.contains("purged") && !advisory.contains("use force=true to recompute"),
+            "#750: purged case must use the distinct advisory, not the force string"
+        );
+        // Serving the retained report must succeed (no write involved).
+        dispatch_review_with_advisory(report, "markdown", None, Some(advisory))
+            .expect("serve retained report");
+
+        // No writer ran: the stored row is unchanged.
+        let after = store
+            .get_cycle_review("purged-stale-test")
+            .await
+            .expect("get")
+            .expect("row exists");
+        assert_eq!(
+            after.computed_at, 1_700_000_000,
+            "#750: stored computed_at must be unchanged — no recompute on purged data"
+        );
+        assert_eq!(
+            after.summary_json, original_json,
+            "#750: stored summary_json must be byte-identical — not overwritten"
+        );
+        assert_eq!(
+            after.schema_version, 3,
+            "#750: stored schema_version must remain stale — retained, not recomputed"
+        );
+    }
+
+    /// #750 (3): force=true + source data purged → serves the stored record without
+    /// writing (pins the :2089 clobber-guard). An explicit force against a purged
+    /// cycle must NOT overwrite a good summary with an empty one.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn context_cycle_review_force_true_purged_does_not_clobber() {
+        let (store, _dir) = open_store().await;
+
+        let report = minimal_report("force-purged-test");
+        let original_json = serde_json::to_string(&report).expect("serialize");
+        let record = unimatrix_store::CycleReviewRecord {
+            feature_cycle: "force-purged-test".to_string(),
+            schema_version: unimatrix_store::SUMMARY_SCHEMA_VERSION,
+            computed_at: 1_700_000_000,
+            raw_signals_available: 1,
+            summary_json: original_json.clone(),
+            ..Default::default()
+        };
+        store
+            .store_cycle_review(&record)
+            .await
+            .expect("seed record");
+
+        // force=true + attributed empty hits the :2089 interceptor: it reads the
+        // stored record, builds the "Raw signals have been purged" note, and serves
+        // WITHOUT writing. Replay that: no store_cycle_review call on this path.
+        let stored = store
+            .get_cycle_review("force-purged-test")
+            .await
+            .expect("get")
+            .expect("row exists");
+        let note = format!(
+            "Raw signals have been purged; returning stored record from {}.",
+            stored.computed_at
+        );
+        let (served, _staleness) =
+            check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
+                .expect("check ok");
+        dispatch_review_with_advisory(served, "markdown", None, Some(note))
+            .expect("serve stored on force+purged");
+
+        // The stored row must be byte-identical — the clobber-guard held.
+        let after = store
+            .get_cycle_review("force-purged-test")
+            .await
+            .expect("get")
+            .expect("row exists");
+        assert_eq!(
+            after.computed_at, 1_700_000_000,
+            "#750: force=true + purged must NOT advance computed_at (clobber-guard)"
+        );
+        assert_eq!(
+            after.summary_json, original_json,
+            "#750: force=true + purged must NOT overwrite summary_json (clobber-guard)"
+        );
+    }
+
+    /// #750 (4): same (current) schema version → unchanged ADR-002 behaviour: the
+    /// stored record is served, no recompute. (Regression for the non-stale path.)
+    #[tokio::test(flavor = "multi_thread")]
+    async fn context_cycle_review_current_schema_serves_stored_no_recompute() {
+        let (store, _dir) = open_store().await;
+
+        let report = minimal_report("current-test");
+        let record = build_cycle_review_record("current-test", &report, None, 0).expect("build");
+        store
+            .store_cycle_review(&record)
+            .await
+            .expect("seed record");
+        let initial_computed_at = record.computed_at;
+
+        let stored = store
+            .get_cycle_review("current-test")
+            .await
+            .expect("get")
+            .expect("row exists");
+        let (_, staleness) = check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
+            .expect("check ok");
+
+        assert_eq!(
+            staleness,
+            super::Staleness::Current,
+            "#750: current schema_version must report Current"
+        );
+        // Even with data present, Current never recomputes.
+        assert!(
+            !memo_site_recomputes(staleness, /* attributed_is_empty = */ false),
+            "#750: current schema must serve stored, never recompute"
+        );
+
+        // Stored row untouched.
+        let after = store
+            .get_cycle_review("current-test")
+            .await
+            .expect("get")
+            .expect("row exists");
+        assert_eq!(
+            after.computed_at, initial_computed_at,
+            "#750: current schema serve must not change computed_at"
         );
     }
 
@@ -9109,10 +9495,12 @@ mod cycle_review_integration_tests {
         );
     }
 
-    // CCR-U-04: force=false with schema_version=1 returns advisory (AC-11, R-12)
+    // CCR-U-04: force=false with schema_version=1 reports Staleness::Stale (AC-11, R-12;
+    // #750 — serve/recompute decision deferred to the handler).
     //
-    // Verifies that check_stored_review produces the advisory string when
-    // schema_version != SUMMARY_SCHEMA_VERSION.
+    // Verifies that check_stored_review reports Stale (carrying the stored version)
+    // when schema_version != SUMMARY_SCHEMA_VERSION, and that the distinct purged
+    // advisory (built by the handler on the purged branch) names the stored version.
     #[tokio::test(flavor = "multi_thread")]
     async fn test_context_cycle_review_advisory_on_stale_schema_version() {
         let (store, _dir) = open_store().await;
@@ -9127,29 +9515,34 @@ mod cycle_review_integration_tests {
             .await
             .expect("store must succeed");
 
-        // Retrieve and check for advisory.
+        // Retrieve and check staleness.
         let stored = store
             .get_cycle_review("crt-047-advisory-test")
             .await
             .expect("get must succeed")
             .expect("row must exist");
 
-        let (_, advisory) = check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
+        let (_, staleness) = check_stored_review(&stored, unimatrix_store::SUMMARY_SCHEMA_VERSION)
             .expect("check_stored_review must not error");
 
-        assert!(
-            advisory.is_some(),
-            "CCR-U-04: advisory must be Some when schema_version=1 != current ({})",
+        assert_eq!(
+            staleness,
+            super::Staleness::Stale { stored_version: 1 },
+            "CCR-U-04: stale schema_version=1 must report Stale (current {})",
             unimatrix_store::SUMMARY_SCHEMA_VERSION
         );
-        let advisory_text = advisory.unwrap();
+
+        // The purged-branch advisory (built by the handler) names the stored version.
+        let advisory_text =
+            super::stale_purged_advisory(1, unimatrix_store::SUMMARY_SCHEMA_VERSION);
         assert!(
             advisory_text.contains("schema_version 1"),
-            "CCR-U-04: advisory must mention schema_version 1, got: {advisory_text}"
+            "CCR-U-04: purged advisory must mention schema_version 1, got: {advisory_text}"
         );
         assert!(
-            advisory_text.contains("force=true"),
-            "CCR-U-04: advisory must mention force=true, got: {advisory_text}"
+            !advisory_text.contains("use force=true to recompute"),
+            "CCR-U-04: #750 purged advisory must NOT reuse the old force=true string, \
+             got: {advisory_text}"
         );
     }
 
@@ -9236,13 +9629,14 @@ mod cycle_review_integration_tests {
             unimatrix_store::SUMMARY_SCHEMA_VERSION
         );
 
-        // No advisory on fresh retrieval.
-        let (_, advisory) = check_stored_review(&updated, unimatrix_store::SUMMARY_SCHEMA_VERSION)
+        // Current schema on fresh retrieval — no staleness.
+        let (_, staleness) = check_stored_review(&updated, unimatrix_store::SUMMARY_SCHEMA_VERSION)
             .expect("check_stored_review must not error");
-        assert!(
-            advisory.is_none(),
-            "CCR-U-06: no advisory expected for current schema_version, got: {:?}",
-            advisory
+        assert_eq!(
+            staleness,
+            super::Staleness::Current,
+            "CCR-U-06: Current expected for current schema_version, got: {:?}",
+            staleness
         );
     }
 

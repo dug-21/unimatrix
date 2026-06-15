@@ -32,7 +32,21 @@ use crate::error::{Result, StoreError};
 ///     written before curation health columns were added.
 ///   - crt-049: bumped 2 → 3; adding explicit_read_count, explicit_read_by_category,
 ///     and redefining total_served (search exposures no longer contribute).
-pub const SUMMARY_SCHEMA_VERSION: u32 = 3;
+///   - #750: bumped 3 → 4; the per-session aggregation read-path was re-grounded
+///     from the retired `PreToolUse` event onto `PostToolUse` (ADR-004 / vnc-028).
+///     Stored reviews computed under the PreToolUse filter carry believable-zero
+///     per-session Calls/Tools/Knowledge/context_reload; the bump flags them stale
+///     so the schema-mismatch path fires. NOTE (#750, ADR-002 amended): staleness
+///     is NO LONGER advisory-only. On a stale schema_version the handler now
+///     GUARDED-RECOMPUTES: if the source observation data is still present
+///     (`!attributed.is_empty()`) it recomputes via the full pipeline and the
+///     single store_cycle_review() writer; if the data has been purged it RETAINS
+///     the stored summary untouched and surfaces a distinct "source purged, cannot
+///     recompute" advisory (never the old "use force=true" string, which would not
+///     help). The recompute routes through the existing writer so empty-clobber is
+///     structurally impossible. Same-version reads keep the original
+///     stored-record-served / no-recompute behaviour.
+pub const SUMMARY_SCHEMA_VERSION: u32 = 4;
 
 /// 4MB ceiling for stored `summary_json` (NFR-03).
 const SUMMARY_JSON_MAX_BYTES: usize = 4 * 1024 * 1024;
@@ -542,12 +556,12 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_summary_schema_version_is_three() {
+    fn test_summary_schema_version_is_four() {
         assert_eq!(
-            SUMMARY_SCHEMA_VERSION, 3u32,
-            "SUMMARY_SCHEMA_VERSION must be 3 (bumped in crt-049: \
-             added explicit_read_count, explicit_read_by_category, \
-             redefined total_served)"
+            SUMMARY_SCHEMA_VERSION, 4u32,
+            "SUMMARY_SCHEMA_VERSION must be 4 (bumped in #750: per-session \
+             aggregation re-grounded from PreToolUse onto PostToolUse, \
+             invalidating cached reviews that carry believable-zero metrics)"
         );
     }
 
