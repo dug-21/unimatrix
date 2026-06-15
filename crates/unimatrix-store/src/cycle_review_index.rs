@@ -32,7 +32,15 @@ use crate::error::{Result, StoreError};
 ///     written before curation health columns were added.
 ///   - crt-049: bumped 2 → 3; adding explicit_read_count, explicit_read_by_category,
 ///     and redefining total_served (search exposures no longer contribute).
-pub const SUMMARY_SCHEMA_VERSION: u32 = 3;
+///   - #750: bumped 3 → 4; the per-session aggregation read-path was re-grounded
+///     from the retired `PreToolUse` event onto `PostToolUse` (ADR-004 / vnc-028).
+///     Stored reviews computed under the PreToolUse filter carry believable-zero
+///     per-session Calls/Tools/Knowledge/context_reload; the bump flags them stale
+///     so the schema-mismatch advisory fires. NOTE (#750): the staleness path is
+///     ADVISORY-ONLY by design (ADR-002 crt-033 — "stored record always returned;
+///     no silent recompute") — the bump surfaces the "use force=true to recompute"
+///     note but does NOT auto-recompute cached reviews.
+pub const SUMMARY_SCHEMA_VERSION: u32 = 4;
 
 /// 4MB ceiling for stored `summary_json` (NFR-03).
 const SUMMARY_JSON_MAX_BYTES: usize = 4 * 1024 * 1024;
@@ -542,12 +550,12 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_summary_schema_version_is_three() {
+    fn test_summary_schema_version_is_four() {
         assert_eq!(
-            SUMMARY_SCHEMA_VERSION, 3u32,
-            "SUMMARY_SCHEMA_VERSION must be 3 (bumped in crt-049: \
-             added explicit_read_count, explicit_read_by_category, \
-             redefined total_served)"
+            SUMMARY_SCHEMA_VERSION, 4u32,
+            "SUMMARY_SCHEMA_VERSION must be 4 (bumped in #750: per-session \
+             aggregation re-grounded from PreToolUse onto PostToolUse, \
+             invalidating cached reviews that carry believable-zero metrics)"
         );
     }
 

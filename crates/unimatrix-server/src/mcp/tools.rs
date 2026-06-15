@@ -3629,11 +3629,22 @@ fn check_stored_review(
 ) -> Result<(unimatrix_observe::RetrospectiveReport, Option<String>), serde_json::Error> {
     let advisory = if record.schema_version != current_version {
         let context = match record.schema_version {
+            // #750: v3 reviews were computed with the per-session aggregation still
+            // filtered on the retired PreToolUse event — their per-session
+            // Calls/Tools/Knowledge/context_reload are believable zeros.
+            3 => " (schema_version 3 predates the #750 PostToolUse re-grounding — \
+                  per-session Calls/Tools/Knowledge/context_reload were computed on the \
+                  retired PreToolUse event and read as believable zeros)"
+                .to_string(),
             2 => " (schema_version 2 predates the explicit read signal and total_served \
                   redefinition — search exposures no longer contribute to total_served)"
                 .to_string(),
             v if v < 2 => format!(
                 " (schema_version {} predates curation health metrics and the explicit read signal)",
+                v
+            ),
+            v if v < current_version => format!(
+                " (schema_version {} predates the current detection/serialization logic)",
                 v
             ),
             v => format!(
@@ -4575,9 +4586,11 @@ fn compute_phase_stats(
             }
         }
 
-        // Tool distribution: PreToolUse observations only (matching session_metrics.rs)
+        // Tool distribution: PostToolUse observations only (matching session_metrics.rs;
+        // #750 — PostToolUse is the surviving per-tool event under the TS UDS client,
+        // ADR-004 / vnc-028).
         let mut tool_distribution = ToolDistribution::default();
-        for obs in filtered.iter().filter(|o| o.event_type == "PreToolUse") {
+        for obs in filtered.iter().filter(|o| o.event_type == "PostToolUse") {
             match categorize_tool_for_phase(obs.tool.as_deref()) {
                 "read" => tool_distribution.read += 1,
                 "execute" => tool_distribution.execute += 1,
@@ -4587,11 +4600,12 @@ fn compute_phase_stats(
             }
         }
 
-        // Knowledge served: PreToolUse where tool is context_search / context_lookup / context_get
+        // Knowledge served: PostToolUse where tool is context_search / context_lookup / context_get
+        // (#750 — surviving per-tool event under the TS UDS client).
         // Uses normalize_tool_name to handle mcp__unimatrix__-prefixed names from production hooks.
         let knowledge_served = filtered
             .iter()
-            .filter(|o| o.event_type == "PreToolUse")
+            .filter(|o| o.event_type == "PostToolUse")
             .filter(|o| {
                 o.tool
                     .as_deref()
@@ -4602,11 +4616,12 @@ fn compute_phase_stats(
             })
             .count() as u64;
 
-        // Knowledge stored: PreToolUse where tool is context_store
+        // Knowledge stored: PostToolUse where tool is context_store
+        // (#750 — surviving per-tool event under the TS UDS client).
         // Uses normalize_tool_name to handle mcp__unimatrix__-prefixed names from production hooks.
         let knowledge_stored = filtered
             .iter()
-            .filter(|o| o.event_type == "PreToolUse")
+            .filter(|o| o.event_type == "PostToolUse")
             .filter(|o| {
                 o.tool
                     .as_deref()
@@ -7493,7 +7508,10 @@ mod phase_stats_tests {
         }
     }
 
-    /// Helper to build a PreToolUse ObservationRecord at a given ts (millis).
+    /// Helper to build a PostToolUse ObservationRecord at a given ts (millis).
+    ///
+    /// #750: the per-session/phase aggregation read-path now filters on `PostToolUse`,
+    /// the durable per-tool event emitted by the TS UDS client (ADR-004 / vnc-028).
     fn make_obs_at(
         session_id: &str,
         ts_ms: u64,
@@ -7501,7 +7519,7 @@ mod phase_stats_tests {
     ) -> unimatrix_observe::ObservationRecord {
         unimatrix_observe::ObservationRecord {
             ts: ts_ms,
-            event_type: "PreToolUse".to_string(),
+            event_type: "PostToolUse".to_string(),
             source_domain: "claude-code".to_string(),
             session_id: session_id.to_string(),
             tool: Some(tool.to_string()),
@@ -7511,7 +7529,7 @@ mod phase_stats_tests {
         }
     }
 
-    /// Helper that builds a PreToolUse ObservationRecord for an MCP tool using the production
+    /// Helper that builds a PostToolUse ObservationRecord for an MCP tool using the production
     /// prefix format (`mcp__unimatrix__{tool}`). Use this for all MCP tool names (context_*)
     /// to match what production hooks actually emit.
     fn make_mcp_obs_at(
