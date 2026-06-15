@@ -36,10 +36,16 @@ use crate::error::{Result, StoreError};
 ///     from the retired `PreToolUse` event onto `PostToolUse` (ADR-004 / vnc-028).
 ///     Stored reviews computed under the PreToolUse filter carry believable-zero
 ///     per-session Calls/Tools/Knowledge/context_reload; the bump flags them stale
-///     so the schema-mismatch advisory fires. NOTE (#750): the staleness path is
-///     ADVISORY-ONLY by design (ADR-002 crt-033 — "stored record always returned;
-///     no silent recompute") — the bump surfaces the "use force=true to recompute"
-///     note but does NOT auto-recompute cached reviews.
+///     so the schema-mismatch path fires. NOTE (#750, ADR-002 amended): staleness
+///     is NO LONGER advisory-only. On a stale schema_version the handler now
+///     GUARDED-RECOMPUTES: if the source observation data is still present
+///     (`!attributed.is_empty()`) it recomputes via the full pipeline and the
+///     single store_cycle_review() writer; if the data has been purged it RETAINS
+///     the stored summary untouched and surfaces a distinct "source purged, cannot
+///     recompute" advisory (never the old "use force=true" string, which would not
+///     help). The recompute routes through the existing writer so empty-clobber is
+///     structurally impossible. Same-version reads keep the original
+///     stored-record-served / no-recompute behaviour.
 pub const SUMMARY_SCHEMA_VERSION: u32 = 4;
 
 /// 4MB ceiling for stored `summary_json` (NFR-03).
