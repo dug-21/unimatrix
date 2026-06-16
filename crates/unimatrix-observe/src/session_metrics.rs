@@ -2,7 +2,7 @@
 //!
 //! Pure computation on `ObservationRecord` arrays. No database access.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::types::{ObservationRecord, SessionSummary};
 
@@ -52,56 +52,21 @@ pub fn compute_context_reload_pct(
         return 0.0;
     }
 
-    // Build per-session file sets from observation records.
-    // PostToolUse is the surviving per-tool event under the TS UDS client (#750).
-    let mut session_files: HashMap<String, HashSet<String>> = HashMap::new();
-    for record in records {
-        if record.event_type != "PostToolUse" {
-            continue;
-        }
-        let path = record
-            .tool
-            .as_deref()
-            .zip(record.input.as_ref())
-            .and_then(|(tool, input)| extract_file_path(tool, input));
-        if let Some(path) = path {
-            session_files
-                .entry(record.session_id.clone())
-                .or_default()
-                .insert(path);
-        }
-    }
-
-    // Walk sessions in chronological order, tracking cumulative prior files
-    let mut prior_files: HashSet<String> = HashSet::new();
-    let mut total_files_in_subsequent: u64 = 0;
-    let mut reload_files: u64 = 0;
-
-    for summary in summaries {
-        let current_files = session_files
-            .get(&summary.session_id)
-            .cloned()
-            .unwrap_or_default();
-
-        if !prior_files.is_empty() {
-            for file in &current_files {
-                total_files_in_subsequent += 1;
-                if prior_files.contains(file) {
-                    reload_files += 1;
-                }
-            }
-        }
-
-        // Add current session's files to prior set
-        prior_files.extend(current_files);
-    }
+    // CROSS-SESSION caller of the one shared overlap primitive (crt-055 Component 4).
+    // The fraction is reload_files / total_files_in_subsequent; the primitive owns the
+    // file-set-intersection walk and is parameterized by [`ReloadWindow::CrossSession`].
+    let counts = crate::reload_overlap::overlap_count(
+        records,
+        crate::reload_overlap::ReloadWindow::CrossSession,
+        summaries,
+    );
 
     // Division by zero guard (R-13)
-    if total_files_in_subsequent == 0 {
+    if counts.total == 0 {
         return 0.0;
     }
 
-    reload_files as f64 / total_files_in_subsequent as f64
+    counts.overlap as f64 / counts.total as f64
 }
 
 /// Build a single session summary from grouped records.
@@ -231,7 +196,7 @@ fn classify_tool(tool: &str) -> &'static str {
 }
 
 /// Extract a file path from a tool's input JSON per ADR-004 mapping.
-fn extract_file_path(tool: &str, input: &serde_json::Value) -> Option<String> {
+pub(crate) fn extract_file_path(tool: &str, input: &serde_json::Value) -> Option<String> {
     match tool {
         "Read" | "Edit" | "Write" => input.get("file_path")?.as_str().map(String::from),
         "Glob" | "Grep" => input.get("path")?.as_str().map(String::from),

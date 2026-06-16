@@ -3,6 +3,7 @@
 //! Contains MCP tool handlers, identity resolution, response formatting,
 //! and ToolContext for handler ceremony reduction.
 
+pub(crate) mod activity_fold_handler;
 pub(crate) mod context;
 pub(crate) mod distill_handler;
 pub(crate) mod edge_write;

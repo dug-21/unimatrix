@@ -15,6 +15,7 @@ pub mod extraction;
 pub mod fail_loud_guard;
 pub mod metrics;
 pub mod phase_narrative;
+pub mod reload_overlap;
 pub mod report;
 pub mod session_metrics;
 pub mod source;
@@ -37,6 +38,9 @@ pub use fail_loud_guard::{
 };
 pub use metrics::compute_metric_vector;
 pub use phase_narrative::build_phase_narrative;
+pub use reload_overlap::{
+    OverlapCounts, ReloadWindow, fraction_to_basis_points, overlap_count, reckon_context_reload_bps,
+};
 pub use report::{build_report, recommendations_for_hotspots};
 pub use session_metrics::{
     compute_context_reload_pct, compute_session_summaries, normalize_tool_name,
