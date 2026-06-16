@@ -72,6 +72,7 @@ The Delivery Leader:
      agent_id: "{feature-id}-delivery-leader"
    )
    ```
+   > **Resuming an interrupted session**: On re-entering a broken or resumed session, the leader's FIRST action is to re-issue `context_cycle(type:"start", topic:"{feature-id}")` (idempotent server-side — `AlreadyMatches`; recreates the client tracker).
 7. Plans Stage 3b waves from the IMPLEMENTATION-BRIEF before spawning any implementation agents
 
 ---
@@ -204,9 +205,20 @@ Task(subagent_type: "uni-validator",
 
 ## Stage 3b: Code Implementation (Wave-Based)
 
-**Agents**: uni-rust-dev (one per component per wave)
+**Agents**: uni-rust-dev or uni-js-dev (one per component per wave, selected by the component's target language)
 
 **Prerequisite**: Gate 3a PASSED. Component Map in IMPLEMENTATION-BRIEF.md is updated with actual pseudocode/test-plan file paths.
+
+### Dev-Agent Selection (per component, by language)
+
+Each component's target files are listed in the IMPLEMENTATION-BRIEF Component Map. Select the developer agent by the component's target language:
+
+| Component target | Agent |
+|------------------|-------|
+| Rust source (`crates/**/*.rs`) | `uni-rust-dev` |
+| JS/TS edge client + Node tooling (`packages/unimatrix/**/*.{js,mjs,cjs,ts}`) | `uni-js-dev` |
+
+A single wave commonly mixes both (e.g., a server-side `.rs` component and a hook-client `.js` component): spawn the matching agent type per component in the **same** message. A well-formed component is single-language (one-component-one-concern); if a component genuinely spans both `crates/` and `packages/`, that is a Stage 3a split defect — flag it rather than routing one agent across both.
 
 ### Wave Planning (MANDATORY — before spawning any agent)
 
@@ -223,10 +235,10 @@ The Delivery Leader reads the IMPLEMENTATION-BRIEF and groups components into **
 
 For each wave (in order):
 
-1. **Spawn all agents in the wave in ONE message** — one agent per component, no worktree isolation (agents work directly on the feature branch):
+1. **Spawn all agents in the wave in ONE message** — one agent per component, no worktree isolation (agents work directly on the feature branch). `subagent_type` is `uni-rust-dev` or `uni-js-dev` per the Dev-Agent Selection table above:
 
 ```
-Task(subagent_type: "uni-rust-dev",
+Task(subagent_type: "uni-rust-dev",      ← Rust component (crates/**/*.rs)
   prompt: "Your agent ID: {feature-id}-agent-3-{component-1}
 
     Before implementing, search Unimatrix for relevant patterns and this feature's ADRs:
@@ -253,7 +265,7 @@ Task(subagent_type: "uni-rust-dev",
     2. Tests: pass/fail count
     3. Issues: [blockers]")
 
-Task(subagent_type: "uni-rust-dev",
+Task(subagent_type: "uni-js-dev",        ← JS component (packages/unimatrix/**/*.js)
   prompt: "Your agent ID: {feature-id}-agent-4-{component-2}
     ...same structure, with {component-2}'s pseudocode and test plan...")
 ```
@@ -394,7 +406,8 @@ The Delivery Leader:
 3. Updates GH Issue with PR link
 4. Evaluates documentation trigger criteria (see below) — spawns `uni-docs` if mandatory
 5. Invokes `/uni-review-pr` for security review and merge readiness
-6. Combines impl + deploy results in the return to human
+6. Spawns `uni-zero-reviewer` for the advisory product review (after the security review returns)
+7. Combines impl + deploy + review results in the return to human
 
 ```bash
 # Commit final artifacts
@@ -459,6 +472,29 @@ Invoke `/uni-review-pr` with the PR number, feature ID, and GH Issue number. Thi
 - Review fails → return delivery results only, note "PR review failed"
 - Review returns BLOCKED → include blocking items in combined return
 
+### Product Review (after security review returns)
+
+Spawn `uni-zero-reviewer` — an independent, fresh-context product-lens review of the delivery as a whole, including the security review's findings. It does NOT re-run the security review.
+
+```
+Task(subagent_type: "uni-zero-reviewer",
+  prompt: "Your agent ID: {feature-id}-zero-pr
+
+    GATE: pr-review
+    Feature: {feature-id}
+    GH Issue: #{issue}
+    PR: #{pr-number}
+    Artifacts:
+    - product/features/{id}/reports/ (gate reports)
+    - product/features/{id}/testing/RISK-COVERAGE-REPORT.md
+    - Security review: {location of security review output}")
+```
+
+**Product Review Rules:**
+- The spawn prompt carries ONLY agent ID, gate, IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
+- The reviewer posts an advisory comment on the GH Issue with recommended actions. The Delivery Leader relays stance + comment URL verbatim in the return and NEVER parses, acts on, or gates on it. Advisory — does not block delivery.
+- Reviewer failure → note "product review failed" in the return and proceed.
+
 **Return format:**
 ```
 SESSION 2 COMPLETE — Feature delivered.
@@ -466,6 +502,7 @@ SESSION 2 COMPLETE — Feature delivered.
 Gates: 3a PASS, 3b PASS, 3c PASS
 Security Review: {risk level} — {summary}
 Merge readiness: {READY | BLOCKED}
+Product Review (advisory): {stance} — {comment URL}
 
 Files created/modified: [paths]
 Tests: X passed, Y new
@@ -523,9 +560,11 @@ Always truncate cargo output:
 cargo build --workspace 2>&1 | grep -A5 "^error" | head -20
 cargo build --workspace 2>&1 | tail -3
 
-# Test: summary only (prefer JSON when available)
-cargo test --workspace 2>&1 | tail -30
-# Or: cargo test --workspace -- --format json 2>&1 | tail -30
+# Test: hardened workspace run — own process group + hard ceiling + file-not-pipe (see rust-workspace.md).
+# CARGO_TEST_TIMEOUT_SECS: hard ceiling so an interrupted run cannot orphan cargo children
+log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc
+# Never rewrite as a pipeline (`cargo test ... | tail`) or background it: rc=$? must
+# capture cargo test, not tail. timeout rc=124 = killed-at-ceiling (investigate the hang).
 
 # Clippy: first warnings only
 cargo clippy --workspace -- -D warnings 2>&1 | head -30
@@ -553,7 +592,8 @@ DELIVERY LEADER (you):
                         → commit → Stage 3b
               ...FAIL → rework or stop...
   Stage 3b:   PLAN waves from IMPLEMENTATION-BRIEF (1 wave = all parallel, N waves = sequential)
-              FOR EACH WAVE: Task(uni-rust-dev × components-in-wave) — ONE message, no worktree isolation
+              FOR EACH WAVE: Task(uni-rust-dev / uni-js-dev × components-in-wave) — ONE message, no worktree isolation
+                             dev agent per component by target language (.rs → uni-rust-dev, packages JS/TS → uni-js-dev)
               Each agent gets ONLY its component's pseudocode + test plan
               ...wait for wave... commit wave... spawn next wave...
               ...wait...
@@ -570,6 +610,7 @@ DELIVERY LEADER (you):
   Phase 4:    git commit + push + gh pr create
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /uni-review-pr — security review + merge readiness
+              Task(uni-zero-reviewer, GATE: pr-review) — advisory product review comment
               Combined return — SESSION 2 ENDS
               context_cycle(type: "phase-end", phase: "pr-review", ...)
               context_cycle(type: "stop", topic: "{feature-id}", outcome: "...", agent_id: "{feature-id}-delivery-leader")
@@ -583,7 +624,7 @@ DELIVERY LEADER (you):
 
 The uni-tester agent has full integration harness knowledge (suite selection, triage rules, commands). The delivery protocol does not duplicate those details. Key rules for the Design Leader:
 
-- **uni-rust-dev** (Stage 3b): Do NOT run or modify integration tests. Stage 3c handles this.
+- **uni-rust-dev / uni-js-dev** (Stage 3b): Do NOT run or modify integration tests. Stage 3c handles this.
 - **uni-tester** (Stage 3a): Include integration harness plan in test-plan/OVERVIEW.md — which suites apply, new tests needed.
 - **uni-tester** (Stage 3c): Run smoke (mandatory gate) + relevant suites. Triage failures per USAGE-PROTOCOL.md. Report results in RISK-COVERAGE-REPORT.md.
 - **uni-validator** (Gate 3c): Verify smoke passed, xfail markers have GH Issues, no tests deleted, RISK-COVERAGE-REPORT includes integration counts.

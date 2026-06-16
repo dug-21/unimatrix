@@ -3,6 +3,38 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.0] - 2026-06-16
+
+### Features
+- crt-054: transcript-fold producer — compaction_events table + in-memory activity fold (#759)
+- uni-zero: add security posture review and codebase health assessment
+
+### Fixes
+- re-point per-session telemetry onto PostToolUse + guarded recompute (#750) (#758)
+- de-flake test-integrity cluster + harden cargo-test process (#742) (#748)
+- align skip_if_no_model() model dir to cache_subdir() + loud-fail guard (#723) (#740)
+- INSERT OR IGNORE in insert_session to prevent compaction-resume clobber (#300) (#715)
+- deadline-poll test sync for fire-and-forget write races (#691, #452, #305) (#714)
+- correct three stale test assertions (#695, #576, #575) (#713)
+- harden cargo test convention to stop orphaned process trees (#122) (#711)
+- deps: bump openssl 0.10.75→0.10.80 and rustls-webpki 0.103.9→0.103.13 (#665) (#667)
+- router: enforce body size limit on stream, not just Content-Length header (#663) (#668)
+- token: eliminate TOCTOU races in token file creation (#662) (#664)
+- protocol: research spike output alignment + GitHub issue lifecycle
+- agent: add Report Block and self-check to uni-architect stewardship
+- test: align TestLargeContent thresholds with 8KB server limit (#652) (#659)
+- config: nli_model_sha256 merge uses global-wins semantics (#655) (#656)
+- embed: add SHA-256 hash verification for embedding model (#651) (#654)
+- store: reject databases with schema version newer than binary supports (#650) (#653)
+- import: replace manual MAX(event_id)+1 with log_audit_event in record_provenance (#633) (#642)
+- server: prevent integration tests from leaking dirs into ~/.unimatrix (#640) (#641)
+- infra: ensure binary crate target included in RUST_LOG filter (#638)
+- infra: daemon child opens log file explicitly, eliminating fd inheritance (#638) (#639)
+- infra: config load observability and category authority enforcement (#635) (#636)
+- infra: config categories not authoritative — compiled defaults diverged from config (#632) (#634)
+- switch to Docker CE for containerd v2 compatibility
+- pin docker-in-docker to v27 for containerd v2 compatibility
+
 ## [0.7.2] - 2026-05-22
 
 ### Fixes
