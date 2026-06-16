@@ -57,14 +57,14 @@
 | `[transcript_signals]` config + `validate()` | pseudocode/transcript-signals-config.md | test-plan/transcript-signals-config.md |
 | Wave B startup precondition assert | pseudocode/wave-b-precondition.md | test-plan/wave-b-precondition.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (confirmed — Stage 3a complete)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. Components above are the expected set from the architecture; actual file paths are confirmed during delivery.
+Note: pseudocode and test-plan files produced in Stage 3a — all 10 components landed 1:1 with the Component Map filenames above, plus pseudocode/OVERVIEW.md and test-plan/OVERVIEW.md. AC-16 (cross-gate seconds boundary) physically owned by crt-054 as the seconds-producer half (test-plan/OVERVIEW.md §5), referencing crt-055 for the ts/1000 normalization half.
 
 ---
 
