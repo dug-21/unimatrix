@@ -1019,14 +1019,15 @@ async fn test_sql_analytics_query() {
 // Updated to 26 for bugfix-587 (audit counter rename: next_audit_event_id → next_audit_id).
 // Updated to 27 for vnc-018 (four indexes for context_graph CTE and neighbor queries).
 // Updated to 28 for vnc-030 (observations.topic_source column, ADR-005).
+// Updated to 29 for crt-054 (compaction_events table + idx_compaction_events_session).
 #[tokio::test]
-async fn test_schema_version_is_28() {
+async fn test_schema_version_is_29() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 28,
-        "schema version must be 28 after vnc-030 (was 27 after vnc-018)"
+        version, 29,
+        "schema version must be 29 after crt-054 (was 28 after vnc-030)"
     );
     store.close().await.unwrap();
 }
@@ -1633,4 +1634,185 @@ async fn test_create_tables_cycle_review_index_schema() {
     );
 
     store.close().await.unwrap();
+}
+
+// === SCHEMA DDL: compaction_events (crt-054, Surface A) ===
+
+/// AC-01: fresh-create path adds compaction_events with the contract columns.
+#[tokio::test]
+async fn test_create_tables_compaction_events_exists() {
+    use sqlx::Row;
+
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    // pragma_table_info: cid, name, type, notnull, dflt_value, pk
+    let rows = sqlx::query(
+        "SELECT name, type, \"notnull\", dflt_value, pk \
+         FROM pragma_table_info('compaction_events') ORDER BY cid",
+    )
+    .fetch_all(store.read_pool_test())
+    .await
+    .unwrap();
+
+    let cols: Vec<(String, String, i64, Option<String>, i64)> = rows
+        .iter()
+        .map(|r| {
+            (
+                r.try_get::<String, _>(0).unwrap(),
+                r.try_get::<String, _>(1).unwrap(),
+                r.try_get::<i64, _>(2).unwrap(),
+                r.try_get::<Option<String>, _>(3).unwrap(),
+                r.try_get::<i64, _>(4).unwrap(),
+            )
+        })
+        .collect();
+
+    assert_eq!(
+        cols.len(),
+        4,
+        "compaction_events must have exactly 4 columns"
+    );
+
+    assert_eq!(cols[0].0, "id");
+    assert_eq!(cols[0].1, "INTEGER");
+    assert_eq!(cols[0].4, 1, "id must be PRIMARY KEY");
+
+    assert_eq!(cols[1].0, "session_id");
+    assert_eq!(cols[1].1, "TEXT");
+    assert_eq!(cols[1].2, 1, "session_id must be NOT NULL");
+
+    assert_eq!(cols[2].0, "compacted_at");
+    assert_eq!(cols[2].1, "INTEGER");
+    assert_eq!(cols[2].2, 1, "compacted_at must be NOT NULL");
+
+    assert_eq!(cols[3].0, "high_water");
+    assert_eq!(cols[3].1, "INTEGER");
+    assert_eq!(cols[3].2, 1, "high_water must be NOT NULL");
+    assert_eq!(cols[3].3.as_deref(), Some("0"), "high_water DEFAULT 0");
+
+    assert!(
+        !cols.iter().any(|(n, ..)| n == "feature_cycle"),
+        "compaction_events must be content-free (no feature_cycle column)"
+    );
+
+    store.close().await.unwrap();
+}
+
+/// AC-01: fresh-create path adds the session index.
+#[tokio::test]
+async fn test_create_tables_compaction_events_session_index_exists() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let exists: bool =
+        sqlx::query_scalar("SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='index' AND name=?1")
+            .bind("idx_compaction_events_session")
+            .fetch_one(store.read_pool_test())
+            .await
+            .unwrap();
+
+    assert!(
+        exists,
+        "idx_compaction_events_session must exist after create_tables_if_needed"
+    );
+
+    store.close().await.unwrap();
+}
+
+/// AC-02: helper inserts one row; values round-trip exactly; id auto-assigned.
+#[tokio::test]
+async fn test_insert_compaction_event_writes_row() {
+    use sqlx::Row;
+
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    store
+        .insert_compaction_event("sess-1", 1_700_000_000, 4096)
+        .await
+        .expect("insert_compaction_event should succeed");
+
+    let row = sqlx::query("SELECT id, session_id, compacted_at, high_water FROM compaction_events")
+        .fetch_one(store.read_pool_test())
+        .await
+        .unwrap();
+
+    assert!(row.try_get::<i64, _>(0).unwrap() > 0, "id auto-assigned");
+    assert_eq!(row.try_get::<String, _>(1).unwrap(), "sess-1");
+    // compacted_at stored verbatim as the passed seconds value (no unit conversion).
+    assert_eq!(row.try_get::<i64, _>(2).unwrap(), 1_700_000_000);
+    assert_eq!(row.try_get::<i64, _>(3).unwrap(), 4096);
+
+    store.close().await.unwrap();
+}
+
+/// AC-02 autocommit: the row is visible to a subsequent read without an explicit
+/// commit (single-statement autocommit, no BEGIN/COMMIT wrapping).
+#[tokio::test]
+async fn test_insert_compaction_event_is_autocommit() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    store
+        .insert_compaction_event("sess-auto", 1_700_000_001, 0)
+        .await
+        .expect("insert");
+
+    let count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM compaction_events WHERE session_id = ?1")
+            .bind("sess-auto")
+            .fetch_one(store.read_pool_test())
+            .await
+            .unwrap();
+
+    assert_eq!(count, 1, "row must be visible without an explicit commit");
+
+    store.close().await.unwrap();
+}
+
+/// Security: session_id is bound as a parameter (no SQL injection). A value with
+/// SQL metacharacters round-trips as literal data, not executed SQL.
+#[tokio::test]
+async fn test_insert_compaction_event_is_parameterized() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let malicious = "sess'); DROP TABLE compaction_events;--";
+    store
+        .insert_compaction_event(malicious, 1_700_000_002, 1)
+        .await
+        .expect("insert with SQL metacharacters must succeed");
+
+    // The table still exists (no injection executed) and stored the literal.
+    let stored: String =
+        sqlx::query_scalar("SELECT session_id FROM compaction_events WHERE compacted_at = ?1")
+            .bind(1_700_000_002_i64)
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("table must still exist and hold the literal session_id");
+
+    assert_eq!(
+        stored, malicious,
+        "session_id must be stored literally, never interpreted as SQL"
+    );
+
+    store.close().await.unwrap();
+}
+
+/// AC-01a: the compacted_at column carries an explicit "Unix SECONDS" comment in
+/// BOTH the migration.rs upgrade block AND the db.rs fresh-create DDL.
+#[test]
+fn test_compacted_at_seconds_comment_in_both_paths() {
+    let migration_src = include_str!("../src/migration.rs");
+    let db_src = include_str!("../src/db.rs");
+
+    assert!(
+        migration_src.contains("compacted_at INTEGER NOT NULL,   -- Unix SECONDS (NOT millis)"),
+        "migration.rs v29 block must carry the Unix SECONDS comment on compacted_at"
+    );
+    assert!(
+        db_src.contains("compacted_at INTEGER NOT NULL,   -- Unix SECONDS (NOT millis)"),
+        "db.rs fresh-create DDL must carry the Unix SECONDS comment on compacted_at"
+    );
 }

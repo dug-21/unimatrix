@@ -21,6 +21,14 @@ mod snapshot;
 
 // ---------------------------------------------------------------- harness --
 
+/// Shared empty `[transcript_signals]` scanner for buffer construction in tests
+/// (crt-054). The fold still counts bytes/deltas with an empty scanner; tests
+/// that exercise class matching build their own scanner. Returned as the shared
+/// `Arc` every `TranscriptBuffer::new` now takes.
+fn test_scanner() -> std::sync::Arc<crate::infra::transcript_activity::SignatureScanner> {
+    std::sync::Arc::new(crate::infra::transcript_activity::SignatureScanner::empty())
+}
+
 /// Deterministic source bytes; never zero. Zero is the hole fill, so any zero
 /// byte appearing in a returned tail is a leak of unwritten fill (FR-19).
 fn src_bytes(len: usize) -> Vec<u8> {
@@ -66,7 +74,7 @@ fn covering_delta_set() -> Vec<(u64, usize)> {
 
 /// Span `[0,100) ∪ [200,300)` with one hole `(100,200)`.
 fn buf_with_one_hole(src: &[u8]) -> TranscriptBuffer {
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     apply_all(&mut buf, src, &[(0, 100), (200, 100)]);
     assert_eq!(buf.holes_for_test(), &[(100, 200)]);
     buf
@@ -85,7 +93,7 @@ fn test_apply_delta_permutation_convergence_below_cap() {
     for _ in 0..32 {
         let mut deltas = base_set.clone();
         deltas.shuffle(&mut rng);
-        let mut buf = TranscriptBuffer::new(DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES);
+        let mut buf = TranscriptBuffer::new(DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES, test_scanner());
         apply_all(&mut buf, &src, &deltas);
         assert_eq!(buf.len(), 1000, "identical len across orders");
         assert_eq!(buf.high_water(), expected_hw, "identical high_water");
@@ -149,7 +157,7 @@ fn test_apply_delta_splits_hole_in_two() {
 #[test]
 fn test_apply_delta_spans_multiple_holes() {
     let src = src_bytes(500);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     apply_all(&mut buf, &src, &[(0, 100), (200, 100), (400, 100)]);
     assert_eq!(buf.holes_for_test(), &[(100, 200), (300, 400)]);
     // one write spanning both holes: shrinks the first from the end, removes the second
@@ -161,7 +169,7 @@ fn test_apply_delta_spans_multiple_holes() {
 #[test]
 fn test_apply_delta_below_base_after_ring_tail_is_noop() {
     let src = src_bytes(200);
-    let mut buf = TranscriptBuffer::new(100);
+    let mut buf = TranscriptBuffer::new(100, test_scanner());
     buf.apply_delta(0, &src[0..100]);
     buf.apply_delta(100, &src[100..200]); // ring-tail: base advances to 100
     assert_eq!(buf.base_offset_for_test(), 100);
@@ -176,7 +184,7 @@ fn test_apply_delta_below_base_after_ring_tail_is_noop() {
 #[test]
 fn test_apply_delta_beyond_span_creates_hole_tail_never_crosses() {
     let src = src_bytes(200);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &src[0..100]);
     buf.apply_delta(150, &src[150..200]); // gap [100,150)
     assert_eq!(buf.holes_for_test(), &[(100, 150)]);
@@ -190,7 +198,7 @@ fn test_apply_delta_beyond_span_creates_hole_tail_never_crosses() {
 
 #[test]
 fn test_apply_delta_zero_length_bytes_noop_high_water_defined() {
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(500, &[]);
     assert_eq!(buf.high_water(), 500, "only high_water moves");
     assert_eq!(buf.len(), 0);
@@ -202,7 +210,7 @@ fn test_apply_delta_zero_length_bytes_noop_high_water_defined() {
 #[test]
 fn test_apply_delta_offset_zero_empty_buffer_then_exact_duplicate() {
     let src = src_bytes(100);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &src);
     buf.apply_delta(0, &src); // exact duplicate: in-place rewrite
     assert_eq!(buf.len(), 100);
@@ -216,7 +224,7 @@ fn test_apply_delta_offset_zero_empty_buffer_then_exact_duplicate() {
 fn test_apply_delta_invalid_utf8_bytes_accepted() {
     // API is `&[u8]`; crt-052 reads raw bytes — invalid UTF-8 must round-trip.
     let bytes: Vec<u8> = vec![0xFF, 0xFE, 0xC0, 0x80, 0x9F, 0xF5, 0x01];
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &bytes);
     assert_eq!(
         buf.contiguous_tail(bytes.len()).as_deref(),
@@ -229,7 +237,7 @@ fn test_apply_delta_invalid_utf8_bytes_accepted() {
 #[test]
 fn test_apply_delta_near_u64_max_drops_whole() {
     let src = src_bytes(100);
-    let mut buf = TranscriptBuffer::new(64 * 1024);
+    let mut buf = TranscriptBuffer::new(64 * 1024, test_scanner());
     buf.apply_delta(0, &src);
     buf.apply_delta(u64::MAX - 10, &[0u8; 100]); // end overflows u64
     // ADR-008 drop-whole: NO state change at all — do NOT assert partial clip.
@@ -244,7 +252,7 @@ fn test_apply_delta_near_u64_max_drops_whole() {
 fn test_apply_delta_far_offset_jump_allocation_bounded() {
     let src = src_bytes(600);
     let cap = 1000usize;
-    let mut buf = TranscriptBuffer::new(cap);
+    let mut buf = TranscriptBuffer::new(cap, test_scanner());
     buf.apply_delta(0, &src[0..500]);
     let far = 1u64 << 40;
     buf.apply_delta(far, &src[500..600]);
@@ -268,7 +276,7 @@ fn test_apply_delta_far_offset_jump_allocation_bounded() {
 fn test_apply_delta_one_mib_into_4mib_cap() {
     const MIB: usize = 1 << 20;
     let src = src_bytes(MIB);
-    let mut buf = TranscriptBuffer::new(DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES);
+    let mut buf = TranscriptBuffer::new(DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES, test_scanner());
     buf.apply_delta(0, &src); // frame-ceiling delta (FR-05)
     assert_eq!(buf.len(), MIB);
     assert_eq!(buf.elided_bytes(), 0);
@@ -280,7 +288,7 @@ fn test_apply_delta_one_mib_into_64kib_cap() {
     const MIB: usize = 1 << 20;
     const CAP: usize = 64 * 1024;
     let src = src_bytes(MIB);
-    let mut buf = TranscriptBuffer::new(CAP);
+    let mut buf = TranscriptBuffer::new(CAP, test_scanner());
     buf.apply_delta(0, &src); // ring-tails: only the newest CAP bytes retained
     assert_eq!(buf.len(), CAP);
     assert_eq!(buf.elided_bytes(), (MIB - CAP) as u64);
@@ -296,7 +304,7 @@ fn test_apply_delta_fuzz_no_panic() {
     let src = src_bytes(MIB);
     for &cap in &[64 * 1024usize, 4 * 1024 * 1024] {
         let mut rng = StdRng::seed_from_u64(0xA55_069 ^ cap as u64);
-        let mut buf = TranscriptBuffer::new(cap);
+        let mut buf = TranscriptBuffer::new(cap, test_scanner());
         let mut prev_hw = 0u64;
         for i in 0..10_000u32 {
             let len = rng.random_range(0..=MIB);
@@ -325,7 +333,7 @@ fn test_apply_delta_fuzz_no_panic() {
 #[test]
 fn test_debug_output_contains_no_payload_bytes() {
     let sentinel = b"SENTINEL-TRANSCRIPT-SECRET";
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, sentinel);
     let dbg = format!("{buf:?}");
     for field in [
@@ -380,7 +388,7 @@ fn test_clear_returns_bytes_purged() {
 #[test]
 fn test_post_clear_resumed_stream_serves_tail() {
     let src = src_bytes(60_000);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &src[0..300]);
     assert_eq!(buf.clear(), 300);
     assert_eq!(buf.high_water(), 300);
@@ -414,4 +422,125 @@ fn test_session_key_oss_returns_session_id_unchanged() {
     assert_eq!(session_key("default", "", "sess-abc"), "sess-abc");
     assert_eq!(session_key("acme", "proj-x", "sess-abc"), "sess-abc");
     assert_eq!(session_key("", "", "http-sess-9"), "http-sess-9");
+}
+
+// ------------------------------- crt-054 apply_delta fold (Component 3) --
+// Registered-route fold (AC-05), accepted-path-only counting, zero-length edge,
+// and clear() accumulator preservation (ADR-006). The held-route fold (AC-06)
+// and read-before-purge (AC-07) are Stage 3c INTEGRATION tests — not here.
+
+/// A test scanner with one class (index 0) matching the literal `ERR`, so a fold
+/// over bytes containing `ERR` increments `class_counts[0]`.
+fn scanner_err() -> std::sync::Arc<crate::infra::transcript_activity::SignatureScanner> {
+    std::sync::Arc::new(
+        crate::infra::transcript_activity::SignatureScanner::compile(&["ERR".to_string()])
+            .expect("literal pattern compiles"),
+    )
+}
+
+#[test]
+fn test_apply_delta_registered_route_folds_counters() {
+    // Two non-trivial accepted deltas advance bytes_total + delta_count (AC-05).
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
+    buf.apply_delta(0, b"hello"); // 5 bytes
+    buf.apply_delta(5, b"world!"); // 6 bytes
+    let snap = buf.activity_snapshot();
+    assert_eq!(snap.bytes_total, 11, "sum of accepted delta payload lengths");
+    assert_eq!(snap.delta_count, 2, "+1 per accepted delta");
+}
+
+#[test]
+fn test_apply_delta_fold_counts_class_matches() {
+    // class_counts[0] reflects matches of the configured class (FR-B5).
+    let mut buf = TranscriptBuffer::new(4096, scanner_err());
+    buf.apply_delta(0, b"ok line"); // no match
+    buf.apply_delta(7, b"ERR happened"); // one match
+    buf.apply_delta(19, b"another ERR here"); // one match
+    let snap = buf.activity_snapshot();
+    assert_eq!(snap.delta_count, 3);
+    assert_eq!(snap.class_counts[0], 2, "two deltas matched the ERR class");
+    assert_eq!(snap.class_counts[1], 0, "no second class configured");
+}
+
+#[test]
+fn test_apply_delta_fold_runs_after_merge() {
+    // The fold sees the delta bytes; bytes_total equals the bytes merged.
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
+    let payload = b"decision content";
+    buf.apply_delta(0, payload);
+    assert_eq!(buf.activity_snapshot().bytes_total, payload.len() as u64);
+    assert_eq!(buf.len(), payload.len(), "merge happened");
+}
+
+#[test]
+fn test_apply_delta_clipped_below_floor_not_folded() {
+    // A delta entirely below the ring-tail floor is rejected (clipped) and must
+    // NOT advance bytes_total — fold counts ACCEPTED bytes only.
+    let src = src_bytes(200);
+    let mut buf = TranscriptBuffer::new(100, test_scanner());
+    buf.apply_delta(0, &src[0..100]); // accepted: 100 bytes
+    buf.apply_delta(100, &src[100..200]); // accepted: ring-tail advances base to 100
+    let before = buf.activity_snapshot();
+    assert_eq!(before.bytes_total, 200, "two accepted deltas");
+    assert_eq!(before.delta_count, 2);
+    // Entirely below the floor → returns early, NOT folded.
+    buf.apply_delta(0, &src[0..50]);
+    let after = buf.activity_snapshot();
+    assert_eq!(
+        after.bytes_total, 200,
+        "clipped delta does not advance bytes_total"
+    );
+    assert_eq!(after.delta_count, 2, "clipped delta does not advance count");
+}
+
+#[test]
+fn test_apply_delta_overflow_dropped_not_folded() {
+    // An end-offset overflow drops the whole delta (no merge) → not folded.
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
+    buf.apply_delta(u64::MAX, b"overflows"); // offset + len overflows u64
+    let snap = buf.activity_snapshot();
+    assert_eq!(snap.bytes_total, 0, "overflow-dropped delta not folded");
+    assert_eq!(snap.delta_count, 0);
+}
+
+#[test]
+fn test_apply_delta_zero_length_advances_count_only_no_panic() {
+    // A zero-length accepted delta reaches the fold: delta_count += 1, bytes += 0.
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
+    buf.apply_delta(0, b""); // zero-length, accepted
+    let snap = buf.activity_snapshot();
+    assert_eq!(snap.bytes_total, 0);
+    assert_eq!(snap.delta_count, 1, "zero-length still counts as a delta");
+}
+
+#[test]
+fn test_clear_preserves_activity_accumulator() {
+    // clear() (stream-resume) MUST NOT zero the fold (ADR-006). Snapshot is
+    // non-zero before AND after clear().
+    let mut buf = TranscriptBuffer::new(4096, scanner_err());
+    buf.apply_delta(0, b"ERR before clear"); // bytes + one class match
+    let before = buf.activity_snapshot();
+    assert!(before.bytes_total > 0 && before.delta_count > 0);
+    assert_eq!(before.class_counts[0], 1);
+
+    let _ = buf.clear();
+
+    let after = buf.activity_snapshot();
+    assert_eq!(
+        after, before,
+        "clear() preserves the accumulator across stream-resume"
+    );
+}
+
+#[test]
+fn test_activity_fold_continues_after_clear() {
+    // Post-clear deltas keep folding into the SAME (preserved) accumulator —
+    // the structural basis Stage 3c proves on the held route.
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
+    buf.apply_delta(0, b"aaaa"); // 4 bytes
+    let _ = buf.clear();
+    buf.apply_delta(buf.high_water(), b"bbbbbb"); // 6 bytes, resume at high_water
+    let snap = buf.activity_snapshot();
+    assert_eq!(snap.bytes_total, 10, "K+M continuity across clear()");
+    assert_eq!(snap.delta_count, 2);
 }

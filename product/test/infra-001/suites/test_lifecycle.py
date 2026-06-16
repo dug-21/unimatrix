@@ -1146,6 +1146,73 @@ def test_bootstrap_promotion_restart_noop(tmp_path):
     client2.shutdown()
 
 
+# === crt-054: compaction_events schema durability ============================
+
+
+def _compaction_events_columns(db_path):
+    """Return the column names of compaction_events, or None if the table is absent."""
+    import sqlite3 as _sqlite3
+    conn = _sqlite3.connect(db_path)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        rows = conn.execute("PRAGMA table_info(compaction_events)").fetchall()
+        return [r[1] for r in rows] if rows else None
+    finally:
+        conn.close()
+
+
+def test_compaction_events_table_survives_restart(tmp_path):
+    """L-CRT054-01 (R-04 / AC-01): the crt-054 `compaction_events` table is
+    created by the migration at startup and SURVIVES a server restart in place.
+
+    Restart-persistence gate for the new schema: a migration that created the
+    table only transiently (or re-dropped it on the upgrade path) would fail the
+    post-restart assertion. The producer write-path (compaction at the UDS seam)
+    is covered by the in-crate integration tests; this MCP-level test owns only
+    the schema's existence + durability through the migration the server runs on
+    boot — the one facet of crt-054 visible past the JSON-RPC boundary.
+    """
+    binary = get_binary_path()
+
+    # Boot once: the migration runs and creates compaction_events.
+    client1 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client1.initialize()
+    client1.wait_until_ready()
+    # Touch the store so the DB file is fully materialized before inspection.
+    client1.context_store(
+        "crt-054 compaction_events migration durability probe entry",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    client1.shutdown()
+
+    db_path = _compute_db_path_lifecycle(str(tmp_path))
+    cols_first_boot = _compaction_events_columns(db_path)
+    assert cols_first_boot is not None, (
+        "compaction_events must exist after the first boot (migration created it)"
+    )
+    assert cols_first_boot == ["id", "session_id", "compacted_at", "high_water"], (
+        f"compaction_events columns must be exactly id/session_id/compacted_at/high_water; "
+        f"got {cols_first_boot}"
+    )
+
+    # Restart in place — the table must still be present (idempotent migration).
+    client2 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client2.initialize()
+    client2.wait_until_ready()
+    client2.shutdown()
+
+    cols_after_restart = _compaction_events_columns(db_path)
+    assert cols_after_restart is not None, (
+        "AC-01: compaction_events must SURVIVE a server restart (schema durable)"
+    )
+    assert cols_after_restart == cols_first_boot, (
+        "compaction_events schema must be identical after restart (no drop/recreate drift)"
+    )
+
+
 # === crt-025 WA-1: Phase-tag lifecycle flow ===================================
 
 

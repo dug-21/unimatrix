@@ -70,7 +70,10 @@ fn test_golden_parity_from_path_vs_streamed_from_bytes() {
         .map(|(i, chunk)| ((i * DELTA_LEN) as u64, chunk))
         .collect();
 
-    let mut buf = TranscriptBuffer::new(4 * 1024 * 1024);
+    let mut buf = TranscriptBuffer::new(
+        4 * 1024 * 1024,
+        std::sync::Arc::new(crate::infra::transcript_activity::SignatureScanner::empty()),
+    );
     for (offset, chunk) in deltas
         .iter()
         .filter(|(o, _)| (o / DELTA_LEN as u64) % 2 == 0)

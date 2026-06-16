@@ -20,7 +20,7 @@ fn test_overflow_reorder_tail_window_equivalence() {
     // Ten contiguous 100-byte chunks covering [0, 1000) — 3.9x the cap.
     let base_set: Vec<(u64, usize)> = (0..10).map(|i| (i as u64 * 100, 100)).collect();
     // Reference: in-order arrival.
-    let mut reference = TranscriptBuffer::new(CAP);
+    let mut reference = TranscriptBuffer::new(CAP, test_scanner());
     apply_all(&mut reference, &src, &base_set);
     let ref_full = reference.contiguous_tail(CAP).expect("non-empty");
     let ref_sub = reference.contiguous_tail(100).expect("non-empty");
@@ -30,7 +30,7 @@ fn test_overflow_reorder_tail_window_equivalence() {
     for _ in 0..32 {
         let mut deltas = base_set.clone();
         deltas.shuffle(&mut rng);
-        let mut buf = TranscriptBuffer::new(CAP);
+        let mut buf = TranscriptBuffer::new(CAP, test_scanner());
         apply_all(&mut buf, &src, &deltas);
         assert_eq!(
             buf.contiguous_tail(CAP),
@@ -53,7 +53,7 @@ fn test_overflow_size_never_exceeds_cap() {
     const CAP: usize = 512;
     let total = 3 * CAP;
     let src = src_bytes(total);
-    let mut buf = TranscriptBuffer::new(CAP);
+    let mut buf = TranscriptBuffer::new(CAP, test_scanner());
     for (offset, len) in (0..total / 64).map(|i| (i as u64 * 64, 64usize)) {
         buf.apply_delta(offset, &src[offset as usize..offset as usize + len]);
         assert!(buf.len() <= CAP, "I1 holds after every apply");
@@ -73,7 +73,7 @@ fn test_overflow_size_never_exceeds_cap() {
 fn test_overflow_no_marker_bytes_in_content() {
     const CAP: usize = 200;
     let src = src_bytes(600); // src_bytes is never zero
-    let mut buf = TranscriptBuffer::new(CAP);
+    let mut buf = TranscriptBuffer::new(CAP, test_scanner());
     buf.apply_delta(0, &src[0..150]);
     buf.apply_delta(300, &src[300..450]); // ring-tails head, leaves hole (250,300)
     buf.apply_delta(500, &src[500..600]); // ring-tails again, hole (450,500)
@@ -92,7 +92,7 @@ fn test_overflow_no_marker_bytes_in_content() {
 fn test_high_water_monotonic_across_overflow() {
     const CAP: usize = 100;
     let src = src_bytes(256);
-    let mut buf = TranscriptBuffer::new(CAP);
+    let mut buf = TranscriptBuffer::new(CAP, test_scanner());
     buf.apply_delta(0, &src[0..100]);
     assert_eq!(buf.high_water(), 100);
     buf.apply_delta(80, &src[80..180]); // crosses cap: base advances to 80
@@ -118,7 +118,7 @@ fn test_high_water_monotonic_across_overflow() {
 fn test_elided_bytes_accounting_exact() {
     // Partial base advance across a straddling hole.
     let src = src_bytes(256);
-    let mut buf = TranscriptBuffer::new(100);
+    let mut buf = TranscriptBuffer::new(100, test_scanner());
     buf.apply_delta(0, &src[0..40]);
     buf.apply_delta(60, &src[60..100]); // hole (40,60); span [0,100)
     assert_eq!(buf.elided_bytes(), 0);
@@ -129,7 +129,7 @@ fn test_elided_bytes_accounting_exact() {
     assert_eq!(buf.base_offset_for_test(), 60);
 
     // Whole-span drop with a hole inside, then a below-base clip.
-    let mut buf2 = TranscriptBuffer::new(200);
+    let mut buf2 = TranscriptBuffer::new(200, test_scanner());
     buf2.apply_delta(0, &src[0..50]);
     buf2.apply_delta(100, &src[100..150]); // hole (50,100); span [0,150)
     buf2.apply_delta(300, &[7u8; 100]); // required_base 200 >= span_end 150
@@ -151,21 +151,21 @@ fn test_elided_bytes_accounting_exact() {
 fn test_cap_exactly_equal_to_delta_size() {
     let src = src_bytes(200);
     // Exact fit: no elision, base stays 0.
-    let mut exact = TranscriptBuffer::new(100);
+    let mut exact = TranscriptBuffer::new(100, test_scanner());
     exact.apply_delta(0, &src[0..100]);
     assert_eq!(exact.len(), 100);
     assert_eq!(exact.elided_bytes(), 0);
     assert_eq!(exact.base_offset_for_test(), 0);
     assert_eq!(exact.contiguous_tail(100).as_deref(), Some(&src[0..100]));
     // Off-by-one: cap one byte short — oldest byte ring-tailed.
-    let mut short = TranscriptBuffer::new(99);
+    let mut short = TranscriptBuffer::new(99, test_scanner());
     short.apply_delta(0, &src[0..100]);
     assert_eq!(short.len(), 99);
     assert_eq!(short.elided_bytes(), 1);
     assert_eq!(short.base_offset_for_test(), 1);
     assert_eq!(short.contiguous_tail(99).as_deref(), Some(&src[1..100]));
     // Delta landing exactly at the cap boundary: full replacement.
-    let mut buf = TranscriptBuffer::new(100);
+    let mut buf = TranscriptBuffer::new(100, test_scanner());
     buf.apply_delta(0, &src[0..100]);
     buf.apply_delta(100, &src[100..200]);
     assert_eq!(buf.len(), 100);
@@ -177,7 +177,7 @@ fn test_cap_exactly_equal_to_delta_size() {
 #[test]
 fn test_contiguous_tail_window_larger_than_len() {
     let src = src_bytes(50);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &src);
     assert_eq!(buf.contiguous_tail(1000).as_deref(), Some(&src[..]));
 }
@@ -185,7 +185,7 @@ fn test_contiguous_tail_window_larger_than_len() {
 #[test]
 fn test_contiguous_tail_window_zero() {
     let src = src_bytes(50);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &src);
     assert_eq!(buf.contiguous_tail(0), None, "window 0 pinned as None");
 }
@@ -193,7 +193,7 @@ fn test_contiguous_tail_window_zero() {
 #[test]
 fn test_contiguous_tail_window_on_hole_boundary() {
     let src = src_bytes(300);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &src[0..100]);
     buf.apply_delta(150, &src[150..300]); // hole (100,150); post-hole avail = 150
     // Window exactly equal to the post-hole run.
@@ -212,7 +212,7 @@ fn test_contiguous_tail_window_on_hole_boundary() {
 #[test]
 fn test_hole_collapse_at_cap() {
     let src = src_bytes(2048);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     // 65 chunks of 10 bytes at stride 20 → 64 inter-chunk holes.
     for i in 0..65u64 {
         let offset = i * 20;
@@ -237,7 +237,7 @@ fn test_hole_collapse_at_cap() {
 #[test]
 fn test_post_collapse_merge_and_tail_correct() {
     let src = src_bytes(2048);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     for i in 0..65u64 {
         let offset = i * 20;
         buf.apply_delta(offset, &src[offset as usize..offset as usize + 10]);
@@ -267,7 +267,7 @@ fn test_snapshot_base_offset_advances_under_overflow() {
     let src = src_bytes(1000);
     // Ten contiguous 100-byte chunks covering [0,1000) — 3.9x the cap.
     let deltas: Vec<(u64, usize)> = (0..10).map(|i| (i as u64 * 100, 100)).collect();
-    let mut buf = TranscriptBuffer::new(CAP);
+    let mut buf = TranscriptBuffer::new(CAP, test_scanner());
     apply_all(&mut buf, &src, &deltas);
     let snap = buf.snapshot();
     assert!(snap.base_offset > 0, "ring-tail advanced the logical floor");
@@ -285,7 +285,7 @@ fn test_snapshot_base_offset_advances_under_overflow() {
 fn test_snapshot_high_water_survives_clipping() {
     const CAP: usize = 100;
     let src = src_bytes(256);
-    let mut buf = TranscriptBuffer::new(CAP);
+    let mut buf = TranscriptBuffer::new(CAP, test_scanner());
     buf.apply_delta(0, &src[0..100]);
     buf.apply_delta(80, &src[80..180]); // clips, base advances
     let snap = buf.snapshot();
@@ -300,7 +300,7 @@ fn test_snapshot_high_water_survives_clipping() {
 #[test]
 fn test_snapshot_holes_reported() {
     let src = src_bytes(500);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     apply_all(&mut buf, &src, &[(0, 100), (200, 100), (400, 100)]);
     let snap = buf.snapshot();
     assert_eq!(
@@ -335,14 +335,14 @@ fn test_snapshot_at_exactly_cap_boundary() {
     const CAP: usize = 256;
     let src = src_bytes(CAP + 1);
     // Exactly at cap: no elision, base stays 0.
-    let mut at_cap = TranscriptBuffer::new(CAP);
+    let mut at_cap = TranscriptBuffer::new(CAP, test_scanner());
     at_cap.apply_delta(0, &src[0..CAP]);
     let snap = at_cap.snapshot();
     assert_eq!(snap.base_offset, 0, "at cap: no advance");
     assert_eq!(snap.elided_bytes, 0, "at cap: nothing elided");
     assert_eq!(snap.bytes.len(), CAP);
     // One byte over: ring-tail engages.
-    let mut over = TranscriptBuffer::new(CAP);
+    let mut over = TranscriptBuffer::new(CAP, test_scanner());
     over.apply_delta(0, &src[0..CAP + 1]);
     let snap = over.snapshot();
     assert_eq!(snap.base_offset, 1, "one over: floor advanced by one");
@@ -356,7 +356,7 @@ fn test_snapshot_at_exactly_cap_boundary() {
 fn test_snapshot_4mib_copy_fast() {
     const CAP: usize = 4 * 1024 * 1024;
     let src = src_bytes(CAP);
-    let mut buf = TranscriptBuffer::new(CAP);
+    let mut buf = TranscriptBuffer::new(CAP, test_scanner());
     buf.apply_delta(0, &src);
     let started = std::time::Instant::now();
     let snap = buf.snapshot();
@@ -378,7 +378,7 @@ fn test_snapshot_poisoned_lock_treats_as_empty() {
     use std::sync::{Arc, Mutex};
 
     let src = src_bytes(300);
-    let mut seeded = TranscriptBuffer::new(4096);
+    let mut seeded = TranscriptBuffer::new(4096, test_scanner());
     seeded.apply_delta(0, &src);
     let lock = Arc::new(Mutex::new(seeded));
 
@@ -431,7 +431,7 @@ fn test_snapshot_poisoned_lock_treats_as_empty() {
 fn test_pathological_sparse_stream_bounded() {
     const CAP: usize = 64 * 1024;
     let payload = [9u8; 16];
-    let mut buf = TranscriptBuffer::new(CAP);
+    let mut buf = TranscriptBuffer::new(CAP, test_scanner());
     let started = std::time::Instant::now();
     for i in 0..10_000u64 {
         // Alternate between a far-forward stride and a jittered lower offset

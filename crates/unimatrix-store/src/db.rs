@@ -1042,6 +1042,27 @@ pub(crate) async fn create_tables_if_needed(
     .execute(&mut *conn)
     .await?;
 
+    // compaction_events: Surface A — durable, content-free, insert-only compaction
+    // ledger (crt-054, ADR-007). compacted_at is Unix SECONDS (server wall clock);
+    // the PostToolUse ts/1000 gate normalization is crt-055's, not crt-054's.
+    // DDL must be byte-identical to the v29 migration block in migration.rs.
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS compaction_events (
+                id           INTEGER PRIMARY KEY,
+                session_id   TEXT    NOT NULL,
+                compacted_at INTEGER NOT NULL,   -- Unix SECONDS (NOT millis)
+                high_water   INTEGER NOT NULL DEFAULT 0
+            )",
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_compaction_events_session \
+             ON compaction_events(session_id)",
+    )
+    .execute(&mut *conn)
+    .await?;
+
     // Initialize counters that other modules expect.
     // Bind CURRENT_SCHEMA_VERSION to avoid drift between this and migration.rs (crt-025).
     sqlx::query("INSERT OR IGNORE INTO counters (name, value) VALUES ('schema_version', ?1)")

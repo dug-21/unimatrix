@@ -423,6 +423,26 @@ transcript_hold_ttl_secs = 86400
 ```
 
 ```toml
+# [transcript_signals] — content-free behavioral-signature classes folded over the
+# in-memory transcript stream (sibling to [retention]; #[serde(default)]).
+# Each enabled class is a labelled regex matched against raw transcript-delta bytes
+# in a single shared scan; only a per-class match COUNT is kept — no transcript
+# content is ever stored or surfaced. The counts are DIRECTIONAL, not precise: a
+# non-zero count means "this cycle saw matches," not an audited incident total
+# (the producer is content-opaque, so the false-positive rate cannot be audited
+# after the fact). When omitted, the default catalog ships exactly two domain-neutral
+# classes: `error` (index 0 — provider/model hard + overload errors) and
+# `refusal` (index 1 — first-person model refusal phrasings). No SDLC literals.
+#
+# Validation is loud at startup: more than 16 enabled classes, an invalid regex,
+# or a duplicate class_name aborts the server with a descriptive error.
+[[transcript_signals]]
+class_name = "error"      # Stable label; maps to a fixed index by config order.
+pattern    = "..."         # Regex compiled once into one shared RegexSet.
+enabled    = true          # Disabled entries are parsed but excluded from the scan.
+```
+
+```toml
 # [observation] — domain pack registry (optional; omit for Claude Code-only deployments)
 # The "claude-code" pack is always loaded as the built-in default.
 # Domain pack changes require a server restart — runtime re-registration is not supported.
@@ -671,6 +691,8 @@ Every write operation (`context_store`, `context_correct`) scans content for inj
 ### Transcript Handling
 
 Streamed session transcript deltas (raw conversation bytes, possibly secret-bearing) accumulate in a per-session in-memory buffer only — they never reach disk, SQL, or logs. In-memory plus purge-on-close is the secrets guarantee: there is no content scanner for raw transcript. The buffer is bounded by `retention.transcript_buffer_max_bytes` (default 4 MiB; oldest bytes dropped on overflow) and purged at cycle review (after distillation) and the staleness sweep per `retention.transcript_retention`. To keep multi-turn buffers alive across the per-turn drain so the cycle-review distillation path is non-empty, a drained buffer is moved into a bounded held-buffer store rather than freed; it continues merging deltas, is re-adopted on re-registration, and is reclaimed by the held-count cap (`transcript_hold_max_sessions`) or the TTL stale sweep (`transcript_hold_ttl_secs`). Purging a non-empty buffer emits a content-free `transcript_session_purged` audit event (session ID, byte count, timestamp — never content). The buffer has two readers: the server-side PreCompact transcript-tail block, and the cycle-review snapshot seam that feeds the `transcript_candidates` distillation. Distilled candidates are response-transient — selected blocks ride the cycle-review response only and are never written to SQL, files, logs, or the memoized cycle-review record. A server crash loses in-flight transcript by design.
+
+A content-free fold runs alongside the buffer as deltas arrive: it accumulates only a running byte total, a delta count, and per-class behavioral-signature match counts (configured via `[transcript_signals]` — see Configuration). The fold is a scalar counter, never a query over the assembled transcript, and carries no content field, so no transcript bytes escape through it; the resulting class counts are directional, not precise. The held-buffer store (`transcript_hold_max_sessions`/`transcript_hold_ttl_secs`) is a verified startup precondition for this fold: it must be wired and enabled, and startup fails loud if it is not, because the fold must survive to cycle review.
 
 ### Audit Trail
 

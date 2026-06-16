@@ -1,0 +1,18 @@
+## ADR-010: crt-052 Wave B Is a Verified Startup Precondition, Not a Runtime Bet
+
+### Context
+crt-054's Surface B durability claim — "the counter survives multi-turn/multi-session by construction" — rests on crt-052 Wave B being live: the held store (`TranscriptHold`) must be constructed and wired into the `SessionRegistry` as its `HeldBufferScan` handle (`main.rs:698-718, 1234-1254`; `with_transcript_hold` at `session.rs:295`). Both ass-077 and ass-078 flagged the same wiring question (SR-08): if the deployed config path doesn't construct the hold handle, the accumulator drains per-turn exactly as buffers do, multi-turn collapses, and crt-054 silently reverts to a per-turn byte counter. `config.rs validate()` already forbids `transcript_hold_max_sessions=0` and `transcript_hold_ttl_secs=0`, and Wave B is ON-by-default / unconditional / non-disableable — but "documented unconditional" is not "asserted present." The risk is a silent degrade, not a crash.
+
+This ADR carries forward the prior crt-054 ADR-010 (#5008) — it remains valid under the producer-only scope. Reconciliation: the dependency is now specifically Surface B's survival-to-review (ADR-006) and the held-route fold (ADR-001); Surface A (`compaction_events`, ADR-007) does NOT depend on Wave B (it writes at the handler regardless of hold state), so the precondition guards Surface B only.
+
+### Decision
+Make Wave B a verified precondition with a startup fail-loud check, not an assumption. At server startup, after constructing the registry and the hold, assert the registry actually holds a `HeldBufferScan` handle (the hold was wired via `with_transcript_hold`). If absent, FAIL LOUD at startup — a structured error naming the missing Wave B wiring — rather than booting into a silently degraded mode where Surface B under-counts multi-turn cycles. This is a wiring assertion, not a feature flag: there is no config knob to disable Wave B (per crt-052), so the only way the handle is absent is a wiring regression — exactly what a precondition assertion should catch. It belongs at the same startup point as `RetentionConfig::validate()` and the `[transcript_signals]` `validate()` (ADR-002), and must be placed so both server-construction paths (`main.rs` ~700 and ~1236) route through the wired registry and cannot bypass it.
+
+crt-054's Surface B remains correct-but-degraded by construction on a hypothetically absent handle (the `activity_snapshot()` collector's held-scan branch is severable, ADR-003 — it would count registered-route bytes only). The assertion exists so degraded mode can never be reached silently. This does not re-verify Wave B's internal correctness (crt-052 owns that); it verifies the one external fact Surface B depends on — the handle is present.
+
+### Consequences
+Easier: a misconfigured/regressed deployment fails fast and loud at startup instead of producing believable-low Surface B numbers for months (the exact silent-degrade class crt-054 fights); the dependency is explicit in code, not just a SCOPE assumption.
+
+Harder: crt-054 takes a hard startup dependency on Wave B wiring (acceptable — Wave B is unconditional and Surface B's value collapses without it); the assertion must be placed so it cannot be bypassed by an alternate server-construction path.
+
+Cross-refs: crt-052 Wave B (`transcript_hold.rs`, `main.rs:698-718/1234-1254`, `with_transcript_hold`), SR-08, ass-077/ass-078 shared wiring question, ADR-001 (held-route fold this protects), ADR-003 (severable held-scan branch), ADR-006 (survival-to-review the hold enables), ADR-007 (Surface A is independent of Wave B — the contrast).

@@ -10,6 +10,8 @@ use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{
     CoreError, EmbedService, EntryRecord, NewEntry, Store, VectorAdapter, VectorIndex,
 };
+use unimatrix_store::StoreError;
+use unimatrix_store::counters::{self, COMPACTION_EVENTS_INSERT_FAILED};
 
 use crate::infra::audit::{AuditEvent, AuditLog, Outcome};
 use crate::infra::embed_handle::EmbedServiceHandle;
@@ -269,5 +271,59 @@ impl StoreService {
             duplicate_of: None,
             duplicate_similarity: None,
         })
+    }
+
+    /// Insert one Surface A `compaction_events` row (crt-054, Component 8, ADR-007).
+    ///
+    /// Thin server-side wrapper over the store-level single autocommit INSERT
+    /// (`Store::insert_compaction_event`). On INSERT failure it best-effort
+    /// increments the durable named counter `compaction_events_insert_failed`
+    /// (ADR-007 §6, R-15, AC-04a) so crt-055 can cross-check row-count vs
+    /// `increment_compaction` drift at review, then propagates the primary `Err`
+    /// to the caller (the writer at `handle_compact_payload`, which logs ids/counts
+    /// only and falls through — the compaction ACK is never blocked).
+    ///
+    /// Content-free: only `session_id`/`compacted_at`/`high_water` are written, and
+    /// the failure counter name is a fixed literal carrying no ids/bytes (ADR-005).
+    pub(crate) async fn insert_compaction_event(
+        &self,
+        session_id: &str,
+        compacted_at_secs: i64,
+        high_water: i64,
+    ) -> Result<(), ServiceError> {
+        match self
+            .store
+            .insert_compaction_event(session_id, compacted_at_secs, high_water)
+            .await
+        {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                // Named failure counter — durable, not a generic log (ADR-007 §6,
+                // R-15, AC-04a). Best-effort: if the bump ITSELF fails (same degraded
+                // store), swallow it so the handler never panics. The primary Err
+                // still propagates so the writer logs + falls through (non-blocking).
+                let _ = self.bump_compaction_insert_failed_counter().await;
+                Err(ServiceError::Core(CoreError::Store(e)))
+            }
+        }
+    }
+
+    /// Increment the durable named counter `compaction_events_insert_failed` by 1.
+    ///
+    /// Uses the existing `counters` table + `increment_counter` (the project's
+    /// durable named-counter mechanism — queryable by crt-055 across a restart,
+    /// unlike an in-process atomic). Acquires a write connection from the store's
+    /// server write pool; never holds a cross-statement lock.
+    async fn bump_compaction_insert_failed_counter(&self) -> Result<(), ServiceError> {
+        let mut conn = self
+            .store
+            .write_pool_server()
+            .acquire()
+            .await
+            .map_err(|e| ServiceError::Core(CoreError::Store(StoreError::Database(e.into()))))?;
+        counters::increment_counter(&mut conn, COMPACTION_EVENTS_INSERT_FAILED, 1)
+            .await
+            .map_err(|e| ServiceError::Core(CoreError::Store(e)))?;
+        Ok(())
     }
 }

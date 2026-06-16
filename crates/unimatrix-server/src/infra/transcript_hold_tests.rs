@@ -67,7 +67,10 @@ impl Clock for TestClock {
 }
 
 fn buf_with(bytes: &[u8]) -> Arc<Mutex<TranscriptBuffer>> {
-    let mut b = TranscriptBuffer::new(4 * 1024 * 1024);
+    let mut b = TranscriptBuffer::new(
+        4 * 1024 * 1024,
+        Arc::new(crate::infra::transcript_activity::SignatureScanner::empty()),
+    );
     b.apply_delta(0, bytes);
     Arc::new(Mutex::new(b))
 }
@@ -319,7 +322,10 @@ fn test_audit_detail_content_free() {
 fn test_empty_held_buffer_purge_emits_nothing() {
     // A held buffer that was already cleared yields no purge record (zero-byte).
     let (hold, _sink) = hold_with(8);
-    let empty = Arc::new(Mutex::new(TranscriptBuffer::new(4096)));
+    let empty = Arc::new(Mutex::new(TranscriptBuffer::new(
+        4096,
+        Arc::new(crate::infra::transcript_activity::SignatureScanner::empty()),
+    )));
     hold.hold_on_drain("S", empty, "cycle-X");
     let records = hold.purge_held_for_feature("cycle-X");
     assert!(records.is_empty(), "empty buffer emits no purge record");
@@ -411,3 +417,11 @@ fn test_zero_cap_clamped_to_one() {
 // =============================================================================
 #[path = "transcript_hold_ac11_tests.rs"]
 mod ac11;
+
+// =============================================================================
+// crt-054 Surface B believable-zero integration guards (AC-06 / AC-07).
+// Held-route fold + read-before-purge, driven through the REAL registry+hold.
+// Own file (500-line rule, #693); reaches the helpers above via `super::`.
+// =============================================================================
+#[path = "transcript_hold_activity_tests.rs"]
+mod activity;

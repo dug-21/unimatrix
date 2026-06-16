@@ -19,7 +19,9 @@ use crate::schema::{deserialize_entry, serialize_entry};
 /// Current schema version. Incremented from 26 to 27 by vnc-018 (four indexes for
 /// context_graph CTE and neighbor queries: idx_entries_supersedes, idx_entries_superseded_by,
 /// idx_graph_edges_source_type, idx_graph_edges_target_type).
-pub const CURRENT_SCHEMA_VERSION: u64 = 28;
+/// Bumped 28 → 29 by crt-054 (compaction_events table + idx_compaction_events_session).
+/// Merge-order note: if crt-055 merges first claiming 29, crt-054 moves to 30 (ADR-008).
+pub const CURRENT_SCHEMA_VERSION: u64 = 29;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -1398,11 +1400,50 @@ async fn run_main_migrations(
                     source: Box::new(e),
                 })?;
         }
-        // No intra-block `UPDATE counters SET value = 28` is required: this is the
-        // LAST migration block, so the final INSERT OR REPLACE below stamps
-        // CURRENT_SCHEMA_VERSION (=28). Earlier blocks intra-stamp only because LATER
-        // blocks must observe the intermediate version. If a v29 block lands after
-        // this one, add `UPDATE counters SET value = 28` here at that time (R-11).
+        // A v29 block (crt-054, below) now follows this one, so this block is no
+        // longer last: intra-stamp the intermediate version (R-11) so the v29 block
+        // observes v28 before it runs.
+        sqlx::query("UPDATE counters SET value = 28 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // v28 → v29: Surface A — durable, content-free, insert-only compaction_events
+    // ledger + index on session_id (crt-054, ADR-007/ADR-008). compacted_at is Unix
+    // SECONDS (server wall clock); the PostToolUse ts/1000 gate normalization is
+    // crt-055's, not crt-054's. CREATE TABLE/INDEX IF NOT EXISTS is idempotent, so a
+    // partially-applied upgrade re-runs cleanly; no ALTER on an existing table, so
+    // there is no column-existence pre-check to do. DDL is byte-identical to the
+    // db.rs fresh-create path. crt-054 touches NO other table and does NOT bump
+    // SUMMARY_SCHEMA_VERSION or ALTER cycle_review_index (ADR-008, AC-15).
+    if current_version < 29 {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS compaction_events (
+                id           INTEGER PRIMARY KEY,
+                session_id   TEXT    NOT NULL,
+                compacted_at INTEGER NOT NULL,   -- Unix SECONDS (NOT millis)
+                high_water   INTEGER NOT NULL DEFAULT 0
+            )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_compaction_events_session \
+             ON compaction_events(session_id)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+        // This is now the LAST migration block, so the final INSERT OR REPLACE below
+        // stamps CURRENT_SCHEMA_VERSION (=29). No intra-block stamp required here.
     }
 
     // Update schema_version counter to CURRENT_SCHEMA_VERSION.

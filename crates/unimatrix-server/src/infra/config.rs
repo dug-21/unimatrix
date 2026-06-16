@@ -41,6 +41,7 @@ use unimatrix_engine::graph::{
 use crate::http::ProjectSlug;
 use crate::infra::categories::INITIAL_CATEGORIES;
 use crate::infra::scanning::ContentScanner;
+use crate::infra::transcript_activity::MAX_SIGNAL_CLASSES;
 
 // ---------------------------------------------------------------------------
 // Module-level constants
@@ -85,6 +86,14 @@ pub struct UnimatrixConfig {
     pub observation: ObservationConfig,
     #[serde(default)]
     pub retention: RetentionConfig,
+    /// `[transcript_signals]` section — behavioral-signature catalog folded over
+    /// transcript deltas (crt-054 ADR-002). Absent ⇒ the v1 default set (`error`
+    /// at index 0, `refusal` at index 1) via `#[serde(default)]`. `validate()`
+    /// bounds the enabled count to `MAX_SIGNAL_CLASSES`, rejects invalid regex and
+    /// duplicate `class_name` loudly at load. The enabled patterns (in config
+    /// order) feed the shared `SignatureScanner` (one `regex::bytes::RegexSet`).
+    #[serde(default)]
+    pub transcript_signals: TranscriptSignalsConfig,
     #[serde(default)]
     pub store: StoreConfig,
     #[serde(default)]
@@ -2061,6 +2070,179 @@ impl RetentionConfig {
 }
 
 // ---------------------------------------------------------------------------
+// `[transcript_signals]` section — behavioral-signature catalog (crt-054 ADR-002)
+// ---------------------------------------------------------------------------
+
+/// One `[[transcript_signals.classes]]` stanza — a single behavioral-signature
+/// class (crt-054 ADR-002, FR-C2).
+///
+/// Each field defaults so a partial TOML stanza is tolerated: an entry with only
+/// `class_name` + `pattern` is enabled by default. The `pattern` is matched in the
+/// BYTES domain (`regex::bytes::RegexSet`) over raw transcript deltas, so it scans
+/// arbitrary non-UTF-8 bytes without a validation pass.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct TranscriptSignal {
+    /// Stable class label. The class's position in config order (over ENABLED
+    /// entries) is its index in `ActivitySnapshot::class_counts` — so the label
+    /// is diagnostic, while the INDEX is the producer/consumer contract. Must be
+    /// unique among enabled classes (`validate()` rejects duplicates).
+    pub class_name: String,
+    /// The signature regex, compiled in the BYTES domain. Validated for
+    /// compilability at load (`validate()` rejects an unparseable pattern loudly).
+    pub pattern: String,
+    /// A configured class is ON unless explicitly disabled. A disabled class is
+    /// excluded from the enabled count, the duplicate check, the regex compile
+    /// check, the scanner, and `enabled_patterns()`.
+    pub enabled: bool,
+}
+
+impl Default for TranscriptSignal {
+    fn default() -> Self {
+        TranscriptSignal {
+            class_name: String::new(),
+            pattern: String::new(),
+            // A configured class is on unless disabled (FR-C2). The empty Default
+            // exists only so a partial TOML stanza deserializes; a real default
+            // catalog is built by `TranscriptSignalsConfig::default()`.
+            enabled: true,
+        }
+    }
+}
+
+/// `[transcript_signals]` section — the behavioral-signature catalog folded over
+/// transcript deltas (crt-054 ADR-002, FR-C2/C3/C4, AC-10/AC-11).
+///
+/// `#[serde(default)]` so a config omitting `[transcript_signals]` yields the v1
+/// default set, and a config with `classes = []` yields an empty scanner (bytes /
+/// deltas are still folded; only class counts go quiet). The enabled patterns, in
+/// CONFIG ORDER, are the single source for the shared `SignatureScanner` — the
+/// `RegexSet` pattern index == class index == `class_counts` array index (FR-C4).
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct TranscriptSignalsConfig {
+    /// The signature classes, in config order. Order is the index contract.
+    pub classes: Vec<TranscriptSignal>,
+}
+
+impl Default for TranscriptSignalsConfig {
+    /// v1 default catalog (ADR-002, FR-C2, AC-10): EXACTLY two classes, fixed
+    /// order → fixed indices `0 = error`, `1 = refusal`. Domain-neutral behavioral
+    /// signatures ONLY — NO SDLC literals, NO `reread`/`compaction` class, no
+    /// `token_*` field (R-12, AC-15).
+    ///
+    /// CALIBRATION (AC-10a, Coordination Item 3): the two patterns are calibrated,
+    /// high-precision, anchored, bytes-domain regexes. No real provider-error /
+    /// model-refusal transcript sample exists in-repo, so they are
+    /// anchored-by-construction and conservative (under-catalog: a domain extends
+    /// the catalog via config). The full calibration record — sample sources,
+    /// false-positive posture, and the explicit "counts are DIRECTIONAL not
+    /// precise" statement — is at `product/features/crt-054/testing/CALIBRATION.md`.
+    /// Because transcript content is opaque post-ship, the false-positive rate can
+    /// never be audited; these patterns are deliberately tight to minimize it.
+    fn default() -> Self {
+        TranscriptSignalsConfig {
+            classes: vec![
+                // index 0 = error — provider/model HARD errors and overload, not
+                // the bare word "error". Anchored to provider error TYPE tokens
+                // (Anthropic-style `*_error`), explicit overload phrasing, and
+                // HTTP status codes that only appear in a provider-error context.
+                // Case-insensitive; the `\b` anchors keep generic prose from
+                // matching the status digits.
+                TranscriptSignal {
+                    class_name: "error".to_string(),
+                    pattern: DEFAULT_ERROR_PATTERN.to_string(),
+                    enabled: true,
+                },
+                // index 1 = refusal — first-person model refusal stems. Anchored to
+                // "I " + a refusal verb-phrase ("cannot/can't/won't/am unable/am not
+                // able to/will not") so it does not match third-person prose or a
+                // user instruction. Case-insensitive; conservative by construction.
+                TranscriptSignal {
+                    class_name: "refusal".to_string(),
+                    pattern: DEFAULT_REFUSAL_PATTERN.to_string(),
+                    enabled: true,
+                },
+            ],
+        }
+    }
+}
+
+/// v1 `error`-class signature (crt-054 ADR-002, AC-10a). Anchored, bytes-domain,
+/// case-insensitive. Matches provider error TYPE tokens, explicit overload
+/// phrasing, and HTTP status codes only in an error context — NOT the bare word
+/// "error". Conservative to keep the un-auditable false-positive rate low.
+const DEFAULT_ERROR_PATTERN: &str = r#"(?i)("type"\s*:\s*"(?:api_error|overloaded_error|rate_limit_error|invalid_request_error|authentication_error|permission_error|not_found_error|request_too_large|internal_server_error|api_status_error)")|\boverloaded_error\b|\brate.?limit(?:ed|_error)?\b|\bservice unavailable\b|\b(?:http\s*)?(?:status\s*(?:code\s*)?)?(?:429|500|503|529)\b\s*(?:error|overloaded|too many requests|service unavailable)"#;
+
+/// v1 `refusal`-class signature (crt-054 ADR-002, AC-10a). Anchored, bytes-domain,
+/// case-insensitive. Matches first-person model refusal stems only — "I " + a
+/// refusal verb-phrase — so it ignores third-person prose and user instructions.
+const DEFAULT_REFUSAL_PATTERN: &str = r#"(?i)\bI(?:'m| am)?\s+(?:cannot|can(?:'|’)?t|won(?:'|’)?t|will not|am not able to|(?:'m|m| am)?\s*(?:not able|unable)\s+to|am unable to)\b"#;
+
+impl TranscriptSignalsConfig {
+    /// Validate the catalog LOUDLY at load (crt-054 ADR-002, FR-C3, NFR-6, AC-11;
+    /// R-10). Never silently truncates, drops, or falls back — every failure aborts
+    /// startup with a structured `ConfigError` naming the offending class.
+    ///
+    /// Checks, in order, over the ENABLED classes (config order):
+    ///   1. enabled count <= `MAX_SIGNAL_CLASSES` (== 16) — NO silent truncation.
+    ///   2. no duplicate `class_name` among enabled — indices must be unambiguous.
+    ///   3. every enabled `pattern` compiles in the bytes domain.
+    pub fn validate(&self, path: &Path) -> Result<(), ConfigError> {
+        // 1. Collect enabled classes in config order.
+        let enabled: Vec<&TranscriptSignal> = self.classes.iter().filter(|c| c.enabled).collect();
+
+        // 2. Bound the enabled count. Loud reject — NO silent truncation to 16
+        //    (a silent truncation is exactly the believable-zero failure AC-11
+        //    guards: dropped classes would read as a quiet zero downstream).
+        if enabled.len() > MAX_SIGNAL_CLASSES {
+            return Err(ConfigError::TooManySignalClasses {
+                path: path.to_path_buf(),
+                found: enabled.len(),
+                max: MAX_SIGNAL_CLASSES,
+            });
+        }
+
+        // 3. Duplicate class_name among enabled → loud reject (the index mapping
+        //    crt-055 reads must be unambiguous).
+        let mut seen: HashSet<&str> = HashSet::with_capacity(enabled.len());
+        for c in &enabled {
+            if !seen.insert(c.class_name.as_str()) {
+                return Err(ConfigError::DuplicateSignalClassName {
+                    path: path.to_path_buf(),
+                    name: c.class_name.clone(),
+                });
+            }
+        }
+
+        // 4. Every enabled pattern compiles in the BYTES domain → loud reject. This
+        //    is the same compile the shared SignatureScanner performs once at
+        //    startup from these same validated patterns; checking here fails the
+        //    operator's bad regex at load, not at first scan (R-10, no fallback).
+        for c in &enabled {
+            regex::bytes::Regex::new(&c.pattern).map_err(|e| ConfigError::InvalidSignalRegex {
+                path: path.to_path_buf(),
+                name: c.class_name.clone(),
+                detail: e.to_string(),
+            })?;
+        }
+
+        Ok(())
+    }
+
+    /// The enabled patterns, in CONFIG ORDER, for `SignatureScanner::compile`
+    /// (crt-054 Component 2, FR-C4). Config order is preserved so the `RegexSet`
+    /// pattern index == class index == `class_counts` array index.
+    pub fn enabled_patterns(&self) -> Vec<String> {
+        self.classes
+            .iter()
+            .filter(|c| c.enabled)
+            .map(|c| c.pattern.clone())
+            .collect()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // StoreConfig (#561)
 // ---------------------------------------------------------------------------
 
@@ -2579,6 +2761,32 @@ pub enum ConfigError {
         /// The duplicated slug value.
         value: String,
     },
+    /// More than `MAX_SIGNAL_CLASSES` `[transcript_signals]` classes are enabled
+    /// (crt-054 ADR-002, AC-11). Loud reject at load — never silently truncated.
+    TooManySignalClasses {
+        path: PathBuf,
+        /// Number of ENABLED classes found.
+        found: usize,
+        /// The pinned ceiling (`MAX_SIGNAL_CLASSES` == 16).
+        max: usize,
+    },
+    /// Two enabled `[transcript_signals]` classes share a `class_name` (crt-054
+    /// ADR-002, FR-C3). The class index mapping must be unambiguous.
+    DuplicateSignalClassName {
+        path: PathBuf,
+        /// The duplicated class name.
+        name: String,
+    },
+    /// An enabled `[transcript_signals]` class has a `pattern` that fails to
+    /// compile in the bytes domain (crt-054 ADR-002, FR-C3, AC-11). Loud reject at
+    /// load — never a runtime fallback or silent drop.
+    InvalidSignalRegex {
+        path: PathBuf,
+        /// The class whose pattern failed.
+        name: String,
+        /// The regex compile error (operator diagnostics).
+        detail: String,
+    },
 }
 
 impl fmt::Display for ConfigError {
@@ -2878,6 +3086,30 @@ impl fmt::Display for ConfigError {
                 "config error in {}: duplicate project slug '{}'",
                 path.display(),
                 value
+            ),
+            ConfigError::TooManySignalClasses { path, found, max } => write!(
+                f,
+                "config error in {}: [transcript_signals] has {} enabled classes; \
+                 maximum is {} (MAX_SIGNAL_CLASSES). Disable or remove classes — \
+                 the set is NOT silently truncated.",
+                path.display(),
+                found,
+                max
+            ),
+            ConfigError::DuplicateSignalClassName { path, name } => write!(
+                f,
+                "config error in {}: [transcript_signals] has duplicate enabled \
+                 class_name {:?}; each enabled class must have a unique name",
+                path.display(),
+                name
+            ),
+            ConfigError::InvalidSignalRegex { path, name, detail } => write!(
+                f,
+                "config error in {}: [transcript_signals] class {:?} has an \
+                 invalid pattern: {}",
+                path.display(),
+                name,
+                detail
             ),
         }
     }
@@ -4073,6 +4305,15 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             } else {
                 global.retention.transcript_hold_ttl_secs
             },
+        },
+        // crt-054 ADR-002/ADR-003: the catalog is a list field, so it merges with
+        // REPLACE semantics (no per-entry append) — a project that declares its own
+        // [transcript_signals] replaces the global catalog wholesale; otherwise the
+        // global (which is the v1 default when absent) carries through.
+        transcript_signals: if project.transcript_signals != default.transcript_signals {
+            project.transcript_signals
+        } else {
+            global.transcript_signals
         },
         // #561: per-field project-wins merge for store config
         store: StoreConfig {
@@ -11789,3 +12030,7 @@ mod graph_penalty_config_tests;
 #[cfg(test)]
 #[path = "projects_config_tests.rs"]
 mod projects_config_tests;
+
+#[cfg(test)]
+#[path = "transcript_signals_config_tests.rs"]
+mod transcript_signals_config_tests;

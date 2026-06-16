@@ -17,6 +17,9 @@
 //! `<= max_bytes` (invariant I5, documented at each conversion site).
 
 use std::fmt;
+use std::sync::Arc;
+
+use crate::infra::transcript_activity::{ActivityCounters, ActivitySnapshot, SignatureScanner};
 
 /// Default accumulated-transcript cap per session: 4 MiB.
 /// Shared with `RetentionConfig.transcript_buffer_max_bytes` serde default (ADR-006).
@@ -56,6 +59,16 @@ pub struct TranscriptBuffer {
     elided_bytes: u64,
     /// Cap, injected at construction (ADR-006).
     max_bytes: usize,
+    /// In-memory throughput/behavioral-signature fold accumulator (crt-054
+    /// Surface B, ADR-001). Embedded in the buffer so the registered AND held
+    /// delta routes fold the SAME accumulator by construction — the structural
+    /// defense against the believable-zero trap (#750/#5025). Scalars only;
+    /// never a content field (AC-08).
+    activity: ActivityCounters,
+    /// Shared compiled `[transcript_signals]` `RegexSet` (crt-054 ADR-002).
+    /// One compile at startup, cheap `Arc` clone per buffer. Holds compiled
+    /// regexes only — never transcript bytes; does not change content-opacity.
+    scanner: Arc<SignatureScanner>,
 }
 
 /// Counts-only purge record (ADR-004). Named crt-052 seam shape — never content.
@@ -132,8 +145,11 @@ pub fn session_key(_tenant: &str, _project: &str, session_id: &str) -> String {
 }
 
 impl TranscriptBuffer {
-    /// New empty buffer with the given accumulated-byte cap.
-    pub fn new(max_bytes: usize) -> Self {
+    /// New empty buffer with the given accumulated-byte cap and the shared
+    /// `[transcript_signals]` scanner (crt-054 ADR-001/ADR-002). The scanner is
+    /// built once at startup and `Arc`-shared into every buffer; the embedded
+    /// `ActivityCounters` starts at zero.
+    pub(crate) fn new(max_bytes: usize, scanner: Arc<SignatureScanner>) -> Self {
         TranscriptBuffer {
             base_offset: 0,
             data: Vec::new(),
@@ -141,6 +157,8 @@ impl TranscriptBuffer {
             high_water: 0,
             elided_bytes: 0,
             max_bytes,
+            activity: ActivityCounters::new(),
+            scanner,
         }
     }
 
@@ -162,8 +180,12 @@ impl TranscriptBuffer {
         // and below-floor deltas (FR-02).
         self.high_water = self.high_water.max(end);
 
-        // Zero-length delta: defined no-op beyond the high_water update.
+        // Zero-length delta: defined no-op beyond the high_water update — but it
+        // IS an ACCEPTED delta (it did not overflow and is not clipped below the
+        // floor), so it reaches the fold (crt-054 ADR-001): delta_count += 1,
+        // bytes_total += 0, scan of empty bytes matches nothing. No panic (FR-B3).
         if len_u64 == 0 {
+            self.activity.fold(bytes, &self.scanner);
             return;
         }
 
@@ -227,6 +249,19 @@ impl TranscriptBuffer {
         if self.holes.len() > MAX_HOLE_RANGES {
             self.collapse_to_newest();
         }
+
+        // crt-054 fold (ADR-001): runs AFTER the merge, on the ACCEPTED path
+        // only. Reached only when the delta was actually merged — the overflow
+        // drop and the entirely-below-floor clip return early above and are NOT
+        // folded (counting a clipped delta would over-count `bytes_total` beyond
+        // what the buffer merged). `bytes` is the delta payload as received, so
+        // `bytes.len()` is the payload byte length (FR-B3) — NOT the buffer's
+        // total length. Runs under the buffer lock already held; no new lock.
+        // Both the registered and held routes fold this same embedded
+        // accumulator by construction (the buffer's `Arc` is shared across
+        // routes), so there is no route-specific fold code — the believable-zero
+        // guard's structural basis (#750/#5025, ADR-009).
+        self.activity.fold(bytes, &self.scanner);
     }
 
     /// Up to `window` bytes from the end of the span, truncated at the most
@@ -316,6 +351,11 @@ impl TranscriptBuffer {
         self.data.clear();
         self.holes.clear();
         self.base_offset = self.high_water;
+        // crt-054 (ADR-006): `self.activity` is INTENTIONALLY preserved across a
+        // stream-resume `clear()`. The fold must survive to the crt-052 hold
+        // purge / cycle review; zeroing it here would reintroduce the
+        // believable-zero class (#750/#5025) — a drained-then-resumed session
+        // would silently read 0 at review. Do NOT reset the accumulator here.
         purged
     }
 
@@ -338,6 +378,19 @@ impl TranscriptBuffer {
     /// below-base clipping.
     pub fn elided_bytes(&self) -> u64 {
         self.elided_bytes
+    }
+
+    /// Counters-only `Copy` snapshot of the in-memory fold (crt-054 Surface B,
+    /// Component 4). The single metadata-only read surface crt-055 reads at
+    /// review — structurally incapable of carrying transcript bytes (AC-08).
+    /// Cast-free native widths (NFR-5, AC-14): the checked/saturating `-> i64`
+    /// conversion is crt-055's at persist, never here.
+    ///
+    /// Takes `&self` and reads under the buffer lock the caller already holds
+    /// (the collector's `lock_buffer`, with its poison->empty policy #4764);
+    /// acquires NO new lock — same discipline as `snapshot()`.
+    pub(crate) fn activity_snapshot(&self) -> ActivitySnapshot {
+        self.activity.snapshot()
     }
 
     /// Sum of hole lengths within the current span.
@@ -452,14 +505,17 @@ impl TranscriptBuffer {
 /// `SessionState` keeps `derive(Debug)` — this impl is what it prints.
 impl fmt::Debug for TranscriptBuffer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // crt-054: include the activity counters — scalars ONLY (ActivityCounters
+        // is scalars/array-of-scalar, never bytes), so this stays metadata-only.
         write!(
             f,
-            "TranscriptBuffer {{ len: {}, base_offset: {}, high_water: {}, holes: {}, elided_bytes: {} }}",
+            "TranscriptBuffer {{ len: {}, base_offset: {}, high_water: {}, holes: {}, elided_bytes: {}, activity: {:?} }}",
             self.data.len(),
             self.base_offset,
             self.high_water,
             self.holes.len(),
-            self.elided_bytes
+            self.elided_bytes,
+            self.activity
         )
     }
 }

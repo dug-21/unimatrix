@@ -55,6 +55,54 @@ fn domain_pack_from_config(cfg: &DomainPackConfig) -> DomainPack {
     }
 }
 
+/// crt-054 (ADR-002): validate `[transcript_signals]` LOUDLY then compile the
+/// shared scanner ONCE from the validated, enabled patterns (config order).
+/// Called on both server-construction paths before the registry is built.
+/// Either failure aborts startup (no silent "no scanning" fallback, R-10).
+fn build_signature_scanner(
+    config: &UnimatrixConfig,
+    config_path: &Path,
+) -> Result<unimatrix_server::infra::transcript_activity::SignatureScanner, ServerError> {
+    config
+        .transcript_signals
+        .validate(config_path)
+        .map_err(|e| ServerError::Config(e.to_string()))?;
+    unimatrix_server::infra::transcript_activity::SignatureScanner::compile(
+        &config.transcript_signals.enabled_patterns(),
+    )
+    .map_err(|e| ServerError::Config(e.to_string()))
+}
+
+/// crt-054 Wave B startup precondition (ADR-010): Surface B (the activity fold's
+/// survival across the crt-052 hold) requires the `HeldBufferScan` handle to be
+/// wired into the registry. Fail LOUD now rather than silently read 0 at review.
+/// Called on BOTH construction paths via this shared helper so neither path can
+/// be left silently unguarded.
+fn assert_wave_b_precondition(
+    registry: &unimatrix_server::infra::session::SessionRegistry,
+    config: &UnimatrixConfig,
+) -> Result<(), ServerError> {
+    if !registry.has_transcript_hold() {
+        return Err(ServerError::Config(
+            "crt-054 Wave B precondition: transcript hold (HeldBufferScan) is not wired into the \
+             SessionRegistry; Surface B (activity fold) cannot survive to review"
+                .to_string(),
+        ));
+    }
+    // Re-affirm the hold is ON / non-disableable. crt-052 forbids
+    // transcript_hold_max_sessions == 0 in RetentionConfig::validate(); this is
+    // belt-and-suspenders so a regression bypassing that validate still fails
+    // loud for Surface B's sake (NFR-7).
+    if config.retention.transcript_hold_max_sessions == 0 {
+        return Err(ServerError::Config(
+            "crt-054 Wave B precondition: transcript_hold_max_sessions == 0 disables the hold; \
+             Surface B (activity fold) would be purged before review"
+                .to_string(),
+        ));
+    }
+    Ok(())
+}
+
 /// Unimatrix knowledge engine.
 #[derive(Parser)]
 #[command(name = "unimatrix", about = "Unimatrix knowledge engine")]
@@ -690,6 +738,13 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // crt-054 (ADR-002): validate `[transcript_signals]` LOUDLY at load (next to
+    // the other startup validates) and compile the shared scanner ONCE from the
+    // validated, enabled patterns. Fail startup on Err — no silent "no scanning"
+    // fallback (R-10).
+    let signature_scanner =
+        Arc::new(build_signature_scanner(&config, &paths.data_dir.join("config.toml"))?);
+
     // crt-052 Wave B (ADR-008): build the bounded held-buffer store and inject
     // it into the registry as the `HeldBufferScan` handle so the snapshot seam
     // scans held buffers and the drain/register/delta paths route through it.
@@ -709,13 +764,21 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Create session registry for hook IPC (col-008).
     // vnc-025 (ADR-006): inject the configured per-session transcript buffer cap.
     // crt-052 Wave B: inject the held-buffer scan handle (R-11 severable seam).
+    // crt-054 (ADR-001): inject the shared scanner so every TranscriptBuffer the
+    // registry constructs folds into the same embedded accumulator.
     let session_registry = Arc::new(
         unimatrix_server::infra::session::SessionRegistry::with_transcript_cap(
             config.retention.transcript_buffer_max_bytes,
         )
         .with_transcript_hold(Arc::clone(&transcript_hold)
-            as Arc<dyn unimatrix_server::infra::session::HeldBufferScan>),
+            as Arc<dyn unimatrix_server::infra::session::HeldBufferScan>)
+        .with_signature_scanner(Arc::clone(&signature_scanner)),
     );
+
+    // crt-054 Wave B precondition (ADR-010): Surface B's survival to review rests
+    // on the crt-052 hold being wired. Fail LOUD now rather than silently read 0
+    // at review. Asserted on BOTH construction paths via the shared helper.
+    assert_wave_b_precondition(&session_registry, &config)?;
 
     // Create pending entries analysis accumulator (col-009).
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));
@@ -1229,6 +1292,11 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // crt-054 (ADR-002): validate `[transcript_signals]` and compile the shared
+    // scanner ONCE (mirrors the daemon path). Fail startup on Err (R-10).
+    let signature_scanner =
+        Arc::new(build_signature_scanner(&config, &paths.data_dir.join("config.toml"))?);
+
     // crt-052 Wave B (ADR-008): held-buffer store, injected into the registry as
     // the `HeldBufferScan` handle (mirrors the daemon path).
     let transcript_hold = Arc::new(
@@ -1245,13 +1313,19 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // Create session registry for hook IPC (col-008).
     // vnc-025 (ADR-006): inject the configured per-session transcript buffer cap.
     // crt-052 Wave B: inject the held-buffer scan handle (R-11 severable seam).
+    // crt-054 (ADR-001): inject the shared scanner (mirrors the daemon path).
     let session_registry = Arc::new(
         unimatrix_server::infra::session::SessionRegistry::with_transcript_cap(
             config.retention.transcript_buffer_max_bytes,
         )
         .with_transcript_hold(Arc::clone(&transcript_hold)
-            as Arc<dyn unimatrix_server::infra::session::HeldBufferScan>),
+            as Arc<dyn unimatrix_server::infra::session::HeldBufferScan>)
+        .with_signature_scanner(Arc::clone(&signature_scanner)),
     );
+
+    // crt-054 Wave B precondition (ADR-010): mirrors the daemon path — same shared
+    // helper, so neither construction path is silently unguarded.
+    assert_wave_b_precondition(&session_registry, &config)?;
 
     // Create pending entries analysis accumulator shared between UDS listener and MCP server (col-009).
     let pending_entries_analysis = Arc::new(Mutex::new(PendingEntriesAnalysis::new()));

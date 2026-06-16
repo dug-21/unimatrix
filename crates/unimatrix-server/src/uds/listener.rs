@@ -1853,6 +1853,34 @@ async fn handle_compact_payload(
     // 10. Increment compaction count (transport concern)
     session_registry.increment_compaction(session_id);
 
+    // ── Surface A (crt-054, Component 6, ADR-007). Durable compaction_events row. ──
+    // No registry/session/buffer lock is held across the INSERT: increment_compaction
+    // returned above (releasing the sessions lock internally), and the high_water read
+    // below takes the buffer lock in a TIGHT block and DROPS the guard BEFORE the INSERT
+    // (pattern #3753 — use the captured snapshot, never hold/re-acquire across a new step).
+    let high_water: u64 = match session_state.as_ref() {
+        // Read via the already-shared transcript Arc (no registry lookup). The guard is
+        // dropped at the end of this block, before compacted_at/the INSERT.
+        Some(s) => lock_buffer(&s.transcript).high_water(),
+        None => 0, // absent session → no buffer → default 0 (row still written, session-keyed)
+    };
+
+    // compacted_at in Unix SECONDS, server wall clock (.as_secs()) — NOT millis. The
+    // gate-side ts/1000 normalization is crt-055's, not here (ADR-007 §4, AC-01a).
+    let compacted_at_secs: i64 = unix_now_secs() as i64;
+
+    // Single autocommit INSERT via the store_ops helper (Component 8). On error the helper
+    // bumps the named counter `compaction_events_insert_failed` and returns Err; here we log
+    // ids/counts ONLY (never transcript bytes/payload — ADR-005) and FALL THROUGH so the
+    // compaction ACK is never blocked. Written regardless of feature_cycle declaration (ADR-004).
+    if let Err(e) = services
+        .store_ops
+        .insert_compaction_event(session_id, compacted_at_secs, high_water as i64)
+        .await
+    {
+        tracing::warn!(session_id = %session_id, error = %e, "compaction_events INSERT failed");
+    }
+
     let token_count = content.as_ref().map(|c| (c.len() / 4) as u32).unwrap_or(0);
 
     HookResponse::BriefingContent {
@@ -9388,4 +9416,8 @@ mod tests {
     // vnc-030 (#699): cycle_stamp 3-site read, topic_source taxonomy, close-path
     // inversion flip, enrich FeatureSource guard (ADR-004/005). 500-line rule.
     mod stamp_read;
+
+    // crt-054 (#752): Surface A compaction_events writer at handle_compact_payload
+    // (Component 6) + the store_ops failure-counter wrapper (Component 8). 500-line rule.
+    mod compaction_events;
 }
