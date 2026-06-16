@@ -18,16 +18,15 @@
 use serde::Serialize;
 
 // The canonical `direction` values (D-02 fix / ADR-007). Consumed by get-edge-assembly
-// (`mcp/get_edges.rs`) for projection and by serializer-seam for glyph selection — both
-// land in the next wave, hence the `allow(dead_code)` until they wire up.
+// (`mcp/get_edges.rs`, next wave) for projection and by serializer-seam (`edges_render.rs`)
+// for glyph selection. `DIRECTION_OUTBOUND` is currently used only by get-edge-assembly
+// (next wave) and tests, hence its `allow(dead_code)`.
 /// Canonicalized symmetric edge (`Contradicts`/`CoAccess`/`Informs`); renders `↔`.
-#[allow(dead_code)]
 pub(crate) const DIRECTION_BOTH: &str = "both";
 /// Asymmetric edge anchored at `source_id`; renders `→`.
 #[allow(dead_code)]
 pub(crate) const DIRECTION_OUTBOUND: &str = "outbound";
 /// Asymmetric edge anchored at `target_id`; renders `←`.
-#[allow(dead_code)]
 pub(crate) const DIRECTION_INBOUND: &str = "inbound";
 
 /// A single discovery-list edge — exactly enough for a reader to decide whether to go read
@@ -79,14 +78,20 @@ impl GetEdge {
     }
 }
 
-/// Honest, **uncapped** inbound/outbound edge totals — a `↔` symmetric edge counted **once**
-/// (post-canonicalization; `= EdgeCountSplit` projected). The nested-object shape matches the
-/// `co_access`/`correction_chains`/`security` JSON house style (OQ-01 / ADR-005). The cap
-/// (`GET_EDGE_DISPLAY_LIMIT`) never touches these counts.
+/// Honest, **uncapped** edge totals — **three buckets** (ADR-005 TOTALS BUCKET CONTRACT,
+/// locked 2026-06-16); a `↔` symmetric edge counted **once** in `both` (post-canonicalization;
+/// `= EdgeCountSplit` projected, minus the digest-only authored count). The nested-object
+/// shape matches the `co_access`/`correction_chains`/`security` JSON house style (OQ-01 /
+/// ADR-005). The cap (`GET_EDGE_DISPLAY_LIMIT`) never touches these counts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct EdgeTotals {
+    /// Asymmetric inbound degree ONLY — `↔` is **not** folded in (the #744/#745
+    /// observability signal; it lives in `both`).
     pub inbound: usize,
+    /// Asymmetric outbound degree.
     pub outbound: usize,
+    /// Canonicalized symmetric edges (`↔`), counted ONCE in their own bucket.
+    pub both: usize,
 }
 
 /// The surfaced edge view: the ranked, capped (`≤ GET_EDGE_DISPLAY_LIMIT`) display set plus
@@ -97,6 +102,13 @@ pub struct EdgesView {
     /// The ranked display set, `len() ≤ GET_EDGE_DISPLAY_LIMIT`.
     pub edges: Vec<GetEdge>,
     pub totals: EdgeTotals,
+    /// Authored count (`source == "agent"`) over the **FULL uncapped** canonicalized set —
+    /// fed by `EdgeCountSplit.authored` (get-edge-assembly). DIGEST ONLY: it rides on the
+    /// view for the summary `(K authored)` tally and is **NOT** a JSON or markdown key
+    /// (per-edge `authored` already carries provenance there). Skipped from serialization so
+    /// it can never leak into the JSON `edges`/`edge_totals` payload.
+    #[serde(skip)]
+    pub authored_total: usize,
 }
 
 #[cfg(test)]
@@ -150,7 +162,9 @@ mod tests {
             totals: EdgeTotals {
                 inbound: 9,
                 outbound: 4,
+                both: 3,
             },
+            authored_total: 5,
         };
         assert!(
             view.edges.len() <= GET_EDGE_DISPLAY_LIMIT as usize,
@@ -246,24 +260,30 @@ mod tests {
         }
     }
 
-    // -- EdgeTotals shape (OQ-01 / ADR-005) --
+    // -- EdgeTotals shape (OQ-01 / ADR-005 — 3-bucket TOTALS BUCKET CONTRACT, 2026-06-16) --
 
-    /// `EdgeTotals { inbound, outbound }` — the nested object carries both fields, uncapped.
+    /// `EdgeTotals { inbound, outbound, both }` — the nested object carries **three** keys,
+    /// uncapped; `both` is present and distinct from `inbound` (the #744 regression guard).
     #[test]
-    fn test_edge_totals_inbound_outbound_object() {
+    fn test_edge_totals_inbound_outbound_both_object() {
         let totals = EdgeTotals {
             inbound: 5,
             outbound: 2,
+            both: 3,
         };
         let value = serde_json::to_value(totals).unwrap();
         let obj = value
             .as_object()
             .expect("EdgeTotals serializes to an object");
-        assert_eq!(obj.len(), 2, "exactly inbound + outbound");
+        assert_eq!(obj.len(), 3, "exactly inbound + outbound + both (3 keys)");
+        assert!(
+            obj.contains_key("both"),
+            "the `both` bucket must be present"
+        );
         assert_eq!(obj["inbound"], 5);
         assert_eq!(obj["outbound"], 2);
+        assert_eq!(obj["both"], 3);
     }
-
     // -- R-20: target_confidence never surfaced (ADR-002/ADR-006) --
 
     /// The ranked row's `target_confidence` (the inferred tiebreak input) is **absent** from

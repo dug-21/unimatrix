@@ -21,6 +21,7 @@ use crate::infra::registry::{Capability, EnrollResult, TrustLevel};
 // Only the MCP tool handler registration is gated by #[cfg(feature = "mcp-briefing")].
 mod briefing;
 pub mod edges;
+mod edges_render;
 mod entries;
 mod mutations;
 #[cfg(feature = "mcp-briefing")]
@@ -294,7 +295,7 @@ mod tests {
     #[test]
     fn test_format_single_entry_summary() {
         let entry = make_entry(42, "Test Title", "content");
-        let result = format_single_entry(&entry, ResponseFormat::Summary);
+        let result = format_single_entry(&entry, ResponseFormat::Summary, None);
         let text = result_text(&result);
         assert!(text.contains("#42"));
         assert!(text.contains("Test Title"));
@@ -304,7 +305,7 @@ mod tests {
     #[test]
     fn test_format_single_entry_markdown() {
         let entry = make_entry(42, "Test Title", "some content here");
-        let result = format_single_entry(&entry, ResponseFormat::Markdown);
+        let result = format_single_entry(&entry, ResponseFormat::Markdown, None);
         let text = result_text(&result);
         assert!(text.contains("[KNOWLEDGE DATA]"));
         assert!(text.contains("[/KNOWLEDGE DATA]"));
@@ -314,11 +315,157 @@ mod tests {
     #[test]
     fn test_format_single_entry_json() {
         let entry = make_entry(42, "Test Title", "content");
-        let result = format_single_entry(&entry, ResponseFormat::Json);
+        let result = format_single_entry(&entry, ResponseFormat::Json, None);
         let text = result_text(&result);
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
         assert_eq!(parsed["id"], 42);
         assert_eq!(parsed["title"], "Test Title");
+    }
+
+    // -- vnc-037: serializer seam — `None ⇒ key/section absent` structural invariant (C-4) --
+
+    /// `format_single_entry(entry, fmt, None)` produces, for every format, output with **no**
+    /// `edges` key (json), **no** `### Related` (markdown), and **no** `edges:` digest
+    /// (summary). The key is never added / the section never appended when `edges == None` —
+    /// this is the byte-identity invariant that keeps the four list-view tools unchanged.
+    #[test]
+    fn test_none_edges_key_absent_structural() {
+        let entry = make_entry(42, "Test", "content");
+
+        // Summary: no edges digest.
+        let summary = result_text(&format_single_entry(&entry, ResponseFormat::Summary, None));
+        assert!(
+            !summary.contains("edges:"),
+            "summary None must omit the edges digest"
+        );
+
+        // Markdown: no ### Related section.
+        let markdown = result_text(&format_single_entry(&entry, ResponseFormat::Markdown, None));
+        assert!(
+            !markdown.contains("### Related"),
+            "markdown None must omit the Related section"
+        );
+
+        // Json: no edges / edge_totals keys.
+        let json = result_text(&format_single_entry(&entry, ResponseFormat::Json, None));
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let obj = parsed.as_object().unwrap();
+        assert!(
+            !obj.contains_key("edges"),
+            "json None must omit the edges key"
+        );
+        assert!(
+            !obj.contains_key("edge_totals"),
+            "json None must omit the edge_totals key"
+        );
+    }
+
+    /// `None` yields a payload byte-identical to the pre-seam render — produced through the
+    /// genuine serializer path (a hand-built `Some` render must NOT bleed into `None`). The
+    /// json base object is exactly `entry_to_json` (the UNCHANGED helper) stringified.
+    #[test]
+    fn test_none_json_byte_identical_to_base_object() {
+        let entry = make_entry(7, "Base", "body");
+        let via_seam = result_text(&format_single_entry(&entry, ResponseFormat::Json, None));
+        let base = serde_json::to_string_pretty(&entry_to_json(&entry)).unwrap();
+        assert_eq!(
+            via_seam, base,
+            "None get json must equal the unchanged entry_to_json output"
+        );
+    }
+
+    /// `Some(view)` injects the edges key/section in each format — the positive counterpart to
+    /// the structural-absence test (confirms the seam wires the render helpers through).
+    #[test]
+    fn test_some_edges_injected_all_formats() {
+        use super::edges::{EdgeTotals, EdgesView, GetEdge};
+        let entry = make_entry(42, "Test", "content");
+        let view = EdgesView {
+            edges: vec![GetEdge::new(
+                "Supports".to_string(),
+                "outbound",
+                100,
+                Some("Target".to_string()),
+                "agent",
+            )],
+            totals: EdgeTotals {
+                inbound: 0,
+                outbound: 1,
+                both: 0,
+            },
+            authored_total: 1,
+        };
+
+        let summary = result_text(&format_single_entry(
+            &entry,
+            ResponseFormat::Summary,
+            Some(&view),
+        ));
+        assert!(
+            summary.contains(" | edges: "),
+            "summary Some must carry the digest"
+        );
+
+        let markdown = result_text(&format_single_entry(
+            &entry,
+            ResponseFormat::Markdown,
+            Some(&view),
+        ));
+        assert!(
+            markdown.contains("### Related"),
+            "markdown Some must append Related"
+        );
+
+        let json = result_text(&format_single_entry(
+            &entry,
+            ResponseFormat::Json,
+            Some(&view),
+        ));
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed.get("edges").is_some(), "json Some must carry edges");
+        assert_eq!(parsed["edge_totals"].as_object().unwrap().len(), 3);
+    }
+
+    /// Zero-edge `Some` empty state across all three formats (DNB-3): summary `edges: none`,
+    /// markdown `No related entries.`, json `edges: []` + `edge_totals {0,0,0}`.
+    #[test]
+    fn test_get_zero_edge_empty_state_all_formats() {
+        use super::edges::{EdgeTotals, EdgesView};
+        let entry = make_entry(42, "Test", "content");
+        let view = EdgesView {
+            edges: Vec::new(),
+            totals: EdgeTotals {
+                inbound: 0,
+                outbound: 0,
+                both: 0,
+            },
+            authored_total: 0,
+        };
+
+        let summary = result_text(&format_single_entry(
+            &entry,
+            ResponseFormat::Summary,
+            Some(&view),
+        ));
+        assert!(summary.ends_with(" | edges: none"));
+
+        let markdown = result_text(&format_single_entry(
+            &entry,
+            ResponseFormat::Markdown,
+            Some(&view),
+        ));
+        assert!(markdown.contains("### Related\nNo related entries."));
+
+        let json = result_text(&format_single_entry(
+            &entry,
+            ResponseFormat::Json,
+            Some(&view),
+        ));
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed["edges"].as_array().unwrap().is_empty());
+        assert_eq!(parsed["edge_totals"]["inbound"], 0);
+        assert_eq!(parsed["edge_totals"]["outbound"], 0);
+        assert_eq!(parsed["edge_totals"]["both"], 0);
     }
 
     #[test]
@@ -444,7 +591,7 @@ mod tests {
     #[test]
     fn test_markdown_has_knowledge_data_markers() {
         let entry = make_entry(1, "Test", "body content");
-        let result = format_single_entry(&entry, ResponseFormat::Markdown);
+        let result = format_single_entry(&entry, ResponseFormat::Markdown, None);
         let text = result_text(&result);
         assert!(text.contains("[KNOWLEDGE DATA]"));
         assert!(text.contains("[/KNOWLEDGE DATA]"));
@@ -453,7 +600,7 @@ mod tests {
     #[test]
     fn test_summary_has_no_markers() {
         let entry = make_entry(1, "Test", "body content");
-        let result = format_single_entry(&entry, ResponseFormat::Summary);
+        let result = format_single_entry(&entry, ResponseFormat::Summary, None);
         let text = result_text(&result);
         assert!(!text.contains("[KNOWLEDGE DATA]"));
     }
@@ -461,7 +608,7 @@ mod tests {
     #[test]
     fn test_json_has_no_markers() {
         let entry = make_entry(1, "Test", "body content");
-        let result = format_single_entry(&entry, ResponseFormat::Json);
+        let result = format_single_entry(&entry, ResponseFormat::Json, None);
         let text = result_text(&result);
         assert!(!text.contains("[KNOWLEDGE DATA]"));
     }
@@ -767,7 +914,7 @@ mod tests {
     #[test]
     fn test_content_with_marker_in_body() {
         let entry = make_entry(1, "Test", "data [/KNOWLEDGE DATA] more data");
-        let result = format_single_entry(&entry, ResponseFormat::Markdown);
+        let result = format_single_entry(&entry, ResponseFormat::Markdown, None);
         let text = result_text(&result);
         assert!(
             text.contains("[KNOWLEDGE DATA]\ndata [/KNOWLEDGE DATA] more data\n[/KNOWLEDGE DATA]")
@@ -787,7 +934,7 @@ mod tests {
     #[test]
     fn test_markdown_has_iso_timestamps() {
         let entry = make_entry(1, "Test", "content");
-        let result = format_single_entry(&entry, ResponseFormat::Markdown);
+        let result = format_single_entry(&entry, ResponseFormat::Markdown, None);
         let text = result_text(&result);
         assert!(
             text.contains("2023-11-14"),
@@ -1695,5 +1842,141 @@ mod tests {
         assert_eq!(capability_str(&Capability::Search), "search");
         assert_eq!(capability_str(&Capability::Admin), "admin");
         assert_eq!(capability_str(&Capability::SessionWrite), "session_write");
+    }
+
+    // -- vnc-017 / vnc-035: format_redirect_summary variants (relocated from entries.rs to
+    // keep that file ≤500 lines per vnc-037 R-18; this module already hosts entries.rs
+    // function tests such as format_edges_carried / format_correct_success). --
+
+    // AC-11: found == 0 → no append (None)
+    #[test]
+    fn test_response_format_no_append_when_found_zero() {
+        let result = format_redirect_summary(0, 0, 0, 0, false, 0);
+        assert!(
+            result.is_none(),
+            "Expected None when found == 0, got {:?}",
+            result
+        );
+    }
+
+    // AC-12: found > 0, skipped == 0, truncated == false — all succeed (normal variant)
+    #[test]
+    fn test_response_format_all_success_variant() {
+        let result = format_redirect_summary(2, 0, 2, 0, false, 2);
+        let text = result.expect("Expected Some for found > 0");
+        assert!(
+            text.contains("Redirected 2 incoming edges (0 failed, see logs)"),
+            "Unexpected text: {:?}",
+            text
+        );
+        assert!(
+            !text.contains("skipped"),
+            "Should not contain 'skipped': {:?}",
+            text
+        );
+        assert!(
+            !text.contains("truncated"),
+            "Should not contain 'truncated': {:?}",
+            text
+        );
+    }
+
+    // AC-13: found > 0, some failed, skipped == 0, truncated == false (partial failure variant)
+    #[test]
+    fn test_response_format_partial_failure_variant() {
+        let result = format_redirect_summary(3, 0, 1, 2, false, 3);
+        let text = result.expect("Expected Some for found > 0");
+        assert!(
+            text.contains("Redirected 1 incoming edges (2 failed, see logs)"),
+            "Unexpected text: {:?}",
+            text
+        );
+        assert!(
+            !text.contains("skipped"),
+            "Should not contain 'skipped': {:?}",
+            text
+        );
+    }
+
+    // AC-17: all-skipped case — all sources Quarantined/Deprecated
+    #[test]
+    fn test_response_format_all_skipped_variant() {
+        let result = format_redirect_summary(3, 3, 0, 0, false, 3);
+        let text = result.expect("Expected Some for found > 0");
+        // em-dash U+2014 in the skipped variant
+        assert!(
+            text.contains("Redirected 0 incoming edges")
+                && text.contains("3 skipped")
+                && text.contains("invalid source")
+                && text.contains("0 failed"),
+            "Unexpected text: {:?}",
+            text
+        );
+        assert!(
+            !text.contains("truncated"),
+            "Should not contain 'truncated': {:?}",
+            text
+        );
+    }
+
+    // Mixed skipped and failed (Variant 3, skipped > 0)
+    #[test]
+    fn test_response_format_mixed_skipped_and_failed_variant() {
+        let result = format_redirect_summary(4, 1, 2, 1, false, 4);
+        let text = result.expect("Expected Some for found > 0");
+        assert!(
+            text.contains("Redirected 2 incoming edges")
+                && text.contains("1 skipped")
+                && text.contains("invalid source")
+                && text.contains("1 failed"),
+            "Unexpected text: {:?}",
+            text
+        );
+    }
+
+    // R-05: truncation variant
+    #[test]
+    fn test_response_format_truncated_variant() {
+        let result = format_redirect_summary(50, 0, 50, 0, true, 55);
+        let text = result.expect("Expected Some for found > 0");
+        assert!(
+            text.contains("Redirected 50 incoming edges (truncated from 55, see logs)"),
+            "Unexpected text: {:?}",
+            text
+        );
+        assert!(
+            !text.contains("failed"),
+            "Truncation variant should not contain 'failed': {:?}",
+            text
+        );
+        assert!(
+            !text.contains("skipped"),
+            "Truncation variant should not contain 'skipped': {:?}",
+            text
+        );
+    }
+
+    // All failed, redirected == 0 (Variant 2 with zero success)
+    #[test]
+    fn test_response_format_all_failed_variant() {
+        let result = format_redirect_summary(2, 0, 0, 2, false, 2);
+        let text = result.expect("Expected Some for found > 0");
+        assert!(
+            text.contains("Redirected 0 incoming edges (2 failed, see logs)"),
+            "Unexpected text: {:?}",
+            text
+        );
+    }
+
+    // found > 0 with a single edge (plural form per FR-10, no special singular handling)
+    #[test]
+    fn test_response_format_singular_edge_uses_plural_form() {
+        let result = format_redirect_summary(1, 0, 1, 0, false, 1);
+        let text = result.expect("Expected Some for found == 1");
+        assert!(
+            text.contains("Redirected 1 incoming edges"),
+            "FR-10 specifies no singular form; expected 'edges': {:?}",
+            text
+        );
     }
 }

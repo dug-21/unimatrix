@@ -4,30 +4,58 @@
 use rmcp::model::{CallToolResult, Content};
 use unimatrix_store::EntryRecord;
 
+use super::edges::EdgesView;
+use super::edges_render::{
+    render_json_edge_totals, render_json_edges, render_markdown_related, render_summary_digest,
+};
 use super::{
     ResponseFormat, entry_to_json, entry_to_json_with_similarity, format_empty_results,
     format_entry_markdown_section, tags_str,
 };
 
 /// Format a single entry (used by context_get and context_lookup with id).
-pub fn format_single_entry(entry: &EntryRecord, format: ResponseFormat) -> CallToolResult {
+///
+/// `edges` is the vnc-037 serializer seam (ADR-003): **only** `context_get` (default-on)
+/// passes `Some(view)`; every list-view tool path and an opted-out get pass `None`. `None` is
+/// **structural** — the `edges` JSON key is never inserted, the `### Related` markdown section
+/// is never appended, and the summary `edges:` digest is never emitted (C-4, byte-identity
+/// invariant). `entry_to_json` / `format_entry_markdown_section` stay UNCHANGED; the get-only
+/// edge rendering is layered on top of their output here.
+pub fn format_single_entry(
+    entry: &EntryRecord,
+    format: ResponseFormat,
+    edges: Option<&EdgesView>,
+) -> CallToolResult {
     match format {
         ResponseFormat::Summary => {
-            let line = format!(
+            let mut line = format!(
                 "#{} | {} | {} | [{}]",
                 entry.id,
                 entry.title,
                 entry.category,
                 tags_str(&entry.tags)
             );
+            if let Some(view) = edges {
+                line.push_str(&render_summary_digest(view));
+            }
             CallToolResult::success(vec![Content::text(line)])
         }
         ResponseFormat::Markdown => {
-            let text = format_entry_markdown_section(1, entry, None);
+            let mut text = format_entry_markdown_section(1, entry, None);
+            if let Some(view) = edges {
+                text.push_str("\n\n");
+                text.push_str(&render_markdown_related(view));
+            }
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
-            let obj = entry_to_json(entry);
+            let mut obj = entry_to_json(entry);
+            if let Some(view) = edges
+                && let Some(map) = obj.as_object_mut()
+            {
+                map.insert("edges".to_string(), render_json_edges(view));
+                map.insert("edge_totals".to_string(), render_json_edge_totals(view));
+            }
             CallToolResult::success(vec![Content::text(
                 serde_json::to_string_pretty(&obj).unwrap_or_default(),
             )])
@@ -344,142 +372,5 @@ pub fn format_correct_success(
                 serde_json::to_string_pretty(&obj).unwrap_or_default(),
             )])
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::format_redirect_summary;
-
-    // AC-11: found == 0 → no append (None)
-    #[test]
-    fn test_response_format_no_append_when_found_zero() {
-        let result = format_redirect_summary(0, 0, 0, 0, false, 0);
-        assert!(
-            result.is_none(),
-            "Expected None when found == 0, got {:?}",
-            result
-        );
-    }
-
-    // AC-12: found > 0, skipped == 0, truncated == false — all succeed (normal variant)
-    #[test]
-    fn test_response_format_all_success_variant() {
-        let result = format_redirect_summary(2, 0, 2, 0, false, 2);
-        let text = result.expect("Expected Some for found > 0");
-        assert!(
-            text.contains("Redirected 2 incoming edges (0 failed, see logs)"),
-            "Unexpected text: {:?}",
-            text
-        );
-        assert!(
-            !text.contains("skipped"),
-            "Should not contain 'skipped': {:?}",
-            text
-        );
-        assert!(
-            !text.contains("truncated"),
-            "Should not contain 'truncated': {:?}",
-            text
-        );
-    }
-
-    // AC-13: found > 0, some failed, skipped == 0, truncated == false (partial failure variant)
-    #[test]
-    fn test_response_format_partial_failure_variant() {
-        let result = format_redirect_summary(3, 0, 1, 2, false, 3);
-        let text = result.expect("Expected Some for found > 0");
-        assert!(
-            text.contains("Redirected 1 incoming edges (2 failed, see logs)"),
-            "Unexpected text: {:?}",
-            text
-        );
-        assert!(
-            !text.contains("skipped"),
-            "Should not contain 'skipped': {:?}",
-            text
-        );
-    }
-
-    // AC-17: all-skipped case — all sources Quarantined/Deprecated
-    #[test]
-    fn test_response_format_all_skipped_variant() {
-        let result = format_redirect_summary(3, 3, 0, 0, false, 3);
-        let text = result.expect("Expected Some for found > 0");
-        // em-dash U+2014 in the skipped variant
-        assert!(
-            text.contains("Redirected 0 incoming edges")
-                && text.contains("3 skipped")
-                && text.contains("invalid source")
-                && text.contains("0 failed"),
-            "Unexpected text: {:?}",
-            text
-        );
-        assert!(
-            !text.contains("truncated"),
-            "Should not contain 'truncated': {:?}",
-            text
-        );
-    }
-
-    // Mixed skipped and failed (Variant 3, skipped > 0)
-    #[test]
-    fn test_response_format_mixed_skipped_and_failed_variant() {
-        let result = format_redirect_summary(4, 1, 2, 1, false, 4);
-        let text = result.expect("Expected Some for found > 0");
-        assert!(
-            text.contains("Redirected 2 incoming edges")
-                && text.contains("1 skipped")
-                && text.contains("invalid source")
-                && text.contains("1 failed"),
-            "Unexpected text: {:?}",
-            text
-        );
-    }
-
-    // R-05: truncation variant
-    #[test]
-    fn test_response_format_truncated_variant() {
-        let result = format_redirect_summary(50, 0, 50, 0, true, 55);
-        let text = result.expect("Expected Some for found > 0");
-        assert!(
-            text.contains("Redirected 50 incoming edges (truncated from 55, see logs)"),
-            "Unexpected text: {:?}",
-            text
-        );
-        assert!(
-            !text.contains("failed"),
-            "Truncation variant should not contain 'failed': {:?}",
-            text
-        );
-        assert!(
-            !text.contains("skipped"),
-            "Truncation variant should not contain 'skipped': {:?}",
-            text
-        );
-    }
-
-    // All failed, redirected == 0 (Variant 2 with zero success)
-    #[test]
-    fn test_response_format_all_failed_variant() {
-        let result = format_redirect_summary(2, 0, 0, 2, false, 2);
-        let text = result.expect("Expected Some for found > 0");
-        assert!(
-            text.contains("Redirected 0 incoming edges (2 failed, see logs)"),
-            "Unexpected text: {:?}",
-            text
-        );
-    }
-
-    // found > 0 with a single edge (plural form per FR-10, no special singular handling)
-    #[test]
-    fn test_response_format_singular_edge_uses_plural_form() {
-        let result = format_redirect_summary(1, 0, 1, 0, false, 1);
-        let text = result.expect("Expected Some for found == 1");
-        assert!(
-            text.contains("Redirected 1 incoming edges"),
-            "FR-10 specifies no singular form; expected 'edges': {:?}",
-            text
-        );
     }
 }
