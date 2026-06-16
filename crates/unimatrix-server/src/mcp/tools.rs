@@ -976,10 +976,25 @@ impl UnimatrixServer {
             rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
         })?;
 
-        // 4. Format response.
-        // vnc-037: edges = None here for now — get-edge-assembly (next wave) flips this call
-        // site to Some(&view) on the default-on path. None ⇒ edges key/section absent (ADR-003).
-        let result = format_single_entry(&entry, ctx.format, None);
+        // 3b. vnc-037 edge assembly. Default-on (None/Some(true)) surfaces the ranked ≤cap
+        // next-hop edges; Some(false) skips ALL edge queries entirely (FR-3, NFR-1 zero cost).
+        // FR-19 FAIL-LOUD (C-13): a post-primary-read edge/count/title failure is mapped with
+        // the SAME mapping as the primary `entry_store.get` above and RETURNED — no degrade,
+        // no silent omit. The opt-out branch never calls build_edges_view, so it cannot reach
+        // this failure.
+        let edges_view = match params.include_edges {
+            Some(false) => None,
+            None | Some(true) => Some(
+                crate::mcp::get_edges::build_edges_view(&self.store, id)
+                    .await
+                    .map_err(|e| {
+                        rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+                    })?,
+            ),
+        };
+
+        // 4. Format response. None ⇒ edges key/section absent (ADR-003 byte-identity invariant).
+        let result = format_single_entry(&entry, ctx.format, edges_view.as_ref());
 
         // 5. Audit (standalone, best-effort)
         let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {

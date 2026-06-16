@@ -18,13 +18,11 @@
 use serde::Serialize;
 
 // The canonical `direction` values (D-02 fix / ADR-007). Consumed by get-edge-assembly
-// (`mcp/get_edges.rs`, next wave) for projection and by serializer-seam (`edges_render.rs`)
-// for glyph selection. `DIRECTION_OUTBOUND` is currently used only by get-edge-assembly
-// (next wave) and tests, hence its `allow(dead_code)`.
+// (`mcp/get_edges.rs`) for projection and by serializer-seam (`edges_render.rs`) for glyph
+// selection.
 /// Canonicalized symmetric edge (`Contradicts`/`CoAccess`/`Informs`); renders `↔`.
 pub(crate) const DIRECTION_BOTH: &str = "both";
 /// Asymmetric edge anchored at `source_id`; renders `→`.
-#[allow(dead_code)]
 pub(crate) const DIRECTION_OUTBOUND: &str = "outbound";
 /// Asymmetric edge anchored at `target_id`; renders `←`.
 pub(crate) const DIRECTION_INBOUND: &str = "inbound";

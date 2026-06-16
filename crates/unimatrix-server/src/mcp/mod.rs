@@ -7,6 +7,7 @@ pub(crate) mod activity_fold_handler;
 pub(crate) mod context;
 pub(crate) mod distill_handler;
 pub(crate) mod edge_write;
+pub(crate) mod get_edges;
 pub(crate) mod graph_read;
 pub mod identity;
 pub mod knowledge_reuse;
