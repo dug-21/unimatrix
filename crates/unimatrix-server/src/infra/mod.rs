@@ -22,6 +22,7 @@ pub mod session;
 pub mod session_transcript;
 pub mod shutdown;
 pub mod timeout;
+pub(crate) mod transcript_activity;
 pub mod transcript_hold;
 pub mod usage_dedup;
 pub mod validation;
