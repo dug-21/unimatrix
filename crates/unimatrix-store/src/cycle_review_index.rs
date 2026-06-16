@@ -56,6 +56,16 @@ pub const SUMMARY_SCHEMA_VERSION: u32 = 5;
 /// 4MB ceiling for stored `summary_json` (NFR-03).
 const SUMMARY_JSON_MAX_BYTES: usize = 4 * 1024 * 1024;
 
+/// Coalesce an empty `signal_class_counts_json` to the canonical empty JSON
+/// object `"{}"` (ADR-007). `String::default()` is `""`, but the DB column is
+/// `TEXT NOT NULL DEFAULT '{}'`; binding `""` on write or reading it back would
+/// break the round-trip contract and the count-map parse. The writer always
+/// binds a valid JSON object via this helper; the read mapper applies the same
+/// coalesce so pre-v5 / default rows read back as `"{}"`, never empty.
+fn coalesce_json(s: &str) -> &str {
+    if s.is_empty() { "{}" } else { s }
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -231,14 +241,7 @@ impl SqlxStore {
                 // Coalesce "" → "{}" for signal_class_counts_json (ADR-007): the DB
                 // column DEFAULT is '{}', but a row written before the writer always
                 // binds a JSON object could read back an empty string. Normalize on read.
-                let signal_class_counts_json = {
-                    let raw = r.get::<String, _>(24);
-                    if raw.is_empty() {
-                        "{}".to_string()
-                    } else {
-                        raw
-                    }
-                };
+                let signal_class_counts_json = coalesce_json(&r.get::<String, _>(24)).to_string();
                 Ok(Some(CycleReviewRecord {
                     feature_cycle: r.get::<String, _>(0),
                     schema_version: r.get::<i64, _>(1) as u32,
@@ -338,8 +341,17 @@ impl SqlxStore {
                           raw_signals_available, summary_json, \
                           corrections_total, corrections_agent, corrections_human, \
                           corrections_system, deprecations_total, orphan_deprecations, \
-                          first_computed_at) \
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                          first_computed_at, \
+                          phase_count, phase_transition_count, phase_rework_count, \
+                          phase_unclosed_count, phase_total_duration_secs, \
+                          rework_session_count, total_session_count, \
+                          knowledge_reuse_served_count, transcript_bytes_total, \
+                          transcript_delta_count, transcript_error_count, \
+                          transcript_refusal_count, signal_class_counts_json, \
+                          compaction_count, compaction_reread_count, context_reload_pct) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, \
+                             ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, \
+                             ?24, ?25, ?26, ?27, ?28)",
                 )
                 .bind(&record.feature_cycle)
                 .bind(record.schema_version as i64)
@@ -353,6 +365,24 @@ impl SqlxStore {
                 .bind(record.deprecations_total)
                 .bind(record.orphan_deprecations)
                 .bind(record.first_computed_at)
+                // crt-055 v5 columns (?13..?28). Order MUST match the SELECT in
+                // get_cycle_review and the UPDATE SET clause below.
+                .bind(record.phase_count)
+                .bind(record.phase_transition_count)
+                .bind(record.phase_rework_count)
+                .bind(record.phase_unclosed_count)
+                .bind(record.phase_total_duration_secs)
+                .bind(record.rework_session_count)
+                .bind(record.total_session_count)
+                .bind(record.knowledge_reuse_served_count)
+                .bind(record.transcript_bytes_total)
+                .bind(record.transcript_delta_count)
+                .bind(record.transcript_error_count)
+                .bind(record.transcript_refusal_count)
+                .bind(coalesce_json(&record.signal_class_counts_json))
+                .bind(record.compaction_count)
+                .bind(record.compaction_reread_count)
+                .bind(record.context_reload_pct)
                 .execute(&mut *conn)
                 .await
                 .map_err(|e| StoreError::Database(e.into()))?;
@@ -368,16 +398,32 @@ impl SqlxStore {
                 // This is intentional per ADR-001 — no backfilling of historical rows.
                 sqlx::query(
                     "UPDATE cycle_review_index \
-                     SET schema_version        = ?2, \
-                         computed_at           = ?3, \
-                         raw_signals_available = ?4, \
-                         summary_json          = ?5, \
-                         corrections_total     = ?6, \
-                         corrections_agent     = ?7, \
-                         corrections_human     = ?8, \
-                         corrections_system    = ?9, \
-                         deprecations_total    = ?10, \
-                         orphan_deprecations   = ?11 \
+                     SET schema_version              = ?2, \
+                         computed_at                 = ?3, \
+                         raw_signals_available       = ?4, \
+                         summary_json                = ?5, \
+                         corrections_total           = ?6, \
+                         corrections_agent           = ?7, \
+                         corrections_human           = ?8, \
+                         corrections_system          = ?9, \
+                         deprecations_total          = ?10, \
+                         orphan_deprecations         = ?11, \
+                         phase_count                 = ?12, \
+                         phase_transition_count      = ?13, \
+                         phase_rework_count          = ?14, \
+                         phase_unclosed_count        = ?15, \
+                         phase_total_duration_secs   = ?16, \
+                         rework_session_count        = ?17, \
+                         total_session_count         = ?18, \
+                         knowledge_reuse_served_count = ?19, \
+                         transcript_bytes_total      = ?20, \
+                         transcript_delta_count      = ?21, \
+                         transcript_error_count      = ?22, \
+                         transcript_refusal_count    = ?23, \
+                         signal_class_counts_json    = ?24, \
+                         compaction_count            = ?25, \
+                         compaction_reread_count     = ?26, \
+                         context_reload_pct          = ?27 \
                      WHERE feature_cycle = ?1",
                 )
                 // Note: first_computed_at is NOT in the SET clause (ADR-001, crt-047).
@@ -392,6 +438,25 @@ impl SqlxStore {
                 .bind(record.corrections_system)
                 .bind(record.deprecations_total)
                 .bind(record.orphan_deprecations)
+                // crt-055 v5 columns (?12..?27). Same order/coalesce as the INSERT.
+                // Every v5 column is bound on UPDATE too — a missing UPDATE bind would
+                // silently leave stale values on a force=true re-review.
+                .bind(record.phase_count)
+                .bind(record.phase_transition_count)
+                .bind(record.phase_rework_count)
+                .bind(record.phase_unclosed_count)
+                .bind(record.phase_total_duration_secs)
+                .bind(record.rework_session_count)
+                .bind(record.total_session_count)
+                .bind(record.knowledge_reuse_served_count)
+                .bind(record.transcript_bytes_total)
+                .bind(record.transcript_delta_count)
+                .bind(record.transcript_error_count)
+                .bind(record.transcript_refusal_count)
+                .bind(coalesce_json(&record.signal_class_counts_json))
+                .bind(record.compaction_count)
+                .bind(record.compaction_reread_count)
+                .bind(record.context_reload_pct)
                 .execute(&mut *conn)
                 .await
                 .map_err(|e| StoreError::Database(e.into()))?;
@@ -2146,6 +2211,355 @@ mod tests {
         assert_eq!(row.corrections_system, 0);
         assert_eq!(row.deprecations_total, 0);
         assert_eq!(row.orphan_deprecations, 0);
+
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // Helper: a CycleReviewRecord with known non-zero values for every v5
+    // column, so INSERT/UPDATE bind correctness can be asserted column-by-column.
+    // -----------------------------------------------------------------------
+
+    fn fully_populated_v5_record(feature_cycle: &str) -> CycleReviewRecord {
+        CycleReviewRecord {
+            feature_cycle: feature_cycle.to_string(),
+            schema_version: SUMMARY_SCHEMA_VERSION,
+            computed_at: 1_730_000_000,
+            raw_signals_available: 1,
+            summary_json: r#"{"v":"5-full"}"#.to_string(),
+            corrections_total: 9,
+            corrections_agent: 5,
+            corrections_human: 4,
+            corrections_system: 1,
+            deprecations_total: 3,
+            orphan_deprecations: 2,
+            first_computed_at: 1_729_000_000,
+            // crt-055 v5 columns — distinct non-zero values to catch a swapped bind.
+            phase_count: 101,
+            phase_transition_count: 102,
+            phase_rework_count: 103,
+            phase_unclosed_count: 104,
+            phase_total_duration_secs: 105,
+            rework_session_count: 106,
+            total_session_count: 107,
+            knowledge_reuse_served_count: 108,
+            transcript_bytes_total: 109,
+            transcript_delta_count: 110,
+            transcript_error_count: 111,
+            transcript_refusal_count: 112,
+            signal_class_counts_json: r#"{"error":7,"refusal":3}"#.to_string(),
+            compaction_count: 113,
+            compaction_reread_count: 114,
+            context_reload_pct: 3750,
+        }
+    }
+
+    fn assert_v5_columns_match(fetched: &CycleReviewRecord, expected: &CycleReviewRecord) {
+        assert_eq!(fetched.phase_count, expected.phase_count, "phase_count");
+        assert_eq!(
+            fetched.phase_transition_count, expected.phase_transition_count,
+            "phase_transition_count"
+        );
+        assert_eq!(
+            fetched.phase_rework_count, expected.phase_rework_count,
+            "phase_rework_count"
+        );
+        assert_eq!(
+            fetched.phase_unclosed_count, expected.phase_unclosed_count,
+            "phase_unclosed_count"
+        );
+        assert_eq!(
+            fetched.phase_total_duration_secs, expected.phase_total_duration_secs,
+            "phase_total_duration_secs"
+        );
+        assert_eq!(
+            fetched.rework_session_count, expected.rework_session_count,
+            "rework_session_count"
+        );
+        assert_eq!(
+            fetched.total_session_count, expected.total_session_count,
+            "total_session_count"
+        );
+        assert_eq!(
+            fetched.knowledge_reuse_served_count, expected.knowledge_reuse_served_count,
+            "knowledge_reuse_served_count"
+        );
+        assert_eq!(
+            fetched.transcript_bytes_total, expected.transcript_bytes_total,
+            "transcript_bytes_total"
+        );
+        assert_eq!(
+            fetched.transcript_delta_count, expected.transcript_delta_count,
+            "transcript_delta_count"
+        );
+        assert_eq!(
+            fetched.transcript_error_count, expected.transcript_error_count,
+            "transcript_error_count"
+        );
+        assert_eq!(
+            fetched.transcript_refusal_count, expected.transcript_refusal_count,
+            "transcript_refusal_count"
+        );
+        assert_eq!(
+            fetched.signal_class_counts_json, expected.signal_class_counts_json,
+            "signal_class_counts_json"
+        );
+        assert_eq!(
+            fetched.compaction_count, expected.compaction_count,
+            "compaction_count"
+        );
+        assert_eq!(
+            fetched.compaction_reread_count, expected.compaction_reread_count,
+            "compaction_reread_count"
+        );
+        assert_eq!(
+            fetched.context_reload_pct, expected.context_reload_pct,
+            "context_reload_pct"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // AC-05 (store side) / test_record_roundtrip_all_v5_columns:
+    // INSERT path binds every v5 column. Build a record with non-zero values
+    // for every v5 field, INSERT (no prior row), re-read, assert byte-identical.
+    // A missing INSERT bind would read back as the DB DEFAULT 0 / "{}".
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_record_roundtrip_all_v5_columns() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let record = fully_populated_v5_record("crt-055-v5-insert-roundtrip");
+
+        store
+            .store_cycle_review(&record)
+            .await
+            .expect("store (INSERT) must succeed");
+
+        let fetched = store
+            .get_cycle_review(&record.feature_cycle)
+            .await
+            .expect("get must not error")
+            .expect("must return Some after store");
+
+        assert_v5_columns_match(&fetched, &record);
+
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // test_update_path_binds_all_v5_columns:
+    // A pre-existing row is overwritten via the UPDATE path (force=true re-review).
+    // Assert the UPDATE binds EVERY v5 column — not just the INSERT. A missing
+    // UPDATE bind silently leaves the first write's stale values in place.
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_update_path_binds_all_v5_columns() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        // First write (INSERT): a record whose v5 columns are all zero / "{}".
+        let v1 = CycleReviewRecord {
+            feature_cycle: "crt-055-v5-update-roundtrip".to_string(),
+            schema_version: SUMMARY_SCHEMA_VERSION,
+            computed_at: 1_700_000_000,
+            raw_signals_available: 1,
+            summary_json: r#"{"v":1}"#.to_string(),
+            first_computed_at: 1_700_000_000,
+            ..Default::default()
+        };
+        store.store_cycle_review(&v1).await.expect("first store");
+
+        // Second write (UPDATE): same feature_cycle, all v5 columns non-zero.
+        let mut v2 = fully_populated_v5_record("crt-055-v5-update-roundtrip");
+        v2.computed_at = 1_800_000_000;
+        store.store_cycle_review(&v2).await.expect("second store");
+
+        let fetched = store
+            .get_cycle_review("crt-055-v5-update-roundtrip")
+            .await
+            .expect("get must not error")
+            .expect("must return Some");
+
+        // The UPDATE must have written every v5 column — not left v1's zeros.
+        assert_v5_columns_match(&fetched, &v2);
+        // first_computed_at preserved from the first write (ADR-001).
+        assert_eq!(
+            fetched.first_computed_at, 1_700_000_000,
+            "first_computed_at must be preserved from the first write (ADR-001)"
+        );
+        assert_eq!(fetched.computed_at, 1_800_000_000, "computed_at must be T2");
+
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // AC-20: basis-points context_reload_pct round-trips byte-identical through
+    // store/re-read as a plain i64 (no REAL/float). Cases: 3750 (37.5%), 1
+    // (rounds-to-nearest floor case), 10000 (cap). The fraction→bps encoding
+    // lives upstream (reckoning component, ADR-005); the store persists the i64
+    // verbatim — these cases pin that the store never truncates or float-binds.
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_basis_points_roundtrip() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        for (idx, bps) in [3750_i64, 1_i64, 10_000_i64].into_iter().enumerate() {
+            let fc = format!("crt-055-bps-{idx}");
+            let record = CycleReviewRecord {
+                feature_cycle: fc.clone(),
+                schema_version: SUMMARY_SCHEMA_VERSION,
+                computed_at: 1_730_000_000,
+                raw_signals_available: 1,
+                summary_json: r#"{"v":"bps"}"#.to_string(),
+                context_reload_pct: bps,
+                ..Default::default()
+            };
+            store.store_cycle_review(&record).await.expect("store");
+
+            let fetched = store
+                .get_cycle_review(&fc)
+                .await
+                .expect("get must not error")
+                .expect("must return Some");
+
+            assert_eq!(
+                fetched.context_reload_pct, bps,
+                "context_reload_pct must round-trip as i64 basis points verbatim"
+            );
+        }
+
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // signal_class_counts_json: a non-empty count map round-trips byte-identical;
+    // an empty String is coalesced to "{}" on write AND on read (never empty,
+    // never a NOT NULL violation — ADR-007).
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_signal_class_counts_json_roundtrip_and_coalesce() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        // Non-empty map round-trips verbatim.
+        let with_map = CycleReviewRecord {
+            feature_cycle: "crt-055-scc-map".to_string(),
+            schema_version: SUMMARY_SCHEMA_VERSION,
+            computed_at: 1_730_000_000,
+            raw_signals_available: 1,
+            summary_json: r#"{"v":"scc"}"#.to_string(),
+            signal_class_counts_json: r#"{"error":2,"refusal":1,"warning":5}"#.to_string(),
+            ..Default::default()
+        };
+        store
+            .store_cycle_review(&with_map)
+            .await
+            .expect("store map");
+
+        let fetched_map = store
+            .get_cycle_review("crt-055-scc-map")
+            .await
+            .expect("get")
+            .expect("Some");
+        assert_eq!(
+            fetched_map.signal_class_counts_json, r#"{"error":2,"refusal":1,"warning":5}"#,
+            "non-empty signal_class_counts_json must round-trip byte-identical"
+        );
+
+        // Empty String must be coalesced to "{}" on write and read back as "{}".
+        let empty = CycleReviewRecord {
+            feature_cycle: "crt-055-scc-empty".to_string(),
+            schema_version: SUMMARY_SCHEMA_VERSION,
+            computed_at: 1_730_000_000,
+            raw_signals_available: 1,
+            summary_json: r#"{"v":"scc-empty"}"#.to_string(),
+            signal_class_counts_json: String::new(),
+            ..Default::default()
+        };
+        store.store_cycle_review(&empty).await.expect("store empty");
+
+        let fetched_empty = store
+            .get_cycle_review("crt-055-scc-empty")
+            .await
+            .expect("get")
+            .expect("Some");
+        assert_eq!(
+            fetched_empty.signal_class_counts_json, "{}",
+            "empty signal_class_counts_json must coalesce to '{{}}', never empty"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // The three #5022 no-clobber assertions (AC-17), STORE-layer contract.
+    //
+    // The behavioral handler paths run end-to-end in the server crate
+    // (review_pipeline). Here we pin the store-layer guarantee the single-writer
+    // invariant depends on: when the writer IS reached with honest values it
+    // persists them (a); and the writer never advances a row unless called
+    // (b/c are caller-gated, documented as the hazard the single writer guards).
+    //
+    // (a) data-present recompute writes fresh non-zero v5 columns at schema v5.
+    // (b) a stored row that is NOT re-stored retains its bytes (no implicit write).
+    // (c) re-storing the SAME values (force re-review with no data change) does
+    //     not zero the v5 columns — the UPDATE binds the real values, not defaults.
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_no_clobber_store_layer_contract() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        // (a) Honest non-zero values reach the writer and persist at schema v5.
+        let fresh = fully_populated_v5_record("crt-055-noclobber");
+        store.store_cycle_review(&fresh).await.expect("store fresh");
+
+        let after_a = store
+            .get_cycle_review("crt-055-noclobber")
+            .await
+            .expect("get")
+            .expect("Some");
+        assert_eq!(after_a.schema_version, 5, "written at schema_version 5");
+        assert_eq!(after_a.phase_count, 101, "non-zero v5 column persisted");
+        assert_eq!(
+            after_a.context_reload_pct, 3750,
+            "non-zero basis points persisted"
+        );
+
+        // (b) No further store call → row retained byte-identical (no implicit write).
+        let after_b = store
+            .get_cycle_review("crt-055-noclobber")
+            .await
+            .expect("get")
+            .expect("Some");
+        assert_v5_columns_match(&after_b, &fresh);
+
+        // (c) Force re-review with the SAME values must NOT clobber v5 columns to
+        //     zero — the UPDATE binds the real values, not DB defaults.
+        let mut re_review = fresh.clone();
+        re_review.computed_at = 1_800_000_000; // a real re-review advances computed_at
+        store
+            .store_cycle_review(&re_review)
+            .await
+            .expect("store re-review");
+
+        let after_c = store
+            .get_cycle_review("crt-055-noclobber")
+            .await
+            .expect("get")
+            .expect("Some");
+        assert_v5_columns_match(&after_c, &fresh);
+        assert_ne!(
+            after_c.phase_count, 0,
+            "v5 columns must NOT be clobbered to zero on force re-review"
+        );
 
         store.close().await.unwrap();
     }

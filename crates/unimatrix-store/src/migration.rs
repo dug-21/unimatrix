@@ -1550,12 +1550,11 @@ async fn run_main_migrations(
                     let stmt = format!(
                         "ALTER TABLE cycle_review_index ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0"
                     );
-                    sqlx::query(&stmt)
-                        .execute(&mut **txn)
-                        .await
-                        .map_err(|e| StoreError::Migration {
+                    sqlx::query(&stmt).execute(&mut **txn).await.map_err(|e| {
+                        StoreError::Migration {
                             source: Box::new(e),
-                        })?;
+                        }
+                    })?;
                 }
             }
 

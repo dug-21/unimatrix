@@ -299,7 +299,10 @@ async fn test_v5_columns_match_contract() {
                 "signal_class_counts_json must DEFAULT '{{}}'"
             );
         } else {
-            assert_eq!(ty, "INTEGER", "{col} must be INTEGER (no REAL/float column)");
+            assert_eq!(
+                ty, "INTEGER",
+                "{col} must be INTEGER (no REAL/float column)"
+            );
             assert_eq!(dflt.as_deref(), Some("0"), "{col} must DEFAULT 0");
         }
     }
@@ -336,7 +339,10 @@ async fn test_context_reload_pct_is_integer_not_real() {
             continue;
         }
         let (ty, _, _) = column_contract(&store, col).await;
-        assert_ne!(ty, "REAL", "{col} must not be REAL — every metric column is INTEGER");
+        assert_ne!(
+            ty, "REAL",
+            "{col} must not be REAL — every metric column is INTEGER"
+        );
     }
 
     store.close().await.unwrap();
@@ -377,24 +383,22 @@ async fn test_fresh_create_and_upgrade_agree() {
     let up_dir = TempDir::new().unwrap();
     create_v29_database(&up_dir.path().join("unimatrix.db")).await;
     let up_store = open_store(&up_dir).await;
-    let mut up_cols: Vec<String> = sqlx::query_scalar::<_, String>(
-        "SELECT name FROM pragma_table_info('cycle_review_index')",
-    )
-    .fetch_all(up_store.read_pool_test())
-    .await
-    .expect("upgrade pragma names");
+    let mut up_cols: Vec<String> =
+        sqlx::query_scalar::<_, String>("SELECT name FROM pragma_table_info('cycle_review_index')")
+            .fetch_all(up_store.read_pool_test())
+            .await
+            .expect("upgrade pragma names");
     up_cols.sort();
     up_store.close().await.unwrap();
 
     // Fresh-create path: brand-new DB created at CURRENT_SCHEMA_VERSION.
     let fresh_dir = TempDir::new().unwrap();
     let fresh_store = open_store(&fresh_dir).await;
-    let mut fresh_cols: Vec<String> = sqlx::query_scalar::<_, String>(
-        "SELECT name FROM pragma_table_info('cycle_review_index')",
-    )
-    .fetch_all(fresh_store.read_pool_test())
-    .await
-    .expect("fresh pragma names");
+    let mut fresh_cols: Vec<String> =
+        sqlx::query_scalar::<_, String>("SELECT name FROM pragma_table_info('cycle_review_index')")
+            .fetch_all(fresh_store.read_pool_test())
+            .await
+            .expect("fresh pragma names");
     fresh_cols.sort();
     fresh_store.close().await.unwrap();
 
