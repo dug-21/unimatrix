@@ -94,12 +94,13 @@ context_get handler  (mcp/tools.rs:924)
   │         ORDER BY (source='agent') DESC, t.confidence DESC NULLS LAST, target_id ASC
   │         LIMIT ? (← GET_EDGE_DISPLAY_LIMIT, not literal 3)  (D-05/D-09, ADR-001/006)
   │       → ≤3 RawEdgeRow{…, source, target_confidence}
-  │    2. SPLIT COUNT(*) (store, live SQL) — post-canonicalization, by direction:
-  │         inbound / outbound totals, ↔ counted once          (D-05/D-10, ADR-001/007)
+  │    2. SPLIT COUNT(*) (store, live SQL) — post-canonicalization, three buckets:
+  │         inbound / outbound / both totals, ↔ counted once in `both` (D-05/D-10, ADR-001/007)
+  │         + digest-only authored tally over the full set (ADR-005 2026-06-16)
   │    3. batch title join for the ≤3 displayed targets: SELECT id,title … WHERE id IN(…)
   │    4. project RawEdgeRow → GetEdge { edge_type, direction(→|←|↔), target_id,
   │                                      target_title, authored }
-  │    5. assemble EdgesView { edges (≤3), totals { inbound, outbound } }
+  │    5. assemble EdgesView { edges (≤3), totals { inbound, outbound, both }, authored_total }
   │  else (Some(false)): skip steps 1–5 entirely; edges = None
   │
   └─► format_single_entry(entry, format, edges: Option<&EdgesView>)   ← serializer seam
@@ -111,7 +112,7 @@ context_get handler  (mcp/tools.rs:924)
 |-----------|---------------|----------|--------|
 | Ranked neighbor query | Live depth-1 SQL: canonicalize symmetric, JOIN target confidence, `ORDER BY (source='agent') DESC, confidence DESC`, `LIMIT ?` bound to `GET_EDGE_DISPLAY_LIMIT`; `Supersedes` excluded at SQL | `unimatrix-store/src/graph_queries*.rs` | **New ranked variant** (sibling to `query_direct_neighbors`); does **not** mutate the plain function's contract |
 | `GET_EDGE_DISPLAY_LIMIT` | Single named cap constant (`= 3`, `i64`); SQL `LIMIT` binds it, render `…and N more` threshold references it, tests seed/assert relative to it | `unimatrix-store/src/read.rs` (re-exported via `lib.rs`) | **New const**; one-line retune; decoupled from uncapped totals (ADR-006) |
-| Split edge COUNT | Live depth-1 SQL: `COUNT(*)` split inbound/outbound, **post-canonicalization** (↔ once) | `unimatrix-store/src/graph_queries*.rs` | **New** |
+| Split edge COUNT | Live depth-1 SQL: `COUNT(*)`/`SUM(CASE…)` split inbound/outbound/both + digest-only authored tally, **post-canonicalization** (↔ once in `both`) | `unimatrix-store/src/graph_queries*.rs` | **New** |
 | `RawEdgeRow` | Pre-direction graph_edges row | `unimatrix-store/src/graph_queries.rs:73` | **Additive**: `pub source: String`; ranked variant also carries `target_confidence: Option<f64>` |
 | neighbor SELECT (plain) | shared with `context_graph` neighbors | `graph_queries_neighbors.rs` | **Additive**: add `source` column only (ADR-004); rank/JOIN/canonicalization live in the **new variant**, never on the shared path |
 | `GetParams` | `context_get` params | `mcp/tools.rs:243` | **Additive**: add `include_edges: Option<bool>` |
@@ -145,10 +146,11 @@ context_get handler  (mcp/tools.rs:924)
      — `?` bound to `GET_EDGE_DISPLAY_LIMIT` (the single named cap constant, never a literal
      3); authored-first, then inferred by target confidence, deterministic tiebreak (D-09).
    - A non-existent id returns an empty result, not an error.
-3. Issue the **split `COUNT(*)`** against `read_pool_server()` — two counts (inbound /
-   outbound) computed over the **same canonicalized** edge set, so a `↔` edge counts once,
-   never twice (D-05/D-10). This is a cheap aggregate over the indexed neighbor predicate;
-   it never materializes rows.
+3. Issue the **split `COUNT(*)`** against `read_pool_server()` — three counts (inbound /
+   outbound / both) plus a digest-only authored tally, computed over the **same
+   canonicalized** edge set, so a `↔` edge counts once (in `both`), never twice and never
+   folded into inbound (D-05/D-10; ADR-005 three-bucket contract). This is a cheap aggregate
+   over the indexed neighbor predicate; it never materializes rows.
 4. Collect the **≤3** displayed `target_id`s; one batched `IN (…)` title query against
    `read_pool_server`. Build a `HashMap<u64, String>`. Unresolved id ⇒ `target_title:
    null` (edge retained, D-02). Only the displayed ≤3 need titles — the uncapped set is
@@ -160,8 +162,8 @@ context_get handler  (mcp/tools.rs:924)
    - `target_id` = the *other* endpoint
    - `target_title` = title-map lookup (Option)
    - `authored` = `source == "agent"` (D-03)
-6. Assemble `EdgesView { edges (≤3), totals { inbound, outbound } }`; pass `Some(view)` into
-   `format_single_entry`. On opt-out, pass `None`.
+6. Assemble `EdgesView { edges (≤3), totals { inbound, outbound, both }, authored_total }`;
+   pass `Some(view)` into `format_single_entry`. On opt-out, pass `None`.
 
 > **Why two queries, not one.** A single windowed query could in principle produce both
 > the ranked top-3 and the totals, but a separate `COUNT(*)` is simpler, cheaper on the
@@ -189,7 +191,7 @@ reframe).
 | ADR-002 | The get edge shape is a deliberate **projection** of `EdgeRecord` — discovery list, not detail view; **cap-3 reinforces the no-enrichment boundary** | **MINOR UPDATE** (#5010 corrected) |
 | ADR-003 | Serializer seam: get-only edge rendering with a `None ⇒ key absent` byte-identity invariant; `entry_to_json` signature unchanged | **UNCHANGED** (#5011 confirmed) |
 | ADR-004 | `source` added **additively** to `RawEdgeRow` + neighbor SELECT (no migration); the **ranked variant additionally** `LEFT JOIN`s `entries.confidence` and applies canonicalization — still additive, still no DDL; `context_graph` neighbors unaffected | **EXTENDED** (#5012 corrected) |
-| ADR-005 | Rendering: JSON nested `edge_totals`; **markdown author/inferred sub-split DROPPED** (ranking front-loads authored); add the `↔` glyph; totals count symmetric **once** | **UPDATED** (#5013 corrected) |
+| ADR-005 | Rendering: JSON nested `edge_totals` (now **three buckets** `{inbound, outbound, both}` — `↔` in its own `both` bucket, 2026-06-16); **markdown author/inferred sub-split DROPPED**; `↔` glyph; symmetric counted **once**; locked summary-digest byte form + full-set authored tally | **UPDATED** (#5013; three-bucket amend 2026-06-16 — Unimatrix re-sync deferred) |
 | ADR-006 | **Ranking rule (D-09):** authored-first, then inferred by `entries.confidence` (Beta-Binomial); exact `ORDER BY`; weight NOT used (ass-079 frozen / first-write-wins). **Display cap = one named constant** `GET_EDGE_DISPLAY_LIMIT` (=3) in `read.rs`, bound into the SQL `LIMIT ?`; render + tests reference it; decoupled from uncapped totals | **NEW** (#5018 corrected — cap-as-constant added) |
 | ADR-007 | **Symmetric canonicalization (D-10, SR-08 blocker):** `Contradicts`/`CoAccess`/`Informs` collapse to one `↔` in SQL **before** ranking AND counting; `Prerequisite`/`Supports` stay asymmetric | **NEW** |
 
@@ -243,10 +245,10 @@ reframe).
 | neighbor SELECT (plain, after) | `SELECT source_id, target_id, relation_type, source FROM graph_edges WHERE …` (both empty-type and IN-type branches, both directions) | Read-path only, no DDL (ADR-004) |
 | `GET_EDGE_DISPLAY_LIMIT` | `pub const GET_EDGE_DISPLAY_LIMIT: i64 = 3` — display cap, `i64` for the sqlx `LIMIT ?` bind | **New** in `unimatrix-store/src/read.rs` (below `CO_ACCESS_GRAPH_MIN_COUNT`), re-exported from `lib.rs` `pub use read::{…}`; single source of truth for the cap (ADR-006; convention ADR-002 crt-034 / ADR-008 vnc-015) |
 | ranked neighbor query | `async fn(pool, id, direction=Both) -> Result<Vec<RawEdgeRow>, StoreError>` — canonicalizes symmetric, `LEFT JOIN entries t`, `ORDER BY (source='agent') DESC, t.confidence DESC NULLS LAST, target_id ASC LIMIT ?` with `?` **bound to `GET_EDGE_DISPLAY_LIMIT`** (never a literal 3) | **New** store fn; get-only; does not change the plain function (ADR-001/006/007) |
-| split edge count query | `async fn(pool, id) -> Result<EdgeCountSplit{inbound:usize, outbound:usize}, StoreError>` — `COUNT(*)` over the **canonicalized** neighbor set, split by direction | **New** store fn; `↔` counted once (ADR-001/007) |
+| split edge count query | `async fn(pool, id) -> Result<EdgeCountSplit{inbound:usize, outbound:usize, both:usize, authored:usize}, StoreError>` — `COUNT(*)`/`SUM(CASE…)` over the **canonicalized** neighbor set, split into three direction buckets + a digest-only authored tally | **New** store fn; `↔` counted once in `both` (ADR-001/007; three-bucket per ADR-005 2026-06-16) |
 | `GetParams.include_edges` | `#[serde(default)] pub include_edges: Option<bool>` | `None`/`Some(true)` ⇒ surface; `Some(false)` ⇒ suppress (D-01, AC-11) |
 | `GetEdge` | `{ edge_type: String, direction: &'static str ("inbound"/"outbound"/"both"), target_id: u64, target_title: Option<String>, authored: bool }` | Thin pointer payload (D-02). `"both"` renders `↔`. **No** `source_id`, `depth`, `metadata`, `source`, `weight`, or `target_confidence` |
-| `EdgeTotals` | `{ inbound: usize, outbound: usize }` (uncapped, **post-canonicalization** — ↔ once) | Direction-split, exact (D-05/D-10); JSON nested `edge_totals` (ADR-005) |
+| `EdgeTotals` | `{ inbound: usize, outbound: usize, both: usize }` (uncapped, **post-canonicalization** — ↔ once in `both`) | Three-bucket split, exact (D-05/D-10); JSON nested `edge_totals` (ADR-005 TOTALS BUCKET CONTRACT, 2026-06-16) |
 | `EdgesView` | `{ edges: Vec<GetEdge> (≤3), totals: EdgeTotals }` | Passed as `Some` only on opt-in get |
 | `format_single_entry` (after) | `fn(entry: &EntryRecord, format: ResponseFormat, edges: Option<&EdgesView>) -> CallToolResult` | Only `context_get` passes `Some`; all other callers pass `None` (ADR-003) |
 
@@ -261,10 +263,10 @@ graph_edges (live SQL)
    │                                                       │
    │   displayed ≤3 target endpoints ──IN(…) join──► HashMap<id,title>
    │                                                       │
-   ├─ split COUNT(*) over canonicalized set ─► EdgeTotals{inbound, outbound}  (↔ once)
+   ├─ split COUNT(*) over canonicalized set ─► EdgeTotals{inbound, outbound, both} + authored_total  (↔ once in both)
    │                                                       │
    │                          project (→|←|↔) + authored  ▼
-   │                                       EdgesView { Vec<GetEdge> (≤3), EdgeTotals }
+   │                                       EdgesView { Vec<GetEdge> (≤3), EdgeTotals, authored_total }
    │                                                       │
    context_get only ──Some(view)──► format_single_entry ──► summary | markdown | json
    search/lookup/store/correct ──(no edges arg / None)──► byte-identical payload
@@ -285,13 +287,16 @@ graph_edges (live SQL)
 
 ## Resolved Open Questions
 
-### OQ-01 — JSON totals shape: **nested object** `"edge_totals": {"inbound": N, "outbound": M}` (ADR-005)
+### OQ-01 — JSON totals shape: **nested object** `"edge_totals": {"inbound": N, "outbound": M, "both": S}` (ADR-005)
 
-Unchanged from the prior revision — matches the existing nested-group house style
-(`co_access`, `correction_chains`, `security`). Both `edges` and `edge_totals` appear iff
-edges were surfaced; zero-edge ⇒ `edges: []`, `edge_totals: {"inbound":0,"outbound":0}`
-(D-06). On opt-out neither key appears (D-07). Counts are **post-canonicalization** —
-a `↔` edge contributes once (to whichever direction the canonical row is anchored).
+Nested-object shape matches the existing house style (`co_access`, `correction_chains`,
+`security`). **AMENDED 2026-06-16:** the object now carries **three** keys —
+`{inbound, outbound, both}` — a `↔` symmetric edge counts once in its own `both` bucket,
+**not** folded into inbound (see the ADR-005 TOTALS BUCKET CONTRACT; deciding factors =
+honesty + the #744 clean asymmetric-inbound observability signal). Both `edges` and
+`edge_totals` appear iff edges were surfaced; zero-edge ⇒ `edges: []`,
+`edge_totals: {"inbound":0,"outbound":0,"both":0}` (D-06). On opt-out neither key appears
+(D-07). Counts are **post-canonicalization** — `↔` contributes once to `both`.
 
 ### OQ-02 — Markdown grouping: **drop the author/inferred sub-split entirely** (ADR-005)
 

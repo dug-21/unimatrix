@@ -37,9 +37,9 @@ each per-component file at its slice.
 
 | Risk | Priority | Primary tests | Component file |
 |------|----------|---------------|----------------|
-| R-01 symmetric canonicalization (display AND totals, before cap AND count) | **Critical** | `canon_display_one_arrow_*`, `canon_totals_counts_once_*`, `canon_before_cap_authored_wins`, `asymmetric_untouched` — display and totals asserted **independently**; order-of-ops asserted | store-ranked-query, store-split-count |
+| R-01 symmetric canonicalization (display AND totals, before cap AND count; symmetric → `both` bucket, never `inbound`) | **Critical** | `canon_display_one_arrow_*`, `count_symmetric_counted_once` (in `both`), `count_symmetric_increments_both_never_inbound` (#744 inbound-integrity), `canon_before_cap_authored_wins`, `asymmetric_untouched` — display and totals asserted **independently**; order-of-ops asserted | store-ranked-query, store-split-count |
 | R-02 ranking ORDER BY silently wrong | **Critical** | `rank_by_target_confidence_proof_outside_cap` (#3886, lower-weight high-conf target), `authored_priority_under_cap`, `inferred_fill_only_when_authored_lt_3`, `deterministic_tiebreak` — each with rank trace | store-ranked-query |
-| R-03 split COUNT divergence / canon mismatch | **Critical** | `count_uncapped_exact`, `count_canon_parity_with_rank`, `count_direction_split`, `count_nested_shape` | store-split-count |
+| R-03 split COUNT divergence / canon mismatch (3-bucket `{inbound,outbound,both}` + digest `authored` aggregate) | **Critical** | `count_uncapped_exact` (in+out+both), `count_canon_parity_with_rank`, `count_direction_split`, `count_symmetric_increments_both_never_inbound` (#744), `count_authored_aggregate_over_full_set`, `count_nested_shape_three_buckets` | store-split-count |
 | R-04 rank-and-limit in Rust not SQL | **Critical** | `high_degree_returns_exactly_cap_rows` + `count_returns_two_scalars` at **store boundary**; SQL carries `LIMIT ?`/`COUNT(*)` not `SELECT *`+slice | store-ranked-query, store-split-count |
 | R-05 carried-forward / context_edge misclassified | High | `carried_forward_classifies_authored` (FR-17 named), `context_edge_classifies_authored`, `mixed_corrected_authored_first` | store-neighbor-source, get-edge-assembly |
 | R-06 confidence LEFT JOIN skews/drops | High | `dangling_target_retained_nulls_last`, `null_confidence_deterministic`, `cold_start_uniform_tiebreak`, `join_is_left_not_inner` | store-ranked-query |
@@ -53,7 +53,7 @@ each per-component file at its slice.
 | R-14 opt-out does not skip | High | `opt_out_zero_edge_queries`, `opt_out_no_edges_key`, `internal_caller_opt_out_*` (enumerated) | get-params, get-edge-assembly |
 | R-15 dangling dropped/panics | Medium | `dangling_title_null_retained_all_formats`, `mixed_resolved_dangling_no_panic` | get-edge-assembly, serializer-seam |
 | R-16 edge/title failure handling | Medium→AC-14 | `edge_query_failure_fails_loud` (RED), `count_failure_fails_loud`, `title_join_failure_fails_loud`, `zero_vs_failure_distinct`, `no_unwrap_on_edge_path` (grep) | get-edge-assembly |
-| R-17 format-string drift | Medium | `summary_digest_arrow_split`, `markdown_flat_no_subsplit`, `json_edges_and_totals_shape`, `capped_pointer_present` | serializer-seam |
+| R-17 format-string drift (locked digest `↔{both} ({K} authored)`, 3-key `edge_totals`, `…N more` from in+out+both) | Medium | `summary_digest_locked_byte_form`, `markdown_flat_no_subsplit`, `json_edges_and_totals_shape` (3 keys), `capped_pointer_present` | serializer-seam |
 | R-18 file-size breach | Low | `line_count_le_500` (file-check across touched/new files) | (cross-cutting; serializer-seam + store-ranked-query) |
 | R-19 corrected-entry transient | Low | `corrected_entry_authored_fill_first_inferred_sparse` (expected, not a bug) | get-edge-assembly |
 | R-20 future non-statistical source | Low | `authored_precondition_documented` (grep), `source_string_retained` | store-neighbor-source, get-edge-vocabulary |
@@ -121,8 +121,10 @@ New tests for `suites/test_tools.py` (extend the `context_get` block, ~line 311;
 3. `test_get_include_edges_opt_out` — AC-11/R-14: `include_edges:false` → **no `edges` key**.
 4. `test_get_symmetric_canonicalized_one_arrow` — R-01: a `Contradicts` reciprocal pair surfaces
    ONE `↔` edge in the displayed set; extend to `CoAccess`/`Informs`.
-5. `test_get_edge_totals_symmetric_once` — R-01/R-03: `edge_totals` counts the symmetric pair
-   once (separate assertion from #4).
+5. `test_get_edge_totals_symmetric_once` — R-01/R-03: 3-key `edge_totals`
+   (`{inbound,outbound,both}`) counts the symmetric pair once in `both` with `inbound` unchanged
+   (#744 inbound-integrity); separate assertion from #4. Optionally assert the summary digest's
+   locked `↔{both} ({K} authored)` byte form end-to-end.
 6. `test_get_authored_priority_under_cap` — R-02/AC-05a: ≥3 authored among >3 edges → only
    authored show.
 7. `test_get_inferred_fill_when_authored_lt_3` — R-02/AC-05b.
