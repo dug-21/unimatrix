@@ -417,3 +417,11 @@ fn test_zero_cap_clamped_to_one() {
 // =============================================================================
 #[path = "transcript_hold_ac11_tests.rs"]
 mod ac11;
+
+// =============================================================================
+// crt-054 Surface B believable-zero integration guards (AC-06 / AC-07).
+// Held-route fold + read-before-purge, driven through the REAL registry+hold.
+// Own file (500-line rule, #693); reaches the helpers above via `super::`.
+// =============================================================================
+#[path = "transcript_hold_activity_tests.rs"]
+mod activity;
