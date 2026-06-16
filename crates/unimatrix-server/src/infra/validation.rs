@@ -1621,6 +1621,7 @@ mod tests {
             evidence_limit: None,
             format: None,
             force: None,
+            auto_close: false,
         };
         assert!(validate_retrospective_params(&params).is_ok());
     }
@@ -1633,6 +1634,7 @@ mod tests {
             evidence_limit: None,
             format: None,
             force: None,
+            auto_close: false,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }
@@ -1645,6 +1647,7 @@ mod tests {
             evidence_limit: None,
             format: None,
             force: None,
+            auto_close: false,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }

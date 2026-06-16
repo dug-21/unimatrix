@@ -742,8 +742,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // the other startup validates) and compile the shared scanner ONCE from the
     // validated, enabled patterns. Fail startup on Err — no silent "no scanning"
     // fallback (R-10).
-    let signature_scanner =
-        Arc::new(build_signature_scanner(&config, &paths.data_dir.join("config.toml"))?);
+    let signature_scanner = Arc::new(build_signature_scanner(
+        &config,
+        &paths.data_dir.join("config.toml"),
+    )?);
 
     // crt-052 Wave B (ADR-008): build the bounded held-buffer store and inject
     // it into the registry as the `HeldBufferScan` handle so the snapshot seam
@@ -898,6 +900,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // vnc-025 (#670, FR-16): thread retention config for the cycle-review
     // transcript purge gate (reuses the snapshot taken for the GC tick).
     server.retention_config = Arc::clone(&retention_config);
+    // crt-055 (ADR-008): thread the enabled [transcript_signals] class names (config
+    // order == class_counts index) for the cycle-review activity-fold landing's
+    // signal_class_counts_json.
+    server.transcript_signal_class_names =
+        Arc::new(config.transcript_signals.enabled_class_names());
     // crt-052 Wave B (ADR-008): share the held-buffer store so the cycle-review
     // purge (`purge_held_for_feature`) and the background sweep (`sweep_expired`)
     // act on the SAME store the registry routes drains/deltas through.
@@ -1294,8 +1301,10 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // crt-054 (ADR-002): validate `[transcript_signals]` and compile the shared
     // scanner ONCE (mirrors the daemon path). Fail startup on Err (R-10).
-    let signature_scanner =
-        Arc::new(build_signature_scanner(&config, &paths.data_dir.join("config.toml"))?);
+    let signature_scanner = Arc::new(build_signature_scanner(
+        &config,
+        &paths.data_dir.join("config.toml"),
+    )?);
 
     // crt-052 Wave B (ADR-008): held-buffer store, injected into the registry as
     // the `HeldBufferScan` handle (mirrors the daemon path).
@@ -1444,6 +1453,9 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // vnc-025 (#670, FR-16): thread retention config for the cycle-review
     // transcript purge gate (reuses the snapshot taken for the GC tick).
     server.retention_config = Arc::clone(&retention_config);
+    // crt-055 (ADR-008): thread enabled [transcript_signals] class names (mirrors daemon path).
+    server.transcript_signal_class_names =
+        Arc::new(config.transcript_signals.enabled_class_names());
     // crt-052 Wave B (ADR-008): share the held-buffer store (mirrors daemon path).
     server.transcript_hold = Arc::clone(&transcript_hold);
 

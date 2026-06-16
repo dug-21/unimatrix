@@ -1001,6 +1001,10 @@ pub(crate) async fn create_tables_if_needed(
     // cycle_review_index: memoized RetrospectiveReport archive (crt-033).
     // No FOREIGN KEY clause — consistent with all other tables (C-09).
     sqlx::query(
+        // crt-055 (v30) appends the 16 v5 aggregate columns. Types/defaults MUST be
+        // byte-aligned with the v29→v30 ALTER block in migration.rs so fresh-create and
+        // upgrade paths agree (three-path bump, #4153 / #4373). Every metric column is
+        // INTEGER NOT NULL DEFAULT 0; signal_class_counts_json is TEXT NOT NULL DEFAULT '{}'.
         "CREATE TABLE IF NOT EXISTS cycle_review_index (
             feature_cycle         TEXT    PRIMARY KEY,
             schema_version        INTEGER NOT NULL,
@@ -1013,7 +1017,23 @@ pub(crate) async fn create_tables_if_needed(
             corrections_system    INTEGER NOT NULL DEFAULT 0,
             deprecations_total    INTEGER NOT NULL DEFAULT 0,
             orphan_deprecations   INTEGER NOT NULL DEFAULT 0,
-            first_computed_at     INTEGER NOT NULL DEFAULT 0
+            first_computed_at     INTEGER NOT NULL DEFAULT 0,
+            phase_count                  INTEGER NOT NULL DEFAULT 0,
+            phase_transition_count       INTEGER NOT NULL DEFAULT 0,
+            phase_rework_count           INTEGER NOT NULL DEFAULT 0,
+            phase_unclosed_count         INTEGER NOT NULL DEFAULT 0,
+            phase_total_duration_secs    INTEGER NOT NULL DEFAULT 0,
+            rework_session_count         INTEGER NOT NULL DEFAULT 0,
+            total_session_count          INTEGER NOT NULL DEFAULT 0,
+            knowledge_reuse_served_count INTEGER NOT NULL DEFAULT 0,
+            transcript_bytes_total       INTEGER NOT NULL DEFAULT 0,
+            transcript_delta_count       INTEGER NOT NULL DEFAULT 0,
+            transcript_error_count       INTEGER NOT NULL DEFAULT 0,
+            transcript_refusal_count     INTEGER NOT NULL DEFAULT 0,
+            signal_class_counts_json     TEXT    NOT NULL DEFAULT '{}',
+            compaction_count             INTEGER NOT NULL DEFAULT 0,
+            compaction_reread_count      INTEGER NOT NULL DEFAULT 0,
+            context_reload_pct           INTEGER NOT NULL DEFAULT 0
         )",
     )
     .execute(&mut *conn)

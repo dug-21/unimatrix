@@ -17,8 +17,8 @@
 //! (model-free, offline) so retrieval returns ranked, non-empty results — exactly
 //! the seam that makes the trust assertions non-vacuous (R-15).
 
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
@@ -26,8 +26,8 @@ use tempfile::TempDir;
 
 use super::output::ScenarioResult;
 use super::sweep::{default_fixtures_dir, run_fixture_sweep};
-use crate::eval::profile::{parse_profile_toml, EvalProfile};
-use crate::eval::shape::{build_running_manifest, check_drift, CorpusKind, ShapeDriftError};
+use crate::eval::profile::{EvalProfile, parse_profile_toml};
+use crate::eval::shape::{CorpusKind, ShapeDriftError, build_running_manifest, check_drift};
 use crate::infra::config::InferenceConfig;
 use unimatrix_embed::{EmbeddingModel, EmbeddingProvider};
 

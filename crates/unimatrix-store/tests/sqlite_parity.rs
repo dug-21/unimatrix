@@ -1020,14 +1020,15 @@ async fn test_sql_analytics_query() {
 // Updated to 27 for vnc-018 (four indexes for context_graph CTE and neighbor queries).
 // Updated to 28 for vnc-030 (observations.topic_source column, ADR-005).
 // Updated to 29 for crt-054 (compaction_events table + idx_compaction_events_session).
+// Updated to 30 for crt-055 (cycle_review_index v5 aggregate columns).
 #[tokio::test]
-async fn test_schema_version_is_29() {
+async fn test_schema_version_is_30() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 29,
-        "schema version must be 29 after crt-054 (was 28 after vnc-030)"
+        version, 30,
+        "schema version must be 30 after crt-055 (was 29 after crt-054)"
     );
     store.close().await.unwrap();
 }
@@ -1574,8 +1575,9 @@ async fn test_create_tables_cycle_review_index_schema() {
 
     assert_eq!(
         rows.len(),
-        12,
-        "cycle_review_index must have exactly 12 columns (5 original + 7 new from crt-047)"
+        28,
+        "cycle_review_index must have exactly 28 columns \
+         (5 original + 7 from crt-047 + 16 v5 aggregate columns from crt-055)"
     );
 
     let names: Vec<String> = rows
@@ -1632,6 +1634,32 @@ async fn test_create_tables_cycle_review_index_schema() {
         names.contains(&"first_computed_at".to_string()),
         "cycle_review_index must have first_computed_at column (crt-047)"
     );
+
+    // crt-055 (v5): 16 durable per-cycle aggregate columns. Fresh-create must list
+    // every one — byte-aligned with the v29→v30 ALTER block (three-path bump #4153).
+    for col in [
+        "phase_count",
+        "phase_transition_count",
+        "phase_rework_count",
+        "phase_unclosed_count",
+        "phase_total_duration_secs",
+        "rework_session_count",
+        "total_session_count",
+        "knowledge_reuse_served_count",
+        "transcript_bytes_total",
+        "transcript_delta_count",
+        "transcript_error_count",
+        "transcript_refusal_count",
+        "signal_class_counts_json",
+        "compaction_count",
+        "compaction_reread_count",
+        "context_reload_pct",
+    ] {
+        assert!(
+            names.contains(&col.to_string()),
+            "cycle_review_index must have {col} column (crt-055 v5)"
+        );
+    }
 
     store.close().await.unwrap();
 }

@@ -2240,6 +2240,22 @@ impl TranscriptSignalsConfig {
             .map(|c| c.pattern.clone())
             .collect()
     }
+
+    /// The enabled class NAMES, in CONFIG ORDER (crt-055 Component 6, ADR-008).
+    ///
+    /// Parallel to [`enabled_patterns`](Self::enabled_patterns): the same enabled
+    /// classes, same order, so index `i` here is the `class_counts[i]` index the
+    /// producer folds into. crt-055's `land_activity_fold` consumes this list at
+    /// review to build `signal_class_counts_json` (name → summed count). The fixed
+    /// `error`/`refusal` columns are read by index 0/1 regardless; this list is the
+    /// forward-compatible map's key source (classes beyond error/refusal — NFR-06).
+    pub fn enabled_class_names(&self) -> Vec<String> {
+        self.classes
+            .iter()
+            .filter(|c| c.enabled)
+            .map(|c| c.class_name.clone())
+            .collect()
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -359,7 +359,11 @@ async fn test_slug_a_write_does_not_appear_in_slug_b() {
         .await
         .expect("insert a2");
 
-    assert_eq!(entry_count(alpha_store).await, 2, "alpha holds its 2 writes");
+    assert_eq!(
+        entry_count(alpha_store).await,
+        2,
+        "alpha holds its 2 writes"
+    );
     assert_eq!(
         entry_count(beta_store).await,
         beta_before,
@@ -531,9 +535,19 @@ async fn test_n_clients_one_slug_share_store() {
     };
 
     let mut r1 = router.clone();
-    let s1 = collect_resp(r1.route_mcp(req("client-1")).await.expect("client-1 routes")).await;
+    let s1 = collect_resp(
+        r1.route_mcp(req("client-1"))
+            .await
+            .expect("client-1 routes"),
+    )
+    .await;
     let mut r2 = router.clone();
-    let s2 = collect_resp(r2.route_mcp(req("client-2")).await.expect("client-2 routes")).await;
+    let s2 = collect_resp(
+        r2.route_mcp(req("client-2"))
+            .await
+            .expect("client-2 routes"),
+    )
+    .await;
 
     assert!(
         reached_mcp(&s1) && reached_mcp(&s2),
@@ -609,8 +623,16 @@ async fn test_dispatch_through_adapter_for_no_fixed_bypass() {
     let beta_titles = titles(beta_store).await;
     let default_titles = titles(&default_store).await;
 
-    assert_eq!(alpha_titles, vec!["alpha-w".to_string()], "alpha store isolated");
-    assert_eq!(beta_titles, vec!["beta-w".to_string()], "beta store isolated");
+    assert_eq!(
+        alpha_titles,
+        vec!["alpha-w".to_string()],
+        "alpha store isolated"
+    );
+    assert_eq!(
+        beta_titles,
+        vec!["beta-w".to_string()],
+        "beta store isolated"
+    );
     assert_eq!(
         default_titles,
         vec!["default-w".to_string()],
@@ -629,7 +651,12 @@ async fn test_default_and_slug_interleaved_no_cross_contamination() {
     let (router, default_store, slug_stores) = wired_router(&["alpha"]).await;
     let alpha_store = &slug_stores[0];
 
-    for path in ["/v1/tools/mcp", "/v1/alpha/mcp", "/v1/tools/mcp", "/v1/alpha/mcp"] {
+    for path in [
+        "/v1/tools/mcp",
+        "/v1/alpha/mcp",
+        "/v1/tools/mcp",
+        "/v1/alpha/mcp",
+    ] {
         assert!(reached_mcp(&drive(&router, path).await), "dispatch {path}");
     }
 

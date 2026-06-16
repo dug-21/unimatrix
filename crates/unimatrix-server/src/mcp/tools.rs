@@ -396,6 +396,17 @@ pub struct RetrospectiveParams {
     /// Force recomputation even if a stored review exists. (crt-033)
     /// Absent or None is equivalent to false.
     pub force: Option<bool>,
+    /// crt-055 (#593, ADR-010): close the cycle as part of the review.
+    ///
+    /// When `true` AND the cycle has no `cycle_stop` event, a `cycle_stop` row is
+    /// written synchronously via the existing `cycle_events` writer at the TOP of the
+    /// full-pipeline block — before rank-1 phase reckoning reads the timeline — so the
+    /// final phase closes and is not mis-counted as #556 never-closed. Idempotent: a
+    /// no-op when a `cycle_stop` already exists. When `false` (default) the timeline is
+    /// left as-is; an open final phase correctly surfaces as never-closed (fail-loud,
+    /// not an error). Informs/closes a record only — never controls execution (RQ-8).
+    #[serde(default)]
+    pub auto_close: bool,
 }
 
 /// Parameters for the context_cycle tool.
@@ -2262,11 +2273,52 @@ impl UnimatrixServer {
         // `full_report` holds the freshly computed RetrospectiveReport on the full
         // pipeline path. None on the memo_hit path (cached report is in memo_hit).
         let mut full_report: Option<unimatrix_observe::RetrospectiveReport> = None;
+        // Component 9 (crt-055) STEP 5: the rendered per-metric fail-loud block
+        // (availability + coarse/directional signals), produced inside the
+        // full-pipeline block and appended to the full-pipeline response. None on
+        // the three non-full-pipeline returns (those serve a stored report).
+        let mut crt055_fail_loud_block: Option<String> = None;
         // `cycle_outcome` is derived from cycle_events on the full pipeline path
         // and passed to run_step_8b. None on cache-hit — outcome not needed (INSERT OR IGNORE).
         let mut cycle_outcome: Option<String> = None;
 
         if memo_hit.is_none() {
+            // ---------------------------------------------------------------
+            // Component 8 (crt-055 #593, ADR-010): auto_close arm.
+            //
+            // Runs at the TOP of the full-pipeline block, BEFORE the pipeline
+            // reads the cycle_events timeline at step 10g (line ~2649, rank-1
+            // phase reckoning). It is NOT on the memo-hit / cached-MetricVector
+            // / no-data returns — only the full-pipeline path closes the cycle.
+            //
+            // Component 9 (review pipeline ordering) integration point: this arm
+            // must remain the first statement inside `if memo_hit.is_none()` and
+            // BEFORE any cycle_events read. Do not move it past step 10g.
+            // ---------------------------------------------------------------
+            maybe_auto_close(&store, &feature_cycle, params.auto_close).await;
+
+            // ---------------------------------------------------------------
+            // Component 9 (crt-055): review-aggregate accumulator + STEP 2
+            // read-before-purge transcript-fold landing (ADR-007 / R-03).
+            //
+            // The fold MUST be read here — STRICTLY BEFORE any
+            // `purge_cycle_transcripts` call site (the full-pipeline purge fires
+            // at the very end of the handler, after the response is built). The
+            // ordering is load-bearing: crt-052's hold purge zeroes/drops the
+            // buffers, so a read after the purge silently zeroes every transcript
+            // column (the inversion test asserts this). `class_names` is the
+            // startup-validated `[transcript_signals]` catalog in config order
+            // (index == class_counts index, ADR-008).
+            //
+            // The accumulator is populated incrementally in the binding pipeline
+            // order (fold → ranks → reload → compaction → presence) and lands all
+            // 16 v5 columns via the SINGLE full-pipeline `store_cycle_review()`
+            // below — never on the three non-full-pipeline returns (ADR-002).
+            // ---------------------------------------------------------------
+            let mut review_agg = crate::mcp::review_aggregates::ReviewAggregateState::new();
+            let crt055_class_names = self.retention_config_signal_class_names();
+            review_agg.land_fold(&self.session_registry, &feature_cycle, &crt055_class_names);
+
             // 6. Check for data availability
             if attributed.is_empty() {
                 // No new data -- check for cached MetricVector
@@ -2497,6 +2549,53 @@ impl UnimatrixServer {
                 let reload_pct =
                     unimatrix_observe::compute_context_reload_pct(&summaries, &attributed);
                 report.context_reload_pct = Some(reload_pct);
+
+                // ---------------------------------------------------------------
+                // Component 9 (crt-055) STEP 3 (rank-2/3) + STEP 4 (dual reload).
+                // Runs while `session_records`, `summaries`, and `attributed` are
+                // in scope. rank-1 (cycle_events) lands later via populate_rank_1
+                // (the timeline read happens at step 10g). Two reload columns, two
+                // windows, one engine — never collapsed (ADR-005).
+                // ---------------------------------------------------------------
+                let crt055_declared_session_ids: Vec<String> = session_records
+                    .iter()
+                    .map(|sr| sr.session_id.clone())
+                    .collect();
+                let crt055_session_id_refs: Vec<&str> = crt055_declared_session_ids
+                    .iter()
+                    .map(String::as_str)
+                    .collect();
+                let crt055_query_logs = store
+                    .scan_query_log_by_sessions(&crt055_session_id_refs)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::warn!(
+                            "crt-055: scan_query_log_by_sessions failed for {feature_cycle}: {e} \
+                             — knowledge_reuse degrades to a partial"
+                        );
+                        Vec::new()
+                    });
+                let crt055_injection_logs = store
+                    .scan_injection_log_by_sessions(&crt055_session_id_refs)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::warn!(
+                            "crt-055: scan_injection_log_by_sessions failed for {feature_cycle}: \
+                             {e} — knowledge_reuse degrades to a partial"
+                        );
+                        Vec::new()
+                    });
+                review_agg.populate_ranks_2_3(
+                    &session_records,
+                    &crt055_query_logs,
+                    &crt055_injection_logs,
+                );
+                // STEP 4a: cross-session context_reload_pct (basis points i64).
+                review_agg.populate_reload(&summaries, &attributed, session_records.len() as i64);
+                // STEP 4b: within-cycle compaction_count + compaction_reread_count.
+                review_agg
+                    .populate_compaction(&store, &crt055_declared_session_ids, &attributed)
+                    .await;
 
                 // Step 13-14: Knowledge reuse (C3/C4, best-effort; col-026: cross-feature split)
                 match compute_knowledge_reuse_for_sessions(
@@ -2817,6 +2916,16 @@ impl UnimatrixServer {
                 };
             }
 
+            // ---------------------------------------------------------------
+            // Component 9 (crt-055) STEP 3 (rank-1): phase reckoning from the
+            // cycle_events timeline read at step 10g. The timeline already
+            // includes any auto_close cycle_stop (STEP 1 ran at the top of the
+            // block, BEFORE this read — R-14), so a closed final phase is not a
+            // false #556 never-closed. Empty cycle_events → all phase metrics
+            // zero AND cycle_events_count = 0 → "unavailable", never a bare 0.
+            // ---------------------------------------------------------------
+            review_agg.populate_rank_1(cycle_events_vec.as_deref().unwrap_or(&[]));
+
             // 10i. col-026: goal, cycle_type, is_in_progress, attribution_path (best-effort)
             match (|| async {
                 let goal = store
@@ -2904,11 +3013,20 @@ impl UnimatrixServer {
                 review_ts
             };
 
+            // Component 9 (crt-055) STEP 6: persist via the SINGLE full-pipeline
+            // store_cycle_review() writer. This is the ONLY site that writes the
+            // 16 v5 aggregate columns — the three non-full-pipeline returns
+            // (force+purged, cached-empty, memo-hit) serve a stored record and
+            // never reach this builder (ADR-002 #5037, no zero-clobber; the three
+            // #5022 assertions). The guarded-recompute route (stale + source
+            // present) clears the memo and FALLS THROUGH to here, so the recompute
+            // is this same writer — never a second writer near the memo site.
             match build_cycle_review_record(
                 &feature_cycle,
                 &report,
                 curation_snapshot.as_ref(),
                 first_computed_at,
+                review_agg.aggregates(),
             ) {
                 Ok(record) => {
                     if let Err(e) = store.store_cycle_review(&record).await {
@@ -2967,6 +3085,17 @@ impl UnimatrixServer {
 
             // Attach curation health block to report before storage in full_report.
             report.curation_health = curation_health_block;
+
+            // ---------------------------------------------------------------
+            // Component 9 (crt-055) STEP 5: per-metric presence flags + render.
+            // Each flag is INDEPENDENT (one empty source never flips another's,
+            // R-06). Empty sources render "unavailable", never a bare 0 (AC-01);
+            // regex-derived behavioral signals render coarse/directional, visually
+            // distinct from exactly-counted aggregates (AC-21). Rendered here
+            // where review_agg is in scope; appended to the full-pipeline response.
+            // ---------------------------------------------------------------
+            let crt055_avail = review_agg.availability();
+            crt055_fail_loud_block = Some(review_agg.render_block(&crt055_avail));
 
             full_report = Some(report);
         } // end of full pipeline block (memo_hit.is_none())
@@ -3127,10 +3256,21 @@ impl UnimatrixServer {
                 ))
             }
         };
+        // Component 9 (crt-055) STEP 5: append the rendered fail-loud metrics
+        // block at the assembly level (a Content item on the CallToolResult, not a
+        // report serde field — pattern #4866). Empty sources read "unavailable",
+        // never "0" (AC-01); behavioral signals carry the directional qualifier
+        // (AC-21). Only on the full-pipeline return; the three other returns serve
+        // a stored report and never set this block.
+        let mut result = result;
+        if let (Ok(call_result), Some(block)) = (result.as_mut(), crt055_fail_loud_block.as_ref()) {
+            call_result
+                .content
+                .push(rmcp::model::Content::text(format!("\n{block}")));
+        }
         // crt-052 (C6, ADR-005/AC-05): distill STRICTLY before purge, attach the
         // section at assembly level (ADR-004) — outside the memoized report — then
         // purge. Same shared helper + ordering as the other three returns.
-        let mut result = result;
         let section = crate::mcp::distill_handler::distill_before_purge(
             &self.session_registry,
             &feature_cycle,
@@ -3641,6 +3781,115 @@ impl UnimatrixServer {
 }
 
 // ---------------------------------------------------------------------------
+// crt-055 (#593, ADR-010): auto_close handler arm (Component 8)
+// ---------------------------------------------------------------------------
+
+/// Close the cycle as part of the review when `auto_close` is requested (ADR-010).
+///
+/// Called at the TOP of the full-pipeline block, BEFORE the pipeline reads the
+/// `cycle_events` timeline for rank-1 phase reckoning. When `auto_close == true`
+/// and the cycle has no `cycle_stop` event, a `cycle_stop` row is written
+/// synchronously via the EXISTING `cycle_events` writer (`insert_cycle_event`) —
+/// NOT a second `store_cycle_review`. This keeps the single `cycle_review_index`
+/// writer invariant intact (Constraint 1 / ADR-002): the stop goes to a different
+/// table/path.
+///
+/// Semantics:
+///   * `auto_close == false` (default) — no-op; the timeline is left as-is so an
+///     open final phase correctly surfaces as #556 never-closed (fail-loud).
+///   * `auto_close == true`, a `cycle_stop` already exists — idempotent no-op
+///     (re-review with `auto_close=true` writes no duplicate stop).
+///   * `auto_close == true`, no `cycle_stop` — write one `cycle_stop` at `now`.
+///
+/// Errors are non-fatal and never abort the review:
+///   * existence-check Err → treated as "unknown"; the write is SKIPPED (safer than
+///     a possible duplicate) and logged.
+///   * insert Err → logged; the review proceeds (the timeline simply stays open and
+///     the final phase surfaces never-closed — honest, not silently wrong).
+async fn maybe_auto_close(
+    store: &Arc<unimatrix_store::SqlxStore>,
+    feature_cycle: &str,
+    auto_close: bool,
+) {
+    if !auto_close {
+        // Default path: leave the timeline as-is. An open final phase surfaces as
+        // #556 never-closed downstream (correct fail-loud, not an error).
+        return;
+    }
+
+    // Idempotency: read the current cycle_events timeline for this cycle. We fetch
+    // MAX(seq) and a cycle_stop-presence flag in one indexed pass.
+    let row = sqlx::query_as::<_, (Option<i64>, i64)>(
+        "SELECT MAX(seq), \
+                COALESCE(SUM(CASE WHEN event_type = 'cycle_stop' THEN 1 ELSE 0 END), 0) \
+           FROM cycle_events \
+          WHERE cycle_id = ?1",
+    )
+    .bind(feature_cycle)
+    .fetch_one(store.write_pool_server())
+    .await;
+
+    let (max_seq, stop_count) = match row {
+        Ok(r) => r,
+        Err(e) => {
+            // Existence check failed → unknown state. Skip the write rather than
+            // risk a duplicate cycle_stop (ADR-010 error handling).
+            tracing::warn!(
+                cycle_id = %feature_cycle,
+                error = %e,
+                "crt-055: auto_close existence check failed — skipping cycle_stop write"
+            );
+            return;
+        }
+    };
+
+    if stop_count > 0 {
+        // A cycle_stop already exists → idempotent no-op.
+        tracing::debug!(
+            cycle_id = %feature_cycle,
+            "crt-055: auto_close requested but cycle_stop already present — no-op"
+        );
+        return;
+    }
+
+    // Write cycle_stop synchronously via the existing cycle_events writer.
+    // seq is advisory (ADR-002): COALESCE(MAX(seq), -1) + 1 scoped to the cycle.
+    let next_seq = max_seq.unwrap_or(-1) + 1;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+
+    if let Err(e) = store
+        .insert_cycle_event(
+            feature_cycle,
+            next_seq,
+            "cycle_stop",
+            None, // phase
+            None, // outcome
+            None, // next_phase
+            now,
+            None, // goal — only set on cycle_start
+        )
+        .await
+    {
+        // Non-fatal: the review proceeds; the final phase will surface never-closed.
+        tracing::warn!(
+            cycle_id = %feature_cycle,
+            error = %e,
+            "crt-055: auto_close cycle_stop write failed — review continues (timeline stays open)"
+        );
+        return;
+    }
+
+    tracing::info!(
+        cycle_id = %feature_cycle,
+        seq = next_seq,
+        "crt-055: auto_close wrote cycle_stop before rank-1 reckoning (#593)"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // crt-033: Memoization helpers for context_cycle_review
 // ---------------------------------------------------------------------------
 
@@ -3776,6 +4025,7 @@ fn build_cycle_review_record(
     report: &unimatrix_observe::RetrospectiveReport,
     snapshot: Option<&unimatrix_observe::CurationSnapshot>,
     first_computed_at: i64,
+    aggregates: &unimatrix_observe::CycleAggregates,
 ) -> Result<unimatrix_store::CycleReviewRecord, serde_json::Error> {
     // Serialize the full report — no evidence_limit truncation (C-03).
     let summary_json = serde_json::to_string(report)?;
@@ -3811,6 +4061,28 @@ fn build_cycle_review_record(
         deprecations_total: dt,
         orphan_deprecations: od,
         first_computed_at,
+        // crt-055 v5 aggregate columns (Component 2 / ADR-002): the SINGLE
+        // full-pipeline writer lands all 16 columns 1:1 from the computed
+        // `CycleAggregates`. The three other handler returns never reach this
+        // builder — they serve a stored record without writing (no zero-clobber).
+        // Every field is integer; `signal_class_counts_json` is a content-free
+        // count map coalesced to "{}" by `store_cycle_review` (NFR-01 leak gate).
+        phase_count: aggregates.phase_count,
+        phase_transition_count: aggregates.phase_transition_count,
+        phase_rework_count: aggregates.phase_rework_count,
+        phase_unclosed_count: aggregates.phase_unclosed_count,
+        phase_total_duration_secs: aggregates.phase_total_duration_secs,
+        rework_session_count: aggregates.rework_session_count,
+        total_session_count: aggregates.total_session_count,
+        knowledge_reuse_served_count: aggregates.knowledge_reuse_served_count,
+        transcript_bytes_total: aggregates.transcript_bytes_total,
+        transcript_delta_count: aggregates.transcript_delta_count,
+        transcript_error_count: aggregates.transcript_error_count,
+        transcript_refusal_count: aggregates.transcript_refusal_count,
+        signal_class_counts_json: aggregates.signal_class_counts_json.clone(),
+        compaction_count: aggregates.compaction_count,
+        compaction_reread_count: aggregates.compaction_reread_count,
+        context_reload_pct: aggregates.context_reload_pct,
     })
 }
 
@@ -6375,7 +6647,7 @@ mod tests {
             curation_health: None, // crt-047
         };
 
-        let record = build_cycle_review_record("feat-x", &report, None, 0)
+        let record = build_cycle_review_record("feat-x", &report, None, 0, &Default::default())
             .expect("build_cycle_review_record must succeed");
 
         assert_eq!(record.feature_cycle, "feat-x");
@@ -6396,6 +6668,118 @@ mod tests {
             record.computed_at > 1_577_836_800,
             "computed_at must be a valid recent unix timestamp"
         );
+    }
+
+    // -- crt-055 Component 9: build_cycle_review_record lands all 16 v5 columns --
+
+    /// Minimal content-free report for crt-055 builder tests.
+    fn crt055_min_report(fc: &str) -> unimatrix_observe::RetrospectiveReport {
+        unimatrix_observe::RetrospectiveReport {
+            feature_cycle: fc.to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: unimatrix_observe::MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+            curation_health: None,
+        }
+    }
+
+    /// AC-17: the single full-pipeline writer lands all 16 v5 aggregate columns
+    /// 1:1 from the computed `CycleAggregates` (the builder is reached only on the
+    /// full-pipeline return). Every metric column is integer; `signal_class_counts_json`
+    /// carries the content-free class map.
+    #[test]
+    fn test_build_record_lands_all_v5_columns_from_aggregates() {
+        let agg = unimatrix_observe::CycleAggregates {
+            phase_count: 3,
+            phase_transition_count: 2,
+            phase_rework_count: 1,
+            phase_unclosed_count: 1,
+            phase_total_duration_secs: 600,
+            rework_session_count: 1,
+            total_session_count: 4,
+            knowledge_reuse_served_count: 7,
+            compaction_count: 2,
+            compaction_reread_count: 5,
+            context_reload_pct: 3750,
+            transcript_error_count: 9,
+            transcript_refusal_count: 3,
+            transcript_bytes_total: 4096,
+            transcript_delta_count: 12,
+            signal_class_counts_json: "{\"error\":9,\"refusal\":3}".to_string(),
+        };
+        let report = crt055_min_report("crt055-cols");
+        let record = build_cycle_review_record("crt055-cols", &report, None, 0, &agg)
+            .expect("build must succeed");
+
+        assert_eq!(record.phase_count, 3);
+        assert_eq!(record.phase_transition_count, 2);
+        assert_eq!(record.phase_rework_count, 1);
+        assert_eq!(record.phase_unclosed_count, 1);
+        assert_eq!(record.phase_total_duration_secs, 600);
+        assert_eq!(record.rework_session_count, 1);
+        assert_eq!(record.total_session_count, 4);
+        assert_eq!(record.knowledge_reuse_served_count, 7);
+        assert_eq!(record.compaction_count, 2);
+        assert_eq!(record.compaction_reread_count, 5);
+        assert_eq!(record.context_reload_pct, 3750, "basis points, not a float");
+        assert_eq!(record.transcript_error_count, 9);
+        assert_eq!(record.transcript_refusal_count, 3);
+        assert_eq!(record.transcript_bytes_total, 4096);
+        assert_eq!(record.transcript_delta_count, 12);
+        assert_eq!(
+            record.signal_class_counts_json,
+            "{\"error\":9,\"refusal\":3}"
+        );
+    }
+
+    /// AC-19 leak gate + AC-16 (#206-4 no durable column): the only String the
+    /// builder lands besides `summary_json` is `signal_class_counts_json`, which
+    /// is a content-free `class_name → count` map (parses as a JSON object of
+    /// integers — never transcript text). `summary_json` round-trips to a
+    /// content-free `RetrospectiveReport`. The record carries no
+    /// content/transcript/knowledge-that-helped column by construction — the
+    /// builder enumerates exactly the 16 integer/JSON v5 columns, so a content
+    /// field could not compile.
+    #[test]
+    fn test_build_record_persists_no_content_columns() {
+        let agg = unimatrix_observe::CycleAggregates {
+            signal_class_counts_json: "{\"error\":1,\"refusal\":0}".to_string(),
+            ..Default::default()
+        };
+        let report = crt055_min_report("crt055-leak");
+        let record = build_cycle_review_record("crt055-leak", &report, None, 0, &agg)
+            .expect("build must succeed");
+
+        // signal_class_counts_json is a count map (object of integers), not text.
+        let map: std::collections::HashMap<String, i64> =
+            serde_json::from_str(&record.signal_class_counts_json)
+                .expect("signal_class_counts_json must be a class_name -> integer-count map");
+        assert_eq!(map.get("error"), Some(&1));
+        assert!(
+            map.values().all(|&v| v >= 0),
+            "the class map carries integer counts only — no content (AC-19)"
+        );
+
+        // summary_json round-trips to a content-free RetrospectiveReport.
+        serde_json::from_str::<unimatrix_observe::RetrospectiveReport>(&record.summary_json)
+            .expect("summary_json must deserialize to a RetrospectiveReport (no raw content)");
     }
 
     // -- col-010b: clone-and-truncate tests --
@@ -8570,7 +8954,7 @@ mod cycle_review_integration_tests {
         let (store, _dir) = open_store().await;
         let report = minimal_report("col-test");
 
-        let record = build_cycle_review_record("col-test", &report, None, 0)
+        let record = build_cycle_review_record("col-test", &report, None, 0, &Default::default())
             .expect("build_cycle_review_record must succeed");
 
         // raw_signals_available must be 1 (live signals present).
@@ -8620,8 +9004,8 @@ mod cycle_review_integration_tests {
         let report = minimal_report("memo-test");
 
         // First "call": build + store.
-        let record =
-            build_cycle_review_record("memo-test", &report, None, 0).expect("build must succeed");
+        let record = build_cycle_review_record("memo-test", &report, None, 0, &Default::default())
+            .expect("build must succeed");
         store
             .store_cycle_review(&record)
             .await
@@ -8675,7 +9059,8 @@ mod cycle_review_integration_tests {
 
         // Initial store (first call).
         let record1 =
-            build_cycle_review_record("force-test", &report, None, 0).expect("build must succeed");
+            build_cycle_review_record("force-test", &report, None, 0, &Default::default())
+                .expect("build must succeed");
         store
             .store_cycle_review(&record1)
             .await
@@ -8729,7 +9114,8 @@ mod cycle_review_integration_tests {
 
         // INSERT a stored record directly (no live observations exist).
         let record =
-            build_cycle_review_record("purged-test", &report, None, 0).expect("build must succeed");
+            build_cycle_review_record("purged-test", &report, None, 0, &Default::default())
+                .expect("build must succeed");
         store
             .store_cycle_review(&record)
             .await
@@ -8943,8 +9329,14 @@ mod cycle_review_integration_tests {
         // and writes it through the single store_cycle_review() writer at the current
         // schema_version. A fresh report has non-zero session metadata.
         let fresh_report = minimal_report("recompute-test"); // session_count=1, total_records=5
-        let fresh_record =
-            build_cycle_review_record("recompute-test", &fresh_report, None, 0).expect("build");
+        let fresh_record = build_cycle_review_record(
+            "recompute-test",
+            &fresh_report,
+            None,
+            0,
+            &Default::default(),
+        )
+        .expect("build");
         store
             .store_cycle_review(&fresh_record)
             .await
@@ -9105,7 +9497,9 @@ mod cycle_review_integration_tests {
         let (store, _dir) = open_store().await;
 
         let report = minimal_report("current-test");
-        let record = build_cycle_review_record("current-test", &report, None, 0).expect("build");
+        let record =
+            build_cycle_review_record("current-test", &report, None, 0, &Default::default())
+                .expect("build");
         store
             .store_cycle_review(&record)
             .await
@@ -9157,8 +9551,8 @@ mod cycle_review_integration_tests {
         let report = report_with_evidence("ev-test", 3, 5);
 
         // Assert A (storage): build + store — no evidence_limit applied.
-        let record =
-            build_cycle_review_record("ev-test", &report, None, 0).expect("build must succeed");
+        let record = build_cycle_review_record("ev-test", &report, None, 0, &Default::default())
+            .expect("build must succeed");
         store
             .store_cycle_review(&record)
             .await
@@ -9285,10 +9679,12 @@ mod cycle_review_integration_tests {
         let report_a = minimal_report("concurrent-A");
         let report_b = minimal_report("concurrent-B");
 
-        let record_a = build_cycle_review_record("concurrent-A", &report_a, None, 0)
-            .expect("build A must succeed");
-        let record_b = build_cycle_review_record("concurrent-B", &report_b, None, 0)
-            .expect("build B must succeed");
+        let record_a =
+            build_cycle_review_record("concurrent-A", &report_a, None, 0, &Default::default())
+                .expect("build A must succeed");
+        let record_b =
+            build_cycle_review_record("concurrent-B", &report_b, None, 0, &Default::default())
+                .expect("build B must succeed");
 
         // Run both stores concurrently via tokio::join! (OQ-03).
         let (result_a, result_b) = tokio::join!(
@@ -9507,8 +9903,14 @@ mod cycle_review_integration_tests {
         let report = minimal_report("crt-047-advisory-test");
 
         // Build and store a record with schema_version = 1 (stale).
-        let mut record = build_cycle_review_record("crt-047-advisory-test", &report, None, 0)
-            .expect("build must succeed");
+        let mut record = build_cycle_review_record(
+            "crt-047-advisory-test",
+            &report,
+            None,
+            0,
+            &Default::default(),
+        )
+        .expect("build must succeed");
         record.schema_version = 1; // Force stale schema_version.
         store
             .store_cycle_review(&record)
@@ -9556,8 +9958,14 @@ mod cycle_review_integration_tests {
         let report = minimal_report("crt-047-no-recompute-test");
 
         // Build and store a record with schema_version = 1 and corrections_total = 0.
-        let mut record = build_cycle_review_record("crt-047-no-recompute-test", &report, None, 0)
-            .expect("build must succeed");
+        let mut record = build_cycle_review_record(
+            "crt-047-no-recompute-test",
+            &report,
+            None,
+            0,
+            &Default::default(),
+        )
+        .expect("build must succeed");
         record.schema_version = 1;
         record.corrections_total = 0; // Stale zero, as if pre-crt-047.
         store
@@ -9593,9 +10001,14 @@ mod cycle_review_integration_tests {
         let report = minimal_report("crt-047-force-true-test");
 
         // Store a stale record (schema_version=1).
-        let mut stale =
-            build_cycle_review_record("crt-047-force-true-test", &report, None, 1_000_000)
-                .expect("build must succeed");
+        let mut stale = build_cycle_review_record(
+            "crt-047-force-true-test",
+            &report,
+            None,
+            1_000_000,
+            &Default::default(),
+        )
+        .expect("build must succeed");
         stale.schema_version = 1;
         store
             .store_cycle_review(&stale)
@@ -9603,8 +10016,14 @@ mod cycle_review_integration_tests {
             .expect("initial store must succeed");
 
         // Simulate force=true: build a fresh record (SUMMARY_SCHEMA_VERSION=2).
-        let fresh = build_cycle_review_record("crt-047-force-true-test", &report, None, 1_000_000)
-            .expect("build fresh must succeed");
+        let fresh = build_cycle_review_record(
+            "crt-047-force-true-test",
+            &report,
+            None,
+            1_000_000,
+            &Default::default(),
+        )
+        .expect("build fresh must succeed");
         assert_eq!(
             fresh.schema_version,
             unimatrix_store::SUMMARY_SCHEMA_VERSION,
@@ -9704,6 +10123,168 @@ mod cycle_review_integration_tests {
             ts, 1_000,
             "CCR-U-09: MIN timestamp must be returned for multiple cycle_start events"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-055 (#593, ADR-010, AC-15): auto_close handler arm (Component 8)
+    // -----------------------------------------------------------------------
+
+    /// Count `cycle_stop` rows for a cycle via the write pool.
+    async fn count_cycle_stops(store: &unimatrix_store::SqlxStore, cycle_id: &str) -> i64 {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM cycle_events \
+              WHERE cycle_id = ?1 AND event_type = 'cycle_stop'",
+        )
+        .bind(cycle_id)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("count cycle_stop rows")
+    }
+
+    /// Seed a `cycle_start` (+ optional phase) so a cycle exists with an open final
+    /// phase but no `cycle_stop`.
+    async fn seed_open_cycle(store: &unimatrix_store::SqlxStore, cycle_id: &str) {
+        store
+            .insert_cycle_event(cycle_id, 0, "cycle_start", None, None, None, 1_000, None)
+            .await
+            .expect("seed cycle_start");
+        store
+            .insert_cycle_event(
+                cycle_id,
+                1,
+                "cycle_phase_end",
+                Some("design"),
+                Some("done"),
+                Some("implementation"),
+                1_100,
+                None,
+            )
+            .await
+            .expect("seed cycle_phase_end");
+    }
+
+    // AC-15a: auto_close=true + no prior stop → a cycle_stop is written
+    // synchronously (before rank-1 reads the timeline, since the call site is the
+    // first statement in the full-pipeline block).
+    #[tokio::test]
+    async fn test_auto_close_true_no_stop_writes_before_pipeline() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-ac";
+        seed_open_cycle(&store, cycle).await;
+        assert_eq!(
+            count_cycle_stops(&store, cycle).await,
+            0,
+            "precondition: open"
+        );
+
+        super::maybe_auto_close(&store, cycle, true).await;
+
+        assert_eq!(
+            count_cycle_stops(&store, cycle).await,
+            1,
+            "AC-15a: auto_close=true with no prior stop must write exactly one cycle_stop"
+        );
+    }
+
+    // AC-15b: auto_close=true + stop already exists → idempotent no-op.
+    #[tokio::test]
+    async fn test_auto_close_true_stop_exists_idempotent() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-idem";
+        seed_open_cycle(&store, cycle).await;
+        // A cycle_stop already exists.
+        store
+            .insert_cycle_event(cycle, 2, "cycle_stop", None, None, None, 1_200, None)
+            .await
+            .expect("seed existing cycle_stop");
+        assert_eq!(count_cycle_stops(&store, cycle).await, 1);
+
+        super::maybe_auto_close(&store, cycle, true).await;
+
+        assert_eq!(
+            count_cycle_stops(&store, cycle).await,
+            1,
+            "AC-15b: auto_close=true with an existing stop must be an idempotent no-op"
+        );
+    }
+
+    // AC-15c: auto_close=false → no stop written (open final phase surfaces
+    // never-closed downstream; honest fail-loud, not an error here).
+    #[tokio::test]
+    async fn test_auto_close_false_no_stop_written() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-false";
+        seed_open_cycle(&store, cycle).await;
+
+        super::maybe_auto_close(&store, cycle, false).await;
+
+        assert_eq!(
+            count_cycle_stops(&store, cycle).await,
+            0,
+            "AC-15c: auto_close=false must not write a cycle_stop"
+        );
+    }
+
+    // The param defaults to false when omitted from the deserialized JSON.
+    #[test]
+    fn test_auto_close_default_is_false() {
+        let params: super::RetrospectiveParams =
+            serde_json::from_value(serde_json::json!({ "feature_cycle": "crt-055-x" }))
+                .expect("deserialize RetrospectiveParams without auto_close");
+        assert!(
+            !params.auto_close,
+            "auto_close must default to false when omitted"
+        );
+    }
+
+    // R-14 / AC-17: the stop is written via the cycle_events writer, NOT a second
+    // store_cycle_review — no cycle_review_index row is created by auto_close.
+    #[tokio::test]
+    async fn test_auto_close_writes_via_event_writer_not_store_cycle_review() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-writer";
+        seed_open_cycle(&store, cycle).await;
+        assert!(
+            store
+                .get_cycle_review(cycle)
+                .await
+                .expect("get_cycle_review")
+                .is_none(),
+            "precondition: no cycle_review_index row"
+        );
+
+        super::maybe_auto_close(&store, cycle, true).await;
+
+        // The stop landed in cycle_events ...
+        assert_eq!(count_cycle_stops(&store, cycle).await, 1);
+        // ... and NOT in cycle_review_index (single-writer invariant intact).
+        assert!(
+            store
+                .get_cycle_review(cycle)
+                .await
+                .expect("get_cycle_review")
+                .is_none(),
+            "R-14/AC-17: auto_close must not write a cycle_review_index row"
+        );
+    }
+
+    // Edge: auto_close=true on a cycle with NO events at all → no error, a stop is
+    // written at seq 0 (COALESCE(MAX(seq), -1) + 1).
+    #[tokio::test]
+    async fn test_auto_close_true_empty_cycle_writes_seq_zero() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-empty";
+
+        super::maybe_auto_close(&store, cycle, true).await;
+
+        let seq = sqlx::query_scalar::<_, i64>(
+            "SELECT seq FROM cycle_events WHERE cycle_id = ?1 AND event_type = 'cycle_stop'",
+        )
+        .bind(cycle)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("fetch stop seq");
+        assert_eq!(seq, 0, "first event on an empty cycle gets seq 0");
     }
 }
 

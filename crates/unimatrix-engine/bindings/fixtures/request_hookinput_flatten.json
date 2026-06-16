@@ -1,8 +1,8 @@
 {
-  "another_extra": {
-    "nested": 7
-  },
   "hook_event_name": "PreToolUse",
   "session_id": "sess-fixture",
-  "unknown_extra_key": "extra-value"
+  "unknown_extra_key": "extra-value",
+  "another_extra": {
+    "nested": 7
+  }
 }

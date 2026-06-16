@@ -20,8 +20,10 @@ use crate::schema::{deserialize_entry, serialize_entry};
 /// context_graph CTE and neighbor queries: idx_entries_supersedes, idx_entries_superseded_by,
 /// idx_graph_edges_source_type, idx_graph_edges_target_type).
 /// Bumped 28 → 29 by crt-054 (compaction_events table + idx_compaction_events_session).
-/// Merge-order note: if crt-055 merges first claiming 29, crt-054 moves to 30 (ADR-008).
-pub const CURRENT_SCHEMA_VERSION: u64 = 29;
+/// Bumped 29 → 30 by crt-055 (cycle_review_index v5 aggregate columns; ADR-001 #5051).
+/// Merge-order note: crt-054 and crt-055 ALTER disjoint tables; whoever merges first is
+/// N, the other N+1. crt-055 here assumes crt-054 landed 29 and takes 30 (lesson #4095).
+pub const CURRENT_SCHEMA_VERSION: u64 = 30;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -1442,8 +1444,142 @@ async fn run_main_migrations(
         .map_err(|e| StoreError::Migration {
             source: Box::new(e),
         })?;
+        // crt-055 added the v29→v30 block below, so this is no longer the last block.
+        // Intra-stamp to 29 (pattern #5052) so the subsequent v29→v30 block observes
+        // the correct intermediate version.
+        sqlx::query("UPDATE counters SET value = 29 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // v29 → v30: durable per-cycle aggregate columns on cycle_review_index (crt-055,
+    // ADR-001 #5051 / ADR-004 / ADR-005 / ADR-007). Adds 16 v5 columns in one block:
+    //   15 INTEGER NOT NULL DEFAULT 0 metric columns + signal_class_counts_json
+    //   TEXT NOT NULL DEFAULT '{}'.
+    //
+    // Every metric column is INTEGER (uniform with crt-047 v24) — no REAL/float column.
+    // context_reload_pct stores basis points (0–10000), so the push_bind(f64) non-finite
+    // footgun (#4529/#4533) is designed out by construction (ADR-005). No content field
+    // (structural leak gate). SUMMARY_SCHEMA_VERSION in cycle_review_index.rs is bumped
+    // 4 → 5 separately.
+    //
+    // Template: crt-047 v23→v24 — all pragma_table_info pre-checks run BEFORE any ALTER
+    // TABLE, then ALTER only the absent columns, then an in-transaction version stamp.
+    // A partial migration (some columns present) recovers cleanly on retry: pre-checks
+    // skip already-added columns, so each ALTER is idempotent. Any failure rolls back the
+    // outer txn and schema_version stays at 29.
+    if current_version < 30 {
+        // Guard on the table existing. In a real upgrade cycle_review_index has been
+        // present since v18, but a minimal forward-only test fixture seeded at an
+        // earlier version may not have created it (it is created by the fresh-create
+        // path / v17→v18 block, both of which a < v18 DB would still run). pragma on a
+        // missing table returns zero rows, which would make every column "absent" and
+        // the ALTER fail with "no such table". Skip the block when the table is absent;
+        // a fresh-create DB gets all columns from db.rs directly.
+        let cycle_review_index_exists: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM sqlite_master \
+             WHERE type = 'table' AND name = 'cycle_review_index'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Only touch the table when it exists. A genuine DB at version < 30 always
+        // has cycle_review_index (present since v18); a minimal forward-only test
+        // fixture seeded before v18 may not. pragma on a missing table returns zero
+        // rows, which would make every column "absent" and the ALTER fail with
+        // "no such table". Skip the column work when the table is absent — a
+        // fresh-create DB gets every column from db.rs directly.
+        if cycle_review_index_exists {
+            // --- Pre-check phase: read all 16 column states before any ALTER ---
+            const V5_INT_COLUMNS: [&str; 15] = [
+                "phase_count",
+                "phase_transition_count",
+                "phase_rework_count",
+                "phase_unclosed_count",
+                "phase_total_duration_secs",
+                "rework_session_count",
+                "total_session_count",
+                "knowledge_reuse_served_count",
+                "transcript_bytes_total",
+                "transcript_delta_count",
+                "transcript_error_count",
+                "transcript_refusal_count",
+                "compaction_count",
+                "compaction_reread_count",
+                "context_reload_pct",
+            ];
+
+            let mut int_col_present: [bool; 15] = [false; 15];
+            for (idx, col) in V5_INT_COLUMNS.iter().enumerate() {
+                int_col_present[idx] = sqlx::query_scalar::<_, i64>(
+                    "SELECT COUNT(*) FROM pragma_table_info('cycle_review_index') WHERE name = ?1",
+                )
+                .bind(col)
+                .fetch_one(&mut **txn)
+                .await
+                .map(|count| count > 0)
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+            }
+
+            let has_signal_class_counts_json: bool = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM pragma_table_info('cycle_review_index') \
+                 WHERE name = 'signal_class_counts_json'",
+            )
+            .fetch_one(&mut **txn)
+            .await
+            .map(|count| count > 0)
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+
+            // --- ALTER TABLE phase: add only absent columns ---
+            for (idx, col) in V5_INT_COLUMNS.iter().enumerate() {
+                if !int_col_present[idx] {
+                    // Column name is from a fixed compile-time allowlist (V5_INT_COLUMNS),
+                    // never user input — safe to interpolate (SQLite ALTER ADD COLUMN does
+                    // not accept a bound identifier).
+                    let stmt = format!(
+                        "ALTER TABLE cycle_review_index ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0"
+                    );
+                    sqlx::query(&stmt).execute(&mut **txn).await.map_err(|e| {
+                        StoreError::Migration {
+                            source: Box::new(e),
+                        }
+                    })?;
+                }
+            }
+
+            if !has_signal_class_counts_json {
+                sqlx::query(
+                    "ALTER TABLE cycle_review_index \
+                     ADD COLUMN signal_class_counts_json TEXT NOT NULL DEFAULT '{}'",
+                )
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+            }
+        }
+
         // This is now the LAST migration block, so the final INSERT OR REPLACE below
-        // stamps CURRENT_SCHEMA_VERSION (=29). No intra-block stamp required here.
+        // stamps CURRENT_SCHEMA_VERSION (=30). Stamp 30 here too so any later block
+        // added after this one observes the correct intermediate version (#5052).
+        sqlx::query("UPDATE counters SET value = 30 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
     }
 
     // Update schema_version counter to CURRENT_SCHEMA_VERSION.

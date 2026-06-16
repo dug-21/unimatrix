@@ -658,6 +658,7 @@ class UnimatrixClient:
         agent_id: str | None = None,
         format: str | None = None,
         force: bool | None = None,
+        auto_close: bool | None = None,
         timeout: float | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {"feature_cycle": feature_cycle}
@@ -667,6 +668,8 @@ class UnimatrixClient:
             args["format"] = format
         if force is not None:
             args["force"] = force
+        if auto_close is not None:
+            args["auto_close"] = auto_close
         return self.call_tool("context_cycle_review", args, timeout=timeout)
 
     def context_cycle(
