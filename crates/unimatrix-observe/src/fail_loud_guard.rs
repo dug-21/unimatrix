@@ -74,6 +74,8 @@ pub struct CycleAggregates {
     pub phase_rework_count: i64,
     /// #556 declared-but-never-closed phases.
     pub phase_unclosed_count: i64,
+    /// Σ of closed-phase window durations in seconds (rank-1). Unclosed phases add 0.
+    pub phase_total_duration_secs: i64,
 
     // ── rank-2 rework ratio num/den (SessionRecord.outcome) ──
     pub rework_session_count: i64,
@@ -275,6 +277,7 @@ mod tests {
             phase_transition_count: 2,
             phase_rework_count: 1,
             phase_unclosed_count: 1,
+            phase_total_duration_secs: 600,
             rework_session_count: 1,
             total_session_count: 4,
             knowledge_reuse_served_count: 2,

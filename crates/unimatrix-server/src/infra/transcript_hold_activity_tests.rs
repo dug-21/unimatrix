@@ -26,7 +26,9 @@
 //! would read `bytes_total == K` (not K+M) → the test fails RED. A test that
 //! stayed green under that mutation would be invalid.
 
-use super::{Arc, CapturingSink, Duration, HeldBufferScan, SessionRegistry, TestClock, TranscriptHold};
+use super::{
+    Arc, CapturingSink, Duration, HeldBufferScan, SessionRegistry, TestClock, TranscriptHold,
+};
 use crate::infra::transcript_activity::ActivitySnapshot;
 
 /// Wire a `SessionRegistry` to a real `TranscriptHold` (the production pair) with
@@ -171,7 +173,9 @@ fn test_collector_includes_declared_held_excludes_undeclared() {
 
     let snaps = registry.activity_snapshots_for_feature(cycle);
     assert!(
-        snaps.iter().any(|(sid, snap)| sid == "declared" && snap.bytes_total > 0),
+        snaps
+            .iter()
+            .any(|(sid, snap)| sid == "declared" && snap.bytes_total > 0),
         "AC-06: the declared held session contributes a non-zero entry"
     );
     assert!(
@@ -247,7 +251,9 @@ fn test_snapshot_survives_drain_hold_review() {
     registry.register_session(sid, None, Some(cycle.to_string()));
     registry.apply_transcript_delta(sid, 0, parts[0]); // registered
 
-    let _ = registry.drain_and_signal_session(sid, "success").expect("drain 1");
+    let _ = registry
+        .drain_and_signal_session(sid, "success")
+        .expect("drain 1");
     clock.advance(Duration::from_secs(1));
     registry.apply_transcript_delta(sid, 4, parts[1]); // held
 
@@ -255,7 +261,9 @@ fn test_snapshot_survives_drain_hold_review() {
     assert!(!hold.is_held(sid), "readopt rebound the live held buffer");
     registry.apply_transcript_delta(sid, 8, parts[2]); // registered again
 
-    let _ = registry.drain_and_signal_session(sid, "success").expect("drain 2");
+    let _ = registry
+        .drain_and_signal_session(sid, "success")
+        .expect("drain 2");
     clock.advance(Duration::from_secs(1));
     registry.apply_transcript_delta(sid, 12, parts[3]); // held again
 

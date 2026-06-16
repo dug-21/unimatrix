@@ -396,6 +396,17 @@ pub struct RetrospectiveParams {
     /// Force recomputation even if a stored review exists. (crt-033)
     /// Absent or None is equivalent to false.
     pub force: Option<bool>,
+    /// crt-055 (#593, ADR-010): close the cycle as part of the review.
+    ///
+    /// When `true` AND the cycle has no `cycle_stop` event, a `cycle_stop` row is
+    /// written synchronously via the existing `cycle_events` writer at the TOP of the
+    /// full-pipeline block — before rank-1 phase reckoning reads the timeline — so the
+    /// final phase closes and is not mis-counted as #556 never-closed. Idempotent: a
+    /// no-op when a `cycle_stop` already exists. When `false` (default) the timeline is
+    /// left as-is; an open final phase correctly surfaces as never-closed (fail-loud,
+    /// not an error). Informs/closes a record only — never controls execution (RQ-8).
+    #[serde(default)]
+    pub auto_close: bool,
 }
 
 /// Parameters for the context_cycle tool.
@@ -2267,6 +2278,20 @@ impl UnimatrixServer {
         let mut cycle_outcome: Option<String> = None;
 
         if memo_hit.is_none() {
+            // ---------------------------------------------------------------
+            // Component 8 (crt-055 #593, ADR-010): auto_close arm.
+            //
+            // Runs at the TOP of the full-pipeline block, BEFORE the pipeline
+            // reads the cycle_events timeline at step 10g (line ~2649, rank-1
+            // phase reckoning). It is NOT on the memo-hit / cached-MetricVector
+            // / no-data returns — only the full-pipeline path closes the cycle.
+            //
+            // Component 9 (review pipeline ordering) integration point: this arm
+            // must remain the first statement inside `if memo_hit.is_none()` and
+            // BEFORE any cycle_events read. Do not move it past step 10g.
+            // ---------------------------------------------------------------
+            maybe_auto_close(&store, &feature_cycle, params.auto_close).await;
+
             // 6. Check for data availability
             if attributed.is_empty() {
                 // No new data -- check for cached MetricVector
@@ -3638,6 +3663,115 @@ impl UnimatrixServer {
         // tools.rs contains only this dispatch call.
         crate::mcp::graph_read::handle_graph(&self.store, &typed_graph_state, params, &ctx).await
     }
+}
+
+// ---------------------------------------------------------------------------
+// crt-055 (#593, ADR-010): auto_close handler arm (Component 8)
+// ---------------------------------------------------------------------------
+
+/// Close the cycle as part of the review when `auto_close` is requested (ADR-010).
+///
+/// Called at the TOP of the full-pipeline block, BEFORE the pipeline reads the
+/// `cycle_events` timeline for rank-1 phase reckoning. When `auto_close == true`
+/// and the cycle has no `cycle_stop` event, a `cycle_stop` row is written
+/// synchronously via the EXISTING `cycle_events` writer (`insert_cycle_event`) —
+/// NOT a second `store_cycle_review`. This keeps the single `cycle_review_index`
+/// writer invariant intact (Constraint 1 / ADR-002): the stop goes to a different
+/// table/path.
+///
+/// Semantics:
+///   * `auto_close == false` (default) — no-op; the timeline is left as-is so an
+///     open final phase correctly surfaces as #556 never-closed (fail-loud).
+///   * `auto_close == true`, a `cycle_stop` already exists — idempotent no-op
+///     (re-review with `auto_close=true` writes no duplicate stop).
+///   * `auto_close == true`, no `cycle_stop` — write one `cycle_stop` at `now`.
+///
+/// Errors are non-fatal and never abort the review:
+///   * existence-check Err → treated as "unknown"; the write is SKIPPED (safer than
+///     a possible duplicate) and logged.
+///   * insert Err → logged; the review proceeds (the timeline simply stays open and
+///     the final phase surfaces never-closed — honest, not silently wrong).
+async fn maybe_auto_close(
+    store: &Arc<unimatrix_store::SqlxStore>,
+    feature_cycle: &str,
+    auto_close: bool,
+) {
+    if !auto_close {
+        // Default path: leave the timeline as-is. An open final phase surfaces as
+        // #556 never-closed downstream (correct fail-loud, not an error).
+        return;
+    }
+
+    // Idempotency: read the current cycle_events timeline for this cycle. We fetch
+    // MAX(seq) and a cycle_stop-presence flag in one indexed pass.
+    let row = sqlx::query_as::<_, (Option<i64>, i64)>(
+        "SELECT MAX(seq), \
+                COALESCE(SUM(CASE WHEN event_type = 'cycle_stop' THEN 1 ELSE 0 END), 0) \
+           FROM cycle_events \
+          WHERE cycle_id = ?1",
+    )
+    .bind(feature_cycle)
+    .fetch_one(store.write_pool_server())
+    .await;
+
+    let (max_seq, stop_count) = match row {
+        Ok(r) => r,
+        Err(e) => {
+            // Existence check failed → unknown state. Skip the write rather than
+            // risk a duplicate cycle_stop (ADR-010 error handling).
+            tracing::warn!(
+                cycle_id = %feature_cycle,
+                error = %e,
+                "crt-055: auto_close existence check failed — skipping cycle_stop write"
+            );
+            return;
+        }
+    };
+
+    if stop_count > 0 {
+        // A cycle_stop already exists → idempotent no-op.
+        tracing::debug!(
+            cycle_id = %feature_cycle,
+            "crt-055: auto_close requested but cycle_stop already present — no-op"
+        );
+        return;
+    }
+
+    // Write cycle_stop synchronously via the existing cycle_events writer.
+    // seq is advisory (ADR-002): COALESCE(MAX(seq), -1) + 1 scoped to the cycle.
+    let next_seq = max_seq.unwrap_or(-1) + 1;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+
+    if let Err(e) = store
+        .insert_cycle_event(
+            feature_cycle,
+            next_seq,
+            "cycle_stop",
+            None, // phase
+            None, // outcome
+            None, // next_phase
+            now,
+            None, // goal — only set on cycle_start
+        )
+        .await
+    {
+        // Non-fatal: the review proceeds; the final phase will surface never-closed.
+        tracing::warn!(
+            cycle_id = %feature_cycle,
+            error = %e,
+            "crt-055: auto_close cycle_stop write failed — review continues (timeline stays open)"
+        );
+        return;
+    }
+
+    tracing::info!(
+        cycle_id = %feature_cycle,
+        seq = next_seq,
+        "crt-055: auto_close wrote cycle_stop before rank-1 reckoning (#593)"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -9709,6 +9843,168 @@ mod cycle_review_integration_tests {
             ts, 1_000,
             "CCR-U-09: MIN timestamp must be returned for multiple cycle_start events"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-055 (#593, ADR-010, AC-15): auto_close handler arm (Component 8)
+    // -----------------------------------------------------------------------
+
+    /// Count `cycle_stop` rows for a cycle via the write pool.
+    async fn count_cycle_stops(store: &unimatrix_store::SqlxStore, cycle_id: &str) -> i64 {
+        sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM cycle_events \
+              WHERE cycle_id = ?1 AND event_type = 'cycle_stop'",
+        )
+        .bind(cycle_id)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("count cycle_stop rows")
+    }
+
+    /// Seed a `cycle_start` (+ optional phase) so a cycle exists with an open final
+    /// phase but no `cycle_stop`.
+    async fn seed_open_cycle(store: &unimatrix_store::SqlxStore, cycle_id: &str) {
+        store
+            .insert_cycle_event(cycle_id, 0, "cycle_start", None, None, None, 1_000, None)
+            .await
+            .expect("seed cycle_start");
+        store
+            .insert_cycle_event(
+                cycle_id,
+                1,
+                "cycle_phase_end",
+                Some("design"),
+                Some("done"),
+                Some("implementation"),
+                1_100,
+                None,
+            )
+            .await
+            .expect("seed cycle_phase_end");
+    }
+
+    // AC-15a: auto_close=true + no prior stop → a cycle_stop is written
+    // synchronously (before rank-1 reads the timeline, since the call site is the
+    // first statement in the full-pipeline block).
+    #[tokio::test]
+    async fn test_auto_close_true_no_stop_writes_before_pipeline() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-ac";
+        seed_open_cycle(&store, cycle).await;
+        assert_eq!(
+            count_cycle_stops(&store, cycle).await,
+            0,
+            "precondition: open"
+        );
+
+        super::maybe_auto_close(&store, cycle, true).await;
+
+        assert_eq!(
+            count_cycle_stops(&store, cycle).await,
+            1,
+            "AC-15a: auto_close=true with no prior stop must write exactly one cycle_stop"
+        );
+    }
+
+    // AC-15b: auto_close=true + stop already exists → idempotent no-op.
+    #[tokio::test]
+    async fn test_auto_close_true_stop_exists_idempotent() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-idem";
+        seed_open_cycle(&store, cycle).await;
+        // A cycle_stop already exists.
+        store
+            .insert_cycle_event(cycle, 2, "cycle_stop", None, None, None, 1_200, None)
+            .await
+            .expect("seed existing cycle_stop");
+        assert_eq!(count_cycle_stops(&store, cycle).await, 1);
+
+        super::maybe_auto_close(&store, cycle, true).await;
+
+        assert_eq!(
+            count_cycle_stops(&store, cycle).await,
+            1,
+            "AC-15b: auto_close=true with an existing stop must be an idempotent no-op"
+        );
+    }
+
+    // AC-15c: auto_close=false → no stop written (open final phase surfaces
+    // never-closed downstream; honest fail-loud, not an error here).
+    #[tokio::test]
+    async fn test_auto_close_false_no_stop_written() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-false";
+        seed_open_cycle(&store, cycle).await;
+
+        super::maybe_auto_close(&store, cycle, false).await;
+
+        assert_eq!(
+            count_cycle_stops(&store, cycle).await,
+            0,
+            "AC-15c: auto_close=false must not write a cycle_stop"
+        );
+    }
+
+    // The param defaults to false when omitted from the deserialized JSON.
+    #[test]
+    fn test_auto_close_default_is_false() {
+        let params: super::RetrospectiveParams =
+            serde_json::from_value(serde_json::json!({ "feature_cycle": "crt-055-x" }))
+                .expect("deserialize RetrospectiveParams without auto_close");
+        assert!(
+            !params.auto_close,
+            "auto_close must default to false when omitted"
+        );
+    }
+
+    // R-14 / AC-17: the stop is written via the cycle_events writer, NOT a second
+    // store_cycle_review — no cycle_review_index row is created by auto_close.
+    #[tokio::test]
+    async fn test_auto_close_writes_via_event_writer_not_store_cycle_review() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-writer";
+        seed_open_cycle(&store, cycle).await;
+        assert!(
+            store
+                .get_cycle_review(cycle)
+                .await
+                .expect("get_cycle_review")
+                .is_none(),
+            "precondition: no cycle_review_index row"
+        );
+
+        super::maybe_auto_close(&store, cycle, true).await;
+
+        // The stop landed in cycle_events ...
+        assert_eq!(count_cycle_stops(&store, cycle).await, 1);
+        // ... and NOT in cycle_review_index (single-writer invariant intact).
+        assert!(
+            store
+                .get_cycle_review(cycle)
+                .await
+                .expect("get_cycle_review")
+                .is_none(),
+            "R-14/AC-17: auto_close must not write a cycle_review_index row"
+        );
+    }
+
+    // Edge: auto_close=true on a cycle with NO events at all → no error, a stop is
+    // written at seq 0 (COALESCE(MAX(seq), -1) + 1).
+    #[tokio::test]
+    async fn test_auto_close_true_empty_cycle_writes_seq_zero() {
+        let (store, _dir) = open_store().await;
+        let cycle = "crt-055-empty";
+
+        super::maybe_auto_close(&store, cycle, true).await;
+
+        let seq = sqlx::query_scalar::<_, i64>(
+            "SELECT seq FROM cycle_events WHERE cycle_id = ?1 AND event_type = 'cycle_stop'",
+        )
+        .bind(cycle)
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("fetch stop seq");
+        assert_eq!(seq, 0, "first event on an empty cycle gets seq 0");
     }
 }
 

@@ -742,8 +742,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // the other startup validates) and compile the shared scanner ONCE from the
     // validated, enabled patterns. Fail startup on Err — no silent "no scanning"
     // fallback (R-10).
-    let signature_scanner =
-        Arc::new(build_signature_scanner(&config, &paths.data_dir.join("config.toml"))?);
+    let signature_scanner = Arc::new(build_signature_scanner(
+        &config,
+        &paths.data_dir.join("config.toml"),
+    )?);
 
     // crt-052 Wave B (ADR-008): build the bounded held-buffer store and inject
     // it into the registry as the `HeldBufferScan` handle so the snapshot seam
@@ -1294,8 +1296,10 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // crt-054 (ADR-002): validate `[transcript_signals]` and compile the shared
     // scanner ONCE (mirrors the daemon path). Fail startup on Err (R-10).
-    let signature_scanner =
-        Arc::new(build_signature_scanner(&config, &paths.data_dir.join("config.toml"))?);
+    let signature_scanner = Arc::new(build_signature_scanner(
+        &config,
+        &paths.data_dir.join("config.toml"),
+    )?);
 
     // crt-052 Wave B (ADR-008): held-buffer store, injected into the registry as
     // the `HeldBufferScan` handle (mirrors the daemon path).

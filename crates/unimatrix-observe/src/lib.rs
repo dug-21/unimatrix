@@ -6,6 +6,7 @@
 
 pub mod attribution;
 pub mod baseline;
+pub mod cycle_aggregates;
 pub mod detection;
 pub mod distill;
 pub mod domain;
@@ -23,6 +24,10 @@ pub mod types;
 // Re-exports for public API
 pub use attribution::{attribute_sessions, extract_topic_signal};
 pub use baseline::{compare_to_baseline, compute_baselines};
+pub use cycle_aggregates::{
+    PhaseAggregates, SessionOutcome, is_rework_outcome, populate_rank_1_2_3,
+    reckon_knowledge_reuse_served, reckon_phase_aggregates, reckon_rework_ratio,
+};
 pub use detection::{DetectionRule, default_rules, detect_hotspots};
 pub use domain::{DomainPack, DomainPackRegistry};
 pub use error::{ObserveError, Result};

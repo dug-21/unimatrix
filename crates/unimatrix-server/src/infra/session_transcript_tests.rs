@@ -445,7 +445,10 @@ fn test_apply_delta_registered_route_folds_counters() {
     buf.apply_delta(0, b"hello"); // 5 bytes
     buf.apply_delta(5, b"world!"); // 6 bytes
     let snap = buf.activity_snapshot();
-    assert_eq!(snap.bytes_total, 11, "sum of accepted delta payload lengths");
+    assert_eq!(
+        snap.bytes_total, 11,
+        "sum of accepted delta payload lengths"
+    );
     assert_eq!(snap.delta_count, 2, "+1 per accepted delta");
 }
 

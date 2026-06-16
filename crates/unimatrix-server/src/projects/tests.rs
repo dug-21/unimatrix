@@ -325,7 +325,10 @@ fn test_list_returns_registered_slugs() {
 fn test_list_empty_when_none_registered() {
     let fx = Fixture::new();
     let statuses = fx.registry().scan_registered().expect("scan empty");
-    assert!(statuses.is_empty(), "no routing config => empty, not an error");
+    assert!(
+        statuses.is_empty(),
+        "no routing config => empty, not an error"
+    );
 }
 
 #[test]
