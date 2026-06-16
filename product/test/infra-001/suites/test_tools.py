@@ -5201,3 +5201,148 @@ def test_correct_omits_edges_carried_when_zero(server):
         f"edges_carried ack must be omitted when zero, got: {result.text!r}"
     )
 
+
+
+# === crt-055: context_cycle_review auto_close param (#593, AC-15) ===========
+#
+# auto_close=true writes a `cycle_stop` to `cycle_events` synchronously at the TOP
+# of the review pipeline (before rank-1 reads the timeline) when no cycle_stop
+# exists; idempotent when one already exists; no-op when auto_close=false. It
+# writes via the cycle_events writer, NOT a second cycle_review_index writer.
+
+
+def _tools_db_path(project_dir):
+    import hashlib
+    import os
+    canonical = os.path.realpath(project_dir)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return os.path.join(os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+
+def _seed_cycle_event(db_path, cycle_id, seq, event_type, *, phase=None, next_phase=None, ts=None):
+    import sqlite3 as _sqlite3
+    import time as _time
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute(
+        "INSERT INTO cycle_events (cycle_id, seq, event_type, phase, outcome, next_phase, timestamp) "
+        "VALUES (?, ?, ?, ?, NULL, ?, ?)",
+        (cycle_id, seq, event_type, phase, next_phase, ts if ts is not None else int(_time.time())),
+    )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+def _count_cycle_stops(db_path, cycle_id):
+    import sqlite3 as _sqlite3
+    conn = _sqlite3.connect(db_path)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn.execute(
+            "SELECT COUNT(*) FROM cycle_events WHERE cycle_id=? AND event_type='cycle_stop'",
+            (cycle_id,),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _seed_obs_for_cycle(db_path, feature_cycle, num_records=10):
+    """Seed a declared session + observations so context_cycle_review reaches the
+    full pipeline. The handler returns ERROR_NO_OBSERVATION_DATA (and never runs the
+    auto_close arm, which lives inside the full-pipeline block) when no observation
+    data attributes to the cycle — so auto_close is only exercised with seeded data.
+    """
+    import sqlite3 as _sqlite3
+    import time as _time
+    import uuid as _uuid
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    now_secs = int(_time.time())
+    base_ts_millis = now_secs * 1000 - 86_400_000
+    session_id = f"tools-{feature_cycle}-{_uuid.uuid4().hex[:8]}"
+    conn.execute(
+        "INSERT INTO sessions (session_id, feature_cycle, started_at, status) VALUES (?, ?, ?, 0)",
+        (session_id, feature_cycle, now_secs),
+    )
+    for i in range(num_records):
+        ts_millis = base_ts_millis + (i * 300_000)
+        hook = "PreToolUse" if i % 2 == 0 else "PostToolUse"
+        conn.execute(
+            "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (session_id, ts_millis, hook, "Read", None,
+             1024 if hook == "PostToolUse" else None,
+             "out" if hook == "PostToolUse" else None),
+        )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+def test_cycle_review_auto_close_writes_stop_when_absent(server):
+    """AC-15 (R-14): auto_close=true with no prior cycle_stop writes exactly one
+    cycle_stop synchronously, so the final phase closes (not a false #556 never-closed).
+    """
+    import time as _time
+    topic = "crt055-auto-close-writes-stop"
+    db_path = _tools_db_path(server.project_dir)
+    now = int(_time.time())
+    # An open timeline: start + a phase-end, NO cycle_stop.
+    _seed_cycle_event(db_path, topic, 0, "cycle_start", next_phase="scope", ts=now - 300)
+    _seed_cycle_event(db_path, topic, 1, "cycle_phase_end", phase="scope", next_phase="design", ts=now - 200)
+    _seed_obs_for_cycle(db_path, topic)
+
+    assert _count_cycle_stops(db_path, topic) == 0, "precondition: no cycle_stop yet"
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", auto_close=True, force=True, timeout=30.0)
+    assert_tool_success(resp)
+
+    assert _count_cycle_stops(db_path, topic) == 1, (
+        "AC-15: auto_close=true with no prior stop must write exactly one cycle_stop"
+    )
+
+
+def test_cycle_review_auto_close_idempotent_when_stop_exists(server):
+    """AC-15 (R-14): auto_close=true when a cycle_stop already exists is a no-op
+    (no duplicate stop written). Re-review with auto_close stays idempotent.
+    """
+    import time as _time
+    topic = "crt055-auto-close-idempotent"
+    db_path = _tools_db_path(server.project_dir)
+    now = int(_time.time())
+    _seed_cycle_event(db_path, topic, 0, "cycle_start", next_phase="scope", ts=now - 300)
+    _seed_cycle_event(db_path, topic, 1, "cycle_phase_end", phase="scope", next_phase="design", ts=now - 200)
+    _seed_cycle_event(db_path, topic, 2, "cycle_stop", phase="design", ts=now - 100)
+    _seed_obs_for_cycle(db_path, topic)
+
+    assert _count_cycle_stops(db_path, topic) == 1, "precondition: one cycle_stop"
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", auto_close=True, force=True, timeout=30.0)
+    assert_tool_success(resp)
+
+    assert _count_cycle_stops(db_path, topic) == 1, (
+        "AC-15: auto_close=true with a pre-existing cycle_stop must NOT write a duplicate "
+        "(idempotent)"
+    )
+
+
+def test_cycle_review_auto_close_false_does_not_write_stop(server):
+    """AC-15 / AC-04 (R-14): auto_close=false (default) leaves an open timeline open —
+    no cycle_stop is written, so the final phase honestly surfaces as never-closed.
+    """
+    import time as _time
+    topic = "crt055-auto-close-false"
+    db_path = _tools_db_path(server.project_dir)
+    now = int(_time.time())
+    _seed_cycle_event(db_path, topic, 0, "cycle_start", next_phase="scope", ts=now - 300)
+    _seed_cycle_event(db_path, topic, 1, "cycle_phase_end", phase="scope", next_phase="design", ts=now - 200)
+    _seed_obs_for_cycle(db_path, topic)
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", auto_close=False, force=True, timeout=30.0)
+    assert_tool_success(resp)
+
+    assert _count_cycle_stops(db_path, topic) == 0, (
+        "AC-15: auto_close=false must NOT write a cycle_stop; the open final phase "
+        "surfaces as never-closed (fail-loud, not an error)"
+    )

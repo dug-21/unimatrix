@@ -3915,3 +3915,420 @@ def test_correction_carries_outgoing_edges_visible_on_new_entry(server):
         f"AC-02 (copy semantics): the original edge remains on deprecated A={id_a} "
         f"-> X={id_x} (carry copies, does not move); got count={on_a}"
     )
+
+
+# ===========================================================================
+# crt-055: context_cycle_review redesign — durable per-cycle aggregates,
+# dual reload, transcript-fold surfacing, clock/unit compaction gate.
+#
+# These tests exercise the FULL context_cycle_review pipeline through the
+# compiled binary against a real SQLite DB. The new v5 metric columns are NOT
+# serde fields on the JSON report (pattern #4866) — they are persisted into
+# `cycle_review_index` and surfaced in a rendered fail-loud text block appended
+# as an extra Content item. Assertions therefore read the persisted columns
+# directly (the durable substrate the feature exists to make trustworthy) and,
+# where presentation honesty is under test, the rendered block text.
+# ===========================================================================
+
+
+def _all_result_text(response):
+    """Concatenate text across ALL Content items of a tool response.
+
+    `get_result_text` returns only content[0]; the crt-055 fail-loud block is
+    appended as a SECOND content item, so presentation-honesty assertions must
+    read every text item.
+    """
+    result = assert_tool_success(response)
+    parts = []
+    for item in result.content:
+        if isinstance(item, dict) and item.get("type") == "text":
+            parts.append(item.get("text", ""))
+    return "\n".join(parts)
+
+
+def _seed_session_lifecycle(db_path, session_id, feature_cycle, *, outcome=None):
+    """Seed one row into `sessions` declaring a session to a feature cycle.
+
+    The declaration chain (session -> feature_cycle) is how the review pipeline
+    attributes observations / compaction_events to the cycle. An undeclared
+    session (no row, or a different feature_cycle) does NOT attribute (#4140).
+    """
+    import sqlite3 as _sqlite3
+    import time as _time
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    now_secs = int(_time.time())
+    conn.execute(
+        "INSERT OR IGNORE INTO sessions (session_id, feature_cycle, started_at, status) "
+        "VALUES (?, ?, ?, 0)",
+        (session_id, feature_cycle, now_secs),
+    )
+    if outcome is not None:
+        conn.execute(
+            "UPDATE sessions SET outcome=? WHERE session_id=?",
+            (outcome, session_id),
+        )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+def _seed_read_observation(db_path, session_id, ts_millis, file_path):
+    """Seed one PostToolUse `Read` observation with a file_path.
+
+    The reload/compaction overlap primitive only counts PostToolUse rows with an
+    extractable file_path (tool='Read', input JSON carries file_path). The
+    standard `_seed_observation_sql_lifecycle` helper writes input=None, so the
+    overlap tests need this finer-grained seed.
+    """
+    import sqlite3 as _sqlite3
+    import json as _json
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute(
+        "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet) "
+        "VALUES (?, ?, 'PostToolUse', 'Read', ?, 1024, 'out')",
+        (session_id, ts_millis, _json.dumps({"file_path": file_path})),
+    )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+def _seed_compaction_event(db_path, session_id, compacted_at_secs, high_water=0):
+    """Seed one row into the crt-054 `compaction_events` table (Unix seconds)."""
+    import sqlite3 as _sqlite3
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute(
+        "INSERT INTO compaction_events (session_id, compacted_at, high_water) VALUES (?, ?, ?)",
+        (session_id, compacted_at_secs, high_water),
+    )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+def _read_cycle_review_index_row(db_path, feature_cycle):
+    """Read the persisted v5 metric columns for a cycle, or None if absent."""
+    import sqlite3 as _sqlite3
+    conn = _sqlite3.connect(db_path)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.row_factory = _sqlite3.Row
+        row = conn.execute(
+            "SELECT schema_version, compaction_count, compaction_reread_count, "
+            "transcript_bytes_total, transcript_delta_count, transcript_error_count, "
+            "transcript_refusal_count, signal_class_counts_json, context_reload_pct, "
+            "phase_unclosed_count "
+            "FROM cycle_review_index WHERE feature_cycle = ?",
+            (feature_cycle,),
+        ).fetchone()
+        return dict(row) if row is not None else None
+    finally:
+        conn.close()
+
+
+def _cycle_review_index_columns(db_path):
+    """Return the column names of cycle_review_index (pragma reader)."""
+    import sqlite3 as _sqlite3
+    conn = _sqlite3.connect(db_path)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        rows = conn.execute("PRAGMA table_info(cycle_review_index)").fetchall()
+        # (cid, name, type, notnull, dflt_value, pk)
+        return {r[1]: {"type": r[2], "notnull": r[3], "default": r[4]} for r in rows}
+    finally:
+        conn.close()
+
+
+# --- AC-22: clock/unit seconds-normalization compaction gate (MANDATED) -----
+
+
+def test_cycle_review_compaction_reread_seconds_boundary(server):
+    """AC-22 (R-08, CRITICAL): the marquee clock/unit integration test.
+
+    Cross-table: `compaction_events.compacted_at = T` (Unix SECONDS) gated against
+    PostToolUse `observations.ts_millis` (epoch MILLIS). The gate normalizes the
+    read ts to seconds by integer floor (`ts_millis / 1000`) and counts iff
+    `read_ts_secs > compacted_at` (STRICT). Three reads of the SAME pre-boundary
+    file:
+      - +1s  (ts = (T+1)*1000)       -> floor T+1; T+1 > T  -> COUNTS
+      - -500ms (ts = T*1000 - 500)   -> floor T-1; T-1 > T  -> does NOT count
+                                        (the floor-catching guard: an unnormalized
+                                        millis-vs-seconds gate would wrongly count it)
+      - exact boundary (ts = T*1000) -> floor T;   T   > T  -> does NOT count (strict >)
+    The file is also read once BEFORE the boundary to establish the prior set.
+    Expected: `compaction_reread_count == 1`. Sub-second offsets exercise the
+    /1000 floor — a +/-1s window would pass even with a broken/absent floor.
+    """
+    topic = "crt055-ac22-seconds-boundary"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+
+    session_id = "crt055-ac22-sess"
+    _seed_session_lifecycle(db_path, session_id, topic)
+
+    T = 1_700_000_000  # Unix seconds boundary
+    t_millis = T * 1000
+    file_path = "/repo/src/gate.rs"
+
+    # Prior read at/before the boundary establishes the file in the prior set.
+    _seed_read_observation(db_path, session_id, t_millis - 5_000, file_path)  # T-5s prior
+    # exact boundary: floors to T -> NOT counted (strict >)
+    _seed_read_observation(db_path, session_id, t_millis, file_path)
+    # -500ms: floors to T-1 -> NOT counted (floor guard)
+    _seed_read_observation(db_path, session_id, t_millis - 500, file_path)
+    # +1s: floors to T+1 -> COUNTS
+    _seed_read_observation(db_path, session_id, t_millis + 1_000, file_path)
+
+    _seed_compaction_event(db_path, session_id, T)
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", force=True, timeout=30.0)
+    assert_tool_success(resp)
+
+    row = _read_cycle_review_index_row(db_path, topic)
+    assert row is not None, "AC-22: a v5 cycle_review_index row must be persisted"
+    assert row["compaction_count"] == 1, (
+        f"AC-22: compaction_count must be 1 (one compaction_events row); got {row['compaction_count']}"
+    )
+    assert row["compaction_reread_count"] == 1, (
+        "AC-22: exactly the +1s read (floors to T+1) clears floor+strict-'>'; the "
+        "-500ms (floors T-1) and exact-boundary (floors T) reads do NOT. The "
+        "sub-second offsets prove the /1000 floor is present (a +/-1s window would "
+        f"pass even with a broken floor). Expected compaction_reread_count == 1, got "
+        f"{row['compaction_reread_count']}"
+    )
+
+
+def test_cycle_review_compaction_reread_unit_mismatch_guarded(server):
+    """AC-22 (R-08): the seconds-normalization prevents an all-or-nothing miscompare.
+
+    If the gate compared raw millis `ts` against seconds `compacted_at`, EVERY read
+    (ts ~ 1.7e12) would be astronomically greater than the boundary (T ~ 1.7e9) and
+    every post-prior read would count (~1000x over-count). Here a single file is read
+    once before the boundary and once -500ms before it (floors to T-1, must NOT count).
+    A correct seconds-normalized gate yields 0; a broken raw-millis gate would yield 1+.
+    """
+    topic = "crt055-ac22-unit-mismatch"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    session_id = "crt055-ac22-mismatch-sess"
+    _seed_session_lifecycle(db_path, session_id, topic)
+
+    T = 1_700_000_500
+    t_millis = T * 1000
+    file_path = "/repo/src/mismatch.rs"
+    _seed_read_observation(db_path, session_id, t_millis - 3_000, file_path)  # prior
+    _seed_read_observation(db_path, session_id, t_millis - 500, file_path)    # -500ms -> floor T-1
+    _seed_compaction_event(db_path, session_id, T)
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", force=True, timeout=30.0)
+    assert_tool_success(resp)
+    row = _read_cycle_review_index_row(db_path, topic)
+    assert row is not None
+    assert row["compaction_reread_count"] == 0, (
+        "AC-22: a -500ms-before-boundary read floors to T-1 and must NOT count under "
+        "seconds-normalization. A non-zero here would mean the gate compared raw millis "
+        f"against seconds (all-or-nothing). Got {row['compaction_reread_count']}"
+    )
+
+
+def test_cycle_review_compaction_count_vs_reread(server):
+    """AC-11 / AC-12: compaction_count reports ALL boundaries; the reread gate uses MIN.
+
+    Multi-compaction session (N=2 rows): compaction_count == 2; the reread gate
+    selects MIN(compacted_at) and counts each pre-boundary file re-read once after it.
+    """
+    topic = "crt055-count-vs-reread"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    session_id = "crt055-multi-comp-sess"
+    _seed_session_lifecycle(db_path, session_id, topic)
+
+    T_min = 1_700_000_000
+    T_late = 1_700_000_500
+    t_millis = T_min * 1000
+    file_path = "/repo/src/multi.rs"
+    _seed_read_observation(db_path, session_id, t_millis - 5_000, file_path)   # prior to MIN
+    _seed_read_observation(db_path, session_id, t_millis + 60_000, file_path)  # after MIN -> reread
+    _seed_compaction_event(db_path, session_id, T_min)
+    _seed_compaction_event(db_path, session_id, T_late)
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", force=True, timeout=30.0)
+    assert_tool_success(resp)
+    row = _read_cycle_review_index_row(db_path, topic)
+    assert row is not None
+    assert row["compaction_count"] == 2, (
+        f"AC-11: compaction_count must report ALL {2} boundaries; got {row['compaction_count']}"
+    )
+    assert row["compaction_reread_count"] == 1, (
+        "AC-12: the reread gates on MIN(compacted_at); one file re-read once after MIN "
+        f"counts once; got {row['compaction_reread_count']}"
+    )
+
+
+def test_cycle_review_compaction_attribution_declared_only(server):
+    """AC-11 (R-05, #4140): only DECLARED sessions' compaction_events attribute.
+
+    An undeclared/evicted session's compaction_events row must NOT inflate the cycle's
+    compaction_count — the declaration-chain silent-no-op (#4140) condition. The
+    declared session's row counts; the undeclared session's does not.
+    """
+    topic = "crt055-attr-declared-only"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+
+    declared = "crt055-declared-sess"
+    undeclared = "crt055-undeclared-sess"
+    _seed_session_lifecycle(db_path, declared, topic)
+    # `undeclared` is intentionally NOT declared to `topic` (declared to a different cycle).
+    _seed_session_lifecycle(db_path, undeclared, "crt055-some-other-cycle")
+
+    # Give the declared session an observation so it attributes to the cycle.
+    T = 1_700_000_000
+    _seed_read_observation(db_path, declared, T * 1000 - 1000, "/repo/src/a.rs")
+    _seed_compaction_event(db_path, declared, T)
+    _seed_compaction_event(db_path, undeclared, T)  # must NOT attribute
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", force=True, timeout=30.0)
+    assert_tool_success(resp)
+    row = _read_cycle_review_index_row(db_path, topic)
+    assert row is not None
+    assert row["compaction_count"] == 1, (
+        "AC-11 (#4140): only the declared session's compaction_events row attributes; "
+        f"the undeclared session's row must not inflate the count. Expected 1, got "
+        f"{row['compaction_count']}"
+    )
+
+
+# --- AC-08 / AC-09 / AC-07: transcript fold landing ------------------------
+#
+# NOTE: the transcript fold is produced by the crt-054 in-memory TranscriptBuffer
+# (activity_snapshot), which is populated only via the live UDS hook path — NOT
+# reachable from the MCP harness. The transcript_* columns therefore land as a
+# genuine measured/unavailable zero for an MCP-only seeded cycle. The HELD-ROUTE
+# non-zero fold (AC-09) and the read-before-purge INVERSION (AC-08) are validated
+# at the Rust integration layer (activity_fold_handler_tests.rs / review_aggregates),
+# where the in-process buffer and call ordering are directly manipulable — see the
+# RISK-COVERAGE-REPORT. These harness tests assert the MCP-visible facets: the v5
+# columns exist, persist, and render fail-loud (never a fabricated count).
+
+
+def test_cycle_review_index_v5_columns_present(tmp_path):
+    """AC-02 / AC-03: every v5 metric column exists on cycle_review_index with the
+    right type/default on a FRESH DB and SURVIVES a restart (upgrade-path agreement).
+    """
+    binary = get_binary_path()
+    client1 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client1.initialize()
+    client1.wait_until_ready()
+    client1.context_store(
+        "crt-055 v5 cycle_review_index column-presence probe entry",
+        "testing", "convention", agent_id="human", format="json",
+    )
+    client1.shutdown()
+
+    db_path = _compute_db_path_lifecycle(str(tmp_path))
+    cols_first = _cycle_review_index_columns(db_path)
+    expected_v5 = [
+        "phase_count", "phase_transition_count", "phase_rework_count",
+        "phase_unclosed_count", "phase_total_duration_secs",
+        "rework_session_count", "total_session_count", "knowledge_reuse_served_count",
+        "transcript_bytes_total", "transcript_delta_count", "transcript_error_count",
+        "transcript_refusal_count", "signal_class_counts_json",
+        "compaction_count", "compaction_reread_count", "context_reload_pct",
+    ]
+    for col in expected_v5:
+        assert col in cols_first, f"AC-02: v5 column '{col}' must exist on cycle_review_index"
+    # Every metric column is INTEGER (AC-20: no REAL/float column); the JSON map is TEXT.
+    for col in expected_v5:
+        if col == "signal_class_counts_json":
+            assert cols_first[col]["type"].upper() == "TEXT", (
+                "AC-02: signal_class_counts_json must be TEXT"
+            )
+        else:
+            assert cols_first[col]["type"].upper() == "INTEGER", (
+                f"AC-20: metric column '{col}' must be INTEGER (no REAL/float), got "
+                f"{cols_first[col]['type']}"
+            )
+
+    # Restart in place — the upgrade path must agree with fresh-create (no drift).
+    client2 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client2.initialize()
+    client2.wait_until_ready()
+    client2.shutdown()
+    cols_after = _cycle_review_index_columns(db_path)
+    for col in expected_v5:
+        assert col in cols_after, (
+            f"AC-03: v5 column '{col}' must SURVIVE restart (fresh-create == upgrade)"
+        )
+
+
+def test_cycle_review_empty_source_renders_unavailable(server):
+    """AC-01 (R-06): an empty source class renders "unavailable", never a bare "0".
+
+    A cycle with NO transcript fold and NO compaction_events: the rendered fail-loud
+    block must surface those metrics as "unavailable" with a terse reason, never as a
+    literal "0" — the believable-zero presentation class (#750/#4998) cannot recur.
+    """
+    topic = "crt055-empty-source-unavailable"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    # Seed a declared session + observations so the cycle reviews, but NO fold,
+    # NO compaction_events.
+    _seed_observation_sql_lifecycle(db_path, [topic], num_records=10)
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="markdown", force=True, timeout=30.0)
+    text = _all_result_text(resp)
+
+    # The compaction + transcript-fold sources are empty for this MCP-only cycle.
+    assert "unavailable" in text.lower(), (
+        "AC-01: empty source classes must render 'unavailable' in the fail-loud block, "
+        f"never a fabricated 0. Block text: {text[-600:]}"
+    )
+    # The metrics with empty sources must not render as a bare auditable '0'.
+    import re as _re
+    for label in ("Compactions", "Compaction re-reads"):
+        m = _re.search(rf"{_re.escape(label)}:\s*(.+)", text)
+        assert m is not None, f"AC-01: rendered block must include the '{label}' metric line"
+        rendered = m.group(1).strip()
+        assert rendered.lower().startswith("unavailable"), (
+            f"AC-01: '{label}' with an empty source must render 'unavailable', got '{rendered}'"
+        )
+
+
+def test_cycle_review_behavioral_signals_directional_qualifier(server):
+    """AC-21 (R-06): behavioral signals carry a coarse/directional qualifier,
+    visually distinct from exactly-counted aggregates.
+
+    The 'Errors (signal)' / 'Refusals (signal)' lines must render with the directional
+    qualifier ('~' / 'directional') when available, OR 'unavailable' when the fold is
+    empty — they must NEVER render as a bare exact count (e.g. 'Errors (signal): 3').
+    The exactly-counted 'Compactions' line must NOT carry the directional qualifier.
+    """
+    topic = "crt055-directional-qualifier"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    _seed_observation_sql_lifecycle(db_path, [topic], num_records=10)
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="markdown", force=True, timeout=30.0)
+    text = _all_result_text(resp)
+
+    import re as _re
+    for label in ("Errors (signal)", "Refusals (signal)"):
+        m = _re.search(rf"{_re.escape(label)}:\s*(.+)", text)
+        assert m is not None, f"AC-21: rendered block must include the '{label}' line"
+        rendered = m.group(1).strip()
+        is_directional = "~" in rendered or "directional" in rendered.lower()
+        is_unavailable = rendered.lower().startswith("unavailable")
+        assert is_directional or is_unavailable, (
+            f"AC-21: '{label}' must render with the directional qualifier or 'unavailable', "
+            f"never a bare exact count. Got '{rendered}'"
+        )
+        # Must never be a bare integer with no qualifier.
+        assert not _re.fullmatch(r"\d+", rendered), (
+            f"AC-21: '{label}' must NOT render as a bare auditable count. Got '{rendered}'"
+        )
+    # Exactly-counted aggregate must NOT carry the directional qualifier.
+    m = _re.search(r"Compactions:\s*(.+)", text)
+    assert m is not None
+    comp_rendered = m.group(1).strip()
+    assert "~" not in comp_rendered and "directional" not in comp_rendered.lower(), (
+        f"AC-21: the exactly-counted 'Compactions' line must NOT carry the directional "
+        f"qualifier; got '{comp_rendered}'"
+    )
