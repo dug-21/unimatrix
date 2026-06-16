@@ -75,18 +75,30 @@ async fn insert_entry(
     new_id as u64
 }
 
-/// Insert a graph_edges row.
+/// Insert a graph_edges row with an empty `source` (default provenance).
 async fn insert_edge(pool: &SqlitePool, source: u64, target: u64, rel: &str) {
+    insert_edge_with_source(pool, source, target, rel, "").await;
+}
+
+/// Insert a graph_edges row with an explicit `source` provenance string (vnc-037).
+async fn insert_edge_with_source(
+    pool: &SqlitePool,
+    source_id: u64,
+    target_id: u64,
+    rel: &str,
+    source: &str,
+) {
     let now = 1_700_000_000_i64;
     sqlx::query(
         "INSERT OR IGNORE INTO graph_edges
          (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only)
-         VALUES (?1, ?2, ?3, 1.0, ?4, '', '', 0)",
+         VALUES (?1, ?2, ?3, 1.0, ?4, '', ?5, 0)",
     )
-    .bind(source as i64)
-    .bind(target as i64)
+    .bind(source_id as i64)
+    .bind(target_id as i64)
     .bind(rel)
     .bind(now)
+    .bind(source)
     .execute(pool)
     .await
     .expect("insert edge");
@@ -509,5 +521,181 @@ async fn test_query_direct_neighbors_zero_edges_from_anchor() {
         .expect("query");
 
     assert!(rows.is_empty());
+    store.close().await.unwrap();
+}
+
+// -----------------------------------------------------------------------
+// vnc-037: additive `source` on the plain neighbor path (ADR-004, store-neighbor-source)
+// -----------------------------------------------------------------------
+
+/// R-08 / #4166: `source` populates correctly across ALL 4 plain SELECT branches —
+/// `run_outgoing_query` and `run_incoming_query`, each in the empty-`edge_types`
+/// branch and the `IN (…)` branch. A wrong column index in `map_edge_row` fails here.
+#[tokio::test]
+async fn test_map_edge_row_populates_source_all_4_branches() {
+    let (store, _dir) = open_test_store().await;
+    let wp = &store.write_pool;
+
+    let x = insert_entry(wp, "X", Status::Active, None, None).await;
+    let out = insert_entry(wp, "Out", Status::Active, None, None).await;
+    let inc = insert_entry(wp, "Inc", Status::Active, None, None).await;
+
+    // Distinct source values so a branch confusion is detectable.
+    insert_edge_with_source(wp, x, out, "Supports", "agent").await; // outgoing from X
+    insert_edge_with_source(wp, inc, x, "Supports", "co_access").await; // incoming to X
+
+    // 1. run_outgoing_query, empty-type branch.
+    let out_empty = query_direct_neighbors(store.read_pool(), x, &[], NeighborDirection::Outgoing)
+        .await
+        .expect("outgoing empty-type");
+    let row = out_empty
+        .iter()
+        .find(|r| r.target_id == out)
+        .expect("outgoing edge present");
+    assert_eq!(row.source, "agent", "outgoing empty-type source");
+
+    // 2. run_outgoing_query, IN(…) branch.
+    let out_in = query_direct_neighbors(
+        store.read_pool(),
+        x,
+        &["Supports"],
+        NeighborDirection::Outgoing,
+    )
+    .await
+    .expect("outgoing IN-type");
+    let row = out_in
+        .iter()
+        .find(|r| r.target_id == out)
+        .expect("outgoing edge present");
+    assert_eq!(row.source, "agent", "outgoing IN-type source");
+
+    // 3. run_incoming_query, empty-type branch.
+    let in_empty = query_direct_neighbors(store.read_pool(), x, &[], NeighborDirection::Incoming)
+        .await
+        .expect("incoming empty-type");
+    let row = in_empty
+        .iter()
+        .find(|r| r.source_id == inc)
+        .expect("incoming edge present");
+    assert_eq!(row.source, "co_access", "incoming empty-type source");
+
+    // 4. run_incoming_query, IN(…) branch.
+    let in_in = query_direct_neighbors(
+        store.read_pool(),
+        x,
+        &["Supports"],
+        NeighborDirection::Incoming,
+    )
+    .await
+    .expect("incoming IN-type");
+    let row = in_in
+        .iter()
+        .find(|r| r.source_id == inc)
+        .expect("incoming edge present");
+    assert_eq!(row.source, "co_access", "incoming IN-type source");
+
+    store.close().await.unwrap();
+}
+
+/// R-09: every live `source` value carries through verbatim — the get-path
+/// `authored = (source == "agent")` projection depends on this exact string.
+#[tokio::test]
+async fn test_source_values_present_for_all_live_sources() {
+    let (store, _dir) = open_test_store().await;
+    let wp = &store.write_pool;
+
+    let x = insert_entry(wp, "X", Status::Active, None, None).await;
+
+    let live_sources = ["agent", "co_access", "cosine", "behavioral", "S8"];
+    let mut targets = Vec::new();
+    for (i, src) in live_sources.iter().enumerate() {
+        let t = insert_entry(wp, &format!("T{i}"), Status::Active, None, None).await;
+        insert_edge_with_source(wp, x, t, "Supports", src).await;
+        targets.push((t, *src));
+    }
+
+    let rows = query_direct_neighbors(store.read_pool(), x, &[], NeighborDirection::Outgoing)
+        .await
+        .expect("query");
+
+    for (target, expected_src) in targets {
+        let row = rows
+            .iter()
+            .find(|r| r.target_id == target)
+            .expect("edge present");
+        assert_eq!(
+            row.source, expected_src,
+            "source string must be preserved verbatim for {expected_src}"
+        );
+    }
+
+    store.close().await.unwrap();
+}
+
+/// R-20: the raw `source` string is preserved underneath the (derived) `authored`
+/// boolean — no information loss. Near-miss strings are retained verbatim, NOT
+/// normalized; the exact-match `authored` projection lives in get-edge-vocabulary.
+#[tokio::test]
+async fn test_source_string_retained_beneath_boolean() {
+    let (store, _dir) = open_test_store().await;
+    let wp = &store.write_pool;
+
+    let x = insert_entry(wp, "X", Status::Active, None, None).await;
+    let a = insert_entry(wp, "A", Status::Active, None, None).await;
+    let b = insert_entry(wp, "B", Status::Active, None, None).await;
+
+    // Near-miss strings: must be retained EXACTLY (not coerced to "agent").
+    insert_edge_with_source(wp, x, a, "Supports", "Agent").await;
+    insert_edge_with_source(wp, x, b, "Supports", " agent").await;
+
+    let rows = query_direct_neighbors(store.read_pool(), x, &[], NeighborDirection::Outgoing)
+        .await
+        .expect("query");
+
+    let row_a = rows.iter().find(|r| r.target_id == a).expect("edge A");
+    let row_b = rows.iter().find(|r| r.target_id == b).expect("edge B");
+    assert_eq!(row_a.source, "Agent", "near-miss 'Agent' retained verbatim");
+    assert_eq!(
+        row_b.source, " agent",
+        "near-miss ' agent' retained verbatim"
+    );
+    assert_ne!(row_a.source, "agent");
+    assert_ne!(row_b.source, "agent");
+
+    store.close().await.unwrap();
+}
+
+/// R-08 surface 3 / SR-06: the plain path does NOT canonicalize symmetric edges
+/// (a reciprocal pair returns TWO rows) and never carries a `target_confidence`
+/// — the `↔` collapse and confidence JOIN are get-only (ranked variant). This is
+/// the SR-02 firewall: get-only logic must not leak into the shared neighbors path.
+#[tokio::test]
+async fn test_no_canon_or_confidence_leak_into_plain_query() {
+    let (store, _dir) = open_test_store().await;
+    let wp = &store.write_pool;
+
+    let x = insert_entry(wp, "X", Status::Active, None, None).await;
+    let y = insert_entry(wp, "Y", Status::Active, None, None).await;
+
+    // A symmetric type stored as two reciprocal rows (A→B and B→A).
+    insert_edge_with_source(wp, x, y, "CoAccess", "co_access").await;
+    insert_edge_with_source(wp, y, x, "CoAccess", "co_access").await;
+
+    let rows = query_direct_neighbors(store.read_pool(), x, &[], NeighborDirection::Both)
+        .await
+        .expect("query");
+
+    // Plain path: BOTH reciprocal rows present — no get-only canonicalization.
+    assert_eq!(
+        rows.len(),
+        2,
+        "plain path returns both reciprocal rows (no ↔ canonicalization)"
+    );
+    // No confidence leaks into the shared path.
+    assert!(
+        rows.iter().all(|r| r.target_confidence.is_none()),
+        "plain path must never populate target_confidence"
+    );
+
     store.close().await.unwrap();
 }

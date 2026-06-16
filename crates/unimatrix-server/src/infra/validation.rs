@@ -1026,6 +1026,7 @@ mod tests {
             feature: None,
             helpful: None,
             session_id: None,
+            include_edges: None,
         };
         assert!(validate_get_params(&params).is_err());
     }

@@ -20,6 +20,7 @@ use crate::infra::registry::{Capability, EnrollResult, TrustLevel};
 // and must be available to the UDS CompactPayload path regardless of feature flags.
 // Only the MCP tool handler registration is gated by #[cfg(feature = "mcp-briefing")].
 mod briefing;
+pub mod edges;
 mod entries;
 mod mutations;
 #[cfg(feature = "mcp-briefing")]
