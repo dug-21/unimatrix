@@ -69,11 +69,30 @@ pub struct ChainQueryResult {
 }
 
 /// A single row from `graph_edges` before direction annotation.
+///
+/// Shared by `context_graph` neighbors (plain `query_direct_neighbors`) and the
+/// vnc-037 get-edge ranked variant. `source` is additive (ADR-004): the
+/// `graph_edges.source` provenance string, populated by **all** read paths;
+/// `'agent'` denotes an authored edge. The `authored` boolean — `source == "agent"`
+/// — is derived only by the get-path projection, so the raw string is retained here
+/// (no information loss). This boolean split is honest only while inferred sources
+/// remain statistical (NLI dark, ASS-037); **NLI revival is the documented trigger to
+/// revisit D-03** (C-10/SR-05).
+///
+/// `target_confidence` is populated by the **ranked variant only**; the plain path
+/// (and `context_graph` neighbors) always leaves it `None`. It is the inferred-edge
+/// rank key (target-entry `entries.confidence`, via a LEFT JOIN) and is never
+/// surfaced on the get payload (ADR-002 guardrail). `None` also covers dangling
+/// targets (LEFT JOIN miss).
 #[derive(Debug, Clone)]
 pub struct RawEdgeRow {
     pub source_id: u64,
     pub target_id: u64,
     pub relation_type: String,
+    /// Additive (ADR-004): `graph_edges.source` provenance; `'agent'` = authored.
+    pub source: String,
+    /// Ranked-variant only (ADR-006); `None` on the plain path and for dangling targets.
+    pub target_confidence: Option<f64>,
 }
 
 // ---------------------------------------------------------------------------

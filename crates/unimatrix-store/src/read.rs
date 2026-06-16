@@ -1866,6 +1866,20 @@ pub const EDGE_SOURCE_S8: &str = "S8";
 /// migration has its own file-private copy (not removed, out of scope for crt-034).
 pub const CO_ACCESS_GRAPH_MIN_COUNT: i64 = 3;
 
+/// Display cap for the context_get next-hop edge affordance (D-05, vnc-037).
+///
+/// At most this many ranked edges render on a single context_get; the totals
+/// (COUNT) are UNCAPPED and unaffected by this value (FR-10), and the cap never
+/// influences `↔`-once canonicalization (FR-8). This is the single source of
+/// truth for the display cap (FR-18 / C-12 / AC-13): the SQL `LIMIT`, the
+/// `…N more` render threshold, the `N more` arithmetic, and the cap tests all
+/// reference it, so retuning the cap is a one-line edit.
+///
+/// Type is i64 to match sqlx binding conventions for SQLite `LIMIT ?`
+/// parameters (parallel to CO_ACCESS_GRAPH_MIN_COUNT). Consumers needing a
+/// length comparison cast to the relevant integer type at the comparison site.
+pub const GET_EDGE_DISPLAY_LIMIT: i64 = 3;
+
 // ---------------------------------------------------------------------------
 // Public output types
 // ---------------------------------------------------------------------------
@@ -1978,6 +1992,16 @@ mod tests {
         assert_eq!(CO_ACCESS_GRAPH_MIN_COUNT, 3i64);
         // Compile-time type assertion: if the type is wrong this will not compile.
         let _typed: i64 = CO_ACCESS_GRAPH_MIN_COUNT;
+    }
+
+    #[test]
+    fn test_get_edge_display_limit_value() {
+        // AC-13 / FR-18 / C-12: GET_EDGE_DISPLAY_LIMIT is the single source of
+        // truth for the display cap and must equal 3i64 (not i32 or usize) so it
+        // binds directly as the SQLite `LIMIT ?` parameter.
+        assert_eq!(GET_EDGE_DISPLAY_LIMIT, 3i64);
+        // Compile-time type assertion: if the type is wrong this will not compile.
+        let _typed: i64 = GET_EDGE_DISPLAY_LIMIT;
     }
 
     #[test]

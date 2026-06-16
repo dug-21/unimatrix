@@ -17,7 +17,7 @@ pub(super) async fn run_outgoing_query(
 ) -> Result<Vec<RawEdgeRow>, StoreError> {
     let rows = if edge_types.is_empty() {
         sqlx::query(
-            "SELECT source_id, target_id, relation_type
+            "SELECT source_id, target_id, relation_type, source
              FROM graph_edges
              WHERE source_id = ?1
                AND relation_type != 'Supersedes'",
@@ -31,7 +31,7 @@ pub(super) async fn run_outgoing_query(
             .map(|i| format!("?{i}"))
             .collect();
         let sql = format!(
-            "SELECT source_id, target_id, relation_type
+            "SELECT source_id, target_id, relation_type, source
              FROM graph_edges
              WHERE source_id = ?1
                AND relation_type IN ({})",
@@ -58,7 +58,7 @@ pub(super) async fn run_incoming_query(
 ) -> Result<Vec<RawEdgeRow>, StoreError> {
     let rows = if edge_types.is_empty() {
         sqlx::query(
-            "SELECT source_id, target_id, relation_type
+            "SELECT source_id, target_id, relation_type, source
              FROM graph_edges
              WHERE target_id = ?1
                AND relation_type != 'Supersedes'",
@@ -72,7 +72,7 @@ pub(super) async fn run_incoming_query(
             .map(|i| format!("?{i}"))
             .collect();
         let sql = format!(
-            "SELECT source_id, target_id, relation_type
+            "SELECT source_id, target_id, relation_type, source
              FROM graph_edges
              WHERE target_id = ?1
                AND relation_type IN ({})",
@@ -92,6 +92,11 @@ pub(super) async fn run_incoming_query(
 }
 
 /// Map a `graph_edges` row to a `RawEdgeRow`.
+///
+/// `source` (ADR-004) is read with the same `try_get` + `StoreError::Database`
+/// mapping as the existing fields — no `.unwrap()`. The plain path never carries a
+/// target confidence, so `target_confidence` is always `None` here; only the ranked
+/// variant populates it.
 pub(super) fn map_edge_row(row: &sqlx::sqlite::SqliteRow) -> Result<RawEdgeRow, StoreError> {
     Ok(RawEdgeRow {
         source_id: row
@@ -103,5 +108,9 @@ pub(super) fn map_edge_row(row: &sqlx::sqlite::SqliteRow) -> Result<RawEdgeRow, 
         relation_type: row
             .try_get("relation_type")
             .map_err(|e| StoreError::Database(e.into()))?,
+        source: row
+            .try_get("source")
+            .map_err(|e| StoreError::Database(e.into()))?,
+        target_confidence: None,
     })
 }

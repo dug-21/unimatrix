@@ -256,6 +256,18 @@ pub struct GetParams {
     /// Optional session ID (provided by hooks, not agent-reported).
     #[serde(default)]
     pub session_id: Option<String>,
+    /// Whether to surface the entry's ranked depth-1 typed edges (vnc-037).
+    ///
+    /// Three-state semantics (resolved in the `context_get` handler):
+    /// - `None` (field omitted) ⇒ DEFAULT-ON — the agent-facing surface; edges are surfaced.
+    /// - `Some(true)` ⇒ explicit opt-in — edges are surfaced.
+    /// - `Some(false)` ⇒ opt-out — edge queries skipped entirely; no `edges` key.
+    ///
+    /// `#[serde(default)]` keeps this backward-compatible: a pre-vnc-037 caller that omits
+    /// the field deserializes to `None` ⇒ default-on (NFR-4 / AC-11). Internal/programmatic
+    /// by-ID callers pass `Some(false)` to pay zero edge-query cost (OQ-03).
+    #[serde(default)]
+    pub include_edges: Option<bool>,
 }
 
 /// Parameters for correcting an existing entry.
@@ -5602,6 +5614,78 @@ mod tests {
         let json = r#"{"id": 1, "format": "summary"}"#;
         let params: GetParams = serde_json::from_str(json).unwrap();
         assert_eq!(params.format.unwrap(), "summary");
+    }
+
+    // -- vnc-037: GetParams.include_edges field contract (R-14 / NFR-4) --
+
+    /// FR-2 / AC-11 / NFR-4: a payload with NO `include_edges` key deserializes to
+    /// `None` (`#[serde(default)]`) ⇒ resolves default-on. A pre-vnc-037 caller behaves
+    /// unchanged.
+    #[test]
+    fn test_get_params_deserializes_absent_field() {
+        let json = r#"{"id": 42}"#;
+        let params: GetParams = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            params.include_edges, None,
+            "absent include_edges must default to None (default-on)"
+        );
+    }
+
+    /// `include_edges` deserializes correctly for absent (`None`), `true` (`Some(true)`),
+    /// and `false` (`Some(false)`).
+    #[test]
+    fn test_get_params_three_values() {
+        let absent: GetParams = serde_json::from_str(r#"{"id": 1}"#).unwrap();
+        assert_eq!(absent.include_edges, None);
+
+        let t: GetParams = serde_json::from_str(r#"{"id": 1, "include_edges": true}"#).unwrap();
+        assert_eq!(t.include_edges, Some(true));
+
+        let f: GetParams = serde_json::from_str(r#"{"id": 1, "include_edges": false}"#).unwrap();
+        assert_eq!(f.include_edges, Some(false));
+    }
+
+    /// NFR-4: the field is purely additive — every pre-existing field is unchanged in
+    /// name and type and still deserializes from a full payload.
+    #[test]
+    fn test_get_params_no_existing_field_removed_or_retyped() {
+        let json = r#"{
+            "id": 7,
+            "agent_id": "agent-x",
+            "format": "json",
+            "feature": "vnc-037",
+            "helpful": true,
+            "session_id": "sess-1"
+        }"#;
+        let params: GetParams = serde_json::from_str(json).unwrap();
+        let _id: i64 = params.id;
+        let _agent_id: Option<String> = params.agent_id.clone();
+        let _format: Option<String> = params.format.clone();
+        let _feature: Option<String> = params.feature.clone();
+        let _helpful: Option<bool> = params.helpful;
+        let _session_id: Option<String> = params.session_id.clone();
+        assert_eq!(params.id, 7);
+        assert_eq!(params.agent_id.as_deref(), Some("agent-x"));
+        assert_eq!(params.format.as_deref(), Some("json"));
+        assert_eq!(params.feature.as_deref(), Some("vnc-037"));
+        assert_eq!(params.helpful, Some(true));
+        assert_eq!(params.session_id.as_deref(), Some("sess-1"));
+        // additive field present and defaulting independently
+        assert_eq!(params.include_edges, None);
+    }
+
+    /// D-01 resolution semantics at the field level: `None` and `Some(true)` ⇒ surface;
+    /// `Some(false)` ⇒ suppress. The surface/suppress *effect* (query skip + key absence)
+    /// is owned by get-edge-assembly; here we pin the three-state ⇒ decision mapping.
+    #[test]
+    fn test_include_edges_resolution() {
+        // Mirrors the handler's resolution match (get-edge-assembly wave consumes it).
+        fn surface(include_edges: Option<bool>) -> bool {
+            !matches!(include_edges, Some(false))
+        }
+        assert!(surface(None), "None ⇒ surface (default-on)");
+        assert!(surface(Some(true)), "Some(true) ⇒ surface");
+        assert!(!surface(Some(false)), "Some(false) ⇒ suppress");
     }
 
     // -- vnc-003: CorrectParams --
