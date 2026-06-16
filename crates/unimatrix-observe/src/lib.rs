@@ -11,6 +11,7 @@ pub mod distill;
 pub mod domain;
 pub mod error;
 pub mod extraction;
+pub mod fail_loud_guard;
 pub mod metrics;
 pub mod phase_narrative;
 pub mod report;
@@ -25,6 +26,10 @@ pub use baseline::{compare_to_baseline, compute_baselines};
 pub use detection::{DetectionRule, default_rules, detect_hotspots};
 pub use domain::{DomainPack, DomainPackRegistry};
 pub use error::{ObserveError, Result};
+pub use fail_loud_guard::{
+    CycleAggregates, CycleContext, MetricAvailability, compute_availability, render_context_reload,
+    render_metric, render_metrics_block, render_ratio,
+};
 pub use metrics::compute_metric_vector;
 pub use phase_narrative::build_phase_narrative;
 pub use report::{build_report, recommendations_for_hotspots};
