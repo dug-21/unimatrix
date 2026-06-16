@@ -184,6 +184,33 @@ impl SqlxStore {
         Ok(())
     }
 
+    /// Insert one Surface A `compaction_events` row (crt-054, ADR-007).
+    ///
+    /// Single autocommit statement — no explicit transaction, no cross-statement lock
+    /// held; the bare `execute` on `write_pool` commits the one INSERT. Parameterized
+    /// (`?1`/`?2`/`?3`), so `session_id` is bound as data and carries no SQL-injection
+    /// surface. `id` is omitted → SQLite auto-assigns the rowid PK. `compacted_at_secs`
+    /// is stored verbatim as Unix SECONDS (no unit conversion here; the gate-side
+    /// ts/1000 normalization is crt-055's). Content-free: only ids/counts are written.
+    pub async fn insert_compaction_event(
+        &self,
+        session_id: &str,
+        compacted_at_secs: i64,
+        high_water: i64,
+    ) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO compaction_events (session_id, compacted_at, high_water) \
+             VALUES (?1, ?2, ?3)",
+        )
+        .bind(session_id)
+        .bind(compacted_at_secs)
+        .bind(high_water)
+        .execute(&self.write_pool)
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+        Ok(())
+    }
+
     /// Delete the vector mapping for the given entry (integrity write via write_pool).
     ///
     /// Used by the prune pass (GH #444) when an entry is quarantined: the VECTOR_MAP

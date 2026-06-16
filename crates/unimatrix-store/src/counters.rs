@@ -24,6 +24,13 @@ use crate::error::{Result, StoreError};
 /// while the live table had rows with event_id > 0.
 pub const AUDIT_EVENT_COUNTER: &str = "next_audit_id";
 
+/// Counter name for the Surface A compaction-event INSERT failure count (crt-054,
+/// ADR-007 §6). Incremented by the server-side store_ops wrapper when
+/// `insert_compaction_event` fails, so crt-055 can cross-check row-count vs
+/// `increment_compaction` drift at review. Content-free: the name is a fixed
+/// literal and the value is a pure count — no session_id/bytes appear here.
+pub const COMPACTION_EVENTS_INSERT_FAILED: &str = "compaction_events_insert_failed";
+
 // ---------------------------------------------------------------------------
 // Public counter helpers (async)
 // ---------------------------------------------------------------------------
