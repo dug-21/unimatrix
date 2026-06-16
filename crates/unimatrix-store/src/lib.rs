@@ -10,6 +10,7 @@ mod schema;
 pub mod counters;
 mod db;
 pub mod graph_queries;
+pub mod graph_queries_ranked;
 pub mod metrics;
 pub mod migration;
 mod migration_compat;
@@ -73,6 +74,9 @@ pub use db::SqlxStore;
 pub use graph_queries::{
     ChainDirection, ChainQueryResult, NeighborDirection, RawEdgeRow, query_current_terminal,
     query_direct_neighbors, query_supersession_chain,
+};
+pub use graph_queries_ranked::{
+    EdgeCountSplit, RankedEdge, count_neighbors_split, query_ranked_neighbors,
 };
 pub use observations::{ObservationRow, ShadowEvalRow};
 pub use pool_config::{
