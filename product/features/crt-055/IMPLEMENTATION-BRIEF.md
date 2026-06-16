@@ -31,14 +31,14 @@
 | auto_close handler arm (#593) | pseudocode/auto_close.md | test-plan/auto_close.md |
 | Review pipeline ordering (tools.rs context_cycle_review) | pseudocode/review_pipeline.md | test-plan/review_pipeline.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (confirmed Stage 3a, 2026-06-16)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-> Component files are produced in Session 2 Stage 3a; paths above are expected, confirmed at delivery. Internal wave order (architecture §7): Wave 1 fail-loud guard → Wave 2 durable aggregates + v5 migration + store_cycle_review extension → Wave 3 dual reload pair + fold surfacing (consumes crt-054). One migration covers all v5 columns; `auto_close` and catalog config ride waves 2/3.
+> Component files produced in Session 2 Stage 3a; all 9 pseudocode + 9 test-plan files exist at the Component Map paths above. Internal wave order (architecture §7): Wave 1 fail-loud guard → Wave 2 durable aggregates + v5 migration + store_cycle_review extension → Wave 3 dual reload pair + fold surfacing (consumes crt-054). One migration covers all v5 columns; `auto_close` and catalog config ride waves 2/3.
 
 ## Goal
 

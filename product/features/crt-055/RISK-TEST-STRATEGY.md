@@ -112,13 +112,21 @@
 ### R-08: compaction_reread gate clock/unit mismatch + boundary-selection error
 **Severity**: High **Likelihood**: Med **Impact**: The `compaction_reread` gate compares PostToolUse read `ts` against `compacted_at`. **Binding contract clause (human decision):** ALL gate timestamps are normalized to Unix **seconds** (millis→seconds at the boundary) before comparison. A latent unit mismatch (one side seconds, one side millis) is a silent-failure class — every read counts (millis `ts` always > seconds `compacted_at`) or none do — a *believable-wrong-number*, exactly the family this feature exists to kill: no error, no crash, just a plausible-looking corrupt tax. Separately, wrong multi-compaction boundary mis-counts reads on the boundary.
 
+**Binding gate semantics (UNCHANGED — ARCHITECTURE/ADR-006):** read `ts` is normalized millis→seconds by integer floor (`read_ts_secs = ts_millis ÷ 1000`); a read counts **iff** `read_ts_secs > compacted_at` (STRICT `>`). The boundary (`compacted_at`) is already in Unix seconds (producer contract) and is NOT normalized.
+
+**Worked example (corrected — `compacted_at = T` Unix seconds):**
+- read at `T*1000 + 1000` (**+1s**) → floor `T+1` → `T+1 > T` true → **counts**.
+- read at `T*1000 − 500` (**−500ms**) → floor `T−1` → `T−1 > T` false → **does NOT count** (this is the floor-catching guard: an unnormalized millis-vs-seconds gate would wrongly count it, preserving the #4236 intent).
+- read at `T*1000` (**exact boundary**) → floor `T` → `T > T` false → **NOT counted** (strict `>`).
+- **Expected `compaction_reread_count = 1`** (only the +1s read clears the gate).
+
 **Test Scenarios**:
-1. **Unit-consistent gate (must-have integration test):** drive the full gate path — a PostToolUse read recorded **+500ms after** `compacted_at` is counted as a reread; a read **−500ms before** is not (sub-second boundary that actually exercises the ÷1000 floor — a ±1s window passes even if the floor is absent/wrong). Then inject a deliberate unit mismatch (one side in millis) and assert the normalization catches it / the comparison still uses seconds-vs-seconds (the mismatch does NOT flip the count to all-or-nothing). This is an integration test across the compaction-events table and the PostToolUse read source, not a unit test of the comparator alone.
-2. PostToolUse reads straddling `compacted_at` (one just before, one just after, one exactly at) → assert only strictly-after overlapping re-reads count; assert seconds-vs-seconds comparison at the boundary.
+1. **Unit-consistent gate (must-have integration test):** drive the full gate path with `compacted_at = T` — a PostToolUse read **+1s after** (`T*1000+1000`, floors to `T+1`) is counted as a reread; a read **−500ms before** (`T*1000−500`, floors to `T−1`) is not; expected `compaction_reread_count = 1`. The −500ms case is the floor-catching guard (a millis-vs-seconds unnormalized gate would wrongly count it). Then inject a deliberate unit mismatch (boundary left in millis) and assert the normalization catches it / the comparison still uses seconds-vs-seconds (the mismatch does NOT flip the count to all-or-nothing). This is an integration test across the compaction-events table and the PostToolUse read source, not a unit test of the comparator alone.
+2. PostToolUse reads straddling `compacted_at` (one just before, one just after, one exactly at the boundary) → assert only reads whose floored second is strictly-after `compacted_at` count; the exact-boundary read (floors to `T`) does NOT count (strict `>`); assert seconds-vs-seconds comparison at the boundary.
 3. Multi-compaction session (N>1 rows) → assert the earliest `compacted_at` (MIN) is the gate (ADR-006) and each re-read counts at most once (no per-boundary double-count).
 4. Assert `compaction_count` still reports the full count of boundaries even though the reread gate uses one (ADR-005/006).
 
-**Coverage Requirement**: AC-12 — **unit-consistent gate comparison is a must-have integration test** (read +500ms post-compaction counted, −500ms pre-compaction not — sub-second boundary exercising the ÷1000 floor; injected unit mismatch caught, never all-or-nothing); seconds-aligned binding contract enforced at the boundary; earliest-boundary selection; re-read counted once; `compaction_count` ≠ reread gate (FR-14/15, SR-11).
+**Coverage Requirement**: AC-12 — **unit-consistent gate comparison is a must-have integration test** (read +1s post-compaction counted, −500ms pre-compaction not, exact-boundary not — floor + strict-`>`; expected `compaction_reread_count = 1`; the −500ms case exercises the ÷1000 floor guard against a millis-vs-seconds unnormalized gate); seconds-aligned binding contract enforced at the boundary; earliest-boundary selection; re-read counted once; `compaction_count` ≠ reread gate (FR-14/15, SR-11).
 
 ### R-09: Integer-width corruption at the persist boundary
 **Severity**: Med **Likelihood**: Low **Impact**: `u64` near max wraps to negative `i64` on cast — a corrupt baseline that looks valid. **Design decision (binding):** `context_reload_pct` is stored as basis-points INTEGER (0–10000), not REAL — the `push_bind(f64)` NaN/Inf silent-wrong-SQL footgun (#4529/#4533) is eliminated by construction for this column, not deferred to an `is_finite()` runtime guard. No REAL column remains in the new schema, so the non-finite-float scenario is retired (was the only float bind).
@@ -226,7 +234,7 @@ The crt-055↔crt-054 producer/consumer seam is the dominant integration surface
 - **Read-before-purge ordering (R-03)** — a temporal coupling between crt-055's review pipeline and crt-052's `purge_cycle_transcripts`; the only protection is an asserted call-site ordering.
 - **Held-route fold + declaration-chain attribution (R-04, R-05)** — crt-055 consumes counters crt-054 produced and attributes them via a chain that silently no-ops (#4140). The integration miss surfaces as a believable zero, not an error.
 - **Shared `[transcript_signals]` catalog index contract (R-12)** — crt-055 lands columns by fixed index (`0=error`, `1=refusal`); a producer reorder corrupts every transcript column with no type error.
-- **Gate clock/unit coupling (R-08, Critical)** — `compaction_reread` depends on `compacted_at` and PostToolUse `ts` both being Unix seconds — a cross-table comparison with no compiler enforcement. Binding contract clause normalizes all gate timestamps to seconds; the must-have integration test asserts unit consistency (read 1s post-compaction counted, mismatch caught) because the failure mode is a believable-wrong-number, not an error.
+- **Gate clock/unit coupling (R-08, Critical)** — `compaction_reread` depends on the read `ts` (millis, floored to seconds via ÷1000) and `compacted_at` (already seconds, producer contract) being compared seconds-vs-seconds under strict `>` — a cross-table comparison with no compiler enforcement. The must-have integration test asserts unit consistency (read +1s post-compaction counted, −500ms pre not, exact-boundary not, expected count = 1; mismatch caught) because the failure mode is a believable-wrong-number, not an error.
 - **Single-writer coexistence with #758 (R-01, R-02)** — crt-055's new columns must thread through one INSERT (`:249`) + one UPDATE (`:284`) and coexist with the four-return discipline; the integration failure is a re-introduced empty-clobber.
 - **Migration version handshake (R-18)** — two features, two disjoint ALTERs, one sequential-number coordination point at merge.
 
@@ -235,7 +243,7 @@ The crt-055↔crt-054 producer/consumer seam is the dominant integration surface
 - Cycle with **zero declared sessions** → every source-derived metric "unavailable", no fabricated zeros (R-06).
 - Cycle with a **mix of declared and undeclared/evicted sessions** → declared sessions aggregate; undeclared do not zero them and do not mis-attribute (R-04, R-05).
 - Session that **compacts multiple times** → earliest boundary gates reread; `compaction_count` reports all (R-08).
-- **Read recorded +500ms after `compacted_at`** → counted as a reread; **−500ms before** → not counted (sub-second boundary exercising the ÷1000 floor); a **unit mismatch** (millis vs seconds) → caught by seconds-normalization, never an all-or-nothing count (R-08, binding contract clause).
+- **Read recorded +1s after `compacted_at=T`** (floors to `T+1`) → counted as a reread; **−500ms before** (floors to `T−1`) → not counted; **exact boundary** (floors to `T`) → not counted (floor + strict-`>`, expected count = 1); a **unit mismatch** (boundary left in millis) → caught by seconds-normalization, never an all-or-nothing count (R-08, binding contract clause).
 - Session that **compacts but never re-reads** → `compaction_count` > 0, `compaction_reread_count == 0` (a genuine measured zero, distinct from "unavailable").
 - **`u64::MAX`-adjacent** fold values; **out-of-range** (>10000 / negative) basis-points `context_reload_pct` candidate (R-09).
 - **Pre-v5 stale + purged** vs **pre-v5 stale + present** vs **fresh v5** — three distinct recompute outcomes (R-01, R-02).
@@ -260,7 +268,7 @@ crt-055 accepts no new untrusted *network* input; its inputs are the MCP `auto_c
 | Source class empty for a metric | Render "unavailable" with a terse reason, never `0` (R-06) |
 | Transcript fold absent (undeclared / held-route miss) | "unavailable" per-metric; do not zero other valid sessions' contribution (R-04) |
 | Zero compaction_events for the cycle | `compaction_count = 0`, `compaction_reread` "unavailable" (no boundary), distinct from a measured zero |
-| Gate timestamp unit mismatch (millis vs seconds) | Seconds-normalization at the boundary catches it; comparison stays seconds-vs-seconds, never all-or-nothing count (R-08, binding contract clause) |
+| Gate timestamp unit mismatch (read millis vs boundary seconds) | Read `ts` floored ÷1000 to seconds; comparison stays seconds-vs-seconds under strict `>`, never all-or-nothing count (R-08, binding contract clause) |
 | Stale pre-v5 row, source present | Auto-recompute via clear-memo-fall-through, fresh non-zero columns at v5 (R-02) |
 | Stale pre-v5 row, source purged | Retain stored bytes; advisory "source purged, cannot recompute"; no write (R-01) |
 | `force=true` on a purged row | Serve stored; do not advance `computed_at`; no zero-clobber (R-01) |
@@ -286,7 +294,7 @@ crt-055 accepts no new untrusted *network* input; its inputs are the MCP `auto_c
 | SR-08 held-route believable-zero | R-04, R-06 | ADR-003/007 per-metric presence flags; AC-09 regression guard asserts non-empty fold for a representative TS-client cycle. |
 | SR-09 read-before-purge | R-03 | ADR-007 read-site pinned ahead of `purge_cycle_transcripts`; AC-08 ordering + inversion test. |
 | SR-10 attribution + int-width | R-05, R-09 | ADR-006/007 declaration-chain attribution + checked/saturating conversion; basis-points INTEGER `context_reload_pct` (float footgun designed out, no `is_finite()` guard needed); AC-11/14; evidence #4140 (evicted-session no-op), #4529 (the float footgun this storage choice eliminates). |
-| SR-11 multi-compaction boundary | R-08 | ADR-006 earliest `compacted_at`, counted once; binding contract clause normalizes all gate timestamps to Unix seconds; AC-12 boundary-selection assertion + must-have unit-consistent-gate integration test (read 1s post-compaction counted; unit mismatch caught). |
+| SR-11 multi-compaction boundary | R-08 | ADR-006 earliest `compacted_at`, counted once; read `ts` floored ÷1000 to seconds, gated strict-`>` against the seconds boundary; AC-12 boundary-selection assertion + must-have unit-consistent-gate integration test (read +1s post-compaction counted, −500ms/exact not, expected count = 1; unit mismatch caught). |
 
 All eleven SR-XX risks are traced to at least one architecture risk and resolving ADR/AC. No scope risk is accepted-unaddressed or out-of-scope.
 
@@ -307,7 +315,7 @@ All eleven SR-XX risks are traced to at least one architecture risk and resolvin
 3. Held-route non-empty-fold regression guard for a representative TS-client cycle (R-04 — AC-09).
 4. Per-source "unavailable"-never-"0" across every metric source class, AND the behavioral-signal honesty assertion — transcript_error/refusal render with the coarse/directional qualifier, visibly distinct from exactly-counted aggregates (R-06 — AC-01).
 5. Declaration-chain attribution: declared-only counting, evicted/undeclared no fabricated zero (R-05 — AC-11; evidence #4140).
-6. **Unit-consistent compaction-gate integration test** — read +500ms post-`compacted_at` counted, −500ms pre not (sub-second boundary exercising the ÷1000 floor); injected millis/seconds unit mismatch caught, never an all-or-nothing count (R-08 — AC-12; binding contract clause: all gate timestamps Unix seconds).
+6. **Unit-consistent compaction-gate integration test** — `compacted_at=T`: read +1s post-compaction counted (floors to `T+1`), −500ms pre not (floors to `T−1`), exact-boundary not (floors to `T`, strict-`>`); expected `compaction_reread_count = 1`; the −500ms case exercises the ÷1000 floor guard against a millis-vs-seconds unnormalized gate; injected unit mismatch caught, never an all-or-nothing count (R-08 — AC-12; binding contract clause: read ts floored to seconds, boundary in seconds).
 
 ---
 
