@@ -22,12 +22,6 @@
 //! `delta_count: u32`, `class_counts: [u32; N]` are emitted at native widths;
 //! the checked/saturating `-> i64` conversion is crt-055's at persist.
 
-// crt-054 wave 1: these types are the type foundation consumed by later waves
-// (config validate(), TranscriptBuffer field + fold call, activity_snapshot()).
-// Until those waves wire them in, the compiler may flag them as dead code; that
-// is expected for this commit. Targeted module-level allow, not a blanket one.
-#![allow(dead_code)]
-
 use std::fmt;
 
 use regex::bytes::RegexSet;
@@ -109,17 +103,17 @@ impl ActivityCounters {
 /// fields — explicitly no `saw_compaction`/`reload_after_compaction` (R-12,
 /// AC-15). `Copy` + small. No `Display`; metadata-only hand-written `Debug` below.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ActivitySnapshot {
+pub struct ActivitySnapshot {
     /// Cast-free native width (NFR-5, AC-14).
-    pub(crate) bytes_total: u64,
-    pub(crate) delta_count: u32,
-    pub(crate) class_counts: [u32; MAX_SIGNAL_CLASSES],
+    pub bytes_total: u64,
+    pub delta_count: u32,
+    pub class_counts: [u32; MAX_SIGNAL_CLASSES],
 }
 
 impl ActivitySnapshot {
     /// The empty snapshot — all counters zero. Returned when a buffer produced
     /// no fold (and by the poison->empty degrade at the lock layer, #4764).
-    pub(crate) fn empty() -> Self {
+    pub fn empty() -> Self {
         ActivitySnapshot {
             bytes_total: 0,
             delta_count: 0,
@@ -160,7 +154,7 @@ impl fmt::Debug for ActivitySnapshot {
 /// `Debug` is the derived `RegexSet` debug (operator-trusted config patterns,
 /// never transcript bytes) — content-opaque by construction.
 #[derive(Debug)]
-pub(crate) struct SignatureScanner {
+pub struct SignatureScanner {
     /// Compiled from enabled patterns, in config order.
     set: RegexSet,
     /// Number of enabled classes == `set.len()`; `<= MAX_SIGNAL_CLASSES`.
@@ -175,7 +169,7 @@ impl SignatureScanner {
     /// and no duplicate class name. This is the defense-in-depth second compile of
     /// already-validated patterns; it still returns `Result` and the caller
     /// propagates loudly — no silent "no scanning" fallback (R-10).
-    pub(crate) fn compile(enabled_patterns: &[String]) -> Result<SignatureScanner, ScannerError> {
+    pub fn compile(enabled_patterns: &[String]) -> Result<SignatureScanner, ScannerError> {
         debug_assert!(
             enabled_patterns.len() <= MAX_SIGNAL_CLASSES,
             "enabled patterns must be bounded by validate() to MAX_SIGNAL_CLASSES"
@@ -190,7 +184,7 @@ impl SignatureScanner {
     /// The empty scanner — used when `[transcript_signals]` is absent/empty.
     /// Matches nothing; the fold still counts bytes/deltas. A legitimate config
     /// (zero signal classes), distinct from "fold not running".
-    pub(crate) fn empty() -> SignatureScanner {
+    pub fn empty() -> SignatureScanner {
         SignatureScanner {
             set: RegexSet::empty(),
             class_count: 0,
@@ -198,7 +192,7 @@ impl SignatureScanner {
     }
 
     /// Number of enabled classes (`<= MAX_SIGNAL_CLASSES`).
-    pub(crate) fn class_count(&self) -> usize {
+    pub fn class_count(&self) -> usize {
         self.class_count
     }
 
@@ -215,7 +209,7 @@ impl SignatureScanner {
 /// fallback. Scan time is infallible (a `RegexSet` match cannot error); only
 /// `compile` returns `Result`.
 #[derive(Debug)]
-pub(crate) enum ScannerError {
+pub enum ScannerError {
     /// A configured pattern failed to compile.
     InvalidRegex(regex::Error),
 }

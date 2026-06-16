@@ -1220,3 +1220,67 @@ fn test_daemon_log_fallback_on_open_failure() {
         "warning must indicate stderr fallback: {warning}"
     );
 }
+
+// -- crt-054 Component 10: Wave B startup precondition (ADR-010) --
+
+#[cfg(test)]
+mod wave_b_precondition_tests {
+    use super::*;
+    use unimatrix_server::infra::config::UnimatrixConfig;
+    use unimatrix_server::infra::session::{HeldBufferScan, SessionRegistry};
+    use unimatrix_server::infra::session_transcript::TranscriptPurgeRecord;
+    use unimatrix_server::infra::transcript_hold::{PurgeAuditSink, TranscriptHold};
+
+    /// No-op purge sink so the hold can be built without a real AuditLog/store.
+    struct NoopSink;
+    impl PurgeAuditSink for NoopSink {
+        fn emit(&self, _records: Vec<TranscriptPurgeRecord>, _trigger: &'static str) {}
+    }
+
+    fn wired_registry(config: &UnimatrixConfig, max_sessions: usize) -> SessionRegistry {
+        let hold = std::sync::Arc::new(TranscriptHold::new(
+            max_sessions.max(1),
+            std::sync::Arc::new(NoopSink),
+        ));
+        SessionRegistry::with_transcript_cap(config.retention.transcript_buffer_max_bytes)
+            .with_transcript_hold(hold as std::sync::Arc<dyn HeldBufferScan>)
+    }
+
+    #[test]
+    fn test_wave_b_handle_wired_passes_startup() {
+        let config = UnimatrixConfig::default();
+        assert!(
+            config.retention.transcript_hold_max_sessions > 0,
+            "default config keeps the hold ON"
+        );
+        let registry = wired_registry(&config, config.retention.transcript_hold_max_sessions);
+        assert_wave_b_precondition(&registry, &config).expect("wired + >0 passes");
+    }
+
+    #[test]
+    fn test_wave_b_handle_unwired_fails_loud() {
+        let config = UnimatrixConfig::default();
+        // Registry built WITHOUT with_transcript_hold → handle is None.
+        let registry =
+            SessionRegistry::with_transcript_cap(config.retention.transcript_buffer_max_bytes);
+        let err = assert_wave_b_precondition(&registry, &config)
+            .expect_err("unwired hold must fail loud");
+        assert!(
+            err.to_string().contains("not wired"),
+            "WaveBUnwired message: {err}"
+        );
+    }
+
+    #[test]
+    fn test_wave_b_disabled_max_sessions_zero_fails_loud() {
+        let mut config = UnimatrixConfig::default();
+        config.retention.transcript_hold_max_sessions = 0; // disabled (belt-and-suspenders)
+        let registry = wired_registry(&config, 1); // hold present, but config field == 0
+        let err = assert_wave_b_precondition(&registry, &config)
+            .expect_err("max_sessions == 0 must fail loud");
+        assert!(
+            err.to_string().contains("disables the hold"),
+            "WaveBDisabled message: {err}"
+        );
+    }
+}

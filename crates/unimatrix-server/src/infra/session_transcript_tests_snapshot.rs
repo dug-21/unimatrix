@@ -15,7 +15,7 @@ fn test_snapshot_returns_contiguous_span_no_holes_crossed() {
     // Covering delta set, no overflow: the snapshot span equals the full
     // contiguous content and crosses no hole / contains no zero-fill (FR-19).
     let src = src_bytes(1000);
-    let mut buf = TranscriptBuffer::new(DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES);
+    let mut buf = TranscriptBuffer::new(DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES, test_scanner());
     apply_all(&mut buf, &src, &covering_delta_set());
     assert!(buf.holes_for_test().is_empty(), "fixture covers [0,1000)");
     let snap = buf.snapshot();
@@ -70,7 +70,7 @@ fn test_snapshot_returns_whole_span_not_windowed() {
 
 #[test]
 fn test_snapshot_empty_buffer() {
-    let buf = TranscriptBuffer::new(4096);
+    let buf = TranscriptBuffer::new(4096, test_scanner());
     let snap = buf.snapshot();
     assert!(snap.bytes.is_empty());
     assert_eq!(snap.base_offset, 0);
@@ -84,7 +84,7 @@ fn test_snapshot_returns_truncated_tail_bytes() {
     // A "truncated final line" looks to the buffer like ordinary trailing bytes;
     // snapshot returns them intact (no zero-fill, no panic). Parsing is C3's job.
     let src = src_bytes(120);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &src[0..120]); // last bytes are a "partial line"
     let snap = buf.snapshot();
     assert_eq!(snap.bytes.as_slice(), &src[..], "trailing bytes intact");
@@ -96,7 +96,7 @@ fn test_snapshot_exposes_all_four_metadata_fields() {
     // AC-V-SEAM: all four metadata fields public + populated so #700 needs zero
     // byte re-read. Use an overflowed-with-hole buffer so every field is non-trivial.
     let src = src_bytes(600);
-    let mut buf = TranscriptBuffer::new(200);
+    let mut buf = TranscriptBuffer::new(200, test_scanner());
     buf.apply_delta(0, &src[0..150]);
     buf.apply_delta(300, &src[300..450]); // ring-tail + hole
     let snap = buf.snapshot();
@@ -123,7 +123,7 @@ fn test_700_reuse_parses_snapshot_bytes_without_contiguous_tail() {
     // Embed a recognizable marker the recovery caller scans for.
     let marker = b"# DECISION:";
     src[200..200 + marker.len()].copy_from_slice(marker);
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, &src);
     let snap = buf.snapshot();
 
@@ -145,7 +145,7 @@ fn test_700_reuse_parses_snapshot_bytes_without_contiguous_tail() {
 #[test]
 fn test_snapshot_debug_metadata_only() {
     let sentinel = b"SENTINEL-SNAPSHOT-SECRET";
-    let mut buf = TranscriptBuffer::new(4096);
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
     buf.apply_delta(0, sentinel);
     let snap = buf.snapshot();
     let dbg = format!("{snap:?}");
@@ -175,4 +175,58 @@ fn test_holeinfo_debug_safe() {
     let dbg = format!("{h:?}");
     assert!(dbg.contains("start") && dbg.contains("100"));
     assert!(dbg.contains("end") && dbg.contains("200"));
+}
+
+// ----------------------------- crt-054 ActivitySnapshot read surface (C4) --
+// Shape / content-opacity (AC-08). Read-before-purge (AC-07) is Stage 3c.
+
+use crate::infra::transcript_activity::{ActivitySnapshot, MAX_SIGNAL_CLASSES};
+
+#[test]
+fn test_activity_snapshot_is_copy() {
+    // Copy: re-using `snap` after a by-value copy compiles only if Copy.
+    let snap = ActivitySnapshot::empty();
+    let _copy = snap;
+    let _again = snap; // would not compile if ActivitySnapshot were not Copy
+    assert_eq!(snap.bytes_total, 0);
+}
+
+#[test]
+fn test_activity_snapshot_shape_matches_contract() {
+    // Field set/widths/order exactly { bytes_total: u64, delta_count: u32,
+    // class_counts: [u32; MAX_SIGNAL_CLASSES] } — crt-055 Surface B contract.
+    let snap = ActivitySnapshot {
+        bytes_total: 1u64,
+        delta_count: 2u32,
+        class_counts: [0u32; MAX_SIGNAL_CLASSES],
+    };
+    let _b: u64 = snap.bytes_total;
+    let _d: u32 = snap.delta_count;
+    let _c: [u32; MAX_SIGNAL_CLASSES] = snap.class_counts;
+    assert_eq!(MAX_SIGNAL_CLASSES, 16, "pinned == 16 (AC-11)");
+}
+
+#[test]
+fn test_activity_snapshot_debug_is_metadata_only() {
+    // Debug prints only the scalar counters — no transcript bytes can appear
+    // (the struct has no byte-bearing field).
+    let snap = ActivitySnapshot {
+        bytes_total: 42,
+        delta_count: 3,
+        class_counts: [0; MAX_SIGNAL_CLASSES],
+    };
+    let dbg = format!("{snap:?}");
+    assert!(dbg.contains("bytes_total") && dbg.contains("42"));
+    assert!(dbg.contains("delta_count") && dbg.contains("3"));
+    assert!(dbg.contains("class_counts"));
+}
+
+#[test]
+fn test_buffer_activity_snapshot_reflects_folds() {
+    // The buffer accessor returns the folded totals (AC-05/AC-07 read side).
+    let mut buf = TranscriptBuffer::new(4096, test_scanner());
+    buf.apply_delta(0, b"abcdef"); // 6 bytes
+    let snap = buf.activity_snapshot();
+    assert_eq!(snap.bytes_total, 6);
+    assert_eq!(snap.delta_count, 1);
 }

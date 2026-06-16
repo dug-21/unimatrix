@@ -367,6 +367,9 @@ mod tests {
             transcript: std::sync::Arc::new(std::sync::Mutex::new(
                 crate::infra::session_transcript::TranscriptBuffer::new(
                     crate::infra::session_transcript::DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES,
+                    std::sync::Arc::new(
+                        crate::infra::transcript_activity::SignatureScanner::empty(),
+                    ),
                 ),
             )), // vnc-025
         }

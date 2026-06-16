@@ -15,6 +15,7 @@ use crate::infra::session_transcript::{
     DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES, TranscriptBuffer, TranscriptPurgeRecord,
     TranscriptSnapshot, session_key,
 };
+use crate::infra::transcript_activity::{ActivitySnapshot, SignatureScanner};
 
 // -- Constants (ADR-002, ADR-003) --
 
@@ -270,6 +271,12 @@ pub struct SessionRegistry {
     /// Wave A — the held-scan branch in `take_transcripts_for_feature` is then
     /// inert and the seam scans registered buffers only (R-11 severable seam).
     transcript_hold: Option<Arc<dyn HeldBufferScan>>,
+    /// Shared compiled `[transcript_signals]` scanner (crt-054 ADR-001/ADR-002),
+    /// threaded into every `TranscriptBuffer::new` this registry performs so the
+    /// registered AND held routes fold into the SAME embedded accumulator. Built
+    /// once at startup from validated config; defaults to the empty scanner
+    /// (counts bytes/deltas, matches no class) when not injected.
+    signature_scanner: Arc<SignatureScanner>,
 }
 
 impl SessionRegistry {
@@ -286,6 +293,10 @@ impl SessionRegistry {
             sessions: Mutex::new(HashMap::new()),
             transcript_cap: max_bytes,
             transcript_hold: None, // Wave A: no held store; held-scan branch inert.
+            // crt-054: default to the empty scanner (counts bytes/deltas, matches
+            // no class). Production injects the compiled scanner via
+            // `with_signature_scanner` at startup.
+            signature_scanner: Arc::new(SignatureScanner::empty()),
         }
     }
 
@@ -294,6 +305,16 @@ impl SessionRegistry {
     /// `take_transcripts_for_feature` is inert (R-11 severable seam).
     pub fn with_transcript_hold(mut self, hold: Arc<dyn HeldBufferScan>) -> Self {
         self.transcript_hold = Some(hold);
+        self
+    }
+
+    /// Inject the shared compiled `[transcript_signals]` scanner (crt-054
+    /// ADR-001/ADR-002). Threaded into every `TranscriptBuffer::new` this
+    /// registry performs, so the registered route's buffers carry the same
+    /// scanner the held route inherits by construction. Built once at startup
+    /// from validated config (`SignatureScanner::compile(&enabled_patterns)`).
+    pub fn with_signature_scanner(mut self, scanner: Arc<SignatureScanner>) -> Self {
+        self.signature_scanner = scanner;
         self
     }
 
@@ -318,10 +339,16 @@ impl SessionRegistry {
         let transcript = match (self.transcript_hold.as_ref(), feature.as_deref()) {
             (Some(hold), Some(feature_cycle)) if !feature_cycle.is_empty() => {
                 hold.readopt(session_id, feature_cycle).unwrap_or_else(|| {
-                    Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap)))
+                    Arc::new(Mutex::new(TranscriptBuffer::new(
+                        self.transcript_cap,
+                        Arc::clone(&self.signature_scanner),
+                    )))
                 })
             }
-            _ => Arc::new(Mutex::new(TranscriptBuffer::new(self.transcript_cap))),
+            _ => Arc::new(Mutex::new(TranscriptBuffer::new(
+                self.transcript_cap,
+                Arc::clone(&self.signature_scanner),
+            ))),
         };
 
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
@@ -505,6 +532,77 @@ impl SessionRegistry {
             out.push((sid, snap));
         }
         out
+    }
+
+    /// Snapshot the in-memory ACTIVITY fold (crt-054 Surface B, Component 5) for
+    /// every session attributed to `feature_cycle`, returning `Copy`
+    /// [`ActivitySnapshot`]s. Modeled EXACTLY on [`take_transcripts_for_feature`]:
+    /// the same two-phase lock discipline (registry lock → `Arc`-clone only →
+    /// release; then per-buffer lock), the same registered ∪ held union deduped
+    /// by `Arc::ptr_eq`, the same poison→empty buffer policy (#4764). The ONLY
+    /// substitution is `buf.snapshot()` → `buf.activity_snapshot()` and the
+    /// element type `TranscriptSnapshot` → `ActivitySnapshot`. Keeping the
+    /// structure identical means the two seams cannot diverge in routing/dedup —
+    /// the held-route coverage that defends the believable-zero trap is inherited
+    /// verbatim (ADR-001/ADR-009).
+    ///
+    /// Late-bind attribution (ADR-004, AC-12): the Phase-1 filter
+    /// `feature == Some(feature_cycle)` means UNDECLARED sessions (`feature ==
+    /// None`) contribute NO entry — absent from the Vec, never a fabricated zero.
+    /// A session present with a genuinely zero-byte buffer DOES appear with a zero
+    /// snapshot (a measured zero, distinct from absence). crt-055 distinguishes
+    /// absence via its own availability flag; crt-054 never emits a zero on a
+    /// missing session's behalf.
+    ///
+    /// Read-before-purge (ADR-006, AC-07): crt-055 calls this BEFORE
+    /// `purge_cycle_transcripts` zeroes/drops the buffers. Infallible — lock
+    /// poison degrades to an empty buffer per #4764, never a drop or panic.
+    pub fn activity_snapshots_for_feature(
+        &self,
+        feature_cycle: &str,
+    ) -> Vec<(String, ActivitySnapshot)> {
+        // Phase 1 — registry lock: scan + Arc-clone only (microsecond-class).
+        let arcs: Vec<(String, Arc<Mutex<TranscriptBuffer>>)> = {
+            let sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+            let mut arcs: Vec<(String, Arc<Mutex<TranscriptBuffer>>)> = sessions
+                .values()
+                .filter(|s| s.feature.as_deref() == Some(feature_cycle)) // None never matches
+                .map(|s| (s.session_id.clone(), Arc::clone(&s.transcript)))
+                .collect();
+
+            // Held-scan branch (Wave B, SEVERABLE — same as
+            // take_transcripts_for_feature). Reached only through the optional
+            // handle; dedup by Arc identity so a buffer that is BOTH registered
+            // and held is snapshotted once.
+            if let Some(hold) = self.transcript_hold.as_ref() {
+                for (sid, arc) in hold.held_arcs_for_feature(feature_cycle) {
+                    if !arcs.iter().any(|(_, a)| Arc::ptr_eq(a, &arc)) {
+                        arcs.push((sid, arc));
+                    }
+                }
+            }
+            arcs
+        }; // registry lock RELEASED — before any buffer lock
+
+        // Phase 2 — per-buffer lock: counters copy via activity_snapshot() only.
+        let mut out = Vec::with_capacity(arcs.len());
+        for (sid, arc) in arcs {
+            let snap = {
+                let buf = lock_buffer(&arc);
+                buf.activity_snapshot()
+            }; // buffer lock RELEASED
+            out.push((sid, snap));
+        }
+        out
+    }
+
+    /// Whether the crt-052 Wave B held-buffer scan handle is wired (crt-054
+    /// Component 10, ADR-010). Surface B's survival-to-review rests on the hold;
+    /// the startup precondition asserts this is `Some` (`main.rs`
+    /// `assert_wave_b_precondition`) and fails loud if a regression left it
+    /// unwired. A cheap predicate — no scan.
+    pub fn has_transcript_hold(&self) -> bool {
+        self.transcript_hold.is_some()
     }
 
     /// Record injected entries from a ContextSearch response.
@@ -1711,6 +1809,7 @@ mod tests {
             confirmed_entries: HashSet::new(), // col-028
             transcript: Arc::new(Mutex::new(TranscriptBuffer::new(
                 DEFAULT_TRANSCRIPT_BUFFER_MAX_BYTES,
+                Arc::new(SignatureScanner::empty()),
             ))), // vnc-025
         }
     }
@@ -3517,7 +3616,10 @@ mod tests {
     /// feature → BOTH appear (registered ∪ held), through the injected handle.
     #[test]
     fn test_seam_scans_registered_and_held() {
-        let held_arc = Arc::new(Mutex::new(TranscriptBuffer::new(4096)));
+        let held_arc = Arc::new(Mutex::new(TranscriptBuffer::new(
+            4096,
+            Arc::new(SignatureScanner::empty()),
+        )));
         lock_buffer(&held_arc).apply_delta(0, b"held content");
         let hold = Arc::new(TestHold {
             entries: vec![("crt-052".to_string(), "held".to_string(), held_arc)],
@@ -3565,5 +3667,112 @@ mod tests {
         assert_eq!(snaps.len(), 1);
         assert_eq!(snaps[0].0, "s1");
         assert_eq!(snaps[0].1.bytes, b"wave-a");
+    }
+
+    // -- crt-054 Component 5: activity_snapshots_for_feature collector --
+    // Mirrors take_transcripts_for_feature: registered ∪ held, dedup by Arc,
+    // no fabricated zero (AC-12). Held-route AC-06 / read-before-purge AC-07
+    // are Stage 3c integration tests — not here.
+
+    /// Helper: a held Arc carrying `bytes` folded in (uses the empty scanner).
+    fn held_buf_with(bytes: &[u8]) -> Arc<Mutex<TranscriptBuffer>> {
+        let arc = Arc::new(Mutex::new(TranscriptBuffer::new(
+            4096,
+            Arc::new(SignatureScanner::empty()),
+        )));
+        lock_buffer(&arc).apply_delta(0, bytes);
+        arc
+    }
+
+    #[test]
+    fn test_collector_includes_registered_and_held() {
+        let held = held_buf_with(b"held bytes");
+        let hold = Arc::new(TestHold {
+            entries: vec![("crt-052".to_string(), "held".to_string(), held)],
+        });
+        let reg = make_registry().with_transcript_hold(hold);
+        reg.register_session("reg", None, Some("crt-052".to_string()));
+        reg.apply_transcript_delta("reg", 0, b"registered");
+
+        let snaps = reg.activity_snapshots_for_feature("crt-052");
+        assert_eq!(snaps.len(), 2, "registered ∪ held");
+        for (_, s) in &snaps {
+            assert!(s.bytes_total > 0, "each folded a non-zero snapshot");
+            assert!(s.delta_count > 0);
+        }
+    }
+
+    #[test]
+    fn test_collector_dedup_by_arc() {
+        let reg = make_registry();
+        reg.register_session("dup", None, Some("crt-052".to_string()));
+        reg.apply_transcript_delta("dup", 0, b"shared");
+        let shared = reg.get_state("dup").unwrap().transcript;
+        let hold = Arc::new(TestHold {
+            entries: vec![("crt-052".to_string(), "dup".to_string(), shared)],
+        });
+        let reg = reg.with_transcript_hold(hold);
+
+        let snaps = reg.activity_snapshots_for_feature("crt-052");
+        assert_eq!(snaps.len(), 1, "same Arc snapshotted once (ptr_eq dedup)");
+        assert_eq!(snaps[0].0, "dup");
+    }
+
+    #[test]
+    fn test_collector_filters_by_feature_cycle() {
+        let reg = make_registry();
+        reg.register_session("a", None, Some("crt-052".to_string()));
+        reg.register_session("b", None, Some("col-099".to_string()));
+        reg.apply_transcript_delta("a", 0, b"aaa");
+        reg.apply_transcript_delta("b", 0, b"bbb");
+
+        let snaps = reg.activity_snapshots_for_feature("crt-052");
+        assert_eq!(snaps.len(), 1);
+        assert_eq!(snaps[0].0, "a");
+    }
+
+    #[test]
+    fn test_collector_undeclared_session_no_entry() {
+        // An UNDECLARED session (feature == None) contributes NO entry — never a
+        // fabricated zero (AC-12, ADR-004).
+        let reg = make_registry();
+        reg.register_session("undeclared", None, None);
+        reg.apply_transcript_delta("undeclared", 0, b"folded bytes");
+
+        let snaps = reg.activity_snapshots_for_feature("crt-052");
+        assert!(
+            snaps.is_empty(),
+            "undeclared session must not appear (no fabricated zero)"
+        );
+    }
+
+    #[test]
+    fn test_collector_absence_distinguishable_from_measured_zero() {
+        // A declared session that folded zero bytes appears with a zero snapshot;
+        // an absent session does not appear at all — the two are distinct.
+        let reg = make_registry();
+        reg.register_session("present", None, Some("crt-052".to_string()));
+        // No delta applied → present but zero.
+        let snaps = reg.activity_snapshots_for_feature("crt-052");
+        assert_eq!(snaps.len(), 1, "present-but-zero session still appears");
+        assert_eq!(snaps[0].1.bytes_total, 0, "a measured zero, not absence");
+
+        let other = reg.activity_snapshots_for_feature("col-404");
+        assert!(other.is_empty(), "absent cycle contributes no entry");
+    }
+
+    // -- crt-054 Component 10: has_transcript_hold accessor --
+
+    #[test]
+    fn test_has_transcript_hold_true_when_wired() {
+        let hold = Arc::new(TestHold { entries: vec![] });
+        let reg = make_registry().with_transcript_hold(hold);
+        assert!(reg.has_transcript_hold());
+    }
+
+    #[test]
+    fn test_has_transcript_hold_false_when_unwired() {
+        let reg = make_registry(); // no with_transcript_hold
+        assert!(!reg.has_transcript_hold());
     }
 }
