@@ -252,6 +252,13 @@ pub struct UnimatrixServer {
     /// in `new()` (for tests). Overwritten from `main.rs` with the startup config
     /// in the daemon/stdio paths (#561 `store_config` precedent).
     pub retention_config: Arc<RetentionConfig>,
+    /// crt-055 (ADR-008): enabled `[transcript_signals]` class names in CONFIG
+    /// ORDER (index == `class_counts` index). Snapshot read at startup so the
+    /// `context_cycle_review` activity-fold landing can build
+    /// `signal_class_counts_json` by index. Initialized empty in `new()` (for
+    /// tests → `signal_class_counts_json == "{}"`); overwritten from `main.rs`
+    /// with the startup-validated config (daemon/stdio paths).
+    pub transcript_signal_class_names: Arc<Vec<String>>,
     /// Maps rmcp session ID → clientInfo.name (vnc-014, ADR-001).
     ///
     /// Key: Mcp-Session-Id UUID string (HTTP) or "" (stdio singleton).
@@ -372,6 +379,7 @@ impl UnimatrixServer {
             // vnc-025: default (PurgeOnCycleClose) for test server; overwritten in
             // main.rs daemon/stdio paths.
             retention_config: Arc::new(RetentionConfig::default()),
+            transcript_signal_class_names: Arc::new(Vec::new()),
             // vnc-014 (ADR-001): empty map; populated by ServerHandler::initialize override.
             client_type_map: Arc::new(Mutex::new(HashMap::new())),
         }
@@ -558,6 +566,14 @@ impl UnimatrixServer {
     /// The match is EXHAUSTIVE — the enterprise seam (Constraint 7). Never an
     /// assumed variant, never `if ==`, never a `_` arm: a new `TranscriptRetention`
     /// variant must force a compile error here.
+    /// crt-055 (ADR-008): the enabled `[transcript_signals]` class names in
+    /// config order, supplied to the activity-fold landing so
+    /// `signal_class_counts_json` is built by index. Empty (e.g. in tests) yields
+    /// the canonical `"{}"` while the fixed `error`/`refusal` columns still land.
+    pub(crate) fn retention_config_signal_class_names(&self) -> Vec<String> {
+        self.transcript_signal_class_names.as_ref().clone()
+    }
+
     pub(crate) fn purge_cycle_transcripts(&self, feature_cycle: &str) {
         match self.retention_config.transcript_retention {
             TranscriptRetention::PurgeOnCycleClose => {

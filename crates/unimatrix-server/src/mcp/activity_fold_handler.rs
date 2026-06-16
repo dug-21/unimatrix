@@ -29,14 +29,10 @@
 //! integer counters and a `class_name → count` map. No transcript bytes touch
 //! the persist path; [`ActivitySnapshot`] is scalars-only by construction.
 
-// Wave-3 staging: this module is the read-before-purge LANDING. Its public
-// surface (`land_activity_fold` / `FoldLanding`) is wired into the review
-// pipeline by Component 9 (`tools.rs`), a LATER edit in the same wave. Until that
-// call site lands, these items have no in-tree caller outside the unit tests, so
-// the dead-code lint is suppressed module-wide. Remove this `allow` when
-// Component 9 places the `land_activity_fold(...)` call STRICTLY BEFORE
-// `purge_cycle_transcripts` (ADR-007 / R-03).
-#![allow(dead_code)]
+// crt-055 Component 9 wired the `land_activity_fold(...)` call into the review
+// pipeline (`tools.rs`, via `review_aggregates::ReviewAggregateState::land_fold`)
+// STRICTLY BEFORE `purge_cycle_transcripts` (ADR-007 / R-03). The module-wide
+// `#![allow(dead_code)]` Wave-3 staging suppression has therefore been removed.
 
 use crate::infra::session::SessionRegistry;
 use crate::infra::transcript_activity::{ActivitySnapshot, MAX_SIGNAL_CLASSES};

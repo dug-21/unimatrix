@@ -11,6 +11,7 @@ pub(crate) mod graph_read;
 pub mod identity;
 pub mod knowledge_reuse;
 pub mod response;
+pub(crate) mod review_aggregates;
 mod serde_util;
 pub mod tools;
 

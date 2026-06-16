@@ -94,6 +94,16 @@ pub struct CycleAggregates {
     // ── behavioral signals (ALWAYS coarse/directional) ──
     pub transcript_error_count: i64,
     pub transcript_refusal_count: i64,
+
+    // ── transcript fold throughput (exactly-counted bytes/deltas) + class map ──
+    /// Σ `ActivitySnapshot.bytes_total` across the cycle's held sessions (fold).
+    pub transcript_bytes_total: i64,
+    /// Σ `ActivitySnapshot.delta_count` across the cycle's held sessions (fold).
+    pub transcript_delta_count: i64,
+    /// Full `class_name → count` map as JSON (fold). Default `"{}"` (empty catalog).
+    /// Carried so the single writer (Component 2) lands all 16 columns 1:1 from one
+    /// struct. Content-free — a count map, never transcript text (NFR-01 leak gate).
+    pub signal_class_counts_json: String,
 }
 
 /// Presentation-layer view of cycle-context flags/counts NOT carried in `CycleAggregates`.
@@ -286,6 +296,9 @@ mod tests {
             context_reload_pct: 3750,
             transcript_error_count: 3,
             transcript_refusal_count: 1,
+            transcript_bytes_total: 4096,
+            transcript_delta_count: 12,
+            signal_class_counts_json: "{\"error\":3,\"refusal\":1}".to_string(),
         }
     }
 
