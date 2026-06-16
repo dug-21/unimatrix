@@ -2,11 +2,15 @@
 
 ## Purpose
 
-Compute the **honest, uncapped** inbound/outbound edge totals via a separate `COUNT(*)`-style
-aggregate over the **same canonicalized set** as the ranked select — so a `↔` edge counts **once**,
-not twice. The count NEVER references `GET_EDGE_DISPLAY_LIMIT` (it is uncapped). This is what keeps
-the visible-empty-box feedback loop and the #744/#745 inbound-degree observability intact
-(D-05/D-10, ADR-001/007, FR-10, C-6/C-7).
+Compute the **honest, uncapped** edge totals as **THREE direction buckets** (`inbound`, `outbound`,
+`both`) plus a **digest-only `authored` tally**, via a separate `COUNT(*)`/`SUM(CASE…)` aggregate
+over the **same canonicalized set** as the ranked select — so a `↔` edge counts **once**, in its own
+`both` bucket, never folded into `inbound`. The count NEVER references `GET_EDGE_DISPLAY_LIMIT` (it
+is uncapped). The three buckets keep the visible-empty-box feedback loop and the #744/#745
+**clean asymmetric-inbound-degree** observability intact (folding `↔` into inbound would corrupt
+exactly that signal). The `authored` tally feeds the summary digest's `(K authored)` over the full
+uncapped set — it is NOT a JSON/markdown key (D-05/D-10, ADR-001/005 TOTALS BUCKET CONTRACT/007,
+FR-10, C-6/C-7).
 
 ## Location
 
@@ -22,20 +26,28 @@ async fn count_neighbors_split(
     id: u64,
 ) -> Result<EdgeCountSplit, StoreError>
 
-struct EdgeCountSplit { inbound: usize, outbound: usize }   // post-canonicalization, ↔ once
+struct EdgeCountSplit {
+    inbound:  usize,   // asymmetric inbound ONLY (↔ NOT folded in — locked 2026-06-16)
+    outbound: usize,   // asymmetric outbound (unchanged)
+    both:     usize,   // canonicalized symmetric (↔), counted ONCE in its own bucket
+    authored: usize,   // SUM(source='agent') over deduped; DIGEST ONLY — feeds `(K authored)`, not a JSON/markdown key
+}   // all post-canonicalization, all uncapped, each edge counted exactly once
 ```
 
-## Canonical-row → direction bucket convention (stated + tested — ADR-007 #4)
+## Canonical-row → direction bucket convention (LOCKED 2026-06-16 — three buckets, ADR-005)
 
-A `↔` (symmetric) edge's canonical row has `direction = 'both'`. It must be attributed to **exactly
-one** bucket. **Convention: count every `↔` edge as `inbound`.** Asymmetric edges count in their
-actual leg (`outbound` if anchor is `source_id`, `inbound` if anchor is `target_id`). This makes
-`↔` counted once; the convention is asserted by a test so it cannot silently drift.
+A `↔` (symmetric) edge's canonical row has `direction = 'both'`. It is counted **once** in its own
+**`both` bucket** — it is **NOT** folded into `inbound`. Asymmetric edges count in their actual leg
+(`outbound` if anchor is `source_id`, `inbound` if anchor is `target_id`). So each canonical row
+maps to exactly one of three buckets: `both` (↔), `outbound` (→), `inbound` (←).
 
-> Rationale for choosing inbound: the inbound count is the load-bearing observability signal
-> (#744/#745). Bucketing `↔` consistently into inbound keeps the convention single and testable.
-> The invariant the spec requires is "once, not twice" — the bucket choice is fixed here so the
-> tester asserts a definite expected number.
+> **#744 regression note (the deciding factor — supersedes the old "↔ → inbound" convention).**
+> The prior pseudocode folded `↔` into `inbound` (`IN ('inbound','both')`). That **corrupts the
+> #744/#745 clean asymmetric-inbound-degree signal** the split exists to serve: a node with 5
+> `CoAccess` + 0 true inbound would read `inbound:5`, a false high-inbound degree. The locked
+> contract gives `↔` its own `both` bucket so `inbound` is now the **true asymmetric inbound
+> degree**. The required tested invariant is now: a `↔` edge ⇒ `both += 1`, `inbound` UNCHANGED
+> (the #744 regression guard). The old fold and its test are RETIRED.
 
 ## The SQL (same `deduped` CTE as the ranked select; `?1` anchor bind; NO cap, NO LIMIT)
 
@@ -61,9 +73,12 @@ deduped AS (         -- identical to store-ranked-query
              CASE WHEN direction = 'both' THEN 1 ELSE other_id END
 )
 SELECT
-    -- ↔ ('both') bucketed into inbound (convention above); asymmetric counted in its leg
-    SUM(CASE WHEN direction IN ('inbound','both') THEN 1 ELSE 0 END) AS inbound,
-    SUM(CASE WHEN direction = 'outbound'          THEN 1 ELSE 0 END) AS outbound
+    -- THREE direction buckets, each canonical row counted in exactly ONE (locked 2026-06-16):
+    COALESCE(SUM(CASE WHEN direction = 'inbound'  THEN 1 ELSE 0 END), 0) AS inbound,   -- asymmetric inbound ONLY (DROP the old 'both' fold)
+    COALESCE(SUM(CASE WHEN direction = 'outbound' THEN 1 ELSE 0 END), 0) AS outbound,  -- unchanged
+    COALESCE(SUM(CASE WHEN direction = 'both'     THEN 1 ELSE 0 END), 0) AS both,      -- ↔ counted ONCE in its own bucket
+    -- fourth aggregate, DIGEST ONLY — authored over the SAME deduped set (full uncapped):
+    COALESCE(SUM(CASE WHEN source = 'agent'       THEN 1 ELSE 0 END), 0) AS authored
 FROM deduped
 ```
 
@@ -84,14 +99,16 @@ fn count_neighbors_split(pool, id):
         .map_err(|e| StoreError::Database(e.into()))?    // FR-19: Result, no .unwrap()
     let inbound  = row.try_get::<i64,_>("inbound").map_err(StoreError::Database)?  as usize
     let outbound = row.try_get::<i64,_>("outbound").map_err(StoreError::Database)? as usize
-    Ok(EdgeCountSplit { inbound, outbound })
+    let both     = row.try_get::<i64,_>("both").map_err(StoreError::Database)?     as usize
+    let authored = row.try_get::<i64,_>("authored").map_err(StoreError::Database)? as usize
+    Ok(EdgeCountSplit { inbound, outbound, both, authored })
 ```
 
-> `SUM(...)` over zero rows returns NULL in SQLite. Guard: read as `Option<i64>` and
-> `unwrap_or(0)`, OR wrap with `COALESCE(SUM(...),0)` in the SQL. Prefer `COALESCE` so the Rust
-> side reads a non-null `i64` (the `?1`-anchor binding appears 4× — anchor in both legs and in
-> `MIN`/`MAX`; if the driver requires distinct positional indices, repeat the bind or use a named
-> bind — implementer's call, but the count MUST stay a single aggregate).
+> `SUM(...)` over zero rows returns NULL in SQLite — all four aggregates are wrapped in
+> `COALESCE(SUM(...),0)` above so the Rust side reads a non-null `i64`. The `?1`-anchor binding
+> appears 4× (anchor in both legs and in `MIN`/`MAX`); if the driver requires distinct positional
+> indices, repeat the bind or use a named bind — implementer's call, but the count MUST stay a
+> single aggregate (one round trip, no row materialization).
 
 ## Constraints honored
 
@@ -104,14 +121,15 @@ fn count_neighbors_split(pool, id):
 ## Data Flow
 
 - **Inputs**: `pool` (`read_pool_server`), `id` (anchor).
-- **Outputs**: `EdgeCountSplit { inbound, outbound }`; consumed by get-edge-assembly as
-  `EdgeTotals` inside `EdgesView`.
+- **Outputs**: `EdgeCountSplit { inbound, outbound, both, authored }`; `{inbound, outbound, both}`
+  consumed by get-edge-assembly as `EdgeTotals` inside `EdgesView`; `authored` threaded onto
+  `EdgesView.authored_total` for the digest only (not a JSON/markdown key).
 
 ## Error Handling
 
 - Any sqlx/`try_get` failure ⇒ `StoreError::Database`, propagated via `?`. **No `.unwrap()`/`expect()`**.
-- Non-existent / zero-edge `id` ⇒ `{inbound: 0, outbound: 0}` (via `COALESCE`), NOT an error
-  (drives the FR-12 explicit empty state downstream).
+- Non-existent / zero-edge `id` ⇒ `{inbound: 0, outbound: 0, both: 0, authored: 0}` (via
+  `COALESCE`), NOT an error (drives the FR-12 explicit empty state + `edges: none` digest downstream).
 
 ## Key Test Scenarios
 
@@ -120,11 +138,17 @@ fn count_neighbors_split(pool, id):
   independent of the displayed set. Extend to all three symmetric types.
 - **capped totals exact (R-03.1, FR-10)** — seed `> cap` mixed-direction edges; the rendered set is
   ≤cap but the totals report the true uncapped split (drives the `…N more` affordance downstream).
-- **direction split load-bearing (R-03.3, #744)** — high inbound + zero outbound entry reports the
-  true inbound count (observability survives the cap).
-- **↔ bucket convention** — a single `↔` edge contributes 1 to inbound, 0 to outbound (per the
-  stated convention); asserted explicitly so the convention cannot drift.
-- **zero-edge** — non-existent/edge-free `id` ⇒ `{0, 0}` (no error).
-- **Supersedes excluded from totals (R-12)** — a `Supersedes` edge is not counted.
+- **direction split load-bearing (R-03.3, #744)** — high asymmetric-inbound + zero outbound entry
+  reports the true `inbound` count (observability survives the cap).
+- **↔ → `both` bucket, NOT inbound (#744 regression guard, LOCKED)** — a single `↔` edge contributes
+  `both: 1`, `inbound: 0`, `outbound: 0`; asserted explicitly that `inbound` is UNCHANGED by a `↔`
+  edge so the corrupting fold cannot return. Extend to all three symmetric types. Mixed scenario: a
+  node with N `CoAccess` + M true asymmetric-inbound ⇒ `both: N`, `inbound: M` (never `inbound: N+M`).
+- **authored tally over the full set (digest-only)** — `authored` counts every `source='agent'`
+  canonical row in the uncapped `deduped` set (not the displayed ≤cap); asserted independent of the
+  bucket split (e.g. 9 symmetric, 7 authored ⇒ `both: 9`, `authored: 7`). Confirm `authored` is NOT
+  a JSON/markdown key downstream.
+- **zero-edge** — non-existent/edge-free `id` ⇒ `{0, 0, 0, 0}` (no error).
+- **Supersedes excluded from totals (R-12)** — a `Supersedes` edge is not counted in any bucket.
 - **counting in SQL (R-04)** — assert the statement carries `SUM(...)`/aggregate, not a row fetch +
   Rust count.

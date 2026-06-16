@@ -1,7 +1,8 @@
 # vnc-037 Pseudocode — OVERVIEW
 
 A next-hop navigation affordance: on `context_get`, surface a **ranked, capped (≤3)** set of
-an entry's depth-1 typed edges plus **honest, uncapped** inbound/outbound totals. Read-path
+an entry's depth-1 typed edges plus **honest, uncapped** inbound/outbound/both totals (THREE
+buckets — ↔ in its own `both` bucket per ADR-005 2026-06-16). Read-path
 only — no schema migration, no multi-hop. This file fixes the shared vocabulary, the data flow
 across component boundaries, the canonicalization CASE, the ranked SQL, and the build order.
 Per-component pseudocode lives in the sibling files.
@@ -42,8 +43,13 @@ struct RawEdgeRow {
     target_confidence: Option<f64>       // ADDITIVE: ranked variant ONLY. None on the plain path AND for dangling targets (LEFT JOIN). Inferred-tiebreak input, NEVER surfaced.
 }
 
-// graph_queries_ranked.rs — split-count return type.
-struct EdgeCountSplit { inbound: usize, outbound: usize }   // post-canonicalization, ↔ counted once
+// graph_queries_ranked.rs — split-count return type (THREE buckets + digest-only authored, ADR-005 2026-06-16).
+struct EdgeCountSplit { inbound: usize, outbound: usize, both: usize, authored: usize }
+//   inbound  = asymmetric inbound ONLY (↔ NO LONGER folded in — #744 clean asymmetric-inbound degree)
+//   outbound = asymmetric outbound (unchanged)
+//   both     = canonicalized symmetric edges (↔), counted ONCE in their own bucket
+//   authored = SUM(source='agent') over the SAME deduped set; DIGEST ONLY — never a JSON/markdown key
+//   all usize, all UNCAPPED, each edge counted exactly once.
 
 // --- unimatrix-server: mcp/response/edges.rs ---
 
@@ -57,8 +63,9 @@ struct GetEdge {
     // NO source_id, depth, metadata, source string, weight, or target_confidence — enrichment forbidden.
 }
 
-struct EdgeTotals { inbound: usize, outbound: usize }        // uncapped, ↔ counted once (= EdgeCountSplit projected)
-struct EdgesView  { edges: Vec<GetEdge> /* ≤cap */, totals: EdgeTotals }
+struct EdgeTotals { inbound: usize, outbound: usize, both: usize }  // 3 keys, uncapped; ↔ once in `both` (= EdgeCountSplit projected, MINUS authored). JSON `edge_totals` is these 3 keys.
+struct EdgesView  { edges: Vec<GetEdge> /* ≤cap */, totals: EdgeTotals, authored_total: usize }
+//   authored_total = EdgeCountSplit.authored over the FULL uncapped set; threaded for the digest's `(K authored)`. NOT a JSON/markdown key.
 
 // --- unimatrix-server: mcp/tools.rs ---
 struct GetParams { /* …existing fields… */ include_edges: Option<bool> /* #[serde(default)] */ }
@@ -130,8 +137,9 @@ The `?1` anchor, the `IN (…)` symmetric list, and the `!= 'Supersedes'` filter
 ranked statement and `store-split-count.md` for the count over the same `deduped` CTE.
 
 > Anchor convention for symmetric direction bucketing: a `↔` row's `direction='both'`. The split
-> count must attribute each `↔` to exactly ONE direction bucket (convention: **inbound** — see
-> `store-split-count.md`), so it is counted once, not once per direction.
+> count attributes each `↔` to its **own `both` bucket** — counted ONCE, never folded into `inbound`
+> (locked 2026-06-16, ADR-005 TOTALS BUCKET CONTRACT; #744 regression guard — see
+> `store-split-count.md`). The old "↔ → inbound" fold is RETIRED.
 
 ## The ranked SQL (locked — D-09 / ADR-006, C-8)
 
@@ -164,7 +172,8 @@ context_get handler (tools.rs)
   │        2. split = count_neighbors_split(read_pool_server, id)       [store-split-count]   → EdgeCountSplit
   │        3. titles= batch title join over the ≤cap displayed target_ids → HashMap<u64,String>
   │        4. project rows → Vec<GetEdge> (→|←|↔, authored, title-map lookup)  [get-edge-vocabulary]
-  │        5. EdgesView { edges, totals: EdgeTotals{split.inbound, split.outbound} }
+  │        5. EdgesView { edges, totals: EdgeTotals{split.inbound, split.outbound, split.both},
+  │                       authored_total: split.authored }                       // digest-only authored threaded
   │      ── ANY Err in steps 1–3 (post-primary-read) ⇒ SAME ServerError mapping as primary read, RETURNED (FR-19 fail-loud)
   │    edges = Some(&view)
   │  ELSE: edges = None ; steps 1–5 never run (FR-3 — zero query cost)

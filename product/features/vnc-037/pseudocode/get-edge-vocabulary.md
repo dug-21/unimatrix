@@ -25,9 +25,15 @@ struct GetEdge {
 }
 // EXACTLY these 5 fields. NO source_id, depth, metadata, source string, weight, target_confidence.
 
-struct EdgeTotals { inbound: usize, outbound: usize }   // uncapped, ↔ once (= EdgeCountSplit)
+// THREE buckets (locked 2026-06-16, ADR-005). Serializes to the 3-key JSON `edge_totals`.
+// `authored` is NOT here — per-edge `authored` already carries it; the digest authored tally rides on EdgesView.
+struct EdgeTotals { inbound: usize, outbound: usize, both: usize }   // uncapped; ↔ once in `both`
 
-struct EdgesView  { edges: Vec<GetEdge> /* len ≤ GET_EDGE_DISPLAY_LIMIT */, totals: EdgeTotals }
+struct EdgesView  {
+    edges:          Vec<GetEdge>   // len ≤ GET_EDGE_DISPLAY_LIMIT
+    totals:         EdgeTotals     // 3 buckets → JSON edge_totals
+    authored_total: usize          // EdgeCountSplit.authored over the FULL uncapped set; DIGEST ONLY, not a JSON/markdown key
+}
 ```
 
 ## Direction values (the D-02 fix / ADR-007)
@@ -63,7 +69,8 @@ GetEdge {
 ## Data Flow
 
 - **Inputs**: ranked `RawEdgeRow`s (+ direction hint), `HashMap<u64,String>` title map,
-  `EdgeCountSplit`.
+  `EdgeCountSplit { inbound, outbound, both, authored }` (projected to `EdgeTotals{in,out,both}`;
+  `authored` → `EdgesView.authored_total`).
 - **Outputs**: `EdgesView` passed by reference (`Option<&EdgesView>`) into `format_single_entry`.
 
 ## Error Handling

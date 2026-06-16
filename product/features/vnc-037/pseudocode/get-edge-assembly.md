@@ -55,7 +55,8 @@ async fn build_edges_view(store: &Store, id: u64) -> Result<EdgesView, StoreErro
     // 1. ranked ≤cap displayed rows (canonicalized, LEFT JOIN confidence, LIMIT GET_EDGE_DISPLAY_LIMIT)
     let rows = query_ranked_neighbors(pool, id).await?        // Result — no .unwrap() (FR-19)
 
-    // 2. honest uncapped split totals (same canonicalized set, ↔ once)
+    // 2. honest uncapped split totals — THREE buckets {inbound, outbound, both} + digest-only `authored`
+    //    (same canonicalized set, ↔ once in `both`, never folded into inbound — #744 guard)
     let split = count_neighbors_split(pool, id).await?        // Result — no .unwrap() (FR-19)
 
     // 3. batched title join over the ≤cap displayed targets ONLY (never the uncapped set)
@@ -73,8 +74,12 @@ async fn build_edges_view(store: &Store, id: u64) -> Result<EdgesView, StoreErro
         authored:     r.source == EDGE_SOURCE_AGENT,           // exact match, store constant (R-09)
     }).collect()
 
-    // 5. assemble (edges already ≤cap from SQL; totals uncapped)
-    Ok(EdgesView { edges, totals: EdgeTotals { inbound: split.inbound, outbound: split.outbound } })
+    // 5. assemble (edges already ≤cap from SQL; totals uncapped, THREE buckets; authored_total threaded for the digest)
+    Ok(EdgesView {
+        edges,
+        totals: EdgeTotals { inbound: split.inbound, outbound: split.outbound, both: split.both },
+        authored_total: split.authored,          // digest-only — NOT a JSON/markdown key
+    })
 ```
 
 > Return `Result<EdgesView, StoreError>` so the single `.map_err(...)?` at the handler maps the
@@ -121,7 +126,7 @@ EdgesView (Some) | None → format_single_entry(entry, format, edges)
 ## Error Handling
 
 - Post-primary-read failure on default-on ⇒ mapped `ServerError` (same as primary read), RETURNED.
-  **Distinct from a zero-edge success** (FR-12): zero edges ⇒ `Ok(EdgesView{edges:[], totals:{0,0}})`
+  **Distinct from a zero-edge success** (FR-12): zero edges ⇒ `Ok(EdgesView{edges:[], totals:{0,0,0}, authored_total:0})`
   → success with explicit empty state; a failure ⇒ `Err` → no success payload (AC-14b distinction).
 - Non-existent id never reaches here (primary `entry_store.get` errors first).
 - Dangling target ⇒ `target_title: None`, retained — not a failure (DNB-1).
@@ -136,8 +141,13 @@ EdgesView (Some) | None → format_single_entry(entry, format, edges)
   explicit empty state, structurally distinguishable from the (a) error result.
 - **opt-out skips ALL queries (R-14, AC-11)** — `Some(false)` issues zero ranked/count/title
   queries (query-count/instrumentation) and the payload has no `edges` key.
-- **default-on surfaces (AC-01)** — `None`/`Some(true)` surface ≤cap edges + totals; a just-written
-  edge appears immediately (live SQL, no tick wait).
+- **default-on surfaces (AC-01)** — `None`/`Some(true)` surface ≤cap edges + 3-bucket totals; a
+  just-written edge appears immediately (live SQL, no tick wait).
+- **authored_total threaded (locked digest)** — `EdgesView.authored_total == split.authored` (full
+  uncapped set); a node with more authored edges than the cap still reports the full authored tally
+  in the digest, not the displayed ≤cap count.
+- **3-bucket totals projected** — `EdgesView.totals` carries `{inbound, outbound, both}` exactly from
+  `EdgeCountSplit`; a `↔`-heavy node reports its symmetric count in `both`, `inbound` unchanged.
 - **batched title join, no N+1 (AC-02)** — query-count assertion: titles resolve in ONE join over
   the ≤cap targets; uncapped set never title-resolved.
 - **carried-forward / context_edge authored (R-05, FR-17, named)** — a carried-forward (vnc-035)

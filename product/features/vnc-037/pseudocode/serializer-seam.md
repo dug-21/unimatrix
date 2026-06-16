@@ -53,8 +53,10 @@ fn format_single_entry(entry, format, edges):
         let mut obj = entry_to_json(entry)              // UNCHANGED helper — base object only
         if let Some(view) = edges:                      // inject keys ONLY when surfaced
             obj["edges"] = render_json_edges(view)              // array of the 5-field objects
-            obj["edge_totals"] = json!({ "inbound": view.totals.inbound,
-                                         "outbound": view.totals.outbound })
+            obj["edge_totals"] = json!({ "inbound":  view.totals.inbound,    // THREE keys (locked 2026-06-16)
+                                         "outbound": view.totals.outbound,
+                                         "both":     view.totals.both })
+            // NOTE: authored_total is NOT a JSON key — per-edge `authored` already carries provenance.
         success(text(to_string_pretty(obj)))
 ```
 
@@ -71,7 +73,7 @@ json array of, per edge:
   { "edge_type": e.edge_type, "direction": e.direction,
     "target_id": e.target_id, "target_title": e.target_title,   // null when None
     "authored": e.authored }
-// zero-edge: view.edges is empty ⇒ "edges": []  (paired with edge_totals {0,0}) — FR-12
+// zero-edge: view.edges is empty ⇒ "edges": []  (paired with edge_totals {0,0,0}) — FR-12
 ```
 
 ### render_markdown_related(view) -> String  (ADR-005)
@@ -85,7 +87,7 @@ else:
         glyph = match e.direction { "both" => "↔", "outbound" => "→", "inbound" => "←" }
         + format!("- {} {} #{} \"{}\"\n", e.edge_type, glyph, e.target_id,
                                           e.target_title.unwrap_or("(untitled)"))   // dangling: no panic
-    let total = view.totals.inbound + view.totals.outbound      // uncapped total (↔ already once)
+    let total = view.totals.inbound + view.totals.outbound + view.totals.both   // uncapped grand total = sum of ALL THREE buckets (↔ already once); NO literal 3
     if total > (GET_EDGE_DISPLAY_LIMIT as usize):               // "more than displayed" — references the constant
         let n = total - (GET_EDGE_DISPLAY_LIMIT as usize)       // N = total − cap — references the constant
         + format!("_…and {} more — use context_graph_\n", n)
@@ -94,29 +96,29 @@ else:
 > No literal `3` at the threshold or arithmetic (C-12/FR-18/AC-13). The author/inferred sub-split
 > is **dropped** (ranking front-loads authored — ADR-005 OQ-02); a flat ranked list only.
 
-### render_summary_digest(view) -> String  (ADR-005, OQ-02 form)
+### render_summary_digest(view) -> String  (ADR-005 — LOCKED byte form, 2026-06-16)
 
 ```
-if view.edges is empty AND view.totals are 0:
-    return " | edges: none"                                     // FR-12
-// digest from the UNCAPPED totals (the honest split), distinguishing asymmetric vs symmetric:
-//   ↑ = asymmetric outbound count, ↓ = asymmetric inbound count, ↔N = symmetric count, (K authored)
-// Proposed form (OQ-02 — architect's chosen form, consistent with the existing entry-line style):
-return format!(" | edges: {}↑ {}↓ ↔{} ({} authored)", out_asym, in_asym, sym, authored_tally)
+// Zero-edge sentinel FIRST: all THREE buckets zero ⇒ no count terms, no authored tally.
+if view.totals.inbound == 0 AND view.totals.outbound == 0 AND view.totals.both == 0:
+    return " | edges: none"                                     // FR-12 / locked sentinel
+
+// LOCKED form (fixed arity — every segment present even at 0; counts from the UNCAPPED totals):
+//   " | edges: {outbound}↑ {inbound}↓ ↔{both} ({K} authored)"
+//   {outbound}→↑   {inbound}→↓   {both}→↔ (no space between ↔ and its count)
+//   {K} = view.authored_total (authored over the FULL uncapped set, NOT the displayed ≤cap)
+return format!(" | edges: {}↑ {}↓ ↔{} ({} authored)",
+               view.totals.outbound, view.totals.inbound, view.totals.both, view.authored_total)
 ```
 
-> **OQ-02 detail (flagged):** the summary digest needs the asymmetric-out / asymmetric-in /
-> symmetric counts SEPARATELY, but `EdgeTotals{inbound, outbound}` only carries the post-bucket
-> split (with `↔` folded into inbound per the count convention). To render `5↑ 2↓ ↔3` the digest
-> needs the symmetric count split out from inbound. **Resolution options for the implementer:**
-> (a) widen `EdgeTotals` / `EdgeCountSplit` with a `symmetric: usize` third count (a `SUM(CASE
->     WHEN direction='both' …)` in store-split-count) — cleanest, keeps the digest honest; OR
-> (b) render the simpler `edges: N↑ M↓ (K authored)` form without a separate `↔` tally.
-> **Recommendation: (a)** — the spec's proposed digest explicitly shows `↔N`, and SR-04/NFR-7 make
-> the string an acceptance surface. If (a) is taken, `store-split-count` adds the third aggregate
-> and `EdgeCountSplit`/`EdgeTotals` gain `symmetric: usize` (still uncapped, still ↔-once). The
-> `authored` tally counts the displayed-≤cap set unless the architect's OQ-02 form says otherwise —
-> the tester pins the exact byte form. **See Open Questions in the return summary.**
+> **LOCKED (was OQ-02 — resolved 2026-06-16 by the three-bucket TOTALS BUCKET CONTRACT).** The
+> three-bucket `EdgeTotals{inbound, outbound, both}` makes the symmetric count (`↔{both}`) read
+> directly off the `both` bucket — the old "widen vs drop ↔" dilemma is GONE. `{K}` is
+> `view.authored_total` (threaded from `EdgeCountSplit.authored` by get-edge-assembly), the authored
+> count over the **full uncapped** canonicalized set — NOT the displayed ≤cap, NOT re-derived from
+> the `edges` vec. Every count segment is always present (fixed arity, e.g. `0↑ 0↓ ↔4 (1 authored)`)
+> except the all-zero collapse to ` | edges: none`. Single spaces between the three terms and before
+> `(`; no space between `↔` and its count. This byte form is a frozen acceptance surface (SR-04/NFR-7).
 
 ## Constraints honored
 
@@ -147,9 +149,13 @@ return format!(" | edges: {}↑ {}↓ ↔{} ({} authored)", out_asym, in_asym, s
   symmetric lines; the dropped author/inferred sub-split is asserted ABSENT; single `…N more — use
   context_graph` pointer on overflow; zero-edge ⇒ "No related entries".
 - **json shape (R-17, AC-08)** — `edges` array of the exact 5-field objects + nested `edge_totals`
-  `{inbound, outbound}` (symmetric-once); zero-edge ⇒ `edges: []`, `edge_totals: {0,0}`.
-- **summary digest (R-17, OQ-02)** — the `↔` split form; zero-edge ⇒ `edges: none`. Exact byte
-  form pinned per the architect's OQ-02 decision.
+  with **THREE keys** `{inbound, outbound, both}` (assert `obj.len() == 3` and presence of `both`;
+  symmetric-once in `both`); zero-edge ⇒ `edges: []`, `edge_totals: {0,0,0}`. Assert `authored_total`
+  is NOT a JSON key.
+- **summary digest LOCKED byte form (R-17, SR-04/NFR-7)** — exact string
+  `" | edges: {outbound}↑ {inbound}↓ ↔{both} ({K} authored)"`; fixed arity even at 0 (e.g.
+  `0↑ 0↓ ↔4 (1 authored)`); `{K}` = `authored_total` (full uncapped set, not displayed ≤cap);
+  counts from the uncapped totals; all-three-zero ⇒ ` | edges: none`. Byte-pinned.
 - **cap-isolation (AC-13b)** — overriding `GET_EDGE_DISPLAY_LIMIT` (e.g. 2) shrinks the rendered set
   and the `…N more` arithmetic, while `edge_totals` stay byte-unchanged.
 - **dangling title no-panic (R-15)** — `target_title: None` renders across all 3 formats without panic.

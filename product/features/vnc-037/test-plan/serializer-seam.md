@@ -27,10 +27,16 @@ baseline. NOT hand-crafted expected strings.
 
 ### R-17 — Format render contract (Medium, NFR-7 acceptance surface)
 
-**`test_summary_digest_arrow_split`** (FR-14, OQ-02 form)
-Summary/null digest shows the true split distinguishing asymmetric direction from symmetric plus
-the authored tally — e.g. `… | edges: 5↑ 2↓ ↔3 (2 authored)` (architect's exact OQ-02 form).
-Zero-edge → `edges: none`.
+**`test_summary_digest_locked_byte_form`** (FR-14, AC-08, OQ-02 LOCKED form)
+Summary/null digest emits the **EXACT locked byte form**
+`" | edges: {outbound}↑ {inbound}↓ ↔{both} ({K} authored)"` (TOTALS BUCKET CONTRACT §2) — assert
+the exact bytes, e.g. `" | edges: 5↑ 2↓ ↔3 (2 authored)"`. Assert **fixed arity**: every count
+segment is present even when its bucket is 0 (e.g. `" | edges: 0↑ 0↓ ↔4 (1 authored)"`), single
+spaces between terms and before `(`, no space between `↔` and its count. The `↔{both}` reads the
+`both` bucket directly (no widen/drop dilemma). `{K}` = `authored_total` over the **FULL uncapped**
+canonicalized set (NOT the displayed ≤3) — assert with a >cap fixture where authored over the full
+set ≠ authored among the rendered ≤3. **Zero-edge sentinel:** all three buckets 0 ⇒ exactly
+`" | edges: none"` (no count terms, no authored tally).
 
 **`test_markdown_flat_ranked_no_subsplit`** (FR-14/AC-08)
 `### Related` after the footer, a **flat ranked ≤3** list, each line `- {edge_type} {→|←|↔}
@@ -41,16 +47,21 @@ on asymmetric.
 **`test_markdown_capped_pointer_references_constant`** (FR-12/FR-14/AC-13)
 When `total > GET_EDGE_DISPLAY_LIMIT`, a single `_…and N more — use context_graph_` pointer with
 `N = total − GET_EDGE_DISPLAY_LIMIT` — **no literal 3** in the threshold or arithmetic (references
-the constant). When `total <= GET_EDGE_DISPLAY_LIMIT`, **no** pointer.
+the constant). The `total` is the **3-bucket sum** `inbound + outbound + both` (TOTALS BUCKET
+CONTRACT §1) — assert a fixture whose `both` count is load-bearing for crossing the threshold (a
+`total` that would be wrong if `both` were dropped or folded). When `total <= GET_EDGE_DISPLAY_LIMIT`,
+**no** pointer.
 
 **`test_json_edges_and_totals_shape`** (FR-14/AC-08)
 JSON: `"edges": [{edge_type,direction,target_id,target_title,authored}]` (ranked ≤3) plus
-`"edge_totals": {"inbound": N, "outbound": M}` (uncapped, symmetric-once). Both keys present iff
+`"edge_totals": {"inbound": N, "outbound": M, "both": S}` (**three keys**, uncapped, symmetric-once
+in `both`). Assert the `edge_totals` object has exactly 3 keys including `both`, and that the
+digest-only `authored` tally is **NOT** a JSON key. Both `edges` and `edge_totals` present iff
 edges surfaced.
 
 **`test_zero_edge_empty_state_all_formats`** (R-17/AC-06/DNB-3)
 Zero-edge: summary `edges: none`; markdown `### Related` + `No related entries.`; json
-`"edges": []` + `"edge_totals": {"inbound":0,"outbound":0}`.
+`"edges": []` + `"edge_totals": {"inbound":0,"outbound":0,"both":0}` (all three buckets explicit).
 
 **`test_symmetric_renders_arrow_glyph_no_directional`** (R-10/R-17)
 A `direction="both"` edge renders `↔` and emits **no** `→`/`←`. An asymmetric edge renders the
@@ -70,8 +81,11 @@ retained.
 ## Cross-Component Dependency
 - The `…N more` threshold references `GET_EDGE_DISPLAY_LIMIT` (store-display-cap-constant);
   the cap-isolation test (override → rendered set shrinks) observes its effect **here**.
-- The totals rendered come from store-split-count; the symmetric-once value is asserted there,
-  the render shape here.
+- The 3-bucket totals (`inbound`/`outbound`/`both`) and the digest-only `authored_total` come from
+  store-split-count via `EdgesView` (get-edge-assembly); the symmetric-once value and the authored
+  aggregate are asserted there, the render shape (3-key json, locked digest bytes, `…N more` from
+  the 3-bucket sum) here. The digest reads `authored_total` from the view, never re-derived from the
+  displayed ≤3.
 
 ## Edge Cases
 - Zero edges (all three formats).

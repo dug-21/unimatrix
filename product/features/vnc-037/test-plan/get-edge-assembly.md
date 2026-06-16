@@ -1,10 +1,11 @@
 # Test Plan — get-edge-assembly (`mcp/get_edges.rs` + handler)
 
 The `context_get` handler edge path: resolve `include_edges`, issue ranked select + split count +
-batched title join, project rows → `GetEdge`, build `EdgesView`. Owns **R-14 (opt-out)**, **R-16 /
-AC-14 (fail-loud)**, **R-13 (latency)**, **R-15 (dangling)**, **R-19 (corrected transient)**, and
-the projection direction logic (R-10, shared with get-edge-vocabulary). `unimatrix-server`
-integration/unit tests.
+batched title join, project rows → `GetEdge`, **project `EdgeCountSplit { inbound, outbound, both }`
+→ `EdgeTotals { inbound, outbound, both }` and thread the digest-only `authored_total` into
+`EdgesView`**, build `EdgesView`. Owns **R-14 (opt-out)**, **R-16 / AC-14 (fail-loud)**, **R-13
+(latency)**, **R-15 (dangling)**, **R-19 (corrected transient)**, and the projection direction logic
+(R-10, shared with get-edge-vocabulary). `unimatrix-server` integration/unit tests.
 
 ## Unit / Integration Test Expectations
 
@@ -60,6 +61,21 @@ endpoint each time (never the anchor itself).
 **`test_projection_symmetric_both_no_arrow`** (D-02 fix)
 A canonicalized symmetric edge projects `direction = "both"` (renders `↔`) and emits **no**
 `→`/`←`.
+
+### Totals projection + digest authored threading (R-03/AC-08; 3-bucket contract)
+
+**`test_totals_projection_three_buckets`** (ADR-005 TOTALS BUCKET CONTRACT)
+The store's `EdgeCountSplit { inbound, outbound, both }` projects 1:1 to
+`EdgeTotals { inbound, outbound, both }` on `EdgesView` — assert all three buckets carry through
+unchanged (no fold, no drop of `both`). On a fixture with all three bucket types populated, assert
+the view's `edge_totals` equals the store split exactly.
+
+**`test_authored_total_threaded_from_full_set`** (TOTALS BUCKET CONTRACT §3)
+The digest-only `authored` aggregate from `count_neighbors_split` (over the FULL uncapped set) is
+threaded into `EdgesView` as `authored_total` (NOT re-derived from the capped ≤3 `edges` vec).
+Assert with a >cap fixture where authored over the full set ≠ count of `authored==true` among the
+displayed ≤3: `EdgesView.authored_total` must equal the full-set value, proving the summary renderer
+reads it from the view rather than recomputing off the displayed slice.
 
 ### R-15 — Dangling target retained, no panic (Medium)
 

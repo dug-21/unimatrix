@@ -42,9 +42,11 @@ projection drops `source_id`/`depth`/`metadata`, adds `target_title`/`authored`,
 
 ### EdgeTotals shape
 
-**`test_edge_totals_inbound_outbound_object`** (OQ-01/ADR-005)
-`EdgeTotals { inbound, outbound }` — the nested object shape, uncapped (the value comes from
-store-split-count; this asserts the type carries both fields).
+**`test_edge_totals_inbound_outbound_both_object`** (OQ-01/ADR-005, 3-bucket contract)
+`EdgeTotals { inbound, outbound, both }` — the nested object shape, **three keys**, uncapped (the
+value comes from store-split-count; this asserts the type carries all three fields). Serialized,
+assert `obj.len() == 3` and the `both` key is present. The digest-only `authored` aggregate is
+**NOT** a field of `EdgeTotals` (it rides on `EdgesView`/assembly — see get-edge-assembly).
 
 ### R-20 — `target_confidence` never surfaced
 
