@@ -3917,6 +3917,74 @@ def test_correction_carries_outgoing_edges_visible_on_new_entry(server):
     )
 
 
+def test_correct_then_get_carried_edge_classifies_authored(server):
+    """vnc-037 R-05/DNB-2/AC-03 (via MCP): an authored edge carried forward by a
+    context_correct shows up on context_get of the corrected entry B classified as
+    `authored=true` and wins a display slot ahead of an inferred edge.
+
+    Cross-feature: vnc-035 carries the authored (`source='agent'`) outgoing edge to
+    B; vnc-037 surfaces it on context_get with authored-first ranking. The inferred
+    competitor is seeded with HIGHER target confidence so authored-first (not
+    confidence) must decide the top slot — discriminating, not smoke."""
+    import json as _json
+    import sqlite3
+
+    # Arrange: target X (carried-authored) + target Y (inferred, higher confidence).
+    id_x = extract_entry_id(server.context_store(
+        "vnc037 carry-authored target X: the entry A authored-supports",
+        "operations", "convention", agent_id="human", format="json",
+    ))
+    id_a = extract_entry_id(server.context_store(
+        "vnc037 carry-authored source A: declares an authored Supports edge to X",
+        "architecture", "decision", agent_id="human", format="json",
+        edges=[{"edge_type": "Supports", "target_id": id_x}],
+    ))
+
+    # Correct A -> B with edges OMITTED: the authored edge carries forward to B.
+    corr = assert_tool_success(server.context_correct(
+        id_a, "vnc037 carry-authored corrected B: edges omitted, carry runs",
+        agent_id="human", format="json",
+    ))
+    blob = corr.text[: corr.text.rfind("}") + 1]
+    id_b = int(_json.loads(blob)["correction"]["id"])
+
+    # Seed an INFERRED edge B -> Y with high target confidence (would win on
+    # confidence alone, but authored-first must place the carried edge first).
+    id_y = extract_entry_id(server.context_store(
+        "vnc037 carry-authored inferred target Y: high-confidence competitor",
+        "operations", "convention", agent_id="human", format="json",
+    ))
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("UPDATE entries SET confidence = 0.99 WHERE id = ?", (id_y,))
+        conn.execute("UPDATE entries SET confidence = 0.10 WHERE id = ?", (id_x,))
+        conn.execute(
+            "INSERT OR IGNORE INTO graph_edges "
+            "(source_id, target_id, relation_type, weight, created_at, created_by, source) "
+            "VALUES (?, ?, 'Supports', 1.0, strftime('%s','now'), 'test', 'co_access')",
+            (id_b, id_y),
+        )
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+    # Act + Assert: context_get(B) surfaces the carried edge as authored, ranked first.
+    entry = parse_entry(server.context_get(id_b, format="json"))
+    edges = entry["edges"]
+    by_t = {e["target_id"]: e for e in edges}
+    assert id_x in by_t, "carried authored edge B->X must surface on context_get(B)"
+    assert by_t[id_x]["authored"] is True, "carried edge classifies authored (source='agent')"
+    # authored-first ranking: the carried (low-confidence) authored edge precedes
+    # the inferred (high-confidence) one in the displayed order.
+    order = [e["target_id"] for e in edges]
+    assert order.index(id_x) < order.index(id_y), (
+        "authored edge must rank ahead of higher-confidence inferred (authored-first)"
+    )
+
+
 # ===========================================================================
 # crt-055: context_cycle_review redesign — durable per-cycle aggregates,
 # dual reload, transcript-fold surfacing, clock/unit compaction gate.
