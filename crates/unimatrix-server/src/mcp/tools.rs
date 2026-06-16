@@ -644,7 +644,7 @@ impl UnimatrixServer {
                 rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
             })?;
             let ids = vec![entry.id];
-            (format_single_entry(&entry, ctx.format), ids)
+            (format_single_entry(&entry, ctx.format, None), ids)
         } else {
             // Build filter
             let status = match &params.status {
@@ -976,8 +976,10 @@ impl UnimatrixServer {
             rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
         })?;
 
-        // 4. Format response
-        let result = format_single_entry(&entry, ctx.format);
+        // 4. Format response.
+        // vnc-037: edges = None here for now — get-edge-assembly (next wave) flips this call
+        // site to Some(&view) on the default-on path. None ⇒ edges key/section absent (ADR-003).
+        let result = format_single_entry(&entry, ctx.format, None);
 
         // 5. Audit (standalone, best-effort)
         let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
