@@ -28,6 +28,9 @@ use unimatrix_store::{InjectionLogRecord, QueryLogRecord};
 use crate::fail_loud_guard::CycleAggregates;
 use crate::types::CycleEventRecord;
 
+pub mod compaction_reckoning;
+pub use compaction_reckoning::reckon_compaction_reread;
+
 /// Rank-1 phase aggregates derived from a cycle's `cycle_events` timeline.
 ///
 /// All counts are `i64` to match the `cycle_review_index` v5 column widths. An empty

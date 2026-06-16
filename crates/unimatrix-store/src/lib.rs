@@ -19,6 +19,7 @@ mod write;
 mod write_ext;
 
 mod audit;
+mod compaction_read;
 pub mod cycle_review_index;
 pub mod goal_clusters;
 pub mod injection_log;
