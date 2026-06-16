@@ -46,7 +46,12 @@ use crate::error::{Result, StoreError};
 ///     help). The recompute routes through the existing writer so empty-clobber is
 ///     structurally impossible. Same-version reads keep the original
 ///     stored-record-served / no-recompute behaviour.
-pub const SUMMARY_SCHEMA_VERSION: u32 = 4;
+///   - crt-055: bumped 4 → 5; adds rank-1/2/3 aggregate columns, dual reload
+///     (context_reload_pct basis points, compaction_count, compaction_reread_count),
+///     and the transcript fold (transcript_* + signal_class_counts_json). These change
+///     CycleReviewRecord JSON round-trip fidelity, so pre-v5 rows are flagged stale and
+///     recomputed via #758 guarded-recompute when source data is present.
+pub const SUMMARY_SCHEMA_VERSION: u32 = 5;
 
 /// 4MB ceiling for stored `summary_json` (NFR-03).
 const SUMMARY_JSON_MAX_BYTES: usize = 4 * 1024 * 1024;
@@ -101,6 +106,54 @@ pub struct CycleReviewRecord {
     /// after migration — do NOT "fix" this on `force=true` of historical rows.
     /// Rows with `first_computed_at = 0` are excluded from baseline window queries.
     pub first_computed_at: i64,
+
+    // --- crt-055 v5 aggregate columns ---
+    // Every metric field is `i64` (INTEGER) — no `f64`/REAL anywhere (Constraint 10,
+    // ADR-005 #5047). No content field (structural leak gate, Constraint 5). Pre-v5
+    // rows migrated by `migration.rs` carry DEFAULT 0 / "{}" until guarded recompute
+    // refreshes them (Component 2). `Default` is derived so callers keep
+    // `..Default::default()`.
+    //
+    // --- rank-1 phase aggregates (cycle_events) ---
+    /// Declared phases in the cycle (rank-1).
+    pub phase_count: i64,
+    /// Phase-end transitions in the cycle (rank-1).
+    pub phase_transition_count: i64,
+    /// Phase re-entries / rework loops (rank-1).
+    pub phase_rework_count: i64,
+    /// Declared-but-never-closed phases (#556, rank-1).
+    pub phase_unclosed_count: i64,
+    /// Σ closed-phase durations in seconds (rank-1).
+    pub phase_total_duration_secs: i64,
+    // --- rank-2 rework ratio (SessionRecord.outcome) — num/den pair, never pre-divided ---
+    /// Rework/failure sessions in the cycle (rank-2 numerator).
+    pub rework_session_count: i64,
+    /// Total sessions in the cycle (rank-2 denominator).
+    pub total_session_count: i64,
+    // --- rank-3 knowledge reuse (#320 query_log ∪ injection_log) ---
+    /// All-served knowledge-reuse count over `query_log ∪ injection_log` (rank-3, #320).
+    pub knowledge_reuse_served_count: i64,
+    // --- transcript fold (ActivitySnapshot, summed across held sessions; ADR-007) ---
+    /// Σ `ActivitySnapshot.bytes_total` across held sessions (bytes, not tokens).
+    pub transcript_bytes_total: i64,
+    /// Σ `ActivitySnapshot.delta_count` across held sessions.
+    pub transcript_delta_count: i64,
+    /// Σ `ActivitySnapshot.class_counts[0]` (error). Coarse/directional (ADR-003).
+    pub transcript_error_count: i64,
+    /// Σ `ActivitySnapshot.class_counts[1]` (refusal). Coarse/directional (ADR-003).
+    pub transcript_refusal_count: i64,
+    /// Full `class_name → count` JSON map. DB column DEFAULT is `'{}'`, but
+    /// `String::default()` is `""`; the read mapper coalesces `""` → `"{}"` and the
+    /// writer always binds a valid JSON object (ADR-007). Coarse/directional (ADR-003).
+    pub signal_class_counts_json: String,
+    // --- dual reload + compaction (ADR-005 / ADR-006) ---
+    /// COUNT of attributed `compaction_events` rows for the cycle.
+    pub compaction_count: i64,
+    /// Within-cycle post-compaction overlap reads (`read_ts_secs > compacted_at`).
+    pub compaction_reread_count: i64,
+    /// Cross-session reload, stored as basis points 0–10000 (`round(fraction × 10000)`).
+    /// INTEGER, not REAL — the float-bind footgun (#4529/#4533) is designed out.
+    pub context_reload_pct: i64,
 }
 
 /// Store-local projection from ENTRIES for curation snapshot computation.
@@ -156,7 +209,14 @@ impl SqlxStore {
                     raw_signals_available, summary_json, \
                     corrections_total, corrections_agent, corrections_human, \
                     corrections_system, deprecations_total, orphan_deprecations, \
-                    first_computed_at \
+                    first_computed_at, \
+                    phase_count, phase_transition_count, phase_rework_count, \
+                    phase_unclosed_count, phase_total_duration_secs, \
+                    rework_session_count, total_session_count, \
+                    knowledge_reuse_served_count, transcript_bytes_total, \
+                    transcript_delta_count, transcript_error_count, \
+                    transcript_refusal_count, signal_class_counts_json, \
+                    compaction_count, compaction_reread_count, context_reload_pct \
              FROM cycle_review_index \
              WHERE feature_cycle = ?1",
         )
@@ -167,20 +227,49 @@ impl SqlxStore {
 
         match row {
             None => Ok(None),
-            Some(r) => Ok(Some(CycleReviewRecord {
-                feature_cycle: r.get::<String, _>(0),
-                schema_version: r.get::<i64, _>(1) as u32,
-                computed_at: r.get::<i64, _>(2),
-                raw_signals_available: r.get::<i32, _>(3),
-                summary_json: r.get::<String, _>(4),
-                corrections_total: r.get::<i64, _>(5),
-                corrections_agent: r.get::<i64, _>(6),
-                corrections_human: r.get::<i64, _>(7),
-                corrections_system: r.get::<i64, _>(8),
-                deprecations_total: r.get::<i64, _>(9),
-                orphan_deprecations: r.get::<i64, _>(10),
-                first_computed_at: r.get::<i64, _>(11),
-            })),
+            Some(r) => {
+                // Coalesce "" → "{}" for signal_class_counts_json (ADR-007): the DB
+                // column DEFAULT is '{}', but a row written before the writer always
+                // binds a JSON object could read back an empty string. Normalize on read.
+                let signal_class_counts_json = {
+                    let raw = r.get::<String, _>(24);
+                    if raw.is_empty() {
+                        "{}".to_string()
+                    } else {
+                        raw
+                    }
+                };
+                Ok(Some(CycleReviewRecord {
+                    feature_cycle: r.get::<String, _>(0),
+                    schema_version: r.get::<i64, _>(1) as u32,
+                    computed_at: r.get::<i64, _>(2),
+                    raw_signals_available: r.get::<i32, _>(3),
+                    summary_json: r.get::<String, _>(4),
+                    corrections_total: r.get::<i64, _>(5),
+                    corrections_agent: r.get::<i64, _>(6),
+                    corrections_human: r.get::<i64, _>(7),
+                    corrections_system: r.get::<i64, _>(8),
+                    deprecations_total: r.get::<i64, _>(9),
+                    orphan_deprecations: r.get::<i64, _>(10),
+                    first_computed_at: r.get::<i64, _>(11),
+                    phase_count: r.get::<i64, _>(12),
+                    phase_transition_count: r.get::<i64, _>(13),
+                    phase_rework_count: r.get::<i64, _>(14),
+                    phase_unclosed_count: r.get::<i64, _>(15),
+                    phase_total_duration_secs: r.get::<i64, _>(16),
+                    rework_session_count: r.get::<i64, _>(17),
+                    total_session_count: r.get::<i64, _>(18),
+                    knowledge_reuse_served_count: r.get::<i64, _>(19),
+                    transcript_bytes_total: r.get::<i64, _>(20),
+                    transcript_delta_count: r.get::<i64, _>(21),
+                    transcript_error_count: r.get::<i64, _>(22),
+                    transcript_refusal_count: r.get::<i64, _>(23),
+                    signal_class_counts_json,
+                    compaction_count: r.get::<i64, _>(25),
+                    compaction_reread_count: r.get::<i64, _>(26),
+                    context_reload_pct: r.get::<i64, _>(27),
+                }))
+            }
         }
     }
 
@@ -552,16 +641,18 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // CRS-V24-U-01 (replaces CRS-U-02): SUMMARY_SCHEMA_VERSION is 3
+    // CRS-V5-U-01 (replaces CRS-V24-U-01): SUMMARY_SCHEMA_VERSION is 5
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_summary_schema_version_is_four() {
+    fn test_summary_schema_version_is_5() {
         assert_eq!(
-            SUMMARY_SCHEMA_VERSION, 4u32,
-            "SUMMARY_SCHEMA_VERSION must be 4 (bumped in #750: per-session \
-             aggregation re-grounded from PreToolUse onto PostToolUse, \
-             invalidating cached reviews that carry believable-zero metrics)"
+            SUMMARY_SCHEMA_VERSION, 5u32,
+            "SUMMARY_SCHEMA_VERSION must be 5 (bumped in crt-055: adds rank-1/2/3 \
+             aggregate columns, dual reload (context_reload_pct basis points, \
+             compaction_count, compaction_reread_count), and the transcript fold \
+             (transcript_* + signal_class_counts_json), changing CycleReviewRecord \
+             JSON round-trip fidelity)"
         );
     }
 
@@ -1197,6 +1288,7 @@ mod tests {
             deprecations_total: 5,
             orphan_deprecations: 3,
             first_computed_at: 1_719_000_000,
+            ..Default::default()
         };
 
         store
@@ -1231,6 +1323,65 @@ mod tests {
         assert_eq!(
             fetched.first_computed_at, 1_719_000_000,
             "first_computed_at round-trip"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // CRS-V5-U-02: v5 columns default to 0 / "{}" on a record stored without
+    // the new binds (Component 1 owns the schema; Component 2 owns the INSERT/
+    // UPDATE bind extension). A record constructed with `..Default::default()`
+    // and stored persists the DB DEFAULTs; read-back returns 0 for every metric
+    // and "{}" for signal_class_counts_json (the read mapper coalesces ""→"{}").
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_cycle_review_record_v5_defaults_round_trip() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let store = open_test_store(&dir).await;
+
+        let record = CycleReviewRecord {
+            feature_cycle: "crt-055-v5-defaults".to_string(),
+            schema_version: SUMMARY_SCHEMA_VERSION,
+            computed_at: 1_730_000_000,
+            raw_signals_available: 1,
+            summary_json: r#"{"v":"5"}"#.to_string(),
+            ..Default::default()
+        };
+
+        store
+            .store_cycle_review(&record)
+            .await
+            .expect("store must succeed");
+
+        let fetched = store
+            .get_cycle_review(&record.feature_cycle)
+            .await
+            .expect("get must not error")
+            .expect("must return Some after store");
+
+        assert_eq!(fetched.schema_version, 5, "schema_version round-trip");
+        // Every v5 metric column reads back as the DB DEFAULT 0.
+        assert_eq!(fetched.phase_count, 0);
+        assert_eq!(fetched.phase_transition_count, 0);
+        assert_eq!(fetched.phase_rework_count, 0);
+        assert_eq!(fetched.phase_unclosed_count, 0);
+        assert_eq!(fetched.phase_total_duration_secs, 0);
+        assert_eq!(fetched.rework_session_count, 0);
+        assert_eq!(fetched.total_session_count, 0);
+        assert_eq!(fetched.knowledge_reuse_served_count, 0);
+        assert_eq!(fetched.transcript_bytes_total, 0);
+        assert_eq!(fetched.transcript_delta_count, 0);
+        assert_eq!(fetched.transcript_error_count, 0);
+        assert_eq!(fetched.transcript_refusal_count, 0);
+        assert_eq!(fetched.compaction_count, 0);
+        assert_eq!(fetched.compaction_reread_count, 0);
+        assert_eq!(fetched.context_reload_pct, 0);
+        // The JSON column defaults to '{}' in the DB; the read mapper coalesces ""→"{}".
+        assert_eq!(
+            fetched.signal_class_counts_json, "{}",
+            "signal_class_counts_json must read back as '{{}}', never empty"
         );
 
         store.close().await.unwrap();
@@ -1642,6 +1793,7 @@ mod tests {
                 deprecations_total: 3,
                 orphan_deprecations: 1,
                 first_computed_at: 1_700_000_000,
+                ..Default::default()
             })
             .await
             .expect("store must succeed");

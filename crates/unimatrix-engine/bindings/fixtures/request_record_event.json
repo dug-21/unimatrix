@@ -4,8 +4,8 @@
   "session_id": "sess-fixture",
   "timestamp": 1700000000,
   "payload": {
-    "path": "src/wire.rs",
-    "tool": "Read"
+    "tool": "Read",
+    "path": "src/wire.rs"
   },
   "topic_signal": "vnc-024",
   "provider": "claude-code"

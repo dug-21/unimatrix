@@ -3811,6 +3811,11 @@ fn build_cycle_review_record(
         deprecations_total: dt,
         orphan_deprecations: od,
         first_computed_at,
+        // crt-055 v5 aggregate columns: schema substrate lands here (Component 1).
+        // The full-pipeline population of these fields is owned by Component 2
+        // (store_cycle_review extension / aggregate reckoning), a later sub-wave;
+        // until then they carry the Default 0 / "{}" the DB columns also default to.
+        ..Default::default()
     })
 }
 

@@ -2908,6 +2908,7 @@ mod tests_crt033 {
             deprecations_total: 0,
             orphan_deprecations: 0,
             first_computed_at: 0,
+            ..Default::default()
         };
         store
             .store_cycle_review(&review_b)
@@ -2966,6 +2967,7 @@ mod tests_crt033 {
                 deprecations_total: 0,
                 orphan_deprecations: 0,
                 first_computed_at: 0,
+                ..Default::default()
             };
             store
                 .store_cycle_review(&review)
@@ -3397,6 +3399,7 @@ mod crt_036_gc_block_tests {
                     deprecations_total: 0,
                     orphan_deprecations: 0,
                     first_computed_at: 0,
+                    ..Default::default()
                 })
                 .await
                 .expect("store review");
@@ -3474,6 +3477,7 @@ mod crt_036_gc_block_tests {
                 deprecations_total: 0,
                 orphan_deprecations: 0,
                 first_computed_at: 0,
+                ..Default::default()
             })
             .await
             .expect("store retained cycle");
@@ -3496,6 +3500,7 @@ mod crt_036_gc_block_tests {
                     deprecations_total: 0,
                     orphan_deprecations: 0,
                     first_computed_at: 0,
+                    ..Default::default()
                 })
                 .await
                 .expect("store purgeable cycle");
@@ -3605,6 +3610,7 @@ mod crt_036_gc_block_tests {
                     deprecations_total: 0,
                     orphan_deprecations: 0,
                     first_computed_at: 0,
+                    ..Default::default()
                 })
                 .await
                 .expect("store reviewed");
@@ -3678,6 +3684,7 @@ mod crt_036_gc_block_tests {
                     deprecations_total: 0,
                     orphan_deprecations: 0,
                     first_computed_at: 0,
+                    ..Default::default()
                 })
                 .await
                 .expect("store review");
@@ -3869,6 +3876,7 @@ mod tests_crt047 {
                 deprecations_total,
                 orphan_deprecations,
                 first_computed_at: now - ts_offset,
+                ..Default::default()
             })
             .await
             .expect("seed curation row");
