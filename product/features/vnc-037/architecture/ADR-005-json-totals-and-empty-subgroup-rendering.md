@@ -10,8 +10,8 @@
 > is now **THREE buckets** `{inbound, outbound, both}` — `↔` gets its OWN bucket; it is **no
 > longer folded into `inbound`**. This revises OQ-01's 2-key JSON shape to 3 keys and is the
 > deciding change for the symmetric-count digest form. Rationale and the full TOTALS BUCKET
-> CONTRACT are pinned in the new sections below. (Unimatrix MCP was disconnected at decision
-> time — the `context_correct` of the stored ADR entry is **DEFERRED**; re-sync required.)
+> CONTRACT are pinned in the new sections below. (Unimatrix sync complete 2026-06-16: the
+> stored ADR entry was corrected via `context_correct` #5017 → #5072 to match this file.)
 
 ### Context
 
