@@ -101,15 +101,17 @@ enabled = true
 }
 
 #[test]
-fn test_projects_absent_default_alias_unchanged() {
-    // With no slug arm constructed, `/v1/tools/...` resolves to ProjectKey::Default —
-    // byte-identical to the current single-project route (cross-check the grammar).
+fn test_projects_absent_no_default_alias() {
+    // vnc-038 ADR-004 (#5083): the `/v1/tools/... -> Default` alias is DELETED.
+    // `tools` now parses as a slug *candidate*, never a default store. With no
+    // `[[projects]]` declared it resolves to UnknownProject at the resolver
+    // (`tools` is reserved/unregisterable), never a silent default (AC-09/R-10).
     let config = UnimatrixConfig::default();
     assert!(config.projects.is_empty());
     assert_eq!(
         parse_key_for_test("/v1/tools/call").expect("parse"),
-        ProjectKey::Default,
-        "default alias must remain ProjectKey::Default when no slugs are declared"
+        ProjectKey::Slug(ProjectSlug::try_from("tools").expect("valid charset")),
+        "`/v1/tools/...` must parse `tools` as a slug candidate, NEVER a Default alias"
     );
 }
 

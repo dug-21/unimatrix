@@ -115,12 +115,14 @@ where
     let path = request.uri().path().to_owned();
     let method = request.method().clone();
 
-    match (method, path.as_str()) {
-        (Method::GET, "/health") => map_health_response(health_response()),
-        (Method::POST, "/observe") => {
-            // The real handler would check identity then parse body.
-            // Without ResolvedIdentity, it returns 500. For routing tests,
-            // we return 400 to indicate the route was matched.
+    // Mirrors `PathRouter::call` routing (vnc-038 ADR-003): `/health` top-level,
+    // per-slug observe `POST /v1/{slug}/observe`, everything else MCP.
+    match (&method, path.as_str()) {
+        (&Method::GET, "/health") => map_health_response(health_response()),
+        (&Method::POST, p) if p.starts_with("/v1/") && p.ends_with("/observe") => {
+            // The real handler resolves the per-slug store, then checks identity
+            // and parses the body. For routing tests we return 400 to indicate the
+            // observe route was matched (the handler would 500 without identity).
             json_error_response(StatusCode::BAD_REQUEST, "mock: no body")
         }
         (_, _) => mock
@@ -187,21 +189,24 @@ async fn test_wildcard_routes_to_mcp_service() {
     assert!(body.contains(r#""routed":"mcp""#), "body: {body}");
 }
 
-// ---- T-PR-04: POST /observe routes to observe handler (vnc-022) ----
+// ---- T-PR-04: POST /v1/{slug}/observe routes to observe handler (vnc-038 ADR-003) ----
 
 #[tokio::test]
-async fn test_post_observe_routes_to_handler() {
+async fn test_post_per_slug_observe_routes_to_handler() {
+    // vnc-038 ADR-003 (#5082): observe is the per-slug route `/v1/{slug}/observe`,
+    // resolved per-request through the SAME funnel as MCP. The top-level `/observe`
+    // route is DELETED.
     let mock = MockMcpAdapter::new();
     let req = Request::builder()
         .method(Method::POST)
-        .uri("/observe")
+        .uri("/v1/alpha/observe")
         .body(empty_body())
         .unwrap();
 
     let resp = mock_dispatch_request(&mock, req).await;
     let (status, body) = collect_body(resp).await;
 
-    // Mock returns 400 for /observe to indicate the route was matched.
+    // Mock returns 400 for the observe route to indicate the route was matched.
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert!(body.contains("error"), "body: {body}");
 }
@@ -267,11 +272,14 @@ async fn test_body_size_limit_enforced_before_rmcp() {
     assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
 }
 
-// ---- T-PR-10: ProjectRouter default project mode ----
+// ---- T-PR-10: non-health/non-observe paths fall through to the MCP edge ----
 
 #[tokio::test]
-async fn test_project_router_default_project_mode() {
-    // Sending to root path should route to default project, not 404.
+async fn test_non_observe_path_falls_through_to_mcp_edge() {
+    // vnc-038 ADR-004: there is no default project. A non-`/health`,
+    // non-`/v1/{slug}/observe` path falls through to the MCP `SlugRouter` edge.
+    // (At the real funnel `/` is an unknown project -> 404; the mock models only
+    // the routing fall-through, so it returns 200 from the MCP stub.)
     let mock = MockMcpAdapter::new();
     let req = Request::builder()
         .method(Method::POST)
@@ -285,20 +293,34 @@ async fn test_project_router_default_project_mode() {
     assert_eq!(
         status,
         StatusCode::OK,
-        "root path routes to default project"
+        "non-observe path falls through to the MCP edge (mock stub)"
     );
 }
 
-// ---- T-PR-11: /observe registered in routing tree ----
+// ---- T-PR-11: per-slug observe registered in routing tree (vnc-038 ADR-003) ----
 
-#[test]
-fn test_observe_path_constant() {
-    assert_eq!(OBSERVE_PATH, "/observe");
+#[tokio::test]
+async fn test_per_slug_observe_registered_in_routing_tree() {
+    // vnc-038 ADR-003 (#5082): observe is `POST /v1/{slug}/observe`, handled by
+    // `PathRouter` (the per-slug observe handler), not forwarded to MCP. The
+    // top-level `/observe` route is REMOVED.
+    let mock = MockMcpAdapter::new();
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/v1/alpha/observe")
+        .body(empty_body())
+        .unwrap();
+
+    let resp = mock_dispatch_request(&mock, req).await;
+    // Mock returns 400 for the observe route; if it were forwarded to MCP we'd get 200.
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }
 
 #[tokio::test]
-async fn test_observe_registered_in_routing_tree() {
-    // /observe is handled by PathRouter (observe handler), not forwarded to MCP.
+async fn test_top_level_observe_no_longer_routed_to_observe_handler() {
+    // vnc-038 ADR-003: the top-level `POST /observe` arm is DELETED. It is no
+    // longer a slug-shaped path, so it falls through to MCP (mock -> 200), never
+    // the observe handler. Closes #766 by construction — observe is per-slug only.
     let mock = MockMcpAdapter::new();
     let req = Request::builder()
         .method(Method::POST)
@@ -307,8 +329,12 @@ async fn test_observe_registered_in_routing_tree() {
         .unwrap();
 
     let resp = mock_dispatch_request(&mock, req).await;
-    // Mock returns 400 for /observe; if it were forwarded to MCP we'd get 200.
-    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    let (status, body) = collect_body(resp).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        body.contains(r#""routed":"mcp""#),
+        "top-level /observe must fall through to MCP, body: {body}"
+    );
 }
 
 // ---- T-PR-12: GET on MCP path behavior ----
@@ -1764,17 +1790,15 @@ async fn open_seam_test_store(path: &StdPath) -> Arc<Store> {
     Arc::new(store)
 }
 
-/// Wave-1-style resolver: returns the one store for `Default`, `UnknownProject`
-/// for ANY `Slug`. Mirrors `DefaultResolver` semantics (default-resolver.md is a
-/// separate component) so the seam can be exercised without that impl present.
-struct DefaultLikeResolver {
-    store: Arc<Store>,
-}
+/// Empty-map resolver (vnc-038 ADR-004): no registered slug, `UnknownProject` for
+/// ANY `Slug` — there is no default store and no default arm (the `Default` variant
+/// is deleted). Mirrors the empty-`[[projects]]` `MultiProjectRouter` so the seam
+/// can be exercised without that impl present.
+struct EmptyResolver;
 
-impl StoreResolver for DefaultLikeResolver {
+impl StoreResolver for EmptyResolver {
     fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError> {
         match key {
-            ProjectKey::Default => Ok(Arc::clone(&self.store)),
             ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
         }
     }
@@ -1786,9 +1810,9 @@ impl StoreResolver for DefaultLikeResolver {
     }
 }
 
-/// Stub standing in for a Wave-2 `ProjectRouter`: resolves a single known slug,
-/// `UnknownProject` otherwise. Proves the Wave1<->Wave2 boundary is purely the
-/// trait — no `SlugRouter`/route-grammar change is needed to inject it.
+/// Stub standing in for the slug-keyed `MultiProjectRouter`: resolves a single
+/// known slug, `UnknownProject` otherwise — never a default fall-through (vnc-038
+/// ADR-004; the `Default` variant is deleted).
 struct StubProjectRouter {
     store: Arc<Store>,
     known_slug: ProjectSlug,
@@ -1797,7 +1821,6 @@ struct StubProjectRouter {
 impl StoreResolver for StubProjectRouter {
     fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError> {
         match key {
-            ProjectKey::Default => Ok(Arc::clone(&self.store)),
             ProjectKey::Slug(s) if *s == self.known_slug => Ok(Arc::clone(&self.store)),
             ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
         }
@@ -1811,15 +1834,18 @@ impl StoreResolver for StubProjectRouter {
 // ---- R-13 / AC-CT-C4 — route grammar (additive shape) ----
 
 #[test]
-fn test_route_v1_tools_maps_to_default() {
+fn test_route_v1_tools_no_longer_default() {
+    // vnc-038 ADR-004 (#5083): the `/v1/tools/... -> Default` alias is DELETED.
+    // `tools` now parses as a slug *candidate* (reserved/unregisterable), never a
+    // default store.
     assert_eq!(
         parse_project_key("/v1/tools/call").expect("parse"),
-        ProjectKey::Default
+        ProjectKey::Slug(ProjectSlug::try_from("tools").expect("valid charset"))
     );
-    // Bare `/v1/tools` (no trailing segment) is still the default alias.
+    // Bare `/v1/tools` (no trailing segment) is also a slug candidate, not Default.
     assert_eq!(
         parse_project_key("/v1/tools").expect("parse"),
-        ProjectKey::Default
+        ProjectKey::Slug(ProjectSlug::try_from("tools").expect("valid charset"))
     );
 }
 
@@ -1833,22 +1859,28 @@ fn test_route_v1_slug_tools_parses_to_slug() {
 }
 
 #[test]
-fn test_route_non_v1_paths_map_to_default() {
-    // Current MCP paths (root, arbitrary) keep default behavior (backward-compat).
-    assert_eq!(parse_project_key("/").expect("parse"), ProjectKey::Default);
+fn test_route_non_v1_paths_are_loud_error() {
+    // vnc-038 ADR-004 (#5083): the `_ => Default` backward-compat fallback is
+    // DELETED. A no-`/v1`-slug path is a loud `UnknownProject`, NEVER a default
+    // store (AC-01 / R-10).
     assert_eq!(
-        parse_project_key("/messages").expect("parse"),
-        ProjectKey::Default
+        parse_project_key("/").expect_err("no-slug path is loud"),
+        RouteError::UnknownProject
+    );
+    assert_eq!(
+        parse_project_key("/messages").expect_err("no-slug path is loud"),
+        RouteError::UnknownProject
     );
 }
 
 #[test]
-fn test_route_reserved_tools_never_a_slug() {
-    // The literal `tools` in the slug position is matched as the default alias
-    // BEFORE the slug arm — `tools` can never become a slug.
+fn test_route_tools_in_slug_position_parses_as_slug_candidate() {
+    // vnc-038 ADR-004: `tools` in the slug position now parses as a slug candidate
+    // (not a Default alias). It is unregisterable (reserved), so the resolver
+    // 404s — never a default store.
     assert_eq!(
         parse_project_key("/v1/tools/anything").expect("parse"),
-        ProjectKey::Default
+        ProjectKey::Slug(ProjectSlug::try_from("tools").expect("valid charset"))
     );
 }
 
@@ -2004,28 +2036,17 @@ fn test_route_grammar_rejects_traversal_slug_before_resolution() {
 //      no default store) ----
 
 #[tokio::test]
-async fn test_slug_key_under_default_resolver_returns_unknown_project() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let store = open_seam_test_store(&dir.path().join("seam.db")).await;
-    let resolver = DefaultLikeResolver {
-        store: Arc::clone(&store),
-    };
+async fn test_slug_key_under_empty_resolver_returns_unknown_project() {
+    // vnc-038 ADR-004: an empty-map resolver has NO default store. Any slug ->
+    // UnknownProject; there is no `ProjectKey::Default` to resolve.
+    let resolver = EmptyResolver;
 
     let slug = ProjectSlug::try_from("anyslug").expect("valid");
     let result = resolver.resolve_store(&ProjectKey::Slug(slug));
     assert_eq!(
         result.err(),
         Some(RouteError::UnknownProject),
-        "Slug under Wave-1 resolver must be UnknownProject — never the default store"
-    );
-
-    // And Default still resolves to the one store (the funnel works).
-    let resolved = resolver
-        .resolve_store(&ProjectKey::Default)
-        .expect("default resolves");
-    assert!(
-        Arc::ptr_eq(&resolved, &store),
-        "Default must resolve to the single Wave-1 store"
+        "Slug under the empty resolver must be UnknownProject — never a default store"
     );
 }
 
@@ -2039,33 +2060,28 @@ async fn test_resolver_swap_requires_no_callsite_change() {
 
     // Both resolvers satisfy `StoreResolver` and are injected the SAME way:
     // `Arc<dyn StoreResolver>`. No route-grammar / SlugRouter change required.
-    let wave1: Arc<dyn StoreResolver> = Arc::new(DefaultLikeResolver {
-        store: Arc::clone(&store),
-    });
-    let wave2: Arc<dyn StoreResolver> = Arc::new(StubProjectRouter {
+    let empty: Arc<dyn StoreResolver> = Arc::new(EmptyResolver);
+    let populated: Arc<dyn StoreResolver> = Arc::new(StubProjectRouter {
         store: Arc::clone(&store),
         known_slug: known.clone(),
     });
 
-    // Wave 1: the known slug is inert (UnknownProject).
+    // Empty resolver: the known slug is inert (UnknownProject).
     assert_eq!(
-        wave1.resolve_store(&ProjectKey::Slug(known.clone())).err(),
+        empty.resolve_store(&ProjectKey::Slug(known.clone())).err(),
         Some(RouteError::UnknownProject)
     );
-    // Wave 2 (stub): the same slug now resolves — purely a resolver swap.
+    // Populated resolver: the same slug now resolves — purely a resolver swap.
     assert!(
-        wave2
+        populated
             .resolve_store(&ProjectKey::Slug(known.clone()))
             .is_ok(),
-        "Wave-2 resolver lights up the slug at the SAME trait call site"
+        "the slug-keyed resolver lights up the slug at the SAME trait call site"
     );
-    // Both still resolve Default identically.
-    assert!(wave1.resolve_store(&ProjectKey::Default).is_ok());
-    assert!(wave2.resolve_store(&ProjectKey::Default).is_ok());
-    // An unknown slug stays UnknownProject under Wave 2 too (no default fallback).
+    // An unknown slug stays UnknownProject too (no default fallback — vnc-038 ADR-004).
     let unknown = ProjectSlug::try_from("other").expect("valid");
     assert_eq!(
-        wave2.resolve_store(&ProjectKey::Slug(unknown)).err(),
+        populated.resolve_store(&ProjectKey::Slug(unknown)).err(),
         Some(RouteError::UnknownProject)
     );
 }
@@ -2077,10 +2093,10 @@ fn test_storeresolver_seam_types_present() {
     // The C4/C6 enterprise extension surface exists as named interfaces
     // (documented-but-degenerate per the session_key precedent, NFR-09): the
     // trait is object-safe (usable as `Arc<dyn StoreResolver>`), ProjectKey has
-    // both arms, RouteError has both variants. Construction here IS the assertion
-    // that the surface is named and reachable.
+    // its sole `Slug` arm (vnc-038 ADR-004 deleted `Default`), RouteError has both
+    // variants. Construction here IS the assertion that the surface is named and
+    // reachable.
     fn _assert_object_safe(_r: &Arc<dyn StoreResolver>) {}
-    let _default = ProjectKey::Default;
     let _slug = ProjectKey::Slug(ProjectSlug::try_from("p").expect("valid"));
     let _e1 = RouteError::UnknownProject;
     let _e2 = RouteError::InvalidSlug("x".to_string());
@@ -2105,176 +2121,130 @@ fn test_route_error_display_no_input_leak() {
 }
 
 // ===========================================================================
-// vnc-034 DefaultResolver — the REAL Wave-1 `StoreResolver` impl
-// (crates/unimatrix-server/src/http/router/default_resolver.rs).
-//
-// Distinct from `DefaultLikeResolver` above (a stub mirroring the semantics so the
-// seam could be exercised before this component existed): these tests drive the
-// shipped `DefaultResolver`. Lead risks: R-01 (Critical), R-04 (local/cloud parity).
-// AC-W1-X1 (one store THROUGH the seam), AC-W1-X2 (local-UDS path-hash parity, NFR-10).
+// vnc-038 ADR-004 (#5083) — the Default is DELETED. These tests INVERT the old
+// `DefaultResolver` block (lesson #4452 — invert, do NOT delete): they assert
+// that there is no default store, no default route key, and no default arm. The
+// slug-keyed resolver is the SOLE served-project mechanism; local STDIO/UDS keeps
+// its DIRECT path-hash binding and never enters the resolver (ADR-006 #5087).
 // ===========================================================================
 
-// ---- R-01 — Wave-1 store served THROUGH the seam (FR-X5, AC-W1-X1) ----
+// ---- R-10 — no default store: slug-keyed resolution only (FR-X5) ----
 
 #[tokio::test]
-async fn test_default_resolver_returns_the_one_store() {
+async fn test_slug_keyed_resolver_returns_the_registered_store() {
+    // A registered slug resolves to ITS store (the slug map is the sole funnel).
+    // The resolved handle is the SAME underlying store, not a re-opened one.
     let dir = tempfile::tempdir().expect("tempdir");
     let store = open_seam_test_store(&dir.path().join("store.db")).await;
-    let resolver = DefaultResolver::new(Arc::clone(&store));
+    let known = ProjectSlug::try_from("known").expect("valid");
+    let resolver = StubProjectRouter {
+        store: Arc::clone(&store),
+        known_slug: known.clone(),
+    };
 
     let resolved = resolver
-        .resolve_store(&ProjectKey::Default)
-        .expect("Default resolves");
-    // The resolved handle is the SAME underlying store, not a re-opened one.
+        .resolve_store(&ProjectKey::Slug(known))
+        .expect("registered slug resolves");
     assert!(
         Arc::ptr_eq(&resolved, &store),
-        "Default must resolve to the one injected store (Arc identity)"
+        "a registered slug must resolve to its own injected store (Arc identity)"
     );
 }
 
 #[tokio::test]
-async fn test_default_resolver_same_arc_each_call() {
+async fn test_unregistered_slug_returns_unknown_project_never_a_default() {
+    // ANY unregistered slug -> UnknownProject: never a default store, never a panic
+    // (R-10 — no silent fall-through). There is no `ProjectKey::Default` to leak.
     let dir = tempfile::tempdir().expect("tempdir");
     let store = open_seam_test_store(&dir.path().join("store.db")).await;
-    let resolver = DefaultResolver::new(store);
+    let resolver = StubProjectRouter {
+        store,
+        known_slug: ProjectSlug::try_from("known").expect("valid"),
+    };
 
-    let a = resolver.resolve_store(&ProjectKey::Default).expect("first");
-    let b = resolver
-        .resolve_store(&ProjectKey::Default)
-        .expect("second");
-    // One store, not a re-opened handle per request — repeated resolutions are
-    // clones of the SAME Arc.
-    assert!(
-        Arc::ptr_eq(&a, &b),
-        "repeated Default resolutions must clone the same underlying store"
-    );
-}
-
-#[tokio::test]
-async fn test_default_resolver_slug_returns_unknown_project() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let store = open_seam_test_store(&dir.path().join("store.db")).await;
-    let resolver = DefaultResolver::new(store);
-
-    // ANY slug -> UnknownProject in Wave 1: never the default store, never a panic
-    // (R-01 sc.3 — no silent fall-through). Pairs with the swap test for full R-01.
-    for slug in ["myproj", "other", "a", "health"] {
+    for slug in ["myproj", "other", "a", "health", "tools"] {
         let key = ProjectKey::Slug(ProjectSlug::try_from(slug).expect("valid slug"));
         let err = resolver
             .resolve_store(&key)
-            .expect_err("slug must be inert in Wave 1");
+            .expect_err("unregistered slug must be inert");
         assert_eq!(
             err,
             RouteError::UnknownProject,
-            "slug {slug} must resolve to UnknownProject, not the default store"
+            "slug {slug} must resolve to UnknownProject, never a default store"
         );
     }
 }
 
 #[tokio::test]
-async fn test_default_resolver_slug_immediately_after_boot_is_deterministic() {
-    // Edge case (assigned here): a Slug request before any Wave-2 config could exist
-    // -> UnknownProject, deterministically (no boot-order dependence).
-    let dir = tempfile::tempdir().expect("tempdir");
-    let store = open_seam_test_store(&dir.path().join("store.db")).await;
-    let resolver = DefaultResolver::new(store);
+async fn test_empty_resolver_serves_nothing_no_default() {
+    // The empty-`[[projects]]` resolver (AC-09): NOTHING is servable. Every slug ->
+    // UnknownProject; there is no default store to fall back to.
+    let resolver = EmptyResolver;
 
-    let key = ProjectKey::Slug(ProjectSlug::try_from("freshboot").expect("valid"));
-    assert_eq!(
-        resolver
-            .resolve_store(&key)
-            .expect_err("slug inert at boot"),
-        RouteError::UnknownProject
-    );
+    for slug in ["freshboot", "tools", "anyslug"] {
+        let key = ProjectKey::Slug(ProjectSlug::try_from(slug).expect("valid"));
+        assert_eq!(
+            resolver
+                .resolve_store(&key)
+                .expect_err("empty resolver serves nothing"),
+            RouteError::UnknownProject,
+            "empty resolver must reject {slug} loudly — never a default store"
+        );
+    }
 }
 
-// ---- R-04 — local-UDS path-hash parity (AC-W1-X2, NFR-10 — IN the Wave-1 set) ----
+// ---- ADR-006 — local-UDS path-hash binding is NOT a resolver key ----
 
 #[tokio::test]
-async fn test_local_install_resolves_path_hash_store_through_seam() {
-    // The non-negotiable local-install regression test. Construct `DefaultResolver`
-    // exactly as the local UDS daemon does — over a store opened at a path-hash data
-    // dir — and assert a `ProjectKey::Default` request reaches that store THROUGH
-    // `resolve_store`, the SAME code path the cloud single-project alias uses (SR-08).
+async fn test_local_path_hash_store_never_enters_the_resolver() {
+    // vnc-038 ADR-006 (#5087): local STDIO/UDS opens its path-hash store DIRECTLY at
+    // boot and threads `Arc<Store>` straight to its handler — it is NOT routed
+    // through the unified resolver and is NOT a resolver key. The deleted
+    // `DefaultResolver`/`ProjectKey::Default` previously served the local store
+    // through the seam; that path is GONE. The slug-keyed resolver never resolves a
+    // path-hash store (there is no key for it), proving local bypasses the resolver.
     let dir = tempfile::tempdir().expect("tempdir");
-    // Local daemon shape: ~/.unimatrix/{path-hash}/store.db. We model the path-hash
-    // segment as a hex dir; the derivation lives upstream (ADR-004 #80) and never
-    // enters `resolve_store`. What matters for parity is that the SAME resolver +
-    // SAME method hand back this store.
     let path_hash_dir = dir.path().join("a1b2c3d4e5f60718");
     std::fs::create_dir_all(&path_hash_dir).expect("mk path-hash dir");
-    let path_hash_store = open_seam_test_store(&path_hash_dir.join("store.db")).await;
+    let _path_hash_store = open_seam_test_store(&path_hash_dir.join("store.db")).await;
 
-    let resolver = DefaultResolver::new(Arc::clone(&path_hash_store));
-
-    let resolved = resolver
-        .resolve_store(&ProjectKey::Default)
-        .expect("local install resolves Default through the seam");
-    assert!(
-        Arc::ptr_eq(&resolved, &path_hash_store),
-        "local path-hash store must be reached THROUGH resolve_store (NFR-10)"
+    // The resolver has no slug for the local store — any attempt is UnknownProject.
+    let resolver = EmptyResolver;
+    let local_attempt =
+        ProjectKey::Slug(ProjectSlug::try_from("a1b2c3d4e5f60718").expect("valid charset"));
+    assert_eq!(
+        resolver
+            .resolve_store(&local_attempt)
+            .expect_err("path-hash is not a resolver key"),
+        RouteError::UnknownProject,
+        "the local path-hash store is never reached through the resolver (ADR-006)"
     );
 }
 
 #[tokio::test]
-async fn test_local_and_cloud_single_project_byte_identical_route() {
-    // The local UDS request and the cloud single-project request both traverse
-    // `/v1/tools/...` -> ProjectKey::Default -> resolve_store -> the one store. Assert
-    // the route is byte-identical: same parsed key, same resolver type, same method
-    // entry — no cloud-only branch (SR-08).
-    let local_dir = tempfile::tempdir().expect("local tempdir");
-    let cloud_dir = tempfile::tempdir().expect("cloud tempdir");
-
-    // Local UDS install: path-hash store. Cloud single-project: the one project store.
-    let local_store = open_seam_test_store(&local_dir.path().join("store.db")).await;
-    let cloud_store = open_seam_test_store(&cloud_dir.path().join("store.db")).await;
-
-    let local: Arc<dyn StoreResolver> = Arc::new(DefaultResolver::new(local_store));
-    let cloud: Arc<dyn StoreResolver> = Arc::new(DefaultResolver::new(cloud_store));
-
-    // Both modes parse `/v1/tools/...` to the SAME key — there is no cloud-only arm.
-    let local_key = parse_project_key("/v1/tools/call").expect("local parse");
-    let cloud_key = parse_project_key("/v1/tools/call").expect("cloud parse");
-    assert_eq!(local_key, cloud_key);
-    assert_eq!(local_key, ProjectKey::Default);
-
-    // Both resolve that one key through the SAME `resolve_store` entry; only the
-    // store's provenance differs. The slug never leaks into the local path and the
-    // path-hash never leaks into a cloud slug — both are simply `Default` here.
-    assert!(local.resolve_store(&local_key).is_ok());
-    assert!(cloud.resolve_store(&cloud_key).is_ok());
-}
-
-#[tokio::test]
-async fn test_default_resolver_is_the_same_trait_as_wave2_resolver() {
-    // Source/call-graph assertion (AC-W1-X2): the Wave-1 `DefaultResolver` and a
-    // Wave-2-shaped resolver implement the SAME `StoreResolver` trait and are usable
-    // at the SAME `Arc<dyn StoreResolver>` call site. The path-hash logic lives behind
-    // the trait, never in a parallel cloud-only path (R-04 sc.2).
+async fn test_slug_keyed_resolver_is_the_sole_served_mechanism() {
+    // The slug-keyed resolver is the SOLE served-project mechanism behind the trait
+    // (vnc-038 ADR-004): a registered slug resolves; an unknown slug is
+    // UnknownProject. There is no parallel default path — the trait, not a default
+    // arm, is the boundary.
     let dir = tempfile::tempdir().expect("tempdir");
     let store = open_seam_test_store(&dir.path().join("store.db")).await;
 
-    let wave1: Arc<dyn StoreResolver> = Arc::new(DefaultResolver::new(Arc::clone(&store)));
-    let wave2: Arc<dyn StoreResolver> = Arc::new(StubProjectRouter {
+    let resolver: Arc<dyn StoreResolver> = Arc::new(StubProjectRouter {
         store,
         known_slug: ProjectSlug::try_from("known").expect("valid"),
     });
 
-    // Both satisfy the funnel for Default; the unknown slug behaves identically
-    // (UnknownProject) under both. The trait, not the route grammar, is the boundary.
-    assert!(wave1.resolve_store(&ProjectKey::Default).is_ok());
-    assert!(wave2.resolve_store(&ProjectKey::Default).is_ok());
+    assert!(
+        resolver
+            .resolve_store(&ProjectKey::Slug(
+                ProjectSlug::try_from("known").expect("valid")
+            ))
+            .is_ok()
+    );
     let unknown = ProjectKey::Slug(ProjectSlug::try_from("nope").expect("valid"));
     assert_eq!(
-        wave1
-            .resolve_store(&unknown)
-            .expect_err("wave1 unknown slug"),
-        RouteError::UnknownProject
-    );
-    assert_eq!(
-        wave2
-            .resolve_store(&unknown)
-            .expect_err("wave2 unknown slug"),
+        resolver.resolve_store(&unknown).expect_err("unknown slug"),
         RouteError::UnknownProject
     );
 }
@@ -2304,14 +2274,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 #[derive(Clone)]
 struct CountingResolver {
     calls: Arc<AtomicUsize>,
-    last_was_default: Arc<std::sync::atomic::AtomicBool>,
+    last_was_slug: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl CountingResolver {
     fn new() -> Self {
         CountingResolver {
             calls: Arc::new(AtomicUsize::new(0)),
-            last_was_default: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            last_was_slug: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 }
@@ -2319,12 +2289,12 @@ impl CountingResolver {
 impl StoreResolver for CountingResolver {
     fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError> {
         self.calls.fetch_add(1, Ordering::SeqCst);
-        self.last_was_default
-            .store(matches!(key, ProjectKey::Default), Ordering::SeqCst);
+        self.last_was_slug
+            .store(matches!(key, ProjectKey::Slug(_)), Ordering::SeqCst);
         // Error on every key so route_mcp returns at the funnel without needing
-        // a real downstream dispatch. (Default-error is test-only gating, NOT
-        // DefaultResolver semantics — DefaultResolver returns Ok for Default;
-        // that leg is covered by the DefaultResolver tests above.)
+        // a real downstream dispatch. vnc-038 ADR-004: every served key is a
+        // `Slug` (the `Default` variant is deleted); a no-slug path 404s at
+        // `parse_project_key` before reaching here.
         Err(RouteError::UnknownProject)
     }
 
@@ -2354,12 +2324,13 @@ async fn test_per_request_funnel_consults_resolver_with_transport_key() {
 
     // Drive the EXACT funnel head `SlugRouter::route_mcp` runs per request:
     // parse the transport path into a ProjectKey, then resolve through the funnel.
-    // A bypass would skip this and never increment the counter.
-    let key = parse_project_key("/v1/tools/call").expect("parse default alias");
+    // A bypass would skip this and never increment the counter. vnc-038 ADR-004:
+    // `/v1/tools/...` now parses `tools` as a slug candidate (no Default alias).
+    let key = parse_project_key("/v1/tools/call").expect("parse slug candidate");
     assert_eq!(
         key,
-        ProjectKey::Default,
-        "default alias is transport-derived"
+        ProjectKey::Slug(ProjectSlug::try_from("tools").expect("valid charset")),
+        "the slug is transport-derived from the URL position"
     );
 
     // Per-request resolution: the funnel is consulted with the transport key.
@@ -2371,8 +2342,8 @@ async fn test_per_request_funnel_consults_resolver_with_transport_key() {
         "every MCP request must consult resolve_store exactly once (no bypass, FR-X5)"
     );
     assert!(
-        resolver.last_was_default.load(Ordering::SeqCst),
-        "the funnel must receive the transport-derived ProjectKey::Default, \
+        resolver.last_was_slug.load(Ordering::SeqCst),
+        "the funnel must receive the transport-derived ProjectKey::Slug, \
          never a payload-named project (AC-W1-X3 / FR-X2)"
     );
 }
@@ -2422,9 +2393,9 @@ async fn test_per_request_slug_rejected_at_funnel_not_default_store() {
 
     let outcome = resolver.resolve_store(&key);
     assert_eq!(
-        outcome.expect_err("Wave-1 slug is inert at the funnel"),
+        outcome.expect_err("unregistered slug is inert at the funnel"),
         RouteError::UnknownProject,
-        "a slug must be rejected AT the funnel, never silently served the default store"
+        "a slug must be rejected AT the funnel, never silently served a default store"
     );
     assert_eq!(
         resolver.calls.load(Ordering::SeqCst),
@@ -2432,7 +2403,8 @@ async fn test_per_request_slug_rejected_at_funnel_not_default_store() {
         "the per-request funnel consulted the resolver (no bypass)"
     );
     assert!(
-        !resolver.last_was_default.load(Ordering::SeqCst),
-        "the funnel saw Slug(_), not Default — identity came from the transport"
+        resolver.last_was_slug.load(Ordering::SeqCst),
+        "the funnel saw Slug(_) — identity came from the transport (vnc-038 ADR-004: \
+         every served key is a Slug; there is no Default)"
     );
 }

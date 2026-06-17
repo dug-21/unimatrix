@@ -968,9 +968,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // --- HTTP LISTENER STARTUP (vnc-021 + vnc-034) ---
     let (http_acceptor_handle, http_listener_addr) = if config.http.enabled {
         use unimatrix_server::http::{
-            DefaultResolver, MultiProjectRouter, ObserveContext, PathRouter, ProjectKey,
-            ProjectServerInput, StaticTokenAuthLayer, StoreResolver, load_or_generate_token,
-            start_http_listener,
+            MultiProjectRouter, ObserveContext, PathRouter, ProjectServerInput,
+            StaticTokenAuthLayer, StoreResolver, load_or_generate_token, start_http_listener,
         };
 
         // 1. Load or generate bearer token
@@ -991,30 +990,37 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             "TLS provisioned from data volume (cert SANs from UNIMATRIX_PUBLIC_URL)"
         );
 
-        // 3. vnc-034 (C4 / ADR-003 + Wave 2 funnel-elimination): construct the
-        //    StoreResolver seam as `Arc<dyn StoreResolver>` (the injection point).
-        //    The resolver now OWNS per-key MCP dispatch (`adapter_for`) — the
-        //    Wave-1 `let _store` discard and the fixed single-project
-        //    `ProjectRouter` dispatcher are GONE; `adapter_for` is the SOLE
-        //    dispatch route. Selection (OQ-PR-8/9):
-        //      * `[[projects]]` ABSENT  -> `DefaultResolver::with_adapter`
-        //        (single-project; byte-identical to Wave-1 observable behavior).
-        //      * `[[projects]]` PRESENT -> `MultiProjectRouter::from_servers`
-        //        (per-slug isolation; the default `/v1/tools/...` alias + one
-        //        per-slug entry each with its OWN store + adapter).
-        //    The default MCP adapter is OWNED by the resolver in both modes, never
-        //    held as a separate fixed dispatcher behind the seam.
+        // 3. vnc-038 (ADR-004 #5083): construct the unified StoreResolver seam as
+        //    `Arc<dyn StoreResolver>` from `project_slugs` ONLY. The Wave-1
+        //    `DefaultResolver` is DELETED — there is no default store, no default
+        //    arm, no single-project special case. The resolver OWNS per-key MCP
+        //    dispatch (`adapter_for`), the SOLE dispatch route.
+        //      * `[[projects]]` EMPTY   -> build an EMPTY-slug-map `MultiProjectRouter`.
+        //        Nothing is servable; every `/v1/...` request (MCP and observe) fails
+        //        loud and uniformly through the SAME funnel (UnknownProject -> 404).
+        //        We emit a loud, actionable "register a project to begin" (AC-09/R-10).
+        //        `/health` still works (store-independent).
+        //      * `[[projects]]` PRESENT -> one per-slug entry each with its OWN store
+        //        + adapter (FR-C3 isolation). Single project is N=1 — one map entry.
+        //    NOTE (R-07 call-site audit): the former default single-project
+        //    `store`/`server` are NO LONGER threaded into the resolver. They still
+        //    seed the daemon's own subsystems / `LifecycleHandles` below and the
+        //    local UDS/STDIO direct binding (ADR-006); they are not orphaned.
         let max_body = config.http.max_request_body_bytes;
         let allowed_origins = config.http.allowed_origins.clone();
 
         let resolver: Arc<dyn StoreResolver> = if project_slugs.is_empty() {
-            // Single-project: the default adapter is the sole dispatch route.
-            Arc::new(DefaultResolver::with_adapter(
-                Arc::clone(&store),
-                server.clone(),
-                max_body,
-                allowed_origins.clone(),
-            ))
+            // AC-09 / R-10: loud, actionable, NOTHING servable. The empty-slug-map
+            // resolver makes every served request fail loud uniformly through the
+            // SAME funnel (no special no-projects code path), never a default store.
+            tracing::error!(
+                "no projects registered — nothing is servable. \
+                 Run `unimatrix register <slug>` then restart to begin."
+            );
+            let router =
+                MultiProjectRouter::from_servers(Vec::new(), max_body, allowed_origins.clone())
+                    .map_err(ServerError::Config)?;
+            Arc::new(router)
         } else {
             // Multi-project: build a per-slug `UnimatrixServer` for each validated
             // slug over its OWN `/data/.unimatrix/{slug}/` store + subsystems
@@ -1033,43 +1039,29 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await?;
                 slug_servers.push(input);
             }
-            let router = MultiProjectRouter::from_servers(
-                Arc::clone(&store),
-                server.clone(),
-                slug_servers,
-                max_body,
-                allowed_origins.clone(),
-            )
-            .map_err(ServerError::Config)?;
+            let router =
+                MultiProjectRouter::from_servers(slug_servers, max_body, allowed_origins.clone())
+                    .map_err(ServerError::Config)?;
             tracing::info!(
                 slug_count = project_slugs.len(),
-                "multi-project routing active ([[projects]] declared)"
+                "project routing active ([[projects]] declared)"
             );
             Arc::new(router)
         };
-
-        // `/observe` is NOT on the per-request MCP seam (ADR-005); it acquires its
-        // store handle THROUGH the funnel once at boot (`resolve_store(Default)`),
-        // which is not a bypass.
-        let served_store = resolver.resolve_store(&ProjectKey::Default).map_err(|e| {
-            ServerError::Config(format!(
-                "store-resolution funnel rejected the default project at boot: {e}"
-            ))
-        })?;
 
         // 4. Build the tower service stack (inside-out):
         //    resolver (owns per-key McpAdapter) -> SlugRouter -> PathRouter
         //    -> StaticTokenAuth
 
-        // vnc-022: Construct ObserveContext from server fields before rmcp wrapping.
-        // The store handle threaded here is the funnel-resolved one (no bypass).
-        // Field names track dispatch_request() parameter names (R-01: store vs
-        // entry_store).
+        // vnc-038 (ADR-003 #5082): observe is a per-slug route on the per-request
+        // funnel. The `ObserveContext` holds the SAME `Arc<dyn StoreResolver>` the
+        // `SlugRouter` holds and resolves the store PER CALL — the boot-bound
+        // `resolve_store(&ProjectKey::Default)` and the pre-resolved single
+        // `store`/`entry_store` are DELETED (the #4974 ceremonial-funnel guard).
         let observe_ctx = ObserveContext {
-            store: Arc::clone(&served_store),
+            resolver: Arc::clone(&resolver),
             embed_service: Arc::clone(&embed_handle),
             vector_store: Arc::clone(&async_vector_store),
-            entry_store: Arc::clone(&served_store),
             adapt_service: Arc::clone(&adapt_service),
             server_version: env!("CARGO_PKG_VERSION").to_string(),
             session_registry: Arc::clone(&session_registry),

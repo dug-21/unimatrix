@@ -1,12 +1,16 @@
-//! PathRouter tower Service, ProjectRouter, path dispatch, rmcp adapter (C3).
+//! PathRouter tower Service, the SlugRouter funnel edge, per-slug observe, and
+//! the rmcp `McpAdapter` (C3).
 //!
-//! Routes HTTP requests by URI path:
+//! Routes HTTP requests by URI path (vnc-038 ADR-003/004):
 //! - `GET /health` -> health handler (no auth, bypassed by StaticTokenAuth)
-//! - `POST /observe` -> observation handler (auth required, vnc-022)
-//! - `/* (everything else)` -> MCP dispatch through ProjectRouter -> McpAdapter
+//! - `POST /v1/{slug}/observe` -> per-slug observe handler, resolved per-request
+//!   through the SAME funnel as MCP (auth required, vnc-022/vnc-038 ADR-003)
+//! - `/* (everything else)` -> MCP dispatch through the `SlugRouter` funnel ->
+//!   `resolve_store` -> per-slug `McpAdapter`
 //!
-//! Contains `ProjectRouter` as the W2-6 structural seam and `McpAdapter` as
-//! the rmcp isolation boundary (ADR-003).
+//! The top-level `/observe` route and the `DefaultResolver` are DELETED (vnc-038
+//! ADR-003/004): there is no default store; observe is per-slug only. `McpAdapter`
+//! is the rmcp isolation boundary (ADR-003).
 
 use std::convert::Infallible;
 use std::future::Future;
@@ -35,9 +39,6 @@ use crate::services::ServiceLayer;
 use crate::uds::listener::dispatch_request;
 use unimatrix_engine::wire::HookRequest;
 
-/// Path for the remote telemetry endpoint (FR-24, W2-7 future).
-pub(crate) const OBSERVE_PATH: &str = "/observe";
-
 /// Maximum request body size default (1 MB). Used when no config override.
 const DEFAULT_MAX_BODY_BYTES: usize = 1_048_576;
 
@@ -45,32 +46,34 @@ const DEFAULT_MAX_BODY_BYTES: usize = 1_048_576;
 // ObserveContext — service handle bundle for /observe handler (ADR-001)
 // ---------------------------------------------------------------------------
 
-/// Service handle bundle for the `/observe` handler (ADR-001).
+/// Service handle bundle for the per-slug observe handler (ADR-001/003).
 ///
 /// Holds Arc-cloned references to the subset of `UnimatrixServer` fields
 /// needed by `dispatch_request()`. Constructed once in `main.rs`, stored
-/// on `PathRouter`, referenced by the `/observe` handler.
+/// on `PathRouter`, referenced by the `/v1/{slug}/observe` handler.
 ///
 /// Intentionally NOT the same as `UnimatrixServer` — carries only what
 /// `dispatch_request` needs, not MCP-specific state.
 ///
-/// **Risk R-01**: `store` and `entry_store` have identical types (`Arc<Store>`).
-/// A positional swap compiles but corrupts the pipeline. `store` is the primary
-/// knowledge store passed as `dispatch_request`'s second parameter. `entry_store`
-/// is the entry-specific store passed as its fifth parameter. In the current
-/// codebase, both point to the same `Arc<Store>` instance — but the field names
-/// must track `dispatch_request`'s parameter names, not the backing instance.
+/// **vnc-038 ADR-003 (#5082)**: observe is now a per-slug route on the SAME
+/// per-request funnel as MCP. This context holds the `Arc<dyn StoreResolver>`
+/// (the SAME resolver `SlugRouter` holds) instead of a pre-resolved single store.
+/// The store is resolved PER CALL from the transport-derived `ProjectKey::Slug`;
+/// the boot-bound `resolve_store(&ProjectKey::Default)` and the
+/// `store`/`entry_store` fixed handles are DELETED (the #4974 ceremonial-funnel
+/// guard — no boot-bound or parallel observe store path).
 #[derive(Clone)]
 pub struct ObserveContext {
-    /// Primary knowledge store (dispatch_request param 2: `store`).
-    pub store: Arc<Store>,
+    /// The store-resolution funnel — the SAME `Arc<dyn StoreResolver>` the
+    /// `SlugRouter` holds (one funnel, two entry handlers). The per-request store
+    /// is resolved from it on each observe call (ADR-003 #5082); both
+    /// `dispatch_request` `store` and `entry_store` params get that one resolved
+    /// handle (the boot pairing preserved per-request).
+    pub resolver: Arc<dyn StoreResolver>,
     /// Embedding service handle (dispatch_request param 3: `embed_service`).
     pub embed_service: Arc<EmbedServiceHandle>,
     /// Async vector store (dispatch_request param 4: `vector_store`).
     pub vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    /// Entry-specific store (dispatch_request param 5: `entry_store`).
-    /// Same backing instance as `store` today, but named to match the parameter.
-    pub entry_store: Arc<Store>,
     /// Adaptation service (dispatch_request param 6: `adapt_service`).
     pub adapt_service: Arc<AdaptationService>,
     /// Server version string (dispatch_request param 7: `server_version`).
@@ -179,102 +182,22 @@ where
         let path = request.uri().path().to_owned();
         let method = request.method().clone();
 
-        match (method, path.as_str()) {
-            (Method::GET, "/health") => {
+        // `/health` stays top-level (store-independent). vnc-038 ADR-003 (#5082):
+        // the top-level `/observe` arm is REMOVED — observe is now a per-slug route
+        // `POST /v1/{slug}/observe`, detected by suffix and dispatched through the
+        // SAME funnel as MCP (`route_observe`). Everything else is MCP via the
+        // `SlugRouter` (`route_mcp`).
+        match (&method, path.as_str()) {
+            (&Method::GET, "/health") => {
                 // Route to health handler. Auth already bypassed by StaticTokenAuth (ADR-002).
                 let resp = map_health_response(health_response());
                 Box::pin(async move { Ok(resp) })
             }
-            (Method::POST, "/observe") => {
-                // vnc-022: Real /observe handler. Auth enforced by upstream StaticTokenAuth.
+            (&Method::POST, p) if p.starts_with("/v1/") && p.ends_with("/observe") => {
+                // vnc-038 ADR-003: per-slug observe on the per-request funnel.
+                // Auth enforced by upstream StaticTokenAuth.
                 let observe_ctx = self.observe_ctx.clone();
-                Box::pin(async move {
-                    // Step 1: Extract ResolvedIdentity from request extensions.
-                    let identity = match request.extensions().get::<ResolvedIdentity>() {
-                        Some(id) => id.clone(),
-                        None => {
-                            tracing::error!(
-                                "POST /observe: ResolvedIdentity missing from extensions"
-                            );
-                            return Ok(json_error_response(
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                "internal error: identity not resolved",
-                            ));
-                        }
-                    };
-
-                    // Step 2: Content-Length fast-path size check (same pattern as McpAdapter).
-                    let exceeds_limit = request
-                        .headers()
-                        .get(http::header::CONTENT_LENGTH)
-                        .and_then(|v| v.to_str().ok())
-                        .and_then(|s| s.parse::<usize>().ok())
-                        .is_some_and(|len| len > DEFAULT_MAX_BODY_BYTES);
-
-                    if exceeds_limit {
-                        return Ok(payload_too_large_response());
-                    }
-
-                    // Step 2b: Read Accept header for content negotiation (ADR-003, vnc-024).
-                    // MUST be read here, before `into_parts()` consumes the request — a late
-                    // read silently loses the header and falls back to JSON (Constraint 2 / R-07).
-                    // `wants_text` is true iff the Accept value contains "text/plain".
-                    let wants_text = request
-                        .headers()
-                        .get(http::header::ACCEPT)
-                        .and_then(|v| v.to_str().ok())
-                        .is_some_and(|s| s.contains("text/plain"));
-
-                    // Step 3: Stream-level body collection with size limit (GH #663 pattern).
-                    let (_parts, body) = request.into_parts();
-                    let limited_body = Limited::new(body, DEFAULT_MAX_BODY_BYTES);
-
-                    let collected = match limited_body.collect().await {
-                        Ok(collected) => collected.to_bytes(),
-                        Err(err) => {
-                            if err
-                                .downcast_ref::<http_body_util::LengthLimitError>()
-                                .is_some()
-                            {
-                                return Ok(payload_too_large_response());
-                            }
-                            return Ok(internal_error_response());
-                        }
-                    };
-
-                    // Step 4: Deserialize HookRequest from JSON.
-                    let mut hook_request: HookRequest = match serde_json::from_slice(&collected) {
-                        Ok(req) => req,
-                        Err(e) => {
-                            return Ok(json_error_response(
-                                StatusCode::BAD_REQUEST,
-                                &format!("invalid request JSON: {e}"),
-                            ));
-                        }
-                    };
-
-                    // Step 5: Prefix session_id with "http-" (ADR-003).
-                    prefix_session_id(&mut hook_request);
-
-                    // Step 6: Call dispatch_request with HTTP capabilities.
-                    let response = dispatch_request(
-                        hook_request,
-                        &observe_ctx.store,
-                        &observe_ctx.embed_service,
-                        &observe_ctx.vector_store,
-                        &observe_ctx.entry_store,
-                        &observe_ctx.adapt_service,
-                        &observe_ctx.server_version,
-                        &observe_ctx.session_registry,
-                        &observe_ctx.pending_entries_analysis,
-                        &observe_ctx.services,
-                        &identity.capabilities,
-                    )
-                    .await;
-
-                    // Step 7: Map HookResponse to HTTP response (content negotiation, ADR-003).
-                    Ok(observe_response_to_http(response, wants_text))
-                })
+                Box::pin(async move { route_observe(observe_ctx, request).await })
             }
             (_, _) => {
                 // Route everything else to MCP via the SlugRouter single funnel
@@ -285,6 +208,142 @@ where
             }
         }
     }
+}
+
+/// Per-slug observe handler on the per-request funnel (vnc-038 ADR-003 #5082).
+///
+/// Resolves the per-request `Arc<Store>` from the transport-derived
+/// `ProjectKey::Slug` through the SAME `resolve_store` funnel as MCP — there is no
+/// boot-bound or parallel observe store (the #4974 ceremonial-funnel guard). A
+/// no-slug / unregistered / invalid-slug observe is a loud error, never a default
+/// store (R-09/R-10).
+async fn route_observe<ReqBody>(
+    observe_ctx: ObserveContext,
+    request: Request<ReqBody>,
+) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible>
+where
+    ReqBody: Body + Send + 'static,
+    ReqBody::Data: Send + 'static,
+    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    // Step 0: transport-derived identity via the SAME grammar as MCP, then resolve
+    // the per-request store through the ONE funnel (ADR-003 — no boot-bound handle).
+    let key = match seam::parse_project_key(request.uri().path()) {
+        Ok(k) => k,
+        Err(RouteError::InvalidSlug(_)) => {
+            return Ok(json_error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid project slug",
+            ));
+        }
+        Err(RouteError::UnknownProject) => {
+            return Ok(json_error_response(
+                StatusCode::NOT_FOUND,
+                "unknown project",
+            ));
+        }
+    };
+    let store = match observe_ctx.resolver.resolve_store(&key) {
+        Ok(s) => s,
+        Err(RouteError::UnknownProject) => {
+            return Ok(json_error_response(
+                StatusCode::NOT_FOUND,
+                "unknown project",
+            ));
+        }
+        Err(RouteError::InvalidSlug(_)) => {
+            return Ok(json_error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid project slug",
+            ));
+        }
+    };
+
+    // Step 1: Extract ResolvedIdentity from request extensions.
+    let identity = match request.extensions().get::<ResolvedIdentity>() {
+        Some(id) => id.clone(),
+        None => {
+            tracing::error!("observe: ResolvedIdentity missing from extensions");
+            return Ok(json_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal error: identity not resolved",
+            ));
+        }
+    };
+
+    // Step 2: Content-Length fast-path size check (same pattern as McpAdapter).
+    let exceeds_limit = request
+        .headers()
+        .get(http::header::CONTENT_LENGTH)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse::<usize>().ok())
+        .is_some_and(|len| len > DEFAULT_MAX_BODY_BYTES);
+
+    if exceeds_limit {
+        return Ok(payload_too_large_response());
+    }
+
+    // Step 2b: Read Accept header for content negotiation (ADR-003, vnc-024).
+    // MUST be read here, before `into_parts()` consumes the request — a late
+    // read silently loses the header and falls back to JSON (Constraint 2 / R-07).
+    // `wants_text` is true iff the Accept value contains "text/plain".
+    let wants_text = request
+        .headers()
+        .get(http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|s| s.contains("text/plain"));
+
+    // Step 3: Stream-level body collection with size limit (GH #663 pattern).
+    let (_parts, body) = request.into_parts();
+    let limited_body = Limited::new(body, DEFAULT_MAX_BODY_BYTES);
+
+    let collected = match limited_body.collect().await {
+        Ok(collected) => collected.to_bytes(),
+        Err(err) => {
+            if err
+                .downcast_ref::<http_body_util::LengthLimitError>()
+                .is_some()
+            {
+                return Ok(payload_too_large_response());
+            }
+            return Ok(internal_error_response());
+        }
+    };
+
+    // Step 4: Deserialize HookRequest from JSON.
+    let mut hook_request: HookRequest = match serde_json::from_slice(&collected) {
+        Ok(req) => req,
+        Err(e) => {
+            return Ok(json_error_response(
+                StatusCode::BAD_REQUEST,
+                &format!("invalid request JSON: {e}"),
+            ));
+        }
+    };
+
+    // Step 5: Prefix session_id with "http-" (ADR-003).
+    prefix_session_id(&mut hook_request);
+
+    // Step 6: Call dispatch_request with HTTP capabilities. The per-request
+    // `store` serves BOTH the `store` and `entry_store` params (the boot pairing
+    // preserved per-request, ADR-003).
+    let response = dispatch_request(
+        hook_request,
+        &store,
+        &observe_ctx.embed_service,
+        &observe_ctx.vector_store,
+        &store,
+        &observe_ctx.adapt_service,
+        &observe_ctx.server_version,
+        &observe_ctx.session_registry,
+        &observe_ctx.pending_entries_analysis,
+        &observe_ctx.services,
+        &identity.capabilities,
+    )
+    .await;
+
+    // Step 7: Map HookResponse to HTTP response (content negotiation, ADR-003).
+    Ok(observe_response_to_http(response, wants_text))
 }
 
 /// Map the health response (String body) to BoxBody for consistency.
@@ -320,12 +379,11 @@ pub(crate) use seam::parse_project_key;
 // and by the resolver impls).
 pub use seam::{ProjectKey, ProjectSlug, RouteError, SlugRouter, StoreResolver};
 
-// The Wave-1 `StoreResolver` impl (vnc-034 ADR-003/005). Returns the one store for
-// `ProjectKey::Default`, `UnknownProject` for any `Slug`. Extracted to its own
-// submodule to keep router.rs under the 500-line limit. Constructed in the listener
-// wiring (`main.rs`) and injected into `SlugRouter` as the Wave-1 resolver.
-pub(crate) mod default_resolver;
-pub use default_resolver::DefaultResolver;
+// vnc-038 ADR-004 (#5083): the Wave-1 `DefaultResolver` (single store served for
+// `ProjectKey::Default`) is DELETED. `MultiProjectRouter` is the sole
+// `StoreResolver`; single project is N=1 through the same slug-keyed path, no
+// default store and no default arm. Local STDIO/UDS keeps its DIRECT path-hash
+// binding and never enters the resolver (ADR-006 #5087).
 
 // ---------------------------------------------------------------------------
 // MultiProjectRouter — the Wave-2 `StoreResolver` (slug -> per-slug entry)
