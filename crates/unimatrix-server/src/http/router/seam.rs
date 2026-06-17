@@ -419,13 +419,20 @@ mod grammar_tests {
     }
 
     /// Invalid slugs are rejected at the parse edge (allowlist) BEFORE any
-    /// filesystem use — uppercase, leading/trailing hyphen, traversal.
+    /// filesystem use — uppercase, leading hyphen, traversal, underscore.
+    ///
+    /// NOTE: a *trailing* hyphen is NOT invalid: the spec charset is
+    /// `^[a-z0-9][a-z0-9-]{0,62}$` (SPECIFICATION.md "Slug"), which only
+    /// constrains the FIRST char to `[a-z0-9]` and permits `-` in every
+    /// subsequent position — so `trail-` is a valid slug (asserted positively
+    /// in `test_parse_trailing_hyphen_slug_accepted`). Path separators / `..`
+    /// cannot pass the charset, so traversal is rejected here regardless.
     #[test]
     fn test_parse_invalid_slug_rejected_at_edge() {
         for bad in [
             "/v1/UPPER/tools",
             "/v1/-lead/tools",
-            "/v1/trail-/tools",
+            "/v1/under_score/tools",
             "/v1/..",
         ] {
             let err = parse_project_key(bad).expect_err("invalid slug must be rejected at edge");
@@ -434,6 +441,21 @@ mod grammar_tests {
                 "{bad:?} must be InvalidSlug (allowlist) before any path use, got {err:?}"
             );
         }
+    }
+
+    /// A trailing hyphen is ACCEPTED by the spec charset
+    /// `^[a-z0-9][a-z0-9-]{0,62}$` (only the first char is restricted to
+    /// `[a-z0-9]`; `-` is allowed in any later position). Documents the
+    /// grammar so the "rejected at edge" case above is not misread as
+    /// forbidding trailing hyphens.
+    #[test]
+    fn test_parse_trailing_hyphen_slug_accepted() {
+        let key = parse_project_key("/v1/trail-/tools").expect("trailing-hyphen slug is valid");
+        assert_eq!(
+            key,
+            ProjectKey::Slug(ProjectSlug::try_from("trail-").expect("valid per charset")),
+            "a trailing hyphen is permitted by ^[a-z0-9][a-z0-9-]{{0,62}}$"
+        );
     }
 
     /// Prefix-related slugs parse to DISTINCT slugs (no path-prefix mis-parse):

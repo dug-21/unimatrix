@@ -202,40 +202,44 @@ describe("cert pin — checkServerIdentity (R-02 / AC-W1-C2 / AC-CT-ROT)", () =>
 // ============================================================================
 // initRemote bundle path (R-05 / R-06 / AC-W1-C5 / C6)
 // ============================================================================
-describe("initRemote — bundle path endpoint derivation (R-06 / C5)", () => {
+describe("initRemote — bundle path verbatim store (R-01 / ADR-001)", () => {
   beforeEach(() => stubPing(okPing));
   afterEach(() => {
     transport.pingForInit = origPing;
   });
 
-  it("test_slug_appended_to_base_url — --slug foo → base_url/v1/foo", async () => {
+  it("test_mcp_url_stored_verbatim — settings.local.json mcp_url == bundle.mcp_url byte-for-byte", async () => {
     const dir = makeTempProject();
-    await initRemote({ bundle: VALID_WIRE, slug: "foo", projectDir: dir });
+    await initRemote({ bundle: VALID_WIRE, projectDir: dir });
     const sl = readSettingsLocal(dir);
-    assert.strictEqual(
-      sl.unimatrix.remote.url,
-      GOLDEN_BUNDLE.fields.base_url + "/v1/foo"
-    );
+    // ADR-001 dumb-client: no append, no slug derivation, no normalization.
+    assert.strictEqual(sl.unimatrix.remote.mcp_url, GOLDEN_BUNDLE.fields.mcp_url);
     assert.strictEqual(sl.unimatrix.remote.token, GOLDEN_BUNDLE.fields.token);
     assert.strictEqual(sl.unimatrix.remote.fingerprint, GOLDEN_BUNDLE.fields.fp);
   });
 
-  it("test_no_slug_default_alias — no --slug → base_url/v1", async () => {
+  it("test_observe_url_stored_verbatim — settings.local.json observe_url == bundle.observe_url byte-for-byte", async () => {
     const dir = makeTempProject();
     await initRemote({ bundle: VALID_WIRE, projectDir: dir });
     const sl = readSettingsLocal(dir);
-    assert.strictEqual(sl.unimatrix.remote.url, GOLDEN_BUNDLE.fields.base_url + "/v1");
+    assert.strictEqual(
+      sl.unimatrix.remote.observe_url,
+      GOLDEN_BUNDLE.fields.observe_url
+    );
+    // The retired single `url` key is gone; the v:2 subtree carries two URLs.
+    assert.strictEqual(sl.unimatrix.remote.url, undefined);
   });
 
-  it("test_bad_slug_rejected_no_config_written", async () => {
+  it("test_slug_flag_ignored — --slug is retired; the bundle URLs already encode the slug", async () => {
     const dir = makeTempProject();
-    await assert.rejects(
-      () => initRemote({ bundle: VALID_WIRE, slug: "Bad Slug", projectDir: dir }),
-      BundleError
-    );
-    assert.ok(
-      !fs.existsSync(path.join(dir, ".claude", "settings.local.json")),
-      "no config on a parse-edge rejection"
+    // Passing a (now-meaningless) --slug must NOT alter the verbatim URLs and
+    // must NOT throw: the client derives no slug (ADR-001).
+    await initRemote({ bundle: VALID_WIRE, slug: "ignored", projectDir: dir });
+    const sl = readSettingsLocal(dir);
+    assert.strictEqual(sl.unimatrix.remote.mcp_url, GOLDEN_BUNDLE.fields.mcp_url);
+    assert.strictEqual(
+      sl.unimatrix.remote.observe_url,
+      GOLDEN_BUNDLE.fields.observe_url
     );
   });
 
@@ -245,17 +249,56 @@ describe("initRemote — bundle path endpoint derivation (R-06 / C5)", () => {
     // pingForInit(url, token, timeouts, pinnedFp)
     assert.strictEqual(lastPingArgs[3], GOLDEN_BUNDLE.fields.fp);
   });
+
+  it("test_init_pings_observe_url_verbatim — Ping target is bundle.observe_url exactly", async () => {
+    const dir = makeTempProject();
+    await initRemote({ bundle: VALID_WIRE, projectDir: dir });
+    // AC-07 / #766: the init Ping posts to the server-composed observe URL
+    // verbatim (not a client re-derived /observe append).
+    assert.strictEqual(lastPingArgs[0], GOLDEN_BUNDLE.fields.observe_url);
+  });
 });
 
 describe("initRemote — 1:1 unrepresentable (R-06 / AC-W1-C5)", () => {
-  it("test_client_has_no_second_project_field — config bakes exactly one endpoint", () => {
-    // resolveRemoteTarget yields a flat {remote, token, pinnedFp}: there is no
-    // array/list/second-endpoint field by which a second project can be named.
-    const t = resolveRemoteTarget({ bundle: VALID_WIRE, slug: "only" });
-    assert.deepStrictEqual(Object.keys(t).sort(), ["pinnedFp", "remote", "token"]);
-    assert.strictEqual(typeof t.remote, "string");
-    // The endpoint is a single string; cross-project fan-out is unrepresentable.
-    assert.ok(t.remote.endsWith("/v1/only"));
+  it("test_client_has_no_second_project_field — config bakes exactly one project's URLs", () => {
+    // resolveRemoteTarget yields a flat {mcpUrl, observeUrl, token, pinnedFp}:
+    // there is no array/list/second-endpoint field by which a second project can
+    // be named. Both URLs are the server-composed verbatim fields.
+    const t = resolveRemoteTarget({ bundle: VALID_WIRE });
+    assert.deepStrictEqual(
+      Object.keys(t).sort(),
+      ["mcpUrl", "observeUrl", "pinnedFp", "token"]
+    );
+    assert.strictEqual(t.mcpUrl, GOLDEN_BUNDLE.fields.mcp_url);
+    assert.strictEqual(t.observeUrl, GOLDEN_BUNDLE.fields.observe_url);
+    // ADR-001: the URLs are verbatim bundle fields — the client composed nothing.
+    assert.strictEqual(t.mcpUrl, GOLDEN_BUNDLE.fields.mcp_url);
+  });
+});
+
+// Closed-set / empty-compose invariant (R-01 — load-bearing for SR-01): after
+// the bundle path, init.js contains NO client-side URL composition — no slug
+// append, no "/v1" append, no assertSlugAllowlist. (NFR-01.)
+describe("init.js — empty-compose invariant (R-01 / NFR-01)", () => {
+  const SRC = fs.readFileSync(
+    path.join(__dirname, "..", "lib", "init.js"),
+    "utf8"
+  );
+
+  it("test_no_slug_append_in_init — no '/v1/' + slug composition", () => {
+    assert.ok(!/\+\s*options\.slug/.test(SRC), "no slug concatenation");
+    assert.ok(!/"\/v1\/"\s*\+/.test(SRC), "no '/v1/' + slug append");
+  });
+
+  it("test_no_v1_default_append_in_init — no base + '/v1' default-alias append", () => {
+    assert.ok(!/\+\s*"\/v1"/.test(SRC), "no '/v1' default append");
+  });
+
+  it("test_assert_slug_allowlist_import_removed — bundle.js slug helper is not imported", () => {
+    assert.ok(
+      !/assertSlugAllowlist/.test(SRC),
+      "assertSlugAllowlist is retired and must not be imported"
+    );
   });
 });
 
@@ -441,6 +484,10 @@ describe("initRemote — rotation overwrite (edge)", () => {
     await initRemote({ bundle: BUNDLE_GOLDEN[1].wire, projectDir: dir });
     const sl = readSettingsLocal(dir);
     assert.strictEqual(sl.unimatrix.remote.fingerprint, BUNDLE_GOLDEN[1].fields.fp);
-    assert.strictEqual(sl.unimatrix.remote.url, BUNDLE_GOLDEN[1].fields.base_url + "/v1");
+    assert.strictEqual(sl.unimatrix.remote.mcp_url, BUNDLE_GOLDEN[1].fields.mcp_url);
+    assert.strictEqual(
+      sl.unimatrix.remote.observe_url,
+      BUNDLE_GOLDEN[1].fields.observe_url
+    );
   });
 });
