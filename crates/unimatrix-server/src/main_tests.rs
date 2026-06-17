@@ -1221,6 +1221,10 @@ fn test_daemon_log_fallback_on_open_failure() {
     );
 }
 
+// -- vnc-038 Component 11: Local STDIO/UDS direct-binding guard (C-13, ADR-006 #5087) --
+#[path = "local_binding_guard_tests.rs"]
+mod local_binding_guard;
+
 // -- crt-054 Component 10: Wave B startup precondition (ADR-010) --
 
 #[cfg(test)]

@@ -2,7 +2,7 @@
 
 // transport-http.js — the only network module of the hook client.
 //
-// post(config, frame, opts) -> Promise<SendResult>
+// post(config, frame, opts) -> Promise<SendResult>  (posts config.url VERBATIM)
 //   SendResult = { ok, status, contentType, body, failureClass }
 //   failureClass: null | "auth" | "connect" | "timeout" | "http_4xx" | "http_5xx"
 //
@@ -49,8 +49,13 @@ function classifyErrno(err) {
 }
 
 /**
- * POST a HookRequest frame to {config.url}/observe. Always resolves a SendResult,
+ * POST a HookRequest frame to config.url VERBATIM. Always resolves a SendResult,
  * never rejects.
+ *
+ * ADR-001 (dumb-client invariant): config.url IS the server-composed observe URL
+ * (`observe_url`), stored verbatim by init.js. The transport composes NO path —
+ * it posts to config.url's pathname (+ search) byte-for-byte. The `/observe`
+ * append (the last client-side route-composition site, C-3) is GONE.
  *
  * @param {object} config  { url, token, timeouts: {connectMs, syncMs, fnfMs}, pinnedFp? }
  * @param {object} frame   HookRequest object (ignored when opts.bodyBuf set)
@@ -80,8 +85,9 @@ function post(config, frame, opts) {
     return Promise.resolve(fail("http_4xx", 0)); // C-02 guard: no network write
   }
 
-  // Path-prefix + trailing-slash support: https://h/base/ -> /base/observe
-  const pathName = u.pathname.replace(/\/+$/, "") + "/observe";
+  // ADR-001: post to the verbatim observe URL. No append, no trailing-slash
+  // mutation, no route grammar — the server is the sole route-shape authority.
+  const requestPath = u.pathname + u.search;
   const headers = {
     "Content-Type": "application/json",
     "Content-Length": body.length,
@@ -120,7 +126,7 @@ function post(config, frame, opts) {
           protocol: u.protocol,
           hostname: u.hostname.replace(/^\[|\]$/g, ""), // IPv6 literal: strip brackets
           port: u.port || undefined,
-          path: pathName + u.search,
+          path: requestPath,
           method: "POST",
           headers,
           agent: false, // fresh socket per request (per-event process semantics)
@@ -236,6 +242,11 @@ function actionable(failureClass, status, host) {
  * path (ADR-005). Returns { ok, message }; never throws. When `pinnedFp` is set,
  * the Ping runs over the PINNED TLS connection so a cert-fingerprint mismatch
  * surfaces HERE, diagnosably (FR-A11 / AC-CT-ROT), classified as a connect error.
+ *
+ * ADR-001: `url` is the server-composed `observe_url` (the SAME value every
+ * runtime hook posts to). It is passed straight through to `post`, which posts
+ * it verbatim — the Ping reaches /v1/{slug}/observe (AC-07) with no re-derivation.
+ * @param {string} url server-composed observe_url, posted verbatim.
  * @param {object} [timeouts] { connectMs, syncMs, fnfMs }
  * @param {string} [pinnedFp] sha256:<64 hex> pin for the TLS request.
  */

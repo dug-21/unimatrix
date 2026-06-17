@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
 use bytes::Bytes;
-use http::{Method, Request, Response, StatusCode};
+use http::{Method, Request, Response};
 use http_body::Body;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Full, Limited};
@@ -33,11 +33,8 @@ use unimatrix_core::{Store, VectorAdapter};
 use crate::http::health::health_response;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::session::SessionRegistry;
-use crate::mcp::identity::ResolvedIdentity;
 use crate::server::{PendingEntriesAnalysis, UnimatrixServer};
 use crate::services::ServiceLayer;
-use crate::uds::listener::dispatch_request;
-use unimatrix_engine::wire::HookRequest;
 
 /// Maximum request body size default (1 MB). Used when no config override.
 const DEFAULT_MAX_BODY_BYTES: usize = 1_048_576;
@@ -190,14 +187,14 @@ where
         match (&method, path.as_str()) {
             (&Method::GET, "/health") => {
                 // Route to health handler. Auth already bypassed by StaticTokenAuth (ADR-002).
-                let resp = map_health_response(health_response());
+                let resp = handlers::map_health_response(health_response());
                 Box::pin(async move { Ok(resp) })
             }
             (&Method::POST, p) if p.starts_with("/v1/") && p.ends_with("/observe") => {
                 // vnc-038 ADR-003: per-slug observe on the per-request funnel.
                 // Auth enforced by upstream StaticTokenAuth.
                 let observe_ctx = self.observe_ctx.clone();
-                Box::pin(async move { route_observe(observe_ctx, request).await })
+                Box::pin(async move { handlers::route_observe(observe_ctx, request).await })
             }
             (_, _) => {
                 // Route everything else to MCP via the SlugRouter single funnel
@@ -210,157 +207,33 @@ where
     }
 }
 
-/// Per-slug observe handler on the per-request funnel (vnc-038 ADR-003 #5082).
-///
-/// Resolves the per-request `Arc<Store>` from the transport-derived
-/// `ProjectKey::Slug` through the SAME `resolve_store` funnel as MCP — there is no
-/// boot-bound or parallel observe store (the #4974 ceremonial-funnel guard). A
-/// no-slug / unregistered / invalid-slug observe is a loud error, never a default
-/// store (R-09/R-10).
-async fn route_observe<ReqBody>(
-    observe_ctx: ObserveContext,
-    request: Request<ReqBody>,
-) -> Result<Response<BoxBody<Bytes, Infallible>>, Infallible>
-where
-    ReqBody: Body + Send + 'static,
-    ReqBody::Data: Send + 'static,
-    ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
-    // Step 0: transport-derived identity via the SAME grammar as MCP, then resolve
-    // the per-request store through the ONE funnel (ADR-003 — no boot-bound handle).
-    let key = match seam::parse_project_key(request.uri().path()) {
-        Ok(k) => k,
-        Err(RouteError::InvalidSlug(_)) => {
-            return Ok(json_error_response(
-                StatusCode::BAD_REQUEST,
-                "invalid project slug",
-            ));
-        }
-        Err(RouteError::UnknownProject) => {
-            return Ok(json_error_response(
-                StatusCode::NOT_FOUND,
-                "unknown project",
-            ));
-        }
-    };
-    let store = match observe_ctx.resolver.resolve_store(&key) {
-        Ok(s) => s,
-        Err(RouteError::UnknownProject) => {
-            return Ok(json_error_response(
-                StatusCode::NOT_FOUND,
-                "unknown project",
-            ));
-        }
-        Err(RouteError::InvalidSlug(_)) => {
-            return Ok(json_error_response(
-                StatusCode::BAD_REQUEST,
-                "invalid project slug",
-            ));
-        }
-    };
-
-    // Step 1: Extract ResolvedIdentity from request extensions.
-    let identity = match request.extensions().get::<ResolvedIdentity>() {
-        Some(id) => id.clone(),
-        None => {
-            tracing::error!("observe: ResolvedIdentity missing from extensions");
-            return Ok(json_error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal error: identity not resolved",
-            ));
-        }
-    };
-
-    // Step 2: Content-Length fast-path size check (same pattern as McpAdapter).
-    let exceeds_limit = request
-        .headers()
-        .get(http::header::CONTENT_LENGTH)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.parse::<usize>().ok())
-        .is_some_and(|len| len > DEFAULT_MAX_BODY_BYTES);
-
-    if exceeds_limit {
-        return Ok(payload_too_large_response());
-    }
-
-    // Step 2b: Read Accept header for content negotiation (ADR-003, vnc-024).
-    // MUST be read here, before `into_parts()` consumes the request — a late
-    // read silently loses the header and falls back to JSON (Constraint 2 / R-07).
-    // `wants_text` is true iff the Accept value contains "text/plain".
-    let wants_text = request
-        .headers()
-        .get(http::header::ACCEPT)
-        .and_then(|v| v.to_str().ok())
-        .is_some_and(|s| s.contains("text/plain"));
-
-    // Step 3: Stream-level body collection with size limit (GH #663 pattern).
-    let (_parts, body) = request.into_parts();
-    let limited_body = Limited::new(body, DEFAULT_MAX_BODY_BYTES);
-
-    let collected = match limited_body.collect().await {
-        Ok(collected) => collected.to_bytes(),
-        Err(err) => {
-            if err
-                .downcast_ref::<http_body_util::LengthLimitError>()
-                .is_some()
-            {
-                return Ok(payload_too_large_response());
-            }
-            return Ok(internal_error_response());
-        }
-    };
-
-    // Step 4: Deserialize HookRequest from JSON.
-    let mut hook_request: HookRequest = match serde_json::from_slice(&collected) {
-        Ok(req) => req,
-        Err(e) => {
-            return Ok(json_error_response(
-                StatusCode::BAD_REQUEST,
-                &format!("invalid request JSON: {e}"),
-            ));
-        }
-    };
-
-    // Step 5: Prefix session_id with "http-" (ADR-003).
-    prefix_session_id(&mut hook_request);
-
-    // Step 6: Call dispatch_request with HTTP capabilities. The per-request
-    // `store` serves BOTH the `store` and `entry_store` params (the boot pairing
-    // preserved per-request, ADR-003).
-    let response = dispatch_request(
-        hook_request,
-        &store,
-        &observe_ctx.embed_service,
-        &observe_ctx.vector_store,
-        &store,
-        &observe_ctx.adapt_service,
-        &observe_ctx.server_version,
-        &observe_ctx.session_registry,
-        &observe_ctx.pending_entries_analysis,
-        &observe_ctx.services,
-        &identity.capabilities,
-    )
-    .await;
-
-    // Step 7: Map HookResponse to HTTP response (content negotiation, ADR-003).
-    Ok(observe_response_to_http(response, wants_text))
-}
-
-/// Map the health response (String body) to BoxBody for consistency.
-fn map_health_response(resp: Response<String>) -> Response<BoxBody<Bytes, Infallible>> {
-    let (parts, body) = resp.into_parts();
-    Response::from_parts(
-        parts,
-        Full::new(Bytes::from(body))
-            .map_err(|never| match never {})
-            .boxed(),
-    )
-}
+// Per-slug observe handler and the shared HTTP error-response builders live in
+// the `handlers` submodule (vnc-038 CI-2 / AC-12 — keeps router.rs under 500
+// lines). Re-exported below so the `super::*` test module and existing call
+// sites are unaffected (pure relocation, no behavior change).
+mod handlers;
+// The observe handler and its `StatusCode` / `HookRequest` dependencies moved
+// into `handlers`; the `super::*` test module still references those types, so
+// they are re-imported test-only here (no runtime use remains in this file).
+#[cfg(test)]
+use http::StatusCode;
+#[cfg(test)]
+use unimatrix_engine::wire::HookRequest;
+// `internal_error_response` / `payload_too_large_response` are runtime builders
+// reached by `McpAdapter` (this file) and `observe.rs` (via `super::`), so they
+// stay re-exported in all builds. `map_health_response` is only reached via the
+// `handlers::` path and the `super::*` test module, so it is test-gated.
+#[cfg(test)]
+pub(crate) use handlers::map_health_response;
+pub(crate) use handlers::{internal_error_response, payload_too_large_response};
 
 // `pub(crate)` so the UDS listener can reach the shared injection-text core
 // (`response_injection_text`) — the single formatting truth shared by both transports
 // (vnc-027 ADR-001 §5).
 pub(crate) mod observe;
+// Re-exported for the `super::*` test module only (the runtime callers are in
+// `handlers`, which imports from `observe` directly).
+#[cfg(test)]
 use observe::{json_error_response, observe_response_to_http, prefix_session_id};
 
 // C4 isolation seam (vnc-034 ADR-003/004/005). Extracted to a submodule to keep
@@ -539,40 +412,6 @@ impl McpAdapter {
             Err(never) => match never {},
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-// Error response helpers
-// ---------------------------------------------------------------------------
-
-/// 413 Payload Too Large response for oversized request bodies.
-fn payload_too_large_response() -> Response<BoxBody<Bytes, Infallible>> {
-    Response::builder()
-        .status(StatusCode::PAYLOAD_TOO_LARGE)
-        .header("content-type", "application/json")
-        .body(
-            Full::new(Bytes::from(
-                r#"{"error":"request body exceeds maximum size"}"#,
-            ))
-            .map_err(|never| match never {})
-            .boxed(),
-        )
-        .expect("static response builder cannot fail")
-}
-
-/// 500 Internal Server Error response for body read failures (e.g., client
-/// disconnect, malformed chunks). Distinct from 413 to avoid masking
-/// non-size-related errors (GH #663).
-fn internal_error_response() -> Response<BoxBody<Bytes, Infallible>> {
-    Response::builder()
-        .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .header("content-type", "application/json")
-        .body(
-            Full::new(Bytes::from(r#"{"error":"failed to read request body"}"#))
-                .map_err(|never| match never {})
-                .boxed(),
-        )
-        .expect("static response builder cannot fail")
 }
 
 // ---------------------------------------------------------------------------
