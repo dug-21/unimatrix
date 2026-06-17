@@ -2475,11 +2475,28 @@ pub fn validate_tls_config(config: &TlsConfig, path: &Path) -> Result<(), Config
 /// truth for the whole feature; the register CLI imports THIS constant, never a
 /// second list).
 ///
-/// A slug equal to any of these would shadow a fixed route. `tools` is the CRITICAL
-/// case: `/v1/tools/...` is the default-project alias (ADR-005), so a slug named
-/// `tools` would shadow the default project entirely. This is a SEPARATE check from
-/// the D1 charset allowlist — every one of these IS charset-valid (`tools`, `health`,
-/// `observe`, `v1` all match `^[a-z0-9][a-z0-9-]{0,62}$`) and MUST still be rejected.
+/// The VALUE is downstream of the route grammar, not an independent list. Re-derived
+/// under the POST-cutover grammar (`/v1/{slug}/...` only; the `/v1/tools` -> Default
+/// alias is DELETED, ADR-004; `observe` is now the per-slug sub-route `/v1/{slug}/observe`,
+/// ADR-003). vnc-038 ADR-005 (#5084) re-documents the rationale per literal; the value
+/// is retained:
+///
+/// - `"v1"`      — KEEP. Still the fixed first path segment; reserves the version
+///   namespace. A slug `v1` would route `/v1/v1/...`.
+/// - `"health"`  — KEEP. `/health` stays a top-level, store-independent route; a slug
+///   `health` would collide conceptually. Cheap to keep.
+/// - `"observe"` — KEEP, NEW RATIONALE. `/observe` is NO LONGER top-level; observe is now
+///   `/v1/{slug}/observe` (ADR-003). A slug `observe` would route `/v1/observe/observe`;
+///   reserved now as a per-slug SUB-ROUTE segment, not a top-level route shadow.
+/// - `"tools"`   — KEEP, conservative (OQ-3/OQ-C). The `/v1/tools` -> Default alias is
+///   DELETED (ADR-004); `/v1/tools/...` now means "the project whose slug is `tools`"
+///   (unambiguous). Un-reserving is SAFE but deferred to avoid surprising operators/docs
+///   during the #768 doc fast-follow window. Un-reserve is a one-line follow-up + test if
+///   a real project needs `tools`.
+///
+/// This is a SEPARATE check from the D1 charset allowlist — every one of these IS
+/// charset-valid (`tools`, `health`, `observe`, `v1` all match `^[a-z0-9][a-z0-9-]{0,62}$`)
+/// and MUST still be rejected.
 pub const RESERVED_SLUGS: [&str; 4] = ["v1", "health", "observe", "tools"];
 
 /// Is `slug` equal to a reserved route segment (D5)?
@@ -2761,11 +2778,14 @@ pub enum ConfigError {
         /// The offending slug value (diagnostics only).
         value: String,
     },
-    /// A `[[projects]]` slug equals a reserved route segment (vnc-034 Wave 2, D5).
+    /// A `[[projects]]` slug equals a reserved route segment (vnc-034 Wave 2, D5;
+    /// re-derived vnc-038 ADR-005 #5084).
     ///
-    /// Charset-valid but forbidden because it would shadow a fixed route (`tools`
-    /// shadows the `/v1/tools/...` default-project alias). SEPARATE from
-    /// `ProjectSlugInvalid`.
+    /// Charset-valid but forbidden because it would shadow a route segment of the
+    /// post-cutover grammar (`v1` = version namespace; `health` = top-level route;
+    /// `observe` = the `/v1/{slug}/observe` sub-route). `tools` is reserved
+    /// conservatively (the `/v1/tools` -> Default alias is DELETED, ADR-004), pending a
+    /// deliberate un-reserve. SEPARATE from `ProjectSlugInvalid`.
     ProjectSlugReserved {
         path: PathBuf,
         /// The reserved slug value.
@@ -3093,7 +3113,9 @@ impl fmt::Display for ConfigError {
             ConfigError::ProjectSlugReserved { path, value } => write!(
                 f,
                 "config error in {}: project slug '{}' is reserved (v1, health, observe, \
-                 tools); 'tools' would shadow the default-project alias /v1/tools/...",
+                 tools); these shadow route segments of the /v1/{{slug}}/... grammar \
+                 ('observe' is the per-slug /v1/{{slug}}/observe sub-route). 'tools' is \
+                 reserved conservatively pending a deliberate un-reserve",
                 path.display(),
                 value
             ),

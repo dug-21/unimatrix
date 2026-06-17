@@ -13,10 +13,8 @@
 //!
 //! The three consumer call sites (cert-provisioner SANs, bundle-codec
 //! `base_url`, listener/config `allowed_hosts`) are wired by their owning
-//! components in main.rs and sibling modules. Until that wiring lands this
-//! module is referenced only by its own tests, so `dead_code` is allowed
-//! crate-internally; the public API is the contract those owners consume.
-#![allow(dead_code)]
+//! components in main.rs and sibling modules; `derive_public_url` is consumed
+//! by `client_bundle.rs`. The public API is the contract those owners consume.
 
 /// Environment variable carrying the operator-supplied public URL.
 const PUBLIC_URL_VAR: &str = "UNIMATRIX_PUBLIC_URL";

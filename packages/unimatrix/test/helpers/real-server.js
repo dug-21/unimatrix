@@ -24,7 +24,14 @@
 // blocks the libuv loop.
 
 const { spawn } = require("child_process");
-const http = require("http");
+// vnc-038: the project-routing HTTP listener is HTTPS-only — `serve` always
+// self-provisions a self-signed cert (http_provision::provision_tls hard-codes
+// enabled=true) once `[http] enabled = true`, regardless of `[tls] enabled`. The
+// harness therefore speaks HTTPS and verifies the leaf by FINGERPRINT (the OSS
+// trust model — cert-pin.js), exactly as the shipped client does: complete the
+// self-signed handshake with rejectUnauthorized:false, then match sha256(leaf DER)
+// against the value read from {dataDir}/tls/cert.pem.
+const https = require("https");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -57,6 +64,58 @@ function resolveServerBinary() {
   );
 }
 
+// Register a project slug via the `unimatrix project register <slug>` CLI so the
+// HTTP listener binds on the subsequent `serve` boot (ADR-007: register writes the
+// `[[projects]]` routing intent atomically; restart/boot applies it). Runs the
+// SAME binary, `--project-dir`, and env (HOME / UNIMATRIX_CONFIG) the daemon uses,
+// so register and serve agree on the data dir + config.toml. Async spawn (never
+// spawnSync; pattern #4774). Resolves when register exits 0; rejects (hard-fail —
+// #4452) on non-zero, surfacing register's stderr so a routing/genesis error is
+// loud, never a silent skip.
+function registerSlug(bin, projectDir, env, slug) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, ["--project-dir", projectDir, "project", "register", slug], {
+      env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const out = [];
+    child.stdout.on("data", (c) => out.push(c));
+    child.stderr.on("data", (c) => out.push(c));
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(
+          new Error(
+            "`project register " +
+              slug +
+              "` exited " +
+              code +
+              "\n--- register output ---\n" +
+              Buffer.concat(out).toString("utf8")
+          )
+        );
+      }
+    });
+  });
+}
+
+// Compute the C2 leaf fingerprint ("sha256:" + lowercase hex of the leaf DER)
+// from a provisioned PEM cert, MIRRORING cert-pin.js::computeFingerprint so a pin
+// produced here matches what the client verifies on `secureConnect`. Returns null
+// if the cert is unreadable/unparseable (the HTTPS in-process paths then connect
+// with rejectUnauthorized:false only — sufficient for the localhost self-call).
+function readCertFingerprint(certPath) {
+  try {
+    const pem = fs.readFileSync(certPath, "utf8");
+    const x509 = new crypto.X509Certificate(pem);
+    return "sha256:" + crypto.createHash("sha256").update(x509.raw).digest("hex");
+  } catch (_e) {
+    return null;
+  }
+}
+
 // Reserve an ephemeral port, then release it so the server can bind it. A small
 // race window is acceptable for tests (same trick as stub-server.refusedPort,
 // but we WANT to use the port — content_port: 0 would self-assign but the bound
@@ -73,8 +132,23 @@ function reservePort() {
   });
 }
 
-// Poll the bound server until `POST /observe` with a Ping accepts (server up and
-// HTTP listener bound). Resolves on first non-connection response (any HTTP
+// vnc-038 (ADR-003/ADR-004): observe is no longer a top-level route; it is the
+// per-slug route `POST /v1/{slug}/observe`, and the HTTP listener only binds when
+// at least one `[[projects]]` slug is registered (ADR-007). The Layer 2 harness
+// therefore registers ONE slug into its temp data dir before `serve` and drives
+// observe through `/v1/{slug}/observe`. `OBSERVE_SLUG` is that harness slug.
+const OBSERVE_SLUG = "layer2";
+
+// The per-slug observe path the client posts to verbatim (transport-http composes
+// NO path — ADR-001 dumb-client). The harness's own HTTP helpers reuse it so the
+// readiness probe, raw POSTs, and the spawned client all hit the SAME route.
+function observePath(slug) {
+  return "/v1/" + (slug || OBSERVE_SLUG) + "/observe";
+}
+
+// Poll the bound server until `POST /v1/{slug}/observe` with a Ping accepts
+// (server up and HTTP listener bound — the listener only binds once a project is
+// registered, ADR-007). Resolves on first non-connection response (any HTTP
 // status proves the listener answered); rejects after `timeoutMs`.
 function waitForServer(url, token, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
@@ -82,12 +156,15 @@ function waitForServer(url, token, timeoutMs) {
   return new Promise((resolve, reject) => {
     const attempt = () => {
       const body = Buffer.from(JSON.stringify({ type: "Ping" }), "utf8");
-      const req = http.request(
+      const req = https.request(
         {
           hostname: u.hostname,
           port: u.port,
-          path: "/observe",
+          path: observePath(),
           method: "POST",
+          // Self-signed cloud cert: complete the handshake, then trust by
+          // fingerprint (the harness connects to its own localhost server).
+          rejectUnauthorized: false,
           headers: {
             "Content-Type": "application/json",
             "Content-Length": body.length,
@@ -112,9 +189,10 @@ function waitForServer(url, token, timeoutMs) {
   });
 }
 
-// One HTTP POST to `{url}/observe`. Returns { status, contentType, body:Buffer }.
-function postObserve(url, token, frameObj, accept) {
-  const u = new URL(url);
+// One HTTPS POST to the per-slug observe route `{base}/v1/{slug}/observe`.
+// Returns { status, contentType, body:Buffer }. `base` is the https host:port base.
+function postObserve(base, token, frameObj, accept) {
+  const u = new URL(base);
   const body = Buffer.from(JSON.stringify(frameObj), "utf8");
   const headers = {
     "Content-Type": "application/json",
@@ -123,8 +201,15 @@ function postObserve(url, token, frameObj, accept) {
   };
   if (accept) headers["Accept"] = accept;
   return new Promise((resolve, reject) => {
-    const req = http.request(
-      { hostname: u.hostname, port: u.port, path: "/observe", method: "POST", headers },
+    const req = https.request(
+      {
+        hostname: u.hostname,
+        port: u.port,
+        path: observePath(),
+        method: "POST",
+        rejectUnauthorized: false, // self-signed cloud cert; localhost self-call
+        headers,
+      },
       (res) => {
         const chunks = [];
         res.on("data", (c) => chunks.push(c));
@@ -148,11 +233,16 @@ function postObserve(url, token, frameObj, accept) {
  * @param {object} [opts]
  * @param {number} [opts.startTimeoutMs=30000]
  * @returns {Promise<object>} harness:
- *   url            base URL (http://127.0.0.1:{port}) — transport appends /observe
+ *   url            full per-slug observe URL ({base}/v1/{slug}/observe, https) —
+ *                  the client posts it verbatim (ADR-001); pass as UNIMATRIX_REMOTE_URL
+ *   baseUrl        https host:port base (https://127.0.0.1:{port}), no path
+ *   pinnedFp       sha256:<hex> pin of the served self-signed leaf — pass as
+ *                  config.pinnedFp for HTTPS in-process client transport
+ *   slug           the registered harness slug the HTTP listener is bound for
  *   token          64-hex bearer token (the value the client uses)
  *   home           temp HOME (data dir lives under {home}/.unimatrix/{hash}/)
  *   projectDir     the project root passed to the server (--project-dir)
- *   post(frame, accept)  raw POST to /observe (test helper)
+ *   post(frame, accept)  raw POST to /v1/{slug}/observe (test helper)
  *   precompact(sessionId, opts)  drive the wire PreCompact restoration block
  *   close()        SIGTERM the child, await exit, rm the temp tree
  */
@@ -200,6 +290,14 @@ async function startRealServer(opts) {
     UNIMATRIX_CONFIG: path.join(dataDir, "config.toml"),
   });
 
+  // vnc-038 (ADR-003/ADR-004/ADR-007): the HTTP/cloud listener only binds when a
+  // project slug is registered in `[[projects]]`; with none, `serve` boots as the
+  // LOCAL path-hash UDS daemon and binds no HTTP TCP at all. Register the harness
+  // slug FIRST so `serve` reads it on boot (register writes the stanza atomically,
+  // preserving the [http] block the harness wrote). `register` is a synchronous,
+  // pre-tokio subcommand; run it to completion before spawning the daemon.
+  await registerSlug(bin, projectDir, env, OBSERVE_SLUG);
+
   const child = spawn(bin, ["--project-dir", projectDir, "serve", "--foreground"], {
     env,
     stdio: ["ignore", "pipe", "pipe"],
@@ -212,7 +310,12 @@ async function startRealServer(opts) {
     exited = { code, signal };
   });
 
-  const url = "http://" + bind + ":" + port;
+  // Base URL (https host:port — the cloud listener is TLS-only, vnc-038). Internal
+  // harness helpers (waitForServer, postObserve) append the per-slug observe path
+  // themselves. The EXPOSED `url` (below) is the full verbatim observe URL a client
+  // posts to (ADR-001: transport-http composes no path), i.e. `{base}/v1/{slug}/observe`.
+  const baseUrl = "https://" + bind + ":" + port;
+  const observeUrl = baseUrl + observePath();
 
   // Token is generated lazily by load_or_generate_token on HTTP startup; poll
   // the file, then poll the listener.
@@ -251,7 +354,7 @@ async function startRealServer(opts) {
     await sleep(50);
   }
 
-  await waitForServer(url, token, Math.max(1000, tokenDeadline - Date.now()));
+  await waitForServer(baseUrl, token, Math.max(1000, tokenDeadline - Date.now()));
 
   // vnc-027: the hook UDS listener binds {dataDir}/unimatrix.sock during serve
   // startup (paths.socket_path). Poll the socket file into existence so Layer 2
@@ -274,8 +377,25 @@ async function startRealServer(opts) {
     await sleep(50);
   }
 
+  // C2 fingerprint of the served leaf (vnc-038 HTTPS-only cloud listener). Read
+  // from the provisioned {dataDir}/tls/cert.pem (present once HTTP bound) and
+  // hashed exactly as cert-pin.js::computeFingerprint does (sha256 of the leaf
+  // DER). In-process client paths (delta.maybeSendDelta) pass this as
+  // `config.pinnedFp` so the shipped transport-http completes the self-signed
+  // handshake and trusts the cert by pin — the OSS trust model, no CA.
+  const pinnedFp = readCertFingerprint(path.join(dataDir, "tls", "cert.pem"));
+
   return {
-    url,
+    // The full per-slug observe URL the client posts to verbatim (ADR-001).
+    // Tests pass this as UNIMATRIX_REMOTE_URL / config.url for the spawned client.
+    url: observeUrl,
+    // The host:port base (no path) — for tests that need to compose other routes.
+    baseUrl,
+    // sha256:<hex> pin of the served leaf — pass as config.pinnedFp for HTTPS
+    // in-process client transport (null only if the cert could not be read).
+    pinnedFp,
+    // The harness slug the HTTP listener is registered/bound for (ADR-007).
+    slug: OBSERVE_SLUG,
     token,
     home,
     projectDir,
@@ -309,7 +429,7 @@ async function startRealServer(opts) {
       });
     },
     post(frame, accept) {
-      return postObserve(url, token, frame, accept);
+      return postObserve(baseUrl, token, frame, accept);
     },
     /**
      * Drive the wire-observable PreCompact restoration block for a session.
@@ -334,7 +454,7 @@ async function startRealServer(opts) {
       if (o.transcript_excerpt !== undefined) {
         frame.transcript_excerpt = o.transcript_excerpt;
       }
-      const res = await postObserve(url, token, frame, "text/plain");
+      const res = await postObserve(baseUrl, token, frame, "text/plain");
       return {
         status: res.status,
         contentType: res.contentType,
@@ -360,7 +480,7 @@ async function startRealServer(opts) {
     async prepopulateBuffer(sessionId, bytes) {
       const buf = Buffer.isBuffer(bytes) ? bytes : Buffer.from(String(bytes), "utf8");
       const reg = await postObserve(
-        url,
+        baseUrl,
         token,
         {
           type: "SessionRegister",
@@ -385,7 +505,7 @@ async function startRealServer(opts) {
           timestamp: Math.floor(Date.now() / 1000),
           payload: { offset, bytes: chunk.toString("utf8") },
         };
-        const r = await postObserve(url, token, frame, null);
+        const r = await postObserve(baseUrl, token, frame, null);
         if (r.status !== 204) {
           throw new Error("prepopulateBuffer: delta POST failed (" + r.status + ")");
         }

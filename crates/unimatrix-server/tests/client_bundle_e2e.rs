@@ -43,6 +43,21 @@ const SYNTH_TOKEN: &str = "0123456789abcdef0123456789abcdef0123456789abcdef01234
 
 const PUBLIC_URL: &str = "https://cloud.example:8443";
 
+/// The registered slug the `client-bundle <slug>` subcommand composes URLs for
+/// (vnc-038 ADR-002 — the bundle is per-slug; there is no default-aliased bundle).
+const SLUG: &str = "alpha";
+
+/// Server-composed `v:2` URLs the emitted bundle MUST carry (PUBLIC_URL + the
+/// `/v1/{slug}` route grammar, mirroring `compose_route_urls`). The client posts
+/// these verbatim (ADR-001) — the e2e proof that the bundle is the SOLE route
+/// authority.
+fn expected_mcp_url() -> String {
+    format!("{PUBLIC_URL}/v1/{SLUG}")
+}
+fn expected_observe_url() -> String {
+    format!("{PUBLIC_URL}/v1/{SLUG}/observe")
+}
+
 /// Production SAN vector for `cloud.example` (matches `derive_public_url`).
 fn sans() -> Vec<String> {
     ["localhost", "127.0.0.1", "0.0.0.0", "cloud.example"]
@@ -97,6 +112,9 @@ fn run_client_bundle(home: &Path, project_root: &Path) -> (String, String) {
         .arg("--project-dir")
         .arg(project_root)
         .arg("client-bundle")
+        // vnc-038 ADR-002: the bundle is per-slug; the subcommand requires the
+        // registered <slug> (no default-aliased bundle).
+        .arg(SLUG)
         .env("HOME", home)
         .env("UNIMATRIX_PUBLIC_URL", PUBLIC_URL)
         // Keep any developer RUST_LOG out of the captured stderr assertion surface.
@@ -153,9 +171,19 @@ fn test_e2e_bundle_fp_equals_served_leaf_der() {
     );
     // And it must equal the production oracle over the same DER (no second compute path).
     assert_eq!(bundle.fp, fingerprint_leaf_der(&served_der));
+    // vnc-038 ADR-002: the bundle carries server-composed `v:2` URLs (mcp_url +
+    // observe_url) built from PUBLIC_URL + the `/v1/{slug}` grammar — no bare
+    // `base_url`. These are what the client posts verbatim (ADR-001).
+    assert_eq!(bundle.v, 2, "emitted bundle is v:2 (no v:1)");
     assert_eq!(
-        bundle.base_url, PUBLIC_URL,
-        "base-url from UNIMATRIX_PUBLIC_URL"
+        bundle.mcp_url,
+        expected_mcp_url(),
+        "mcp_url is PUBLIC_URL + /v1/{SLUG}"
+    );
+    assert_eq!(
+        bundle.observe_url,
+        expected_observe_url(),
+        "observe_url is PUBLIC_URL + /v1/{SLUG}/observe"
     );
 }
 
@@ -182,9 +210,16 @@ fn test_e2e_token_absent_from_stdout_and_stderr() {
         "token hex must NOT appear in stderr"
     );
 
-    // stdout is the opaque blob ONLY (one line). stderr carries base-url + fp echo.
+    // stdout is the opaque blob ONLY (one line). stderr carries the URL + fp echo.
     let blob = blob_line(&stdout);
-    assert!(stderr.contains(PUBLIC_URL), "stderr echoes the base-url");
+    assert!(
+        stderr.contains(&expected_mcp_url()),
+        "stderr echoes the mcp-url"
+    );
+    assert!(
+        stderr.contains(&expected_observe_url()),
+        "stderr echoes the observe-url"
+    );
 
     // The blob DOES encode the token (round-trip proves it is carried, just not leaked).
     let bundle = decode_bundle(&blob).expect("decode blob");
@@ -211,8 +246,11 @@ fn test_e2e_emitted_blob_round_trips() {
     let (stdout, _stderr) = run_client_bundle(tmp.path(), &project);
     let bundle = decode_bundle(&blob_line(&stdout)).expect("decode emitted blob");
 
-    assert_eq!(bundle.v, 1);
-    assert_eq!(bundle.base_url, PUBLIC_URL);
+    // vnc-038 ADR-002: the real emitted blob round-trips to the canonical `v:2`
+    // fields {v, mcp_url, observe_url, token, fp}.
+    assert_eq!(bundle.v, 2);
+    assert_eq!(bundle.mcp_url, expected_mcp_url());
+    assert_eq!(bundle.observe_url, expected_observe_url());
     assert_eq!(bundle.token, SYNTH_TOKEN);
     assert_eq!(bundle.fp, fingerprint_leaf_der(&served_der));
 }

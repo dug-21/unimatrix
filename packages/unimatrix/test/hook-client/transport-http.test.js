@@ -3,6 +3,11 @@
 // transport-http.js unit suite (vnc-026, test-plan/transport-http.md).
 // Risks: R-10, R-15, R-16; ACs: AC-02, AC-03, AC-09.
 // ADR-005 timeouts ACCEPTED (750/2,000/3,000 ms) — do not flag vs NFR-02.
+//
+// vnc-038 (ADR-001, AC-08, R-01/R-12): config.url is now the server-composed
+// OBSERVE URL, posted VERBATIM. The `/observe` append (C-3, the last client
+// route-composition site) is DELETED. The request path is the URL's pathname
+// (+ search) byte-for-byte — no suffix, no trailing-slash mutation.
 
 const { describe, it, after } = require("node:test");
 const assert = require("assert");
@@ -39,7 +44,9 @@ describe("transport-http", function () {
       assert.strictEqual(res.ok, true);
       assert.strictEqual(stub.requests.length, 1);
       assert.strictEqual(stub.requests[0].method, "POST");
-      assert.strictEqual(stub.requests[0].path, "/observe");
+      // ADR-001: config.url posted VERBATIM. stub.url has pathname "/" — no
+      // "/observe" append. (URL with no path → "/" per the URL spec.)
+      assert.strictEqual(stub.requests[0].path, "/");
       // Body = exact HookRequest JSON.
       assert.strictEqual(stub.requests[0].body.toString("utf8"), JSON.stringify(frame));
     });
@@ -79,21 +86,48 @@ describe("transport-http", function () {
       }
     });
 
-    it("test_url_trailing_slash", async function () {
+    it("test_url_verbatim_trailing_slash", async function () {
+      // ADR-001 / R-01: a trailing-slash URL is posted VERBATIM — the slash is
+      // NOT stripped and NOTHING is appended (proves the trailing-slash-mutation
+      // logic is gone alongside the /observe append).
       const stub = await startStubServer();
       after(() => stub.close());
       const res = await post(cfg(stub.url + "/", FAST), { type: "Ping" }, { sync: true });
       assert.strictEqual(res.ok, true);
-      assert.strictEqual(stub.requests[0].path, "/observe", "no //observe");
+      assert.strictEqual(stub.requests[0].path, "/", "verbatim trailing slash, no /observe");
     });
 
-    it("test_url_path_prefix", async function () {
+    it("test_url_verbatim_path_prefix", async function () {
+      // The full server-composed observe path (e.g. /v1/<slug>/observe) is posted
+      // byte-for-byte. No suffix, no normalization.
       const stub = await startStubServer();
       after(() => stub.close());
-      await post(cfg(stub.url + "/base", FAST), { type: "Ping" }, { sync: true });
-      await post(cfg(stub.url + "/base/", FAST), { type: "Ping" }, { sync: true });
-      assert.strictEqual(stub.requests[0].path, "/base/observe");
-      assert.strictEqual(stub.requests[1].path, "/base/observe");
+      await post(cfg(stub.url + "/v1/proj-a/observe", FAST), { type: "Ping" }, { sync: true });
+      await post(cfg(stub.url + "/v1/proj-b/observe", FAST), { type: "Ping" }, { sync: true });
+      assert.strictEqual(stub.requests[0].path, "/v1/proj-a/observe");
+      assert.strictEqual(stub.requests[1].path, "/v1/proj-b/observe");
+    });
+
+    it("test_url_already_ending_in_observe_not_double_suffixed", async function () {
+      // Edge case (#5095 double-append guard): an observe_url that already ends
+      // in "/observe" is posted unchanged — never "/observe/observe". Proves the
+      // append is truly gone, closing the cross-wave double-append hazard.
+      const stub = await startStubServer();
+      after(() => stub.close());
+      await post(cfg(stub.url + "/v1/proj-a/observe", FAST), { type: "Ping" }, { sync: true });
+      assert.strictEqual(stub.requests[0].path, "/v1/proj-a/observe");
+      assert.ok(
+        !stub.requests[0].path.includes("/observe/observe"),
+        "no double-append"
+      );
+    });
+
+    it("test_url_verbatim_with_query_string", async function () {
+      // u.search is preserved verbatim (carried through the dumb-client post).
+      const stub = await startStubServer();
+      after(() => stub.close());
+      await post(cfg(stub.url + "/v1/proj-a/observe?x=1", FAST), { type: "Ping" }, { sync: true });
+      assert.strictEqual(stub.requests[0].path, "/v1/proj-a/observe?x=1");
     });
 
     it("test_url_explicit_port", async function () {
@@ -116,7 +150,7 @@ describe("transport-http", function () {
       after(() => stub.close());
       const res = await post(cfg(stub.url, FAST), { type: "Ping" }, { sync: true });
       assert.strictEqual(res.ok, true);
-      assert.strictEqual(stub.requests[0].path, "/observe");
+      assert.strictEqual(stub.requests[0].path, "/");
     });
 
     it("test_invalid_url_connect_class_no_throw", async function () {
@@ -354,6 +388,87 @@ describe("transport-http", function () {
       assert.strictEqual(res.ok, false);
       assert.strictEqual(res.failureClass, "connect");
       assert.strictEqual(stub.requests.length, 0, "no plaintext request sent");
+    });
+  });
+
+  // ── Dumb-client invariant: verbatim observe URL (vnc-038 ADR-001) ─
+  // R-01 (closed-set deletion + byte-for-byte post), R-12 (init Ping and
+  // runtime hook use the SAME observe_url; neither re-derives). AC-08.
+
+  describe("verbatim observe URL (ADR-001 / R-01 / R-12)", function () {
+    it("test_no_observe_append_compose_site", function () {
+      // R-01 sc.1 (load-bearing for SR-01 / NFR-01): the client-side route-
+      // composition set in transport-http.js is EMPTY. Source-level invariant:
+      // no "/observe" append, no pathname-suffixing route grammar.
+      const fs = require("fs");
+      const path = require("path");
+      const src = fs.readFileSync(
+        path.join(__dirname, "..", "..", "lib", "hook-client", "transport-http.js"),
+        "utf8"
+      );
+      // Strip comments so prose mentioning the deleted append (e.g. /v1/{slug}/observe)
+      // never trips the invariant — only executable code is asserted.
+      const code = src
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .split("\n")
+        .map((line) => line.replace(/\/\/.*$/, ""))
+        .join("\n");
+      assert.ok(!/\+\s*["']\/observe["']/.test(code), 'no  + "/observe"  append');
+      assert.ok(!/["']\/observe["']\s*\+/.test(code), 'no  "/observe" +  prefix');
+      assert.ok(!/\.replace\([^)]*\)\s*\+\s*["']/.test(code),
+        "no pathname.replace(...) + suffix route grammar");
+      assert.ok(!code.includes('"/observe"') && !code.includes("'/observe'"),
+        "no /observe literal in executable code");
+    });
+
+    it("test_posts_observe_url_byte_for_byte", async function () {
+      // R-01 sc.2: capture the outgoing request and reconstruct the URL it was
+      // posted to; assert string equality with config.url (the bundle's
+      // observe_url) — no normalization, no trailing-slash mutation, no suffix.
+      const stub = await startStubServer();
+      after(() => stub.close());
+      const observeUrl = stub.url + "/v1/proj-a/observe";
+      await post(cfg(observeUrl, FAST), { type: "RecordEvent" }, { sync: false });
+      const reconstructed = stub.url + stub.requests[0].path;
+      assert.strictEqual(reconstructed, observeUrl, "posted target == observe_url verbatim");
+    });
+
+    it("test_multiple_hook_events_no_recomposition", async function () {
+      // Edge case: every hook event in a session posts to the IDENTICAL
+      // observe_url — no per-event re-composition.
+      const stub = await startStubServer();
+      after(() => stub.close());
+      const observeUrl = stub.url + "/v1/proj-a/observe";
+      for (let i = 0; i < 3; i++) {
+        await post(cfg(observeUrl, FAST), { type: "RecordEvent", n: i }, { sync: false });
+      }
+      assert.strictEqual(stub.requests.length, 3);
+      for (const r of stub.requests) {
+        assert.strictEqual(r.path, "/v1/proj-a/observe");
+      }
+    });
+
+    it("test_init_ping_and_runtime_hook_same_observe_url", async function () {
+      // R-12: the init Ping AND a runtime hook event hit the SAME observe_url;
+      // neither entry point re-derives the route (closes the R-12 asymmetry).
+      const stub = await startStubServer();
+      after(() => stub.close());
+      stub.respondWith((entry) =>
+        entry.headers["accept"] === "text/plain"
+          ? { status: 200, contentType: "application/json", body: JSON.stringify({ type: "Pong", server_version: "0.7.2" }) }
+          : { status: 204 }
+      );
+      const observeUrl = stub.url + "/v1/proj-a/observe";
+      // init Ping (sync) via pingForInit — first arg is the observe URL.
+      const ping = await pingForInit(observeUrl, TOKEN, FAST);
+      assert.strictEqual(ping.ok, true);
+      // runtime hook (FNF) via post to the SAME url.
+      await post(cfg(observeUrl, FAST), { type: "RecordEvent" }, { sync: false });
+      assert.strictEqual(stub.requests.length, 2);
+      assert.strictEqual(stub.requests[0].path, "/v1/proj-a/observe", "Ping verbatim");
+      assert.strictEqual(stub.requests[1].path, "/v1/proj-a/observe", "hook verbatim");
+      assert.strictEqual(stub.requests[0].path, stub.requests[1].path,
+        "init Ping and runtime hook target the SAME observe path");
     });
   });
 

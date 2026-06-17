@@ -9,11 +9,14 @@
 //! `SlugRouter::new` call site, with no change to `SlugRouter`,
 //! `parse_project_key`, `ProjectKey`, or `ProjectSlug`.
 //!
-//! Documented-but-degenerate-seam note (NFR-09): the seam types are degenerate in
-//! Wave 1 (only `ProjectKey::Default` is exercised end-to-end; `Slug(_)` parses but
-//! the Wave-1 resolver is inert). The `SlugRouter` layer is now WIRED as
-//! `PathRouter`'s per-request MCP edge, so every MCP request flows
-//! `parse_project_key -> resolve_store -> dispatch` through this seam.
+//! vnc-038 ADR-004 (#5083) — the served-project `ProjectKey::Default` is DELETED:
+//! one route grammar (`/v1/{slug}/...`), one slug-keyed resolver, no default store
+//! and no default arm. Single project is N=1 through the same slug path; a no-slug
+//! request is a loud `RouteError`, never a silent default (R-10). Local STDIO/UDS
+//! keeps its DIRECT path-hash store binding and NEVER enters this resolver
+//! (ADR-006 #5087). The `SlugRouter` layer is `PathRouter`'s per-request MCP edge,
+//! so every MCP request flows `parse_project_key -> resolve_store -> dispatch`
+//! through this seam.
 
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -27,20 +30,29 @@ use unimatrix_core::Store;
 use super::McpAdapter;
 use super::observe::json_error_response;
 
-/// Transport-derived project identity (ADR-003 C4 invariant 1).
+/// Transport-derived project identity (ADR-003 C4 invariant 1; vnc-038 ADR-004).
 ///
-/// Constructible ONLY from the transport — the URL path here, or the daemon
-/// path-hash for the local UDS install. NEVER from a request payload, so a
-/// client has no field with which to name another project: mis-targeting is
-/// unrepresentable, not merely rejected (FR-X2).
+/// Constructible ONLY from the transport — the URL path here. NEVER from a
+/// request payload, so a client has no field with which to name another
+/// project: mis-targeting is unrepresentable, not merely rejected (FR-X2).
+///
+/// vnc-038 ADR-004 (#5083) deleted the served-project `Default` variant: there
+/// is no default store and no default route. The unified HTTP resolver handles
+/// ONLY `Slug` — single project is N=1 through the same slug-keyed path, no
+/// special case. A request with no valid slug is a loud `RouteError`, never a
+/// silent default store (R-10). Local STDIO/UDS keeps its DIRECT path-hash store
+/// binding and NEVER enters this resolver (ADR-006 #5087) — it is not a
+/// `ProjectKey` at all.
+///
+/// Kept as a single-variant enum (not a bare newtype) so the `StoreResolver`
+/// trait signature `resolve_store(&ProjectKey)` is unchanged and future keys can
+/// be added additively (ADR-004).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectKey {
-    /// Slug-free: the local path-hash store, or the cloud single-project alias
-    /// (`/v1/tools/...`, ADR-005). The only key exercised in Wave 1.
-    Default,
-    /// Cloud multi-project slug (`/v1/{slug}/tools/...`). The route shape exists
-    /// in Wave 1 but the Wave-1 resolver returns `UnknownProject` for it;
-    /// Wave 2 lights it up additively.
+    /// Cloud/container multi-project slug (`/v1/{slug}/tools/...` MCP or
+    /// `/v1/{slug}/observe`). The sole served-project key under the unified
+    /// resolver (ADR-004); the resolver returns `UnknownProject` for any
+    /// unregistered slug, never a fall-through.
     Slug(ProjectSlug),
 }
 
@@ -141,9 +153,9 @@ pub trait StoreResolver: Send + Sync + 'static {
 /// Store-resolution failure at the routing edge (ADR-003/004).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RouteError {
-    /// The slug parsed but is not registered. Wave 1: ANY `Slug(_)` (the
-    /// resolver is inert until Wave 2). Wave 2: an unknown slug. NEVER falls
-    /// back to the default store (R-01 scenario 3).
+    /// The slug parsed but is not registered, OR the path carried no valid slug
+    /// (vnc-038 ADR-004). NEVER falls back to a default store — there is no
+    /// default store (R-07/R-09/R-10). 404 at the routing edge.
     UnknownProject,
     /// The candidate slug failed the allowlist at the parse edge (R-03). Carries
     /// the rejected input for diagnostics only — never used to build a path.
@@ -161,35 +173,44 @@ impl std::fmt::Display for RouteError {
 
 impl std::error::Error for RouteError {}
 
-/// Parse a request path into a transport-derived `ProjectKey` (ADR-005, LOCKED).
+/// Parse a request path into a transport-derived `ProjectKey` (vnc-038 ADR-004).
 ///
 /// ```text
-/// /v1/tools/...          -> ProjectKey::Default       (default alias)
-/// /v1/{slug}/tools/...   -> ProjectKey::Slug(slug)    (Wave 2 additive; Wave 1 resolver inert)
-/// (anything else)        -> ProjectKey::Default       (backward-compat for current MCP paths)
+/// /v1/{slug}/tools/...   -> ProjectKey::Slug(slug)   (MCP)
+/// /v1/{slug}/observe     -> ProjectKey::Slug(slug)   (observe is a segment UNDER the slug, ADR-003)
+/// (anything else)        -> Err(RouteError)          (loud; NEVER a default store, R-10)
 /// ```
 ///
-/// `/v1/tools/...` is matched BEFORE the slug arm, so the reserved literal
-/// `tools` in the slug position never becomes a slug. Other reserved words
-/// (`health`, `observe`, `v1`) reaching the slug arm pass the charset but, in
-/// Wave 1, resolve to `UnknownProject`; refusing to REGISTER reserved slugs is a
-/// Wave-2 CLI concern (documented seam constraint, not built here). `/health`
-/// and `/observe` never reach this function — `PathRouter` splits them off.
+/// A single rule: the candidate slug is always the 2nd path segment after `v1`.
+/// Both `/v1/{slug}/tools/...` and `/v1/{slug}/observe` carry the slug in segment
+/// 2, so observe needs no special arm. The allowlist runs at this edge, BEFORE
+/// any path use (R-03 / InvalidSlug).
+///
+/// vnc-038 ADR-004 (#5083) DELETED the `(v1, tools) -> Default` alias arm and the
+/// `_ => Default` backward-compat fallback. `tools` in the slug position now
+/// parses as a slug *candidate* (`/v1/tools/...` means "the project whose slug is
+/// `tools`"); it is unregisterable because `tools` stays in `RESERVED_SLUGS`, so
+/// the resolver returns `UnknownProject` — never a default. Any no-`/v1`-slug
+/// path is a loud `UnknownProject` here, never a servable default (AC-01/R-10).
+///
+/// `/health` and top-level `/observe` never reach this function — `PathRouter`
+/// splits `/health`; top-level `/observe` is removed (Component 6). Local
+/// STDIO/UDS never calls this function (ADR-006).
 pub(crate) fn parse_project_key(path: &str) -> Result<ProjectKey, RouteError> {
     let trimmed = path.trim_start_matches('/');
     let mut segs = trimmed.split('/');
     match (segs.next(), segs.next()) {
-        // `/v1/tools/...` — the default alias. Matched first so `tools` in the
-        // slug position is never treated as a slug.
-        (Some("v1"), Some("tools")) => Ok(ProjectKey::Default),
-        // `/v1/{slug}/...` — a candidate slug in the 2nd segment. The allowlist
-        // runs at this edge, BEFORE any path use (R-03).
+        // `/v1/{slug}/...` — a candidate slug in the 2nd segment (covers both
+        // MCP `/v1/{slug}/tools/...` and observe `/v1/{slug}/observe`). The
+        // allowlist runs at this edge, BEFORE any path use (R-03).
         (Some("v1"), Some(maybe_slug)) => {
             let slug = ProjectSlug::try_from(maybe_slug)?;
             Ok(ProjectKey::Slug(slug))
         }
-        // Non-/v1 MCP paths keep current behavior — default route (backward-compat).
-        _ => Ok(ProjectKey::Default),
+        // ANYTHING ELSE — loud. No `(v1, tools) -> Default` alias, no
+        // `_ => Default` fallback. A no-slug path never resolves a servable
+        // project (AC-01 / R-10).
+        _ => Err(RouteError::UnknownProject),
     }
 }
 
@@ -273,8 +294,9 @@ impl SlugRouter {
                     "invalid project slug",
                 ));
             }
-            // `parse_project_key` only ever yields `InvalidSlug`; this arm keeps
-            // the match total without inventing behavior for an unreachable case.
+            // vnc-038 ADR-004: `parse_project_key` now yields `UnknownProject`
+            // for any no-slug path (the `_ => Default` fallback was deleted), so
+            // this arm is reachable — a no-slug request 404s, never a default.
             Err(RouteError::UnknownProject) => {
                 return Ok(json_error_response(
                     StatusCode::NOT_FOUND,
@@ -327,5 +349,124 @@ impl SlugRouter {
         let _ = &store;
 
         adapter.handle(request).await
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Route-grammar unit tests (vnc-038 Component 5 — ADR-004, AC-01 / R-07 / R-10)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod grammar_tests {
+    use super::{ProjectKey, ProjectSlug, RouteError, parse_project_key};
+
+    /// `/v1/{slug}/tools/...` → `Slug(slug)` (the MCP path).
+    #[test]
+    fn test_parse_v1_slug_returns_slug() {
+        let key = parse_project_key("/v1/alpha/tools/call").expect("valid slug path parses");
+        assert_eq!(
+            key,
+            ProjectKey::Slug(ProjectSlug::try_from("alpha").expect("valid")),
+            "/v1/alpha/tools/... must resolve the slug from segment 2"
+        );
+    }
+
+    /// `/v1/{slug}/observe` → `Slug(slug)` — observe is a segment UNDER the slug
+    /// (ADR-003), so the slug is still segment 2; no special arm needed.
+    #[test]
+    fn test_parse_v1_slug_observe_returns_slug() {
+        let key = parse_project_key("/v1/alpha/observe").expect("observe path parses");
+        assert_eq!(
+            key,
+            ProjectKey::Slug(ProjectSlug::try_from("alpha").expect("valid")),
+            "/v1/alpha/observe must carry the slug in segment 2 (ADR-003)"
+        );
+    }
+
+    /// `/v1/tools/...` no longer yields `Default` (the alias arm is DELETED).
+    /// `tools` now parses as a slug *candidate*; it is unregisterable (reserved),
+    /// so it 404s at the resolver — never a default store.
+    #[test]
+    fn test_parse_v1_tools_no_longer_default() {
+        let key = parse_project_key("/v1/tools/call").expect("tools parses as slug candidate");
+        assert_eq!(
+            key,
+            ProjectKey::Slug(ProjectSlug::try_from("tools").expect("valid charset")),
+            "/v1/tools/... must parse `tools` as a slug candidate, NEVER a Default alias"
+        );
+    }
+
+    /// Any no-slug path is a loud `RouteError`, NEVER `Ok(Default)`. The
+    /// `_ => Ok(Default)` backward-compat fallback is DELETED (AC-01 / R-10).
+    #[test]
+    fn test_parse_unmatched_is_loud_error() {
+        for path in ["/", "/v1", "/v2/alpha/tools", "/foo/bar", "/health", ""] {
+            let err = parse_project_key(path)
+                .expect_err("a no-/v1-slug path must be a loud error, never Default");
+            assert_eq!(
+                err,
+                RouteError::UnknownProject,
+                "no-slug path {path:?} must be UnknownProject, never a servable default"
+            );
+        }
+    }
+
+    /// `/v1` with no second segment → loud error (no slug to resolve).
+    #[test]
+    fn test_parse_v1_only_no_slug_is_error() {
+        let err = parse_project_key("/v1").expect_err("/v1 alone has no slug");
+        assert_eq!(err, RouteError::UnknownProject);
+    }
+
+    /// Invalid slugs are rejected at the parse edge (allowlist) BEFORE any
+    /// filesystem use — uppercase, leading hyphen, traversal, underscore.
+    ///
+    /// NOTE: a *trailing* hyphen is NOT invalid: the spec charset is
+    /// `^[a-z0-9][a-z0-9-]{0,62}$` (SPECIFICATION.md "Slug"), which only
+    /// constrains the FIRST char to `[a-z0-9]` and permits `-` in every
+    /// subsequent position — so `trail-` is a valid slug (asserted positively
+    /// in `test_parse_trailing_hyphen_slug_accepted`). Path separators / `..`
+    /// cannot pass the charset, so traversal is rejected here regardless.
+    #[test]
+    fn test_parse_invalid_slug_rejected_at_edge() {
+        for bad in [
+            "/v1/UPPER/tools",
+            "/v1/-lead/tools",
+            "/v1/under_score/tools",
+            "/v1/..",
+        ] {
+            let err = parse_project_key(bad).expect_err("invalid slug must be rejected at edge");
+            assert!(
+                matches!(err, RouteError::InvalidSlug(_)),
+                "{bad:?} must be InvalidSlug (allowlist) before any path use, got {err:?}"
+            );
+        }
+    }
+
+    /// A trailing hyphen is ACCEPTED by the spec charset
+    /// `^[a-z0-9][a-z0-9-]{0,62}$` (only the first char is restricted to
+    /// `[a-z0-9]`; `-` is allowed in any later position). Documents the
+    /// grammar so the "rejected at edge" case above is not misread as
+    /// forbidding trailing hyphens.
+    #[test]
+    fn test_parse_trailing_hyphen_slug_accepted() {
+        let key = parse_project_key("/v1/trail-/tools").expect("trailing-hyphen slug is valid");
+        assert_eq!(
+            key,
+            ProjectKey::Slug(ProjectSlug::try_from("trail-").expect("valid per charset")),
+            "a trailing hyphen is permitted by ^[a-z0-9][a-z0-9-]{{0,62}}$"
+        );
+    }
+
+    /// Prefix-related slugs parse to DISTINCT slugs (no path-prefix mis-parse):
+    /// `/v1/proj/...` and `/v1/project/...` are different keys.
+    #[test]
+    fn test_parse_prefix_related_slugs_distinct() {
+        let proj = parse_project_key("/v1/proj/tools").expect("proj parses");
+        let project = parse_project_key("/v1/project/tools").expect("project parses");
+        assert_ne!(
+            proj, project,
+            "prefix-related slugs must parse to distinct keys (no prefix mis-resolution)"
+        );
     }
 }

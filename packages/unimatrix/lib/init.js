@@ -11,7 +11,7 @@ const {
 } = require("./merge-settings.js");
 const transport = require("./hook-client/transport-http.js");
 const { resolveGitFile } = require("./hook-client/config.js");
-const { decodeBundle, assertSlugAllowlist } = require("./hook-client/bundle.js");
+const { decodeBundle } = require("./hook-client/bundle.js");
 
 /**
  * Detect project root by walking up from startDir to find `.git` (Rust
@@ -201,14 +201,27 @@ function readJsonOrEmpty(filePath, label) {
  * merge-preserving (only unimatrix.remote is touched; Claude Code's keys and
  * other unimatrix.* keys survive verbatim). Mode 0600 (ADR-006, FR-18).
  *
+ * Stores BOTH server-composed URLs VERBATIM (ADR-001 dumb-client): mcp_url and
+ * observe_url are byte-equal to the validated bundle fields — no normalization,
+ * no trailing-slash edit, no host substitution. The hook transport (Component 4)
+ * reads observe_url as its post target. (ADR-002 v:2 subtree.)
+ *
  * @param {string} projectRoot - Absolute project root.
- * @param {string} remote - Remote URL.
+ * @param {string} mcpUrl - Server-composed MCP URL (verbatim).
+ * @param {string} observeUrl - Server-composed observe URL (verbatim).
  * @param {string} token - Bearer token.
  * @param {string|null} pinnedFp - Pinned cert fingerprint (bundle path), or null.
  * @param {boolean} dryRun - If true, do not write.
  * @returns {string[]} Actions taken.
  */
-function writeRemoteSettingsLocal(projectRoot, remote, token, pinnedFp, dryRun) {
+function writeRemoteSettingsLocal(
+  projectRoot,
+  mcpUrl,
+  observeUrl,
+  token,
+  pinnedFp,
+  dryRun
+) {
   const actions = [];
   const slPath = path.join(projectRoot, ".claude", "settings.local.json");
   const existing = readJsonOrEmpty(slPath, ".claude/settings.local.json");
@@ -218,7 +231,8 @@ function writeRemoteSettingsLocal(projectRoot, remote, token, pinnedFp, dryRun) 
     {},
     existing.unimatrix.remote,
     {
-      url: remote,
+      mcp_url: mcpUrl,
+      observe_url: observeUrl,
       token: token,
     },
     // Bundle path pins the cert; legacy {remote,token} path leaves it absent.
@@ -283,30 +297,47 @@ function gitignoreWarning(projectRoot) {
 }
 
 /**
- * Resolve the effective remote endpoint, token, and pinned fingerprint from
- * either the vnc-034 bundle path (`--bundle` + optional `--slug`) or the legacy
- * F3 `{remote, token}` path (backward-compat). Bundle decode is the C1 trust
- * boundary (ADR-001); a guard failure throws BundleError (token never in the
- * message). The slug is appended CLIENT-SIDE to the base-url (ADR-005 grammar) —
- * it is never part of the bundle (C1/C5). The result bakes EXACTLY ONE endpoint
- * into `remote`; there is no field in which a second project can be named
+ * Derive a legacy observe URL from a single legacy endpoint. The legacy
+ * `{remote, token}` path predates the v:2 bundle and has NO server-composed
+ * observe URL; preserve the prior behavior (transport appended `/observe`) by
+ * deriving it ONCE here, on the legacy branch only. The bundle branch composes
+ * NOTHING (ADR-001). Flag: legacy is not the #766 surface — keep it working,
+ * do not extend it.
+ *
+ * @param {string} remote - Legacy endpoint URL.
+ * @returns {string} The legacy observe URL (trailing slashes stripped + /observe).
+ */
+function legacyObserveFrom(remote) {
+  return remote.replace(/\/+$/, "") + "/observe";
+}
+
+/**
+ * Resolve the effective MCP URL, observe URL, token, and pinned fingerprint
+ * from either the v:2 bundle path (`--bundle`) or the legacy F3 `{remote, token}`
+ * path (backward-compat). Bundle decode is the C1 trust boundary (ADR-001); a
+ * guard failure throws BundleError (token never in the message).
+ *
+ * BUNDLE PATH (dumb-client, ADR-001): the server composes BOTH finished URLs
+ * (mcp_url, observe_url) into the bundle; the client appends NOTHING, derives NO
+ * slug, composes NO path. The `--slug` flag is RETIRED for the bundle path — the
+ * bundle URLs already encode the slug. The set of client-side path-composition
+ * sites on this branch is EMPTY (NFR-01 invariant). The result bakes EXACTLY
+ * ONE project's URLs; there is no field in which a second project can be named
  * (R-06 / AC-W1-C5 — cross-project fan-out is unrepresentable, not rejected).
  *
- * @param {object} options - { bundle?, slug?, remote?, token? }
- * @returns {{remote:string, token:string, pinnedFp:(string|null)}}
+ * @param {object} options - { bundle?, remote?, token? }
+ * @returns {{mcpUrl:string, observeUrl:string, token:string, pinnedFp:(string|null)}}
  */
 function resolveRemoteTarget(options) {
   if (options.bundle) {
     const b = decodeBundle(options.bundle); // throws BundleError on any guard
-    const endpointBase = b.base_url.replace(/\/+$/, "");
-    let remote;
-    if (options.slug) {
-      assertSlugAllowlist(options.slug); // ^[a-z0-9][a-z0-9-]{0,62}$ at parse edge
-      remote = endpointBase + "/v1/" + options.slug;
-    } else {
-      remote = endpointBase + "/v1"; // default alias -> .../v1/tools/... (ADR-005)
-    }
-    return { remote: remote, token: b.token, pinnedFp: b.fp };
+    // ADR-001: NO endpointBase, NO "/v1" append, NO slug branch — verbatim URLs.
+    return {
+      mcpUrl: b.mcp_url,
+      observeUrl: b.observe_url,
+      token: b.token,
+      pinnedFp: b.fp,
+    };
   }
 
   // Legacy path (F3 backward-compat): {remote, token} provided directly. No pin.
@@ -326,7 +357,14 @@ function resolveRemoteTarget(options) {
       "--remote URL must be http: or https: (got " + u.protocol + ")"
     );
   }
-  return { remote: remote, token: token, pinnedFp: null };
+  // Legacy supplies a single endpoint; map it to BOTH fields so downstream is
+  // uniform. observe_url is derived ONLY here (the bundle branch composes none).
+  return {
+    mcpUrl: remote,
+    observeUrl: legacyObserveFrom(remote),
+    token: token,
+    pinnedFp: null,
+  };
 }
 
 /**
@@ -349,7 +387,8 @@ async function initRemote(options) {
 
   // Step 0: resolve target (bundle path | legacy path) — LOUD on bad input.
   const target = resolveRemoteTarget(options);
-  const remote = target.remote;
+  const mcpUrl = target.mcpUrl;
+  const observeUrl = target.observeUrl;
   const token = target.token;
   const pinnedFp = target.pinnedFp;
 
@@ -372,11 +411,19 @@ async function initRemote(options) {
     clientPath = path.join(__dirname, "hook-client", "index.js");
   }
 
-  // Step 3: write settings.local.json unimatrix.remote (ADR-006; FR-18). The
-  // pinned fingerprint (bundle path) is persisted so the hook client pins on
-  // every subsequent request.
+  // Step 3: write settings.local.json unimatrix.remote (ADR-006; FR-18). Both
+  // server-composed URLs are stored VERBATIM (ADR-001); the hook transport reads
+  // observe_url. The pinned fingerprint (bundle path) is persisted so the hook
+  // client pins on every subsequent request.
   actions.push(
-    ...writeRemoteSettingsLocal(projectRoot, remote, token, pinnedFp, dryRun)
+    ...writeRemoteSettingsLocal(
+      projectRoot,
+      mcpUrl,
+      observeUrl,
+      token,
+      pinnedFp,
+      dryRun
+    )
   );
 
   // Step 3b: gitignore warning (best-effort, no glob engine).
@@ -405,10 +452,17 @@ async function initRemote(options) {
   actions.push("Skipped binary/database steps: no local binary in remote mode");
 
   // Step 6: Ping validation over the PINNED TLS connection — the ONE loud
-  // checkpoint (FR-19, ADR-005, R-18). A cert-fingerprint mismatch surfaces
-  // HERE, diagnosably (FR-A11 / AC-CT-ROT).
+  // checkpoint (FR-19, ADR-005, R-18). The Ping posts to the bundle's
+  // observe_url VERBATIM (AC-07 / #766 fix: the real per-slug /v1/{slug}/observe
+  // route, was a 404 /v1/observe). A cert-fingerprint mismatch surfaces HERE,
+  // diagnosably (FR-A11 / AC-CT-ROT).
   if (!dryRun) {
-    const res = await transport.pingForInit(remote, token, undefined, pinnedFp);
+    const res = await transport.pingForInit(
+      observeUrl,
+      token,
+      undefined,
+      pinnedFp
+    );
     if (!res.ok) {
       throw new Error(
         "Remote validation failed: " +
@@ -420,7 +474,7 @@ async function initRemote(options) {
   } else {
     let host;
     try {
-      host = new URL(remote).host;
+      host = new URL(observeUrl).host;
     } catch (_err) {
       host = "(invalid URL)";
     }

@@ -15,12 +15,12 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const {
-  decodeBundle,
-  assertSlugAllowlist,
-  BundleError,
-  MAX_RAW_LEN,
-} = require("../lib/hook-client/bundle.js");
+// NOTE (vnc-038 / ADR-002 / ADR-001): the v:2 bundle decoder parity, guard-
+// ordering, strict-schema, and v:1-hard-cut suites now live in the focused
+// test/hook-client/bundle.test.js. assertSlugAllowlist / SLUG_RE were RETIRED
+// from bundle.js (the client no longer derives a slug). The bundle-decode and
+// slug-allowlist describe blocks below were removed here to avoid duplication.
+const { BundleError, MAX_RAW_LEN } = require("../lib/hook-client/bundle.js");
 const {
   computeFingerprint,
   makeCheckServerIdentity,
@@ -190,192 +190,56 @@ describe("cert pin — checkServerIdentity (R-02 / AC-W1-C2 / AC-CT-ROT)", () =>
 });
 
 // ============================================================================
-// C1 — bundle decode (R-05 / AC-W1-C9 / AC-W1-C10)
+// C1 — bundle decode (v:2) + slug allowlist
+// ----------------------------------------------------------------------------
+// MOVED (vnc-038 / ADR-002 / ADR-001): the bundle-decode parity, guard-ordering,
+// strict-schema, and v:1-hard-cut suites now live in test/hook-client/bundle.test.js
+// (the v:2 decoder is byte-parity against the Rust-generated corpus). The slug-
+// allowlist suite was RETIRED — assertSlugAllowlist/SLUG_RE no longer exist (the
+// client derives no slug; the server composes both URLs into the v:2 bundle).
 // ============================================================================
-describe("bundle decode — parity vs Rust encoder (R-05 sc.3)", () => {
-  it("test_decode_roundtrip_matches_oracle — every committed wire decodes to its fields", () => {
-    assert.ok(BUNDLE_GOLDEN.length > 0, "corpus must be non-empty");
-    for (const entry of BUNDLE_GOLDEN) {
-      const got = decodeBundle(entry.wire);
-      assert.deepStrictEqual(got, {
-        v: 1,
-        base_url: entry.fields.base_url,
-        token: entry.fields.token,
-        fp: entry.fields.fp,
-      });
-    }
-  });
-});
-
-describe("bundle decode — guard ordering (AC-W1-C10)", () => {
-  it("test_length_cap_before_decode — over-cap invalid-base64url rejects on LENGTH", () => {
-    // A string longer than the cap that is ALSO not valid base64url and lacks the
-    // scheme: must reject on the length guard (GUARD 1), proving the cap runs
-    // before any decode/scheme work.
-    const overCap = "!".repeat(MAX_RAW_LEN + 1); // each '!' is 1 byte
-    assert.ok(Buffer.byteLength(overCap, "utf8") > MAX_RAW_LEN);
-    assert.throws(
-      () => decodeBundle(overCap),
-      (err) => err instanceof BundleError && /too long/.test(err.message)
-    );
-  });
-
-  it("test_at_cap_boundary — exactly cap bytes is NOT rejected on length", () => {
-    // Pad a valid scheme'd string to exactly MAX_RAW_LEN; it will fail a LATER
-    // guard (not the length guard) — proving the boundary is inclusive.
-    const base = "unimatrix-bundle:";
-    const pad = "A".repeat(MAX_RAW_LEN - Buffer.byteLength(base, "utf8"));
-    const atCap = base + pad;
-    assert.strictEqual(Buffer.byteLength(atCap, "utf8"), MAX_RAW_LEN);
-    assert.throws(
-      () => decodeBundle(atCap),
-      (err) => err instanceof BundleError && !/too long/.test(err.message),
-      "at-cap must fail on a non-length guard"
-    );
-  });
-});
-
-describe("bundle decode — strict schema reject (AC-W1-C9, load-bearing)", () => {
-  // Build wires from arbitrary objects to exercise schema rejection.
-  function wireFrom(obj) {
-    const json = JSON.stringify(obj);
-    return "unimatrix-bundle:" + Buffer.from(json, "utf8").toString("base64url");
-  }
-  const VALID_FIELDS = GOLDEN_BUNDLE.fields;
-
-  it("test_missing_field_rejected", () => {
-    const o = Object.assign({}, VALID_FIELDS);
-    delete o.fp;
-    assert.throws(() => decodeBundle(wireFrom(o)), BundleError);
-  });
-
-  it("test_extra_field_rejected", () => {
-    const o = Object.assign({}, VALID_FIELDS, { extra: "x" });
-    assert.throws(
-      () => decodeBundle(wireFrom(o)),
-      (err) => err instanceof BundleError && /unexpected fields/.test(err.message)
-    );
-  });
-
-  it("test_unsupported_version_rejected", () => {
-    const o = Object.assign({}, VALID_FIELDS, { v: 2 });
-    assert.throws(
-      () => decodeBundle(wireFrom(o)),
-      (err) => err instanceof BundleError && /unsupported bundle version/.test(err.message)
-    );
-  });
-
-  it("test_non_https_base_url_rejected", () => {
-    const o = Object.assign({}, VALID_FIELDS, { base_url: "http://cloud.example:8443" });
-    assert.throws(
-      () => decodeBundle(wireFrom(o)),
-      (err) => err instanceof BundleError && /https/.test(err.message)
-    );
-  });
-
-  it("test_non_hex_token_rejected", () => {
-    const o = Object.assign({}, VALID_FIELDS, { token: "ZZZ" });
-    assert.throws(
-      () => decodeBundle(wireFrom(o)),
-      (err) => err instanceof BundleError && /token/.test(err.message)
-    );
-  });
-
-  it("test_malformed_fp_rejected", () => {
-    const o = Object.assign({}, VALID_FIELDS, { fp: "sha256:nothex" });
-    assert.throws(
-      () => decodeBundle(wireFrom(o)),
-      (err) => err instanceof BundleError && /fp/.test(err.message)
-    );
-  });
-
-  it("test_wrong_type_field_rejected", () => {
-    const o = Object.assign({}, VALID_FIELDS, { token: 12345 });
-    assert.throws(() => decodeBundle(wireFrom(o)), BundleError);
-  });
-
-  it("test_valid_base64url_invalid_json_rejected", () => {
-    const wire = "unimatrix-bundle:" + Buffer.from("{not json", "utf8").toString("base64url");
-    assert.throws(
-      () => decodeBundle(wire),
-      (err) => err instanceof BundleError && /JSON/.test(err.message)
-    );
-  });
-
-  it("test_missing_scheme_rejected", () => {
-    assert.throws(
-      () => decodeBundle("eyJ2IjoxfQ"),
-      (err) => err instanceof BundleError && /prefix/.test(err.message)
-    );
-  });
-
-  it("test_token_never_in_error_message — schema reject on a bundle bearing a real token", () => {
-    // Wrong-type fp but a valid 64-hex token present: the token must NOT leak.
-    const o = Object.assign({}, VALID_FIELDS, { fp: 999 });
-    let msg = "";
-    try {
-      decodeBundle(wireFrom(o));
-    } catch (err) {
-      msg = err.message;
-    }
-    assert.ok(msg.length > 0, "must throw");
-    assert.ok(!msg.includes(VALID_FIELDS.token), "token must not appear in the error");
-  });
-});
-
-// ============================================================================
-// Slug allowlist (C5 / ADR-004)
-// ============================================================================
-describe("slug allowlist (C5 / ADR-004)", () => {
-  it("test_valid_slugs_accepted", () => {
-    for (const s of ["a", "abc", "my-project", "p1", "a".repeat(63)]) {
-      assert.doesNotThrow(() => assertSlugAllowlist(s), "slug: " + s);
-    }
-  });
-  it("test_invalid_slugs_rejected", () => {
-    for (const s of ["", "-leading", "UPPER", "has_underscore", "has space", "a".repeat(64), "x/y"]) {
-      assert.throws(() => assertSlugAllowlist(s), BundleError, "slug: " + s);
-    }
-  });
-});
 
 // ============================================================================
 // initRemote bundle path (R-05 / R-06 / AC-W1-C5 / C6)
 // ============================================================================
-describe("initRemote — bundle path endpoint derivation (R-06 / C5)", () => {
+describe("initRemote — bundle path verbatim store (R-01 / ADR-001)", () => {
   beforeEach(() => stubPing(okPing));
   afterEach(() => {
     transport.pingForInit = origPing;
   });
 
-  it("test_slug_appended_to_base_url — --slug foo → base_url/v1/foo", async () => {
+  it("test_mcp_url_stored_verbatim — settings.local.json mcp_url == bundle.mcp_url byte-for-byte", async () => {
     const dir = makeTempProject();
-    await initRemote({ bundle: VALID_WIRE, slug: "foo", projectDir: dir });
+    await initRemote({ bundle: VALID_WIRE, projectDir: dir });
     const sl = readSettingsLocal(dir);
-    assert.strictEqual(
-      sl.unimatrix.remote.url,
-      GOLDEN_BUNDLE.fields.base_url + "/v1/foo"
-    );
+    // ADR-001 dumb-client: no append, no slug derivation, no normalization.
+    assert.strictEqual(sl.unimatrix.remote.mcp_url, GOLDEN_BUNDLE.fields.mcp_url);
     assert.strictEqual(sl.unimatrix.remote.token, GOLDEN_BUNDLE.fields.token);
     assert.strictEqual(sl.unimatrix.remote.fingerprint, GOLDEN_BUNDLE.fields.fp);
   });
 
-  it("test_no_slug_default_alias — no --slug → base_url/v1", async () => {
+  it("test_observe_url_stored_verbatim — settings.local.json observe_url == bundle.observe_url byte-for-byte", async () => {
     const dir = makeTempProject();
     await initRemote({ bundle: VALID_WIRE, projectDir: dir });
     const sl = readSettingsLocal(dir);
-    assert.strictEqual(sl.unimatrix.remote.url, GOLDEN_BUNDLE.fields.base_url + "/v1");
+    assert.strictEqual(
+      sl.unimatrix.remote.observe_url,
+      GOLDEN_BUNDLE.fields.observe_url
+    );
+    // The retired single `url` key is gone; the v:2 subtree carries two URLs.
+    assert.strictEqual(sl.unimatrix.remote.url, undefined);
   });
 
-  it("test_bad_slug_rejected_no_config_written", async () => {
+  it("test_slug_flag_ignored — --slug is retired; the bundle URLs already encode the slug", async () => {
     const dir = makeTempProject();
-    await assert.rejects(
-      () => initRemote({ bundle: VALID_WIRE, slug: "Bad Slug", projectDir: dir }),
-      BundleError
-    );
-    assert.ok(
-      !fs.existsSync(path.join(dir, ".claude", "settings.local.json")),
-      "no config on a parse-edge rejection"
+    // Passing a (now-meaningless) --slug must NOT alter the verbatim URLs and
+    // must NOT throw: the client derives no slug (ADR-001).
+    await initRemote({ bundle: VALID_WIRE, slug: "ignored", projectDir: dir });
+    const sl = readSettingsLocal(dir);
+    assert.strictEqual(sl.unimatrix.remote.mcp_url, GOLDEN_BUNDLE.fields.mcp_url);
+    assert.strictEqual(
+      sl.unimatrix.remote.observe_url,
+      GOLDEN_BUNDLE.fields.observe_url
     );
   });
 
@@ -385,17 +249,56 @@ describe("initRemote — bundle path endpoint derivation (R-06 / C5)", () => {
     // pingForInit(url, token, timeouts, pinnedFp)
     assert.strictEqual(lastPingArgs[3], GOLDEN_BUNDLE.fields.fp);
   });
+
+  it("test_init_pings_observe_url_verbatim — Ping target is bundle.observe_url exactly", async () => {
+    const dir = makeTempProject();
+    await initRemote({ bundle: VALID_WIRE, projectDir: dir });
+    // AC-07 / #766: the init Ping posts to the server-composed observe URL
+    // verbatim (not a client re-derived /observe append).
+    assert.strictEqual(lastPingArgs[0], GOLDEN_BUNDLE.fields.observe_url);
+  });
 });
 
 describe("initRemote — 1:1 unrepresentable (R-06 / AC-W1-C5)", () => {
-  it("test_client_has_no_second_project_field — config bakes exactly one endpoint", () => {
-    // resolveRemoteTarget yields a flat {remote, token, pinnedFp}: there is no
-    // array/list/second-endpoint field by which a second project can be named.
-    const t = resolveRemoteTarget({ bundle: VALID_WIRE, slug: "only" });
-    assert.deepStrictEqual(Object.keys(t).sort(), ["pinnedFp", "remote", "token"]);
-    assert.strictEqual(typeof t.remote, "string");
-    // The endpoint is a single string; cross-project fan-out is unrepresentable.
-    assert.ok(t.remote.endsWith("/v1/only"));
+  it("test_client_has_no_second_project_field — config bakes exactly one project's URLs", () => {
+    // resolveRemoteTarget yields a flat {mcpUrl, observeUrl, token, pinnedFp}:
+    // there is no array/list/second-endpoint field by which a second project can
+    // be named. Both URLs are the server-composed verbatim fields.
+    const t = resolveRemoteTarget({ bundle: VALID_WIRE });
+    assert.deepStrictEqual(
+      Object.keys(t).sort(),
+      ["mcpUrl", "observeUrl", "pinnedFp", "token"]
+    );
+    assert.strictEqual(t.mcpUrl, GOLDEN_BUNDLE.fields.mcp_url);
+    assert.strictEqual(t.observeUrl, GOLDEN_BUNDLE.fields.observe_url);
+    // ADR-001: the URLs are verbatim bundle fields — the client composed nothing.
+    assert.strictEqual(t.mcpUrl, GOLDEN_BUNDLE.fields.mcp_url);
+  });
+});
+
+// Closed-set / empty-compose invariant (R-01 — load-bearing for SR-01): after
+// the bundle path, init.js contains NO client-side URL composition — no slug
+// append, no "/v1" append, no assertSlugAllowlist. (NFR-01.)
+describe("init.js — empty-compose invariant (R-01 / NFR-01)", () => {
+  const SRC = fs.readFileSync(
+    path.join(__dirname, "..", "lib", "init.js"),
+    "utf8"
+  );
+
+  it("test_no_slug_append_in_init — no '/v1/' + slug composition", () => {
+    assert.ok(!/\+\s*options\.slug/.test(SRC), "no slug concatenation");
+    assert.ok(!/"\/v1\/"\s*\+/.test(SRC), "no '/v1/' + slug append");
+  });
+
+  it("test_no_v1_default_append_in_init — no base + '/v1' default-alias append", () => {
+    assert.ok(!/\+\s*"\/v1"/.test(SRC), "no '/v1' default append");
+  });
+
+  it("test_assert_slug_allowlist_import_removed — bundle.js slug helper is not imported", () => {
+    assert.ok(
+      !/assertSlugAllowlist/.test(SRC),
+      "assertSlugAllowlist is retired and must not be imported"
+    );
   });
 });
 
@@ -581,6 +484,10 @@ describe("initRemote — rotation overwrite (edge)", () => {
     await initRemote({ bundle: BUNDLE_GOLDEN[1].wire, projectDir: dir });
     const sl = readSettingsLocal(dir);
     assert.strictEqual(sl.unimatrix.remote.fingerprint, BUNDLE_GOLDEN[1].fields.fp);
-    assert.strictEqual(sl.unimatrix.remote.url, BUNDLE_GOLDEN[1].fields.base_url + "/v1");
+    assert.strictEqual(sl.unimatrix.remote.mcp_url, BUNDLE_GOLDEN[1].fields.mcp_url);
+    assert.strictEqual(
+      sl.unimatrix.remote.observe_url,
+      BUNDLE_GOLDEN[1].fields.observe_url
+    );
   });
 });

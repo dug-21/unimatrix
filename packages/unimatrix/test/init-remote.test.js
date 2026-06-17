@@ -507,8 +507,13 @@ describe("settings.local.json (R-16 / FR-18)", () => {
     const content = JSON.parse(fs.readFileSync(slPath, "utf8"));
     assert.strictEqual(content.claudeOwned, "keep");
     assert.strictEqual(content.unimatrix.other, "keep-too");
+    // v:2 subtree (vnc-038 / ADR-002): the remote stanza carries BOTH server-
+    // composed URLs. The legacy {remote,token} path maps its single endpoint to
+    // mcp_url and derives observe_url (the bundle path composes neither — they
+    // arrive verbatim from the server). The old single `url` key is retired.
     assert.deepStrictEqual(content.unimatrix.remote, {
-      url: REMOTE,
+      mcp_url: REMOTE,
+      observe_url: REMOTE.replace(/\/+$/, "") + "/observe",
       token: TOKEN,
     });
     // Mode 0600 (skip the strict check on Windows where chmod is a no-op).

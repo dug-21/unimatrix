@@ -137,16 +137,19 @@ async fn build_server() -> ServerBundle {
     }
 }
 
-/// Build the wired routing stack: a real `MultiProjectRouter` over the default
-/// store + the named slug stores, behind a real `SlugRouter` (the MCP funnel).
+/// Build the wired routing stack: a real `MultiProjectRouter` over the named slug
+/// stores ONLY, behind a real `SlugRouter` (the MCP funnel).
 ///
-/// Returns the `SlugRouter` plus the owned `Arc<Store>` handles
-/// (default, then one per slug in `slugs` order) so the test can assert data-layer
-/// isolation against the exact stores the resolver routes to.
-async fn wired_router(slugs: &[&str]) -> (SlugRouter, Arc<Store>, Vec<Arc<Store>>) {
-    let default_bundle = build_server().await;
-    let default_store = Arc::clone(&default_bundle.store);
-
+/// vnc-038 ADR-004 (#5083): the served-project `Default` is DELETED. The resolver
+/// is keyed by `ProjectKey::Slug` ONLY — there is no default store and no default
+/// constructor params. `from_servers` now takes just the per-slug inputs (single
+/// project is N=1: one map entry, no special-case arm). A no-slug / `/v1/tools`
+/// request is a loud `UnknownProject`, never a servable default.
+///
+/// Returns the `SlugRouter` plus the owned per-slug `Arc<Store>` handles (one per
+/// slug in `slugs` order) so the test can assert data-layer isolation against the
+/// exact stores the resolver routes to.
+async fn wired_router(slugs: &[&str]) -> (SlugRouter, Vec<Arc<Store>>) {
     let mut inputs = Vec::with_capacity(slugs.len());
     let mut slug_stores = Vec::with_capacity(slugs.len());
     for &name in slugs {
@@ -160,18 +163,12 @@ async fn wired_router(slugs: &[&str]) -> (SlugRouter, Arc<Store>, Vec<Arc<Store>
         });
     }
 
-    let resolver = MultiProjectRouter::from_servers(
-        Arc::clone(&default_store),
-        default_bundle.input_server,
-        inputs,
-        TEST_MAX_BODY,
-        Vec::new(),
-    )
-    .expect("build MultiProjectRouter");
+    let resolver = MultiProjectRouter::from_servers(inputs, TEST_MAX_BODY, Vec::new())
+        .expect("build MultiProjectRouter");
 
     let resolver: Arc<dyn StoreResolver> = Arc::new(resolver);
     let router = SlugRouter::new(resolver);
-    (router, default_store, slug_stores)
+    (router, slug_stores)
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +272,7 @@ async fn test_two_slugs_route_to_distinct_stores() {
     // to MCP (reaches the resolved adapter), and the resolved adapter is provably
     // the slug's own store (route_mcp's wraps_store debug_assert, OQ-PR-4). The
     // store handles are distinct instances (data-layer cross-check).
-    let (router, default_store, slug_stores) = wired_router(&["alpha", "beta"]).await;
+    let (router, slug_stores) = wired_router(&["alpha", "beta"]).await;
     let (alpha_store, beta_store) = (&slug_stores[0], &slug_stores[1]);
 
     let alpha_resp = drive(&router, "/v1/alpha/mcp").await;
@@ -291,14 +288,10 @@ async fn test_two_slugs_route_to_distinct_stores() {
         "/v1/beta/ must DISPATCH to beta's adapter (not 404/400); got {}",
         beta_resp.0
     );
-    // The two slug stores and the default are three distinct instances.
+    // The two slug stores are distinct instances (vnc-038 ADR-004: no default store).
     assert!(
         !Arc::ptr_eq(alpha_store, beta_store),
         "alpha and beta must be DISTINCT store instances"
-    );
-    assert!(
-        !Arc::ptr_eq(alpha_store, &default_store) && !Arc::ptr_eq(beta_store, &default_store),
-        "neither slug store may be the default store"
     );
 }
 
@@ -310,7 +303,7 @@ async fn test_two_slugs_route_to_distinct_stores() {
 async fn test_slug_a_write_unreadable_from_slug_b() {
     // Write an entry into alpha's OWN store (the handle the resolver routes
     // /v1/alpha/ to). It MUST NOT be readable from beta's store: read isolation.
-    let (router, _default, slug_stores) = wired_router(&["alpha", "beta"]).await;
+    let (router, slug_stores) = wired_router(&["alpha", "beta"]).await;
     let (alpha_store, beta_store) = (&slug_stores[0], &slug_stores[1]);
 
     // Prove routing is live for both before asserting isolation.
@@ -344,11 +337,10 @@ async fn test_slug_a_write_unreadable_from_slug_b() {
 async fn test_slug_a_write_does_not_appear_in_slug_b() {
     // Write isolation: after A writes, B's entry count is unchanged (B's store +
     // hash chain are untouched by A's write).
-    let (_router, default_store, slug_stores) = wired_router(&["alpha", "beta"]).await;
+    let (_router, slug_stores) = wired_router(&["alpha", "beta"]).await;
     let (alpha_store, beta_store) = (&slug_stores[0], &slug_stores[1]);
 
     let beta_before = entry_count(beta_store).await;
-    let default_before = entry_count(&default_store).await;
 
     alpha_store
         .insert(test_entry("a1"))
@@ -369,56 +361,76 @@ async fn test_slug_a_write_does_not_appear_in_slug_b() {
         beta_before,
         "beta's entry count must be UNCHANGED by alpha's writes (write isolation)"
     );
-    assert_eq!(
-        entry_count(&default_store).await,
-        default_before,
-        "the default store must be UNCHANGED by alpha's writes"
-    );
 }
 
 // ===========================================================================
-// AC-W2-R2 / AC-CT-C4 — Default path (/v1/tools/...) unchanged with projects
+// vnc-038 ADR-004 / AC-01 / R-07 — INVERTED (was AC-W2-R2 Default-alias tests).
+//
+// These three tests previously ASSERTED the `/v1/tools/...` Default alias and the
+// `_ => Default` fall-through DISPATCHED to a servable Default store. vnc-038
+// DELETES the default. They are rewritten (NOT deleted — call-site audit #2398,
+// avoid-vacuous-pass #4452) to exercise the PREVIOUSLY-PASSING path and assert it
+// now fails LOUD: a no-slug / `/v1/tools` request resolves NOTHING servable. The
+// loud-error leg over the REAL funnel is the inversion's whole point.
 // ===========================================================================
 
 #[tokio::test(flavor = "multi_thread")]
-async fn test_v1_tools_default_unchanged_with_projects() {
-    // With {alpha,beta} registered, /v1/tools/... still DISPATCHES to the Default
-    // store's adapter (the single-project backward-compat alias, ADR-005). No
-    // Wave-1 re-point: the Default path behaves identically to the no-projects case.
-    let (router_with, default_with, _slug_stores) = wired_router(&["alpha", "beta"]).await;
-    let (router_without, _default_without, _none) = wired_router(&[]).await;
+async fn test_v1_tools_default_alias_gone_is_loud_404() {
+    // INVERTED. With {alpha,beta} registered, `/v1/tools/...` no longer dispatches
+    // a servable Default. `tools` parses as a slug *candidate* (the alias arm is
+    // deleted); it is unregistered here, so the funnel answers a loud 404
+    // `unknown project` — NEVER a default store (AC-01 / R-07 / R-10).
+    let (router_with, _slug_stores) = wired_router(&["alpha", "beta"]).await;
+    let (router_without, _none) = wired_router(&[]).await;
 
     let with_resp = drive(&router_with, "/v1/tools/mcp").await;
     let without_resp = drive(&router_without, "/v1/tools/mcp").await;
 
     assert!(
-        reached_mcp(&with_resp),
-        "/v1/tools/ must DISPATCH to the Default adapter WITH projects registered; got {}",
+        funnel_rejected(&with_resp),
+        "/v1/tools/ must be funnel-rejected (no Default alias) WITH projects; got {}",
         with_resp.0
     );
     assert_eq!(
-        with_resp.0, without_resp.0,
-        "Default path status must be IDENTICAL with and without [[projects]] (no re-point, AC-CT-C4)"
+        with_resp.0,
+        StatusCode::NOT_FOUND,
+        "the deleted Default alias means `/v1/tools/...` is a loud 404, never a servable store"
     );
-    // Default store is writable and isolated from the slug stores (it is its own).
-    default_with
-        .insert(test_entry("default-entry"))
-        .await
-        .expect("default store is the real served store");
-    assert_eq!(entry_count(&default_with).await, 1);
+    assert!(
+        with_resp.1.contains("unknown project"),
+        "404 body must name the failure; got {}",
+        with_resp.1
+    );
+    // The behavior is IDENTICAL with and without [[projects]]: there is no default
+    // store either way (single rule, no special-case arm).
+    assert_eq!(
+        with_resp.0, without_resp.0,
+        "`/v1/tools/...` is loud-404 with AND without [[projects]] (no default, AC-01)"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn test_non_v1_path_routes_default() {
-    // Backward-compat: a non-/v1 MCP path keeps current behavior -> Default key,
-    // dispatched (never 404/400). Proves the resolver swap did not change the
-    // current-MCP-path default routing.
-    let (router, _default, _slugs) = wired_router(&["alpha"]).await;
+async fn test_non_v1_path_is_loud_404_not_default() {
+    // INVERTED. The `_ => Default` fall-through is DELETED (vnc-038 ADR-004). A
+    // non-`/v1`-slug MCP path (`/mcp`) no longer routes to a Default store — it is
+    // a loud 404 `unknown project` at the funnel (AC-01 / R-10). Exercises the
+    // previously-passing default-dispatch path and proves it now fails loud.
+    let (router, _slugs) = wired_router(&["alpha"]).await;
     let resp = drive(&router, "/mcp").await;
     assert!(
-        reached_mcp(&resp),
-        "a non-/v1 MCP path must route to Default and dispatch; got {}",
+        funnel_rejected(&resp),
+        "a non-/v1 MCP path must be funnel-rejected (no Default fall-through); got {}",
         resp.0
+    );
+    assert_eq!(
+        resp.0,
+        StatusCode::NOT_FOUND,
+        "the deleted `_ => Default` arm makes a no-slug path a loud 404, never a default store"
+    );
+    assert!(
+        resp.1.contains("unknown project"),
+        "404 body must name the failure; got {}",
+        resp.1
     );
 }
 
@@ -431,10 +443,9 @@ async fn test_unregistered_slug_returns_unknown_project() {
     // /v1/ghost/ parses as a valid slug grammar but is NOT registered -> 404
     // `unknown project`. It must NEVER fall through to the default store and must
     // NEVER panic. The default + alpha stores are untouched (no store created).
-    let (router, default_store, slug_stores) = wired_router(&["alpha"]).await;
+    let (router, slug_stores) = wired_router(&["alpha"]).await;
     let alpha_store = &slug_stores[0];
 
-    let default_before = entry_count(&default_store).await;
     let alpha_before = entry_count(alpha_store).await;
 
     let (status, body) = drive(&router, "/v1/ghost/mcp").await;
@@ -447,8 +458,7 @@ async fn test_unregistered_slug_returns_unknown_project() {
         body.contains("unknown project"),
         "404 body should name the failure; got {body}"
     );
-    // No store created, nothing routed into default or alpha.
-    assert_eq!(entry_count(&default_store).await, default_before);
+    // No store created, nothing routed into alpha (there is no default store).
     assert_eq!(entry_count(alpha_store).await, alpha_before);
 }
 
@@ -459,10 +469,9 @@ async fn test_unregistered_slug_returns_unknown_project() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_invalid_slug_path_rejected_at_edge() {
-    let (router, default_store, slug_stores) = wired_router(&["alpha"]).await;
+    let (router, slug_stores) = wired_router(&["alpha"]).await;
     let alpha_store = &slug_stores[0];
 
-    let default_before = entry_count(&default_store).await;
     let alpha_before = entry_count(alpha_store).await;
 
     // 63 chars is the max valid; 64 'a's must be rejected (D1 length bound).
@@ -497,11 +506,6 @@ async fn test_invalid_slug_path_rejected_at_edge() {
 
     // Nothing was created or written: no path join ever happened.
     assert_eq!(
-        entry_count(&default_store).await,
-        default_before,
-        "a rejected slug must not touch the default store"
-    );
-    assert_eq!(
         entry_count(alpha_store).await,
         alpha_before,
         "a rejected slug must not touch any slug store"
@@ -520,7 +524,7 @@ async fn test_n_clients_one_slug_share_store() {
     // write by one is visible to the other (shared state). Each request is bound to
     // its slug purely by the URL path (transport-derived identity) — there is no
     // payload field naming a project, so a client cannot address a second slug.
-    let (router, _default, slug_stores) = wired_router(&["alpha"]).await;
+    let (router, slug_stores) = wired_router(&["alpha"]).await;
     let alpha_store = &slug_stores[0];
 
     let req = |session: &'static str| {
@@ -573,25 +577,33 @@ async fn test_n_clients_one_slug_share_store() {
 }
 
 // ===========================================================================
-// AC-CT-C4 / R-01 — no-bypass funnel: every per-slug request dispatches via the
-// resolved adapter; ≥2 slugs + Default each serviced by their own store; the
-// Wave-1 fixed/discard path is gone.
+// AC-CT-C4 / R-01 / R-09 — no-bypass funnel: every per-slug request dispatches
+// via the resolved adapter; ≥2 slugs each serviced by their OWN store; the
+// Wave-1 fixed/discard path AND the vnc-038-deleted Default are both gone.
 // ===========================================================================
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_dispatch_through_adapter_for_no_fixed_bypass() {
-    // ≥2 distinct slugs + Default. Each per-slug request dispatches ONLY through
-    // adapter_for(key) (route_mcp's debug_assert proves the dispatched adapter
-    // wraps EXACTLY the resolved store — no leftover fixed/default adapter). We
-    // observe this transport-side (all three keys dispatch) AND data-side (each
-    // store only ever sees its own write).
-    let (router, default_store, slug_stores) = wired_router(&["alpha", "beta"]).await;
+    // N=2 distinct slugs (vnc-038 ADR-004: no Default). Each per-slug request
+    // dispatches ONLY through adapter_for(key) (route_mcp's debug_assert proves the
+    // dispatched adapter wraps EXACTLY the resolved store — no leftover
+    // fixed/default adapter). We observe this transport-side (both keys dispatch)
+    // AND data-side (each store only ever sees its own write). `/v1/tools/mcp` is
+    // now a loud 404 (the alias is gone) — a residual default would dispatch it.
+    let (router, slug_stores) = wired_router(&["alpha", "beta"]).await;
     let (alpha_store, beta_store) = (&slug_stores[0], &slug_stores[1]);
 
-    // All three keys dispatch (reach their adapter), none falls through to 404/400.
+    // Both registered slugs dispatch (reach their adapter), none falls to 404/400.
     assert!(reached_mcp(&drive(&router, "/v1/alpha/mcp").await));
     assert!(reached_mcp(&drive(&router, "/v1/beta/mcp").await));
-    assert!(reached_mcp(&drive(&router, "/v1/tools/mcp").await));
+    // The deleted Default alias: `/v1/tools/...` is funnel-rejected, NOT dispatched
+    // to a residual fixed/default adapter (R-07 / R-09 no-bypass at N=2).
+    let tools_resp = drive(&router, "/v1/tools/mcp").await;
+    assert!(
+        funnel_rejected(&tools_resp),
+        "/v1/tools/ must be funnel-rejected (no Default), got {}",
+        tools_resp.0
+    );
 
     // Data-side proof there is no shared/fixed adapter: a write per key lands ONLY
     // in that key's store.
@@ -603,10 +615,6 @@ async fn test_dispatch_through_adapter_for_no_fixed_bypass() {
         .insert(test_entry("beta-w"))
         .await
         .expect("beta write");
-    default_store
-        .insert(test_entry("default-w"))
-        .await
-        .expect("default write");
 
     let titles = |s: &Arc<Store>| {
         let s = Arc::clone(s);
@@ -621,7 +629,6 @@ async fn test_dispatch_through_adapter_for_no_fixed_bypass() {
     };
     let alpha_titles = titles(alpha_store).await;
     let beta_titles = titles(beta_store).await;
-    let default_titles = titles(&default_store).await;
 
     assert_eq!(
         alpha_titles,
@@ -633,46 +640,45 @@ async fn test_dispatch_through_adapter_for_no_fixed_bypass() {
         vec!["beta-w".to_string()],
         "beta store isolated"
     );
-    assert_eq!(
-        default_titles,
-        vec!["default-w".to_string()],
-        "default store isolated"
-    );
 }
 
 // ===========================================================================
-// Edge — Default and Slug interleaved in one process; concurrent same-slug share
+// Edge — INVERTED (was Default+Slug interleave). Two SLUGS interleaved in one
+// process; the deleted Default `/v1/tools/...` leg is loud-404, never dispatched.
 // ===========================================================================
 
 #[tokio::test(flavor = "multi_thread")]
-async fn test_default_and_slug_interleaved_no_cross_contamination() {
-    // Interleave Default and Slug requests; assert each key's store only holds its
-    // own writes — no cross-contamination across an interleaved sequence.
-    let (router, default_store, slug_stores) = wired_router(&["alpha"]).await;
-    let alpha_store = &slug_stores[0];
+async fn test_two_slugs_interleaved_no_cross_contamination() {
+    // INVERTED: the Default leg is GONE (vnc-038 ADR-004). Interleave two REAL
+    // slugs and a (now loud-404) `/v1/tools/...` probe; assert each slug's store
+    // holds ONLY its own writes — no cross-contamination across the interleaved
+    // sequence, and the tools probe never dispatches into either store.
+    let (router, slug_stores) = wired_router(&["alpha", "beta"]).await;
+    let (alpha_store, beta_store) = (&slug_stores[0], &slug_stores[1]);
 
-    for path in [
-        "/v1/tools/mcp",
-        "/v1/alpha/mcp",
-        "/v1/tools/mcp",
-        "/v1/alpha/mcp",
-    ] {
+    for path in ["/v1/alpha/mcp", "/v1/beta/mcp", "/v1/alpha/mcp", "/v1/beta/mcp"] {
         assert!(reached_mcp(&drive(&router, path).await), "dispatch {path}");
     }
+    // The deleted Default alias is loud-404, interleaved in: it must not dispatch
+    // into any slug store (no residual default/bypass).
+    assert!(
+        funnel_rejected(&drive(&router, "/v1/tools/mcp").await),
+        "/v1/tools/ is loud-404 (no Default), never dispatched mid-interleave"
+    );
 
-    default_store
-        .insert(test_entry("d"))
-        .await
-        .expect("default write");
     alpha_store
         .insert(test_entry("a"))
         .await
         .expect("alpha write");
+    beta_store
+        .insert(test_entry("b"))
+        .await
+        .expect("beta write");
 
-    assert_eq!(entry_count(&default_store).await, 1);
-    assert_eq!(entry_count(alpha_store).await, 1);
+    assert_eq!(entry_count(alpha_store).await, 1, "alpha holds only its write");
+    assert_eq!(entry_count(beta_store).await, 1, "beta holds only its write");
     assert!(
-        default_store.get(2).await.is_err() || alpha_store.get(2).await.is_err(),
+        alpha_store.get(2).await.is_err() && beta_store.get(2).await.is_err(),
         "neither store accumulated the other's write"
     );
 }

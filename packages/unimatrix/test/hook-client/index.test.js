@@ -38,8 +38,24 @@ function freshProject() {
   return tmpRoot;
 }
 
+// vnc-038 (ADR-001 dumb-client): settings.local.json now stores a fully-formed
+// server-composed observe URL that the transport posts VERBATIM — there is no
+// client-side `/observe` append. Stub URLs are roots (http://host:port), so this
+// helper appends `/observe` to form the v:2 observe_url the fixture asserts
+// against. Callers may pass an already-pathed URL (e.g. an econnrefused root);
+// `withObserve` only appends when the URL has no path of its own.
+function withObserve(url) {
+  try {
+    const u = new URL(url);
+    if (u.pathname && u.pathname !== "/") return url; // already pathed — leave it
+  } catch (_e) {
+    return url; // not a URL we can reason about — store verbatim
+  }
+  return url.replace(/\/+$/, "") + "/observe";
+}
+
 function writeRemoteConfig(url, token, timeouts) {
-  const remote = { url, token };
+  const remote = { url: withObserve(url), token };
   if (timeouts) remote.timeouts = timeouts;
   fs.writeFileSync(
     path.join(tmpRoot, ".claude", "settings.local.json"),

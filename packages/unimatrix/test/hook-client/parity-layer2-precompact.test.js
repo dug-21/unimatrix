@@ -63,6 +63,11 @@ function runEntry(event, stdin) {
     USERPROFILE: tmpRoot,
     UNIMATRIX_REMOTE_URL: server.url,
     UNIMATRIX_REMOTE_TOKEN: server.token,
+    // vnc-038: the cloud listener is HTTPS-only with a self-signed cert. The
+    // env-pair remote config carries no cert pin, so let the spawned client's
+    // Node TLS accept the self-signed leaf (test-only; the harness server is a
+    // localhost self-call). No client-code change — purely a child-process env.
+    NODE_TLS_REJECT_UNAUTHORIZED: "0",
   });
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [ENTRY, event], { cwd: tmpRoot, env });

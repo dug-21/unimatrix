@@ -1,9 +1,13 @@
-//! `MultiProjectRouter` — the Wave-2 `StoreResolver` (vnc-034 ADR-003/004/005).
+//! `MultiProjectRouter` — the unified slug-keyed `StoreResolver`
+//! (vnc-034 ADR-003/004/005; vnc-038 ADR-004 #5083).
 //!
-//! The Wave-2 drop-in for `DefaultResolver` at the SAME `SlugRouter::new` call
-//! site (ADR-003, R-01 sc.2): Wave 1 injects `DefaultResolver`, Wave 2 injects
-//! `MultiProjectRouter`. No change to `SlugRouter`, `parse_project_key`,
-//! `ProjectKey`, `ProjectSlug`, or `RouteError`.
+//! The SOLE `StoreResolver` for the cloud/container HTTP surface, injected at the
+//! `SlugRouter::new` call site. vnc-038 ADR-004 DELETED the served-project
+//! `ProjectKey::Default`, the `default` field, the default constructor params, and
+//! the `Default` arms: this resolver is keyed by `ProjectKey::Slug` ONLY. Single
+//! project is N=1 — one entry in the slug map, no special-case arm. Local
+//! STDIO/UDS keeps its DIRECT path-hash store binding and NEVER enters this
+//! resolver (ADR-006 #5087).
 //!
 //! ## Type-collision note (OQ-PR-2)
 //! The design docs (ARCHITECTURE §7, BRIEF) call this resolver "ProjectRouter".
@@ -22,8 +26,8 @@
 //! (`SlugRouter` asserts agreement via `McpAdapter::wraps_store`, OQ-PR-4).
 //!
 //! ## Isolation invariant (AC-W2-R3)
-//! `resolve_store(Slug(a))` NEVER returns B's or the default store; an unknown
-//! slug is `UnknownProject`, never a fall-through. Each entry's store / vector
+//! `resolve_store(Slug(a))` NEVER returns B's store (there is no default store);
+//! an unknown slug is `UnknownProject`, never a fall-through. Each entry's store / vector
 //! index / hash chain / analytics are the slug's OWN isolated resources (FR-C3),
 //! built per-slug in the listener wiring (`build_project_entry`, main.rs).
 
@@ -92,19 +96,16 @@ impl ProjectEntry {
 /// map holds only the `Arc<Store>` + adapter handle; per-slug hot caches live
 /// inside each slug's `UnimatrixServer`, not here.
 pub struct MultiProjectRouter {
-    /// The `/v1/tools/...` default-alias entry (AC-W2-R2). `Some` in single+multi
-    /// mode; `None` only if a deployment disables the default alias (not the
-    /// Wave-2 default).
-    default: Option<ProjectEntry>,
-    /// slug -> per-slug entry. Empty when `[[projects]]` is absent (backward-compat:
-    /// behaves byte-identically to `DefaultResolver` for `/v1/tools/...`).
+    /// slug -> per-slug entry. The SOLE map (vnc-038 ADR-004 #5083): there is no
+    /// default entry and no default arm. Single project is N=1 — one entry in
+    /// this same map, no special-case branch. An unregistered slug resolves to
+    /// `UnknownProject`, never a fall-through (R-09).
     slugs: HashMap<ProjectSlug, ProjectEntry>,
 }
 
 impl std::fmt::Debug for MultiProjectRouter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MultiProjectRouter")
-            .field("has_default", &self.default.is_some())
             .field("slug_count", &self.slugs.len())
             .finish()
     }
@@ -136,36 +137,27 @@ impl std::fmt::Debug for ProjectServerInput {
 }
 
 impl MultiProjectRouter {
-    /// Construct the resolver from the default server + the per-slug servers built
-    /// by the listener wiring from the validated `[[projects]]` slugs.
+    /// Construct the unified resolver from the per-slug servers built by the
+    /// listener wiring from the validated `[[projects]]` slugs (vnc-038 ADR-004).
     ///
     /// Each input's `McpAdapter` is constructed here, so the binary crate never
-    /// names the `pub(crate)` adapter type. `default_store` MUST be the handle
-    /// `default_server` dispatches against (OQ-PR-4).
+    /// names the `pub(crate)` adapter type.
+    ///
+    /// vnc-038 ADR-004 (#5083) removed the `default_store`/`default_server` params
+    /// and the default entry: the resolver is keyed by `ProjectKey::Slug` ONLY.
+    /// When `slug_servers` is empty the resolver holds NO entries — every slug
+    /// resolves to `UnknownProject` and nothing is servable (boot emits the loud
+    /// "register a project to begin", Component 7). Single project is N=1: one
+    /// entry in `slugs`, no special-case branch.
     ///
     /// Duplicate slugs are already rejected at config-validate
     /// (`validate_projects_config`); this is a defensive re-check that fails loud
-    /// (a `ConfigError`-style message) rather than panicking. No `.unwrap()`.
-    ///
-    /// When `slug_servers` is empty (`[[projects]]` absent) the resolver holds
-    /// only the default ⇒ `/v1/tools/...` is byte-identical to Wave-1 and any
-    /// `/v1/{slug}/...` → `UnknownProject` (AC-W2-R2 / AC-CT-C4). (The single-
-    /// project deployment uses `DefaultResolver` directly; this constructor is the
-    /// multi-project path.)
+    /// rather than panicking. No `.unwrap()`.
     pub fn from_servers(
-        default_store: Arc<Store>,
-        default_server: UnimatrixServer,
         slug_servers: Vec<ProjectServerInput>,
         max_body_bytes: usize,
         allowed_origins: Vec<String>,
     ) -> Result<Self, String> {
-        let default = ProjectEntry::from_server(
-            default_store,
-            default_server,
-            max_body_bytes,
-            allowed_origins.clone(),
-        );
-
         let mut slugs = HashMap::with_capacity(slug_servers.len());
         for input in slug_servers {
             if slugs.contains_key(&input.slug) {
@@ -180,10 +172,7 @@ impl MultiProjectRouter {
             slugs.insert(input.slug, entry);
         }
 
-        Ok(MultiProjectRouter {
-            default: Some(default),
-            slugs,
-        })
+        Ok(MultiProjectRouter { slugs })
     }
 }
 
@@ -191,17 +180,11 @@ impl StoreResolver for MultiProjectRouter {
     /// THE store funnel. Total over `ProjectKey`; map lookup + `Arc::clone` only —
     /// no I/O, no `.unwrap()`, no panic.
     ///
-    /// - `Default` → the default entry's store (or `UnknownProject` if the alias
-    ///   is disabled).
     /// - `Slug(s)` → the per-slug store, or `UnknownProject` for an unregistered
-    ///   slug. NEVER falls back to the default or another slug (R-01 sc.3,
-    ///   AC-W2-R3) — identical no-fallthrough contract as `DefaultResolver`.
+    ///   slug. NEVER falls back to a default or another slug (vnc-038 ADR-004,
+    ///   R-09) — there is no default store to leak.
     fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError> {
         match key {
-            ProjectKey::Default => match &self.default {
-                Some(entry) => Ok(Arc::clone(&entry.store)),
-                None => Err(RouteError::UnknownProject),
-            },
             ProjectKey::Slug(s) => match self.slugs.get(s) {
                 Some(entry) => Ok(Arc::clone(&entry.store)),
                 None => Err(RouteError::UnknownProject),
@@ -212,11 +195,11 @@ impl StoreResolver for MultiProjectRouter {
     /// THE SOLE MCP dispatch route. Selects the per-key adapter from the SAME map
     /// `resolve_store` reads, so resolution and dispatch can never diverge.
     /// `None` ONLY for a key that does not resolve (same domain as
-    /// `UnknownProject`) — the `SlugRouter` 404s, never a fixed-adapter fallback.
+    /// `UnknownProject`) — the `SlugRouter` 404s, never a fixed-adapter fallback
+    /// (the #4974 guard; no trait default impl). vnc-038 ADR-004: no `Default` arm.
     #[allow(private_interfaces)]
     fn adapter_for(&self, key: &ProjectKey) -> Option<&McpAdapter> {
         match key {
-            ProjectKey::Default => self.default.as_ref().map(|e| &e.adapter),
             ProjectKey::Slug(s) => self.slugs.get(s).map(|e| &e.adapter),
         }
     }

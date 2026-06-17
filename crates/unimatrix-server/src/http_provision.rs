@@ -10,11 +10,12 @@
 //!    acceptor plus the resolved [`PublicUrl`] so the SAN set the cert was
 //!    minted with is observable by the caller (and, later, the bundle echo).
 //!
-//! The store-resolution funnel itself ([`DefaultResolver`] +
-//! `resolve_store(&ProjectKey::Default)`) is constructed inline in the listener
-//! wiring so the served `Arc<Store>` reaches MCP only THROUGH the seam (ADR-003,
-//! FR-X5 — no bypass). The per-request `PathRouter -> SlugRouter` insertion is a
-//! router.rs-scoped follow-up (see the agent report); it is not wired here.
+//! The store-resolution funnel itself (the slug-keyed `MultiProjectRouter`
+//! `StoreResolver`) is constructed inline in the listener wiring so each per-slug
+//! `Arc<Store>` reaches MCP only THROUGH the seam (ADR-003, FR-X5 — no bypass).
+//! vnc-038 ADR-004 (#5083) deleted the Wave-1 `DefaultResolver` and the boot-bound
+//! `resolve_store(&ProjectKey::Default)`: there is no default store; both MCP and
+//! observe resolve per-request through the same funnel keyed by `ProjectKey::Slug`.
 
 use std::path::Path;
 use std::sync::Arc;
