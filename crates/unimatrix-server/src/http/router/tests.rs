@@ -2408,3 +2408,251 @@ async fn test_per_request_slug_rejected_at_funnel_not_default_store() {
          every served key is a Slug; there is no Default)"
     );
 }
+
+// ===========================================================================
+// vnc-038 Stage 3c — OVER-THE-WIRE per-slug observe isolation at N=2
+// (R-02 / R-09 / R-12 · AC-06 / AC-07 / AC-08 · C-11 / GATE-4).
+//
+// The mapper-isolation tests above call `observe_response_to_http(...)` directly
+// and the `mock_dispatch_request` routing tests stub out the handler — NEITHER
+// drives the REAL `route_observe` funnel (`parse_project_key -> resolve_store ->
+// dispatch`). This block does: it builds a REAL `ObserveContext` over a REAL
+// `MultiProjectRouter` wired to TWO distinct per-slug `UnimatrixServer`/`Store`
+// instances, injects a real `ResolvedIdentity`, and POSTs to
+// `/v1/{slug}/observe`. It is the observe-side complement of the MCP funnel proof
+// (`project_routing_integration.rs`) and the counting-resolver MCP test above.
+//
+// The N=2 mandate (#4974): a `RecordingResolver` wraps the real resolver and
+// records WHICH slug each observe call resolved. An N=1 green would not catch a
+// boot-bound/parallel observe path that ignores the transport key; with two
+// registered slugs, the recorder proves each observe consulted the funnel ONCE
+// with the matching `ProjectKey::Slug` and reached dispatch against that store
+// (a 200 `Pong`). A no-slug / unregistered observe is a loud 404 — never a
+// default store (R-10).
+// ===========================================================================
+
+use std::sync::Mutex as StdMutex;
+
+use super::handlers::route_observe;
+use crate::http::router::{MultiProjectRouter, ObserveContext, ProjectServerInput};
+use crate::infra::registry::{Capability, TrustLevel};
+use crate::mcp::identity::ResolvedIdentity;
+use crate::server::tests::make_server;
+
+const OBSERVE_MAX_BODY: usize = 1024 * 1024;
+
+/// Resolver that wraps the REAL `MultiProjectRouter` and RECORDS the slug it
+/// resolved on each `resolve_store` call (vnc-038 N=2 observe proof). The
+/// recorded sequence is the assertion surface: a boot-bound or parallel observe
+/// path that ignored the transport key would leave the recorder empty or carry
+/// the wrong slug. Delegation is total — resolution/dispatch still come from the
+/// SAME inner map, so this is observation only, not a behavioral stub (#4974).
+struct RecordingResolver {
+    inner: MultiProjectRouter,
+    resolved: Arc<StdMutex<Vec<String>>>,
+}
+
+impl RecordingResolver {
+    fn new(inner: MultiProjectRouter) -> (Self, Arc<StdMutex<Vec<String>>>) {
+        let resolved = Arc::new(StdMutex::new(Vec::new()));
+        (
+            RecordingResolver {
+                inner,
+                resolved: Arc::clone(&resolved),
+            },
+            resolved,
+        )
+    }
+}
+
+impl StoreResolver for RecordingResolver {
+    fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError> {
+        // Record the transport-derived slug BEFORE delegating, so even an Err
+        // (UnknownProject) leg is recorded — the funnel ran exactly once.
+        match key {
+            ProjectKey::Slug(s) => self.resolved.lock().unwrap().push(s.to_string()),
+        }
+        self.inner.resolve_store(key)
+    }
+
+    fn adapter_for(&self, key: &ProjectKey) -> Option<&McpAdapter> {
+        self.inner.adapter_for(key)
+    }
+}
+
+/// Build an `ObserveContext` over the given resolver, sourcing the non-resolver
+/// service handles from a throwaway `UnimatrixServer` (the resolver supplies the
+/// per-request store; these are the embed/vector/adapt/session deps
+/// `dispatch_request` also needs). Mirrors the boot wiring in `main.rs` (the
+/// `ObserveContext` holds the SAME `Arc<dyn StoreResolver>` the `SlugRouter`
+/// holds), with no isolated scaffolding.
+fn observe_ctx_over(resolver: Arc<dyn StoreResolver>, deps: &UnimatrixServer) -> ObserveContext {
+    ObserveContext {
+        resolver,
+        embed_service: Arc::clone(&deps.embed_service),
+        vector_store: Arc::clone(&deps.vector_store),
+        adapt_service: Arc::clone(&deps.adapt_service),
+        server_version: "test".to_string(),
+        session_registry: Arc::clone(&deps.session_registry),
+        pending_entries_analysis: Arc::clone(&deps.pending_entries_analysis),
+        services: deps.services.clone(),
+    }
+}
+
+/// A `POST /v1/{slug}/observe` request carrying a `Ping` body and an injected
+/// admin `ResolvedIdentity` (the StaticTokenAuth layer injects identity in
+/// production; here we inject it directly since the handler reads it from
+/// extensions). `Ping` reaches dispatch and answers `Pong` (200) iff the request
+/// resolved to a real per-slug store — the over-the-wire "reached the right
+/// store" signal.
+fn observe_ping_request(slug: &str) -> Request<TestBody> {
+    let body_json = serde_json::json!({ "type": "Ping" }).to_string();
+    let mut req = Request::builder()
+        .method(Method::POST)
+        .uri(format!("/v1/{slug}/observe"))
+        .header("content-type", "application/json")
+        .body(
+            Full::new(Bytes::from(body_json))
+                .map_err(|never| match never {})
+                .boxed(),
+        )
+        .expect("build observe request");
+    req.extensions_mut().insert(ResolvedIdentity {
+        agent_id: "human".to_string(),
+        trust_level: TrustLevel::Privileged,
+        capabilities: vec![
+            Capability::Read,
+            Capability::Write,
+            Capability::Search,
+            Capability::Admin,
+        ],
+    });
+    req
+}
+
+async fn drive_observe(ctx: &ObserveContext, slug: &str) -> (StatusCode, String) {
+    let resp = route_observe(ctx.clone(), observe_ping_request(slug))
+        .await
+        .expect("route_observe is infallible");
+    collect_body(resp).await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observe_per_slug_funnel_isolation_n2() {
+    // Two registered projects (N=2, MANDATORY — not N=1, #4974). Build the REAL
+    // resolver over two DISTINCT per-slug servers, wrap it in the recorder, and
+    // POST observe Pings to each slug. Each observe must consult the funnel ONCE
+    // with the matching transport-derived slug and reach dispatch against THAT
+    // slug's store (200 Pong) — never a boot-bound/parallel/default path.
+    let alpha = make_server().await;
+    let beta = make_server().await;
+    // A throwaway server supplies the non-resolver ObserveContext service deps.
+    let deps = make_server().await;
+
+    let alpha_input = ProjectServerInput {
+        slug: ProjectSlug::try_from("alpha").expect("valid"),
+        store: Arc::clone(&alpha.store),
+        server: alpha,
+    };
+    let beta_input = ProjectServerInput {
+        slug: ProjectSlug::try_from("beta").expect("valid"),
+        store: Arc::clone(&beta.store),
+        server: beta,
+    };
+    let inner = MultiProjectRouter::from_servers(
+        vec![alpha_input, beta_input],
+        OBSERVE_MAX_BODY,
+        vec![],
+    )
+    .expect("build resolver");
+
+    let (recording, resolved) = RecordingResolver::new(inner);
+    let resolver: Arc<dyn StoreResolver> = Arc::new(recording);
+    let ctx = observe_ctx_over(resolver, &deps);
+
+    // Observe to alpha, then beta — each reaches its own store's dispatch (Pong).
+    let (alpha_status, alpha_body) = drive_observe(&ctx, "alpha").await;
+    let (beta_status, beta_body) = drive_observe(&ctx, "beta").await;
+
+    assert_eq!(
+        alpha_status,
+        StatusCode::OK,
+        "observe to /v1/alpha/observe must reach alpha's store dispatch (200 Pong); body {alpha_body}"
+    );
+    assert_eq!(
+        beta_status,
+        StatusCode::OK,
+        "observe to /v1/beta/observe must reach beta's store dispatch (200 Pong); body {beta_body}"
+    );
+    assert!(
+        alpha_body.contains("Pong") && beta_body.contains("Pong"),
+        "both observe Pings must answer Pong (reached dispatch): {alpha_body} / {beta_body}"
+    );
+
+    // The funnel was consulted exactly once per observe, with the MATCHING slug —
+    // the N=2 isolation proof (resolve identity == transport-derived slug).
+    let seq = resolved.lock().unwrap().clone();
+    assert_eq!(
+        seq,
+        vec!["alpha".to_string(), "beta".to_string()],
+        "each observe must resolve ONCE through the funnel with its own transport-derived slug \
+         (no boot-bound/parallel observe path, no cross-resolution); got {seq:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observe_unregistered_slug_is_loud_404_not_default() {
+    // An observe POST to a valid-grammar but UNREGISTERED slug is a loud 404
+    // `unknown project` — never a default store (R-09/R-10). The funnel still ran
+    // once with the transport slug; it did NOT fall through.
+    let only = make_server().await;
+    let deps = make_server().await;
+
+    let only_input = ProjectServerInput {
+        slug: ProjectSlug::try_from("only").expect("valid"),
+        store: Arc::clone(&only.store),
+        server: only,
+    };
+    let inner =
+        MultiProjectRouter::from_servers(vec![only_input], OBSERVE_MAX_BODY, vec![])
+            .expect("build resolver");
+    let (recording, resolved) = RecordingResolver::new(inner);
+    let resolver: Arc<dyn StoreResolver> = Arc::new(recording);
+    let ctx = observe_ctx_over(resolver, &deps);
+
+    let (status, body) = drive_observe(&ctx, "ghost").await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "observe to an unregistered slug must be a loud 404, never a default store"
+    );
+    assert!(
+        body.contains("unknown project"),
+        "404 body must name the failure; got {body}"
+    );
+    assert_eq!(
+        resolved.lock().unwrap().clone(),
+        vec!["ghost".to_string()],
+        "the funnel was consulted once with the transport slug, then 404'd (no bypass)"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observe_empty_resolver_first_boot_is_loud_404() {
+    // First-boot / empty `[[projects]]`: the resolver has NO entries, so EVERY
+    // observe is a loud 404 — nothing servable, never a silent default (R-10 /
+    // AC-09 at the observe entry point).
+    let deps = make_server().await;
+    let inner = MultiProjectRouter::from_servers(vec![], OBSERVE_MAX_BODY, vec![])
+        .expect("build empty resolver");
+    let resolver: Arc<dyn StoreResolver> = Arc::new(inner);
+    let ctx = observe_ctx_over(resolver, &deps);
+
+    let (status, body) = drive_observe(&ctx, "anyslug").await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "with no registered projects, observe must fail loud (404), never a default store"
+    );
+    assert!(body.contains("unknown project"), "loud body; got {body}");
+}

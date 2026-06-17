@@ -62,6 +62,9 @@ describe("Layer 2 — AC-10 concurrency: ≥8 interleaved sessions, byte isolati
       const cfgFor = (s) => ({
         url: server.url,
         token: server.token,
+        // vnc-038: the cloud listener is HTTPS-only; pin the self-signed leaf so
+        // the shipped transport completes the handshake and trusts by fingerprint.
+        pinnedFp: server.pinnedFp,
         timeouts: { connectMs: 2000, syncMs: 4000, fnfMs: 4000 },
         stateDir: s.sdir,
       });
@@ -161,6 +164,7 @@ describe("Layer 2 — AC-10 concurrency: ≥8 interleaved sessions, byte isolati
       const out = await delta.maybeSendDelta(tpath, sid, "claude-code", {
         url: server.url,
         token: server.token,
+        pinnedFp: server.pinnedFp, // vnc-038 HTTPS cloud listener — pin self-signed leaf
         timeouts: { connectMs: 2000, syncMs: 4000, fnfMs: 4000 },
         stateDir: sdir,
       });

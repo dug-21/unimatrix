@@ -26,10 +26,15 @@ function exchange(tag, n) {
 }
 
 // A live ResolvedConfig pointing delta.maybeSendDelta at the real server.
+// vnc-038: the cloud listener is HTTPS-only (self-provisioned self-signed cert);
+// `server.url` is the per-slug https observe URL and `server.pinnedFp` pins the
+// served leaf so the shipped transport completes the handshake and trusts by
+// fingerprint (the OSS trust model — cert-pin.js), never CA chain.
 function liveConfig(server, stateDir) {
   return {
     url: server.url,
     token: server.token,
+    pinnedFp: server.pinnedFp,
     timeouts: { connectMs: 2000, syncMs: 4000, fnfMs: 4000 },
     stateDir,
   };
