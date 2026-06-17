@@ -3,6 +3,16 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.1] - 2026-06-17
+
+### Features
+- Mandatory project identity at the deployment entrypoint (vnc-038, #770): cloud/container deployments require `unimatrix project register <slug>` before serving — the no-slug/default route is removed (hard cutover). `client-bundle <slug>` emits a per-project `v:2` bundle carrying server-composed MCP + observe URLs; the client posts them verbatim (dumb-client invariant). Adding the Nth project is the same single command; local STDIO/UDS installs are unaffected.
+
+### Fixes
+- Personal-cloud bundle attach no longer 404s (#766): `init --bundle` init-time Ping and runtime hook telemetry now reach the per-slug observe route (`/v1/{slug}/observe`) on the same per-request funnel as MCP, with per-slug store isolation proven at N=2.
+- First-boot bearer token is never written to stdout/logs — delivered only via the bundle; `router.rs` split under the 500-line guideline and a stale `dead_code` allow removed (#735).
+- Layer-2 test harness reconciled to the per-slug deployment model (#771).
+
 ## [0.8.0] - 2026-06-16
 
 ### Features
