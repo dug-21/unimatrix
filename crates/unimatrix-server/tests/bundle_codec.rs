@@ -1,7 +1,8 @@
-//! C1 connection-bundle parity — Rust oracle + drift guard (ADR-001, ADR-006, SR-09).
+//! C1 connection-bundle parity — Rust oracle + drift guard (vnc-038, ADR-002).
 //!
-//! `encode_bundle`/`decode_bundle` are the **single oracle** for the C1 wire form
-//! (`unimatrix-bundle:<base64url-nopad(canonical-json)>`). This file:
+//! `encode_bundle`/`decode_bundle` are the **single oracle** for the `v:2` wire
+//! form (`unimatrix-bundle:<base64url-nopad(canonical-json)>`,
+//! `{v, mcp_url, observe_url, token, fp}`). This file:
 //!
 //! 1. **Generates** the committed golden corpus
 //!    (`tests/fixtures/c1c2-parity/bundle-golden.json`) from the oracle —
@@ -12,9 +13,10 @@
 //! 2. **Guards** it in normal CI — `test_c1_bundle_golden_is_stable` re-encodes every
 //!    row's fields and asserts byte-equality with the committed `wire`. A canonical
 //!    key-order, base64url-alphabet, or escaping change fails HERE, not at a user's
-//!    paste (R-05).
-//! 3. Proves the **trust-boundary guard ordering** (AC-W1-C9/C10) and round-trip
-//!    (R-05.3) against the public decode API.
+//!    paste (R-03).
+//! 3. Proves the **trust-boundary guard ordering** (R-03/NFR-08) and round-trip
+//!    (R-03 sc.1) against the public decode API, plus the strict-reject matrix and
+//!    the v:1 hard-cut (R-04).
 //!
 //! Synthetic 64-hex tokens only — NOT `sk-`-style provider secrets (lesson #4792).
 
@@ -28,11 +30,12 @@ use unimatrix_server::client_bundle::{
     BUNDLE_SCHEME, BUNDLE_VERSION, Bundle, BundleError, MAX_RAW_LEN, decode_bundle, encode_bundle,
 };
 
-/// Canonical fields of one golden row (matches the [`Bundle`] shape).
+/// Canonical fields of one golden row (matches the `v:2` [`Bundle`] shape).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct GoldenFields {
     v: u8,
-    base_url: String,
+    mcp_url: String,
+    observe_url: String,
     token: String,
     fp: String,
 }
@@ -53,22 +56,25 @@ fn golden_path() -> PathBuf {
 fn synthetic_fields() -> Vec<GoldenFields> {
     vec![
         GoldenFields {
-            v: 1,
-            base_url: "https://cloud.example:8443".to_string(),
+            v: 2,
+            mcp_url: "https://cloud.example:8443/v1/alpha".to_string(),
+            observe_url: "https://cloud.example:8443/v1/alpha/observe".to_string(),
             token: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string(),
             fp: "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
                 .to_string(),
         },
         GoldenFields {
-            v: 1,
-            base_url: "https://host.internal:9000".to_string(),
+            v: 2,
+            mcp_url: "https://host.internal:9000/v1/beta".to_string(),
+            observe_url: "https://host.internal:9000/v1/beta/observe".to_string(),
             token: "f".repeat(64),
             fp: format!("sha256:{}", "0".repeat(64)),
         },
         GoldenFields {
-            v: 1,
+            v: 2,
             // IPv6 literal authority round-trips through the wire form unchanged.
-            base_url: "https://[2001:db8::1]:8443".to_string(),
+            mcp_url: "https://[2001:db8::1]:8443/v1/gamma-2".to_string(),
+            observe_url: "https://[2001:db8::1]:8443/v1/gamma-2/observe".to_string(),
             token: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
             fp: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
                 .to_string(),
@@ -77,29 +83,29 @@ fn synthetic_fields() -> Vec<GoldenFields> {
 }
 
 fn encode_fields(f: &GoldenFields) -> String {
-    encode_bundle(f.v, &f.base_url, &f.token, &f.fp).expect("encode")
+    encode_bundle(f.v, &f.mcp_url, &f.observe_url, &f.token, &f.fp).expect("encode")
 }
 
 fn encode_json(json: &str) -> String {
     format!("{BUNDLE_SCHEME}{}", URL_SAFE_NO_PAD.encode(json.as_bytes()))
 }
 
-// ---- Canonical encode (R-02 / C1) ----
+// ---- Canonical encode (R-03 / C1) ----
 
 #[test]
-fn test_bundle_encode_canonical_field_order() {
+fn test_encode_bundle_v2_composes_both_urls() {
     let f = &synthetic_fields()[0];
     let wire = encode_fields(f);
     let body = wire.strip_prefix(BUNDLE_SCHEME).expect("scheme");
     let json_bytes = URL_SAFE_NO_PAD.decode(body).expect("base64url");
     let json = String::from_utf8(json_bytes).expect("utf8");
     let expected = format!(
-        "{{\"v\":1,\"base_url\":\"{}\",\"token\":\"{}\",\"fp\":\"{}\"}}",
-        f.base_url, f.token, f.fp
+        "{{\"v\":2,\"mcp_url\":\"{}\",\"observe_url\":\"{}\",\"token\":\"{}\",\"fp\":\"{}\"}}",
+        f.mcp_url, f.observe_url, f.token, f.fp
     );
     assert_eq!(
         json, expected,
-        "canonical key order must be v,base_url,token,fp"
+        "canonical key order must be v,mcp_url,observe_url,token,fp"
     );
     assert!(!json.contains(": "), "no insignificant whitespace");
 }
@@ -121,24 +127,25 @@ fn test_bundle_base64url_no_padding() {
     );
 }
 
-// ---- Round-trip (R-05.3) ----
+// ---- Round-trip (R-03 sc.1) ----
 
 #[test]
-fn test_bundle_roundtrip_encode_decode_identical() {
+fn test_decode_bundle_v2_round_trip() {
     for f in synthetic_fields() {
         let wire = encode_fields(&f);
         let decoded = decode_bundle(&wire).expect("decode");
         assert_eq!(decoded.v, f.v);
-        assert_eq!(decoded.base_url, f.base_url);
+        assert_eq!(decoded.mcp_url, f.mcp_url);
+        assert_eq!(decoded.observe_url, f.observe_url);
         assert_eq!(decoded.token, f.token);
         assert_eq!(decoded.fp, f.fp);
     }
 }
 
-// ---- Guard 1: length cap BEFORE decode (AC-W1-C10, load-bearing order) ----
+// ---- Guard 1: length cap BEFORE decode (R-03 sc.3 / NFR-08) ----
 
 #[test]
-fn test_bundle_length_cap_before_decode() {
+fn test_max_raw_len_runs_first() {
     // Over-cap AND not valid base64url ('!'): MUST reject on LENGTH, proving the cap
     // ran before the base64 decode (the parser-DoS guard).
     let raw = format!("{BUNDLE_SCHEME}{}", "!".repeat(MAX_RAW_LEN));
@@ -195,16 +202,18 @@ fn test_bundle_reject_truncated_payload() {
     assert!(matches!(err, BundleError::BadBase64 | BundleError::BadJson));
 }
 
-// ---- Guard 5: strict schema (AC-W1-C9, load-bearing) ----
+// ---- Guard 5: strict schema (R-03 sc.2, load-bearing) ----
 
 const TEST_TOKEN: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const TEST_FP: &str = "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
-const TEST_BASE_URL: &str = "https://cloud.example:8443";
+const TEST_MCP_URL: &str = "https://cloud.example:8443/v1/alpha";
+const TEST_OBSERVE_URL: &str = "https://cloud.example:8443/v1/alpha/observe";
 
 #[test]
-fn test_bundle_strict_schema_reject_missing_field() {
+fn test_reject_missing_key() {
+    // Missing observe_url (4 keys) → reject.
     let raw = encode_json(&format!(
-        "{{\"v\":1,\"base_url\":\"{TEST_BASE_URL}\",\"token\":\"{TEST_TOKEN}\"}}"
+        "{{\"v\":2,\"mcp_url\":\"{TEST_MCP_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
     ));
     assert!(matches!(
         decode_bundle(&raw).unwrap_err(),
@@ -213,9 +222,10 @@ fn test_bundle_strict_schema_reject_missing_field() {
 }
 
 #[test]
-fn test_bundle_strict_schema_reject_extra_field() {
+fn test_reject_extra_key() {
+    // 6th key → reject.
     let raw = encode_json(&format!(
-        "{{\"v\":1,\"base_url\":\"{TEST_BASE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\",\"slug\":\"x\"}}"
+        "{{\"v\":2,\"mcp_url\":\"{TEST_MCP_URL}\",\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\",\"slug\":\"x\"}}"
     ));
     assert!(matches!(
         decode_bundle(&raw).unwrap_err(),
@@ -224,18 +234,18 @@ fn test_bundle_strict_schema_reject_extra_field() {
 }
 
 #[test]
-fn test_bundle_strict_schema_reject_wrong_type() {
-    // v as string
+fn test_reject_wrong_type_key() {
+    // v as string.
     let raw = encode_json(&format!(
-        "{{\"v\":\"1\",\"base_url\":\"{TEST_BASE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
+        "{{\"v\":\"2\",\"mcp_url\":\"{TEST_MCP_URL}\",\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
     ));
     assert!(matches!(
         decode_bundle(&raw).unwrap_err(),
         BundleError::Schema(_)
     ));
-    // token as number
+    // mcp_url as number.
     let raw2 = encode_json(&format!(
-        "{{\"v\":1,\"base_url\":\"{TEST_BASE_URL}\",\"token\":12345,\"fp\":\"{TEST_FP}\"}}"
+        "{{\"v\":2,\"mcp_url\":123,\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
     ));
     assert!(matches!(
         decode_bundle(&raw2).unwrap_err(),
@@ -244,9 +254,30 @@ fn test_bundle_strict_schema_reject_wrong_type() {
 }
 
 #[test]
-fn test_bundle_reject_unknown_major_version() {
+fn test_reject_non_https_url() {
+    // non-https mcp_url.
     let raw = encode_json(&format!(
-        "{{\"v\":2,\"base_url\":\"{TEST_BASE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
+        "{{\"v\":2,\"mcp_url\":\"http://h/v1/alpha\",\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
+    ));
+    assert!(matches!(
+        decode_bundle(&raw).unwrap_err(),
+        BundleError::Schema(_)
+    ));
+    // non-https observe_url (ftp://).
+    let raw2 = encode_json(&format!(
+        "{{\"v\":2,\"mcp_url\":\"{TEST_MCP_URL}\",\"observe_url\":\"ftp://h/v1/alpha/observe\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
+    ));
+    assert!(matches!(
+        decode_bundle(&raw2).unwrap_err(),
+        BundleError::Schema(_)
+    ));
+}
+
+#[test]
+fn test_reject_unknown_major_version() {
+    // v: 3 → forward-compat reject.
+    let raw = encode_json(&format!(
+        "{{\"v\":3,\"mcp_url\":\"{TEST_MCP_URL}\",\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
     ));
     assert!(matches!(
         decode_bundle(&raw).unwrap_err(),
@@ -256,29 +287,21 @@ fn test_bundle_reject_unknown_major_version() {
 
 #[test]
 fn test_bundle_field_format_validation() {
-    // non-https base_url
+    // uppercase token is not lowercase-hex.
     let raw = encode_json(&format!(
-        "{{\"v\":1,\"base_url\":\"http://x:8443\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
+        "{{\"v\":2,\"mcp_url\":\"{TEST_MCP_URL}\",\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{}\",\"fp\":\"{TEST_FP}\"}}",
+        "A".repeat(64)
     ));
     assert!(matches!(
         decode_bundle(&raw).unwrap_err(),
         BundleError::Schema(_)
     ));
-    // uppercase token is not lowercase-hex
+    // malformed fp prefix.
     let raw2 = encode_json(&format!(
-        "{{\"v\":1,\"base_url\":\"{TEST_BASE_URL}\",\"token\":\"{}\",\"fp\":\"{TEST_FP}\"}}",
-        "A".repeat(64)
+        "{{\"v\":2,\"mcp_url\":\"{TEST_MCP_URL}\",\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"md5:abc\"}}"
     ));
     assert!(matches!(
         decode_bundle(&raw2).unwrap_err(),
-        BundleError::Schema(_)
-    ));
-    // malformed fp prefix
-    let raw3 = encode_json(&format!(
-        "{{\"v\":1,\"base_url\":\"{TEST_BASE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"md5:abc\"}}"
-    ));
-    assert!(matches!(
-        decode_bundle(&raw3).unwrap_err(),
         BundleError::Schema(_)
     ));
 }
@@ -287,7 +310,7 @@ fn test_bundle_field_format_validation() {
 fn test_bundle_token_never_in_error_message() {
     let leaky = "deadbeef".repeat(8); // 64 hex; we make it 65 to force a schema reject
     let raw = encode_json(&format!(
-        "{{\"v\":1,\"base_url\":\"{TEST_BASE_URL}\",\"token\":\"{leaky}X\",\"fp\":\"{TEST_FP}\"}}"
+        "{{\"v\":2,\"mcp_url\":\"{TEST_MCP_URL}\",\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{leaky}X\",\"fp\":\"{TEST_FP}\"}}"
     ));
     let err = decode_bundle(&raw).unwrap_err();
     assert!(
@@ -296,7 +319,37 @@ fn test_bundle_token_never_in_error_message() {
     );
 }
 
-// ---- Parser robustness corpus (R-05) ----
+// ---- v:1 hard-cut (R-04) ----
+
+#[test]
+fn test_reject_v1_shaped_bundle() {
+    // A well-formed v:1 artifact ({v:1, base_url, token, fp}) presented to the v:2
+    // decode → loud reject. No base_url acceptance path survives.
+    let raw = encode_json(&format!(
+        "{{\"v\":1,\"base_url\":\"https://cloud.example:8443\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
+    ));
+    assert!(
+        matches!(decode_bundle(&raw).unwrap_err(), BundleError::Schema(_)),
+        "a v:1 bundle must fail closed under v:2 decode"
+    );
+}
+
+#[test]
+fn test_no_v1_fallback_decode_path() {
+    // Exactly one version arm (v == 2). Every other major fails closed — assert v:1
+    // and v:3 (with otherwise-valid v:2 shape) both reject, proving no compat arm.
+    for bad_v in [0u8, 1, 3, 4] {
+        let raw = encode_json(&format!(
+            "{{\"v\":{bad_v},\"mcp_url\":\"{TEST_MCP_URL}\",\"observe_url\":\"{TEST_OBSERVE_URL}\",\"token\":\"{TEST_TOKEN}\",\"fp\":\"{TEST_FP}\"}}"
+        ));
+        assert!(
+            matches!(decode_bundle(&raw).unwrap_err(), BundleError::Schema(_)),
+            "v:{bad_v} must fail closed (only v==2 accepted)"
+        );
+    }
+}
+
+// ---- Parser robustness corpus (R-03) ----
 
 #[test]
 fn test_bundle_parser_never_crashes_on_corpus() {
@@ -319,7 +372,7 @@ fn test_bundle_parser_never_crashes_on_corpus() {
     }
 }
 
-// ---- C1 golden oracle + drift guard (ADR-006, SR-02) ----
+// ---- C1 golden oracle + drift guard (ADR-002, SR-02) ----
 
 /// Oracle: regenerate the committed golden corpus.
 ///
@@ -331,8 +384,14 @@ fn test_generate_c1_bundle_golden() {
     let rows: Vec<BundleRow> = synthetic_fields()
         .into_iter()
         .map(|fields| {
-            let wire = encode_bundle(fields.v, &fields.base_url, &fields.token, &fields.fp)
-                .expect("encode");
+            let wire = encode_bundle(
+                fields.v,
+                &fields.mcp_url,
+                &fields.observe_url,
+                &fields.token,
+                &fields.fp,
+            )
+            .expect("encode");
             BundleRow { fields, wire }
         })
         .collect();
@@ -347,7 +406,7 @@ fn test_generate_c1_bundle_golden() {
 }
 
 /// Drift guard (normal CI): re-encode every committed row's fields and assert the
-/// wire form is byte-identical. The load-bearing C1 regression test (R-05).
+/// wire form is byte-identical. The load-bearing C1 regression test (R-03).
 #[test]
 fn test_c1_bundle_golden_is_stable() {
     let path = golden_path();
@@ -364,7 +423,8 @@ fn test_c1_bundle_golden_is_stable() {
         // Re-encode -> must equal committed wire (encoder stability).
         let reencoded = encode_bundle(
             row.fields.v,
-            &row.fields.base_url,
+            &row.fields.mcp_url,
+            &row.fields.observe_url,
             &row.fields.token,
             &row.fields.fp,
         )
@@ -375,7 +435,11 @@ fn test_c1_bundle_golden_is_stable() {
         let decoded: Bundle = decode_bundle(&row.wire)
             .unwrap_or_else(|e| panic!("row {i}: committed wire failed to decode: {e}"));
         assert_eq!(decoded.v, row.fields.v, "row {i}: v");
-        assert_eq!(decoded.base_url, row.fields.base_url, "row {i}: base_url");
+        assert_eq!(decoded.mcp_url, row.fields.mcp_url, "row {i}: mcp_url");
+        assert_eq!(
+            decoded.observe_url, row.fields.observe_url,
+            "row {i}: observe_url"
+        );
         assert_eq!(decoded.token, row.fields.token, "row {i}: token");
         assert_eq!(decoded.fp, row.fields.fp, "row {i}: fp");
 

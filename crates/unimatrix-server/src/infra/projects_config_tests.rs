@@ -273,16 +273,84 @@ fn test_reserved_check_is_separate_from_charset() {
 }
 
 #[test]
-fn test_reserved_slug_message_names_tools_shadow() {
-    // The reserved message must name the shadowing risk (`tools` → /v1/tools/... alias).
+fn test_reserved_slug_message_is_accurate_to_new_grammar() {
+    // vnc-038 ADR-005: the message must NO LONGER claim a default-project alias exists
+    // (deleted by ADR-004). It must accurately describe the post-cutover route grammar.
     let err =
         validate_projects_config(&entries(&["tools"]), test_path()).expect_err("tools reserved");
     let msg = err.to_string();
-    assert!(
-        msg.contains("/v1/tools/..."),
-        "message must name the alias shadow: {msg}"
-    );
     assert!(msg.contains("reserved"), "message must say reserved: {msg}");
+    assert!(
+        !msg.contains("default-project alias"),
+        "message must NOT claim a default-project alias exists (deleted, ADR-004): {msg}"
+    );
+    assert!(
+        msg.contains("/v1/{slug}/"),
+        "message must name the post-cutover grammar: {msg}"
+    );
+}
+
+#[test]
+fn test_observe_is_reserved() {
+    // R-08 sc.2 — `observe` is now the live per-slug sub-route segment
+    // (`/v1/{slug}/observe`, ADR-003), so a slug `observe` must be unregisterable.
+    let observe = ProjectSlug::try_from("observe").expect("observe is charset-valid");
+    assert!(
+        is_reserved_slug(&observe),
+        "observe must be reserved so a slug cannot shadow /v1/{{slug}}/observe"
+    );
+    let err = validate_projects_config(&entries(&["observe"]), test_path())
+        .expect_err("observe must be rejected as reserved");
+    assert!(matches!(err, ConfigError::ProjectSlugReserved { .. }));
+}
+
+#[test]
+fn test_reserved_set_covers_route_segments() {
+    // R-08 sc.2 — bind the reserved set to the live grammar: every route segment of the
+    // NEW grammar that could collide with a slug is in RESERVED_SLUGS. No segment is both
+    // routable AND registerable.
+    for segment in ["v1", "health", "observe"] {
+        assert!(
+            RESERVED_SLUGS.contains(&segment),
+            "{segment} is a live route segment and MUST be reserved (cannot be registered)"
+        );
+    }
+}
+
+#[test]
+fn test_tools_reservation_locked() {
+    // R-08 sc.3 / OQ-3 — LOCK the chosen `tools`-reserved state. A silent flip
+    // (un-reserving `tools` without intent) fails here. If the human un-reserves `tools`,
+    // this test changes by one assertion — documented, not silent.
+    let tools = ProjectSlug::try_from("tools").expect("tools is charset-valid");
+    assert!(
+        is_reserved_slug(&tools),
+        "tools is CURRENTLY reserved (conservative, OQ-3). Flipping this is a deliberate \
+         decision (un-reserve + test), not an incidental edit."
+    );
+    assert!(
+        RESERVED_SLUGS.contains(&"tools"),
+        "tools must remain in RESERVED_SLUGS until OQ-3 is resolved to un-reserve"
+    );
+}
+
+#[test]
+fn test_every_reserved_name_rejected() {
+    // R-08 sc.1 — registration-rejection table: EVERY reserved name is rejected at the
+    // parse edge. Mirrors the register-CLI guard (it imports RESERVED_SLUGS / is_reserved_slug).
+    for reserved in RESERVED_SLUGS {
+        let slug = ProjectSlug::try_from(reserved).expect("reserved names are charset-valid");
+        assert!(
+            is_reserved_slug(&slug),
+            "{reserved} must be rejected by is_reserved_slug (register-edge guard)"
+        );
+        let err = validate_projects_config(&entries(&[reserved]), test_path())
+            .expect_err("reserved name must be rejected at config load");
+        assert!(
+            matches!(err, ConfigError::ProjectSlugReserved { .. }),
+            "{reserved} must reject as ProjectSlugReserved"
+        );
+    }
 }
 
 #[test]

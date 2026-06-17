@@ -266,8 +266,10 @@ fn test_register_already_routing_errors_loud() {
 fn test_register_dir_exists_deregistered_reattaches() {
     let fx = Fixture::new();
     fx.registry().register("alpha").expect("first register");
-    // No routing config => de-registered. Data dir survives (State B).
     assert!(fx.slug_db("alpha").exists());
+    // ADR-007: the first register now WROTE the routing stanza. De-register
+    // (config-side) so the re-register lands in State B, not State A.
+    fx.set_routing(&[]);
 
     // Re-register => re-attach, NOT an error.
     fx.registry()
@@ -297,6 +299,270 @@ fn test_register_two_states_distinct_messages() {
     fx.registry()
         .register("alpha")
         .expect("State B must succeed, distinct from State A");
+}
+
+// ---------------------------------------------------------------------------
+// A.4 register — ADR-007 writes [[projects]] routing intent atomically (vnc-038)
+// ---------------------------------------------------------------------------
+
+/// Read the on-disk `config.toml` text (empty string if absent) for assertions.
+fn read_config(fx: &Fixture) -> String {
+    std::fs::read_to_string(fx.config_data_dir.join("config.toml")).unwrap_or_default()
+}
+
+/// Count how many `[[projects]]` stanzas declare `slug` in the on-disk config,
+/// parsed via the SAME serde path the boot read uses.
+fn stanza_count(fx: &Fixture, slug: &str) -> usize {
+    #[derive(serde::Deserialize)]
+    struct Probe {
+        #[serde(default)]
+        projects: Vec<Entry>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Entry {
+        slug: String,
+    }
+    let text = read_config(fx);
+    toml::from_str::<Probe>(&text)
+        .map(|p| p.projects.iter().filter(|e| e.slug == slug).count())
+        .unwrap_or(0)
+}
+
+#[test]
+fn test_register_writes_projects_stanza() {
+    // AC-02/AC-03: from a clean state, register WRITES [[projects]] AND creates the
+    // per-slug data dir + genesis store (no hand-edit, no instruction print).
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register alpha");
+
+    assert!(fx.slug_db("alpha").exists(), "genesis store created");
+    assert_eq!(
+        stanza_count(&fx, "alpha"),
+        1,
+        "exactly one [[projects]] entry"
+    );
+    let text = read_config(&fx);
+    assert!(
+        text.contains("[[projects]]") && text.contains("slug = \"alpha\""),
+        "config.toml must carry the stanza, got:\n{text}"
+    );
+}
+
+#[test]
+fn test_register_then_boot_reread() {
+    // Write [[projects]], then re-read via the boot-shape config parse: the slug
+    // must be in the routed set (full write -> restart -> resolve loop). Pairs with
+    // boot-wiring.md / Component 7.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register");
+
+    let routed: Vec<String> = fx
+        .registry()
+        .configured_slugs()
+        .into_iter()
+        .map(|s| s.as_str().to_string())
+        .collect();
+    assert!(
+        routed.contains(&"alpha".to_string()),
+        "boot re-read must surface the registered slug, got: {routed:?}"
+    );
+}
+
+#[test]
+fn test_nth_register_identical_command() {
+    // AC-04: registering a 2nd slug uses the IDENTICAL command path and appends a
+    // 2nd [[projects]] entry — no first-project special case, no manual edit.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register 1st");
+    fx.registry()
+        .register("beta")
+        .expect("register Nth, same command");
+
+    assert_eq!(stanza_count(&fx, "alpha"), 1, "first stanza intact");
+    assert_eq!(stanza_count(&fx, "beta"), 1, "Nth stanza appended");
+    let routed: Vec<String> = fx
+        .registry()
+        .configured_slugs()
+        .into_iter()
+        .map(|s| s.as_str().to_string())
+        .collect();
+    assert!(
+        routed.contains(&"alpha".to_string()) && routed.contains(&"beta".to_string()),
+        "both routable after restart, got: {routed:?}"
+    );
+}
+
+#[test]
+fn test_re_register_re_attaches_no_clobber() {
+    // R-05 (hash chain sacred): register against an EXISTING per-slug store OPENS it
+    // and re-attaches; the chain head (content_hash) is UNCHANGED before == after.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register");
+    let db = fx.slug_db("alpha");
+    let (id, hash_before) = write_entry(&db, "chain-head");
+
+    // De-register (config-side) so re-register lands in State B (data exists, not routed).
+    fx.set_routing(&[]);
+    fx.registry()
+        .register("alpha")
+        .expect("State B re-attach, never genesis");
+
+    let store = open_store(&db);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    rt.block_on(async {
+        let rec = store.get(id).await.expect("entry survives re-attach");
+        assert_eq!(
+            rec.content_hash, hash_before,
+            "chain head must be IDENTICAL — re-attach (open), never genesis-clobber"
+        );
+    });
+}
+
+#[test]
+fn test_re_register_idempotent_single_stanza() {
+    // R-05/R-06: running register twice yields exactly ONE [[projects]] entry and
+    // ONE untouched store (no duplicate stanza, no second genesis).
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("first register");
+    // First register routed it (State C wrote the stanza). Re-register from State B
+    // (clear routing so it is not State A), then re-route and re-register again to
+    // exercise the idempotent stanza path directly.
+    assert_eq!(
+        stanza_count(&fx, "alpha"),
+        1,
+        "one stanza after first register"
+    );
+
+    fx.set_routing(&[]); // de-route -> State B on next register
+    fx.registry()
+        .register("alpha")
+        .expect("re-attach + re-write stanza");
+    assert_eq!(
+        stanza_count(&fx, "alpha"),
+        1,
+        "re-register must not duplicate the stanza"
+    );
+}
+
+#[test]
+fn test_no_genesis_creation_when_dir_exists() {
+    // R-05: no genesis-creation path runs when the per-slug data dir already exists.
+    // Proven by chain-head preservation across a de-register + re-register cycle:
+    // a second genesis would reset the chain (covered structurally by State B branch).
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register");
+    let db = fx.slug_db("alpha");
+    let (id, _h) = write_entry(&db, "pre-existing");
+
+    fx.set_routing(&[]);
+    fx.registry().register("alpha").expect("re-attach");
+
+    let store = open_store(&db);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    rt.block_on(async {
+        assert!(
+            store.exists(id).await.expect("query"),
+            "pre-existing entry must survive — no genesis ran over the dir"
+        );
+    });
+}
+
+#[test]
+fn test_config_write_atomic() {
+    // R-06: the write is temp + fsync + rename. Assert the on-disk config.toml is
+    // ALWAYS a complete, well-formed file (never partial) and no .tmp sibling is left
+    // behind after a successful write.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register");
+
+    let text = read_config(&fx);
+    // Complete & parseable (would fail if a partial write landed).
+    toml::from_str::<toml::Value>(&text).expect("on-disk config must be complete TOML");
+    // No leftover temp sibling.
+    let leftovers = std::fs::read_dir(&fx.config_data_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().starts_with(".config.toml."))
+        .count();
+    assert_eq!(leftovers, 0, "no temp file may survive a successful write");
+}
+
+#[test]
+fn test_config_write_preserves_existing_stanzas() {
+    // R-06: register into a config with N existing stanzas + unrelated sections;
+    // all N+1 stanzas and the unrelated config survive, well-formed.
+    let fx = Fixture::new();
+    std::fs::write(
+        fx.config_data_dir.join("config.toml"),
+        "[http]\nport = 8443\n\n[[projects]]\nslug = \"alpha\"\n\n[[projects]]\nslug = \"beta\"\n",
+    )
+    .expect("seed config");
+
+    fx.registry()
+        .register("gamma")
+        .expect("register into non-empty config");
+
+    // All three stanzas present.
+    for s in ["alpha", "beta", "gamma"] {
+        assert_eq!(stanza_count(&fx, s), 1, "stanza '{s}' must survive/append");
+    }
+    // Unrelated section preserved.
+    let v: toml::Value = toml::from_str(&read_config(&fx)).expect("complete TOML");
+    assert_eq!(
+        v.get("http")
+            .and_then(|h| h.get("port"))
+            .and_then(toml::Value::as_integer),
+        Some(8443),
+        "unrelated [http] config must be preserved"
+    );
+}
+
+#[test]
+fn test_register_malformed_config_errors_no_write() {
+    // R-06: a malformed existing config.toml is a loud error and is NOT clobbered.
+    let fx = Fixture::new();
+    let bad = "this is = = not valid toml [[[";
+    std::fs::write(fx.config_data_dir.join("config.toml"), bad).expect("seed bad config");
+
+    let err = fx
+        .registry()
+        .register("alpha")
+        .expect_err("malformed config must fail loud");
+    assert!(
+        err.to_string().contains("malformed"),
+        "error must name the malformed config: {err}"
+    );
+    // The malformed file is left intact (not blindly overwritten).
+    assert_eq!(
+        read_config(&fx),
+        bad,
+        "malformed config must not be clobbered"
+    );
+}
+
+#[test]
+fn test_slug_regex_constrained_pre_write() {
+    // Security (TOML-injection guard): a slug carrying a TOML metacharacter (newline,
+    // quote, bracket) is rejected at the parse edge BEFORE any write — it can never
+    // reach the [[projects]] stanza.
+    let fx = Fixture::new();
+    for inject in ["alpha\"\n[evil]", "a\"]\nslug=\"x", "a\nb", "a\"b"] {
+        fx.registry()
+            .register(inject)
+            .expect_err("metacharacter slug must reject pre-write");
+    }
+    // No config written by any rejected attempt.
+    assert_eq!(
+        read_config(&fx),
+        "",
+        "no stanza written for a rejected slug"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -448,6 +714,9 @@ fn test_purge_with_confirmation_removes_dir_and_deregisters() {
         .delete("alpha", true, Some("alpha"))
         .expect("purge");
     assert!(!fx.slug_dir("alpha").exists(), "dir removed");
+    // ADR-007: register wrote the stanza; stanza removal is config-side on delete
+    // (operator removes it). Simulate that so the purged slug leaves the list.
+    fx.set_routing(&[]);
     let statuses = fx.registry().scan_registered().expect("scan");
     assert!(
         !statuses.iter().any(|s| s.slug.as_str() == "alpha"),
@@ -468,10 +737,13 @@ fn test_deregister_reregister_reattaches_to_preserved_chain() {
     let (id1, _h1) = write_entry(&db, "entry-1");
     let (id2, h2) = write_entry(&db, "entry-2");
 
-    // De-register (default delete): data dir preserved.
+    // De-register (default delete): data dir preserved. ADR-007: register wrote the
+    // stanza; default delete is config-side (operator removes it). Simulate that so
+    // the re-register lands in State B, not State A.
     fx.registry()
         .delete("alpha", false, None)
         .expect("de-register");
+    fx.set_routing(&[]);
     assert!(db.exists(), "de-register preserves the store");
 
     // Re-register => re-attach to the PRESERVED store/chain (State B).
@@ -602,6 +874,9 @@ fn test_register_delete_reregister_roundtrip() {
     let (id, hash) = write_entry(&db, "keep-me");
 
     fx.registry().delete("alpha", false, None).expect("delete");
+    // ADR-007: register wrote the stanza; default delete is config-side. Clear the
+    // routing so re-register is State B (re-attach), not State A.
+    fx.set_routing(&[]);
     fx.registry().register("alpha").expect("re-register");
 
     let store = open_store(&db);

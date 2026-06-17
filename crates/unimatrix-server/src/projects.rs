@@ -44,6 +44,9 @@ use crate::http::ProjectSlug;
 use crate::infra::config::is_reserved_slug;
 use crate::project;
 
+/// Atomic `[[projects]]` routing-intent write for `register` (ADR-007).
+mod config_write;
+
 /// Database file name within a per-slug data dir (matches the single-project layout
 /// and `http_provision::build_project_server`).
 const PROJECT_DB_NAME: &str = "unimatrix.db";
@@ -282,7 +285,8 @@ impl ProjectRegistry {
         if data_exists {
             // State B: data dir survives but the slug was de-registered (D4). The
             // RESTORE path — RE-ATTACH to the preserved store/hash chain. OPEN the
-            // existing store; NEVER initialize a fresh one over it.
+            // existing store; NEVER initialize a fresh one over it (R-05, hash chain
+            // sacred). Store-first, THEN write the routing intent (ordering invariant).
             let db = db_path(&dir);
             let slug_label = slug.to_string();
             block_projects_sync(async move {
@@ -295,19 +299,21 @@ impl ProjectRegistry {
                         ))
                     })
             })?;
+            // ADR-007: WRITE the [[projects]] routing intent atomically (was an
+            // eprintln! of hand-edit instructions). Idempotent; preserves all other
+            // config. Restart applies via the unchanged boot read.
+            self.ensure_project_stanza(&slug)?;
             println!(
-                "re-attached project '{slug}' to its preserved store at {}",
+                "re-attached project '{slug}' to its preserved store at {}; \
+                 routing intent written. Restart to apply.",
                 dir.display()
-            );
-            eprintln!(
-                "re-add to config.toml to resume routing:\n\n[[projects]]\nslug = \"{slug}\"\n"
             );
             return Ok(());
         }
 
         // State C: fresh registration — no data dir. Create the per-slug tree
         // (FR-C3) and initialize the store (genesis). This branch is reached ONLY
-        // when !data_exists, so genesis can never run over preserved data.
+        // when !data_exists, so genesis can never run over preserved data (R-05).
         std::fs::create_dir_all(&dir).map_err(|e| {
             ServerError::Config(format!(
                 "failed to create data dir for '{slug}' at {}: {e}",
@@ -331,9 +337,22 @@ impl ProjectRegistry {
                 })
         })?;
 
-        println!("registered project '{slug}' at {}", dir.display());
-        eprintln!("add to config.toml to enable routing:\n\n[[projects]]\nslug = \"{slug}\"\n");
+        // ADR-007: store-first, THEN write the routing intent atomically (was an
+        // eprintln! of hand-edit instructions). Same command as State B / project N.
+        self.ensure_project_stanza(&slug)?;
+        println!(
+            "registered project '{slug}' at {}; routing intent written. Restart to apply.",
+            dir.display()
+        );
         Ok(())
+    }
+
+    /// Ensure a `[[projects]] slug = "<slug>"` stanza exists in `config.toml`,
+    /// written ATOMICALLY (temp + `fsync` + atomic rename), idempotent and additive
+    /// (ADR-007 / R-06). Delegates to [`config_write::ensure_project_stanza`]; see
+    /// that module for the atomicity/idempotency/injection-guard detail.
+    fn ensure_project_stanza(&self, slug: &ProjectSlug) -> Result<(), ServerError> {
+        config_write::ensure_project_stanza(&self.config_data_dir, slug)
     }
 
     /// List registered slugs with a local store-open status field (D3).

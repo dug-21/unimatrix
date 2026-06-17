@@ -1,20 +1,29 @@
-//! C1 connection-bundle codec — `client-bundle` sync subcommand (vnc-034, ADR-001).
+//! C1 connection-bundle codec — `client-bundle` sync subcommand (vnc-038, ADR-002).
 //!
-//! Encodes the connection bundle `{v, base_url, token, fp}` into the LOCKED wire
-//! form `unimatrix-bundle:<base64url-nopad(canonical-json)>` and emits it for the
-//! operator to paste into `unimatrix init --remote <bundle>`.
+//! Encodes the `v:2` connection bundle `{v, mcp_url, observe_url, token, fp}` into
+//! the LOCKED wire form `unimatrix-bundle:<base64url-nopad(canonical-json)>` and
+//! emits it for the operator to paste into `unimatrix init --bundle <bundle>`.
+//!
+//! ## The dumb-client invariant (ADR-001/002)
+//!
+//! The server is the SOLE authority on route shape. This encoder composes BOTH the
+//! MCP and observe endpoint URLs from one route-grammar helper
+//! ([`compose_route_urls`]) — the SAME grammar `parse_project_key` routes by — so a
+//! bundle URL can never disagree with the live route. The client posts these
+//! finished URLs verbatim and composes no paths.
 //!
 //! This is the **build-first encoder** (the C1 oracle): the Rust side is the only
-//! encoder; the JS client only decodes (remote-client.md), so the canonical form
-//! and the parity corpus are stable. [`decode_bundle`] mirrors the exact JS
-//! guard-ordering algorithm so round-trip + corpus tests pin both stacks together.
+//! encoder; the JS client only decodes (bundle.js), so the canonical form and the
+//! parity corpus are stable. [`decode_bundle`] mirrors the exact JS guard-ordering
+//! algorithm so round-trip + corpus tests pin both stacks together.
 //!
-//! ## Output contract (HARD — FR-A5b / NFR-06)
+//! ## Output contract (HARD — ADR-008 / NFR-06)
 //!
 //! - **stdout** = the opaque `unimatrix-bundle:…` blob ONLY. One line, pipeable,
-//!   zero contamination. The token lives ONLY inside this base64url blob.
-//! - **stderr** = human echo of `base_url` + `cert-fingerprint` ONLY. The token is
-//!   NEVER printed to stderr, and never to any log line.
+//!   zero contamination. The token lives ONLY inside this base64url blob — it is
+//!   the SOLE token-delivery channel (ADR-008).
+//! - **stderr** = human echo of `mcp_url` + `observe_url` + `cert-fingerprint`
+//!   ONLY. The token is NEVER printed to stderr, and never to any log line.
 //!
 //! `run_client_bundle` is a sync, pre-tokio subcommand (C-10), dispatched in the
 //! `main.rs` sync block alongside `health`/`version`. No tokio runtime, no token
@@ -29,7 +38,7 @@ use serde::Serialize;
 
 use crate::error::ServerError;
 use crate::http::public_url::{Env, derive_public_url};
-use crate::http::{fingerprint_leaf_der, leaf_der_from_pem};
+use crate::http::{ProjectSlug, fingerprint_leaf_der, leaf_der_from_pem};
 use crate::project;
 
 /// Literal scheme prefix of the wire form (ADR-001). The client rejects anything
@@ -37,7 +46,11 @@ use crate::project;
 pub const BUNDLE_SCHEME: &str = "unimatrix-bundle:";
 
 /// Bundle schema version. The client rejects unknown major versions.
-pub const BUNDLE_VERSION: u8 = 1;
+///
+/// `v:2` (vnc-038, ADR-002): the bundle carries server-composed `mcp_url` +
+/// `observe_url` instead of a bare `base_url`. A `v:1` bundle fails closed on both
+/// sides with a re-issue message (R-04) — there is NO compat arm.
+pub const BUNDLE_VERSION: u8 = 2;
 
 /// 4 KB cap on the RAW pasted string (bytes), enforced BEFORE decode/parse.
 /// Belt-and-suspenders DoS pre-filter; the strict schema is the load-bearing guard.
@@ -49,19 +62,25 @@ const TOKEN_FILE_NAME: &str = "token";
 /// Expected hex-encoded token length (32 bytes -> 64 hex chars).
 const TOKEN_HEX_LEN: usize = 64;
 
-/// Canonical bundle payload.
+/// Canonical bundle payload (`v:2`, ADR-002).
 ///
-/// Field declaration order IS the canonical JSON key order (`v, base_url, token,
-/// fp`) — `serde_json` (with no map reordering) serializes struct fields in
-/// declaration order, guaranteeing a stable, fixture-stable wire form (ADR-001).
-/// Never build this from a `HashMap` (key order undefined).
+/// Field declaration order IS the canonical JSON key order (`v, mcp_url,
+/// observe_url, token, fp`) — `serde_json` (with no map reordering) serializes
+/// struct fields in declaration order, guaranteeing a stable, fixture-stable wire
+/// form (ADR-002). Never build this from a `HashMap` (key order undefined).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Bundle {
     /// Schema version (always [`BUNDLE_VERSION`]).
     pub v: u8,
-    /// Public base URL, e.g. `"https://cloud.example:8443"`. Must be `https://`.
-    pub base_url: String,
-    /// 64 lowercase-hex bearer token. Carried ONLY inside the encoded blob.
+    /// Server-composed MCP root URL, e.g. `"https://cloud.example:8443/v1/alpha"`.
+    /// Must be `https://`. Posted by the client verbatim (ADR-001).
+    pub mcp_url: String,
+    /// Server-composed observe URL, e.g.
+    /// `"https://cloud.example:8443/v1/alpha/observe"`. Must be `https://`. Posted
+    /// by the client verbatim (ADR-001).
+    pub observe_url: String,
+    /// 64 lowercase-hex bearer token. Carried ONLY inside the encoded blob (the
+    /// sole token-delivery channel, ADR-008).
     pub token: String,
     /// Cert fingerprint `"sha256:<64hex>"` over the served leaf DER (C2).
     pub fp: String,
@@ -103,17 +122,43 @@ impl std::fmt::Display for BundleError {
 
 impl std::error::Error for BundleError {}
 
-/// Run the `client-bundle` subcommand: emit the connection bundle.
+/// Compose the per-slug MCP and observe URLs from the public base (ADR-002).
 ///
-/// Sync, no tokio (C-10). Resolves the same `data_dir` the listener uses, reads
-/// the bearer token + served leaf cert, fingerprints the leaf, derives the public
-/// base-url, encodes the bundle, and emits it per the stdout/stderr split.
+/// This is the SINGLE route-grammar owner on the encode path. It mirrors the route
+/// grammar `parse_project_key` resolves by (`/v1/{slug}/...` and
+/// `/v1/{slug}/observe`), so the bundle URLs can NEVER disagree with the live
+/// route. `public_base` is normalized defensively (a single trailing `/` stripped)
+/// so the composed URLs never carry a doubled separator.
+fn compose_route_urls(public_base: &str, slug: &ProjectSlug) -> (String, String) {
+    let base = public_base.trim_end_matches('/');
+    let mcp_url = format!("{base}/v1/{slug}");
+    let observe_url = format!("{base}/v1/{slug}/observe");
+    (mcp_url, observe_url)
+}
+
+/// Run the `client-bundle <slug>` subcommand: emit the per-project connection bundle.
+///
+/// Sync, no tokio (C-10). Resolves the same `data_dir` the listener uses, validates
+/// the `<slug>` at the edge, reads the bearer token + served leaf cert, fingerprints
+/// the leaf, derives the public base-url, composes the per-slug MCP + observe URLs
+/// (ADR-002), encodes the `v:2` bundle, and emits it per the stdout/stderr split.
+///
+/// The `<slug>` is mandatory: there is NO default-aliased bundle (ADR-001/004). An
+/// absent or invalid slug is a loud [`ServerError::Config`], never a silent default.
 ///
 /// # Errors
 ///
-/// Returns [`ServerError`] (naming the path + a fix) when the data directory,
-/// token, or cert cannot be read/validated. No panic, no `.unwrap()`.
-pub fn run_client_bundle(project_dir: Option<PathBuf>) -> Result<(), ServerError> {
+/// Returns [`ServerError`] (naming the path/slug + a fix) when the slug is invalid
+/// or the data directory, token, or cert cannot be read/validated. No panic, no
+/// `.unwrap()`.
+pub fn run_client_bundle(project_dir: Option<PathBuf>, slug_arg: &str) -> Result<(), ServerError> {
+    let slug = ProjectSlug::try_from(slug_arg).map_err(|_| {
+        ServerError::Config(format!(
+            "client-bundle requires a registered <slug> matching ^[a-z0-9][a-z0-9-]{{0,62}}$; \
+             got {slug_arg:?}. Register a project first (unimatrix register <slug>)."
+        ))
+    })?;
+
     let paths = project::ensure_data_directory(project_dir.as_deref(), None)
         .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
     let data_dir = paths.data_dir;
@@ -130,41 +175,43 @@ pub fn run_client_bundle(project_dir: Option<PathBuf>) -> Result<(), ServerError
     let der = leaf_der_from_pem(&cert_pem)?;
     let fp = fingerprint_leaf_der(&der);
 
-    let base_url = derive_public_url(&Env::from_process()).base_url;
+    let public_base = derive_public_url(&Env::from_process()).base_url;
+    let (mcp_url, observe_url) = compose_route_urls(&public_base, &slug);
 
-    let blob = encode_bundle(BUNDLE_VERSION, &base_url, &token_hex, &fp)?;
+    let blob = encode_bundle(BUNDLE_VERSION, &mcp_url, &observe_url, &token_hex, &fp)?;
 
-    emit_bundle(&blob, &base_url, &fp);
+    emit_bundle(&blob, &mcp_url, &observe_url, &fp);
     Ok(())
 }
 
-/// Emit the bundle per the HARD output contract (FR-A5b / NFR-06).
+/// Emit the bundle per the HARD output contract (ADR-008 / NFR-06).
 ///
-/// stdout = the opaque blob ONLY. stderr = base-url + fp echo, TOKEN OMITTED.
-/// The exact text is built by [`render_output`] so the contract (blob-only stdout,
-/// token-absent stderr) is unit-testable without capturing process fds.
-fn emit_bundle(blob: &str, base_url: &str, fp: &str) {
-    let (stdout_line, stderr_block) = render_output(blob, base_url, fp);
+/// stdout = the opaque blob ONLY. stderr = mcp-url + observe-url + fp echo, TOKEN
+/// OMITTED. The exact text is built by [`render_output`] so the contract (blob-only
+/// stdout, token-absent stderr) is unit-testable without capturing process fds.
+fn emit_bundle(blob: &str, mcp_url: &str, observe_url: &str, fp: &str) {
+    let (stdout_line, stderr_block) = render_output(blob, mcp_url, observe_url, fp);
     // stdout: the opaque blob, nothing else (pipeable). The token is inside it only.
     println!("{stdout_line}");
-    // stderr: human echo — base-url + cert-fingerprint ONLY. Token never printed.
+    // stderr: human echo — URLs + cert-fingerprint ONLY. Token never printed.
     eprint!("{stderr_block}");
 }
 
 /// Build the exact `(stdout, stderr)` text the subcommand emits — the testable
-/// core of the FR-A5b / NFR-06 output contract.
+/// core of the ADR-008 / NFR-06 output contract.
 ///
 /// - stdout is EXACTLY the opaque blob (one line, no prose, pipeable).
-/// - stderr is the base-url + cert-fingerprint echo ONLY; the token is never
-///   placed in it. Each stderr line ends in `\n`.
-fn render_output(blob: &str, base_url: &str, fp: &str) -> (String, String) {
+/// - stderr is the mcp-url + observe-url + cert-fingerprint echo ONLY; the token is
+///   never placed in it. Each stderr line ends in `\n`.
+fn render_output(blob: &str, mcp_url: &str, observe_url: &str, fp: &str) -> (String, String) {
     let mut stderr = String::new();
-    stderr.push_str("unimatrix connection bundle (paste into: unimatrix init --remote <bundle>)\n");
-    stderr.push_str(&format!("  base-url : {base_url}\n"));
-    stderr.push_str(&format!("  cert-fp  : {fp}\n"));
-    if base_url.contains("<EDIT-ME>") {
+    stderr.push_str("unimatrix connection bundle (paste into: unimatrix init --bundle <bundle>)\n");
+    stderr.push_str(&format!("  mcp-url     : {mcp_url}\n"));
+    stderr.push_str(&format!("  observe-url : {observe_url}\n"));
+    stderr.push_str(&format!("  cert-fp     : {fp}\n"));
+    if mcp_url.contains("<EDIT-ME>") {
         stderr.push_str(
-            "  WARNING  : UNIMATRIX_PUBLIC_URL is unset — base-url is a placeholder. \
+            "  WARNING     : UNIMATRIX_PUBLIC_URL is unset — the URLs carry a placeholder. \
              Set it and re-run before distributing this bundle.\n",
         );
     }
@@ -199,10 +246,12 @@ fn read_token_hex(data_dir: &Path) -> Result<String, ServerError> {
     Ok(trimmed.to_ascii_lowercase())
 }
 
-/// Encode a canonical bundle into the `unimatrix-bundle:<base64url-nopad>` wire form.
+/// Encode a canonical `v:2` bundle into the `unimatrix-bundle:<base64url-nopad>`
+/// wire form.
 ///
-/// Field order is fixed by the [`Bundle`] struct declaration order (`v, base_url,
-/// token, fp`); base64url is RFC 4648 §5, URL-safe alphabet, no padding.
+/// Field order is fixed by the [`Bundle`] struct declaration order (`v, mcp_url,
+/// observe_url, token, fp`); base64url is RFC 4648 §5, URL-safe alphabet, no
+/// padding.
 ///
 /// # Errors
 ///
@@ -210,13 +259,15 @@ fn read_token_hex(data_dir: &Path) -> Result<String, ServerError> {
 /// for these owned `String`/`u8` fields, but the error is propagated, not unwrapped).
 pub fn encode_bundle(
     v: u8,
-    base_url: &str,
+    mcp_url: &str,
+    observe_url: &str,
     token_hex: &str,
     fp: &str,
 ) -> Result<String, ServerError> {
     let bundle = Bundle {
         v,
-        base_url: base_url.to_string(),
+        mcp_url: mcp_url.to_string(),
+        observe_url: observe_url.to_string(),
         token: token_hex.to_string(),
         fp: fp.to_string(),
     };
@@ -236,7 +287,8 @@ pub fn encode_bundle(
 /// 2. scheme prefix.
 /// 3. base64url-decode (no pad).
 /// 4. JSON parse.
-/// 5. STRICT SCHEMA (load-bearing): exactly `{v, base_url, token, fp}`, correct shapes.
+/// 5. STRICT SCHEMA (load-bearing): exactly `{v, mcp_url, observe_url, token, fp}`,
+///    `v == 2`, both URLs `https://`, correct shapes.
 ///
 /// An over-cap raw string that is NOT valid base64url MUST still reject on
 /// **length** (GUARD 1), not on a decode error (AC-W1-C10).
@@ -264,43 +316,58 @@ pub fn decode_bundle(raw: &str) -> Result<Bundle, BundleError> {
     validate_schema(value)
 }
 
-/// Strict-schema guard: exactly the four keys, correct types/shapes (load-bearing).
+/// Strict-schema guard: exactly the five `v:2` keys, correct types/shapes
+/// (load-bearing). A `v:1`-shaped payload fails closed here (R-04) — there is no
+/// `base_url` acceptance path and no compat arm.
 fn validate_schema(value: serde_json::Value) -> Result<Bundle, BundleError> {
     let obj = value
         .as_object()
         .ok_or_else(|| BundleError::Schema("payload is not a JSON object".to_string()))?;
 
-    // Exactly four keys — missing OR extra rejects.
-    if obj.len() != 4 {
+    // Exactly five keys — missing OR extra rejects.
+    if obj.len() != 5 {
         return Err(BundleError::Schema(format!(
-            "expected exactly 4 keys (v, base_url, token, fp), found {}",
+            "expected exactly 5 keys (v, mcp_url, observe_url, token, fp), found {}",
             obj.len()
         )));
     }
     for key in obj.keys() {
-        if !matches!(key.as_str(), "v" | "base_url" | "token" | "fp") {
+        if !matches!(
+            key.as_str(),
+            "v" | "mcp_url" | "observe_url" | "token" | "fp"
+        ) {
             return Err(BundleError::Schema(format!("unexpected key '{key}'")));
         }
     }
 
-    // v == BUNDLE_VERSION (unknown major rejects — forward-compat).
+    // v == BUNDLE_VERSION (unknown major rejects — forward-compat; v:1 fails here).
     let v = obj
         .get("v")
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| BundleError::Schema("'v' must be an integer".to_string()))?;
     if v != u64::from(BUNDLE_VERSION) {
         return Err(BundleError::Schema(format!(
-            "unsupported bundle version {v} (expected {BUNDLE_VERSION})"
+            "unsupported bundle version {v} (expected {BUNDLE_VERSION}); re-issue the bundle with `unimatrix client-bundle <slug>`"
         )));
     }
 
-    let base_url = obj
-        .get("base_url")
+    let mcp_url = obj
+        .get("mcp_url")
         .and_then(serde_json::Value::as_str)
-        .ok_or_else(|| BundleError::Schema("'base_url' must be a string".to_string()))?;
-    if !base_url.starts_with("https://") {
+        .ok_or_else(|| BundleError::Schema("'mcp_url' must be a string".to_string()))?;
+    if !mcp_url.starts_with("https://") {
         return Err(BundleError::Schema(
-            "'base_url' must be https://".to_string(),
+            "'mcp_url' must be https://".to_string(),
+        ));
+    }
+
+    let observe_url = obj
+        .get("observe_url")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| BundleError::Schema("'observe_url' must be a string".to_string()))?;
+    if !observe_url.starts_with("https://") {
+        return Err(BundleError::Schema(
+            "'observe_url' must be https://".to_string(),
         ));
     }
 
@@ -327,7 +394,8 @@ fn validate_schema(value: serde_json::Value) -> Result<Bundle, BundleError> {
 
     Ok(Bundle {
         v: BUNDLE_VERSION,
-        base_url: base_url.to_string(),
+        mcp_url: mcp_url.to_string(),
+        observe_url: observe_url.to_string(),
         token: token.to_string(),
         fp: fp.to_string(),
     })
@@ -348,112 +416,8 @@ fn is_fingerprint(s: &str) -> bool {
     }
 }
 
+/// Unit tests for private helpers — split into a sibling file (via `#[path]`) to
+/// keep this source file under the 500-line cap (C-06).
 #[cfg(test)]
-mod tests {
-    //! Unit tests for the PRIVATE helpers (output split, token reader, validators).
-    //! Public-API tests (encode/decode/guard ordering/schema) + the C1 golden
-    //! oracle live in `tests/bundle_codec.rs` (integration), mirroring the
-    //! FingerprintComputer oracle precedent (`tests/fingerprint_parity.rs`) and
-    //! keeping this source file under the 500-line cap.
-
-    use super::*;
-
-    const TEST_TOKEN: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    const TEST_FP: &str = "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
-    const TEST_BASE_URL: &str = "https://cloud.example:8443";
-
-    // --- stdout/stderr split + token redaction (AC-W1-S5b, NFR-06) ---
-
-    #[test]
-    fn test_client_bundle_stdout_is_opaque_blob_only() {
-        let blob = encode_bundle(BUNDLE_VERSION, TEST_BASE_URL, TEST_TOKEN, TEST_FP).unwrap();
-        let (stdout, _stderr) = render_output(&blob, TEST_BASE_URL, TEST_FP);
-        // stdout is EXACTLY the blob — no prose, no extra lines, pipeable.
-        assert_eq!(stdout, blob);
-        assert!(stdout.starts_with("unimatrix-bundle:"));
-        assert!(!stdout.contains('\n'), "stdout blob must be a single line");
-    }
-
-    #[test]
-    fn test_client_bundle_stderr_echoes_base_url_and_fp_only() {
-        let blob = encode_bundle(BUNDLE_VERSION, TEST_BASE_URL, TEST_TOKEN, TEST_FP).unwrap();
-        let (_stdout, stderr) = render_output(&blob, TEST_BASE_URL, TEST_FP);
-        assert!(stderr.contains(TEST_BASE_URL), "stderr must echo base-url");
-        assert!(
-            stderr.contains(TEST_FP),
-            "stderr must echo cert fingerprint"
-        );
-    }
-
-    #[test]
-    fn test_client_bundle_token_absent_from_stdout_and_stderr() {
-        // LOAD-BEARING: the token hex must appear in NEITHER stdout NOR stderr —
-        // it lives ONLY inside the base64url blob payload on stdout.
-        let blob = encode_bundle(BUNDLE_VERSION, TEST_BASE_URL, TEST_TOKEN, TEST_FP).unwrap();
-        let (stdout, stderr) = render_output(&blob, TEST_BASE_URL, TEST_FP);
-        assert!(
-            !stdout.contains(TEST_TOKEN),
-            "token must not be plaintext in stdout"
-        );
-        assert!(
-            !stderr.contains(TEST_TOKEN),
-            "token must not appear in stderr"
-        );
-        // But it IS recoverable from inside the encoded blob (sanity check).
-        let decoded = decode_bundle(&stdout).unwrap();
-        assert_eq!(decoded.token, TEST_TOKEN);
-    }
-
-    #[test]
-    fn test_client_bundle_edit_me_placeholder_visible_on_stderr() {
-        let placeholder_url = "https://<EDIT-ME>:8443";
-        let blob = encode_bundle(BUNDLE_VERSION, placeholder_url, TEST_TOKEN, TEST_FP).unwrap();
-        let (_stdout, stderr) = render_output(&blob, placeholder_url, TEST_FP);
-        assert!(
-            stderr.contains("<EDIT-ME>"),
-            "placeholder must be visible on stderr"
-        );
-        assert!(
-            stderr.contains("WARNING"),
-            "placeholder must carry a warning"
-        );
-    }
-
-    // --- read_token_hex (token file handling) ---
-
-    #[test]
-    fn test_read_token_hex_valid_lowercases_and_trims() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        let upper = "AB".repeat(32); // 64 uppercase hex
-        std::fs::write(tmp.path().join("token"), format!("{upper}\n")).unwrap();
-        let got = read_token_hex(tmp.path()).unwrap();
-        assert_eq!(got, upper.to_ascii_lowercase());
-        assert!(is_token(&got));
-    }
-
-    #[test]
-    fn test_read_token_hex_missing_file_errors() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        let err = read_token_hex(tmp.path()).unwrap_err();
-        assert!(format!("{err}").contains("token"));
-    }
-
-    #[test]
-    fn test_read_token_hex_wrong_length_errors() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        std::fs::write(tmp.path().join("token"), "abc").unwrap();
-        assert!(read_token_hex(tmp.path()).is_err());
-    }
-
-    // --- field validators (is_token / is_fingerprint) ---
-
-    #[test]
-    fn test_is_token_and_is_fingerprint() {
-        assert!(is_token(TEST_TOKEN));
-        assert!(!is_token(&"A".repeat(64)), "uppercase is not lowercase-hex");
-        assert!(!is_token(&"a".repeat(63)), "wrong length rejects");
-        assert!(is_fingerprint(TEST_FP));
-        assert!(!is_fingerprint("md5:abc"), "wrong algo prefix rejects");
-        assert!(!is_fingerprint(TEST_TOKEN), "missing prefix rejects");
-    }
-}
+#[path = "client_bundle_tests.rs"]
+mod tests;
