@@ -97,7 +97,11 @@ simd_runtime_generate!(
         for i in 0..a.len() {
             dot += a[i] * b[i];
         }
-        assert!(dot <= 1.000002);
+        // Tolerance sized for f32 SIMD accumulation error on unit vectors: release-mode
+        // FMA contraction + vectorized reduction can push dot slightly above 1.0 for
+        // near-identical embeddings (worst case ~2e-5 at 384 dims). 1e-3 leaves >10x
+        // margin while still catching genuinely non-normalized inputs (dot >> 1).
+        assert!(dot <= 1.001);
         (1. - dot).max(0.)
     }
 );

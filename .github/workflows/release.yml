@@ -414,16 +414,14 @@ jobs:
           VERSION=${{ steps.version.outputs.version }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/unimatrix
 
-          # Create versioned manifest from per-arch images.
-          docker manifest create ${IMAGE}:${VERSION} \
+          # imagetools assembles a multi-arch index from the per-arch sources.
+          # Unlike `docker manifest create`, it accepts manifest-list/attestation-index
+          # sources (buildx attaches a provenance attestation, wrapping each per-arch
+          # push in an OCI index) and preserves those attestations in the result.
+          docker buildx imagetools create -t ${IMAGE}:${VERSION} \
             ${IMAGE}:${VERSION}-amd64 \
             ${IMAGE}:${VERSION}-arm64
 
-          docker manifest push ${IMAGE}:${VERSION}
-
-          # Create/update 'latest' manifest.
-          docker manifest create ${IMAGE}:latest \
+          docker buildx imagetools create -t ${IMAGE}:latest \
             ${IMAGE}:latest-amd64 \
             ${IMAGE}:latest-arm64
-
-          docker manifest push ${IMAGE}:latest

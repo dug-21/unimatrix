@@ -88,7 +88,8 @@ pub(super) fn distance_dot_f32_simd_loop(va: &[f32], vb: &[f32]) -> f32 {
     for i in simd_length..va.len() {
         dist = dist + va[i] * vb[i];
     }
-    assert!(dist <= 1.000002);
+    // 1e-3 tolerance accommodates f32 SIMD accumulation error on unit vectors (see disteez.rs).
+    assert!(dist <= 1.001);
     return (1. - dist).max(0.);
 }
 
@@ -112,7 +113,8 @@ pub(super) fn distance_dot_f32_simd_iter(va: &[f32], vb: &[f32]) -> f32 {
     for i in simd_length..va.len() {
         dist = dist + va[i] * vb[i];
     }
-    assert!(dist <= 1.000002);
+    // 1e-3 tolerance accommodates f32 SIMD accumulation error on unit vectors (see disteez.rs).
+    assert!(dist <= 1.001);
     return (1. - dist).max(0.);
 }
 
