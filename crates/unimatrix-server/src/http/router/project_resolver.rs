@@ -76,13 +76,17 @@ impl ProjectEntry {
     /// `McpAdapter::wraps_store` checks this in the funnel's `debug_assert!`
     /// (OQ-PR-4). Passing a mismatched handle would trip that assertion in debug
     /// builds.
+    /// `allowed_hosts` (bug #774) is wired verbatim into rmcp's Host-header gate.
+    /// It MUST be non-empty — an empty vec makes rmcp allow ALL hosts (fail-open,
+    /// defeats CVE-2026-42559). Source it from `PublicUrl.sans` (always non-empty).
     pub(crate) fn from_server(
         store: Arc<Store>,
         server: UnimatrixServer,
         max_body_bytes: usize,
         allowed_origins: Vec<String>,
+        allowed_hosts: Vec<String>,
     ) -> Self {
-        let adapter = McpAdapter::new(server, max_body_bytes, allowed_origins);
+        let adapter = McpAdapter::new(server, max_body_bytes, allowed_origins, allowed_hosts);
         ProjectEntry { store, adapter }
     }
 }
@@ -153,10 +157,15 @@ impl MultiProjectRouter {
     /// Duplicate slugs are already rejected at config-validate
     /// (`validate_projects_config`); this is a defensive re-check that fails loud
     /// rather than panicking. No `.unwrap()`.
+    ///
+    /// `allowed_hosts` (bug #774) is wired into every per-slug adapter's rmcp
+    /// Host-header gate. It MUST be non-empty (empty = rmcp allow-all fail-open).
+    /// Source it from `PublicUrl.sans` (structurally non-empty).
     pub fn from_servers(
         slug_servers: Vec<ProjectServerInput>,
         max_body_bytes: usize,
         allowed_origins: Vec<String>,
+        allowed_hosts: Vec<String>,
     ) -> Result<Self, String> {
         let mut slugs = HashMap::with_capacity(slug_servers.len());
         for input in slug_servers {
@@ -168,6 +177,7 @@ impl MultiProjectRouter {
                 input.server,
                 max_body_bytes,
                 allowed_origins.clone(),
+                allowed_hosts.clone(),
             );
             slugs.insert(input.slug, entry);
         }

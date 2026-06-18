@@ -320,13 +320,27 @@ impl McpAdapter {
     /// Create a new McpAdapter wrapping a `StreamableHttpService`.
     ///
     /// `allowed_origins` configures Origin header validation (ADR-002).
-    /// Empty vec = no origin restriction (backward-compatible default).
-    /// `allowed_hosts` is NOT modified — rmcp defaults it to localhost,
-    /// which is the CVE-2026-42559 fix.
-    fn new(server: UnimatrixServer, max_body_bytes: usize, allowed_origins: Vec<String>) -> Self {
+    /// `allowed_hosts` configures Host header validation (rmcp CVE-2026-42559),
+    /// wired from `PublicUrl.sans` (bug #774 — was previously left at rmcp's
+    /// localhost-only default, 403ing every non-localhost public host).
+    ///
+    /// OPPOSITE EMPTY-SEMANTICS — read before touching either field:
+    /// - empty `allowed_origins` = NO origin restriction (safe default, vnc-023).
+    /// - empty `allowed_hosts`   = ALLOW-ALL (FAIL-OPEN, defeats CVE-2026-42559).
+    ///
+    /// Callers MUST pass a NON-EMPTY `allowed_hosts` (`PublicUrl.sans` is
+    /// structurally non-empty — ≥3 local SANs even when the public URL is unset).
+    /// The wiring site guards this with a `debug_assert!`.
+    fn new(
+        server: UnimatrixServer,
+        max_body_bytes: usize,
+        allowed_origins: Vec<String>,
+        allowed_hosts: Vec<String>,
+    ) -> Self {
         let session_manager = Arc::new(LocalSessionManager::default());
         let mut config = StreamableHttpServerConfig::default();
         config.allowed_origins = allowed_origins;
+        config.allowed_hosts = allowed_hosts;
 
         // Capture the adapter's store BEFORE `server` is moved into the rmcp
         // closure (vnc-034 Wave 2 — resolve/dispatch agreement, OQ-PR-4).

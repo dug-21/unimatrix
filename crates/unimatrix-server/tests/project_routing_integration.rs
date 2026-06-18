@@ -163,8 +163,14 @@ async fn wired_router(slugs: &[&str]) -> (SlugRouter, Vec<Arc<Store>>) {
         });
     }
 
-    let resolver = MultiProjectRouter::from_servers(inputs, TEST_MAX_BODY, Vec::new())
-        .expect("build MultiProjectRouter");
+    // bug #774: allowed_hosts must be NON-EMPTY (empty = rmcp allow-all fail-open).
+    let resolver = MultiProjectRouter::from_servers(
+        inputs,
+        TEST_MAX_BODY,
+        Vec::new(),
+        vec!["localhost".to_string()],
+    )
+    .expect("build MultiProjectRouter");
 
     let resolver: Arc<dyn StoreResolver> = Arc::new(resolver);
     let router = SlugRouter::new(resolver);
