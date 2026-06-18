@@ -1008,6 +1008,18 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         //    local UDS/STDIO direct binding (ADR-006); they are not orphaned.
         let max_body = config.http.max_request_body_bytes;
         let allowed_origins = config.http.allowed_origins.clone();
+        // bug #774: wire the rmcp Host-header allowlist from PublicUrl.sans (the
+        // third R-09 consumer vnc-034 documented but never wired). `.sans` carries
+        // the configured public host + ≥3 local SANs, port-less (rmcp treats a
+        // port-less entry as matching any port). FAIL-OPEN GUARD: an EMPTY vec makes
+        // rmcp allow ALL hosts (opposite of allowed_origins), defeating
+        // CVE-2026-42559. `.sans` is structurally non-empty; assert it so a future
+        // refactor can't silently fail open.
+        let allowed_hosts = public_url.sans.clone();
+        debug_assert!(
+            !allowed_hosts.is_empty(),
+            "allowed_hosts must be non-empty: rmcp treats empty as allow-all"
+        );
 
         let resolver: Arc<dyn StoreResolver> = if project_slugs.is_empty() {
             // AC-09 / R-10: loud, actionable, NOTHING servable. The empty-slug-map
@@ -1017,9 +1029,13 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 "no projects registered — nothing is servable. \
                  Run `unimatrix register <slug>` then restart to begin."
             );
-            let router =
-                MultiProjectRouter::from_servers(Vec::new(), max_body, allowed_origins.clone())
-                    .map_err(ServerError::Config)?;
+            let router = MultiProjectRouter::from_servers(
+                Vec::new(),
+                max_body,
+                allowed_origins.clone(),
+                allowed_hosts.clone(),
+            )
+            .map_err(ServerError::Config)?;
             Arc::new(router)
         } else {
             // Multi-project: build a per-slug `UnimatrixServer` for each validated
@@ -1039,9 +1055,13 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 .await?;
                 slug_servers.push(input);
             }
-            let router =
-                MultiProjectRouter::from_servers(slug_servers, max_body, allowed_origins.clone())
-                    .map_err(ServerError::Config)?;
+            let router = MultiProjectRouter::from_servers(
+                slug_servers,
+                max_body,
+                allowed_origins.clone(),
+                allowed_hosts.clone(),
+            )
+            .map_err(ServerError::Config)?;
             tracing::info!(
                 slug_count = project_slugs.len(),
                 "project routing active ([[projects]] declared)"

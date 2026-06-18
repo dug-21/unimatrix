@@ -1123,6 +1123,130 @@ fn test_streamable_config_default_allowed_origins_empty() {
 }
 
 // ===========================================================================
+// bug #774: allowed_hosts wired from PublicUrl.sans through the constructor
+// chain (McpAdapter::new). The host gate is rmcp's per-request
+// validate_dns_rebinding_headers → 403 "Forbidden: Host header is not allowed"
+// for any Host not in allowed_hosts. Before the fix, allowed_hosts stayed at
+// rmcp's localhost-only default, so the configured public host 403'd.
+// ===========================================================================
+
+/// Build a minimal MCP POST carrying the given `Host` header. Host validation
+/// runs FIRST in rmcp's service (before method/body), so the Host gate verdict
+/// is observable regardless of body correctness.
+fn mcp_post_with_host(host: &str) -> Request<TestBody> {
+    Request::builder()
+        .method("POST")
+        .uri("/")
+        .header("Host", host)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json, text/event-stream")
+        .body(empty_body())
+        .expect("build request")
+}
+
+const HOST_FORBIDDEN_BODY: &str = "Host header is not allowed";
+
+// T-774-1: a non-localhost public host wired through the adapter is NOT 403'd
+// on the Host gate, while an unrelated Host IS. This is the regression that
+// escaped vnc-034 (the configured public host was rejected before auth/MCP).
+#[tokio::test(flavor = "multi_thread")]
+async fn test_adapter_allows_configured_public_host_rejects_others() {
+    // Simulate PublicUrl.sans for UNIMATRIX_PUBLIC_URL=https://unimatrix:8443:
+    // port-less bare hosts (local SANs + the configured public host).
+    let allowed_hosts = vec![
+        "localhost".to_string(),
+        "127.0.0.1".to_string(),
+        "0.0.0.0".to_string(),
+        "unimatrix".to_string(),
+    ];
+    let server = make_server().await;
+    let mut adapter = McpAdapter::new(server, 1024 * 1024, Vec::new(), allowed_hosts);
+
+    // The configured public host (with the deployed port) must clear the gate.
+    // It is NOT the host-forbidden 403 — later MCP processing may reject for
+    // other reasons, but never with the host-gate message.
+    let (allowed_status, allowed_body) = collect_body(
+        adapter
+            .handle(mcp_post_with_host("unimatrix:8443"))
+            .await
+            .expect("infallible"),
+    )
+    .await;
+    assert!(
+        !(allowed_status == StatusCode::FORBIDDEN && allowed_body.contains(HOST_FORBIDDEN_BODY)),
+        "configured public host must pass the rmcp Host gate (bug #774); got {allowed_status} / {allowed_body}"
+    );
+
+    // An unrelated Host must still be rejected by the gate (403 + message).
+    let (denied_status, denied_body) = collect_body(
+        adapter
+            .handle(mcp_post_with_host("evil.example.com"))
+            .await
+            .expect("infallible"),
+    )
+    .await;
+    assert_eq!(
+        denied_status,
+        StatusCode::FORBIDDEN,
+        "an unrelated Host must be 403'd by the rmcp gate; got body {denied_body}"
+    );
+    assert!(
+        denied_body.contains(HOST_FORBIDDEN_BODY),
+        "the 403 must be the Host-gate rejection; got {denied_body}"
+    );
+}
+
+// T-774-2: fail-open guard — an UNSET PublicUrl still yields a non-empty
+// allowed_hosts (localhost-only). An empty vec would make rmcp allow ALL hosts
+// (the opposite of allowed_origins). The placeholder path must stay restrictive.
+#[test]
+fn test_unset_public_url_yields_non_empty_allowed_hosts() {
+    let getter = |_: &str| None; // UNIMATRIX_PUBLIC_URL unset
+    let public_url = crate::http::public_url::derive_public_url(
+        &crate::http::public_url::Env::new(&getter),
+    );
+    let allowed_hosts = public_url.sans.clone();
+
+    assert!(
+        !allowed_hosts.is_empty(),
+        "unset PublicUrl must NOT yield empty allowed_hosts — rmcp treats empty as allow-all (fail-open)"
+    );
+    assert!(
+        allowed_hosts.contains(&"localhost".to_string()),
+        "unset PublicUrl allowed_hosts must stay localhost-restrictive (CVE-2026-42559 posture)"
+    );
+    // The real public host is deliberately omitted when the knob is unset.
+    assert!(
+        !allowed_hosts.iter().any(|h| h.contains("placeholder")),
+        "the placeholder sentinel must never leak into allowed_hosts as a real host"
+    );
+}
+
+// T-774-3: documents the rmcp semantic the fix relies on — a port-less allowlist
+// entry matches an incoming Host that carries a port. PublicUrl.sans is port-less
+// (bare hosts), so "unimatrix" must accept "unimatrix:8443". Driven through the
+// real adapter because rmcp's host_is_allowed is not a public API.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_portless_allowed_host_matches_host_with_port() {
+    // Only a port-less host entry; the local SANs are irrelevant to this case.
+    let allowed_hosts = vec!["unimatrix".to_string()];
+    let server = make_server().await;
+    let mut adapter = McpAdapter::new(server, 1024 * 1024, Vec::new(), allowed_hosts);
+
+    let (status, body) = collect_body(
+        adapter
+            .handle(mcp_post_with_host("unimatrix:8443"))
+            .await
+            .expect("infallible"),
+    )
+    .await;
+    assert!(
+        !(status == StatusCode::FORBIDDEN && body.contains(HOST_FORBIDDEN_BODY)),
+        "a port-less allowlist entry must match a Host carrying a port (rmcp semantic the fix relies on); got {status} / {body}"
+    );
+}
+
+// ===========================================================================
 // vnc-024: /observe content negotiation (AC-07 / AC-08 / AC-09)
 //
 // Unit-level mapper tests. `observe_response_to_http(resp, wants_text)` must
@@ -2563,6 +2687,8 @@ async fn test_observe_per_slug_funnel_isolation_n2() {
         vec![alpha_input, beta_input],
         OBSERVE_MAX_BODY,
         vec![],
+        // bug #774: non-empty allowed_hosts (empty = rmcp fail-open).
+        vec!["localhost".to_string()],
     )
     .expect("build resolver");
 
@@ -2613,9 +2739,13 @@ async fn test_observe_unregistered_slug_is_loud_404_not_default() {
         store: Arc::clone(&only.store),
         server: only,
     };
-    let inner =
-        MultiProjectRouter::from_servers(vec![only_input], OBSERVE_MAX_BODY, vec![])
-            .expect("build resolver");
+    let inner = MultiProjectRouter::from_servers(
+        vec![only_input],
+        OBSERVE_MAX_BODY,
+        vec![],
+        vec!["localhost".to_string()],
+    )
+    .expect("build resolver");
     let (recording, resolved) = RecordingResolver::new(inner);
     let resolver: Arc<dyn StoreResolver> = Arc::new(recording);
     let ctx = observe_ctx_over(resolver, &deps);
@@ -2643,8 +2773,13 @@ async fn test_observe_empty_resolver_first_boot_is_loud_404() {
     // observe is a loud 404 — nothing servable, never a silent default (R-10 /
     // AC-09 at the observe entry point).
     let deps = make_server().await;
-    let inner = MultiProjectRouter::from_servers(vec![], OBSERVE_MAX_BODY, vec![])
-        .expect("build empty resolver");
+    let inner = MultiProjectRouter::from_servers(
+        vec![],
+        OBSERVE_MAX_BODY,
+        vec![],
+        vec!["localhost".to_string()],
+    )
+    .expect("build empty resolver");
     let resolver: Arc<dyn StoreResolver> = Arc::new(inner);
     let ctx = observe_ctx_over(resolver, &deps);
 
