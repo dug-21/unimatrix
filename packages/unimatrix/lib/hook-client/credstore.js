@@ -171,8 +171,8 @@ function write(projectHash, cred, opts) {
     return actions;
   }
 
-  // Write at 0600, then re-assert mode (writeRemoteSettingsLocal pattern,
-  // init.js): guarantees 0600 even if the file pre-existed with looser perms.
+  // Write at 0600, then re-assert mode (the 0600-write-then-chmod pattern):
+  // guarantees 0600 even if the file pre-existed with looser perms.
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, JSON.stringify(merged, null, 2) + "\n", {
     mode: STORE_MODE,

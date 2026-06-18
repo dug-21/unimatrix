@@ -1,0 +1,26 @@
+{
+  "_provenance": "Shape derived from rmcp 1.7.0 source (StreamableHttpServerConfig::default → stateful_mode:true, json_response:false). VERIFIED WIRE VALUES, OVERVIEW.md §VERIFIED WIRE VALUES: Mcp-Session-Id is server-minted on the initialize response header (tower.rs:1077-1162); Accept must contain application/json AND text/event-stream (tower.rs:966-978); responses are text/event-stream wrapping one JSON-RPC data: event (tower.rs:1140). Confirm LIVE in Stage 3c (DELIVERY CHECKPOINT) — this fixture is the fast-tier pin, not the live oracle.",
+  "request": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {},
+      "clientInfo": { "name": "unimatrix-mcp-bridge", "version": "0.0.0" }
+    }
+  },
+  "response_headers": {
+    "content-type": "application/json",
+    "mcp-session-id": "00000000-0000-4000-8000-000000000000"
+  },
+  "response_body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": { "tools": {} },
+      "serverInfo": { "name": "unimatrix", "version": "0.8.1" }
+    }
+  }
+}
