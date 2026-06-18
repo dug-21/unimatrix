@@ -253,7 +253,7 @@ describe("size-gate header", function () {
   it("test_header_documents_human_decision_rule", function () {
     const src = fs.readFileSync(path.join(__dirname, "..", "check-hook-client-size.js"), "utf8");
     assert.ok(src.includes("100,000"), "primary limit documented");
-    assert.ok(src.includes("160,000"), "backstop limit documented");
+    assert.ok(src.includes("180,000"), "backstop limit documented");
     assert.ok(/HUMAN decision/.test(src), "cap-change is a human decision");
     assert.ok(/GitHub issue/.test(src), "recorded on the feature issue");
   });
