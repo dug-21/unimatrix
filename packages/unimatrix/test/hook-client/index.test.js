@@ -38,11 +38,11 @@ function freshProject() {
   return tmpRoot;
 }
 
-// vnc-038 (ADR-001 dumb-client): settings.local.json now stores a fully-formed
-// server-composed observe URL that the transport posts VERBATIM — there is no
-// client-side `/observe` append. Stub URLs are roots (http://host:port), so this
-// helper appends `/observe` to form the v:2 observe_url the fixture asserts
-// against. Callers may pass an already-pathed URL (e.g. an econnrefused root);
+// vnc-038 (ADR-001 dumb-client): the store holds a fully-formed server-composed
+// observe URL that the transport posts VERBATIM — there is no client-side
+// `/observe` append. Stub URLs are roots (http://host:port), so this helper
+// appends `/observe` to form the v:2 observe_url the fixture asserts against.
+// Callers may pass an already-pathed URL (e.g. an econnrefused root);
 // `withObserve` only appends when the URL has no path of its own.
 function withObserve(url) {
   try {
@@ -54,13 +54,36 @@ function withObserve(url) {
   return url.replace(/\/+$/, "") + "/observe";
 }
 
+// vnc-039 Scope B: the credential moved OUT of the in-tree
+// .claude/settings.local.json INTO the out-of-tree per-projectHash store
+// (~/.unimatrix/<projectHash>/remote.json, mode 0600, canonical schema). The
+// SPAWNED child runs with HOME=tmpRoot (see runEntry) and the in-process dispatch
+// block overrides os.homedir → tmpRoot, so the store this helper seeds under
+// tmpRoot is the exact file config.resolve() reads back. The path is derived
+// through the REAL lib walk (mirrors childStateDir) so it can never drift from
+// the child's own derivation; credstore.pathFor is NOT used here because it keys
+// off os.homedir() in THIS (parent) process, not the child's HOME=tmpRoot.
+function storePathFor(root) {
+  const base = root || tmpRoot;
+  const config = require("../../lib/hook-client/config");
+  const hash = config.computeProjectHash(config.walkToProjectRoot(base));
+  return path.join(base, ".unimatrix", hash, "remote.json");
+}
+
 function writeRemoteConfig(url, token, timeouts) {
-  const remote = { url: withObserve(url), token };
-  if (timeouts) remote.timeouts = timeouts;
-  fs.writeFileSync(
-    path.join(tmpRoot, ".claude", "settings.local.json"),
-    JSON.stringify({ unimatrix: { remote } })
-  );
+  // observe_url is the post target; mcp_url co-resides for the bridge (unread
+  // by the hook client). No fingerprint → unpinned (stub servers are plain HTTP).
+  const cred = {
+    schema_version: 1,
+    mcp_url: withObserve(url),
+    observe_url: withObserve(url),
+    token,
+    fingerprint: null,
+  };
+  if (timeouts) cred.timeouts = timeouts;
+  const fp = storePathFor(tmpRoot);
+  fs.mkdirSync(path.dirname(fp), { recursive: true });
+  fs.writeFileSync(fp, JSON.stringify(cred), { mode: 0o600 });
 }
 
 // The state dir the SPAWNED child will use: HOME=root and projectRoot=root
@@ -268,10 +291,19 @@ describe("settle helpers (AC-09 independence)", () => {
 describe("dispatch split (sync vs fire-and-forget)", () => {
   let calls;
   let origPost;
+  let origHomedir;
   const transport = require("../../lib/hook-client/transport-http");
 
   beforeEach(() => {
     freshProject();
+    // vnc-039 Scope B: config.resolve reads the out-of-tree store keyed off
+    // os.homedir(). This block resolves IN-PROCESS, so point homedir at tmpRoot
+    // — the same HOME the spawn-level tests give the child — so the credential
+    // writeRemoteConfig seeds under tmpRoot is the file resolve() reads back.
+    origHomedir = os.homedir;
+    os.homedir = function () {
+      return tmpRoot;
+    };
     writeRemoteConfig("http://127.0.0.1:9/x", "tok");
     calls = [];
     origPost = transport.post;
@@ -290,6 +322,7 @@ describe("dispatch split (sync vs fire-and-forget)", () => {
 
   afterEach(() => {
     transport.post = origPost;
+    os.homedir = origHomedir;
     cleanup();
   });
 
@@ -684,11 +717,17 @@ describe("spawn: exit-0 / no-stdout guarantee", () => {
   it("test_unwritable_state_dir_exit0", async () => {
     stub = await startStubServer();
     stub.respondWith({ status: 204 });
-    writeRemoteConfig(stub.url, "tok");
     // Point HOME at a file so the state dir cannot be created (state is best-effort).
+    // vnc-039 Scope B: the credential store is HOME-keyed too, so a file-HOME also
+    // hides a store-based credential. Use the HOME-independent env pair to supply
+    // the remote config — this isolates the property under test (an unwritable
+    // STATE DIR must not block the send) from config resolution.
     const homeFile = path.join(tmpRoot, "home-as-file");
     fs.writeFileSync(homeFile, "x");
-    const r = await runEntry("Stop", JSON.stringify({ session_id: "s1" }), { home: homeFile });
+    const r = await runEntry("Stop", JSON.stringify({ session_id: "s1" }), {
+      home: homeFile,
+      env: { UNIMATRIX_REMOTE_URL: withObserve(stub.url), UNIMATRIX_REMOTE_TOKEN: "tok" },
+    });
     assert.strictEqual(r.status, 0);
     assert.strictEqual(r.stdout.length, 0);
     assert.strictEqual(stub.requests.length, 1); // send still attempted despite no state

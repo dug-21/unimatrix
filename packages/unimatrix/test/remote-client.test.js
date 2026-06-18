@@ -31,6 +31,8 @@ const {
 const initModule = require("../lib/init.js");
 const { initRemote, resolveRemoteTarget } = initModule;
 const transport = require("../lib/hook-client/transport-http.js");
+const credstore = require("../lib/hook-client/credstore.js");
+const { computeProjectHash } = require("../lib/hook-client/config.js");
 
 // ----------------------------------------------------------------------------
 // Committed Rust-oracle parity corpus (NEVER hand-write these values).
@@ -62,10 +64,42 @@ function makeTempProject() {
   return dir;
 }
 
-function readSettingsLocal(projectRoot) {
-  const fp = path.join(projectRoot, ".claude", "settings.local.json");
-  return JSON.parse(fs.readFileSync(fp, "utf8"));
+// vnc-039 Scope B: the credential moved OUT of the in-tree
+// .claude/settings.local.json INTO the out-of-tree per-projectHash store
+// (~/.unimatrix/<projectHash>/remote.json, mode 0600, canonical schema). Read it
+// back through credstore.read keyed by the SAME computeProjectHash both consumers
+// use — keyed off the temp HOME the harness below installs. Returns the parsed
+// canonical-schema object: { schema_version, mcp_url, observe_url, token,
+// fingerprint, timeouts? }.
+function readStore(projectRoot) {
+  return credstore.read(computeProjectHash(projectRoot));
 }
+
+function storePath(projectRoot) {
+  return credstore.pathFor(computeProjectHash(projectRoot));
+}
+
+// Per-test temp-HOME override so credstore.pathFor resolves under an isolated,
+// cleaned-up home — never the real home. Mirrors the config/credstore suites.
+let tmpHome;
+let origHomedir;
+beforeEach(function () {
+  tmpHome = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-vnc034-home-"))
+  );
+  origHomedir = os.homedir;
+  os.homedir = function () {
+    return tmpHome;
+  };
+});
+afterEach(function () {
+  os.homedir = origHomedir;
+  try {
+    fs.rmSync(tmpHome, { recursive: true, force: true });
+  } catch (_err) {
+    // best-effort cleanup
+  }
+});
 
 // Stub pingForInit; capture the args it was called with so the pinned-fp thread
 // is observable. Restore in afterEach.
@@ -208,26 +242,30 @@ describe("initRemote — bundle path verbatim store (R-01 / ADR-001)", () => {
     transport.pingForInit = origPing;
   });
 
-  it("test_mcp_url_stored_verbatim — settings.local.json mcp_url == bundle.mcp_url byte-for-byte", async () => {
+  it("test_mcp_url_stored_verbatim — store mcp_url == bundle.mcp_url byte-for-byte", async () => {
     const dir = makeTempProject();
     await initRemote({ bundle: VALID_WIRE, projectDir: dir });
-    const sl = readSettingsLocal(dir);
-    // ADR-001 dumb-client: no append, no slug derivation, no normalization.
-    assert.strictEqual(sl.unimatrix.remote.mcp_url, GOLDEN_BUNDLE.fields.mcp_url);
-    assert.strictEqual(sl.unimatrix.remote.token, GOLDEN_BUNDLE.fields.token);
-    assert.strictEqual(sl.unimatrix.remote.fingerprint, GOLDEN_BUNDLE.fields.fp);
+    // vnc-039 Scope B: the credential lands in the OUT-OF-TREE store, not
+    // .claude/settings.local.json. ADR-001 dumb-client: no append, no slug
+    // derivation, no normalization.
+    const store = readStore(dir);
+    assert.strictEqual(store.mcp_url, GOLDEN_BUNDLE.fields.mcp_url);
+    assert.strictEqual(store.token, GOLDEN_BUNDLE.fields.token);
+    assert.strictEqual(store.fingerprint, GOLDEN_BUNDLE.fields.fp);
+    // The credential is NOT written into the repo tree (closes the commit-leak).
+    assert.ok(
+      !fs.existsSync(path.join(dir, ".claude", "settings.local.json")),
+      "no in-tree settings.local.json credential is written"
+    );
   });
 
-  it("test_observe_url_stored_verbatim — settings.local.json observe_url == bundle.observe_url byte-for-byte", async () => {
+  it("test_observe_url_stored_verbatim — store observe_url == bundle.observe_url byte-for-byte", async () => {
     const dir = makeTempProject();
     await initRemote({ bundle: VALID_WIRE, projectDir: dir });
-    const sl = readSettingsLocal(dir);
-    assert.strictEqual(
-      sl.unimatrix.remote.observe_url,
-      GOLDEN_BUNDLE.fields.observe_url
-    );
-    // The retired single `url` key is gone; the v:2 subtree carries two URLs.
-    assert.strictEqual(sl.unimatrix.remote.url, undefined);
+    const store = readStore(dir);
+    assert.strictEqual(store.observe_url, GOLDEN_BUNDLE.fields.observe_url);
+    // The retired single `url` key is gone; the canonical schema carries two URLs.
+    assert.strictEqual(store.url, undefined);
   });
 
   it("test_slug_flag_ignored — --slug is retired; the bundle URLs already encode the slug", async () => {
@@ -235,12 +273,9 @@ describe("initRemote — bundle path verbatim store (R-01 / ADR-001)", () => {
     // Passing a (now-meaningless) --slug must NOT alter the verbatim URLs and
     // must NOT throw: the client derives no slug (ADR-001).
     await initRemote({ bundle: VALID_WIRE, slug: "ignored", projectDir: dir });
-    const sl = readSettingsLocal(dir);
-    assert.strictEqual(sl.unimatrix.remote.mcp_url, GOLDEN_BUNDLE.fields.mcp_url);
-    assert.strictEqual(
-      sl.unimatrix.remote.observe_url,
-      GOLDEN_BUNDLE.fields.observe_url
-    );
+    const store = readStore(dir);
+    assert.strictEqual(store.mcp_url, GOLDEN_BUNDLE.fields.mcp_url);
+    assert.strictEqual(store.observe_url, GOLDEN_BUNDLE.fields.observe_url);
   });
 
   it("test_pinned_fp_threaded_into_ping — Ping runs over the pinned connection", async () => {
@@ -399,26 +434,29 @@ describe("initRemote — token hygiene (R-12 / NFR-06)", () => {
     }
     const all = out.join("\n");
     assert.ok(!all.includes(tok), "token must not appear in any console output");
-    // But it MUST land in the persisted config.
-    assert.strictEqual(readSettingsLocal(dir).unimatrix.remote.token, tok);
+    // But it MUST land in the persisted OUT-OF-TREE store (vnc-039 Scope B).
+    assert.strictEqual(readStore(dir).token, tok);
   });
 
   it("test_settings_local_mode_0600", async () => {
     const dir = makeTempProject();
     await initRemote({ bundle: VALID_WIRE, projectDir: dir });
-    const slPath = path.join(dir, ".claude", "settings.local.json");
-    const mode = fs.statSync(slPath).mode & 0o777;
+    // vnc-039 Scope B: the token-bearing file is now the out-of-tree store
+    // (~/.unimatrix/<hash>/remote.json), written at 0600.
+    const mode = fs.statSync(storePath(dir)).mode & 0o777;
     if (process.platform !== "win32") {
-      assert.strictEqual(mode, 0o600, "token-bearing file is 0600");
+      assert.strictEqual(mode, 0o600, "token-bearing store file is 0600");
     }
   });
 });
 
 // ============================================================================
-// Install footprint < 250 KB (AC-W1-C3 / NFR-01 / R-12) — HARD GATE
+// Install footprint < 290 KB (AC-W1-C3 / NFR-01 / R-12) — HARD GATE
+// Cap raised 250KB→290KB for the vnc-039 stdio→HTTPS MCP bridge (~24KB new
+// pure-JS). Human-approved, recorded on #775.
 // ============================================================================
 describe("remote install footprint (AC-W1-C3 / NFR-01)", () => {
-  const SIZE_LIMIT = 250 * 1024; // 250 KB
+  const SIZE_LIMIT = 290000; // 290 KB (raised from 250*1024 for vnc-039, #775)
 
   // The shipped remote install is the pure-JS client (lib/) + skills/, with NO
   // native binary and NO model. Walk both trees and sum file bytes.
@@ -445,7 +483,7 @@ describe("remote install footprint (AC-W1-C3 / NFR-01)", () => {
     return total;
   }
 
-  it("test_remote_install_under_250kb — lib/ + skills/ shipped footprint", () => {
+  it("test_remote_install_under_290kb — lib/ + skills/ shipped footprint", () => {
     const pkgRoot = path.join(__dirname, "..");
     const libBytes = dirBytes(path.join(pkgRoot, "lib"));
     const skillsBytes = dirBytes(path.join(pkgRoot, "skills"));
@@ -477,17 +515,13 @@ describe("initRemote — rotation overwrite (edge)", () => {
   it("test_reinit_overwrites_pinned_fp_cleanly", async () => {
     const dir = makeTempProject();
     await initRemote({ bundle: BUNDLE_GOLDEN[0].wire, projectDir: dir });
-    assert.strictEqual(
-      readSettingsLocal(dir).unimatrix.remote.fingerprint,
-      BUNDLE_GOLDEN[0].fields.fp
-    );
+    // vnc-039 Scope B: re-init overwrites the canonical fields in the same
+    // out-of-tree store entry (keyed by projectHash) — clean rotation.
+    assert.strictEqual(readStore(dir).fingerprint, BUNDLE_GOLDEN[0].fields.fp);
     await initRemote({ bundle: BUNDLE_GOLDEN[1].wire, projectDir: dir });
-    const sl = readSettingsLocal(dir);
-    assert.strictEqual(sl.unimatrix.remote.fingerprint, BUNDLE_GOLDEN[1].fields.fp);
-    assert.strictEqual(sl.unimatrix.remote.mcp_url, BUNDLE_GOLDEN[1].fields.mcp_url);
-    assert.strictEqual(
-      sl.unimatrix.remote.observe_url,
-      BUNDLE_GOLDEN[1].fields.observe_url
-    );
+    const store = readStore(dir);
+    assert.strictEqual(store.fingerprint, BUNDLE_GOLDEN[1].fields.fp);
+    assert.strictEqual(store.mcp_url, BUNDLE_GOLDEN[1].fields.mcp_url);
+    assert.strictEqual(store.observe_url, BUNDLE_GOLDEN[1].fields.observe_url);
   });
 });

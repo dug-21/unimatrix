@@ -10,8 +10,22 @@ const {
   HOOK_EVENTS,
 } = require("./merge-settings.js");
 const transport = require("./hook-client/transport-http.js");
-const { resolveGitFile } = require("./hook-client/config.js");
+const { resolveGitFile, computeProjectHash } = require("./hook-client/config.js");
 const { decodeBundle } = require("./hook-client/bundle.js");
+const credstore = require("./hook-client/credstore.js");
+
+/**
+ * Loud, deterministic message emitted on the legacy `--remote`/`--token` path:
+ * cloud MCP is bundle-only (ADR-005, OQ-2, #773). The legacy observe/telemetry
+ * path still works; only the on-demand MCP surface requires a v:2 bundle. Exact
+ * wording is a testable AC (AC-10, SR-06) — NOT a hard failure (init exits 0 on
+ * the legacy path; this is an action line, not a throw).
+ */
+const LEGACY_MCP_UNSUPPORTED_MESSAGE =
+  "Cloud MCP is unsupported on the legacy --remote/--token path: it requires a " +
+  "v:2 bundle (run `unimatrix client-bundle` on the server, then " +
+  "`init --bundle <bundle>`). No MCP server was wired. The observe/telemetry " +
+  "path still works.";
 
 /**
  * Detect project root by walking up from startDir to find `.git` (Rust
@@ -197,103 +211,120 @@ function readJsonOrEmpty(filePath, label) {
 }
 
 /**
- * Write the unimatrix.remote subtree into .claude/settings.local.json,
- * merge-preserving (only unimatrix.remote is touched; Claude Code's keys and
- * other unimatrix.* keys survive verbatim). Mode 0600 (ADR-006, FR-18).
+ * Write or merge the TOKEN-FREE stdio `unimatrix` bridge entry into .mcp.json
+ * (AC-09 / FR-17). Remote analogue of writeMcpJson: same idempotent,
+ * merge-preserving, dry-run-aware, malformed-throws contract (R-10/AC-07). The
+ * entry invokes the JS bridge (`node <bridgePath> <projectHash>`); the bridge
+ * resolves the credential from the out-of-tree store by projectHash — so the
+ * entry carries no token, no mcp_url, and no fingerprint.
  *
- * Stores BOTH server-composed URLs VERBATIM (ADR-001 dumb-client): mcp_url and
- * observe_url are byte-equal to the validated bundle fields — no normalization,
- * no trailing-slash edit, no host substitution. The hook transport (Component 4)
- * reads observe_url as its post target. (ADR-002 v:2 subtree.)
- *
- * @param {string} projectRoot - Absolute project root.
- * @param {string} mcpUrl - Server-composed MCP URL (verbatim).
- * @param {string} observeUrl - Server-composed observe URL (verbatim).
- * @param {string} token - Bearer token.
- * @param {string|null} pinnedFp - Pinned cert fingerprint (bundle path), or null.
- * @param {boolean} dryRun - If true, do not write.
+ * @param {string} projectRoot - Absolute path to project root.
+ * @param {string} bridgePath - Absolute path to the mcp-bridge.js module.
+ * @param {string} projectHash - The store key (16 hex), the bridge's only arg.
+ * @param {boolean} dryRun - If true, do not write the file.
  * @returns {string[]} Actions taken.
  */
-function writeRemoteSettingsLocal(
-  projectRoot,
-  mcpUrl,
-  observeUrl,
-  token,
-  pinnedFp,
-  dryRun
-) {
+function writeMcpBridgeEntry(projectRoot, bridgePath, projectHash, dryRun) {
+  const mcpPath = path.join(projectRoot, ".mcp.json");
   const actions = [];
-  const slPath = path.join(projectRoot, ".claude", "settings.local.json");
-  const existing = readJsonOrEmpty(slPath, ".claude/settings.local.json");
+  let existing = {};
 
-  existing.unimatrix = existing.unimatrix || {};
-  existing.unimatrix.remote = Object.assign(
-    {},
-    existing.unimatrix.remote,
-    {
-      mcp_url: mcpUrl,
-      observe_url: observeUrl,
-      token: token,
-    },
-    // Bundle path pins the cert; legacy {remote,token} path leaves it absent.
-    pinnedFp ? { fingerprint: pinnedFp } : {}
-  );
+  if (fs.existsSync(mcpPath)) {
+    try {
+      existing = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
+    } catch (parseError) {
+      throw new Error(
+        "Malformed .mcp.json at " +
+          mcpPath +
+          ": " +
+          parseError.message +
+          "\nFix the JSON syntax and re-run 'npx unimatrix init'."
+      );
+    }
+    actions.push("Updated .mcp.json (preserved existing servers)");
+  } else {
+    actions.push("Created .mcp.json");
+  }
+
+  if (!existing.mcpServers) {
+    existing.mcpServers = {};
+  }
+
+  // TOKEN-FREE stdio entry (AC-09 / FR-17): the bridge reads the credential from
+  // the store at spawn time; projectHash is the only argument it needs.
+  existing.mcpServers.unimatrix = {
+    command: "node",
+    args: [bridgePath, projectHash],
+    env: {},
+  };
 
   if (!dryRun) {
-    fs.mkdirSync(path.dirname(slPath), { recursive: true });
-    fs.writeFileSync(slPath, JSON.stringify(existing, null, 2) + "\n", {
-      mode: 0o600,
-    });
-    // Re-assert mode in case the file pre-existed with looser perms.
-    // Wrapped: chmod is a no-op on Windows but must not abort init.
-    try {
-      fs.chmodSync(slPath, 0o600);
-    } catch (_err) {
-      // best-effort (Windows / unsupported fs)
-    }
-    actions.push(
-      "Wrote unimatrix.remote to .claude/settings.local.json (mode 0600)"
+    fs.writeFileSync(
+      mcpPath,
+      JSON.stringify(existing, null, 2) + "\n",
+      "utf8"
     );
   } else {
-    actions.push(
-      "[dry-run] Would write unimatrix.remote to .claude/settings.local.json (mode 0600)"
-    );
+    actions[actions.length - 1] = "[dry-run] " + actions[actions.length - 1];
   }
 
   return actions;
 }
 
 /**
- * Best-effort check that .claude/settings.local.json (token-bearing) is
- * gitignored; WARN when not. Common patterns only — no glob engine (FR-18).
+ * Best-effort deletion of a stale in-tree `unimatrix.remote` credential subtree
+ * from .claude/settings.local.json (ADR-004 §migration / OQ-5 residual). The
+ * credential moved out of the tree to the credstore; an old in-tree copy is the
+ * exact commit-leak this feature closes, so it is removed on (re-)init.
+ *
+ * Merge-preserving: ONLY `unimatrix.remote` is removed — other `unimatrix.*`
+ * keys and Claude Code's keys survive verbatim. A malformed or unreadable
+ * settings.local.json does NOT abort init (R-12 §migration): note and continue.
  *
  * @param {string} projectRoot - Absolute project root.
- * @returns {string[]} Actions (warning, or none when covered).
+ * @param {boolean} dryRun - If true, do not write.
+ * @returns {string[]} Actions taken.
  */
-function gitignoreWarning(projectRoot) {
-  const giPath = path.join(projectRoot, ".gitignore");
-  let giLines = [];
-  if (fs.existsSync(giPath)) {
-    giLines = fs
-      .readFileSync(giPath, "utf8")
-      .split("\n")
-      .map((l) => l.trim());
+function cleanStaleRemoteSubtree(projectRoot, dryRun) {
+  const actions = [];
+  const slPath = path.join(projectRoot, ".claude", "settings.local.json");
+  if (!fs.existsSync(slPath)) {
+    return actions;
   }
-  const coverPatterns = [
-    ".claude/settings.local.json",
-    "settings.local.json",
-    "**/settings.local.json",
-    ".claude/",
-    "*.local.json",
-  ];
-  const covered = giLines.some((l) => coverPatterns.includes(l));
-  if (covered) {
-    return [];
+  try {
+    const parsed = readJsonOrEmpty(slPath, ".claude/settings.local.json");
+    if (
+      parsed.unimatrix &&
+      typeof parsed.unimatrix === "object" &&
+      Object.prototype.hasOwnProperty.call(parsed.unimatrix, "remote")
+    ) {
+      if (dryRun) {
+        actions.push(
+          "[dry-run] Would remove stale unimatrix.remote from " +
+            ".claude/settings.local.json"
+        );
+      } else {
+        delete parsed.unimatrix.remote;
+        fs.writeFileSync(
+          slPath,
+          JSON.stringify(parsed, null, 2) + "\n",
+          "utf8"
+        );
+        actions.push(
+          "Removed stale unimatrix.remote credential from " +
+            ".claude/settings.local.json"
+        );
+      }
+    }
+  } catch (e) {
+    // Best-effort: a malformed settings.local.json must not block relocation.
+    actions.push(
+      "Note: could not clean stale .claude/settings.local.json (" +
+        e.message +
+        ")"
+    );
   }
-  return [
-    "WARNING: .claude/settings.local.json is not gitignored — " +
-      "it contains your token; add it to .gitignore",
-  ];
+  return actions;
 }
 
 /**
@@ -368,12 +399,18 @@ function resolveRemoteTarget(options) {
 }
 
 /**
- * Remote-mode init: ingest the C1 bundle (or legacy {remote,token}), pin the
- * server cert by the C2 fingerprint, wire the HTTP hook client into
- * .claude/settings.json, write credentials to settings.local.json (0600), copy
- * skills, and validate via a PINNED Ping. No local binary, no .mcp.json, no
- * database. The CLAUDE.md knowledge block is NOT appended (uni-init owns it);
- * init prints the /unimatrix-init pointer only (FR-B7 / AC-W1-C6).
+ * Remote-mode init: ingest the v:2 bundle (or legacy {remote,token}), pin the
+ * server cert by the bundle fingerprint, wire the HTTP hook client into
+ * .claude/settings.json, write the credential to the OUT-OF-TREE store
+ * (~/.unimatrix/<hash>/remote.json, 0600 — vnc-039 Scope B), copy skills, and
+ * validate via a PINNED Ping. No local binary, no database.
+ *
+ * On the BUNDLE path, also write a TOKEN-FREE stdio `unimatrix` .mcp.json entry
+ * that spawns the JS MCP bridge (Scope A). On the LEGACY path, write NO bridge
+ * entry and emit a loud, deterministic unsupported message (cloud MCP is
+ * bundle-only — ADR-005). Either way, a stale in-tree unimatrix.remote subtree
+ * is removed (migration). The CLAUDE.md knowledge block is NOT appended
+ * (uni-init owns it); init prints the /unimatrix-init pointer only.
  *
  * Failures THROW → bin catches → stderr + exit 1 (init is interactive; the one
  * loud checkpoint, opposite the hook client's exit-0 posture). The token never
@@ -401,6 +438,16 @@ async function initRemote(options) {
   }
   actions.push("Project root: " + projectRoot);
 
+  // Step 1b: derive the store key — the SAME oracle both consumers use (R-07,
+  // ADR-003). One derivation; the writer and the hook client/bridge readers
+  // cannot disagree on which ~/.unimatrix/<hash>/ directory to use.
+  const projectHash = computeProjectHash(projectRoot);
+
+  // The bundle path carries a real fingerprint -> the hook client pins. The
+  // legacy {remote,token} path has no pin -> fingerprint:null (WARN-1: legacy
+  // creds are STILL relocated out of tree, but stay unpinned and get no MCP).
+  const isBundlePath = !!options.bundle;
+
   // Step 2: resolve the installed client path (absolute, platform-native).
   // require.resolve is the contract (ADR/pseudocode); the computed-path
   // fallback yields the identical absolute path once index.js exists.
@@ -411,23 +458,45 @@ async function initRemote(options) {
     clientPath = path.join(__dirname, "hook-client", "index.js");
   }
 
-  // Step 3: write settings.local.json unimatrix.remote (ADR-006; FR-18). Both
-  // server-composed URLs are stored VERBATIM (ADR-001); the hook transport reads
-  // observe_url. The pinned fingerprint (bundle path) is persisted so the hook
-  // client pins on every subsequent request.
+  // Step 3: write the credential to the out-of-tree store (Scope B). The token
+  // and fingerprint NEVER land in the repo tree (closes the commit-leak). The
+  // bundle path persists the real fingerprint so the hook client pins; the
+  // legacy path persists fingerprint:null (universal relocation, unpinned).
   actions.push(
-    ...writeRemoteSettingsLocal(
-      projectRoot,
-      mcpUrl,
-      observeUrl,
-      token,
-      pinnedFp,
-      dryRun
+    ...credstore.write(
+      projectHash,
+      {
+        mcp_url: mcpUrl,
+        observe_url: observeUrl,
+        token: token,
+        fingerprint: isBundlePath ? pinnedFp : null,
+      },
+      { dryRun }
     )
   );
 
-  // Step 3b: gitignore warning (best-effort, no glob engine).
-  actions.push(...gitignoreWarning(projectRoot));
+  // Step 3a: delete any stale in-tree unimatrix.remote subtree from a prior
+  // in-tree credential write (ADR-004 §migration). Best-effort; never aborts.
+  actions.push(...cleanStaleRemoteSubtree(projectRoot, dryRun));
+
+  // Step 3b: wire the MCP surface.
+  if (isBundlePath) {
+    // Bundle path (Scope A): write the TOKEN-FREE stdio .mcp.json bridge entry.
+    let bridgePath;
+    try {
+      bridgePath = require.resolve("./hook-client/mcp-bridge.js");
+    } catch (_err) {
+      bridgePath = path.join(__dirname, "hook-client", "mcp-bridge.js");
+    }
+    actions.push(
+      ...writeMcpBridgeEntry(projectRoot, bridgePath, projectHash, dryRun)
+    );
+  } else {
+    // Legacy path (ADR-005 bundle-only boundary): NO bridge entry; emit a loud,
+    // deterministic unsupported message (AC-10, R-11). Not a failure — legacy
+    // observe still works; init continues to hooks + skills + Ping.
+    actions.push(LEGACY_MCP_UNSUPPORTED_MESSAGE);
+  }
 
   // Step 4: merge hooks (full 9-event remote set; idempotent; preserves
   // foreign hooks). Command is ONLY `node <path> <EVENT>` (RQ-3 / R-16).
@@ -446,9 +515,6 @@ async function initRemote(options) {
   // CLAUDE.md knowledge block (uni-init owns it) — the /unimatrix-init pointer
   // printed by printSummary is the only onboarding pointer (AC-W1-C6).
   actions.push(...copySkills(projectRoot, dryRun));
-  actions.push(
-    "Skipped .mcp.json: remote mode does not register a local MCP server"
-  );
   actions.push("Skipped binary/database steps: no local binary in remote mode");
 
   // Step 6: Ping validation over the PINNED TLS connection — the ONE loud
@@ -609,9 +675,10 @@ module.exports = {
   resolveRemoteTarget,
   detectProjectRoot,
   writeMcpJson,
+  writeMcpBridgeEntry,
+  cleanStaleRemoteSubtree,
   copySkills,
   printSummary,
   readJsonOrEmpty,
-  writeRemoteSettingsLocal,
-  gitignoreWarning,
+  LEGACY_MCP_UNSUPPORTED_MESSAGE,
 };

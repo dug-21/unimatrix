@@ -32,7 +32,7 @@ const fs = require("fs");
 const path = require("path");
 
 const PRIMARY_LIMIT = 100000; // comment-stripped bytes (decimal)
-const BACKSTOP_LIMIT = 160000; // raw bytes (decimal)
+const BACKSTOP_LIMIT = 180000; // raw bytes (decimal) — raised 160000→180000 for the vnc-039 stdio→HTTPS MCP bridge (~24KB new pure-JS); PRIMARY/stripped budget still passes. Human-approved, recorded on #775.
 const ROOT = path.resolve(__dirname, "..", "lib", "hook-client");
 
 // Lexer states.

@@ -1,11 +1,15 @@
 "use strict";
 
 // init-remote.test.js — vnc-026 F3 `init --remote` branch + merge-settings
-// generalization. Covers: ownership-pattern spaced-path table (R-11),
-// init matrix (AC-11), settings.local.json 0600 + gitignore warning + token
-// scans (R-16), Ping loud failure (R-18), commandSource back-compat (AC-16),
-// and FR-21 9-event regression. Cumulative infra — extends the existing
-// node:test suites; no isolated scaffolding.
+// generalization, RE-WIRED for vnc-039 Scope A+B. Covers: ownership-pattern
+// spaced-path table (R-11), init matrix (AC-11), the OUT-OF-TREE credential
+// store (R-12, replacing the in-tree settings.local.json write), the TOKEN-FREE
+// stdio .mcp.json bridge entry (AC-01/AC-07/AC-09), the legacy bundle-only
+// unsupported message (AC-10), the stale-in-tree-creds migration, Ping loud
+// failure (R-18), commandSource back-compat (AC-16), and FR-21 9-event
+// regression. Cumulative infra — extends the existing node:test suites; no
+// isolated scaffolding. os.homedir() is overridden to a temp dir so the store
+// lands out-of-tree under a temp root.
 
 const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("assert");
@@ -24,13 +28,32 @@ const {
 } = require("../lib/merge-settings.js");
 
 const initModule = require("../lib/init.js");
-const { initRemote } = initModule;
+const { initRemote, LEGACY_MCP_UNSUPPORTED_MESSAGE } = initModule;
+const credstore = require("../lib/hook-client/credstore.js");
+const { computeProjectHash } = require("../lib/hook-client/config.js");
 // init.js holds a reference to this exact module object; overriding the method
 // here is observed by initRemote (no module-cache surgery needed).
 const transport = require("../lib/hook-client/transport-http.js");
 
 const REMOTE = "https://unimatrix.example.com";
 const TOKEN = "unit-test-placeholder-token-2";
+
+// A fixture v:2 bundle (the bundle path is the Scope A surface). 64-hex token,
+// sha256:<64 hex> fp; both URLs https. Decoded verbatim by decodeBundle.
+const BUNDLE_MCP_URL = "https://unimatrix.example.com/v1/myslug";
+const BUNDLE_OBSERVE_URL = "https://unimatrix.example.com/v1/myslug/observe";
+const BUNDLE_TOKEN = "a".repeat(64);
+const BUNDLE_FP = "sha256:" + "b".repeat(64);
+function makeBundle() {
+  const json = JSON.stringify({
+    v: 2,
+    mcp_url: BUNDLE_MCP_URL,
+    observe_url: BUNDLE_OBSERVE_URL,
+    token: BUNDLE_TOKEN,
+    fp: BUNDLE_FP,
+  });
+  return "unimatrix-bundle:" + Buffer.from(json, "utf8").toString("base64url");
+}
 
 // Resolve the same client path initRemote will write, so command-string
 // assertions are exact regardless of the install location. index.js is owned by
@@ -89,14 +112,39 @@ function okPing() {
   return Promise.resolve({ ok: true, message: "Pong from host (server x)" });
 }
 
+// Resolve the bridge path init writes, mirroring init.js's resolve-with-fallback
+// so .mcp.json command-string assertions are exact whether or not the module
+// exists yet at test time.
+let BRIDGE_PATH;
+try {
+  BRIDGE_PATH = require.resolve("../lib/hook-client/mcp-bridge.js");
+} catch (_err) {
+  BRIDGE_PATH = path.join(__dirname, "..", "lib", "hook-client", "mcp-bridge.js");
+}
+
+// Override os.homedir() to a per-test temp dir so the credential store lands
+// out-of-tree under a sandboxed root (never the developer's real ~/.unimatrix).
+let origHomedir;
+let tempHome;
+function readStore(projectRoot) {
+  return credstore.read(computeProjectHash(projectRoot));
+}
+function storePath(projectRoot) {
+  return credstore.pathFor(computeProjectHash(projectRoot));
+}
+
 // Silence init's summary output during tests.
 let origLog;
 beforeEach(() => {
   origLog = console.log;
   console.log = () => {};
+  origHomedir = os.homedir;
+  tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-home-"));
+  os.homedir = () => tempHome;
 });
 afterEach(() => {
   console.log = origLog;
+  os.homedir = origHomedir;
   if (origPing) {
     transport.pingForInit = origPing;
     origPing = undefined;
@@ -484,146 +532,431 @@ describe("initRemote matrix (AC-11)", () => {
   });
 });
 
-// ── settings.local.json (R-16 / FR-18 / ADR-006) ────────────────────
+// ── AC-01 — .mcp.json stdio bridge entry (Scope A, R-10) ─────────────
 
-describe("settings.local.json (R-16 / FR-18)", () => {
-  it("test_settings_local_json_written_0600_merge_preserving", async () => {
+describe("AC-01 — .mcp.json stdio bridge entry", () => {
+  it("test_initBundle_writesStdioUnimatrixEntry", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
-    const slPath = path.join(dir, ".claude", "settings.local.json");
-    fs.mkdirSync(path.dirname(slPath), { recursive: true });
-    // Pre-existing foreign + other unimatrix keys must survive.
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    const mcp = JSON.parse(
+      fs.readFileSync(path.join(dir, ".mcp.json"), "utf8")
+    );
+    assert.deepStrictEqual(mcp.mcpServers.unimatrix, {
+      command: "node",
+      args: [BRIDGE_PATH, computeProjectHash(dir)],
+      env: {},
+    });
+  });
+
+  it("test_initBundle_bridgeCommandNotRustBinary", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    const mcp = JSON.parse(
+      fs.readFileSync(path.join(dir, ".mcp.json"), "utf8")
+    );
+    const entry = mcp.mcpServers.unimatrix;
+    // The command invokes node + the resolved JS bridge module, never the Rust
+    // platform binary (no LD_LIBRARY_PATH env, no binary path as command).
+    assert.strictEqual(entry.command, "node");
+    assert.ok(entry.args[0].endsWith("mcp-bridge.js"));
+    assert.deepStrictEqual(entry.env, {});
+  });
+
+  it("test_initBundle_noSkippedMcpJsonLine", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const actions = [];
+    const origLogLocal = console.log;
+    console.log = (...a) => actions.push(a.join(" "));
+    try {
+      await initRemote({ bundle: makeBundle(), projectDir: dir });
+    } finally {
+      console.log = origLogLocal;
+    }
+    const joined = actions.join("\n");
+    assert.ok(
+      !joined.includes("Skipped .mcp.json"),
+      "the prior Skipped .mcp.json line must be gone on the bundle path"
+    );
+  });
+});
+
+// ── AC-07 — idempotent + merge-preserving + dry-run (R-10) ──────────
+
+describe("AC-07 — .mcp.json idempotent + merge-preserving + dry-run", () => {
+  it("test_initBundle_reInit_doesNotDuplicateUnimatrix", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const mcpPath = path.join(dir, ".mcp.json");
+    // Pre-seed a co-resident MCP server that must survive verbatim.
     fs.writeFileSync(
-      slPath,
+      mcpPath,
       JSON.stringify(
-        { claudeOwned: "keep", unimatrix: { other: "keep-too" } },
+        { mcpServers: { other: { command: "other-bin", args: [] } } },
         null,
         2
       ),
       "utf8"
     );
-
-    await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
-    const content = JSON.parse(fs.readFileSync(slPath, "utf8"));
-    assert.strictEqual(content.claudeOwned, "keep");
-    assert.strictEqual(content.unimatrix.other, "keep-too");
-    // v:2 subtree (vnc-038 / ADR-002): the remote stanza carries BOTH server-
-    // composed URLs. The legacy {remote,token} path maps its single endpoint to
-    // mcp_url and derives observe_url (the bundle path composes neither — they
-    // arrive verbatim from the server). The old single `url` key is retired.
-    assert.deepStrictEqual(content.unimatrix.remote, {
-      mcp_url: REMOTE,
-      observe_url: REMOTE.replace(/\/+$/, "") + "/observe",
-      token: TOKEN,
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    const mcp = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
+    // Co-resident preserved; unimatrix present exactly once (object key).
+    assert.deepStrictEqual(mcp.mcpServers.other, {
+      command: "other-bin",
+      args: [],
     });
-    // Mode 0600 (skip the strict check on Windows where chmod is a no-op).
+    assert.ok(mcp.mcpServers.unimatrix);
+    assert.strictEqual(Object.keys(mcp.mcpServers).length, 2);
+  });
+
+  it("test_initBundle_dryRun_noMcpJsonWrite", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const actions = [];
+    const origLogLocal = console.log;
+    console.log = (...a) => actions.push(a.join(" "));
+    try {
+      await initRemote({ bundle: makeBundle(), projectDir: dir, dryRun: true });
+    } finally {
+      console.log = origLogLocal;
+    }
+    assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")), "no write in dry-run");
+    assert.ok(
+      actions.some((a) => a.includes("[dry-run]") && a.includes(".mcp.json")),
+      "intended .mcp.json change reported in dry-run"
+    );
+  });
+
+  it("test_initBundle_malformedExistingMcpJson_throws", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const mcpPath = path.join(dir, ".mcp.json");
+    fs.writeFileSync(mcpPath, "{ not json", "utf8");
+    await assert.rejects(
+      () => initRemote({ bundle: makeBundle(), projectDir: dir }),
+      (err) => err.message.includes("Malformed .mcp.json")
+    );
+    // Not silently overwritten.
+    assert.strictEqual(fs.readFileSync(mcpPath, "utf8"), "{ not json");
+  });
+});
+
+// ── AC-08 / AC-08b — out-of-tree store, 0600, per-project (R-12, R-07)
+
+describe("AC-08 — out-of-tree credential store", () => {
+  it("test_initBundle_writesStoreOutOfTree0600", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    const sp = storePath(dir);
+    // The store path is under the (temp) home, NOT inside the project tree.
+    assert.ok(sp.startsWith(tempHome), "store must live under home, out-of-tree");
+    assert.ok(!sp.startsWith(dir), "store must not be inside the repo tree");
+    assert.ok(fs.existsSync(sp), "store file written");
+    const stored = readStore(dir);
+    assert.strictEqual(stored.token, BUNDLE_TOKEN);
+    assert.strictEqual(stored.mcp_url, BUNDLE_MCP_URL);
+    assert.strictEqual(stored.observe_url, BUNDLE_OBSERVE_URL);
+    assert.strictEqual(stored.fingerprint, BUNDLE_FP);
     if (process.platform !== "win32") {
-      const mode = fs.statSync(slPath).mode & 0o777;
-      assert.strictEqual(mode, 0o600, "expected mode 0600, got " + mode.toString(8));
+      const mode = fs.statSync(sp).mode & 0o777;
+      assert.strictEqual(mode, 0o600, "expected 0600, got " + mode.toString(8));
     }
   });
 
-  it("test_gitignore_warning_fires_when_uncovered", async () => {
+  it("test_initBundle_repoTreeFreeOfTokenBearingPath", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
-    // No .gitignore -> warning expected.
-    const actions = [];
-    const origLogLocal = console.log;
-    console.log = (...a) => actions.push(a.join(" "));
-    try {
-      await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
-    } finally {
-      console.log = origLogLocal;
-    }
-    assert.ok(
-      actions.some((a) => a.includes("not gitignored")),
-      "expected gitignore warning"
-    );
-  });
-
-  it("test_no_gitignore_warning_when_covered", async () => {
-    stubPing(okPing);
-    const dir = makeTempProject();
-    fs.writeFileSync(
-      path.join(dir, ".gitignore"),
-      ".claude/settings.local.json\n",
-      "utf8"
-    );
-    const actions = [];
-    const origLogLocal = console.log;
-    console.log = (...a) => actions.push(a.join(" "));
-    try {
-      await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
-    } finally {
-      console.log = origLogLocal;
-    }
-    assert.ok(
-      !actions.some((a) => a.includes("not gitignored")),
-      "should not warn when covered"
-    );
-  });
-
-  it("test_no_token_on_argv_or_settings_json", async () => {
-    stubPing(okPing);
-    const dir = makeTempProject();
-    writeSubagentOptIn(dir); // iterate the full HOOK_EVENTS set (ADR-004 §2)
-    await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
-    // The token must NOT appear anywhere in settings.json (only the hook
-    // command lines + matcher groups live there; R-16).
-    const raw = fs.readFileSync(
-      path.join(dir, ".claude", "settings.json"),
-      "utf8"
-    );
-    assert.ok(!raw.includes(TOKEN), "token leaked into settings.json");
-    assert.ok(!raw.includes(REMOTE), "URL leaked into settings.json");
-    // No hook command carries the token.
-    const content = JSON.parse(raw);
-    for (const event of HOOK_EVENTS) {
-      for (const group of content.hooks[event]) {
-        for (const hook of group.hooks) {
-          assert.ok(
-            !(hook.command || "").includes(TOKEN),
-            "token in hook command for " + event
-          );
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    // No file in the repo tree carries the token (the commit-leak this closes).
+    const found = [];
+    (function walk(d) {
+      for (const ent of fs.readdirSync(d, { withFileTypes: true })) {
+        const full = path.join(d, ent.name);
+        if (ent.isDirectory()) {
+          if (ent.name === ".git") continue;
+          walk(full);
+        } else if (ent.isFile()) {
+          if (fs.readFileSync(full, "utf8").includes(BUNDLE_TOKEN)) {
+            found.push(full);
+          }
         }
       }
+    })(dir);
+    assert.deepStrictEqual(found, [], "token-bearing path(s) in repo tree: " + found);
+  });
+
+  it("test_initBundle_noUnimatrixRemoteCredInSettingsLocal", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    const slPath = path.join(dir, ".claude", "settings.local.json");
+    if (fs.existsSync(slPath)) {
+      const raw = fs.readFileSync(slPath, "utf8");
+      assert.ok(!raw.includes(BUNDLE_TOKEN), "token in settings.local.json");
+      const parsed = JSON.parse(raw);
+      assert.ok(
+        !(parsed.unimatrix && parsed.unimatrix.remote),
+        "unimatrix.remote credential key present in settings.local.json"
+      );
     }
   });
 
-  it("test_malformed_settings_local_throws", async () => {
+  it("test_initBundle_twoProjects_twoDistinctStores", async () => {
+    stubPing(okPing);
+    const dirA = makeTempProject();
+    const dirB = makeTempProject();
+    await initRemote({ bundle: makeBundle(), projectDir: dirA });
+    await initRemote({ bundle: makeBundle(), projectDir: dirB });
+    assert.notStrictEqual(storePath(dirA), storePath(dirB));
+    assert.ok(fs.existsSync(storePath(dirA)));
+    assert.ok(fs.existsSync(storePath(dirB)));
+    // Re-init A updates A; B untouched (directory separation, AC-08b).
+    const bMtimeBefore = fs.statSync(storePath(dirB)).mtimeMs;
+    await initRemote({ bundle: makeBundle(), projectDir: dirA });
+    assert.strictEqual(fs.statSync(storePath(dirB)).mtimeMs, bMtimeBefore);
+  });
+
+  it("test_initBundle_storeWriteFailure_initExitsNonZero_noPartialInTree", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    // Force a store-write failure: point home at a path that cannot be a dir.
+    const notADir = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-notdir-")),
+      "file"
+    );
+    fs.writeFileSync(notADir, "x");
+    os.homedir = () => notADir; // mkdirSync under a file → throws
+    await assert.rejects(() =>
+      initRemote({ bundle: makeBundle(), projectDir: dir })
+    );
+    // No token-bearing partial left in the repo tree.
+    const slPath = path.join(dir, ".claude", "settings.local.json");
+    if (fs.existsSync(slPath)) {
+      assert.ok(!fs.readFileSync(slPath, "utf8").includes(BUNDLE_TOKEN));
+    }
+  });
+});
+
+// ── AC-08 (migration) — stale in-tree creds cleanup (R-12, FR-27) ────
+
+describe("AC-08 migration — stale in-tree creds cleanup", () => {
+  it("test_initBundle_deletesStaleSettingsLocalRemoteSubtree", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
     const slPath = path.join(dir, ".claude", "settings.local.json");
     fs.mkdirSync(path.dirname(slPath), { recursive: true });
-    fs.writeFileSync(slPath, "{ not json", "utf8");
-    await assert.rejects(
-      () => initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir }),
-      (err) => err.message.includes("Malformed")
+    // A stale in-tree credential + an unrelated co-resident key.
+    fs.writeFileSync(
+      slPath,
+      JSON.stringify(
+        {
+          claudeOwned: "keep",
+          unimatrix: {
+            other: "keep-too",
+            remote: { token: "stale-leaked-token-xyz", url: REMOTE },
+          },
+        },
+        null,
+        2
+      ),
+      "utf8"
     );
-    // User content NOT clobbered.
-    assert.strictEqual(fs.readFileSync(slPath, "utf8"), "{ not json");
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    const parsed = JSON.parse(fs.readFileSync(slPath, "utf8"));
+    assert.strictEqual(parsed.claudeOwned, "keep");
+    assert.strictEqual(parsed.unimatrix.other, "keep-too");
+    assert.ok(!parsed.unimatrix.remote, "stale unimatrix.remote not deleted");
+    assert.ok(
+      !fs.readFileSync(slPath, "utf8").includes("stale-leaked-token-xyz"),
+      "stale token still in tree"
+    );
+  });
+
+  it("test_initBundle_migrationBestEffort_doesNotAbortInit", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const slPath = path.join(dir, ".claude", "settings.local.json");
+    fs.mkdirSync(path.dirname(slPath), { recursive: true });
+    // Malformed settings.local.json: the migration clean must NOT abort init.
+    fs.writeFileSync(slPath, "{ not json", "utf8");
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    // init completed: hooks + .mcp.json written despite the unclean file.
+    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
+    assert.ok(fs.existsSync(path.join(dir, ".mcp.json")));
+  });
+
+  it("test_initBundle_gitignoreWarningRemoved", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const actions = [];
+    const origLogLocal = console.log;
+    console.log = (...a) => actions.push(a.join(" "));
+    try {
+      await initRemote({ bundle: makeBundle(), projectDir: dir });
+    } finally {
+      console.log = origLogLocal;
+    }
+    assert.ok(
+      !actions.some((a) => a.includes("gitignored")),
+      "gitignore warning output path must be gone (no in-tree creds file)"
+    );
+  });
+});
+
+// ── AC-09 — no token in any init surface (R-09) ─────────────────────
+
+describe("AC-09 — no token in any init surface", () => {
+  it("test_initBundle_printSummary_noToken", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const out = [];
+    const origLogLocal = console.log;
+    console.log = (...a) => out.push(a.join(" "));
+    try {
+      await initRemote({ bundle: makeBundle(), projectDir: dir });
+    } finally {
+      console.log = origLogLocal;
+    }
+    assert.ok(
+      !out.join("\n").includes(BUNDLE_TOKEN),
+      "token leaked into init summary output"
+    );
+  });
+
+  it("test_initBundle_stdoutStderr_noToken", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const out = [];
+    const origLogLocal = console.log;
+    const origErr = console.error;
+    console.log = (...a) => out.push(a.join(" "));
+    console.error = (...a) => out.push(a.join(" "));
+    try {
+      await initRemote({ bundle: makeBundle(), projectDir: dir });
+    } finally {
+      console.log = origLogLocal;
+      console.error = origErr;
+    }
+    assert.ok(!out.join("\n").includes(BUNDLE_TOKEN), "token in stdout/stderr");
+  });
+
+  it("test_mcpJson_noTokenNoMcpUrlNoFp", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    const raw = fs.readFileSync(path.join(dir, ".mcp.json"), "utf8");
+    assert.ok(!raw.includes(BUNDLE_TOKEN), "token in .mcp.json");
+    assert.ok(!raw.includes(BUNDLE_MCP_URL), "mcp_url in .mcp.json");
+    assert.ok(!raw.includes(BUNDLE_FP), "fp in .mcp.json");
+    const mcp = JSON.parse(raw);
+    // Only command/args:[bridge,hash]/env:{} — AC-09 / FR-17.
+    assert.deepStrictEqual(Object.keys(mcp.mcpServers.unimatrix).sort(), [
+      "args",
+      "command",
+      "env",
+    ]);
+  });
+});
+
+// ── AC-10 — legacy path loud, deterministic, no bridge (R-11, R-15) ─
+
+describe("AC-10 — legacy bundle-only boundary", () => {
+  it("test_initLegacy_noUnimatrixMcpEntry", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
+    // No .mcp.json written, or if present, no unimatrix MCP server entry.
+    const mcpPath = path.join(dir, ".mcp.json");
+    if (fs.existsSync(mcpPath)) {
+      const mcp = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
+      assert.ok(
+        !(mcp.mcpServers && mcp.mcpServers.unimatrix),
+        "legacy path must NOT wire a unimatrix MCP entry"
+      );
+    } else {
+      assert.ok(true);
+    }
+  });
+
+  it("test_initLegacy_exactUnsupportedMessageAndExit", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    const out = [];
+    const origLogLocal = console.log;
+    console.log = (...a) => out.push(a.join(" "));
+    let threw = false;
+    try {
+      await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
+    } catch (_err) {
+      threw = true;
+    } finally {
+      console.log = origLogLocal;
+    }
+    // EXACT message text emitted (SR-06) ...
+    assert.ok(
+      out.some((line) => line.includes(LEGACY_MCP_UNSUPPORTED_MESSAGE)),
+      "exact legacy-unsupported message not emitted"
+    );
+    assert.ok(
+      LEGACY_MCP_UNSUPPORTED_MESSAGE.includes("v:2 bundle"),
+      "message must name the v:2 bundle path forward"
+    );
+    // ... and init does NOT hard-fail on the legacy path (exit 0, not a throw).
+    assert.ok(!threw, "legacy path must not throw — observe still works");
+  });
+
+  it("test_initLegacy_observePathUnchanged", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
+    // Legacy observe path is preserved: the store entry is written so the hook
+    // client can post; hooks are wired into settings.json.
+    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
+    const stored = readStore(dir);
+    assert.strictEqual(stored.observe_url, REMOTE.replace(/\/+$/, "") + "/observe");
+    assert.strictEqual(stored.token, TOKEN);
+  });
+
+  it("test_initLegacy_storeWrittenWithNullFingerprint", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
+    const stored = readStore(dir);
+    // WARN-1: universal relocation, but legacy stays unpinned (fingerprint:null,
+    // present not omitted) — and bundle path writes the real fingerprint.
+    assert.strictEqual(stored.fingerprint, null);
+  });
+
+  it("test_initBundle_storeWrittenWithRealFingerprint", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    assert.strictEqual(readStore(dir).fingerprint, BUNDLE_FP);
   });
 });
 
 // ── Skips + dry-run (FR-20) ─────────────────────────────────────────
 
 describe("remote skips + dry-run", () => {
-  it("test_mcp_and_binary_skipped_with_message", async () => {
+  it("test_binary_skipped_with_message", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
     const actions = [];
     const origLogLocal = console.log;
     console.log = (...a) => actions.push(a.join(" "));
     try {
-      await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
+      await initRemote({ bundle: makeBundle(), projectDir: dir });
     } finally {
       console.log = origLogLocal;
     }
     const joined = actions.join("\n");
-    assert.ok(joined.includes("Skipped .mcp.json"));
     assert.ok(joined.includes("Skipped binary/database steps"));
-    // No .mcp.json written.
-    assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")));
+    // The bundle path DOES write .mcp.json now (the bridge entry).
+    assert.ok(fs.existsSync(path.join(dir, ".mcp.json")));
   });
 
   it("test_dry_run_writes_nothing_and_skips_network", async () => {
@@ -635,16 +968,15 @@ describe("remote skips + dry-run", () => {
     });
     const dir = makeTempProject();
     await initRemote({
-      remote: REMOTE,
-      token: TOKEN,
+      bundle: makeBundle(),
       projectDir: dir,
       dryRun: true,
     });
     assert.ok(!pingCalled, "Ping should be skipped in dry-run");
     assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")));
-    assert.ok(
-      !fs.existsSync(path.join(dir, ".claude", "settings.local.json"))
-    );
+    assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")));
+    // No store file written in dry-run.
+    assert.ok(!fs.existsSync(storePath(dir)), "no store write in dry-run");
   });
 });
 
@@ -731,9 +1063,10 @@ describe("Ping validation (R-18)", () => {
   });
 
   it("test_ping_unreachable_fails_files_already_written", async () => {
-    // Documented behavior (pseudocode §Error Handling): Step 3/4 ran before the
-    // Ping, so config files ARE on disk; the error says so and re-run is
-    // idempotent. We assert both the loud failure and the written files.
+    // Documented behavior (pseudocode §Error Handling): Steps 3/4 ran before the
+    // Ping, so config IS on disk; the error says so and re-run is idempotent. We
+    // assert both the loud failure and the written artifacts (store out-of-tree,
+    // settings.json + .mcp.json in-tree).
     stubPing(() =>
       Promise.resolve({
         ok: false,
@@ -742,14 +1075,13 @@ describe("Ping validation (R-18)", () => {
     );
     const dir = makeTempProject();
     await assert.rejects(
-      () => initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir }),
+      () => initRemote({ bundle: makeBundle(), projectDir: dir }),
       (err) =>
         err.message.includes("cannot reach") &&
         err.message.includes("Configuration files were written")
     );
     assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
-    assert.ok(
-      fs.existsSync(path.join(dir, ".claude", "settings.local.json"))
-    );
+    assert.ok(fs.existsSync(path.join(dir, ".mcp.json")));
+    assert.ok(fs.existsSync(storePath(dir)), "store written before Ping");
   });
 });
