@@ -3,6 +3,13 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.2] - 2026-06-18
+
+### Fixes
+- win32-guard credstore POSIX-mode assertions for cross-platform CI (#775)
+- gate-3c: size-gate header meta-assertion lockstep 160,000->180,000 (#775)
+- http: wire rmcp allowed_hosts from UNIMATRIX_PUBLIC_URL (#774) (#778)
+
 ## [0.8.1] - 2026-06-17
 
 ### Features
