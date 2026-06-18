@@ -258,7 +258,20 @@ async fn run_session(
     let running = match server.serve((read_half, write_half)).await {
         Ok(r) => r,
         Err(e) => {
-            tracing::error!(error = %e, "MCP session setup failed");
+            // ConnectionClosed is benign: the health probe (ADR-003) and any client
+            // that disconnects before sending the MCP `initialize` request land here.
+            // Downgrade ONLY this variant to debug to stop ERROR-level log noise on the
+            // operator hot path. Every other variant — including the #[non_exhaustive]
+            // catch-all for future/unknown variants — stays at error! (default-to-loud)
+            // so real initialize failures remain diagnosable.
+            match e {
+                rmcp::service::ServerInitializeError::ConnectionClosed(_) => {
+                    tracing::debug!(error = %e, "MCP session setup closed before initialize");
+                }
+                _ => {
+                    tracing::error!(error = %e, "MCP session setup failed");
+                }
+            }
             return;
         }
     };
@@ -715,6 +728,108 @@ mod tests {
                 panic!("server.serve() hung for more than 5 seconds with closed client");
             }
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // GH#769: health-probe / early-disconnect log level — benign vs. real failure
+    // -----------------------------------------------------------------------
+    //
+    // The container healthcheck (ADR-003) connects to the MCP UDS socket and
+    // disconnects before sending an MCP `initialize` request. rmcp maps that EOF
+    // to ServerInitializeError::ConnectionClosed. The fix routes ConnectionClosed
+    // to debug! while keeping every other variant (and the #[non_exhaustive]
+    // catch-all) at error!. These two cases lock in that benign-vs-real boundary.
+
+    /// Drive a single `run_session` against a server-side `UnixStream` whose peer
+    /// performs `client_action` (e.g., close immediately, or send a non-initialize
+    /// message). Returns once `run_session` has handled the failed `serve(...)` arm.
+    async fn drive_run_session_with_client<F, Fut>(dir: &TempDir, client_action: F)
+    where
+        F: FnOnce(tokio::net::UnixStream) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = ()> + Send,
+    {
+        use crate::infra::shutdown::new_daemon_token;
+        use tokio::net::{UnixListener, UnixStream};
+
+        let sock = dir.path().join("gh769-test.sock");
+        let listener = UnixListener::bind(&sock).unwrap();
+
+        let sock_path = sock.clone();
+        let client_task = tokio::spawn(async move {
+            let stream = UnixStream::connect(&sock_path).await.unwrap();
+            client_action(stream).await;
+        });
+
+        let (server_stream, _) = listener.accept().await.unwrap();
+
+        let server = build_test_server(dir);
+        let token = new_daemon_token();
+
+        // run_session must return promptly once the client's behaviour yields a
+        // failed serve(...) — bound it so a regression that hangs is caught.
+        let _ = tokio::time::timeout(
+            Duration::from_secs(5),
+            run_session(server_stream, server, token.child_token()),
+        )
+        .await
+        .expect("run_session must return after serve(...) fails");
+
+        let _ = client_task.await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[tracing_test::traced_test]
+    async fn test_run_session_client_closes_before_initialize_logs_debug_not_error() {
+        let dir = TempDir::new().unwrap();
+
+        // Client connects and immediately closes without writing any bytes —
+        // exactly what the container healthcheck does (ADR-003).
+        drive_run_session_with_client(&dir, |stream| async move {
+            // Drop the stream — sends EOF to the server before any initialize.
+            drop(stream);
+        })
+        .await;
+
+        // Benign path: a DEBUG event is present and NO ERROR event was emitted.
+        assert!(
+            logs_contain("MCP session setup closed before initialize"),
+            "ConnectionClosed must produce the debug-level setup-closed event"
+        );
+        assert!(
+            !logs_contain("MCP session setup failed"),
+            "ConnectionClosed must NOT emit the error-level setup-failed event (GH#769 noise)"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    #[tracing_test::traced_test]
+    async fn test_run_session_malformed_message_still_logs_error() {
+        use tokio::io::AsyncWriteExt;
+
+        let dir = TempDir::new().unwrap();
+
+        // Client sends a well-formed JSON-RPC message that is NOT an `initialize`
+        // request, then closes. rmcp yields a non-ConnectionClosed variant
+        // (ExpectedInitializeRequest), which must remain at ERROR level.
+        drive_run_session_with_client(&dir, |mut stream| async move {
+            let not_initialize =
+                b"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\",\"params\":{}}\n";
+            let _ = stream.write_all(not_initialize).await;
+            let _ = stream.flush().await;
+            // Close so the server stops waiting for more frames.
+            drop(stream);
+        })
+        .await;
+
+        // Real-failure path: the error-level setup-failed event MUST still fire.
+        assert!(
+            logs_contain("MCP session setup failed"),
+            "a non-initialize message must keep the error-level setup-failed event"
+        );
+        assert!(
+            !logs_contain("MCP session setup closed before initialize"),
+            "a real failure must NOT be downgraded to the benign debug event"
+        );
     }
 
     // -----------------------------------------------------------------------
