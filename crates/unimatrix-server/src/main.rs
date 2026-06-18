@@ -103,6 +103,36 @@ fn assert_wave_b_precondition(
     Ok(())
 }
 
+/// #783 defense-in-depth: refuse to boot when `[[projects]]` declares routable
+/// slugs but the HTTP transport is disabled.
+///
+/// Registered projects are ONLY reachable over the HTTP per-slug resolver
+/// (vnc-038 ADR-006: local STDIO/UDS keep a direct path-hash store binding and
+/// never enter the resolver). With HTTP off, declared slugs are inert and client
+/// writes silently land in the path-hash store instead of the per-slug store — a
+/// catastrophic, unrollbackable misroute (vnc-034 ADR-004 SR-06). Failing loud at
+/// boot makes that misconfiguration impossible to hit silently.
+///
+/// Pure predicate (takes the resolved `http_enabled` flag and slug count, not the
+/// env var) so it is unit-testable without booting — mirrors the config.rs
+/// pure-function idiom. The env override precedence is ALREADY applied inside
+/// `load_config` (config.rs step 3c); callers pass the resolved `config.http.enabled`.
+///
+/// Returns `Err` ONLY for the (HTTP-off + slugs-present) quadrant. The legitimate
+/// local single-project install (empty `[[projects]]` + HTTP off) returns `Ok`.
+fn require_http_for_projects(http_enabled: bool, slug_count: usize) -> Result<(), String> {
+    if !http_enabled && slug_count > 0 {
+        return Err(format!(
+            "{slug_count} project slug(s) are declared in `[[projects]]` but the HTTP \
+             transport is disabled. Registered projects are reachable ONLY over HTTP; with \
+             HTTP off they are inert and writes misroute to the path-hash store. Remedy: \
+             enable HTTP (set `[http] enabled = true` in config.toml, or \
+             `UNIMATRIX_HTTP_ENABLED=true`), or de-register the projects."
+        ));
+    }
+    Ok(())
+}
+
 /// Unimatrix knowledge engine.
 #[derive(Parser)]
 #[command(name = "unimatrix", about = "Unimatrix knowledge engine")]
@@ -632,6 +662,13 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // HTTP listener's `MultiProjectRouter` wiring.
     let (config, categories, observation_registry, project_slugs) =
         load_config_and_build_allowlist(&paths.data_dir)?;
+
+    // #783 defense-in-depth: fail loud if projects are declared but HTTP is off.
+    // `config.http.enabled` is the RESOLVED field — the UNIMATRIX_HTTP_ENABLED env
+    // override precedence is already applied inside `load_config` (config.rs step
+    // 3c), so we read the field and do NOT re-read the env var here.
+    require_http_for_projects(config.http.enabled, project_slugs.len())
+        .map_err(ServerError::Config)?;
 
     // Resolve ConfidenceParams from preset/weights.
     let confidence_params = Arc::new(resolve_confidence_params(&config).unwrap_or_else(|e| {

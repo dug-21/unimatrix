@@ -119,10 +119,17 @@ COPY --from=builder --chown=65532:65532 /data /data
 COPY --from=builder --chown=65532:65532 /shared /shared
 
 # Environment (ADR-005).
+# UNIMATRIX_HTTP_ENABLED=true bakes the cloud serving posture into the shipped
+# image (vnc-034 ADR-007 #4953). A clean `docker run` of this image must boot
+# HTTP-serving so registered `[[projects]]` slugs are routable; without it the
+# binary default `http.enabled=false` leaves slugs inert and misroutes writes to
+# the path-hash store (#783). Override for a UDS-only container with
+# `-e UNIMATRIX_HTTP_ENABLED=false`. RUNTIME stage only — never the builder.
 ENV HOME=/data \
     LD_LIBRARY_PATH=/usr/local/lib \
     UNIMATRIX_LOG=info \
-    UNIMATRIX_MODEL_CACHE=/shared/models
+    UNIMATRIX_MODEL_CACHE=/shared/models \
+    UNIMATRIX_HTTP_ENABLED=true
 
 # Volume mount point for persistent data.
 #
@@ -141,9 +148,11 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 # TLS serving port (vnc-034 / ADR-007, FR-A8, AC-W1-S2, R-12).
 # ONLY the TLS port is exposed — there is NO plaintext port. The container serves
 # pinned-TLS HTTPS only; OSS posture has no plaintext-to-client mode.
-# The HTTP listener is gated on UNIMATRIX_HTTP_ENABLED=true (set in compose.yaml,
-# ADR-007). The global binary default http.enabled=false is unchanged — flipping
-# serving on is a container-scoped env concern, not a code-default change.
+# The HTTP listener is enabled by `ENV UNIMATRIX_HTTP_ENABLED=true` baked into the
+# runtime stage above (cloud posture, vnc-034 ADR-007). Override with
+# `-e UNIMATRIX_HTTP_ENABLED=false` for a UDS-only container. The global binary
+# default http.enabled=false is unchanged — flipping serving on is a
+# container-scoped env concern, not a code-default change.
 # TLS auto-enables from the first-boot-provisioned cert (provisioned in the Rust
 # binary, since distroless has no shell). The token/cert stay 0600 files on the
 # /data volume and are NEVER baked into an image layer (NFR-06).

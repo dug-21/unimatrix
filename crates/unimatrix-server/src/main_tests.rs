@@ -1288,3 +1288,62 @@ mod wave_b_precondition_tests {
         );
     }
 }
+
+// -- #783: HTTP-vs-projects boot guard (defense-in-depth) --
+
+#[cfg(test)]
+mod require_http_for_projects_tests {
+    use super::*;
+
+    // ---- Pure predicate: all four (HTTP on/off x projects empty/non-empty) quadrants ----
+
+    #[test]
+    fn test_require_http_for_projects_off_with_slugs_returns_err() {
+        // THE BUG quadrant: projects declared but HTTP off -> must fail loud.
+        let err = require_http_for_projects(false, 1).expect_err("off + slugs must fail");
+        assert!(
+            err.contains("HTTP"),
+            "actionable message mentions HTTP: {err}"
+        );
+        assert!(
+            err.contains("UNIMATRIX_HTTP_ENABLED=true") || err.contains("[http] enabled = true"),
+            "message names the remedy: {err}"
+        );
+    }
+
+    #[test]
+    fn test_require_http_for_projects_off_empty_returns_ok() {
+        // Legitimate local single-project install: empty [[projects]] + HTTP off.
+        assert!(require_http_for_projects(false, 0).is_ok());
+    }
+
+    #[test]
+    fn test_require_http_for_projects_on_with_slugs_returns_ok() {
+        assert!(require_http_for_projects(true, 3).is_ok());
+    }
+
+    #[test]
+    fn test_require_http_for_projects_on_empty_returns_ok() {
+        assert!(require_http_for_projects(true, 0).is_ok());
+    }
+
+    // ---- Override-regression ----
+    // The guard reads the RESOLVED `config.http.enabled`. The env override
+    // precedence (UNIMATRIX_HTTP_ENABLED=false -> enabled=false) is applied inside
+    // `load_config` and is unit-tested at config.rs (`resolve_http_enabled_override`
+    // -> Some(false) for "false"/"0"). These tests assert the guard's consequence
+    // of that resolved value: the operator escape hatch must still be honored.
+
+    #[test]
+    fn test_explicit_http_disabled_with_projects_guard_errs() {
+        // `-e UNIMATRIX_HTTP_ENABLED=false` resolves to enabled=false; combined with
+        // registered projects this is a genuine misconfig -> guard fails loud.
+        assert!(require_http_for_projects(false, 2).is_err());
+    }
+
+    #[test]
+    fn test_explicit_http_disabled_empty_projects_guard_ok() {
+        // Same explicit-off escape hatch but no projects -> clean boot (guard Ok).
+        assert!(require_http_for_projects(false, 0).is_ok());
+    }
+}
