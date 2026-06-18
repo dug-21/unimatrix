@@ -106,7 +106,10 @@ describe("credstore.write", function () {
   it("test_write_creates0600File", function () {
     credstore.write(HASH_A, cred());
     const mode = fs.statSync(expectedPath(HASH_A)).mode & 0o777;
-    assert.strictEqual(mode, 0o600);
+    // POSIX mode is honored only off Windows (Windows uses ACLs, reports 0o666).
+    if (process.platform !== "win32") {
+      assert.strictEqual(mode, 0o600);
+    }
   });
 
   it("test_write_persistsCanonicalSchema", function () {
@@ -134,7 +137,9 @@ describe("credstore.write", function () {
     credstore.write(HASH_A, cred());
     const second = fs.readFileSync(expectedPath(HASH_A), "utf8");
     assert.strictEqual(first, second);
-    assert.strictEqual(fs.statSync(expectedPath(HASH_A)).mode & 0o777, 0o600);
+    if (process.platform !== "win32") {
+      assert.strictEqual(fs.statSync(expectedPath(HASH_A)).mode & 0o777, 0o600);
+    }
   });
 
   it("test_write_update_overwritesEntryForSameHash", function () {
@@ -209,7 +214,9 @@ describe("credstore.write", function () {
     fs.writeFileSync(expectedPath(HASH_A), "{}\n", { mode: 0o644 });
     fs.chmodSync(expectedPath(HASH_A), 0o644);
     credstore.write(HASH_A, cred());
-    assert.strictEqual(fs.statSync(expectedPath(HASH_A)).mode & 0o777, 0o600);
+    if (process.platform !== "win32") {
+      assert.strictEqual(fs.statSync(expectedPath(HASH_A)).mode & 0o777, 0o600);
+    }
   });
 
   it("test_write_fingerprintNull_persistsNullNotOmitted", function () {
