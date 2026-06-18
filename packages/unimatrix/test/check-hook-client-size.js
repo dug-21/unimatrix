@@ -6,7 +6,7 @@
 // Two independent limits over lib/hook-client/**/*.js (decimal bytes):
 //
 //   PRIMARY  : comment-stripped total <= 100,000 bytes
-//   BACKSTOP : raw (on-disk) total    <= 160,000 bytes
+//   BACKSTOP : raw (on-disk) total    <= 180,000 bytes
 //
 // The PRIMARY limit measures shipped logic only — line and block comments are
 // removed before counting so the oracle-citation comment style this client
