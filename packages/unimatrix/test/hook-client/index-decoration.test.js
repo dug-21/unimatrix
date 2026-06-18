@@ -489,11 +489,45 @@ function freshProject() {
   return tmpRoot;
 }
 
+// vnc-039 Scope B: the credential moved OUT of the in-tree
+// .claude/settings.local.json INTO the out-of-tree per-projectHash store
+// (~/.unimatrix/<projectHash>/remote.json, mode 0600, canonical schema). The
+// SPAWNED child runs with HOME=tmpRoot (see runEntry), so the store this helper
+// seeds under tmpRoot is the exact file config.resolve() reads back. The path is
+// derived through the REAL lib walk (mirrors childStateDir / index.test.js
+// storePathFor) so it can never drift from the child's own derivation;
+// credstore.pathFor is NOT used because it keys off os.homedir() in THIS (parent)
+// process, not the child's HOME=tmpRoot.
+function withObserve(url) {
+  try {
+    const u = new URL(url);
+    if (u.pathname && u.pathname !== "/") return url; // already pathed
+  } catch (_e) {
+    return url;
+  }
+  return url.replace(/\/+$/, "") + "/observe";
+}
+
+function remoteStorePath(root) {
+  const base = root || tmpRoot;
+  const config = require("../../lib/hook-client/config");
+  const hash = config.computeProjectHash(config.walkToProjectRoot(base));
+  return path.join(base, ".unimatrix", hash, "remote.json");
+}
+
 function writeRemoteConfig(url, token) {
-  fs.writeFileSync(
-    path.join(tmpRoot, ".claude", "settings.local.json"),
-    JSON.stringify({ unimatrix: { remote: { url, token } } })
-  );
+  // observe_url is the post target; mcp_url co-resides for the bridge (unread
+  // by the hook client). No fingerprint → unpinned (stub servers are plain HTTP).
+  const cred = {
+    schema_version: 1,
+    mcp_url: withObserve(url),
+    observe_url: withObserve(url),
+    token,
+    fingerprint: null,
+  };
+  const fp = remoteStorePath(tmpRoot);
+  fs.mkdirSync(path.dirname(fp), { recursive: true });
+  fs.writeFileSync(fp, JSON.stringify(cred), { mode: 0o600 });
 }
 
 function childStateDir(root) {

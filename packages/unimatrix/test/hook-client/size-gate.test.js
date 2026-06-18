@@ -260,6 +260,9 @@ describe("size-gate header", function () {
 
   it("test_limits_are_decimal", function () {
     assert.strictEqual(PRIMARY_LIMIT, 100000);
-    assert.strictEqual(BACKSTOP_LIMIT, 160000);
+    // BACKSTOP raised 160000→180000 for the vnc-039 stdio→HTTPS MCP bridge
+    // (~24KB new pure-JS); human-approved, recorded on #775. Keep this
+    // meta-assertion in lockstep with check-hook-client-size.js:35.
+    assert.strictEqual(BACKSTOP_LIMIT, 180000);
   });
 });
