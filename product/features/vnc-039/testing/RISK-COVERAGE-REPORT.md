@@ -22,7 +22,7 @@ The 1 skip is `test_root_walk_windows_separators` — a Windows-platform-gated t
 | mcp-bridge SSE wire path (C2 `sse-parse`, R-04) | `test/hook-client/mcp-bridge-sse.test.js` | 2 | PASS |
 | bin mcp-bridge routing (C3) | `test/bin-mcp-bridge.test.js` | 7 | PASS |
 | init-remote (C4) | `test/init-remote.test.js` | 54 | PASS |
-| size gate (AC-02 budget) | `test/hook-client/size-gate.test.js` | 21 | PASS (1 stale assertion fixed — see §Test Fixes) |
+| size gate (AC-02 budget) | `test/hook-client/size-gate.test.js` | 21 | PASS 21/21 (2 lockstep meta-assertions tracked to the 180,000 backstop — see §Test Fixes) |
 | zero-dep gate (AC-02) | `test/check-zero-deps.js` | n/a | PASS — no runtime deps, no MCP SDK |
 
 Broader hook-client regression (representative): `index` 54, `index-decoration` 31 (1 fixture migrated — see §Test Fixes), `build-request` 90, `parity-layer1` 91, `transport-http` 34, `transport-uds` 33, `merge-settings` 73, `remote-client` 26, all Layer-2 parity suites (`parity-layer2`/`-uds`/`-concurrency`/`-precompact`) green with the cargo binary present.
@@ -160,14 +160,14 @@ Legend: ✅ validated · ⏳ LIVE-PENDING (tracked GH #779) · — not applicabl
 
 Both are stale test artifacts left by this feature's own changes — the "fix the test" triage branch (USAGE-PROTOCOL). No production code edited.
 
-1. **`test/hook-client/size-gate.test.js`** — `test_limits_are_decimal` asserted `BACKSTOP_LIMIT === 160000`, but vnc-039 deliberately raised the gate's backstop 160000→180000 (`check-hook-client-size.js:35`, human-approved on #775) for the ~24KB bridge. Updated the meta-assertion to `180000` to track the source. The real gate already passes (raw 169317 ≤ 180000).
+1. **`test/hook-client/size-gate.test.js`** — vnc-039 deliberately raised the gate's backstop 160000→180000 (`check-hook-client-size.js` const line 35 **and** header comment lines 9 & 35, human-approved on #775) for the ~24KB bridge. Two meta-assertions track that source: `test_limits_are_decimal` (`BACKSTOP_LIMIT === 180000`) and `test_header_documents_human_decision_rule` (header documents `"180,000"`). Both updated to the raised backstop in lockstep with the corrected source — suite now 21/21. The real gate already passes (raw 169317 ≤ 180000).
 2. **`test/hook-client/index-decoration.test.js`** — `writeRemoteConfig` still seeded the **in-tree** `{root}/.claude/settings.local.json` `{unimatrix:{remote:{url,token}}}` shape, which vnc-039 C5 stopped reading (credential moved to the out-of-tree HOME-keyed `~/.unimatrix/<projectHash>/remote.json`). The spawned child therefore resolved no remote config → 0 FNF POSTs → deterministic failure. Migrated the helper to seed the canonical store under the child's HOME via the real lib walk (mirrors the already-migrated `index.test.js` `storePathFor`/`writeRemoteConfig`; entry #5125). Now 31/31.
 
 ---
 
 ## FLAGGED for Delivery Leader (NOT fixed — out of test scope)
 
-- **Stale doc comment, `lib/hook-client/check-hook-client-size.js:9`** — the header still documents `BACKSTOP : raw … <= 160,000 bytes` while line 35 sets the constant to `180000`. A `size-gate header` meta-test (`test_header_documents_human_decision_rule`) asserts the source documents `"160,000"`, so it currently passes against the stale comment. When the comment is corrected to `180,000`, that header test must be updated in lockstep. This is a production-file comment edit — left for the Delivery Leader's rework routing, not patched here.
+- **(RESOLVED — was: stale doc comment)** The `check-hook-client-size.js` header comment (lines 9 & 35) now documents the `180,000` backstop in lockstep with the constant, and the `size-gate header` meta-test (`test_header_documents_human_decision_rule`) asserts `"180,000"` to match. No longer a deferred hazard — both are corrected and in lockstep (see §Test Fixes #1). Nothing left for the Delivery Leader here.
 - **Inert stale fixture, `test/hook-client/benchmark-spawn.js:51,98`** — `makeProject`/`measureInProcessWork` still write the old in-tree `settings.local.json` remote shape. The benchmark only asserts timing budget + breadcrumb (not remote POSTs), so the stale credential is **inert** and the suite passes. Low-priority cleanup; not failing, not blocking. (Left unchanged to keep this PR's test diff minimal.)
 - **Fixture-internal note, `test/fixtures/mcp/rmcp-initialize-capture.json`** — `response_headers.content-type` is `application/json` while the provenance prose (and the stub the tests run against) use `text/event-stream` SSE framing. The stub/tests follow the SSE-required prose (correct per rmcp source); the live run (#779) should reconcile the captured header value. Non-blocking.
 
