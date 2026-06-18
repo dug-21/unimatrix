@@ -22,7 +22,7 @@
 
 ## Component Map
 
-Components from the architecture (C1–C5). Pseudocode/test-plan paths are filled during Session 2 Stage 3a.
+Components from the architecture (C1–C5). **Stage 3a COMPLETE** — pseudocode + test-plan paths below are real and verified to exist.
 
 | Component | Scope | Pseudocode | Test Plan |
 |-----------|-------|-----------|-----------|
@@ -31,6 +31,11 @@ Components from the architecture (C1–C5). Pseudocode/test-plan paths are fille
 | C3 `bin/unimatrix.js` (`mcp-bridge` subcommand → JS) | A | pseudocode/bin-unimatrix.md | test-plan/bin-unimatrix.md |
 | C4 `init.js` `initRemote()` + `.mcp.json`/store write + legacy message | A+B | pseudocode/init-remote.md | test-plan/init-remote.md |
 | C5 `config.js` hook-client `resolve()` repoint + `okHttp` `pinnedFp` | B | pseudocode/config-resolve.md | test-plan/config-resolve.md |
+
+**Stage 3a findings (drive Stage 3b):**
+- **C2 decomposed into 5 sub-modules** (`stdio-frame` / `http-session` / `sse-parse` / `dispatch` / `lifecycle`) so no file exceeds 500 lines and each ADR-001 unit is independently testable. C2 remains ONE component / ONE dev agent.
+- **SSE is REQUIRED, not contingent (server-source verified).** Unimatrix builds rmcp with `StreamableHttpServerConfig::default()` (`json_response:false`, `router.rs:326-336`), so all MCP responses are `text/event-stream`; the bridge MUST send `Accept: application/json, text/event-stream` (JSON-only → 406). The SSE-skip probe is expected to FAIL → `sse-parse` is built. R-04 stands; the live probe (Stage 3c) remains the definitive gate but the expectation is flipped to SSE-required.
+- **Live re-confirm (DELIVERY CHECKPOINT):** all rmcp-owned wire values (`Mcp-Session-Id` server-minted+replayed, `MCP-Protocol-Version` echo G1, SSE priming/keep-alive G2, `clientInfo.name` passthrough-vs-override G3) confirmed live in Stage 3c, session-id handshake first.
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
