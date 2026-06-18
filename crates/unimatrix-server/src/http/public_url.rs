@@ -24,8 +24,9 @@ const PUBLIC_URL_VAR: &str = "UNIMATRIX_PUBLIC_URL";
 /// (FR-A5b pairing) before distributing the bundle.
 const PLACEHOLDER: &str = "https://<EDIT-ME>:8443";
 
-/// Sentinel host emitted when the knob is unset. Triggers permissive-with-warning
-/// `allowed_hosts` posture downstream; never appended to the SAN list.
+/// Sentinel host emitted when the knob is unset. Yields a localhost-restrictive
+/// `allowed_hosts` posture downstream (only the local SANs gate-pass; no public
+/// host is admitted) plus a startup WARN; never appended to the SAN list.
 const PLACEHOLDER_HOST: &str = "<EDIT-ME>";
 
 /// Local SANs always present regardless of the public URL (loopback + wildcard
@@ -120,7 +121,8 @@ pub fn derive_public_url(env: &Env) -> PublicUrl {
 fn placeholder() -> PublicUrl {
     tracing::warn!(
         "UNIMATRIX_PUBLIC_URL unset — emitting placeholder base-url ({PLACEHOLDER}) and \
-         permissive-with-warning allowed_hosts. Set it before distributing the bundle."
+         localhost-restrictive allowed_hosts (no public host admitted). Set it before \
+         distributing the bundle."
     );
     PublicUrl {
         base_url: PLACEHOLDER.to_string(),
@@ -310,9 +312,9 @@ mod tests {
     }
 
     #[test]
-    fn test_unset_public_url_allowed_hosts_permissive_with_warning() {
-        // Permissive-with-warning posture is signalled by the sentinel host;
-        // the real host is NOT appended to the SAN list.
+    fn test_unset_public_url_allowed_hosts_localhost_restrictive() {
+        // Localhost-restrictive posture: the sentinel host is NOT appended to the
+        // SAN list, so allowed_hosts carries only the local SANs (no public host).
         let pu = derive(None);
         assert_eq!(pu.host, "<EDIT-ME>");
         assert_eq!(
