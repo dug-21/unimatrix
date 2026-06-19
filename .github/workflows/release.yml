@@ -2,6 +2,7 @@ name: Release
 "on":
   push:
     tags: ['v*']
+  workflow_dispatch: {}
 
 concurrency:
   group: release
@@ -394,8 +395,56 @@ jobs:
           cache-from: type=gha,scope=container-arm64
           cache-to: type=gha,mode=max,scope=container-arm64
 
+  # Verify-by-name / skip-is-failure smoke gates (nan-019). Each pulls the exact pushed
+  # per-arch GHCR bytes and runs the existing smoke as a release gate that blocks the
+  # multi-arch manifest. No continue-on-error, no retry (ADR-003 / C-04). The gate spine
+  # is sourced from product/test/infra-001/scripts/release-gate-lib.sh — the SAME bytes
+  # the pre-merge gate-logic test sources (single source of truth, R-01).
+  smoke-amd64:
+    needs: [build-container-x64]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke the pushed amd64 image (verify-by-name gate)
+        run: |
+          set -euo pipefail
+          source product/test/infra-001/scripts/release-gate-lib.sh
+          IMAGE="$(resolve_image "${GITHUB_REPOSITORY_OWNER}" "${GITHUB_EVENT_NAME}" "${GITHUB_REF_NAME}" amd64)"
+          echo "smoke target IMAGE=${IMAGE}"
+          run_smoke_gate "${IMAGE}" bash product/test/infra-001/scripts/docker-http-posture-smoke.sh
+
+  smoke-arm64:
+    needs: [build-container-arm64]
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke the pushed arm64 image (verify-by-name gate)
+        run: |
+          set -euo pipefail
+          source product/test/infra-001/scripts/release-gate-lib.sh
+          IMAGE="$(resolve_image "${GITHUB_REPOSITORY_OWNER}" "${GITHUB_EVENT_NAME}" "${GITHUB_REF_NAME}" arm64)"
+          echo "smoke target IMAGE=${IMAGE}"
+          run_smoke_gate "${IMAGE}" bash product/test/infra-001/scripts/docker-http-posture-smoke.sh
+
   create-container-manifest:
-    needs: [build-container-x64, build-container-arm64]
+    needs: [smoke-amd64, smoke-arm64]
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Log in to GHCR
