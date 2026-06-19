@@ -209,3 +209,52 @@ surface for N3. The DAG computes the "tick before config" ordering. **Honest-unk
 property is absent but because the *maintenance/guard* is — N5's standing release gate is the single
 feature that most raises confidence (it guards N3 and N5 and would have caught #774/#783). Efficiency
 (#767) and prevention (the standing gate) are features *advancing* nfrs — not functional capabilities.
+
+## Delivery plan — features to fully deliver `personal-cloud`
+
+> Derived from the gaps above (the `uni-capability` "report what's left" view). 🟢 capabilities need no
+> work. **Keystone: #787 (C5)** — the only open issue gating the marquee C0★, and it also feeds C6 and
+> is open per-slug surface for N3. Sequence it first.
+
+### Functional gaps
+
+| Wave | Feature | Closes | State | Depends |
+|------|---------|--------|-------|---------|
+| **B** | #787 — per-slug analytics (tick Step A: per-slug rebuild + full service config) | **C5** | open | C3 |
+| B | **NEW** — C0★ full-fidelity parity validation (remote ≡ local, measured) | C0★ | create | #787 |
+| **C** | #785 — per-slug config overlay (carry the `(tenant,project)` enterprise-seam framing) | C6 | open | #787 |
+| C | **NEW** — multi-LLM wiring (Codex / Gemini) + N-clients-one-slug test | C14, C13 | create | C10 |
+| **D** | #768 — remote-client runbook + reconcile the `rmcp-initialize-capture` fixture | C15 | open | — |
+| D | **NEW** — air-gap behavioral validation | C16 | create | #767 |
+
+### NFR maintenance (features that *advance* an nfr — "maintained", not "done")
+
+| Feature | Advances | State |
+|---------|----------|-------|
+| **NEW** — wire the docker smoke as a standing release gate | **N5** (guards N3) | create — highest confidence; would have caught #774/#783 |
+| **NEW** — downgrade the `Cancelled`-on-restart log line | N4 | create (small; from the #784 review) |
+| #767 — bake the embedding model at build time | C16 prerequisite / efficiency | open |
+
+### Net-new issues to create (5)
+
+1. C0★ — full-fidelity parity validation (remote ≡ local), post-#787
+2. Multi-LLM client wiring (Codex/Gemini) + N-clients-one-slug behavioral test
+3. Air-gap behavioral validation (depends #767)
+4. Standing `docker build → boot → register → per-slug write` release gate (N5)
+5. `Cancelled`-on-restart benign log downgrade (N4)
+
+### Housekeeping
+
+- Confirm **#786 / #784 merged** (assumed in C1 / N4 / N5 status).
+- **Close #770** if vnc-038 (PR #772) fully subsumed it.
+- Out of the core path per the goal: **#732** (auth metrics — deferred observability), **#682** (Rust hook
+  retirement, soak-gated), **#578** (audit retention — enterprise-deferred).
+
+### Critical path
+
+```
+#787 (C5 keystone) ──> C0★ validation ──────────> marquee promise 🟢
+        └──> #785 (C6) , multi-LLM (C14)
+N5 standing gate ── guards N3+N5; independent — do EARLY for confidence
+#768 , air-gap(+#767) ── parallel, independent
+```
