@@ -84,8 +84,11 @@ level with serialized rayon; per-slug `tick_counter`. Wave 2 maintains the handl
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 | Wave-2 gating audit record (A1 per-op + funnel) | test-plan/wave2-gating-audit.md | Wave 2 start, Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. Components above are the
-expected set from the architecture; actual file paths are confirmed during delivery.
+Stage 3a complete (2026-06-19): all 7 components have pseudocode + test-plan files at the paths above;
+cross-cutting OVERVIEW.md (pseudocode + test-plan) and test-plan/wave2-gating-audit.md exist. Paths
+confirmed against the working tree. Pseudocode flagged gaps G-1 (A2 interior-immutability = delivery
+audit), G-2/G-3 (thin additive accessors for ServiceLayer/tick_metadata/vector_index off
+ProjectServerInput), and boosted_categories provenance for AC-1 — to resolve in Gate 3a / Wave 1.
 
 ## Resolved Decisions
 
