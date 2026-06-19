@@ -3780,7 +3780,12 @@ pub fn confidence_params_from_preset(preset: Preset) -> ConfidenceParams {
 // ---------------------------------------------------------------------------
 
 /// Load one config file: permission check → size cap → deserialize → validate.
-fn load_single_config(path: &Path) -> Result<UnimatrixConfig, ConfigError> {
+///
+/// `pub` so the binary crate's per-slug overlay helper
+/// (`http_provision::resolve_slug_config`, vnc-040 ADR-001) can REUSE this exact
+/// load path — carrying the 64 KiB cap (#2395) and the `#[cfg(unix)]` `mode()&0o022`
+/// permission check — on the per-slug `config.toml` surface. Logic UNCHANGED.
+pub fn load_single_config(path: &Path) -> Result<UnimatrixConfig, ConfigError> {
     // Permission check (Unix only).
     #[cfg(unix)]
     check_permissions(path)?;
@@ -3822,7 +3827,12 @@ fn load_single_config(path: &Path) -> Result<UnimatrixConfig, ConfigError> {
 /// If per-project sets `preset = "custom"` but has no `[confidence] weights`,
 /// `validate_config` (called per-file before merge) already aborted. This function
 /// does not re-enforce the prohibition — validation gates it upstream.
-fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> UnimatrixConfig {
+///
+/// `pub` so the binary crate's per-slug overlay helper
+/// (`http_provision::resolve_slug_config`, vnc-040 ADR-001) can REUSE this exact
+/// per-key replace merge as the THIRD precedence layer (global → project → per-slug).
+/// Owned-arg signature unchanged; the helper passes `global.clone()`. Logic UNCHANGED.
+pub fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> UnimatrixConfig {
     let default = UnimatrixConfig::default();
 
     UnimatrixConfig {
@@ -4389,6 +4399,166 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             global.projects
         },
     }
+}
+
+// ===========================================================================
+// vnc-040 ADR-004 (#5210, FR-16, R-14/AC-11): canonical per-slug-vs-global
+// configuration classification. DATA-ONLY — this section does NOT change
+// `merge_configs`' logic; it declares the single source of truth for the
+// per-slug-overlay seam and a drift-guard test (in the sibling test file)
+// pins `merge_configs`' real behavior to it. The §9 verdict table and
+// Feature B's seed annotations RENDER from this slice (one-way: A owns,
+// B consumes) — no second hand-authored copy of the split may exist.
+// ===========================================================================
+
+/// Disposition of one config key/section across the per-slug overlay seam.
+///
+/// `PerSlugOverlayable`: a slug's own `config.toml` may override the daemon
+/// global for this key (project-wins in `merge_configs`). `GlobalLocked`: the
+/// daemon global always wins — the per-slug value is ignored (hash-pin
+/// global-wins carve-out, transport/daemon posture, the process `permissive`
+/// flag, and the model-pool descriptors).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OverlayDisposition {
+    /// Slug `config.toml` value overlays the global (project-wins).
+    PerSlugOverlayable,
+    /// Global value always wins; the per-slug value is ignored.
+    GlobalLocked,
+}
+
+/// One classified config key/section in the per-slug overlay seam (ADR-004).
+///
+/// `key` is a STABLE identifier matching the live struct field path
+/// (e.g. `"knowledge.categories"`, `"inference.embedding_model_sha256"`,
+/// `"server.instructions"`, `"tls"`). The string is the disposition map; the
+/// EXACT field accessor is bound by the drift-guard test, which matches on
+/// `key` to read the merged value.
+#[derive(Debug, Clone, Copy)]
+pub struct ConfigKeyClass {
+    /// Stable identifier for the key/section.
+    pub key: &'static str,
+    /// Whether a per-slug file may overlay this key.
+    pub disposition: OverlayDisposition,
+}
+
+/// THE canonical per-slug-vs-global classification (ADR-004, single source of
+/// truth). Every key/section reachable at the `build_project_server` call site
+/// appears exactly once. A field merged by `merge_configs` but absent here — or
+/// classified one way but merged the other — breaks the build via the
+/// drift-guard test (`slug_config_classification_tests.rs`).
+///
+/// Note: `permissive` is the daemon PROCESS flag, not a `UnimatrixConfig`
+/// field, so it has no `merge_configs` arm. It is classified `GlobalLocked`
+/// here for completeness (the §9 verdict table renders it), and its lock is
+/// held BY CONSTRUCTION in the per-slug loop — passed unconditionally from the
+/// global daemon flag, never sourced from the merged config (FR-15). The
+/// drift-guard test skips it explicitly (see `MERGE_EXEMPT_KEYS`).
+pub const PER_SLUG_CONFIG_CLASSIFICATION: &[ConfigKeyClass] = &[
+    // ---- PerSlugOverlayable (verdict rows 3-9, I; FR-03/FR-14) ----
+    ConfigKeyClass {
+        key: "knowledge.categories",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "knowledge.boosted_categories",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "confidence.weights",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "observation.domain_packs",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "inference.nli_top_k",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "inference.nli_enabled",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    // Overlayable fusion weights (replace arm in merge_configs).
+    ConfigKeyClass {
+        key: "inference.w_sim",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "inference.w_nli",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "inference.w_conf",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "inference.w_coac",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "inference.w_util",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "inference.w_prov",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    // Overlayable PPR weights (replace arm in merge_configs).
+    ConfigKeyClass {
+        key: "inference.ppr_alpha",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "inference.ppr_blend_weight",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
+        key: "server.instructions",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    // ---- GlobalLocked (verdict rows 0-2, P, transport; FR-04/05/06/09/15) ----
+    // Hash pins: global-wins carve-out (#4655 / #4649), security-critical.
+    ConfigKeyClass {
+        key: "inference.embedding_model_sha256",
+        disposition: OverlayDisposition::GlobalLocked,
+    },
+    ConfigKeyClass {
+        key: "inference.nli_model_sha256",
+        disposition: OverlayDisposition::GlobalLocked,
+    },
+    // Pool size: the shared rayon pool is global (verdict row 1).
+    ConfigKeyClass {
+        key: "inference.rayon_pool_size",
+        disposition: OverlayDisposition::GlobalLocked,
+    },
+    // Daemon process posture — passed unconditionally, no merge arm (see doc above).
+    ConfigKeyClass {
+        key: "permissive",
+        disposition: OverlayDisposition::GlobalLocked,
+    },
+    // Transport / daemon sections (section-level replace, but never read at the seam).
+    ConfigKeyClass {
+        key: "tls",
+        disposition: OverlayDisposition::GlobalLocked,
+    },
+    ConfigKeyClass {
+        key: "http",
+        disposition: OverlayDisposition::GlobalLocked,
+    },
+];
+
+/// Returns `true` iff `key` is classified `PerSlugOverlayable` in
+/// [`PER_SLUG_CONFIG_CLASSIFICATION`]. Unknown keys are NOT in the seam
+/// classification and return `false` (conservative default: treat as
+/// not-overlayable). A *seam-relevant* key missing from the registry is a
+/// drift-guard build failure, so an unknown key reaching this predicate at
+/// runtime is by construction a non-seam key. Total — never panics.
+pub fn is_per_slug_overlayable(key: &str) -> bool {
+    PER_SLUG_CONFIG_CLASSIFICATION
+        .iter()
+        .find(|entry| entry.key == key)
+        .is_some_and(|entry| entry.disposition == OverlayDisposition::PerSlugOverlayable)
 }
 
 /// Unix-only: check file permissions before reading.
@@ -12072,3 +12242,10 @@ mod projects_config_tests;
 #[cfg(test)]
 #[path = "transcript_signals_config_tests.rs"]
 mod transcript_signals_config_tests;
+
+// vnc-040 ADR-004 (R-14/AC-11): the per-slug classification drift-guard +
+// exhaustiveness tests live in a focused sibling file (same rationale as the
+// siblings above — keep the inline `mod tests` from growing further).
+#[cfg(test)]
+#[path = "slug_config_classification_tests.rs"]
+mod slug_config_classification_tests;
