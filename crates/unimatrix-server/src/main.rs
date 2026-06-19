@@ -1087,25 +1087,84 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             let base_dir = paths.data_dir.parent().unwrap_or(&paths.data_dir);
             let mut slug_servers: Vec<ProjectServerInput> = Vec::new();
             for slug in &project_slugs {
+                // vnc-040 (C6, ADR-002 §1 / FR-04 / R-04 / SR-07): fields 0–2 + permissive
+                // are held GLOBAL BY CONSTRUCTION. The 3 handles are `Arc::clone`d here —
+                // UNCONDITIONALLY, OUTSIDE and AHEAD of the `resolve_slug_config` overlay
+                // branch — from the daemon's single loaded handles, and are NEVER sourced
+                // from `resolved` on ANY path. This makes crt-056 AC-2 (one NLI + one embed
+                // model resident at N≥2) hold by construction, and the no-file arm satisfies
+                // `Arc::ptr_eq` against the daemon handles (AC-02 / R-03). `permissive` is a
+                // process/daemon permission flag, NOT knowledge config — passed unconditionally
+                // from the global daemon value, never read from `resolved` (FR-15).
+                let embed = Arc::clone(&embed_handle);
+                let pool = Arc::clone(&ml_inference_pool);
+                let nli = Arc::clone(&nli_handle);
+
+                // vnc-040 (C6, ADR-001 #5209): resolve this slug's config by overlaying
+                // `{base_dir}/{slug}/config.toml` onto the daemon global. No file ⇒
+                // `Cow::Borrowed(&config)` (NO merge, NO re-derivation — derivations below
+                // read the GLOBAL config byte-for-byte); file ⇒ `Cow::Owned(merged)`. Any
+                // bad slug file fails the daemon LOUD at startup naming the slug (`?`).
+                let resolved = http_provision::resolve_slug_config(base_dir, slug, &config)?;
+                let r: &UnimatrixConfig = &resolved;
+
+                // vnc-040 (FR-03 / FR-14): derive the 7 OVERLAYABLE values from `resolved`,
+                // re-sourcing the EXACT constructor expressions the daemon uses for its own
+                // ServiceLayer (load_config_and_build_allowlist + main.rs:880-901) — just
+                // sourced from `r` instead of the global `config`. On the no-file arm
+                // `r == &config`, so each value equals the daemon's own (AC-02 value-equality
+                // holds by reuse). `instructions` is RELOCATED here from the `main.rs:687`
+                // pre-loop hoist (which still feeds the daemon's own server at 935) — a
+                // per-slug file can now tune `[server] instructions` (#785, FR-14).
+                let instructions = r.server.instructions.clone();
+                let nli_top_k = r.inference.nli_top_k;
+                let nli_enabled = r.inference.nli_enabled;
+                let slug_inference_config = Arc::new(r.inference.clone());
+                let slug_confidence_params =
+                    Arc::new(resolve_confidence_params(r).unwrap_or_else(|e| {
+                        tracing::warn!(
+                            slug = %slug,
+                            error = %e,
+                            "per-slug confidence params resolution failed; using defaults"
+                        );
+                        ConfidenceParams::default()
+                    }));
+                let slug_categories = Arc::new(CategoryAllowlist::from_categories_with_policy(
+                    r.knowledge.categories.clone(),
+                    r.knowledge.adaptive_categories.clone(),
+                ));
+                let slug_observation_registry = {
+                    let packs: Vec<DomainPack> = r
+                        .observation
+                        .domain_packs
+                        .iter()
+                        .map(domain_pack_from_config)
+                        .collect();
+                    let reg = DomainPackRegistry::new(packs).map_err(|e| {
+                        ServerError::ProjectInit(format!(
+                            "per-slug domain pack registry init failed for slug '{slug}': {e}"
+                        ))
+                    })?;
+                    Arc::new(reg)
+                };
+                let slug_boosted_categories: HashSet<String> =
+                    r.knowledge.boosted_categories.iter().cloned().collect();
+
                 let input = http_provision::build_project_server(
                     base_dir,
                     slug,
-                    &embed_handle,
-                    permissive,
-                    server_instructions.clone(),
-                    // crt-056 Wave 1 (ADR-002): thread the daemon's RESOLVED config Arcs —
-                    // `Arc::clone` of the SAME values the daemon's own ServiceLayer uses
-                    // (880-898 scope), so per-slug servers reach the closed 8-field parity
-                    // (AC-1) over the global config and share the ONE loaded model (AC-2).
-                    &ml_inference_pool,
-                    &nli_handle, // the ONE loaded model — shared, never rebuilt (C-3, AC-2)
-                    config.inference.nli_top_k,
-                    config.inference.nli_enabled,
-                    &inference_config,
-                    &confidence_params,
-                    &categories,
-                    &observation_registry,
-                    &boosted_categories, // RESOLVED set (Gate 3a MUST-CONFIRM), not the default
+                    &embed,       // field 0 — GLOBAL clone (NEVER from resolved)
+                    permissive,   // P — global daemon flag (NEVER from resolved, FR-15)
+                    instructions, // I — from resolved.server.instructions (FR-14)
+                    &pool,        // field 1 — GLOBAL clone
+                    &nli,         // field 2 — GLOBAL clone (the ONE loaded model, C-3/AC-2)
+                    nli_top_k,
+                    nli_enabled,
+                    &slug_inference_config,
+                    &slug_confidence_params,
+                    &slug_categories,
+                    &slug_observation_registry,
+                    &slug_boosted_categories,
                 )
                 .await?;
                 slug_servers.push(input);
@@ -2067,3 +2126,9 @@ async fn open_store_with_retry(
 #[cfg(test)]
 #[path = "main_tests.rs"]
 mod tests;
+
+// vnc-040 (C6): per-slug provisioning-loop component tests. Separate child module so the
+// per-slug-loop suite stays focused and `main_tests.rs` is not bloated past the cap.
+#[cfg(test)]
+#[path = "per_slug_loop_tests.rs"]
+mod per_slug_loop_tests;

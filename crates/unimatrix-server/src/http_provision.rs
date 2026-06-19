@@ -17,6 +17,7 @@
 //! `resolve_store(&ProjectKey::Default)`: there is no default store; both MCP and
 //! observe resolve per-request through the same funnel keyed by `ProjectKey::Slug`.
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
@@ -35,7 +36,9 @@ use unimatrix_server::http::{
 };
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
-use unimatrix_server::infra::config::{InferenceConfig, TlsConfig};
+use unimatrix_server::infra::config::{
+    InferenceConfig, TlsConfig, UnimatrixConfig, load_single_config, merge_configs, validate_config,
+};
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::nli_handle::NliServiceHandle;
 use unimatrix_server::infra::rayon_pool::RayonPool;
@@ -258,3 +261,111 @@ pub async fn build_project_server(
         server,
     })
 }
+
+/// Per-slug config file name within a slug's data dir (`{base_dir}/{slug}/config.toml`).
+/// Shared with Feature B (seeding, #785) — operator hand-places it for Feature A.
+///
+/// `dead_code`-allowed: the sole caller is the per-slug loop in `main.rs` (vnc-040 Wave 2),
+/// landed in a separate wave; this helper ships first. Remove the allow once Wave 2 wires
+/// `resolve_slug_config` into the loop.
+#[allow(dead_code)]
+const PROJECT_CONFIG_NAME: &str = "config.toml";
+
+/// Resolve the per-slug [`UnimatrixConfig`] by overlaying `{base_dir}/{slug}/config.toml`
+/// onto the daemon's already-resolved `global` config (vnc-040 C6, ADR-001 #5209).
+///
+/// Sole owner of the per-slug overlay decision. The THIRD precedence layer atop the
+/// established global → project layering (`load_config`), using the IDENTICAL field-level
+/// replace discipline (dsn-001 #2286): reuses [`load_single_config`], [`validate_config`],
+/// and [`merge_configs`] UNCHANGED — introduces no new load/merge/validate logic.
+///
+/// - **No file** → [`Cow::Borrowed`]`(global)`: byte-for-byte fallthrough (ADR-002 §4,
+///   AC-02, R-03). NO merge, NO load, NO re-derivation — the global config itself is
+///   returned, so the single-project / local-UDS majority sees zero behavior change.
+/// - **File present** → load → per-file validate (AC-08a) → merge → **post-merge validate**
+///   (ADR-003 #5199, SR-01, AC-08b, the #3905 third-layer fix) → [`Cow::Owned`]`(merged)`.
+///
+/// The post-merge [`validate_config`] is MANDATORY: it runs after [`merge_configs`] and
+/// before the merged config is returned, catching cross-field invariants (the
+/// `InferenceConfig` sum-of-six fusion-weight constraint, PPR/confidence/custom-preset/size
+/// bounds) that EACH file passes alone but the field-by-field merge violates (#3905).
+/// Per-file validation alone is provably insufficient for these.
+///
+/// The reused [`load_single_config`] carries the 64 KiB size cap (#2395) and the
+/// `#[cfg(unix)]` `mode() & 0o022` permission check (R-10), now EXERCISED on the new,
+/// untrusted per-slug file surface — not assumed. The hash-pin divergence `tracing::warn`
+/// (AC-05) is emitted INSIDE [`merge_configs`] unchanged; this helper neither adds nor
+/// suppresses it.
+///
+/// # Errors
+///
+/// Any load / per-file-validate / post-merge-validate failure returns a
+/// [`ServerError::Config`] NAMING the offending slug file — startup fails loud, never a
+/// silent request-time fallback (#4583, R-11). No `.unwrap()` / `.expect()` / panic on any
+/// path. A missing file is NOT an error (it is the fallthrough sentinel).
+///
+/// `dead_code`-allowed until Wave 2: the sole caller is the per-slug loop in `main.rs`
+/// (vnc-040 Wave 2, landed separately). Remove the allow once the loop calls this.
+#[allow(dead_code)]
+pub fn resolve_slug_config<'a>(
+    base_dir: &Path,
+    slug: &ProjectSlug,
+    global: &'a UnimatrixConfig,
+) -> Result<Cow<'a, UnimatrixConfig>, ServerError> {
+    // (1) Probe path — single-site derivation; `slug` is allowlist-validated, so this
+    //     CANNOT escape `{base_dir}/{slug}/` (AC-W2-R6, same join as build_project_server).
+    let path = base_dir.join(slug.as_str()).join(PROJECT_CONFIG_NAME);
+
+    // (2) NO-FILE ARM — fallthrough sentinel (ADR-002 §4, FR-08, AC-02, R-03).
+    //     A metadata probe that is_file (not a bare .exists() that would also accept a
+    //     directory). NotFound is NOT an error — it is the global-only path.
+    let is_file = std::fs::metadata(&path)
+        .map(|m| m.is_file())
+        .unwrap_or(false);
+    if !is_file {
+        // The global config itself — NO merge, NO re-derivation.
+        return Ok(Cow::Borrowed(global));
+    }
+
+    // (3) FILE-PRESENT ARM — load → per-file validate → merge → post-merge validate.
+    tracing::debug!(slug = %slug, path = %path.display(), "resolving per-slug config overlay");
+
+    // 3a. Parse + hardening (REUSE — 64 KiB cap #2395 + #[cfg(unix)] 0o022 check, R-10).
+    let slug_file =
+        load_single_config(&path).map_err(|e| config_err(slug, &path, &e.to_string()))?;
+
+    // 3b. Per-file validation (FR-01, AC-08a).
+    validate_config(&slug_file, &path).map_err(|e| config_err(slug, &path, &e.to_string()))?;
+
+    // 3c. Merge — THIRD precedence layer (FR-01, FR-02). REUSE merge_configs UNCHANGED.
+    //     The LIVE signature takes OWNED values; `global` is borrowed, so clone it once to
+    //     feed the merge (one clone per slug-with-a-file, startup-only, negligible).
+    //     hash-pin global-wins (#4655) + instructions project-wins (config.rs:3863) ride
+    //     INSIDE merge_configs.
+    let merged = merge_configs(global.clone(), slug_file);
+
+    // 3d. POST-MERGE re-validation (ADR-003, SR-01, FR-07, AC-08b, R-01) — MANDATORY, after
+    //     the merge, before return. Catches cross-field violations (fusion-weight sum-of-six,
+    //     PPR, confidence, custom-preset, size bounds) each file passes alone (#3905).
+    validate_config(&merged, &path).map_err(|e| config_err(slug, &path, &e.to_string()))?;
+
+    // 3e. Return the owned merged config.
+    Ok(Cow::Owned(merged))
+}
+
+/// Build a slug-named, startup-fatal [`ServerError::Config`] for a per-slug overlay failure
+/// (NFR-05, R-11). Every failure path names the offending slug AND its file path so the
+/// operator can locate and fix it.
+///
+/// `dead_code`-allowed until Wave 2 wires `resolve_slug_config` (its only caller).
+#[allow(dead_code)]
+fn config_err(slug: &ProjectSlug, path: &Path, detail: &str) -> ServerError {
+    ServerError::Config(format!(
+        "per-slug config for slug '{}' at {}: {detail}",
+        slug.as_str(),
+        path.display()
+    ))
+}
+
+#[cfg(test)]
+mod slug_config_tests;
