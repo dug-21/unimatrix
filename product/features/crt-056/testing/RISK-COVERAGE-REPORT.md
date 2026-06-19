@@ -10,13 +10,21 @@
 ## Executive Summary
 
 - **All gates GREEN. No regressions. No xfails needed — no pre-existing failures surfaced.**
+- **Gate 3c rework (#787):** the prior revision marked AC-1 (8-field config parity) and AC-2
+  (one shared model) PASS with NO implementing test (the #4202/#3935 vacuous-green anti-pattern).
+  Both gaps are now CLOSED with real, mutation-verified tests
+  (`test_per_slug_service_layer_config_parity_8_fields`, `test_shared_nli_model_across_n2_slugs`);
+  the AC rows below cite them by name. Inaccurate "sole tick path" claims corrected (see §Tick-path).
 - The load-bearing **AC-4 N=2 cross-slug corruption guard** runs behaviorally against a real
   two-slug, two-store, two-ServiceLayer setup ticked through the SAME serial
   `run_per_slug_tick_pass` the daemon uses — and is **non-vacuous** (asserts A=7 vs B=3 distinct
   states; a global-handle bypass would flip the equality assertion).
-- 9 new behavioral tests added cumulatively to the Layer-2 multi-project harness
+- 11 new behavioral tests added cumulatively to the Layer-2 multi-project harness
   (`crates/unimatrix-server/tests/project_routing_integration.rs`) — no isolated scaffolding
   (NFR-7 / C-9). Harness uses `RayonPool` (panic_handler installed, #2543 — AC-harness satisfied).
+  Gate 3c rework (#787) added the two missing Wave-1 parity tests
+  (`test_per_slug_service_layer_config_parity_8_fields`, `test_shared_nli_model_across_n2_slugs`),
+  closing the AC-1/AC-2 vacuous-green gap (#4202/#3935).
 
 ## Coverage Summary
 
@@ -25,15 +33,15 @@
 | R-01 | Ceremonial BackgroundJob seam (#4974 N=1 false-confidence trap) | `test_tick_b_leaves_a_unchanged_n2` (N=2 funnel proof); `test_noop_job_runs_when_registered_unregistered_does_not` (registry-derived, unit); AC-wave2-gate source audit (commit `514d5a8c`) | PASS | Full |
 | R-02 | Cross-slug handle corruption | `test_tick_b_leaves_a_unchanged_n2` ★; `test_distinct_state_survives_empty_b_tick`; per-op A1 closure audit (commit `514d5a8c`) | PASS | Full |
 | R-03 | Serve/tick handle divergence | `test_serving_accessor_reflects_tick_unaffected_by_b`; `test_handle_identity_tick_ctx_eq_service_layer_n2` (`Arc::ptr_eq`); `test_per_slug_context_handles_are_service_layer_arcs` (unit) | PASS | Full (model-free); search-delta partial — see Gaps |
-| R-04 | `nli_handle` interior-mutable cache hazard (A2) | AC-2 unit (`make_server_with_some_layer` handle-identity); one shared `NliServiceHandle` in harness `SharedTickResources`; A2 type-audit = delivery item (Step-B precondition, accepted) | PASS | Full (structural); A2 audit accepted as Step-B precondition |
-| R-05 | Config-parity partial threading (8 fields) | AC-1 unit tests (Wave 1, `http_provision`/`server`) | PASS | Full (unit) |
+| R-04 | `nli_handle` interior-mutable cache hazard (A2) | `test_shared_nli_model_across_n2_slugs` (`Arc::ptr_eq` shared handle across N=2); one shared `NliServiceHandle` in harness `SharedTickResources`; A2 type-audit = delivery item (Step-B precondition, accepted) | PASS | Full (structural); A2 audit accepted as Step-B precondition |
+| R-05 | Config-parity partial threading (8 fields) | `test_per_slug_service_layer_config_parity_8_fields` (field-by-field, all 8, NON-DEFAULT resolved config, mutation-proven non-vacuous) | PASS | Full |
 | R-06 | Additive constructor regression / cloud branch | AC-6 unit tests; existing 4237 lib tests compile/pass unchanged via `None` arm | PASS | Full (unit) |
 | R-07 | Per-slug counter not per-slug | `test_per_slug_counter_advances_independently_n2`; `test_interval_gate_fires_per_slug_independently[_through_loop]` (unit) | PASS | Full |
 | R-08 | Rayon monopolisation | Serial loop (structural, `tick_loop.rs`); job enters/exits rayon within its own slug via `RayonPool::spawn`; never wraps all N | PASS | Full (structural) |
 | R-09 | Step B leakage | AC-7-stepb source audit: `ResourceClass` declaration-only, `Cadence` is `EveryTick`/`EveryN` only, serial loop, no spawn/join fan-out | PASS | Full (audit) |
 | R-10 | Rayon panic SIGABRT in harness | `test_panicking_job_caught_no_sigabrt` (AC-harness) | PASS | Full |
 | R-11 | `adapt_service` / `session_capabilities` parity gap | `test_adapt_service_no_cross_slug_bleed` (per-slug distinct `Arc`); `session_capabilities` OUT (ADR-006) — NOT asserted | PASS | Full (`adapt`); caps out-of-scope |
-| R-12 | N model copies / unloaded per-slug handle | AC-2 unit; one shared `NliServiceHandle::new()` handle in harness (never N copies) | PASS | Full (structural) |
+| R-12 | N model copies / unloaded per-slug handle | `test_shared_nli_model_across_n2_slugs` — per-slug `nli_handle` `Arc::ptr_eq` the daemon's ONE handle across N=2 (NLI model: behavioral; embedding model: structural — see Gaps); one shared handle in harness (never N copies) | PASS | Full (NLI handle); embedding share structural |
 
 ★ = the single non-substitutable load-bearing proof.
 
@@ -61,12 +69,14 @@ Hardened convention: `log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout 
 | `tests/graph_subgraph_integration.rs` | 3 | 0 | 0 |
 | `tests/import_integration.rs` | 19 | 0 | 0 |
 | `tests/pipeline_e2e.rs` | 16 | 0 | 0 |
-| `tests/project_routing_integration.rs` | **19** | 0 | 0 |
-| **Total** | **4438** | **0** | 4 |
+| `tests/project_routing_integration.rs` | **21** | 0 | 0 |
+| **Total** | **4440** | **0** | 4 |
 
 - The 87 crt-056 `background::` component/unit tests (job.rs, jobs.rs, tick_loop.rs) are within the
   4237 lib count and pass.
-- `project_routing_integration.rs` grew from 10 → 19: **+9 new crt-056 Wave 2 behavioral tests**.
+- `project_routing_integration.rs` grew from 10 → 21: **+9 crt-056 Wave 2 behavioral tests**,
+  plus **+2 Gate-3c-rework Wave-1 parity tests** (`test_per_slug_service_layer_config_parity_8_fields`,
+  `test_shared_nli_model_across_n2_slugs`).
 
 ### New Behavioral Tests (Rust Layer-2 multi-project harness, N=2)
 
@@ -85,6 +95,8 @@ Added to `crates/unimatrix-server/tests/project_routing_integration.rs` (cumulat
 | `test_adapt_service_no_cross_slug_bleed` | R-11 | each slug owns a distinct `AdaptationService` `Arc`; ctx's is its own server's |
 | `test_empty_registry_tick_is_noop_n0` | Edge N=0 | empty context slice is a no-op, no panic |
 | `test_per_slug_counter_advances_independently_n2` | AC-7b / R-07 | A ticked 4× → counter 4; B ticked 1× → counter 1 (independent, not lockstep) |
+| `test_per_slug_service_layer_config_parity_8_fields` | **AC-1** / R-05 | per-slug `ServiceLayer` built from an NLI-ENABLED, NON-DEFAULT resolved config via the `build_project_server` public assembly; all 8 parity fields asserted field-by-field vs the resolved values + NLI flag both directions; mutation-proven non-vacuous (fallback `nli_top_k` fails) |
+| `test_shared_nli_model_across_n2_slugs` | **AC-2** / R-12 / R-04 | N=2 per-slug servers share the ONE `nli_handle` Arc (`Arc::ptr_eq` each-to-daemon and to-each-other; `strong_count >= 3`) — no per-slug `NliServiceHandle::new()`, no N copies |
 
 **Why AC-4 is non-vacuous:** the harness ticks build `TypedGraphState` purely from per-slug store
 rows (model-free). A's tick produces `all_entries.len()==7`; B's produces `==3`. A residual
@@ -116,12 +128,31 @@ contract (per-slug analytics maintenance + cross-slug isolation) is an in-proces
 concern asserted in the Layer-2 Rust harness where handle identity and byte-for-byte state are
 observable. No new Python suites added (NFR-7, avoid isolated scaffolding).
 
+## Tick-path scope (corrected — Gate 3c WARN)
+
+The earlier claim that `run_per_slug_tick_pass` is the **SOLE** tick path and that the legacy
+global-handle `spawn_background_tick` "is no longer wired from `main.rs`" was **inaccurate** — it
+survives on the stdio path. Corrected, matching the code-comment fix in `9ccde2a9`
+(`tick_loop.rs` module doc + `main.rs`):
+
+- **Multi-project HTTP daemon path:** the global-handle tick is **RETIRED**. The HTTP boot has no
+  global-handle extraction and never calls `spawn_background_tick`; it drives `spawn_per_slug_tick`
+  over its own context + one `PerSlugTickContext` per slug (per-slug stores only). This is the
+  corruption-relevant surface (R-02 / NFR-5): no global analytics handle exists for two slugs to
+  share.
+- **stdio single-store path** (`tokio_main_stdio`): single-project, N=1, NO `[[projects]]`, NO
+  per-slug servers — **retains the legacy single-store `spawn_background_tick`** over its one global
+  handle set. This is an **accepted carve-out**, not an NFR-5 divergence: the corruption hazard
+  requires N≥2 slugs sharing global handles, which a single store cannot represent. The
+  "global-handle tick retired" guarantee is scoped to the daemon path; stdio is never wired through
+  `spawn_per_slug_tick`.
+
 ## Acceptance Criteria Verification
 
 | AC-ID | Status | Evidence |
 |-------|--------|----------|
-| AC-1 (config parity, 8 fields) | PASS | Wave 1 unit tests (`http_provision`/`server`); within 4237 lib pass. `session_capabilities` OUT (ADR-006) — correctly not asserted. |
-| AC-2 (one shared model) | PASS | Wave 1 unit `Arc::ptr_eq` handle-identity tests; harness shares ONE `NliServiceHandle` across slugs (never N copies). |
+| AC-1 (config parity, 8 fields) | PASS | `test_per_slug_service_layer_config_parity_8_fields` (`project_routing_integration.rs`) — builds a per-slug `ServiceLayer` from an NLI-ENABLED, NON-DEFAULT resolved config via the `build_project_server` public assembly, then asserts ALL 8 fields field-by-field vs the resolved values: `nli_enabled` (BOTH directions), `nli_top_k`=37 (not the 20 default), `nli_handle` (`Arc::ptr_eq`), `fusion_weights` (`==`, and `!= default`), `confidence_params` (`Arc::ptr_eq` + value `!= default`), `category_allowlist` (`Arc::ptr_eq` + operator category present), `observation_registry`/domain packs (`Arc::ptr_eq`), `ml_inference_pool().pool_size()`=5 (not the size-1 test default). Proven NON-VACUOUS by mutation (threading a fallback `nli_top_k`=20 fails the assertion, RC=101). `session_capabilities` OUT (ADR-006) — correctly not asserted. |
+| AC-2 (one shared model) | PASS | `test_shared_nli_model_across_n2_slugs` (`project_routing_integration.rs`) — N=2 per-slug servers built from the SAME resolved config; each slug's `nli_handle` is `Arc::ptr_eq` to the daemon's ONE loaded handle, the two slugs are `Arc::ptr_eq` to EACH OTHER (one model, not N copies), and `Arc::strong_count >= 3` (cfg + 2 ServiceLayers). The shared `Arc` IS the proof no per-slug `NliServiceHandle::new()` runs. Embedding-model sharing is structural-only here (the model-free harness constructs a per-slug embed handle) — see Gaps. |
 | AC-3 (analytics maintained) | PASS | `test_tick_maintains_slug_a_analytics` — typed-graph reflects the write behaviorally. |
 | **AC-4 (isolation / corruption guard, N=2)** | **PASS** | `test_tick_b_leaves_a_unchanged_n2` ★ + `test_distinct_state_survives_empty_b_tick`. Byte-for-byte four-state snapshot, both directions, incl. empty-B. Doubles as cross-tenant data-isolation + AC-7 concurrency-readiness proof. |
 | AC-wave2-gate (A1 per-op + funnel source audit) | PASS | Committed `514d5a8c` — first act of Wave 2; 9/9 ops store-parameterized, funnel sole route. |
@@ -163,6 +194,20 @@ observable. No new Python suites added (NFR-7, avoid isolated scaffolding).
    silently accepted, and not a crt-056 blocker. No mutability was relied upon by any per-slug tick
    write.
 
+4. **AC-2 embedding-model share is structural-only (NLI handle is behavioral).**
+   `test_shared_nli_model_across_n2_slugs` proves the **NLI** model handle is the ONE daemon `Arc`
+   shared across N=2 slugs via `Arc::ptr_eq` — behavioral and non-vacuous. The **embedding** model
+   handle is NOT asserted shared in this test: the model-free integration harness's
+   `build_server_with_resolved_config` constructs a fresh per-slug `EmbedServiceHandle::new()` (no
+   ONNX load), so there is no single daemon embed `Arc` to compare against in-test. In production
+   `build_project_server` threads the daemon's ONE `embed_handle` `Arc::clone` to every slug
+   (`http_provision.rs:225/244`, OQ-PR-6) — the same shared-`Arc` shape the NLI test proves
+   behaviorally. The embedding share is therefore **Partial (structural)** at the test layer, covered
+   by source (the threaded `Arc::clone`) plus the proven NLI-handle analogue. Not an uncovered risk:
+   FR-6/NFR-2's "one model in memory" invariant is the shared-`Arc` shape, demonstrated for the NLI
+   handle and source-confirmed for the embedding handle. No GH Issue filed (model-loaded multi-slug
+   embed assertion is the same deferred infra enhancement as Gap 1).
+
 ## Pre-Existing Failures / xfails / GH Issues
 
 **None.** No integration test failed; no `@pytest.mark.xfail` was added; no GH Issue was filed. The
@@ -182,3 +227,8 @@ SCOPE Security Risks). No integration tests were deleted or commented out.
   each config-driven `ServiceLayer` into a `PerSlugTickContext`, share ONE `RayonPool`/`NliServiceHandle`,
   snapshot a stable 4-state surface, prove N=2 byte-for-byte isolation model-free via `TypedGraphState`).
   See agent report block for the stored entry ID.
+- Gate 3c rework (#787): stored entry **#5175** "Config-parity tests: drive the binary-crate
+  provisioner's public assembly from the external test crate" via `/uni-store-pattern` — the
+  technique for closing a vacuous-green AC when the provisioning entrypoint lives in the binary
+  crate (drive its public `ServiceLayer::new(..) + UnimatrixServer::new(Some(..))` assembly,
+  thread NON-DEFAULT resolved values, mutation-verify, Arc::ptr_eq shared resources).

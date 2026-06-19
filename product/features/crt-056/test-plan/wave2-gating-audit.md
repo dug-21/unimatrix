@@ -135,3 +135,15 @@ Applies #4974's 5-point checklist to the crt-056 job `run` path and the `main.rs
 This file is consumed at: Wave 2 start (precondition), Gate 3a (must exist + be complete as a plan),
 and Gate 3c (must be filled with PASS evidence). AC-wave2-gate in RISK-COVERAGE-REPORT.md cites this
 file.
+
+### Scope correction (Gate 3c rework, #787 — matches code `9ccde2a9`)
+
+Part B's "SOLE mutation route" / "remove the parallel path entirely" language is scoped to the
+**multi-project HTTP daemon path** — and was DELIVERED there: the HTTP boot has no global-handle
+extraction and never calls `spawn_background_tick`; it drives `spawn_per_slug_tick` only. The
+**stdio single-store path** (`tokio_main_stdio`, N=1, no `[[projects]]`) **retains** the legacy
+single-store `spawn_background_tick` as an **accepted carve-out**, NOT a Part-B violation: the
+corruption hazard Part B guards against (R-02 / NFR-5) requires N≥2 slugs sharing global handles,
+which a single store cannot represent. Read every "SOLE / removed entirely" assertion above as
+scoped to the daemon path; stdio is the deliberate single-store carve-out (it is never wired through
+`spawn_per_slug_tick`). The corrected `tick_loop.rs` module doc states this scope authoritatively.

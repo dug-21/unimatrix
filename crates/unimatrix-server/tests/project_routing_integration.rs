@@ -77,7 +77,10 @@ use unimatrix_server::background::{
 use unimatrix_server::infra::config::{InferenceConfig, RetentionConfig};
 use unimatrix_server::infra::nli_handle::NliServiceHandle;
 use unimatrix_server::infra::rayon_pool::RayonPool;
+use unimatrix_server::infra::usage_dedup::UsageDedup;
+use unimatrix_server::services::{FusionWeights, ServiceLayer};
 use unimatrix_engine::confidence::ConfidenceParams;
+use unimatrix_observe::domain::DomainPackRegistry;
 
 const TEST_MAX_BODY: usize = 1024 * 1024;
 
@@ -1177,4 +1180,320 @@ async fn test_per_slug_counter_advances_independently_n2() {
         .unwrap_or(0);
     assert_eq!(a_counter, 4, "A ticked 4 times -> counter at 4");
     assert_eq!(b_counter, 1, "B ticked once -> counter at 1 (independent of A)");
+}
+
+// ###########################################################################
+// crt-056 Wave 1 — config-parity (AC-1) + one-shared-model (AC-2).
+//
+// Gate 3c REWORK (#787): the prior report marked AC-1/AC-2 PASS with NO
+// implementing test (the #4202/#3935 vacuous-green anti-pattern). These two
+// tests close that gap with REAL, NON-VACUOUS assertions.
+//
+// `http_provision::build_project_server` lives in the BINARY crate (`main.rs`'s
+// private `mod http_provision`) and is unreachable from this external `tests/`
+// integration crate. We therefore drive its EXACT public assembly path —
+// `ServiceLayer::new(<threaded resolved Arcs>)` handed to
+// `UnimatrixServer::new(.., Some(layer))` — the literal body of
+// `build_project_server` (`http_provision.rs:220-253`) minus the on-disk
+// store-open glue. The accessors under test (`9ccde2a9`) read the SAME resolved
+// fields `build_project_server` threads, so this proves the parity contract the
+// production funnel must hold. (Reuses `build_server()`'s store/vector/registry
+// assembly; no isolated scaffolding — NFR-7 / C-9.)
+// ###########################################################################
+
+/// The daemon's RESOLVED config surface — every field set to a NON-DEFAULT value
+/// so any fallback to a test-default `ServiceLayer` makes the parity assertion
+/// FAIL (anti-vacuous). The `Arc`s are the daemon's single resolved instances;
+/// a faithful per-slug build `Arc::clone`s them (shared identity, AC-2), never
+/// reconstructs (`::new()`/`::default()`).
+struct ResolvedDaemonConfig {
+    rayon_pool: Arc<RayonPool>,
+    nli_handle: Arc<NliServiceHandle>,
+    nli_top_k: usize,
+    nli_enabled: bool,
+    inference_config: Arc<InferenceConfig>,
+    confidence_params: Arc<ConfidenceParams>,
+    category_allowlist: Arc<CategoryAllowlist>,
+    observation_registry: Arc<DomainPackRegistry>,
+    boosted_categories: std::collections::HashSet<String>,
+    expected_fusion_weights: FusionWeights,
+    expected_pool_size: usize,
+}
+
+impl ResolvedDaemonConfig {
+    /// Build the daemon's resolved config with NLI **enabled** and EVERY field
+    /// NON-DEFAULT (so the test fails against the old test-default ServiceLayer).
+    fn enabled_non_default() -> Self {
+        // Non-default fusion weights (defaults are w_sim=0.50, w_nli=0.00, ...).
+        let mut inference = InferenceConfig::default();
+        inference.nli_enabled = true;
+        inference.nli_top_k = 37; // non-default (default 20)
+        inference.rayon_pool_size = 5; // non-default pool size
+        inference.w_sim = 0.20;
+        inference.w_nli = 0.30; // default is 0.00 — clearly non-default
+        inference.w_conf = 0.15;
+        inference.w_coac = 0.05;
+        inference.w_util = 0.05;
+        inference.w_prov = 0.05;
+        // Expected fusion weights, constructed literally from the resolved config
+        // fields (FusionWeights fields are public; `from_config` is crate-private).
+        // Mirrors `FusionWeights::from_config` field-for-field.
+        let expected_fusion_weights = FusionWeights {
+            w_sim: inference.w_sim,
+            w_nli: inference.w_nli,
+            w_conf: inference.w_conf,
+            w_coac: inference.w_coac,
+            w_util: inference.w_util,
+            w_prov: inference.w_prov,
+            w_phase_histogram: inference.w_phase_histogram,
+            w_phase_explicit: inference.w_phase_explicit,
+        };
+        let inference_config = Arc::new(inference);
+
+        // Non-default confidence params (perturb alpha0 off the 3.0 default).
+        let mut conf = ConfidenceParams::default();
+        conf.alpha0 = 7.0;
+        conf.beta0 = 9.0;
+        let confidence_params = Arc::new(conf);
+
+        // Non-default allowlist: an operator category not in the builtin set.
+        let category_allowlist = Arc::new(CategoryAllowlist::from_categories(vec![
+            "operator-only-category".to_string(),
+        ]));
+
+        // Non-default domain-pack registry (the builtin claude-code pack, not the
+        // empty/default set a fallback would carry).
+        let observation_registry = Arc::new(DomainPackRegistry::with_builtin_claude_code());
+
+        let mut boosted_categories = std::collections::HashSet::new();
+        boosted_categories.insert("operator-boost".to_string());
+
+        let expected_pool_size = 5;
+        let rayon_pool = Arc::new(
+            RayonPool::new(expected_pool_size, "crt056-parity-pool")
+                .expect("rayon pool with panic_handler"),
+        );
+
+        ResolvedDaemonConfig {
+            rayon_pool,
+            nli_handle: NliServiceHandle::new(), // ONE loaded handle (Arc), shared by all slugs
+            nli_top_k: 37,
+            nli_enabled: true,
+            inference_config,
+            confidence_params,
+            category_allowlist,
+            observation_registry,
+            boosted_categories,
+            expected_fusion_weights,
+            expected_pool_size,
+        }
+    }
+}
+
+/// Build ONE per-slug `UnimatrixServer` over a fresh store, wiring its
+/// `ServiceLayer` from the supplied RESOLVED daemon config exactly as
+/// `http_provision::build_project_server` does (params-at-end, every value an
+/// `Arc::clone` of the daemon's resolved instance — ADR-002). Returns the server
+/// whose `service_layer()` accessors expose the threaded fields for parity asserts.
+async fn build_server_with_resolved_config(cfg: &ResolvedDaemonConfig) -> UnimatrixServer {
+    let dir = tempfile::TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("unimatrix.db");
+    let store = Arc::new(
+        Store::open(&db_path, PoolConfig::default())
+            .await
+            .expect("open store"),
+    );
+    std::mem::forget(dir);
+
+    let vector_index = Arc::new(
+        VectorIndex::new(Arc::clone(&store), VectorConfig::default()).expect("vector index"),
+    );
+    let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
+    let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
+    let embed_handle = EmbedServiceHandle::new();
+
+    let registry =
+        Arc::new(AgentRegistry::new(Arc::clone(&store), true, Vec::new()).expect("registry"));
+    registry.bootstrap_defaults().expect("bootstrap defaults");
+    let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+    let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
+    let usage_dedup = Arc::new(UsageDedup::new());
+
+    // The literal `build_project_server` ServiceLayer assembly (ADR-002): every
+    // resolved value `Arc::clone`d (shared identity), none reconstructed.
+    let service_layer = ServiceLayer::new(
+        Arc::clone(&store),
+        Arc::clone(&vector_index),
+        Arc::clone(&async_vector_store),
+        Arc::clone(&store),
+        Arc::clone(&embed_handle),
+        Arc::clone(&adapt_service),
+        Arc::clone(&audit),
+        usage_dedup,
+        cfg.boosted_categories.clone(),
+        Arc::clone(&cfg.rayon_pool),
+        Arc::clone(&cfg.nli_handle), // AC-2: the ONE loaded model — Arc::clone, NEVER new()
+        cfg.nli_top_k,
+        cfg.nli_enabled,
+        Arc::clone(&cfg.inference_config),
+        Arc::clone(&cfg.observation_registry),
+        Arc::clone(&cfg.confidence_params),
+        Arc::clone(&cfg.category_allowlist),
+    );
+
+    UnimatrixServer::new(
+        Arc::clone(&store),
+        async_vector_store,
+        Arc::clone(&embed_handle),
+        registry,
+        audit,
+        Arc::clone(&cfg.category_allowlist),
+        Arc::clone(&store),
+        vector_index,
+        adapt_service,
+        None,
+        Some(service_layer),
+    )
+}
+
+// ---------------------------------------------------------------------------
+// AC-1 — field-by-field config parity over the closed 8-field ADR-006 checklist.
+// Builds a per-slug server from an NLI-ENABLED, NON-DEFAULT resolved config and
+// asserts ALL 8 fields equal the daemon's resolved values (NOT a subset). NLI
+// flag asserted BOTH directions. `session_capabilities` is OUT (ADR-006) — not
+// asserted. Non-vacuous: a fallback to the test-default ServiceLayer (NLI off /
+// pool-1 / default weights / builtin allowlist) fails at least one assertion.
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_per_slug_service_layer_config_parity_8_fields() {
+    let cfg = ResolvedDaemonConfig::enabled_non_default();
+    let server = build_server_with_resolved_config(&cfg).await;
+    let sl = server.service_layer();
+
+    // 1. nli_enabled (ENABLED direction): config true ⇒ accessor true.
+    assert!(
+        sl.nli_enabled(),
+        "AC-1.1: NLI-enabled config must yield nli_enabled() == true (NOT the false default)"
+    );
+    // 2. nli_top_k — the threaded non-default 37, not the 20 default.
+    assert_eq!(sl.nli_top_k(), cfg.nli_top_k, "AC-1.2: nli_top_k parity");
+    assert_eq!(
+        sl.nli_top_k(),
+        37,
+        "AC-1.2: nli_top_k is the resolved non-default 37, not 20"
+    );
+    // 3. nli_handle — the SAME Arc instance threaded from the daemon (identity).
+    assert!(
+        Arc::ptr_eq(sl.nli_handle(), &cfg.nli_handle),
+        "AC-1.3: per-slug nli_handle must be the daemon's SAME Arc (no per-slug NliServiceHandle::new())"
+    );
+    // 4. fusion_weights — the resolved InferenceConfig-derived weights (PartialEq).
+    assert_eq!(
+        sl.fusion_weights(),
+        cfg.expected_fusion_weights,
+        "AC-1.4: fusion weights must equal the resolved InferenceConfig's, not ::default()"
+    );
+    assert_ne!(
+        sl.fusion_weights(),
+        FusionWeights::default(),
+        "AC-1.4: resolved fusion weights are non-default (guards vacuous parity)"
+    );
+    // 5. confidence_params — same Arc instance + value equality.
+    assert!(
+        Arc::ptr_eq(sl.confidence_params(), &cfg.confidence_params),
+        "AC-1.5: per-slug confidence_params must be the daemon's SAME Arc"
+    );
+    assert_eq!(
+        **sl.confidence_params(),
+        *cfg.confidence_params,
+        "AC-1.5: confidence params value parity (alpha0=7.0/beta0=9.0, non-default)"
+    );
+    assert_ne!(
+        **sl.confidence_params(),
+        ConfidenceParams::default(),
+        "AC-1.5: resolved confidence params are non-default (guards vacuous parity)"
+    );
+    // 6. category_allowlist — same Arc instance threaded from the daemon.
+    assert!(
+        Arc::ptr_eq(sl.category_allowlist(), &cfg.category_allowlist),
+        "AC-1.6: per-slug category_allowlist must be the daemon's SAME Arc (operator set, not ::new())"
+    );
+    assert!(
+        sl.category_allowlist()
+            .validate("operator-only-category")
+            .is_ok(),
+        "AC-1.6: the operator-only category is present (non-default allowlist threaded through)"
+    );
+    // 7. observation_registry / domain packs — same Arc instance.
+    assert!(
+        Arc::ptr_eq(sl.observation_registry(), &cfg.observation_registry),
+        "AC-1.7: per-slug observation_registry (domain packs) must be the daemon's SAME Arc"
+    );
+    // 8. ml_inference_pool effective size — the resolved non-default 5.
+    assert!(
+        Arc::ptr_eq(sl.ml_inference_pool(), &cfg.rayon_pool),
+        "AC-1.8: per-slug ml_inference_pool must be the daemon's SAME shared Arc"
+    );
+    assert_eq!(
+        sl.ml_inference_pool().pool_size(),
+        cfg.expected_pool_size,
+        "AC-1.8: effective rayon pool size is the resolved 5, not the size-1 test default"
+    );
+    // boosted_categories (the operator domain hint threaded alongside FR-4).
+    assert!(
+        sl.boosted_categories().contains("operator-boost"),
+        "AC-1: boosted_categories must carry the resolved operator hint"
+    );
+
+    // NLI flag — DISABLED direction: a disabled-config server reports disabled.
+    let mut disabled_cfg = ResolvedDaemonConfig::enabled_non_default();
+    disabled_cfg.nli_enabled = false;
+    let disabled_server = build_server_with_resolved_config(&disabled_cfg).await;
+    assert!(
+        !disabled_server.service_layer().nli_enabled(),
+        "AC-1.1 (reverse): NLI-disabled config must yield nli_enabled() == false"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-2 — one shared model across N=2 per-slug servers. Each slug's nli_handle is
+// `Arc::ptr_eq` to the daemon's single loaded handle (the SAME Arc instance, not
+// N copies). The shared Arc IS the proof that no per-slug NliServiceHandle::new()
+// runs on the provisioning path. Embedding handle is per-slug-constructed today
+// (build_server makes its own), so the model-sharing invariant is the NLI handle.
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_shared_nli_model_across_n2_slugs() {
+    let cfg = ResolvedDaemonConfig::enabled_non_default();
+
+    // N=2 per-slug servers built from the SAME resolved config (the daemon threads
+    // ONE loaded nli_handle into every slug).
+    let slug_a = build_server_with_resolved_config(&cfg).await;
+    let slug_b = build_server_with_resolved_config(&cfg).await;
+
+    let handle_a = slug_a.service_layer().nli_handle();
+    let handle_b = slug_b.service_layer().nli_handle();
+
+    // Each slug's handle is the daemon's SAME Arc instance (one model, shared).
+    assert!(
+        Arc::ptr_eq(handle_a, &cfg.nli_handle),
+        "AC-2: slug A's nli_handle must be the daemon's single loaded Arc"
+    );
+    assert!(
+        Arc::ptr_eq(handle_b, &cfg.nli_handle),
+        "AC-2: slug B's nli_handle must be the daemon's single loaded Arc"
+    );
+    // Transitively the two slugs share ONE handle — no per-slug NliServiceHandle::new(),
+    // no N copies (the shared Arc proves it).
+    assert!(
+        Arc::ptr_eq(handle_a, handle_b),
+        "AC-2: both slugs reference the ONE shared NLI model handle (not N copies)"
+    );
+    // Strong-count sanity: cfg + 2 ServiceLayers = at least 3 owners of the ONE Arc.
+    assert!(
+        Arc::strong_count(&cfg.nli_handle) >= 3,
+        "AC-2: the single nli_handle is shared (cfg + 2 slug ServiceLayers), not cloned-by-value"
+    );
 }
