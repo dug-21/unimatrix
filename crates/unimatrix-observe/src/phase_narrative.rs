@@ -196,6 +196,9 @@ mod tests {
         dist
     }
 
+    // rationale: nested-slice tuple is a compact inline test-case literal; a type alias
+    // would push the shape away from the call sites that depend on reading it.
+    #[allow(clippy::type_complexity)]
     fn make_cross(features: &[(&str, &[(&str, &str, u64)])]) -> HashMap<String, PhaseCategoryDist> {
         features
             .iter()

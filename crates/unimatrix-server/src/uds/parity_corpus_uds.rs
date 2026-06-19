@@ -190,58 +190,48 @@ fn generate_framing(out_dir: &Path) -> (Vec<String>, Vec<String>) {
     ));
 
     // -- response frames (read direction, sync-response set) --
-    let mut responses = Vec::new();
-
-    responses.push(write_response_golden(
-        &dir,
-        "res-text-entries",
-        &HookResponse::Text {
-            // Entries bodies carry the load-bearing injection header verbatim.
-            body: "--- Unimatrix Context ---\n[1] prior decision\n".to_string(),
-        },
-    ));
-
-    responses.push(write_response_golden(
-        &dir,
-        "res-text-briefing",
-        &HookResponse::Text {
-            body: "Use context_get with the entry ID for full content.".to_string(),
-        },
-    ));
-
-    responses.push(write_response_golden(&dir, "res-ack", &HookResponse::Ack));
-
-    responses.push(write_response_golden(
-        &dir,
-        "res-pong",
-        &HookResponse::Pong {
-            server_version: "0.7.2".to_string(),
-        },
-    ));
-
-    responses.push(write_response_golden(
-        &dir,
-        "res-error-4xx",
-        &HookResponse::Error {
-            code: 400,
-            message: "bad request".to_string(),
-        },
-    ));
-
-    responses.push(write_response_golden(
-        &dir,
-        "res-error-5xx",
-        &HookResponse::Error {
-            code: 503,
-            message: "unavailable".to_string(),
-        },
-    ));
-
-    responses.push(write_response_golden(
-        &dir,
-        "res-boundary-1mib",
-        &boundary_response(),
-    ));
+    let responses = vec![
+        write_response_golden(
+            &dir,
+            "res-text-entries",
+            &HookResponse::Text {
+                // Entries bodies carry the load-bearing injection header verbatim.
+                body: "--- Unimatrix Context ---\n[1] prior decision\n".to_string(),
+            },
+        ),
+        write_response_golden(
+            &dir,
+            "res-text-briefing",
+            &HookResponse::Text {
+                body: "Use context_get with the entry ID for full content.".to_string(),
+            },
+        ),
+        write_response_golden(&dir, "res-ack", &HookResponse::Ack),
+        write_response_golden(
+            &dir,
+            "res-pong",
+            &HookResponse::Pong {
+                server_version: "0.7.2".to_string(),
+            },
+        ),
+        write_response_golden(
+            &dir,
+            "res-error-4xx",
+            &HookResponse::Error {
+                code: 400,
+                message: "bad request".to_string(),
+            },
+        ),
+        write_response_golden(
+            &dir,
+            "res-error-5xx",
+            &HookResponse::Error {
+                code: 503,
+                message: "unavailable".to_string(),
+            },
+        ),
+        write_response_golden(&dir, "res-boundary-1mib", &boundary_response()),
+    ];
 
     let manifest = serde_json::json!({
         "generated_by": "parity_corpus_uds.rs (wire.rs write_frame/serialize_* oracle)",

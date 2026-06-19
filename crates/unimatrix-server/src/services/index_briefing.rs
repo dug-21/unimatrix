@@ -58,6 +58,9 @@ pub(crate) struct IndexBriefingParams {
     /// Session ID for WA-2 category histogram boost (optional).
     pub session_id: Option<String>,
     /// Approximate token budget (for future ranked truncation; not enforced here).
+    // rationale: forward-looking budget field; ranked truncation that reads it is not
+    // yet implemented (documented above).
+    #[allow(dead_code)]
     pub max_tokens: Option<usize>,
     /// Pre-resolved category histogram for WA-2 boost.
     ///
@@ -266,25 +269,24 @@ pub(crate) fn derive_briefing_query(
     topic: &str,
 ) -> String {
     // Step 1: explicit task overrides everything
-    if let Some(t) = task {
-        if !t.trim().is_empty() {
-            return t.to_string();
-        }
-        // Empty/whitespace task: fall through to step 2 or 3
+    if let Some(t) = task
+        && !t.trim().is_empty()
+    {
+        return t.to_string();
     }
+    // Empty/whitespace task: fall through to step 2 or 3
 
     // Step 2: goal from session state (col-025, ADR-002).
     // Returns current_goal when Some — most semantically precise signal available.
     // Falls through to step 3 when None (no goal, legacy cycle, or pre-v16 cycle).
-    if let Some(state) = session_state {
-        if let Some(goal) = synthesize_from_session(state) {
-            if !goal.trim().is_empty() {
-                return goal;
-            }
-            // Empty-goal guard: if current_goal is Some("") (edge case), fall through.
-            // Normal path: goal is already non-empty (normalized at MCP handler).
-        }
+    if let Some(state) = session_state
+        && let Some(goal) = synthesize_from_session(state)
+        && !goal.trim().is_empty()
+    {
+        return goal;
     }
+    // Empty-goal guard: if current_goal is Some("") (edge case), fall through.
+    // Normal path: goal is already non-empty (normalized at MCP handler).
 
     // Step 3: topic fallback (always available)
     topic.to_string()

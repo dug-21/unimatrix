@@ -27,7 +27,7 @@ pub(crate) const INITIAL_CATEGORIES: [&str; 7] = [
 /// Two independent RwLock fields:
 /// - `categories`: the presence set; consulted by `validate()` on every context_store.
 /// - `adaptive`:   the lifecycle policy set; consulted by `is_adaptive()` in the tick
-///                 and by `compute_report()` for status output.
+///   and by `compute_report()` for status output.
 ///
 /// `add_category` is restricted to `#[cfg(test)]` (#635). Production code seeds
 /// all categories at construction via `from_categories_with_policy`.
@@ -36,6 +36,12 @@ pub(crate) const INITIAL_CATEGORIES: [&str; 7] = [
 pub struct CategoryAllowlist {
     categories: RwLock<HashSet<String>>,
     adaptive: RwLock<HashSet<String>>,
+}
+
+impl Default for CategoryAllowlist {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CategoryAllowlist {

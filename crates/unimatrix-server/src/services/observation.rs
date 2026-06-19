@@ -37,6 +37,9 @@ impl SqlObservationSource {
     ///
     /// Convenience constructor for callers that do not inject a registry (e.g., status checks,
     /// legacy call sites). For full ingest security, use `new(store, registry)`.
+    // rationale: registry-less convenience constructor used only by the test suite; the
+    // production ingress path always injects a registry via `new`.
+    #[allow(dead_code)]
     pub fn new_default(store: Arc<SqlxStore>) -> Self {
         let registry = Arc::new(DomainPackRegistry::with_builtin_claude_code());
         SqlObservationSource { store, registry }
@@ -602,16 +605,16 @@ fn parse_observation_rows(
 
         // SECURITY BOUND 1: payload size check (NFR-02, FR-03.4, ADR-007).
         // Check raw bytes of input_str BEFORE any JSON parsing.
-        if let Some(ref s) = input_str {
-            if s.len() > 65_536 {
-                tracing::warn!(
-                    session_id = %session_id,
-                    event_type = %event_type,
-                    size = s.len(),
-                    "PayloadTooLarge: skipping record"
-                );
-                continue;
-            }
+        if let Some(ref s) = input_str
+            && s.len() > 65_536
+        {
+            tracing::warn!(
+                session_id = %session_id,
+                event_type = %event_type,
+                size = s.len(),
+                "PayloadTooLarge: skipping record"
+            );
+            continue;
         }
 
         // Input deserialization (event_type-conditional, not source_domain-conditional).
@@ -626,15 +629,15 @@ fn parse_observation_rows(
 
         // SECURITY BOUND 2: JSON depth check (NFR-02, FR-03.5, ADR-007).
         // Applied AFTER parse (must have a serde_json::Value to walk).
-        if let Some(ref v) = input {
-            if !json_depth(v, 0, 10) {
-                tracing::warn!(
-                    session_id = %session_id,
-                    event_type = %event_type,
-                    "PayloadNestingTooDeep: skipping record"
-                );
-                continue;
-            }
+        if let Some(ref v) = input
+            && !json_depth(v, 0, 10)
+        {
+            tracing::warn!(
+                session_id = %session_id,
+                event_type = %event_type,
+                "PayloadNestingTooDeep: skipping record"
+            );
+            continue;
         }
 
         records.push(ObservationRecord {
@@ -681,6 +684,9 @@ mod tests {
         .expect("insert session");
     }
 
+    // rationale: test fixture inserts a full observation row; the arity mirrors the
+    // table columns and splitting into a struct would only obscure the per-case values.
+    #[allow(clippy::too_many_arguments)]
     async fn insert_observation(
         store: &SqlxStore,
         session_id: &str,
@@ -1164,8 +1170,8 @@ mod tests {
 
     // ── Ingest security tests (ADR-007, test-plan/ingest-security.md) ──────
 
-    /// Build a minimal SqliteRow-compatible test using parse_observation_rows directly.
-    /// We use integration-style tests via the DB to exercise the full path.
+    // Build a minimal SqliteRow-compatible test using parse_observation_rows directly.
+    // We use integration-style tests via the DB to exercise the full path.
 
     /// T-SEC-01: Payload exactly 65,536 bytes passes (AC-06).
     #[tokio::test(flavor = "multi_thread")]

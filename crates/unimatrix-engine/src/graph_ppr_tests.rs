@@ -663,7 +663,7 @@ fn test_personalized_pagerank_informs_edge_propagates_mass_to_lesson_node() {
 /// Seed: B. After PPR: A > 0.0, C == 0.0.
 #[test]
 fn test_personalized_pagerank_decision_seed_reaches_only_lesson_via_informs() {
-    let graph = make_graph_with_edges(&[
+    let _graph = make_graph_with_edges(&[
         (1, 2, RelationType::Informs, 0.5), // A→B
         (2, 1, RelationType::Informs, 0.5), // B→A (reverse, required per #3896)
                                             // C (id=3) has no edges

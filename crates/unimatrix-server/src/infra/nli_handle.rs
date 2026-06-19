@@ -72,7 +72,12 @@ enum NliState {
     /// When `attempts < MAX_RETRIES`, the retry monitor will re-attempt.
     Failed { message: String, attempts: u32 },
     /// Retry scheduled; backoff in progress before the next `spawn_load_task`.
-    Retrying { attempt: u32 },
+    // rationale: attempt count is read only by the `#[cfg(test)]` `current_attempts`
+    // probe; it documents retry progression in the state machine.
+    Retrying {
+        #[allow(dead_code)]
+        attempt: u32,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -554,8 +559,6 @@ fn resolve_model_dir(model: &NliModel, config: &NliConfig) -> Result<PathBuf, Em
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
-
     use sha2::{Digest, Sha256};
 
     use super::*;
@@ -938,7 +941,7 @@ mod tests {
         let base_size = 4usize;
         let nli_enabled = true;
         let final_size = if nli_enabled {
-            base_size.max(6).min(8)
+            base_size.clamp(6, 8)
         } else {
             base_size
         };
@@ -953,7 +956,7 @@ mod tests {
         let base_size = 4usize;
         let nli_enabled = false;
         let final_size = if nli_enabled {
-            base_size.max(6).min(8)
+            base_size.clamp(6, 8)
         } else {
             base_size
         };

@@ -179,8 +179,7 @@ fn extract_file_paths(text: &str) -> Vec<String> {
     let mut paths = Vec::new();
     for token in text.split_whitespace() {
         // Remove trailing punctuation
-        let cleaned = token
-            .trim_end_matches(|c: char| c == ',' || c == '.' || c == ';' || c == ':' || c == ')');
+        let cleaned = token.trim_end_matches([',', '.', ';', ':', ')']);
         if cleaned.contains('/')
             || cleaned.ends_with(".rs")
             || cleaned.ends_with(".toml")

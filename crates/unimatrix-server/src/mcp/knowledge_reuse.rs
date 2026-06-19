@@ -141,6 +141,9 @@ pub(crate) fn extract_explicit_read_ids(attributed: &[ObservationRecord]) -> Has
 /// `HashMap<u64, EntryMeta>` with title, feature_cycle, and category for each
 /// ID. The call is skipped entirely when the ID set is empty. Chunking (100 IDs
 /// per IN-clause per pattern #883) is handled at the call site in `tools.rs`.
+// rationale: pure aggregation over several independent log sources plus two closures;
+// the arity reflects distinct inputs, not state that belongs in a struct.
+#[allow(clippy::too_many_arguments)]
 pub fn compute_knowledge_reuse<F, G>(
     query_log_records: &[QueryLogRecord],
     injection_log_records: &[InjectionLogRecord],

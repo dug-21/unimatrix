@@ -152,7 +152,6 @@ pub fn prepare_daemon_child() -> Result<(), ServerError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     /// Build a minimal `ProjectPaths` with all paths under `base`.
     /// Only `mcp_socket_path` and `log_path` are exercised by the launcher tests;
@@ -383,6 +382,7 @@ mod tests {
         // A runtime check is not possible here, but the compilation boundary
         // is sufficient: if daemon.rs imported tokio and used async, this
         // test file would need `#[tokio::test]` to run, which it does not.
-        assert!(true, "daemon.rs compiles without tokio runtime dependency");
+        // No assertion: this test compiling and running as a plain sync `#[test]`
+        // IS the proof — daemon.rs has no tokio runtime dependency.
     }
 }

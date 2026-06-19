@@ -33,6 +33,7 @@
 //!        default store, never a panic);
 //!      - allowlist-violating slug in the URL -> 400 `invalid project slug`
 //!        (rejected at the parse edge, BEFORE any store/path use).
+//!
 //!    Because `route_mcp` `debug_assert!`s that the dispatched adapter
 //!    `adapter_for(key)` wraps EXACTLY the store `resolve_store(key)` returned
 //!    (OQ-PR-4), a non-404 slug dispatch is provably to that slug's OWN store —
@@ -1276,16 +1277,18 @@ impl ResolvedDaemonConfig {
     /// NON-DEFAULT (so the test fails against the old test-default ServiceLayer).
     fn enabled_non_default() -> Self {
         // Non-default fusion weights (defaults are w_sim=0.50, w_nli=0.00, ...).
-        let mut inference = InferenceConfig::default();
-        inference.nli_enabled = true;
-        inference.nli_top_k = 37; // non-default (default 20)
-        inference.rayon_pool_size = 5; // non-default pool size
-        inference.w_sim = 0.20;
-        inference.w_nli = 0.30; // default is 0.00 — clearly non-default
-        inference.w_conf = 0.15;
-        inference.w_coac = 0.05;
-        inference.w_util = 0.05;
-        inference.w_prov = 0.05;
+        let inference = InferenceConfig {
+            nli_enabled: true,
+            nli_top_k: 37,      // non-default (default 20)
+            rayon_pool_size: 5, // non-default pool size
+            w_sim: 0.20,
+            w_nli: 0.30, // default is 0.00 — clearly non-default
+            w_conf: 0.15,
+            w_coac: 0.05,
+            w_util: 0.05,
+            w_prov: 0.05,
+            ..Default::default()
+        };
         // Expected fusion weights, constructed literally from the resolved config
         // fields (FusionWeights fields are public; `from_config` is crate-private).
         // Mirrors `FusionWeights::from_config` field-for-field.
@@ -1302,9 +1305,11 @@ impl ResolvedDaemonConfig {
         let inference_config = Arc::new(inference);
 
         // Non-default confidence params (perturb alpha0 off the 3.0 default).
-        let mut conf = ConfidenceParams::default();
-        conf.alpha0 = 7.0;
-        conf.beta0 = 9.0;
+        let conf = ConfidenceParams {
+            alpha0: 7.0,
+            beta0: 9.0,
+            ..Default::default()
+        };
         let confidence_params = Arc::new(conf);
 
         // Non-default allowlist: an operator category not in the builtin set.

@@ -390,11 +390,12 @@ async fn total_graph_edges_count(store: &SqlxStore) -> i64 {
 /// Non-async: no fixture required.
 #[test]
 fn test_current_schema_version_is_20() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 20,
-        "CURRENT_SCHEMA_VERSION must be >= 20, got {}",
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 20,
+            "CURRENT_SCHEMA_VERSION must be >= 20"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------

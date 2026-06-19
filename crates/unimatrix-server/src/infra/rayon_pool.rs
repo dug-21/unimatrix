@@ -208,7 +208,7 @@ mod tests {
     #[tokio::test]
     async fn test_pool_init_default_formula() {
         use crate::infra::config::InferenceConfig;
-        let expected = (num_cpus::get() / 2).max(4).min(8);
+        let expected = (num_cpus::get() / 2).clamp(4, 8);
         let config = InferenceConfig::default();
         assert_eq!(
             config.rayon_pool_size, expected,

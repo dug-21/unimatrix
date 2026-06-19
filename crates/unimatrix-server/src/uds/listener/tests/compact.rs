@@ -49,7 +49,10 @@ async fn test_compact_payload_nonempty_buffer_prepends_tail_block() {
         .enumerate()
         .map(|(i, c)| ((i * CHUNK) as u64, c))
         .collect();
-    for (off, c) in chunks.iter().filter(|(o, _)| (o / CHUNK as u64) % 2 == 0) {
+    for (off, c) in chunks
+        .iter()
+        .filter(|(o, _)| (o / CHUNK as u64).is_multiple_of(2))
+    {
         let resp = dispatch_delta(
             &deps,
             &registry,

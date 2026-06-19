@@ -25,6 +25,9 @@ pub(crate) struct UsageService {
     /// Snapshot of `(alpha0, beta0)` taken before each `spawn_blocking` call so
     /// the capturing closure uses the latest tick values, not cold-start defaults.
     /// All lock acquisitions use `unwrap_or_else(|e| e.into_inner())` (FM-03).
+    // rationale: snapshotted into spawned usage-recording closures elsewhere; held on
+    // the service for wiring but not read directly through this field today.
+    #[allow(dead_code)]
     confidence_state: ConfidenceStateHandle,
     /// Operator-configured confidence weights (dsn-001, GH #311).
     ///
@@ -180,7 +183,7 @@ impl UsageService {
             // Each entry appears access_weight times in all_ids for correct increment
             entry_ids
                 .iter()
-                .flat_map(|&id| std::iter::repeat(id).take(ctx.access_weight as usize))
+                .flat_map(|&id| std::iter::repeat_n(id, ctx.access_weight as usize))
                 .collect()
         };
 
@@ -190,7 +193,7 @@ impl UsageService {
             // access_ids (post-dedup) gets multiplied; deduped entries remain absent
             access_ids
                 .iter()
-                .flat_map(|&id| std::iter::repeat(id).take(ctx.access_weight as usize))
+                .flat_map(|&id| std::iter::repeat_n(id, ctx.access_weight as usize))
                 .collect()
         };
 
@@ -219,10 +222,14 @@ impl UsageService {
 
         // GH #311: use operator-configured params, not ConfidenceParams::default().
         let params = Arc::clone(&self.confidence_params);
-        let confidence_fn: Box<dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync> =
-            Box::new(move |entry, now| crate::confidence::compute_confidence(entry, now, &params));
+        // rationale: boxed callback passed straight into record_usage_with_confidence;
+        // a named type alias would not be reused elsewhere.
+        #[allow(clippy::type_complexity)]
+        let confidence_fn: Box<
+            dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync,
+        > = Box::new(move |entry, now| crate::confidence::compute_confidence(entry, now, &params));
 
-        let _ = tokio::spawn(async move {
+        let _detached = tokio::spawn(async move {
             // Async usage recording (nxs-011: record_usage_with_confidence is now async)
             if let Err(e) = store
                 .record_usage_with_confidence(
@@ -331,7 +338,7 @@ impl UsageService {
         let store = Arc::clone(&self.store);
         // GH #311: use operator-configured params, not ConfidenceParams::default().
         let params = Arc::clone(&self.confidence_params);
-        let _ = tokio::spawn(async move {
+        let _detached = tokio::spawn(async move {
             // Async usage recording (nxs-011)
             if let Err(e) = store
                 .record_usage_with_confidence(

@@ -1,5 +1,8 @@
 //! Tests for eval scenarios extraction (nan-007).
 
+// rationale: file is included as `mod tests;`; the inner `tests` module repeats the name
+// by the crate's test-file convention. Renaming would churn call sites.
+#[allow(clippy::module_inception)]
 #[cfg(test)]
 mod tests {
     use std::path::Path;
@@ -29,6 +32,9 @@ mod tests {
     ///
     /// `phase` maps to `query_log.phase` (col-028). Pass `None` to insert SQL NULL
     /// (pre-col-028 behaviour); pass `Some("delivery")` etc. to test non-null paths.
+    // rationale: test fixture builder mirrors the query_log row columns; a params struct
+    // would only obscure the per-case values in tests.
+    #[allow(clippy::too_many_arguments)]
     async fn insert_query_log_row(
         pool: &sqlx::SqlitePool,
         session_id: &str,

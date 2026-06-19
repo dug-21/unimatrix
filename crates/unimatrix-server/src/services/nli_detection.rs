@@ -75,6 +75,9 @@ pub(crate) async fn write_nli_edge(
 /// - `true`  — row was inserted (`rows_affected = 1`)
 /// - `false` — UNIQUE conflict (`rows_affected = 0`): silent, no `warn!`
 /// - `false` — SQL error: emits `warn!` with structured context, does not propagate
+// rationale: edge writer takes the full column set of a graph_edge row; grouping
+// them into a struct would not reduce the real input surface.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn write_graph_edge(
     store: &Store,
     source_id: u64,

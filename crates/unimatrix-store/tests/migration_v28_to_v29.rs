@@ -153,11 +153,12 @@ async fn open_store(dir: &TempDir) -> SqlxStore {
 #[test]
 #[allow(clippy::assertions_on_constants)] // version constant is compile-time; assertion guards the bump
 fn test_current_schema_version_is_at_least_29() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 29,
-        "CURRENT_SCHEMA_VERSION must be >= 29 after crt-054, got {}",
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 29,
+            "CURRENT_SCHEMA_VERSION must be >= 29 after crt-054"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------

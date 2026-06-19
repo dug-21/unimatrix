@@ -296,10 +296,12 @@ mod tests {
 
     #[test]
     fn co_access_staleness_at_least_one_year() {
-        assert!(
-            CO_ACCESS_STALENESS_SECONDS >= 365 * 24 * 3600,
-            "staleness window must be at least one year to tolerate dormant feature cycles (GH #408)"
-        );
+        const {
+            assert!(
+                CO_ACCESS_STALENESS_SECONDS >= 365 * 24 * 3600,
+                "staleness window must be at least one year to tolerate dormant feature cycles (GH #408)"
+            )
+        };
     }
 
     // -- crt-005: f64 type verification --

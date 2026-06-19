@@ -744,9 +744,10 @@ mod tests {
     fn _assert_record_feature_entries_three_arg_signature(store: &SqlxStore) {
         // This function is never called; it exists only to enforce the compile-time
         // signature check. If record_feature_entries still has the old two-arg
-        // signature, this will not compile.
-        let _ = store.record_feature_entries("f", &[], None);
-        let _ = store.record_feature_entries("f", &[], Some("scope"));
+        // signature, this will not compile. The futures are intentionally NOT awaited —
+        // this is a type-check only, so bind them to discard without polling.
+        let _fut_none = store.record_feature_entries("f", &[], None);
+        let _fut_scope = store.record_feature_entries("f", &[], Some("scope"));
     }
 
     /// Integration test: `record_feature_entries` with `phase = Some("scope")` stores

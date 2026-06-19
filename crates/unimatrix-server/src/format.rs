@@ -25,6 +25,9 @@ pub struct ExportHeader {
 ///
 /// The `_table` field in JSON selects the variant. Unknown `_table` values
 /// produce a serde deserialization error.
+// rationale: boxing a variant would change the import deserialization API and the
+// rows are short-lived (one decoded per JSONL line), so the size delta is immaterial.
+#[allow(clippy::large_enum_variant)]
 #[derive(Deserialize, Debug)]
 #[serde(tag = "_table")]
 pub enum ExportRow {
@@ -1043,11 +1046,11 @@ mod tests {
             "pre_quarantine_status": null
         });
 
-        if let Some(overrides) = overrides {
-            if let Some(obj) = overrides.as_object() {
-                for (k, v) in obj {
-                    base[k] = v.clone();
-                }
+        if let Some(overrides) = overrides
+            && let Some(obj) = overrides.as_object()
+        {
+            for (k, v) in obj {
+                base[k] = v.clone();
             }
         }
 

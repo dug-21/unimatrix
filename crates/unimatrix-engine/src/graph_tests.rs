@@ -263,7 +263,7 @@ fn penalty_range_all_scenarios() {
             (p - expected).abs() < 1e-10,
             "depth-2 must be ~0.24, got {p}"
         );
-        assert!(p >= 0.10 && p <= CLEAN_REPLACEMENT_PENALTY);
+        assert!((0.10..=CLEAN_REPLACEMENT_PENALTY).contains(&p));
     }
 
     // Depth-5 decay: clamped to 0.10
@@ -296,10 +296,12 @@ fn penalty_absent_node_returns_one() {
 
 #[test]
 fn orphan_softer_than_clean_replacement() {
-    assert!(
-        ORPHAN_PENALTY > CLEAN_REPLACEMENT_PENALTY,
-        "orphan ({ORPHAN_PENALTY}) must be softer (higher multiplier) than clean replacement ({CLEAN_REPLACEMENT_PENALTY})"
-    );
+    const {
+        assert!(
+            ORPHAN_PENALTY > CLEAN_REPLACEMENT_PENALTY,
+            "orphan must be softer (higher multiplier) than clean replacement"
+        )
+    };
 
     let orphan_entries = vec![make_entry(1, Status::Deprecated, None, None)];
     let orphan_graph = build_typed_relation_graph(&orphan_entries, &[]).unwrap();
@@ -350,10 +352,12 @@ fn two_hop_harsher_than_one_hop() {
 
 #[test]
 fn partial_supersession_softer_than_clean() {
-    assert!(
-        PARTIAL_SUPERSESSION_PENALTY > CLEAN_REPLACEMENT_PENALTY,
-        "partial ({PARTIAL_SUPERSESSION_PENALTY}) must be softer than clean replacement ({CLEAN_REPLACEMENT_PENALTY})"
-    );
+    const {
+        assert!(
+            PARTIAL_SUPERSESSION_PENALTY > CLEAN_REPLACEMENT_PENALTY,
+            "partial supersession must be softer than clean replacement"
+        )
+    };
 
     let partial_entries = vec![
         make_entry(1, Status::Active, None, None),
@@ -503,18 +507,22 @@ fn dangling_supersedes_ref_is_skipped() {
 
 #[test]
 fn dead_end_softer_than_orphan() {
-    assert!(
-        DEAD_END_PENALTY < ORPHAN_PENALTY,
-        "dead-end ({DEAD_END_PENALTY}) must be softer than orphan ({ORPHAN_PENALTY})"
-    );
+    const {
+        assert!(
+            DEAD_END_PENALTY < ORPHAN_PENALTY,
+            "dead-end must be softer than orphan"
+        )
+    };
 }
 
 #[test]
 fn fallback_softer_than_clean() {
-    assert!(
-        FALLBACK_PENALTY > CLEAN_REPLACEMENT_PENALTY,
-        "fallback ({FALLBACK_PENALTY}) must be softer than clean replacement ({CLEAN_REPLACEMENT_PENALTY})"
-    );
+    const {
+        assert!(
+            FALLBACK_PENALTY > CLEAN_REPLACEMENT_PENALTY,
+            "fallback must be softer than clean replacement"
+        )
+    };
 }
 
 // -- R-12: Decay formula bounds --

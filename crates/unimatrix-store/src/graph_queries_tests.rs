@@ -131,7 +131,7 @@ async fn test_query_supersession_chain_single_entry() {
     let (store, _dir) = open_test_store().await;
     let pool = store.read_pool();
 
-    let id = insert_entry(&&store.write_pool, "Entry A", Status::Active, None, None).await;
+    let id = insert_entry(&store.write_pool, "Entry A", Status::Active, None, None).await;
 
     let result = query_supersession_chain(pool, id, ChainDirection::Both, 50)
         .await

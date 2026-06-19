@@ -337,10 +337,8 @@ fn test_run_stop_is_synchronous() {
     // This test exists to satisfy R-13: no tokio::main or Runtime::new() is
     // in the run_stop function. The fact that it is callable from a sync #[test]
     // confirms the absence of async machinery.
-    assert!(
-        true,
-        "run_stop is synchronous — callable from non-async test"
-    );
+    // No assertion: the test compiling and running in a non-async `#[test]` IS the
+    // proof — run_stop is synchronous and callable without async machinery.
 }
 
 // ---------------------------------------------------------------------------

@@ -390,10 +390,12 @@ async fn edge_exists(
 /// Non-async: no fixture required.
 #[test]
 fn test_current_schema_version_is_19() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 19,
-        "CURRENT_SCHEMA_VERSION must be at least 19"
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 19,
+            "CURRENT_SCHEMA_VERSION must be at least 19"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------

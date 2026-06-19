@@ -90,42 +90,44 @@ mod tests {
     #[test]
     fn test_contradiction_scan_interval_constant() {
         // Tick gate: run on tick 0, 4, 8 — NOT on 1, 2, 3, 5, 6, 7.
-        assert!(
-            0 % CONTRADICTION_SCAN_INTERVAL_TICKS == 0,
-            "tick 0 must trigger scan"
-        );
-        assert!(
-            4 % CONTRADICTION_SCAN_INTERVAL_TICKS == 0,
-            "tick 4 must trigger scan"
-        );
-        assert!(
-            8 % CONTRADICTION_SCAN_INTERVAL_TICKS == 0,
-            "tick 8 must trigger scan"
-        );
-        assert!(
-            1 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
-            "tick 1 must NOT trigger scan"
-        );
-        assert!(
-            2 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
-            "tick 2 must NOT trigger scan"
-        );
-        assert!(
-            3 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
-            "tick 3 must NOT trigger scan"
-        );
-        assert!(
-            5 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
-            "tick 5 must NOT trigger scan"
-        );
-        assert!(
-            6 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
-            "tick 6 must NOT trigger scan"
-        );
-        assert!(
-            7 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
-            "tick 7 must NOT trigger scan"
-        );
+        const {
+            assert!(
+                0 % CONTRADICTION_SCAN_INTERVAL_TICKS == 0,
+                "tick 0 must trigger scan"
+            );
+            assert!(
+                4 % CONTRADICTION_SCAN_INTERVAL_TICKS == 0,
+                "tick 4 must trigger scan"
+            );
+            assert!(
+                8 % CONTRADICTION_SCAN_INTERVAL_TICKS == 0,
+                "tick 8 must trigger scan"
+            );
+            assert!(
+                1 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
+                "tick 1 must NOT trigger scan"
+            );
+            assert!(
+                2 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
+                "tick 2 must NOT trigger scan"
+            );
+            assert!(
+                3 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
+                "tick 3 must NOT trigger scan"
+            );
+            assert!(
+                5 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
+                "tick 5 must NOT trigger scan"
+            );
+            assert!(
+                6 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
+                "tick 6 must NOT trigger scan"
+            );
+            assert!(
+                7 % CONTRADICTION_SCAN_INTERVAL_TICKS != 0,
+                "tick 7 must NOT trigger scan"
+            );
+        }
     }
 
     #[test]
@@ -136,7 +138,7 @@ mod tests {
         assert_eq!(next, 0, "u32::MAX.wrapping_add(1) must wrap to 0");
         // Tick gate still works at 0 after wrap.
         assert!(
-            next % CONTRADICTION_SCAN_INTERVAL_TICKS == 0,
+            next.is_multiple_of(CONTRADICTION_SCAN_INTERVAL_TICKS),
             "wrapped-to-0 counter must trigger scan"
         );
     }

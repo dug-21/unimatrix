@@ -145,10 +145,6 @@ pub(crate) struct SecurityGateway {
 }
 
 impl SecurityGateway {
-    pub(crate) fn new(audit: Arc<AuditLog>) -> Self {
-        Self::with_rate_config(audit, RateLimitConfig::default())
-    }
-
     pub(crate) fn with_rate_config(audit: Arc<AuditLog>, config: RateLimitConfig) -> Self {
         SecurityGateway {
             audit,
@@ -334,7 +330,7 @@ impl SecurityGateway {
     pub(crate) fn emit_audit(&self, event: AuditEvent) {
         if tokio::runtime::Handle::try_current().is_ok() {
             let audit = Arc::clone(&self.audit);
-            let _ = tokio::task::spawn_blocking(move || {
+            let _detached = tokio::task::spawn_blocking(move || {
                 let _ = audit.log_event(event);
             });
         } else {

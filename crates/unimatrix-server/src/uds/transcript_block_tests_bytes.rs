@@ -76,7 +76,7 @@ fn test_golden_parity_from_path_vs_streamed_from_bytes() {
     );
     for (offset, chunk) in deltas
         .iter()
-        .filter(|(o, _)| (o / DELTA_LEN as u64) % 2 == 0)
+        .filter(|(o, _)| (o / DELTA_LEN as u64).is_multiple_of(2))
     {
         buf.apply_delta(*offset, chunk);
     }

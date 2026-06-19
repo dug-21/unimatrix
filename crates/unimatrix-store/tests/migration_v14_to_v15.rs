@@ -330,10 +330,12 @@ async fn phase_column_exists_on_feature_entries(store: &SqlxStore) -> bool {
 #[test]
 fn test_current_schema_version_is_at_least_15() {
     // Minimum bound: version must be >= 15. Exact value tested in migration_v15_to_v16.rs.
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 15,
-        "CURRENT_SCHEMA_VERSION must be >= 15"
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 15,
+            "CURRENT_SCHEMA_VERSION must be >= 15"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -635,7 +637,7 @@ async fn test_schema_version_is_15_after_migration() {
     assert!(read_schema_version(&store).await >= 15);
 
     // Assert: Rust const is >= 15 (exact value 16 tested in migration_v15_to_v16.rs).
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 15);
+    const { assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 15) };
 
     store.close().await.unwrap();
 }

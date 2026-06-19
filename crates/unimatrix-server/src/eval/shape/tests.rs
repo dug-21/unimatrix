@@ -20,8 +20,8 @@ use super::manifest::{
 };
 use crate::infra::config::InferenceConfig;
 
-/// A representative running manifest, built from live inputs (default embed model
-/// + default inference config). Centralizes construction so every test mutates a
+/// A representative running manifest, built from live inputs (default embed model and
+/// default inference config). Centralizes construction so every test mutates a
 /// single known-good baseline.
 fn baseline_manifest() -> ShapeManifest {
     let embed = EmbeddingModel::default();

@@ -171,10 +171,10 @@ fn compute_phase_baselines(
         if durations.len() >= MIN_HISTORY {
             phase_baselines.insert("duration_secs".to_string(), compute_entry(durations));
         }
-        if let Some(tool_calls) = phase_tool_calls.get(phase_name) {
-            if tool_calls.len() >= MIN_HISTORY {
-                phase_baselines.insert("tool_call_count".to_string(), compute_entry(tool_calls));
-            }
+        if let Some(tool_calls) = phase_tool_calls.get(phase_name)
+            && tool_calls.len() >= MIN_HISTORY
+        {
+            phase_baselines.insert("tool_call_count".to_string(), compute_entry(tool_calls));
         }
 
         if !phase_baselines.is_empty() {
@@ -398,7 +398,7 @@ mod tests {
         ];
 
         let baselines = compute_baselines(&history).unwrap();
-        assert!(baselines.phases.get("3a").is_none());
+        assert!(!baselines.phases.contains_key("3a"));
     }
 
     // -- compare_to_baseline --

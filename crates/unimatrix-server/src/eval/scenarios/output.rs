@@ -37,28 +37,29 @@ pub fn run_scenarios(
         let active_db =
             std::fs::canonicalize(&paths.db_path).unwrap_or_else(|_| paths.db_path.clone());
 
-        if let Ok(db_resolved) = std::fs::canonicalize(db) {
-            if db_resolved == active_db {
-                return Err(format!(
-                    "eval scenarios --db resolves to the active database\n  \
+        if let Ok(db_resolved) = std::fs::canonicalize(db)
+            && db_resolved == active_db
+        {
+            return Err(format!(
+                "eval scenarios --db resolves to the active database\n  \
                      supplied: {}\n  \
                      active:   {}\n  \
                      use a snapshot, not the live database",
-                    db.display(),
-                    active_db.display()
-                )
-                .into());
-            }
+                db.display(),
+                active_db.display()
+            )
+            .into());
         }
     }
 
     // ----------------------------------------------------------------
     // Step 2: Validate output parent directory exists
     // ----------------------------------------------------------------
-    if let Some(parent) = out.parent() {
-        if !parent.as_os_str().is_empty() && !parent.exists() {
-            return Err(format!("output directory does not exist: {}", parent.display()).into());
-        }
+    if let Some(parent) = out.parent()
+        && !parent.as_os_str().is_empty()
+        && !parent.exists()
+    {
+        return Err(format!("output directory does not exist: {}", parent.display()).into());
     }
 
     // ----------------------------------------------------------------

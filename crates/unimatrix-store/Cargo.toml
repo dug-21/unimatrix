@@ -22,3 +22,6 @@ tempfile = { version = "3", optional = true }
 [dev-dependencies]
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "sync", "time", "macros", "rt-multi-thread"] }
+
+[lints]
+workspace = true

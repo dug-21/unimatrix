@@ -21,6 +21,9 @@ use crate::infra::registry::{Capability, TrustLevel};
 use crate::mcp::identity::ResolvedIdentity;
 
 /// Credential type written to audit logs for HTTP bearer-token callers (ADR-006).
+// rationale: audit-label constant consumed by the bearer audit path still being wired
+// (vnc-040); referenced today only by tests.
+#[allow(dead_code)]
 pub(crate) const CREDENTIAL_TYPE_STATIC_TOKEN: &str = "static_token";
 
 /// Path that bypasses authentication (ADR-002).
@@ -31,15 +34,21 @@ pub(crate) const HEALTH_PATH: &str = "/health";
 const AUTH_BYPASS_PATHS: &[(&str, &Method)] = &[(HEALTH_PATH, &Method::GET)];
 
 /// Auth-specific error type.
+// rationale: MissingHeader/InvalidFormat/Internal are part of the bearer-auth error
+// surface still being wired (vnc-040); constructed by validator paths not yet enabled
+// in the default lib build.
 #[derive(Debug)]
 pub(crate) enum AuthError {
     /// No Authorization header present.
+    #[allow(dead_code)]
     MissingHeader,
     /// Header present but not in `Bearer <hex>` format.
+    #[allow(dead_code)]
     InvalidFormat,
     /// Constant-time comparison failed (wrong token, bad hex, wrong length).
     InvalidToken,
     /// Unexpected internal failure.
+    #[allow(dead_code)]
     Internal(String),
 }
 

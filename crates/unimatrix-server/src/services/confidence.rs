@@ -138,7 +138,7 @@ impl ConfidenceService {
         // GH #311: snapshot params before spawn so the closure uses the configured values.
         let params = Arc::clone(&self.confidence_params);
 
-        let _ = tokio::spawn(async move {
+        let _detached = tokio::spawn(async move {
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()

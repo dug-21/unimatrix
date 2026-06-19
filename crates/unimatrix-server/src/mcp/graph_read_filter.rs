@@ -75,7 +75,7 @@ pub(super) async fn handle_filter(
     // Step 3: Validate limit (default 100, range [1, 500]).
     let limit: u32 = match params.limit {
         None => DEFAULT_LIMIT,
-        Some(n) if n >= 1 && n <= MAX_LIMIT => n,
+        Some(n) if (1..=MAX_LIMIT).contains(&n) => n,
         Some(n) => {
             return Err(ErrorData::new(
                 ERROR_INVALID_PARAMS,
@@ -87,23 +87,23 @@ pub(super) async fn handle_filter(
 
     // Step 4: Validate confidence bounds (must be finite; NaN/±Infinity produce
     // silent wrong results in SQLite comparisons).
-    if let Some(min_c) = params.min_confidence {
-        if !min_c.is_finite() {
-            return Err(ErrorData::new(
-                ERROR_INVALID_PARAMS,
-                "min_confidence must be a finite number",
-                None,
-            ));
-        }
+    if let Some(min_c) = params.min_confidence
+        && !min_c.is_finite()
+    {
+        return Err(ErrorData::new(
+            ERROR_INVALID_PARAMS,
+            "min_confidence must be a finite number",
+            None,
+        ));
     }
-    if let Some(max_c) = params.max_confidence {
-        if !max_c.is_finite() {
-            return Err(ErrorData::new(
-                ERROR_INVALID_PARAMS,
-                "max_confidence must be a finite number",
-                None,
-            ));
-        }
+    if let Some(max_c) = params.max_confidence
+        && !max_c.is_finite()
+    {
+        return Err(ErrorData::new(
+            ERROR_INVALID_PARAMS,
+            "max_confidence must be a finite number",
+            None,
+        ));
     }
 
     // Step 5: Build parameterized correlated subquery SQL.

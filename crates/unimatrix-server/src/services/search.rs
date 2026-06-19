@@ -271,6 +271,9 @@ pub(crate) struct ServiceSearchParams {
     /// Populated from ctx.audit_ctx.session_id (MCP path) or
     /// HookRequest::ContextSearch.session_id (UDS path).
     /// Not used in scoring logic; carried for observability.
+    // rationale: carried for observability/tracing parity across MCP and UDS paths;
+    // not yet consumed by a reader (documented above).
+    #[allow(dead_code)]
     pub session_id: Option<String>,
     /// crt-026: Pre-resolved category histogram clone (WA-2, ADR-002).
     ///
@@ -528,6 +531,9 @@ impl SearchService {
         &self.boosted_categories
     }
 
+    // rationale: search service aggregates many injected stores/configs; a params
+    // struct would mirror the fields one-to-one without reducing the input surface.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         store: Arc<Store>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
@@ -1573,11 +1579,12 @@ mod tests {
     #[test]
     fn superseded_harsher_than_orphan_deprecated() {
         use unimatrix_engine::graph::{CLEAN_REPLACEMENT_PENALTY, ORPHAN_PENALTY};
-        assert!(
-            CLEAN_REPLACEMENT_PENALTY < ORPHAN_PENALTY,
-            "clean replacement ({CLEAN_REPLACEMENT_PENALTY}) must be harsher (lower) than \
-             orphan deprecated ({ORPHAN_PENALTY})"
-        );
+        const {
+            assert!(
+                CLEAN_REPLACEMENT_PENALTY < ORPHAN_PENALTY,
+                "clean replacement must be harsher (lower) than orphan deprecated"
+            )
+        };
     }
 
     // -- T-SP-05: Deprecated-only query returns results in Flexible mode --
@@ -1752,10 +1759,12 @@ mod tests {
             "UTILITY_PENALTY must be 0.05"
         );
         // AC-03: SETTLED_BOOST < co-access max (0.03)
-        assert!(
-            SETTLED_BOOST < 0.03_f64,
-            "SETTLED_BOOST ({SETTLED_BOOST}) must be less than co-access max (0.03)"
-        );
+        const {
+            assert!(
+                SETTLED_BOOST < 0.03_f64,
+                "SETTLED_BOOST must be less than co-access max (0.03)"
+            )
+        };
     }
 
     // -- AC-05 / R-02: Effective outranks near-equal Ineffective --
@@ -1878,9 +1887,8 @@ mod tests {
 
     #[test]
     fn test_cached_snapshot_shared_across_clones() {
-        use crate::services::effectiveness::EffectivenessState;
-        use crate::services::effectiveness::{EffectivenessSnapshot, EffectivenessStateHandle};
-        use std::sync::{Arc, Mutex, RwLock};
+        use crate::services::effectiveness::EffectivenessSnapshot;
+        use std::sync::{Arc, Mutex};
 
         // Simulate the Arc<Mutex<EffectivenessSnapshot>> sharing pattern.
         let shared_snapshot: Arc<Mutex<EffectivenessSnapshot>> =
@@ -2045,11 +2053,7 @@ mod tests {
         use unimatrix_engine::graph::{
             CLEAN_REPLACEMENT_PENALTY, build_typed_relation_graph, graph_penalty,
         };
-        // Entry 1: superseded by entry 2 (depth-1 clean replacement)
-        let entries = vec![
-            make_test_entry(1, Status::Active, Some(2), 0.65, "decision"),
-            make_test_entry(2, Status::Active, None, 0.65, "decision"),
-        ];
+        // Entry 1: superseded by entry 2 (depth-1 clean replacement).
         // Note: make_test_entry arg 3 is superseded_by. Entry 1 is superseded by 2.
         // For the graph: entry 2 must have supersedes=Some(1) to create the edge 1→2.
         // Build entries with correct supersedes/superseded_by fields.
@@ -2112,10 +2116,12 @@ mod tests {
             (FALLBACK_PENALTY - 0.70_f64).abs() < f64::EPSILON,
             "FALLBACK_PENALTY must be 0.70"
         );
-        assert!(
-            FALLBACK_PENALTY > 0.0 && FALLBACK_PENALTY < 1.0,
-            "FALLBACK_PENALTY must be in (0.0, 1.0)"
-        );
+        const {
+            assert!(
+                FALLBACK_PENALTY > 0.0 && FALLBACK_PENALTY < 1.0,
+                "FALLBACK_PENALTY must be in (0.0, 1.0)"
+            )
+        };
     }
 
     // =========================================================================
@@ -2624,13 +2630,15 @@ mod tests {
     fn test_fusion_weights_from_config_maps_fields() {
         // T-SS-06: FusionWeights::from_config maps each field from InferenceConfig.
         use crate::infra::config::InferenceConfig;
-        let mut cfg = InferenceConfig::default();
-        cfg.w_sim = 0.30;
-        cfg.w_nli = 0.30;
-        cfg.w_conf = 0.15;
-        cfg.w_coac = 0.10;
-        cfg.w_util = 0.10;
-        cfg.w_prov = 0.05;
+        let cfg = InferenceConfig {
+            w_sim: 0.30,
+            w_nli: 0.30,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.10,
+            w_prov: 0.05,
+            ..Default::default()
+        };
         let fw = FusionWeights::from_config(&cfg);
         assert!((fw.w_sim - 0.30).abs() < 1e-9);
         assert!((fw.w_nli - 0.30).abs() < 1e-9);
@@ -4692,7 +4700,7 @@ mod tests {
         /// Returns: (blended pool scores, ppr_only candidates after sort+cap).
         /// Pool entries are blended in-place on the returned Vec.
         fn run_step_6d_sync(
-            results_with_scores: &mut Vec<(unimatrix_core::EntryRecord, f64)>,
+            results_with_scores: &mut [(unimatrix_core::EntryRecord, f64)],
             graph: &TypedRelationGraph,
             phase_snapshot: &Option<HashMap<String, Vec<(u64, f32)>>>,
             current_phase: &Option<String>,
@@ -5847,8 +5855,9 @@ mod tests {
         ///   - S (id=1): embedding [1, 0], cos_sim(Q, S)=1.0 → HNSW seed.
         ///   - E (id=2): embedding [0, 1], cos_sim(Q, E)≈0.0 → would NOT appear via HNSW.
         ///   - Graph: S → E (Supports edge).
-        ///   flag=true: Phase 0 adds E to pool.
-        ///   flag=false: E remains absent.
+        ///
+        /// flag=true: Phase 0 adds E to pool.
+        /// flag=false: E remains absent.
         #[test]
         fn test_search_phase0_cross_category_entry_visible_with_flag_on() {
             // Q = unit x-axis; E = unit y-axis (orthogonal).

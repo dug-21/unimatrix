@@ -40,9 +40,11 @@ use std::sync::Arc;
 
 use unimatrix_core::{Store, VectorIndex};
 use unimatrix_embed::{CrossEncoderProvider, NliScores};
+use unimatrix_store::{EDGE_SOURCE_COSINE_SUPPORTS, EntryRecord, Status};
+// Used only by the test module (via `use super::*`); gated so the lib build stays clean.
+#[cfg(test)]
 use unimatrix_store::{
-    EDGE_SOURCE_CO_ACCESS, EDGE_SOURCE_COSINE_SUPPORTS, EDGE_SOURCE_NLI, EDGE_SOURCE_S1,
-    EDGE_SOURCE_S2, EDGE_SOURCE_S8, EntryRecord, Status,
+    EDGE_SOURCE_CO_ACCESS, EDGE_SOURCE_NLI, EDGE_SOURCE_S1, EDGE_SOURCE_S2, EDGE_SOURCE_S8,
 };
 
 use crate::infra::config::InferenceConfig;
@@ -706,29 +708,28 @@ pub async fn run_graph_inference_tick(
         if edges_written >= config.max_graph_inference_per_tick {
             break;
         }
-        if let NliCandidatePair::SupportsContradict {
+        // NliCandidatePair has a single variant, so this destructure is irrefutable.
+        let NliCandidatePair::SupportsContradict {
             source_id,
             target_id,
             cosine: _,
             nli_scores,
-        } = pair
-        {
-            // Strict > threshold (AC-09). Contradiction is discarded (C-13 / AC-10a).
-            if nli_scores.entailment > config.supports_edge_threshold {
-                let metadata_json = format_nli_metadata(nli_scores);
-                let written = write_nli_edge(
-                    store,
-                    *source_id,
-                    *target_id,
-                    "Supports",
-                    nli_scores.entailment,
-                    timestamp,
-                    &metadata_json,
-                )
-                .await;
-                if written {
-                    edges_written += 1;
-                }
+        } = pair;
+        // Strict > threshold (AC-09). Contradiction is discarded (C-13 / AC-10a).
+        if nli_scores.entailment > config.supports_edge_threshold {
+            let metadata_json = format_nli_metadata(nli_scores);
+            let written = write_nli_edge(
+                store,
+                *source_id,
+                *target_id,
+                "Supports",
+                nli_scores.entailment,
+                timestamp,
+                &metadata_json,
+            )
+            .await;
+            if written {
+                edges_written += 1;
             }
         }
     }
@@ -940,6 +941,9 @@ fn select_source_candidates(
 /// - block only when both feature_cycles are non-empty AND equal (intra-feature) (AC-15)
 ///
 /// Module-private. Accessible to tests via `use super::*`.
+// rationale: guard predicate inspects several independent candidate attributes;
+// each is a distinct decision input, not shared state.
+#[allow(clippy::too_many_arguments)]
 fn phase4b_candidate_passes_guards(
     similarity: f32,
     source_category: &str,
@@ -1032,6 +1036,9 @@ fn nli_score_stats(scores: &[NliScores]) -> (f32, f32, f32) {
 /// **Supports-ONLY** (C-13 / AC-10a): no `contradiction_threshold` parameter.
 /// The `contradiction` score is intentionally discarded. `INSERT OR IGNORE` provides
 /// idempotency. Cap stops at `max_edges` (FR-09, AC-11, strict `>` threshold AC-09).
+// rationale: edge-cap reference implementation exercised by the test suite below; the
+// live tick path inlines the equivalent loop, so it has no production caller.
+#[allow(dead_code)]
 async fn write_inferred_edges_with_cap(
     store: &Store,
     pairs: &[(u64, u64)],
@@ -2059,8 +2066,8 @@ mod tests {
     // AC-19: Edge source = "nli" (EDGE_SOURCE_NLI)
     // -----------------------------------------------------------------------
 
-    /// AC-19: Informs edges written via write_nli_edge have source = "nli".
-    /// Covered by test_phase8b_writes_informs_edge_when_all_guards_pass (asserts source="nli").
+    // AC-19: Informs edges written via write_nli_edge have source = "nli".
+    // Covered by test_phase8b_writes_informs_edge_when_all_guards_pass (asserts source="nli").
 
     // -----------------------------------------------------------------------
     // AC-20: Edge weight = cosine * nli_informs_ppr_weight

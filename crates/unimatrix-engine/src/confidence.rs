@@ -481,7 +481,7 @@ mod tests {
             ..Default::default()
         };
         let result = freshness_score(very_old, 0, now, &params);
-        assert!(result >= 0.0 && result < 0.001);
+        assert!((0.0..0.001).contains(&result));
     }
 
     // -- T-05: Bayesian helpfulness score (AC-02, replaces Wilson tests) --
@@ -550,7 +550,7 @@ mod tests {
     fn bayesian_helpfulness_nan_inputs_clamped() {
         let result = helpfulness_score(0, 0, f64::NAN, f64::NAN);
         assert!(!result.is_nan(), "NaN inputs must not produce NaN output");
-        assert!(result >= 0.0 && result <= 1.0);
+        assert!((0.0..=1.0).contains(&result));
     }
 
     // EC-03: u32 counts must be cast to f64 before arithmetic
@@ -559,7 +559,7 @@ mod tests {
         // u32::MAX as f64 is representable; addition in f64 space
         let result = helpfulness_score(u32::MAX, 0, 3.0, 3.0);
         assert!(
-            result >= 0.0 && result <= 1.0,
+            (0.0..=1.0).contains(&result),
             "result out of range: {result}"
         );
     }
@@ -643,6 +643,9 @@ mod tests {
 
     // -- T-09: compute_confidence composite (AC-01, AC-02, crt-019) --
 
+    // rationale: test fixture builder mirrors EntryRecord's field set; splitting into a
+    // params struct would only obscure the per-case values in tests.
+    #[allow(clippy::too_many_arguments)]
     fn make_test_entry(
         status: Status,
         access_count: u32,
@@ -895,7 +898,7 @@ mod tests {
         );
         let confidence = compute_confidence(&entry, now, &ConfidenceParams::default());
         assert!(
-            confidence >= 0.0 && confidence <= 1.0,
+            (0.0..=1.0).contains(&confidence),
             "confidence out of range: {confidence}"
         );
         let as_f32 = confidence as f32;
@@ -910,7 +913,7 @@ mod tests {
         let entry = make_test_entry(Status::Active, 1000, now, now, 100, 0, 1, "human");
         let confidence = compute_confidence(&entry, now, &ConfidenceParams::default());
         assert!(
-            confidence >= 0.0 && confidence <= 1.0,
+            (0.0..=1.0).contains(&confidence),
             "confidence out of range: {confidence}"
         );
         assert!(
@@ -925,7 +928,7 @@ mod tests {
         let entry = make_test_entry(Status::Active, 0, 0, 0, 0, 0, 0, "");
         let confidence = compute_confidence(&entry, now, &ConfidenceParams::default());
         assert!(
-            confidence >= 0.0 && confidence <= 1.0,
+            (0.0..=1.0).contains(&confidence),
             "confidence out of range: {confidence}"
         );
         let _: f64 = confidence;
@@ -941,7 +944,7 @@ mod tests {
     #[test]
     fn provenance_boost_less_than_scalar_boost_max() {
         // ADR-005: PROVENANCE_BOOST must be smaller than scalar co-access boost max (~0.03)
-        assert!(PROVENANCE_BOOST < 0.03);
+        const { assert!(PROVENANCE_BOOST < 0.03) };
     }
 
     #[test]
@@ -1028,7 +1031,7 @@ mod tests {
         let b = vec![1.0_f32 / 2.0_f32.sqrt(), 1.0_f32 / 2.0_f32.sqrt()];
         let result = cosine_similarity(&a, &b);
         assert!(
-            (result - 0.7071).abs() < 0.01,
+            (result - std::f64::consts::FRAC_1_SQRT_2).abs() < 0.01,
             "expected ~0.7071, got {result}"
         );
     }
@@ -1038,7 +1041,7 @@ mod tests {
         let a = vec![0.6_f32, 0.8];
         let b = vec![0.8_f32, 0.6];
         let result: f64 = cosine_similarity(&a, &b);
-        assert!(result >= 0.0 && result <= 1.0);
+        assert!((0.0..=1.0).contains(&result));
     }
 
     #[test]
@@ -1048,7 +1051,7 @@ mod tests {
         let b = vec![1e10_f32, 1e10];
         let result = cosine_similarity(&a, &b);
         assert!(
-            result >= 0.0 && result <= 1.0,
+            (0.0..=1.0).contains(&result),
             "result should be clamped, got {result}"
         );
     }

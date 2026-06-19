@@ -17,7 +17,6 @@ use std::sync::Arc;
 use unimatrix_core::Store;
 
 use super::{MultiProjectRouter, ProjectServerInput};
-use crate::http::router::McpAdapter;
 use crate::http::router::seam::{ProjectKey, ProjectSlug, RouteError, StoreResolver};
 use crate::server::tests::make_server;
 

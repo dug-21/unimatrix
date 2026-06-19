@@ -366,10 +366,12 @@ async fn count_all_graph_edges(store: &SqlxStore) -> i64 {
 // The constant is tested in migration_v13_to_v14.rs::test_current_schema_version_is_14.
 #[test]
 fn test_current_schema_version_is_at_least_13() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 13,
-        "CURRENT_SCHEMA_VERSION must be >= 13"
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 13,
+            "CURRENT_SCHEMA_VERSION must be >= 13"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -801,7 +803,7 @@ fn inspect_migration_no_analytics_write_calls() {
     // Any AnalyticsWrite import would require unimatrix_store::analytics, which is
     // not imported in migration.rs (see file-level imports).
     // Note: CURRENT_SCHEMA_VERSION is 14 (col-023). The R-13 boundary still holds.
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 13);
+    const { assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 13) };
 }
 
 // ---------------------------------------------------------------------------

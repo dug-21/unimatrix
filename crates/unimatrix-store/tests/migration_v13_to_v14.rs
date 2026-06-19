@@ -315,10 +315,12 @@ async fn domain_metrics_json_column_exists(store: &SqlxStore) -> bool {
 #[test]
 fn test_current_schema_version_is_14() {
     // Minimum bound: version must be >= 14. Exact value tested in migration_v14_to_v15.rs.
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14,
-        "CURRENT_SCHEMA_VERSION must be >= 14"
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14,
+            "CURRENT_SCHEMA_VERSION must be >= 14"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -382,7 +384,7 @@ async fn test_v13_to_v14_migration_adds_column() {
     );
 
     // Assert: CURRENT_SCHEMA_VERSION Rust const is >= 14 (bumped to 15 by crt-025)
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14);
+    const { assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14) };
 
     store.close().await.unwrap();
 }
@@ -590,7 +592,7 @@ async fn test_schema_version_is_14_after_migration() {
     );
 
     // Assert: Rust const is >= 14 (bumped to 15 by crt-025)
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14);
+    const { assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 14) };
 
     store.close().await.unwrap();
 }

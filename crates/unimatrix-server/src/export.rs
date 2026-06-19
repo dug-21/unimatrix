@@ -2153,10 +2153,10 @@ line3', NULL, NULL, NULL, NULL)",
         // Extract _table values in order of first appearance (skip header)
         let mut table_order = Vec::new();
         for val in &all {
-            if let Some(tbl) = val.get("_table").and_then(|v| v.as_str()) {
-                if !table_order.contains(&tbl.to_string()) {
-                    table_order.push(tbl.to_string());
-                }
+            if let Some(tbl) = val.get("_table").and_then(|v| v.as_str())
+                && !table_order.contains(&tbl.to_string())
+            {
+                table_order.push(tbl.to_string());
             }
         }
 

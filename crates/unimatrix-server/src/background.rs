@@ -693,61 +693,60 @@ async fn run_single_tick(
     // O(N) ONNX inference — interval gate prevents per-tick CPU spike.
     // GH #278 fix: result written to `contradiction_cache`; StatusService reads it without ONNX.
     // BEHAVIORAL CHANGE: none. Comment and label additions only (NFR-07 zero-diff constraint).
-    if current_tick.is_multiple_of(CONTRADICTION_SCAN_INTERVAL_TICKS) {
-        if let Ok(adapter) = embed_service.get_adapter().await {
-            // GH #358: fetch entries here in Tokio context before dispatching to rayon.
-            // Rayon workers have no Tokio runtime; calling Handle::current() inside the
-            // closure panics and silently disables contradiction detection every tick.
-            let active_entries: Vec<EntryRecord> = match store.query_by_status(Status::Active).await
-            {
-                Ok(v) => v,
-                Err(e) => {
-                    tracing::warn!(tick = current_tick, error = %e, "contradiction scan skipped: could not fetch entries");
-                    vec![]
-                }
-            };
+    if current_tick.is_multiple_of(CONTRADICTION_SCAN_INTERVAL_TICKS)
+        && let Ok(adapter) = embed_service.get_adapter().await
+    {
+        // GH #358: fetch entries here in Tokio context before dispatching to rayon.
+        // Rayon workers have no Tokio runtime; calling Handle::current() inside the
+        // closure panics and silently disables contradiction detection every tick.
+        let active_entries: Vec<EntryRecord> = match store.query_by_status(Status::Active).await {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(tick = current_tick, error = %e, "contradiction scan skipped: could not fetch entries");
+                vec![]
+            }
+        };
 
-            let vi_for_scan = Arc::clone(vector_index);
-            let adapter_for_scan = Arc::clone(&adapter);
-            let config_for_scan = ContradictionConfig::default();
+        let vi_for_scan = Arc::clone(vector_index);
+        let adapter_for_scan = Arc::clone(&adapter);
+        let config_for_scan = ContradictionConfig::default();
 
-            tracing::debug!(tick = current_tick, "contradiction scan starting");
+        tracing::debug!(tick = current_tick, "contradiction scan starting");
 
-            // crt-022 (Site 4, Pattern B): background task — no timeout, error! on Cancelled.
-            match ml_inference_pool
-                .spawn(move || {
-                    let vs = VectorAdapter::new(vi_for_scan);
-                    contradiction::scan_contradictions(
-                        active_entries,
-                        &vs,
-                        &*adapter_for_scan,
-                        &config_for_scan,
-                    )
-                })
-                .await
-            {
-                Ok(Ok(pairs)) => {
-                    let pair_count = pairs.len();
-                    let mut guard = contradiction_cache
-                        .write()
-                        .unwrap_or_else(|e| e.into_inner());
-                    *guard = Some(ContradictionScanResult { pairs });
-                    tracing::debug!(
-                        tick = current_tick,
-                        pairs = pair_count,
-                        "contradiction scan complete; cache updated"
-                    );
-                }
-                Ok(Err(e)) => {
-                    tracing::warn!(tick = current_tick, error = %e, "contradiction scan failed; cache retained");
-                }
-                Err(e) => {
-                    tracing::error!(
-                        error = %e,
-                        tick = current_tick,
-                        "contradiction scan rayon task cancelled; cache retained"
-                    );
-                }
+        // crt-022 (Site 4, Pattern B): background task — no timeout, error! on Cancelled.
+        match ml_inference_pool
+            .spawn(move || {
+                let vs = VectorAdapter::new(vi_for_scan);
+                contradiction::scan_contradictions(
+                    active_entries,
+                    &vs,
+                    &*adapter_for_scan,
+                    &config_for_scan,
+                )
+            })
+            .await
+        {
+            Ok(Ok(pairs)) => {
+                let pair_count = pairs.len();
+                let mut guard = contradiction_cache
+                    .write()
+                    .unwrap_or_else(|e| e.into_inner());
+                *guard = Some(ContradictionScanResult { pairs });
+                tracing::debug!(
+                    tick = current_tick,
+                    pairs = pair_count,
+                    "contradiction scan complete; cache updated"
+                );
+            }
+            Ok(Err(e)) => {
+                tracing::warn!(tick = current_tick, error = %e, "contradiction scan failed; cache retained");
+            }
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    tick = current_tick,
+                    "contradiction scan rayon task cancelled; cache retained"
+                );
             }
         }
     }
@@ -1809,7 +1808,7 @@ async fn extraction_tick(
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use std::sync::{Arc, RwLock};
+    use std::sync::Arc;
     use unimatrix_engine::effectiveness::EffectivenessCategory;
 
     use crate::services::effectiveness::EffectivenessState;
@@ -2477,11 +2476,11 @@ mod tests {
         .unwrap_or_default();
 
         rows.into_iter()
-            .filter_map(|row| {
+            .map(|row| {
                 let target_ids_json: String = row.get::<String, _>(5);
                 let target_ids: Vec<u64> =
                     serde_json::from_str(&target_ids_json).unwrap_or_default();
-                Some(unimatrix_store::AuditEvent {
+                unimatrix_store::AuditEvent {
                     event_id: row.get::<i64, _>(0) as u64,
                     timestamp: row.get::<i64, _>(1) as u64,
                     session_id: row.get::<String, _>(2),
@@ -2492,7 +2491,7 @@ mod tests {
                         .unwrap_or(Outcome::Error),
                     detail: row.get::<String, _>(7),
                     ..unimatrix_store::AuditEvent::default()
-                })
+                }
             })
             .collect()
     }
@@ -3736,10 +3735,9 @@ mod tests {
     /// compute_friction_recommendations() returns ephemeral Vec<String> signals.
     #[tokio::test(flavor = "multi_thread")]
     async fn test_extraction_tick_does_not_write_recurring_friction_to_entries() {
-        use std::sync::Mutex;
         use tempfile::TempDir;
+        use unimatrix_observe::extraction::default_extraction_rules;
         use unimatrix_observe::extraction::recurring_friction::compute_friction_recommendations;
-        use unimatrix_observe::extraction::{ExtractionContext, default_extraction_rules};
         use unimatrix_store::test_helpers::open_test_store;
 
         let tmp = TempDir::new().unwrap();
@@ -4010,7 +4008,6 @@ mod tests {
     #[test]
     fn test_phase_freq_table_handle_swap_on_success() {
         use crate::services::phase_freq_table::{PhaseFreqTable, PhaseFreqTableHandle};
-        use std::collections::HashMap;
 
         // Arrange: cold-start handle
         let handle: PhaseFreqTableHandle = PhaseFreqTable::new_handle();

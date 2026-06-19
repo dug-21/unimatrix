@@ -28,3 +28,6 @@ unimatrix-engine = { path = ".", features = ["test-support"] }
 # vnc-024 ADR-001: dev-only — machine-generates TS wire bindings on `cargo test`.
 # MUST stay under [dev-dependencies]; never enters the runtime/shipped dependency graph (AC-15).
 ts-rs = { version = "12", features = ["serde-json-impl"] }
+
+[lints]
+workspace = true

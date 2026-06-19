@@ -21,3 +21,6 @@ sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "macros"] }
 unimatrix-store = { path = "../unimatrix-store", features = ["test-support"] }
+
+[lints]
+workspace = true

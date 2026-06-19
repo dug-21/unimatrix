@@ -59,19 +59,6 @@ fn make_sre_tool_input(
     }
 }
 
-fn make_sre_tool_response(ts: u64, event_type: &str, tool: &str, size: u64) -> ObservationRecord {
-    ObservationRecord {
-        ts,
-        event_type: event_type.to_string(),
-        source_domain: "sre".to_string(),
-        session_id: "sre-sess-1".to_string(),
-        tool: Some(tool.to_string()),
-        input: None,
-        response_size: Some(size),
-        response_snippet: None,
-    }
-}
-
 // Helper to run a single named rule from default_rules() against records.
 fn run_rule(
     rule_name: &str,

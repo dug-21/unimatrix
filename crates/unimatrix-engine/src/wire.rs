@@ -940,11 +940,13 @@ mod tests {
 
     #[test]
     fn error_codes_negative() {
-        assert!(ERR_UID_MISMATCH < 0);
-        assert!(ERR_LINEAGE_FAILED < 0);
-        assert!(ERR_UNKNOWN_REQUEST < 0);
-        assert!(ERR_INVALID_PAYLOAD < 0);
-        assert!(ERR_INTERNAL < 0);
+        const {
+            assert!(ERR_UID_MISMATCH < 0);
+            assert!(ERR_LINEAGE_FAILED < 0);
+            assert!(ERR_UNKNOWN_REQUEST < 0);
+            assert!(ERR_INVALID_PAYLOAD < 0);
+            assert!(ERR_INTERNAL < 0);
+        }
     }
 
     #[test]

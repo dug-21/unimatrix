@@ -272,10 +272,10 @@ async fn test_alias_renumber_survival() {
                       ids: &std::collections::BTreeSet<u64>| {
         let mut names: Vec<String> = Vec::new();
         for a in ["chainA.a", "chainA.b", "chainA.head"] {
-            if let Some(id) = corpus.alias_map.resolve(a) {
-                if ids.contains(&id) {
-                    names.push(a.to_string());
-                }
+            if let Some(id) = corpus.alias_map.resolve(a)
+                && ids.contains(&id)
+            {
+                names.push(a.to_string());
             }
         }
         names.sort();

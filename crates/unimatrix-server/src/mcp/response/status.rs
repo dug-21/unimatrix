@@ -1014,6 +1014,226 @@ struct DataWindowJson {
     span_days: u64,
 }
 
+impl From<&StatusReport> for StatusReportJson {
+    fn from(r: &StatusReport) -> Self {
+        let contradictions = if r.contradiction_scan_performed {
+            Some(r.contradictions.clone())
+        } else {
+            None
+        };
+        let contradiction_count = if r.contradiction_scan_performed {
+            Some(r.contradiction_count)
+        } else {
+            None
+        };
+        let embedding_inconsistencies = if r.embedding_check_performed {
+            Some(r.embedding_inconsistencies.clone())
+        } else {
+            None
+        };
+
+        let top_clusters: Vec<CoAccessClusterJson> = r
+            .top_co_access_pairs
+            .iter()
+            .map(|c| CoAccessClusterJson {
+                entry_a: CoAccessEntryRef {
+                    id: c.entry_id_a,
+                    title: c.title_a.clone(),
+                },
+                entry_b: CoAccessEntryRef {
+                    id: c.entry_id_b,
+                    title: c.title_b.clone(),
+                },
+                count: c.count,
+                last_updated: c.last_updated,
+            })
+            .collect();
+
+        let outcomes = if r.total_outcomes > 0 || !r.outcomes_by_type.is_empty() {
+            Some(OutcomesJson {
+                total: r.total_outcomes,
+                by_type: r.outcomes_by_type.iter().cloned().collect(),
+                by_result: r.outcomes_by_result.iter().cloned().collect(),
+                top_feature_cycles: r
+                    .outcomes_by_feature_cycle
+                    .iter()
+                    .map(|(fc, count)| FeatureCycleCount {
+                        feature_cycle: fc.clone(),
+                        count: *count,
+                    })
+                    .collect(),
+            })
+        } else {
+            None
+        };
+
+        // Effectiveness mapping (crt-018)
+        let effectiveness = r.effectiveness.as_ref().map(|eff| {
+            let by_category = eff
+                .by_category
+                .iter()
+                .map(|(cat, count)| CategoryCount {
+                    category: format!("{:?}", cat).to_lowercase(),
+                    count: *count,
+                })
+                .collect();
+
+            let by_source = eff
+                .by_source
+                .iter()
+                .map(|s| SourceEffectivenessJson {
+                    trust_source: s.trust_source.clone(),
+                    effective: s.effective_count,
+                    settled: s.settled_count,
+                    unmatched: s.unmatched_count,
+                    ineffective: s.ineffective_count,
+                    noisy: s.noisy_count,
+                    utility_ratio: s.aggregate_utility,
+                })
+                .collect();
+
+            let calibration_buckets = eff
+                .calibration
+                .iter()
+                .map(|b| CalibrationBucketJson {
+                    range_low: b.confidence_lower,
+                    range_high: b.confidence_upper,
+                    injection_count: b.entry_count,
+                    actual_success_rate: b.actual_success_rate,
+                    expected_success_rate: (b.confidence_lower + b.confidence_upper) / 2.0,
+                })
+                .collect();
+
+            let ineffective_entries = eff
+                .top_ineffective
+                .iter()
+                .map(|e| IneffectiveEntryJson {
+                    entry_id: e.entry_id,
+                    title: e.title.clone(),
+                    injection_count: e.injection_count,
+                    success_rate: e.success_rate,
+                })
+                .collect();
+
+            let noisy_entries = eff
+                .noisy_entries
+                .iter()
+                .map(|e| NoisyEntryJson {
+                    entry_id: e.entry_id,
+                    title: e.title.clone(),
+                })
+                .collect();
+
+            let unmatched_entries = eff
+                .unmatched_entries
+                .iter()
+                .map(|e| UnmatchedEntryJson {
+                    entry_id: e.entry_id,
+                    title: e.title.clone(),
+                    topic: e.topic.clone(),
+                })
+                .collect();
+
+            let span_days = match (
+                eff.data_window.earliest_session_at,
+                eff.data_window.latest_session_at,
+            ) {
+                (Some(earliest), Some(latest)) if latest > earliest => (latest - earliest) / 86400,
+                _ => 0,
+            };
+
+            EffectivenessReportJson {
+                by_category,
+                by_source,
+                calibration_buckets,
+                ineffective_entries,
+                noisy_entries,
+                unmatched_entries,
+                data_window: DataWindowJson {
+                    session_count: eff.data_window.session_count,
+                    span_days,
+                },
+            }
+        });
+
+        StatusReportJson {
+            total_active: r.total_active,
+            total_deprecated: r.total_deprecated,
+            total_proposed: r.total_proposed,
+            total_quarantined: r.total_quarantined,
+            category_distribution: r.category_distribution.iter().cloned().collect(),
+            topic_distribution: r.topic_distribution.iter().cloned().collect(),
+            correction_chains: CorrectionChainsJson {
+                entries_with_supersedes: r.entries_with_supersedes,
+                entries_with_superseded_by: r.entries_with_superseded_by,
+                total_correction_count: r.total_correction_count,
+            },
+            security: SecurityJson {
+                trust_source_distribution: r.trust_source_distribution.iter().cloned().collect(),
+                entries_without_attribution: r.entries_without_attribution,
+            },
+            coherence: r.coherence,
+            graph_quality_score: r.graph_quality_score,
+            embedding_consistency_score: r.embedding_consistency_score,
+            contradiction_density_score: r.contradiction_density_score,
+            confidence_refreshed_count: r.confidence_refreshed_count,
+            graph_stale_ratio: r.graph_stale_ratio,
+            graph_compacted: r.graph_compacted,
+            // Graph Cohesion Metrics (col-029)
+            graph_connectivity_rate: r.graph_connectivity_rate,
+            isolated_entry_count: r.isolated_entry_count,
+            cross_category_edge_count: r.cross_category_edge_count,
+            supports_edge_count: r.supports_edge_count,
+            mean_entry_degree: r.mean_entry_degree,
+            inferred_edge_count: r.inferred_edge_count,
+            maintenance_recommendations: r.maintenance_recommendations.clone(),
+            contradictions,
+            contradiction_count,
+            embedding_inconsistencies,
+            co_access: CoAccessJson {
+                total_pairs: r.total_co_access_pairs,
+                active_pairs: r.active_co_access_pairs,
+                stale_pairs_cleaned: r.stale_pairs_cleaned,
+                top_clusters,
+            },
+            outcomes,
+            observation: ObservationJson {
+                record_count: r.observation_file_count,
+                session_count: r.observation_total_size_bytes,
+                oldest_record_days: r.observation_oldest_file_days,
+                approaching_cleanup: r.observation_approaching_cleanup.clone(),
+                retrospected_feature_count: r.retrospected_feature_count,
+            },
+            last_maintenance_run: r.last_maintenance_run,
+            next_maintenance_scheduled: r.next_maintenance_scheduled,
+            extraction_stats: r.extraction_stats.clone(),
+            coherence_by_source: r
+                .coherence_by_source
+                .iter()
+                .map(|(s, l)| CoherenceBySourceEntry {
+                    source: s.clone(),
+                    lambda: *l,
+                })
+                .collect(),
+            effectiveness,
+            // crt-031: all categories with lifecycle labels.
+            // category_lifecycle Vec is already sorted alphabetically (R-08).
+            // BTreeMap insertion in sorted order preserves deterministic JSON output.
+            category_lifecycle: r
+                .category_lifecycle
+                .iter()
+                .map(|(cat, label)| (cat.clone(), label.clone()))
+                .collect(),
+            // crt-033: pending cycle reviews — always included, even as empty array (FR-11).
+            pending_cycle_reviews: r.pending_cycle_reviews.clone(),
+            // crt-047: curation health aggregate — absent when None.
+            curation_health: r.curation_health.clone(),
+            // vnc-015, AC-11: stale Prerequisite edges (source is Deprecated).
+            stale_dependency_edges: r.stale_dependency_edges,
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Unit tests (col-029 + crt-031)
 // ---------------------------------------------------------------------------
@@ -1492,225 +1712,5 @@ mod tests {
             !output.contains("stale_confidence_count"),
             "JSON must not serialize stale_confidence_count key"
         );
-    }
-}
-
-impl From<&StatusReport> for StatusReportJson {
-    fn from(r: &StatusReport) -> Self {
-        let contradictions = if r.contradiction_scan_performed {
-            Some(r.contradictions.clone())
-        } else {
-            None
-        };
-        let contradiction_count = if r.contradiction_scan_performed {
-            Some(r.contradiction_count)
-        } else {
-            None
-        };
-        let embedding_inconsistencies = if r.embedding_check_performed {
-            Some(r.embedding_inconsistencies.clone())
-        } else {
-            None
-        };
-
-        let top_clusters: Vec<CoAccessClusterJson> = r
-            .top_co_access_pairs
-            .iter()
-            .map(|c| CoAccessClusterJson {
-                entry_a: CoAccessEntryRef {
-                    id: c.entry_id_a,
-                    title: c.title_a.clone(),
-                },
-                entry_b: CoAccessEntryRef {
-                    id: c.entry_id_b,
-                    title: c.title_b.clone(),
-                },
-                count: c.count,
-                last_updated: c.last_updated,
-            })
-            .collect();
-
-        let outcomes = if r.total_outcomes > 0 || !r.outcomes_by_type.is_empty() {
-            Some(OutcomesJson {
-                total: r.total_outcomes,
-                by_type: r.outcomes_by_type.iter().cloned().collect(),
-                by_result: r.outcomes_by_result.iter().cloned().collect(),
-                top_feature_cycles: r
-                    .outcomes_by_feature_cycle
-                    .iter()
-                    .map(|(fc, count)| FeatureCycleCount {
-                        feature_cycle: fc.clone(),
-                        count: *count,
-                    })
-                    .collect(),
-            })
-        } else {
-            None
-        };
-
-        // Effectiveness mapping (crt-018)
-        let effectiveness = r.effectiveness.as_ref().map(|eff| {
-            let by_category = eff
-                .by_category
-                .iter()
-                .map(|(cat, count)| CategoryCount {
-                    category: format!("{:?}", cat).to_lowercase(),
-                    count: *count,
-                })
-                .collect();
-
-            let by_source = eff
-                .by_source
-                .iter()
-                .map(|s| SourceEffectivenessJson {
-                    trust_source: s.trust_source.clone(),
-                    effective: s.effective_count,
-                    settled: s.settled_count,
-                    unmatched: s.unmatched_count,
-                    ineffective: s.ineffective_count,
-                    noisy: s.noisy_count,
-                    utility_ratio: s.aggregate_utility,
-                })
-                .collect();
-
-            let calibration_buckets = eff
-                .calibration
-                .iter()
-                .map(|b| CalibrationBucketJson {
-                    range_low: b.confidence_lower,
-                    range_high: b.confidence_upper,
-                    injection_count: b.entry_count,
-                    actual_success_rate: b.actual_success_rate,
-                    expected_success_rate: (b.confidence_lower + b.confidence_upper) / 2.0,
-                })
-                .collect();
-
-            let ineffective_entries = eff
-                .top_ineffective
-                .iter()
-                .map(|e| IneffectiveEntryJson {
-                    entry_id: e.entry_id,
-                    title: e.title.clone(),
-                    injection_count: e.injection_count,
-                    success_rate: e.success_rate,
-                })
-                .collect();
-
-            let noisy_entries = eff
-                .noisy_entries
-                .iter()
-                .map(|e| NoisyEntryJson {
-                    entry_id: e.entry_id,
-                    title: e.title.clone(),
-                })
-                .collect();
-
-            let unmatched_entries = eff
-                .unmatched_entries
-                .iter()
-                .map(|e| UnmatchedEntryJson {
-                    entry_id: e.entry_id,
-                    title: e.title.clone(),
-                    topic: e.topic.clone(),
-                })
-                .collect();
-
-            let span_days = match (
-                eff.data_window.earliest_session_at,
-                eff.data_window.latest_session_at,
-            ) {
-                (Some(earliest), Some(latest)) if latest > earliest => (latest - earliest) / 86400,
-                _ => 0,
-            };
-
-            EffectivenessReportJson {
-                by_category,
-                by_source,
-                calibration_buckets,
-                ineffective_entries,
-                noisy_entries,
-                unmatched_entries,
-                data_window: DataWindowJson {
-                    session_count: eff.data_window.session_count,
-                    span_days,
-                },
-            }
-        });
-
-        StatusReportJson {
-            total_active: r.total_active,
-            total_deprecated: r.total_deprecated,
-            total_proposed: r.total_proposed,
-            total_quarantined: r.total_quarantined,
-            category_distribution: r.category_distribution.iter().cloned().collect(),
-            topic_distribution: r.topic_distribution.iter().cloned().collect(),
-            correction_chains: CorrectionChainsJson {
-                entries_with_supersedes: r.entries_with_supersedes,
-                entries_with_superseded_by: r.entries_with_superseded_by,
-                total_correction_count: r.total_correction_count,
-            },
-            security: SecurityJson {
-                trust_source_distribution: r.trust_source_distribution.iter().cloned().collect(),
-                entries_without_attribution: r.entries_without_attribution,
-            },
-            coherence: r.coherence,
-            graph_quality_score: r.graph_quality_score,
-            embedding_consistency_score: r.embedding_consistency_score,
-            contradiction_density_score: r.contradiction_density_score,
-            confidence_refreshed_count: r.confidence_refreshed_count,
-            graph_stale_ratio: r.graph_stale_ratio,
-            graph_compacted: r.graph_compacted,
-            // Graph Cohesion Metrics (col-029)
-            graph_connectivity_rate: r.graph_connectivity_rate,
-            isolated_entry_count: r.isolated_entry_count,
-            cross_category_edge_count: r.cross_category_edge_count,
-            supports_edge_count: r.supports_edge_count,
-            mean_entry_degree: r.mean_entry_degree,
-            inferred_edge_count: r.inferred_edge_count,
-            maintenance_recommendations: r.maintenance_recommendations.clone(),
-            contradictions,
-            contradiction_count,
-            embedding_inconsistencies,
-            co_access: CoAccessJson {
-                total_pairs: r.total_co_access_pairs,
-                active_pairs: r.active_co_access_pairs,
-                stale_pairs_cleaned: r.stale_pairs_cleaned,
-                top_clusters,
-            },
-            outcomes,
-            observation: ObservationJson {
-                record_count: r.observation_file_count,
-                session_count: r.observation_total_size_bytes,
-                oldest_record_days: r.observation_oldest_file_days,
-                approaching_cleanup: r.observation_approaching_cleanup.clone(),
-                retrospected_feature_count: r.retrospected_feature_count,
-            },
-            last_maintenance_run: r.last_maintenance_run,
-            next_maintenance_scheduled: r.next_maintenance_scheduled,
-            extraction_stats: r.extraction_stats.clone(),
-            coherence_by_source: r
-                .coherence_by_source
-                .iter()
-                .map(|(s, l)| CoherenceBySourceEntry {
-                    source: s.clone(),
-                    lambda: *l,
-                })
-                .collect(),
-            effectiveness,
-            // crt-031: all categories with lifecycle labels.
-            // category_lifecycle Vec is already sorted alphabetically (R-08).
-            // BTreeMap insertion in sorted order preserves deterministic JSON output.
-            category_lifecycle: r
-                .category_lifecycle
-                .iter()
-                .map(|(cat, label)| (cat.clone(), label.clone()))
-                .collect(),
-            // crt-033: pending cycle reviews — always included, even as empty array (FR-11).
-            pending_cycle_reviews: r.pending_cycle_reviews.clone(),
-            // crt-047: curation health aggregate — absent when None.
-            curation_health: r.curation_health.clone(),
-            // vnc-015, AC-11: stale Prerequisite edges (source is Deprecated).
-            stale_dependency_edges: r.stale_dependency_edges,
-        }
     }
 }

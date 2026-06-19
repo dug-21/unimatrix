@@ -14,7 +14,6 @@ use unimatrix_store::NewEntry;
 use super::super::super::GraphParams;
 use super::super::handle_path;
 use super::open_test_store;
-use crate::services::typed_graph::TypedGraphState;
 
 // ---------------------------------------------------------------------------
 // GH #612: DB-fallback BFS when use_fallback = true (cold-start / cycle-detected)
@@ -91,12 +90,12 @@ async fn test_handle_path_db_fallback_cold_start_finds_path() {
         .as_secs();
 
     crate::services::nli_detection::write_graph_edge(
-        &*store, id_a, id_b, "Advances", 1.0, now, "test", "",
+        &store, id_a, id_b, "Advances", 1.0, now, "test", "",
     )
     .await;
 
     crate::services::nli_detection::write_graph_edge(
-        &*store, id_b, id_c, "Supports", 1.0, now, "test", "",
+        &store, id_b, id_c, "Supports", 1.0, now, "test", "",
     )
     .await;
 
@@ -121,7 +120,7 @@ async fn test_handle_path_db_fallback_cold_start_finds_path() {
         depth: Some(5),
         ..Default::default()
     };
-    let result = handle_path(&*store, &handle, &params).await;
+    let result = handle_path(&store, &handle, &params).await;
     assert!(
         result.is_ok(),
         "DB-fallback path must return Ok, got: {result:?}"

@@ -80,6 +80,7 @@ pub(super) async fn handle_chain(
 /// INTENTIONALLY asymmetric with `handle_chain`:
 /// - `chain` on non-existent ID → empty result (AC-04).
 /// - `current` on non-existent ID → error (AC-05a).
+///
 /// Asking for the current version of something that doesn't exist is a semantic error,
 /// not an empty set. Do NOT unify these behaviors. See R-21.
 pub(super) async fn handle_current(store: &Store, id: u64) -> Result<CurrentResponse, String> {
@@ -114,6 +115,10 @@ pub(super) async fn handle_current(store: &Store, id: u64) -> Result<CurrentResp
 /// - Store error during lookup.
 ///
 /// Caller uses the original ID as a fallback when `None` is returned (ADR-005, R-10).
+// rationale: production callers use the canonical copy in graph_read_neighbors.rs;
+// this duplicate is exercised only by the co-located tests below. Flagged for
+// dedup follow-up rather than removed here to avoid dropping its test coverage.
+#[allow(dead_code)]
 pub(super) async fn follow_to_current(store: &Store, id: u64) -> Option<u64> {
     let mut current = id;
     for _ in 0..50 {

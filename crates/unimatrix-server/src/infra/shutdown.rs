@@ -7,7 +7,7 @@
 //! ## Drop Ordering (enforced explicitly in `graceful_shutdown`)
 //!
 //! 1. `mcp_acceptor_handle`  — abort + join (drains all session Arc clones)
-//! 1b. `http_acceptor_handle` — abort + join (HTTP accept loop, vnc-021)
+//!    1b. `http_acceptor_handle` — abort + join (HTTP accept loop, vnc-021)
 //! 2. `mcp_socket_guard`     — removes `unimatrix-mcp.sock`
 //! 3. `uds_handle`           — abort + join (hook IPC accept loop)
 //! 4. `socket_guard`         — removes `unimatrix.sock`
@@ -279,7 +279,7 @@ mod tests {
         let path = dir.path().join("test.db");
         let store = open_store(&path).await;
 
-        let owned = Arc::try_unwrap(store).ok().expect("should be sole owner");
+        let owned = Arc::try_unwrap(store).unwrap_or_else(|_| panic!("should be sole owner"));
         owned.compact().await.unwrap();
     }
 

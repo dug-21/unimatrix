@@ -4,7 +4,7 @@
 //! BFS integration tests require a live store + typed graph state; those are in
 //! the integration test suite.
 
-use super::super::{GraphParams, SubgraphResponse};
+use super::super::GraphParams;
 
 // ---------------------------------------------------------------------------
 // Parameter validation tests (unit — no store required)
@@ -24,23 +24,18 @@ fn test_subgraph_params_empty_seed_ids_is_invalid() {
     let params_none = make_params(None);
     assert!(
         params_none.seed_ids.is_none()
-            || params_none.seed_ids.as_ref().map_or(true, |v| v.is_empty())
+            || params_none.seed_ids.as_ref().is_none_or(|v| v.is_empty())
     );
 
     let params_empty = make_params(Some(vec![]));
-    assert!(
-        params_empty
-            .seed_ids
-            .as_ref()
-            .map_or(true, |v| v.is_empty())
-    );
+    assert!(params_empty.seed_ids.as_ref().is_none_or(|v| v.is_empty()));
 }
 
 #[test]
 fn test_subgraph_params_valid_seed_ids_accepted() {
     // AC-01: seed_ids with at least one entry is valid.
     let params = make_params(Some(vec![42]));
-    assert!(params.seed_ids.as_ref().map_or(false, |v| !v.is_empty()));
+    assert!(params.seed_ids.as_ref().is_some_and(|v| !v.is_empty()));
 }
 
 #[test]

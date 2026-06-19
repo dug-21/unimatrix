@@ -279,6 +279,12 @@ pub struct SessionRegistry {
     signature_scanner: Arc<SignatureScanner>,
 }
 
+impl Default for SessionRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionRegistry {
     pub fn new() -> Self {
         // Keeps the 4 MiB default — zero churn across existing test call sites (ADR-006).
@@ -716,14 +722,14 @@ impl SessionRegistry {
     /// or session not registered. Enables early attribution from event payloads.
     pub fn set_feature_if_absent(&self, session_id: &str, feature: &str) -> bool {
         let mut sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some(state) = sessions.get_mut(session_id) {
-            if state.feature.is_none() {
-                state.feature = Some(feature.to_string());
-                // vnc-030 (ADR-004): eager / #198 payload fill is vote-class — it
-                // only fires when feature was absent (never-declared sessions).
-                state.feature_source = FeatureSource::Inferred(InferredOrigin::Voted);
-                return true;
-            }
+        if let Some(state) = sessions.get_mut(session_id)
+            && state.feature.is_none()
+        {
+            state.feature = Some(feature.to_string());
+            // vnc-030 (ADR-004): eager / #198 payload fill is vote-class — it
+            // only fires when feature was absent (never-declared sessions).
+            state.feature_source = FeatureSource::Inferred(InferredOrigin::Voted);
+            return true;
         }
         false
     }
@@ -3058,12 +3064,11 @@ mod tests {
         for sid in ["other", "none"] {
             let state = reg.get_state(sid).unwrap();
             assert!(
-                state
+                !state
                     .transcript
                     .lock()
                     .unwrap_or_else(|p| p.into_inner())
-                    .len()
-                    > 0,
+                    .is_empty(),
                 "{sid} buffer must be untouched"
             );
         }

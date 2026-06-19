@@ -67,24 +67,24 @@ fn test_topology_penalty_behavioral_ordering() {
     // Ordering from harshest to softest (ADR-004, ADR-006):
     // CLEAN_REPLACEMENT_PENALTY (0.40) < PARTIAL_SUPERSESSION_PENALTY (0.60) <
     // FALLBACK_PENALTY (0.70) < ORPHAN_PENALTY (0.75) < 1.0 (active, no penalty)
-    assert!(
-        CLEAN_REPLACEMENT_PENALTY < PARTIAL_SUPERSESSION_PENALTY,
-        "clean replacement ({CLEAN_REPLACEMENT_PENALTY}) must be harsher than \
-         partial supersession ({PARTIAL_SUPERSESSION_PENALTY})"
-    );
-    assert!(
-        PARTIAL_SUPERSESSION_PENALTY < FALLBACK_PENALTY,
-        "partial supersession ({PARTIAL_SUPERSESSION_PENALTY}) must be harsher than \
-         fallback ({FALLBACK_PENALTY})"
-    );
-    assert!(
-        FALLBACK_PENALTY < ORPHAN_PENALTY,
-        "fallback ({FALLBACK_PENALTY}) must be harsher than orphan ({ORPHAN_PENALTY})"
-    );
-    assert!(
-        ORPHAN_PENALTY < 1.0,
-        "orphan ({ORPHAN_PENALTY}) must be less than 1.0 (active entry, no penalty)"
-    );
+    const {
+        assert!(
+            CLEAN_REPLACEMENT_PENALTY < PARTIAL_SUPERSESSION_PENALTY,
+            "clean replacement must be harsher than partial supersession"
+        );
+        assert!(
+            PARTIAL_SUPERSESSION_PENALTY < FALLBACK_PENALTY,
+            "partial supersession must be harsher than fallback"
+        );
+        assert!(
+            FALLBACK_PENALTY < ORPHAN_PENALTY,
+            "fallback must be harsher than orphan"
+        );
+        assert!(
+            ORPHAN_PENALTY < 1.0,
+            "orphan must be less than 1.0 (active entry, no penalty)"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------

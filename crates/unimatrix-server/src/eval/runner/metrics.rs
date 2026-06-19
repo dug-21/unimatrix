@@ -274,7 +274,7 @@ pub(super) fn compute_icd(entries: &[ScoredEntry]) -> f64 {
     }
 
     let mut entropy = 0.0_f64;
-    for (_, count) in &counts {
+    for count in counts.values() {
         if *count == 0 {
             // Defensive NaN guard: HashMap construction above never inserts zeros,
             // but skip explicitly to prevent 0.0 * f64::ln(0.0) = NaN.

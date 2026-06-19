@@ -342,13 +342,13 @@ async fn neighbors_bfs(
                         });
 
                         // Enqueue for further expansion if not at max depth.
-                        if hop_depth < depth {
-                            if let Some(neighbor_node_idx) = graph.node_index_for(effective_id) {
-                                frontier.push_back((neighbor_node_idx, effective_id, hop_depth));
-                            }
-                            // node_index_for returns None: effective_id not in current tick's graph.
-                            // BFS stops there — no error, tracing::warn is optional.
+                        if hop_depth < depth
+                            && let Some(neighbor_node_idx) = graph.node_index_for(effective_id)
+                        {
+                            frontier.push_back((neighbor_node_idx, effective_id, hop_depth));
                         }
+                        // node_index_for returns None: effective_id not in current tick's graph.
+                        // BFS stops there — no error, tracing::warn is optional.
                     }
                     // Already visited: skip. Shallowest depth wins (node_id keying invariant).
                 }

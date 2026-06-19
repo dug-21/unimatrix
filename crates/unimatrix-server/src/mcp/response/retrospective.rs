@@ -182,7 +182,7 @@ fn render_header(report: &RetrospectiveReport) -> String {
 /// Escape a string for use in a Markdown table cell.
 /// Collapses newlines to a space and escapes pipe characters.
 fn escape_md_cell(s: &str) -> String {
-    s.replace('\n', " ").replace('\r', " ").replace('|', "\\|")
+    s.replace(['\n', '\r'], " ").replace('|', "\\|")
 }
 
 /// Escape a string for use as free text outside a Markdown table.
@@ -192,7 +192,7 @@ fn escape_md_cell(s: &str) -> String {
 /// Do NOT do a global replace('#', "\\#") — that corrupts issue references
 /// like `#378` embedded in goal text.
 fn escape_md_text(s: &str) -> String {
-    let s = s.replace('\n', " ").replace('\r', " ").replace('|', "\\|");
+    let s = s.replace(['\n', '\r'], " ").replace('|', "\\|");
     if s.trim_start().starts_with('#') {
         format!("\\{}", s.trim_start())
     } else {
@@ -729,8 +729,7 @@ fn format_claim_with_baseline(
         Some(pos) => {
             // Walk forward: "threshold" + optional ":" + optional " " + digits
             let after_keyword = &claim[pos + "threshold".len()..];
-            let after_sep =
-                after_keyword.trim_start_matches(|c: char| c == ':' || c == ' ' || c == '=');
+            let after_sep = after_keyword.trim_start_matches([':', ' ', '=']);
             let end_of_num = after_sep
                 .char_indices()
                 .take_while(|(_, c)| c.is_ascii_digit() || *c == '.')
@@ -743,9 +742,7 @@ fn format_claim_with_baseline(
             // Strip the threshold span: keep text before + text after
             let before = &claim[..pos];
             let combined = format!("{}{}", before, after_span);
-            combined
-                .trim_end_matches(|c: char| c == ' ' || c == '-')
-                .to_string()
+            combined.trim_end_matches([' ', '-']).to_string()
         }
     };
 
@@ -842,7 +839,7 @@ fn render_burst_notation(finding: &CollapsedFinding, cycle_start_ms: u64) -> Str
         }
     }
     let mut top_tools: Vec<(String, u32)> = tool_counts.into_iter().collect();
-    top_tools.sort_by(|a, b| b.1.cmp(&a.1));
+    top_tools.sort_by_key(|t| std::cmp::Reverse(t.1));
     top_tools.truncate(3);
     let files_str = if top_tools.is_empty() {
         String::new()
@@ -917,7 +914,7 @@ fn collapse_findings(
             }
         }
         let mut tool_breakdown: Vec<(String, usize)> = tool_counts.into_iter().collect();
-        tool_breakdown.sort_by(|a, b| b.1.cmp(&a.1));
+        tool_breakdown.sort_by_key(|t| std::cmp::Reverse(t.1));
 
         let narrative = narrative_map.get(rule_name);
         let narrative_summary = narrative.map(|n| n.summary.clone());
@@ -1753,7 +1750,7 @@ mod tests {
 
     #[test]
     fn test_baseline_mixed_statuses() {
-        let comparisons = vec![
+        let comparisons = [
             BaselineComparison {
                 metric_name: "normal_m".to_string(),
                 current_value: 5.0,
@@ -2139,7 +2136,7 @@ mod tests {
 
     #[test]
     fn test_phase_outliers_filters() {
-        let comparisons = vec![
+        let comparisons = [
             BaselineComparison {
                 metric_name: "outlier_m".to_string(),
                 current_value: 20.0,
@@ -2765,6 +2762,9 @@ mod tests {
 
     // ── col-026 New Tests ────────────────────────────────────────────
 
+    // rationale: test fixture builder mirrors PhaseStats' field set; a params struct
+    // would only obscure the per-case values in tests.
+    #[allow(clippy::too_many_arguments)]
     fn make_phase_stats_entry(
         phase: &str,
         pass_number: u32,
@@ -2995,10 +2995,6 @@ mod tests {
         let report = make_report();
         let text = extract_text(&format_retrospective_markdown(&report));
         assert!(!text.contains("Status:"));
-    }
-
-    fn test_is_in_progress_three_states() {
-        // Alias — covered by the three tests above
     }
 
     // ── AC-06/AC-07: Phase Timeline ───────────────────────────────────
@@ -3644,7 +3640,7 @@ mod tests {
 
     #[test]
     fn test_section_order() {
-        use unimatrix_observe::{EntryRef, ToolDistribution};
+        use unimatrix_observe::EntryRef;
         let mut report = make_report();
         report.goal = Some("Implement feature X".to_string());
         report.cycle_type = Some("Delivery".to_string());
@@ -3931,14 +3927,14 @@ mod tests {
         if let Ok(entries) = fs::read_dir(&detection_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(false, |e| e == "rs") {
-                    if let Ok(content) = fs::read_to_string(&path) {
-                        for line in content.lines() {
-                            // Count lines with a claim: field — these are HotspotFinding
-                            // construction sites that produce threshold-language strings.
-                            if line.contains("claim:") {
-                                count += 1;
-                            }
+                if path.extension().is_some_and(|e| e == "rs")
+                    && let Ok(content) = fs::read_to_string(&path)
+                {
+                    for line in content.lines() {
+                        // Count lines with a claim: field — these are HotspotFinding
+                        // construction sites that produce threshold-language strings.
+                        if line.contains("claim:") {
+                            count += 1;
                         }
                     }
                 }
