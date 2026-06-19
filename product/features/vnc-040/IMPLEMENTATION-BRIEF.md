@@ -34,6 +34,14 @@
 > real behavior to the registry. Pseudocode and test-plan paths are produced in Session 2 Stage 3a; this map lists the
 > expected components from the architecture.
 
+### Stage 3a Outcomes (Component Map CONFIRMED — drives Stage 3b routing)
+
+All pseudocode + test-plan files exist at the paths above. Three Stage 3a decisions Stage 3b MUST honor:
+
+1. **`resolve_slug_config` home = EXISTING `crates/unimatrix-server/src/http_provision.rs`** (NOT a new `slug_config.rs`). `main.rs` declares only `mod http_provision;` (line 6); a new file would force a crate-root `mod` edit in the SAME region the `per_slug_loop` agent edits — a parallel-edit collision. `http_provision.rs` already imports the types + owns the `base_dir.join(slug)` derivation. ≤500-line budget re-confirmed at Gate 3b; if exceeded, split with documented `mod` placement.
+2. **`merge_configs` signature is OWNED, not refs:** the LIVE fn is `fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> UnimatrixConfig` (`config.rs:3825`) — the brief's §Function Signatures showed `&`. `resolve_slug_config` handles it with ONE `global.clone()` per slug-that-has-a-file (startup-only, negligible). NOT a `merge_configs` rewrite.
+3. **Wave plan:** Wave 1 = `slug_config_classification` (`infra/config.rs`) + `resolve_slug_config` (`http_provision.rs`) — independent, different files, parallel. Wave 2 = `per_slug_loop` (`main.rs`) — depends on `resolve_slug_config` existing. Registry and helper are mutually independent (helper calls `merge_configs` directly, not the registry).
+
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
 | Artifact | Path | Consumed By |
