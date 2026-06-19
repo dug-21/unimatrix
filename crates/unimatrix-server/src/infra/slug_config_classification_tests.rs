@@ -28,8 +28,8 @@
 //! for `tls`/`http`/`rayon_pool_size` would be a false claim about `merge_configs`.
 
 use super::{
-    is_per_slug_overlayable, merge_configs, ConfidenceWeights, DomainPackConfig, KnowledgeConfig,
-    OverlayDisposition, UnimatrixConfig, PER_SLUG_CONFIG_CLASSIFICATION,
+    ConfidenceWeights, DomainPackConfig, KnowledgeConfig, OverlayDisposition,
+    PER_SLUG_CONFIG_CLASSIFICATION, UnimatrixConfig, is_per_slug_overlayable, merge_configs,
 };
 
 /// GlobalLocked keys whose lock is enforced BY CONSTRUCTION in `per_slug_loop`, NOT by
