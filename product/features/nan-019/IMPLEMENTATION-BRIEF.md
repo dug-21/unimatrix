@@ -20,10 +20,11 @@ This feature touches three "components": two new `release.yml` jobs and one boun
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| `smoke-amd64` (release.yml job, `ubuntu-22.04`) | pseudocode/smoke-amd64.md | test-plan/smoke-amd64.md |
-| `smoke-arm64` (release.yml job, `ubuntu-22.04-arm`) | pseudocode/smoke-arm64.md | test-plan/smoke-arm64.md |
-| `create-container-manifest` (release.yml job, `needs:` rewire) | pseudocode/create-container-manifest.md | test-plan/create-container-manifest.md |
-| `docker-http-posture-smoke.sh` (AC-05 grew-assertion) | pseudocode/docker-http-posture-smoke.md | test-plan/docker-http-posture-smoke.md |
+| `smoke-amd64` + `smoke-arm64` (release.yml jobs; shared, arch-parameterized) | pseudocode/release-smoke-jobs.md | test-plan/smoke-amd64.md (T1/T2), test-plan/smoke-arm64.md (arch deltas) |
+| `create-container-manifest` (release.yml `needs:`/`if:` rewire) | pseudocode/create-container-manifest.md | test-plan/create-container-manifest.md (T4 needs-graph + dispatch green-skip) |
+| `docker-http-posture-smoke.sh` (AC-05 grew-assertion) | pseudocode/docker-http-posture-smoke.md | test-plan/docker-http-posture-smoke.md (T3 grew-signal monotonicity) |
+| Gate-logic stub-smoke truth-table test (pre-merge HARD gate) | pseudocode/test-gate-logic-stub-smoke.md | test-plan/smoke-amd64.md (T1) |
+| Tag-parity static assertion (pre-merge HARD gate) | pseudocode/test-tag-parity.md | test-plan/smoke-amd64.md (T2), test-plan/smoke-arm64.md (suffix parity) |
 
 > Note: `smoke-amd64` and `smoke-arm64` are near-identical (same gate logic, differ only in runner + arch tag suffix). A single shared pseudocode/test-plan covering both jobs is acceptable; the table lists them separately so neither arch is silently dropped (NFR-06 HARD RULE).
 
