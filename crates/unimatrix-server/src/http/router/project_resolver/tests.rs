@@ -69,9 +69,13 @@ async fn test_resolves_slug_to_its_store() {
     let (alpha_input, alpha_store) = make_slug_input("alpha").await;
     let (beta_input, beta_store) = make_slug_input("beta").await;
 
-    let resolver =
-        MultiProjectRouter::from_servers(vec![alpha_input, beta_input], TEST_MAX_BODY, vec![], test_allowed_hosts())
-            .expect("build resolver");
+    let resolver = MultiProjectRouter::from_servers(
+        vec![alpha_input, beta_input],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    )
+    .expect("build resolver");
 
     let resolved_alpha = resolver
         .resolve_store(&slug_key("alpha"))
@@ -106,8 +110,13 @@ async fn test_resolve_unregistered_slug_unknown_project() {
     // leak (vnc-038 ADR-004).
     let (alpha_input, _alpha_store) = make_slug_input("alpha").await;
 
-    let resolver = MultiProjectRouter::from_servers(vec![alpha_input], TEST_MAX_BODY, vec![], test_allowed_hosts())
-        .expect("build resolver");
+    let resolver = MultiProjectRouter::from_servers(
+        vec![alpha_input],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    )
+    .expect("build resolver");
 
     let err = resolver
         .resolve_store(&slug_key("ghost"))
@@ -128,8 +137,13 @@ async fn test_single_deployment_is_n1() {
     // special-case branch. N=1 is one map entry, not a distinct default path.
     let (only_input, only_store) = make_slug_input("only").await;
 
-    let resolver = MultiProjectRouter::from_servers(vec![only_input], TEST_MAX_BODY, vec![], test_allowed_hosts())
-        .expect("build resolver");
+    let resolver = MultiProjectRouter::from_servers(
+        vec![only_input],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    )
+    .expect("build resolver");
 
     let resolved = resolver
         .resolve_store(&slug_key("only"))
@@ -151,8 +165,9 @@ async fn test_single_deployment_is_n1() {
 async fn test_empty_resolver_no_servable_store() {
     // [[projects]] absent -> empty slug map -> NOTHING servable. Every slug is
     // UnknownProject; there is no default store (R-10 at the resolver layer).
-    let resolver = MultiProjectRouter::from_servers(vec![], TEST_MAX_BODY, vec![], test_allowed_hosts())
-        .expect("build empty resolver");
+    let resolver =
+        MultiProjectRouter::from_servers(vec![], TEST_MAX_BODY, vec![], test_allowed_hosts())
+            .expect("build empty resolver");
 
     assert_eq!(
         resolver
@@ -173,8 +188,13 @@ async fn test_swaps_at_slugrouter_callsite() {
     // resolver at the SlugRouter::new call site, no route-grammar / layer change.
     let (alpha_input, _alpha_store) = make_slug_input("alpha").await;
 
-    let resolver = MultiProjectRouter::from_servers(vec![alpha_input], TEST_MAX_BODY, vec![], test_allowed_hosts())
-        .expect("build resolver");
+    let resolver = MultiProjectRouter::from_servers(
+        vec![alpha_input],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    )
+    .expect("build resolver");
 
     let as_seam: Arc<dyn StoreResolver> = Arc::new(resolver);
     assert!(
@@ -195,8 +215,13 @@ async fn test_two_slugs_route_to_distinct_stores() {
     let (a_input, a_store) = make_slug_input("a").await;
     let (b_input, b_store) = make_slug_input("b").await;
 
-    let resolver = MultiProjectRouter::from_servers(vec![a_input, b_input], TEST_MAX_BODY, vec![], test_allowed_hosts())
-        .expect("build resolver");
+    let resolver = MultiProjectRouter::from_servers(
+        vec![a_input, b_input],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    )
+    .expect("build resolver");
 
     let resolved_a = resolver.resolve_store(&slug_key("a")).expect("a resolves");
     let resolved_b = resolver.resolve_store(&slug_key("b")).expect("b resolves");
@@ -222,8 +247,13 @@ async fn test_resolve_dispatch_same_map() {
     let (a_input, a_store) = make_slug_input("a").await;
     let (b_input, b_store) = make_slug_input("b").await;
 
-    let resolver = MultiProjectRouter::from_servers(vec![a_input, b_input], TEST_MAX_BODY, vec![], test_allowed_hosts())
-        .expect("build resolver");
+    let resolver = MultiProjectRouter::from_servers(
+        vec![a_input, b_input],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    )
+    .expect("build resolver");
 
     let assert_agreement = |key: &ProjectKey, expected: &Arc<Store>| {
         let resolved = resolver.resolve_store(key).expect("resolves");
@@ -259,9 +289,13 @@ async fn test_prefix_related_slugs_no_misresolution() {
     let (proj_input, proj_store) = make_slug_input("proj").await;
     let (project_input, project_store) = make_slug_input("project").await;
 
-    let resolver =
-        MultiProjectRouter::from_servers(vec![proj_input, project_input], TEST_MAX_BODY, vec![], test_allowed_hosts())
-            .expect("build resolver");
+    let resolver = MultiProjectRouter::from_servers(
+        vec![proj_input, project_input],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    )
+    .expect("build resolver");
 
     let resolved_proj = resolver
         .resolve_store(&slug_key("proj"))
@@ -293,8 +327,13 @@ async fn test_n_clients_one_slug_share_store() {
     // (Arc::ptr_eq) — N clients on one slug share state. No store re-open per call.
     let (alpha_input, alpha_store) = make_slug_input("alpha").await;
 
-    let resolver = MultiProjectRouter::from_servers(vec![alpha_input], TEST_MAX_BODY, vec![], test_allowed_hosts())
-        .expect("build resolver");
+    let resolver = MultiProjectRouter::from_servers(
+        vec![alpha_input],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    )
+    .expect("build resolver");
 
     let client_a = resolver
         .resolve_store(&slug_key("alpha"))
@@ -323,7 +362,12 @@ async fn test_from_servers_rejects_duplicate_slug() {
     let (dup_a, _a) = make_slug_input("dup").await;
     let (dup_b, _b) = make_slug_input("dup").await;
 
-    let result = MultiProjectRouter::from_servers(vec![dup_a, dup_b], TEST_MAX_BODY, vec![], test_allowed_hosts());
+    let result = MultiProjectRouter::from_servers(
+        vec![dup_a, dup_b],
+        TEST_MAX_BODY,
+        vec![],
+        test_allowed_hosts(),
+    );
     let err = result.expect_err("duplicate slug must fail loud");
     assert!(
         err.contains("duplicate"),

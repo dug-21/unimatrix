@@ -70,6 +70,8 @@ use unimatrix_server::server::UnimatrixServer;
 use unimatrix_store::{NewEntry, PoolConfig, Status};
 
 // crt-056 Wave 2 behavioral imports — the per-slug tick work-unit seam (ADR-003/004/005).
+use unimatrix_engine::confidence::ConfidenceParams;
+use unimatrix_observe::domain::DomainPackRegistry;
 use unimatrix_server::background::{
     BackgroundJob, Cadence, PerSlugTickContext, ResourceClass, SharedTickResources,
     build_job_registry, run_per_slug_tick_pass,
@@ -79,8 +81,6 @@ use unimatrix_server::infra::nli_handle::NliServiceHandle;
 use unimatrix_server::infra::rayon_pool::RayonPool;
 use unimatrix_server::infra::usage_dedup::UsageDedup;
 use unimatrix_server::services::{FusionWeights, ServiceLayer};
-use unimatrix_engine::confidence::ConfidenceParams;
-use unimatrix_observe::domain::DomainPackRegistry;
 
 const TEST_MAX_BODY: usize = 1024 * 1024;
 
@@ -676,7 +676,12 @@ async fn test_two_slugs_interleaved_no_cross_contamination() {
     let (router, slug_stores) = wired_router(&["alpha", "beta"]).await;
     let (alpha_store, beta_store) = (&slug_stores[0], &slug_stores[1]);
 
-    for path in ["/v1/alpha/mcp", "/v1/beta/mcp", "/v1/alpha/mcp", "/v1/beta/mcp"] {
+    for path in [
+        "/v1/alpha/mcp",
+        "/v1/beta/mcp",
+        "/v1/alpha/mcp",
+        "/v1/beta/mcp",
+    ] {
         assert!(reached_mcp(&drive(&router, path).await), "dispatch {path}");
     }
     // The deleted Default alias is loud-404, interleaved in: it must not dispatch
@@ -695,8 +700,16 @@ async fn test_two_slugs_interleaved_no_cross_contamination() {
         .await
         .expect("beta write");
 
-    assert_eq!(entry_count(alpha_store).await, 1, "alpha holds only its write");
-    assert_eq!(entry_count(beta_store).await, 1, "beta holds only its write");
+    assert_eq!(
+        entry_count(alpha_store).await,
+        1,
+        "alpha holds only its write"
+    );
+    assert_eq!(
+        entry_count(beta_store).await,
+        1,
+        "beta holds only its write"
+    );
     assert!(
         alpha_store.get(2).await.is_err() && beta_store.get(2).await.is_err(),
         "neither store accumulated the other's write"
@@ -778,12 +791,13 @@ impl TickTestHarness {
         // ONE shared rayon pool. RayonPool::new installs `.panic_handler(|_| {})`
         // (#2543) — this is the AC-harness obligation: a panicking job is contained,
         // never SIGABRTs the test process.
-        let rayon_pool =
-            Arc::new(RayonPool::new(1, "crt056-itest-tick").expect("rayon pool with panic_handler"));
+        let rayon_pool = Arc::new(
+            RayonPool::new(1, "crt056-itest-tick").expect("rayon pool with panic_handler"),
+        );
 
         let shared = SharedTickResources {
             embed_service: EmbedServiceHandle::new(), // unloaded — model-free tick
-            nli_handle: NliServiceHandle::new(),       // ONE handle, shared read-only
+            nli_handle: NliServiceHandle::new(),      // ONE handle, shared read-only
             inference_config: Arc::new(InferenceConfig::default()),
             confidence_params: Arc::new(ConfidenceParams::default()),
             rayon_pool,
@@ -919,7 +933,11 @@ async fn test_panicking_job_caught_no_sigabrt() {
     )
     .await;
     // Survived the panic without SIGABRT — the loop continues and we get here.
-    assert_eq!(harness.slugs.len(), 1, "harness survived a contained job panic");
+    assert_eq!(
+        harness.slugs.len(),
+        1,
+        "harness survived a contained job panic"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -932,7 +950,10 @@ async fn test_tick_maintains_slug_a_analytics() {
     let harness = TickTestHarness::new(&["alpha"]).await;
     let before = snapshot_handles(&harness.slugs[0].ctx);
     // Cold start: typed-graph is the empty fallback default.
-    assert_eq!(before.typed_graph_entry_count, 0, "cold-start typed graph empty");
+    assert_eq!(
+        before.typed_graph_entry_count, 0,
+        "cold-start typed graph empty"
+    );
     assert!(before.typed_graph_use_fallback, "cold-start uses fallback");
 
     // Write 5 entries, then run ONE tick over A.
@@ -955,7 +976,10 @@ async fn test_tick_maintains_slug_a_analytics() {
         "effectiveness generation must not regress"
     );
     // The analytics state CHANGED to reflect the write — not merely "handle exists".
-    assert_ne!(before, after, "A's analytics must change after a tick over its write");
+    assert_ne!(
+        before, after,
+        "A's analytics must change after a tick over its write"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1059,10 +1083,22 @@ async fn test_handle_identity_tick_ctx_eq_service_layer_n2() {
 
     // A's context handles are A's ServiceLayer's SAME Arcs (serving == tick instance).
     assert!(Arc::ptr_eq(&a.ctx.typed_graph, &sl_a.typed_graph_handle()));
-    assert!(Arc::ptr_eq(&a.ctx.effectiveness, &sl_a.effectiveness_state_handle()));
-    assert!(Arc::ptr_eq(&a.ctx.confidence, &sl_a.confidence_state_handle()));
-    assert!(Arc::ptr_eq(&a.ctx.contradiction, &sl_a.contradiction_cache_handle()));
-    assert!(Arc::ptr_eq(&a.ctx.phase_freq, &sl_a.phase_freq_table_handle()));
+    assert!(Arc::ptr_eq(
+        &a.ctx.effectiveness,
+        &sl_a.effectiveness_state_handle()
+    ));
+    assert!(Arc::ptr_eq(
+        &a.ctx.confidence,
+        &sl_a.confidence_state_handle()
+    ));
+    assert!(Arc::ptr_eq(
+        &a.ctx.contradiction,
+        &sl_a.contradiction_cache_handle()
+    ));
+    assert!(Arc::ptr_eq(
+        &a.ctx.phase_freq,
+        &sl_a.phase_freq_table_handle()
+    ));
 
     // Cross-slug: A's handles are NOT B's (no shared global singleton — the
     // pre-crt-056 defect). This is the structural complement of AC-4.
@@ -1113,9 +1149,18 @@ async fn test_serving_accessor_reflects_tick_unaffected_by_b() {
         .all_entries
         .len();
 
-    assert_eq!(a_serving, 6, "A's serving read reflects A's post-tick state (6)");
-    assert_eq!(b_serving, 2, "B's serving read reflects B's post-tick state (2)");
-    assert_ne!(a_serving, b_serving, "A and B serving reads are independent");
+    assert_eq!(
+        a_serving, 6,
+        "A's serving read reflects A's post-tick state (6)"
+    );
+    assert_eq!(
+        b_serving, 2,
+        "B's serving read reflects B's post-tick state (2)"
+    );
+    assert_ne!(
+        a_serving, b_serving,
+        "A and B serving reads are independent"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1129,7 +1174,10 @@ async fn test_adapt_service_no_cross_slug_bleed() {
     // Each slug owns a DISTINCT AdaptationService instance (per-slug independent
     // state). A's adaptation can never reach into B's.
     assert!(
-        !Arc::ptr_eq(&harness.slugs[0].ctx.adapt_service, &harness.slugs[1].ctx.adapt_service),
+        !Arc::ptr_eq(
+            &harness.slugs[0].ctx.adapt_service,
+            &harness.slugs[1].ctx.adapt_service
+        ),
         "each slug must own a distinct adapt_service (no cross-slug bleed, R-11)"
     );
     // And each context's adapt_service is its OWN server's.
@@ -1179,7 +1227,10 @@ async fn test_per_slug_counter_advances_independently_n2() {
         .map(|m| m.tick_counter)
         .unwrap_or(0);
     assert_eq!(a_counter, 4, "A ticked 4 times -> counter at 4");
-    assert_eq!(b_counter, 1, "B ticked once -> counter at 1 (independent of A)");
+    assert_eq!(
+        b_counter, 1,
+        "B ticked once -> counter at 1 (independent of A)"
+    );
 }
 
 // ###########################################################################
