@@ -1202,9 +1202,8 @@ async fn test_adapter_allows_configured_public_host_rejects_others() {
 #[test]
 fn test_unset_public_url_yields_non_empty_allowed_hosts() {
     let getter = |_: &str| None; // UNIMATRIX_PUBLIC_URL unset
-    let public_url = crate::http::public_url::derive_public_url(
-        &crate::http::public_url::Env::new(&getter),
-    );
+    let public_url =
+        crate::http::public_url::derive_public_url(&crate::http::public_url::Env::new(&getter));
     let allowed_hosts = public_url.sans.clone();
 
     assert!(

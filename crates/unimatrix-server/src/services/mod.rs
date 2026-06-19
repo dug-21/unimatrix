@@ -54,7 +54,8 @@ pub(crate) use gateway::{RateLimitConfig, SecurityGateway};
 // IndexBriefingService uses k=20 hardcoded. Use max_tokens parameter to control budget.
 pub(crate) use index_briefing::{IndexBriefingParams, IndexBriefingService, derive_briefing_query};
 pub use phase_freq_table::{PhaseFreqTable, PhaseFreqTableHandle};
-pub(crate) use search::{FusionWeights, RetrievalMode, SearchService, ServiceSearchParams};
+pub use search::FusionWeights;
+pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
 pub use typed_graph::{TypedGraphState, TypedGraphStateHandle};
@@ -313,6 +314,65 @@ impl ServiceLayer {
     /// Mirrors `typed_graph_handle()` (crt-021).
     pub fn phase_freq_table_handle(&self) -> PhaseFreqTableHandle {
         Arc::clone(&self.phase_freq_table)
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-056 Wave 1 — config-parity inspection accessors (AC-1 / AC-2)
+    // -----------------------------------------------------------------------
+    //
+    // Thin read-only delegating getters so a test can inspect a per-slug
+    // `ServiceLayer`'s RESOLVED config field-by-field against the daemon's, and
+    // assert the per-slug `nli_handle` is the SAME `Arc` instance threaded from
+    // the daemon (`Arc::ptr_eq`, AC-2). No new state; no behavioral change. The
+    // resolved values live on the sub-services (`SearchService`/`StatusService`)
+    // exactly as the daemon built them; these getters surface them for assertion.
+
+    /// AC-2 — the shared NLI model handle. The per-slug path `Arc::clone`s the
+    /// daemon's ONE loaded model (never `NliServiceHandle::new()`), so
+    /// `Arc::ptr_eq(server.service_layer().nli_handle(), daemon_nli_handle)` holds.
+    pub fn nli_handle(&self) -> &Arc<NliServiceHandle> {
+        self.search.nli_handle()
+    }
+
+    /// AC-1 — resolved NLI enablement flag (both directions: on⇒on, off⇒off).
+    pub fn nli_enabled(&self) -> bool {
+        self.search.nli_enabled()
+    }
+
+    /// AC-1 — resolved NLI expanded-candidate pool size.
+    pub fn nli_top_k(&self) -> usize {
+        self.search.nli_top_k()
+    }
+
+    /// AC-1 — resolved fusion weights, the `InferenceConfig`-derived parity surface.
+    pub fn fusion_weights(&self) -> FusionWeights {
+        self.search.fusion_weights()
+    }
+
+    /// AC-1 — resolved boosted-categories set (operator domain hint).
+    pub fn boosted_categories(&self) -> &std::collections::HashSet<String> {
+        self.search.boosted_categories()
+    }
+
+    /// AC-1 — resolved confidence weights.
+    pub fn confidence_params(&self) -> &Arc<unimatrix_engine::confidence::ConfidenceParams> {
+        self.status.confidence_params()
+    }
+
+    /// AC-1 — resolved domain-pack / observation registry.
+    pub fn observation_registry(&self) -> &Arc<DomainPackRegistry> {
+        self.status.observation_registry()
+    }
+
+    /// AC-1 — resolved category allowlist / lifecycle policy.
+    pub fn category_allowlist(&self) -> &Arc<CategoryAllowlist> {
+        self.status.category_allowlist()
+    }
+
+    /// AC-1 — the shared ML inference rayon pool; `pool_size()` gives the
+    /// effective config-sized thread count (parity assert vs. the daemon's).
+    pub fn ml_inference_pool(&self) -> &Arc<RayonPool> {
+        &self.ml_inference_pool
     }
 
     pub fn new(

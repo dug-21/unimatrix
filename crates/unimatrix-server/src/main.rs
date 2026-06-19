@@ -1194,8 +1194,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // ── crt-056 Wave 2: build SharedTickResources ONCE and drive the per-slug
-    //    serial loop (the SOLE tick path). `tick_contexts` already holds the
-    //    daemon's own context + one per registered slug (if HTTP/projects on).
+    //    serial loop (the SOLE tick path ON THIS multi-project HTTP daemon path;
+    //    the legacy global-handle spawn_background_tick is retired here. The stdio
+    //    single-store path keeps its own legacy single-store tick — see the
+    //    tick_loop.rs module doc for the accepted N=1 carve-out). `tick_contexts`
+    //    already holds the daemon's own context + one per registered slug (if HTTP/projects on).
     //    All shared resources are read-only Arcs of the SAME resolved values
     //    threaded into each slug's ServiceLayer (C-3 — one model in memory). ───
     let shared_tick_resources = unimatrix_server::background::SharedTickResources {
@@ -1591,6 +1594,15 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         .map_err(ServerError::ProjectInit)?;
 
     // Spawn background tick for automated maintenance + extraction (col-013).
+    //
+    // crt-056 carve-out (accepted scope): this is the STDIO single-store path —
+    // single-project, N=1, no `[[projects]]`, no per-slug servers. It deliberately
+    // retains the legacy global-handle `spawn_background_tick` over the one handle
+    // set. The crt-056 per-slug serial loop / global-handle retirement applies to
+    // the multi-project HTTP daemon path ONLY (where N>=2 sharing global handles
+    // would be the corruption hazard NFR-5/R-02 guards against). On a single store
+    // that hazard cannot materialize, so re-wiring stdio through spawn_per_slug_tick
+    // is unnecessary. See background/tick_loop.rs module doc.
     let tick_handle = unimatrix_server::background::spawn_background_tick(
         Arc::clone(&store),
         Arc::clone(&vector_index),

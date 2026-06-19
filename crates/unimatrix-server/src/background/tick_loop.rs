@@ -3,9 +3,25 @@
 //! Drives the registered `BackgroundJob`s over each registered
 //! `PerSlugTickContext` **serially**, one slug at a time. Serial execution gives
 //! serialized rayon for free (C-1, C-3, R-08) and lets each slug use its OWN
-//! `tick_counter` (R-07). This is the SOLE tick path now: daemon (N=1) and
-//! multi-project (N>=2) both drive it (C-6, one isolation seam). The legacy
-//! `spawn_background_tick` global-handle path is no longer wired from `main.rs`.
+//! `tick_counter` (R-07).
+//!
+//! Scope of this path (C-6, one isolation seam): the **multi-project HTTP
+//! daemon** drives this loop exclusively — its own context plus one
+//! `PerSlugTickContext` per registered slug, all over per-slug stores. The legacy
+//! global-handle `spawn_background_tick` is **RETIRED on that daemon path**: the
+//! HTTP boot has no global-handle extraction and never calls it (see
+//! `main.rs` HTTP branch → `spawn_per_slug_tick`). That retirement is the
+//! corruption-relevant guarantee (R-02/NFR-5): no two slugs can ever share a
+//! global analytics handle, because there is no global handle on the daemon path.
+//!
+//! Carve-out (accepted scope): the **stdio single-store path** (`tokio_main_stdio`)
+//! is single-project, N=1, with NO `[[projects]]` and NO per-slug servers. It
+//! retains the legacy single-store `spawn_background_tick` over the one global
+//! handle set. This is correct, not a divergence the NFR-5 corruption hazard
+//! cares about: that hazard requires N>=2 slugs sharing global handles, which the
+//! stdio single store cannot represent. So the "global-handle tick is retired"
+//! claim is scoped to the daemon path; stdio is the deliberate single-store
+//! carve-out, never wired through `spawn_per_slug_tick`.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -55,7 +71,9 @@ pub async fn run_per_slug_tick_pass(
     }
 }
 
-/// Spawn the per-slug serial tick loop (replaces `spawn_background_tick`).
+/// Spawn the per-slug serial tick loop (the multi-project HTTP daemon's tick
+/// driver; replaces `spawn_background_tick` ON THE DAEMON PATH — the stdio
+/// single-store path retains the legacy `spawn_background_tick`, see module doc).
 ///
 /// Returns a `JoinHandle` for the outer supervisor (stored in
 /// `LifecycleHandles.tick_handle`, aborted on graceful shutdown). The supervisor
