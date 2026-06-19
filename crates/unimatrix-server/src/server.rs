@@ -430,6 +430,24 @@ impl UnimatrixServer {
         Arc::clone(&self.vector_index)
     }
 
+    /// crt-056 Wave 2 (G-2): clone the server's per-slug [`AdaptationService`].
+    ///
+    /// Thin additive accessor so the boot loop can populate
+    /// `PerSlugTickContext.adapt_service` for the maintenance job's `StatusService`.
+    /// Per-slug independent state (ADR-006). No new state.
+    pub fn adapt_service(&self) -> Arc<AdaptationService> {
+        Arc::clone(&self.adapt_service)
+    }
+
+    /// crt-056 Wave 2 (G-2): clone the server's per-slug [`AuditLog`].
+    ///
+    /// Thin additive accessor so the boot loop can populate
+    /// `PerSlugTickContext.audit` (analytics writes route through the slug's store).
+    /// No new state.
+    pub fn audit_log(&self) -> Arc<AuditLog> {
+        Arc::clone(&self.audit)
+    }
+
     /// Resolve an agent identity from tool parameters.
     ///
     /// Uses `spawn_blocking` to avoid holding the Store mutex on an async
