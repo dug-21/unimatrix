@@ -278,6 +278,28 @@ Unimatrix loads configuration from up to two optional TOML files at server start
 
 Config is loaded once at startup. Changes require a server restart. A malformed file or a security validation failure aborts startup with a descriptive error.
 
+### Per-Slug Configuration Overlay (multi-project / cloud)
+
+On a multi-project (cloud / HTTP) deployment, an operator may give an individual registered slug its own config by hand-placing a `config.toml` in that slug's data directory — `{base_dir}/{slug}/config.toml`, the sibling of the slug's `unimatrix.db` and `vector/` index (`/data/.unimatrix/{slug}/config.toml` in the container layout). The file is optional and applies on the next daemon restart (the same restart that re-attaches routing); there is no hot-reload.
+
+The per-slug file overlays the daemon's resolved global config **per key** — a key it sets overrides only that key, every key it leaves unset falls through to the global value. With no per-slug file present a slug is served the global config unchanged.
+
+What a per-slug file may override (per-slug):
+
+- `[knowledge]` categories, `boosted_categories`, and lifecycle
+- `[observation.domain_packs]` domain packs
+- `[confidence]` weights
+- Overlayable `[inference]` tuning — fusion/PPR weights, `nli_top_k`, `nli_enabled` (the `*_sha256` hash pins stay global)
+- `[server] instructions`
+
+What stays global, even if a per-slug file sets it (the overlay silently ignores these — except a `*_sha256` pin divergence, which logs a warning):
+
+- Both ONNX models and the shared inference pool — the NLI model, the entire `[embedding]` section (model, dimensions, sha256), and `rayon_pool_size`. Exactly one of each model is loaded regardless of how many slugs are registered.
+- The daemon permission posture (`[agents] default_trust` / `permissive`)
+- All transport config — `[http]` and `[tls]` (host, port, auth, `http.enabled`)
+
+An invalid per-slug file (unknown category, oversized instructions, malformed TOML, or world/group-writable permissions), or a valid file whose merge with the global config violates a cross-field invariant, fails the daemon loud at startup and names the offending slug.
+
 ### Profile Presets
 
 The `[profile]` section selects a knowledge-lifecycle preset. Presets encode calibrated confidence weight vectors and freshness half-life values so operators identify their knowledge type rather than tuning ML weights directly.
@@ -642,7 +664,7 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
 ~/.cache/unimatrix/models/   # ONNX model files (downloaded once)
 ```
 
-In a cloud/container deployment, each registered slug gets its own isolated subtree under the data volume — `/data/.unimatrix/{slug}/` holds that project's `unimatrix.db`, `vector/` index, hash chain, and analytics, with no cross-project sharing. A container serves nothing until at least one slug is registered (single-project cloud is simply N=1). The local STDIO/UDS install is separate and unaffected: it keeps the path-hash layout above (`~/.unimatrix/{project-hash}/`) and requires no slug.
+In a cloud/container deployment, each registered slug gets its own isolated subtree under the data volume — `/data/.unimatrix/{slug}/` holds that project's `unimatrix.db`, `vector/` index, hash chain, analytics, and an optional operator-placed per-slug `config.toml` (see Configuration), with no cross-project sharing. A container serves nothing until at least one slug is registered (single-project cloud is simply N=1). The local STDIO/UDS install is separate and unaffected: it keeps the path-hash layout above (`~/.unimatrix/{project-hash}/`) and requires no slug.
 
 ### Crate Workspace (9 crates)
 
