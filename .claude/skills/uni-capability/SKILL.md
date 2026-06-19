@@ -210,9 +210,12 @@ claimed = asserted (often inherited from a goal criterion) with no behavioral te
   patterns, lessons, conventions, or procedures (those have their own skills/owners).
 - Structural changes are uni-zero / vision judgment (often research-fed). Status→proven is a
   delivery/vision-guardian act bound by the firewall. Keep the two separated.
-- Capability maps live in Unimatrix (the graph). A per-goal markdown view is acceptable only as
-  short-lived alpha scaffolding; it cannot represent cross-goal nodes without duplication and does not
-  scale past a couple of goals.
+- **Capability maps live in Unimatrix (the graph) — the store is now active.** The `personal-cloud`
+  map is migrated (entries ~#5142–5163; `context_lookup category="capability"`, `context_graph` over
+  `Advances`/`Prerequisite`/`About`). A per-goal markdown file is at most an **archived snapshot or a
+  generated human view — never the source of truth**; it cannot represent cross-goal nodes without
+  duplication (the corpus does — one node, multiple `Advances` edges, proven by C5 advancing both
+  `personal-cloud` and `self-learning`).
 
 ## Relationship to the rest of the process
 

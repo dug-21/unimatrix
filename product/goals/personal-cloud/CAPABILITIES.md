@@ -1,5 +1,11 @@
 # Capability Map — Developer-Friendly Deployment (`personal-cloud`, goal #4946)
 
+> **⚠️ MIGRATED — this file is an archived snapshot, not the source of truth.** The live capability map
+> now lives in the Unimatrix `capability` corpus (entries **#5142–5163**, migrated 2026-06-19). Query it:
+> `context_lookup category="capability" tags=["personal-cloud"]` or `context_graph` over the goal's
+> incoming `Advances` edges. Update capabilities via the **`uni-capability` skill** — not this file. This
+> snapshot is kept for human reading + git-history of the alpha; it may drift from the corpus.
+>
 > **What this is.** The decomposition of a goal into the concrete **capabilities** that must each
 > *exist and behaviorally work* for the goal to be delivered. A capability is "delivered" only when a
 > behavioral, real-artifact test proves its **Done when** — never when a feature merely *claims* it.
