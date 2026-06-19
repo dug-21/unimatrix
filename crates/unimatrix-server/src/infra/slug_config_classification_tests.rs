@@ -28,8 +28,8 @@
 //! for `tls`/`http`/`rayon_pool_size` would be a false claim about `merge_configs`.
 
 use super::{
-    ConfidenceWeights, DomainPackConfig, OverlayDisposition, PER_SLUG_CONFIG_CLASSIFICATION,
-    UnimatrixConfig, is_per_slug_overlayable, merge_configs,
+    is_per_slug_overlayable, merge_configs, ConfidenceWeights, DomainPackConfig, KnowledgeConfig,
+    OverlayDisposition, UnimatrixConfig, PER_SLUG_CONFIG_CLASSIFICATION,
 };
 
 /// GlobalLocked keys whose lock is enforced BY CONSTRUCTION in `per_slug_loop`, NOT by
@@ -59,6 +59,10 @@ fn pair_differing_on(key: &str) -> Option<(UnimatrixConfig, UnimatrixConfig)> {
         "knowledge.boosted_categories" => {
             global.knowledge.boosted_categories = vec!["g-boost".to_string()];
             slug.knowledge.boosted_categories = vec!["s-boost".to_string()];
+        }
+        "knowledge.adaptive_categories" => {
+            global.knowledge.adaptive_categories = vec!["g-adaptive".to_string()];
+            slug.knowledge.adaptive_categories = vec!["s-adaptive".to_string()];
         }
         "confidence.weights" => {
             global.confidence.weights = Some(weights(0.40));
@@ -169,6 +173,11 @@ fn assert_merged_side(merged: &UnimatrixConfig, key: &str, slug_should_win: bool
             &merged.knowledge.boosted_categories,
             &vec!["g-boost".to_string()],
             &vec!["s-boost".to_string()]
+        ),
+        "knowledge.adaptive_categories" => check!(
+            &merged.knowledge.adaptive_categories,
+            &vec!["g-adaptive".to_string()],
+            &vec!["s-adaptive".to_string()]
         ),
         "confidence.weights" => {
             check!(
@@ -281,16 +290,63 @@ fn test_classification_drift_guard_every_entry_matches_merge_configs() {
 // Exhaustiveness vs the seam-relevant field set (carry-item 9, R-07)
 // ---------------------------------------------------------------------------
 
-/// The closed checklist of every config key/section reachable at the
+/// Mechanically DERIVE the set of seam keys that `[knowledge]` contributes, by
+/// EXHAUSTIVELY destructuring `KnowledgeConfig`. This is the recurrence fix
+/// (carry-item / security re-review): the previous exhaustiveness test compared two
+/// HAND-MAINTAINED lists (the registry vs a `const EXPECTED_CLASSIFIED_KEYS` array),
+/// which is itself a duplicate-of-truth — exactly the crt-031 anti-pattern the
+/// registry exists to kill. A hand-list can NEVER catch a real overlaid field that
+/// was forgotten in BOTH places, which is how `adaptive_categories` slipped through.
+///
+/// Here the expected `knowledge.*` key set is bound to the ACTUAL struct field set:
+/// the destructuring pattern is exhaustive, so adding ANY new field to
+/// `KnowledgeConfig` makes THIS function fail to compile until the author classifies
+/// it below (either as a seam key with a registry entry, or explicitly as a non-seam
+/// field). The compiler — not a human-maintained list — is the completeness oracle.
+///
+/// Why this is sound (not another hand-list-vs-hand-list):
+///  * The match binds every `KnowledgeConfig` field by name; `KnowledgeConfig` is a
+///    plain struct (no `..` rest pattern), so a 5th field added tomorrow breaks the
+///    build at THIS site. There is no way to add an overlayable knowledge field and
+///    silently skip classification.
+///  * Each field maps to EITHER `Some(stable_key)` (⇒ it MUST have a registry entry,
+///    asserted below) OR `None` (⇒ explicitly NOT read at the `build_project_server`
+///    seam — `freshness_half_life_hours` is resolved into the preset elsewhere, never
+///    in the per-slug loop, main.rs:1119-1151). The `None` arm is a documented,
+///    reviewed decision, not an omission.
+fn knowledge_seam_keys() -> Vec<&'static str> {
+    // A representative value is irrelevant — we only enumerate the field SET. The
+    // exhaustive destructure is the load-bearing part.
+    let KnowledgeConfig {
+        categories: _,
+        boosted_categories: _,
+        adaptive_categories: _,
+        freshness_half_life_hours: _,
+    } = KnowledgeConfig::default();
+
+    // Map each field → its seam key, or None if it is not a per-slug seam input.
+    // Adding a field above forces adding an arm here (or the destructure won't compile).
+    let per_field: [(&str, Option<&'static str>); 4] = [
+        ("categories", Some("knowledge.categories")),
+        ("boosted_categories", Some("knowledge.boosted_categories")),
+        ("adaptive_categories", Some("knowledge.adaptive_categories")),
+        // Not read in the per-slug loop (resolved into the freshness preset elsewhere).
+        ("freshness_half_life_hours", None),
+    ];
+
+    per_field.iter().filter_map(|(_, key)| *key).collect()
+}
+
+/// The closed checklist of every NON-`knowledge` config key/section reachable at the
 /// `build_project_server` call site (the §9 verdict rows, rendered as stable ids).
-/// Adding a `build_project_server`-relevant key without a registry entry — or a
-/// registry entry without a checklist row — fails the exhaustiveness test. This is
-/// the row-set guard that materialized TWICE at the design gate (`embed_handle`,
-/// then `instructions`/`permissive`).
-const EXPECTED_CLASSIFIED_KEYS: &[&str] = &[
+/// The `knowledge.*` rows are NOT listed here — they are derived mechanically by
+/// [`knowledge_seam_keys`] from the live struct, so the registry can never drift from
+/// the actual `KnowledgeConfig` shape (the seam that recurred). Adding a
+/// `build_project_server`-relevant key without a registry entry — or a registry entry
+/// without a checklist row — fails the exhaustiveness test. This is the row-set guard
+/// that materialized at the design gate (`embed_handle`, then `instructions`/`permissive`).
+const EXPECTED_CLASSIFIED_KEYS_NON_KNOWLEDGE: &[&str] = &[
     // Overlayable
-    "knowledge.categories",
-    "knowledge.boosted_categories",
     "confidence.weights",
     "observation.domain_packs",
     "inference.nli_top_k",
@@ -321,7 +377,17 @@ fn test_classification_registry_exhaustive_vs_seam_field_set() {
         .iter()
         .map(|e| e.key)
         .collect();
-    let expected: BTreeSet<&str> = EXPECTED_CLASSIFIED_KEYS.iter().copied().collect();
+
+    // Expected = mechanically-derived knowledge keys ∪ the non-knowledge checklist.
+    // The knowledge half is bound to the live `KnowledgeConfig` struct, so a new
+    // overlayable knowledge field cannot be forgotten in both the registry and here.
+    let mut expected: BTreeSet<&str> = EXPECTED_CLASSIFIED_KEYS_NON_KNOWLEDGE
+        .iter()
+        .copied()
+        .collect();
+    for key in knowledge_seam_keys() {
+        expected.insert(key);
+    }
 
     let missing: Vec<&&str> = expected.difference(&registry).collect();
     let extra: Vec<&&str> = registry.difference(&expected).collect();

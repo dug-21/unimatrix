@@ -4464,6 +4464,10 @@ pub const PER_SLUG_CONFIG_CLASSIFICATION: &[ConfigKeyClass] = &[
         disposition: OverlayDisposition::PerSlugOverlayable,
     },
     ConfigKeyClass {
+        key: "knowledge.adaptive_categories",
+        disposition: OverlayDisposition::PerSlugOverlayable,
+    },
+    ConfigKeyClass {
         key: "confidence.weights",
         disposition: OverlayDisposition::PerSlugOverlayable,
     },
