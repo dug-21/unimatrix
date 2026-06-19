@@ -110,8 +110,8 @@ pub(crate) struct FusedScoreInputs {
 /// // constraint (ADR-004, crt-026). The six-weight sum check is unchanged.
 ///
 /// Per-field range [0.0, 1.0] is enforced by InferenceConfig::validate for all eight fields.
-#[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct FusionWeights {
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct FusionWeights {
     pub w_sim: f64,             // default 0.25 — bi-encoder similarity
     pub w_nli: f64,             // default 0.35 — NLI entailment (dominant precision signal)
     pub w_conf: f64,            // default 0.15 — confidence tiebreaker
@@ -499,6 +499,35 @@ fn utility_delta(category: Option<EffectivenessCategory>) -> f64 {
 }
 
 impl SearchService {
+    // crt-056 Wave 1 (AC-1/AC-2): thin read-only accessors over the resolved-config
+    // fields threaded at construction, so a per-slug server's config parity against the
+    // daemon can be asserted field-by-field. No new state; no behavioral change.
+
+    /// The shared NLI model handle (AC-2: `Arc::ptr_eq` against the daemon's).
+    pub(crate) fn nli_handle(&self) -> &Arc<NliServiceHandle> {
+        &self.nli_handle
+    }
+
+    /// Resolved NLI expanded-candidate pool size (AC-1).
+    pub(crate) fn nli_top_k(&self) -> usize {
+        self.nli_top_k
+    }
+
+    /// Resolved NLI enablement flag (AC-1, both directions).
+    pub(crate) fn nli_enabled(&self) -> bool {
+        self.nli_enabled
+    }
+
+    /// Resolved fusion weights (the `InferenceConfig`-derived parity surface, AC-1).
+    pub(crate) fn fusion_weights(&self) -> FusionWeights {
+        self.fusion_weights
+    }
+
+    /// Resolved boosted-categories set (the operator domain hint, AC-1).
+    pub(crate) fn boosted_categories(&self) -> &HashSet<String> {
+        &self.boosted_categories
+    }
+
     pub(crate) fn new(
         store: Arc<Store>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,

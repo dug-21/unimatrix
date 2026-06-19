@@ -888,6 +888,7 @@ mod tests {
             vector_index,
             adapt_service,
             None, // use compiled default instructions
+            None, // crt-056: test-default ServiceLayer
         )
     }
 }

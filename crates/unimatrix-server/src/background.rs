@@ -54,6 +54,20 @@ use crate::services::status::{MaintenanceDataSnapshot, StatusService};
 use crate::services::typed_graph::{TypedGraphState, TypedGraphStateHandle};
 use unimatrix_engine::effectiveness::EffectivenessCategory;
 
+// crt-056 Wave 2 (ADR-003/004/005): the per-slug tick work-unit seam.
+// `background.rs` retains `run_single_tick` and the op fns the jobs delegate
+// into; the jobs CALL them (no behavior copied). Split into sub-modules to keep
+// each file under the 500-line cap (OVERVIEW.md §Modular-file budget).
+pub mod job;
+pub mod jobs;
+pub mod tick_loop;
+
+pub use job::{
+    BackgroundJob, Cadence, PerSlugTickContext, ResourceClass, SharedTickResources,
+    TickMutableState, build_job_registry,
+};
+pub use tick_loop::{run_per_slug_tick_pass, spawn_per_slug_tick};
+
 /// Hardcoded system agent identity for background-generated audit events.
 /// Never sourced from external input (Security Risk 2 from RISK-TEST-STRATEGY).
 const SYSTEM_AGENT_ID: &str = "system";
@@ -89,7 +103,7 @@ fn parse_tick_interval_str(s: &str) -> u64 {
 ///
 /// Falls back to `DEFAULT_TICK_INTERVAL_SECS` (900s) if the variable is unset
 /// or contains a value that cannot be parsed as a `u64`.
-fn read_tick_interval() -> u64 {
+pub fn read_tick_interval() -> u64 {
     match std::env::var("UNIMATRIX_TICK_INTERVAL_SECS") {
         Ok(val) => {
             let secs = parse_tick_interval_str(&val);
@@ -801,6 +815,207 @@ async fn run_single_tick(
     let duration = now_secs() - tick_start;
     tracing::info!(duration_secs = duration, "background tick complete");
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// crt-056 Wave 2: per-slug job delegation helpers.
+//
+// These wrap the EXACT inline retain-on-error logic that lived inside
+// `run_single_tick` so the `BackgroundJob` impls can call them per-slug with no
+// behavior copied (C-8, NFR-07 zero-diff). `run_single_tick` itself is unchanged
+// and still used by the legacy `background_tick_loop`.
+// ---------------------------------------------------------------------------
+
+/// GRAPH_EDGES orphaned-edge compaction (crt-021 Step 2).
+///
+/// Extracted verbatim from `run_single_tick` (the `513-544` block). Non-fatal:
+/// on DELETE error, logs and returns — rebuild proceeds on pre-compaction state.
+pub(crate) async fn run_orphaned_edge_compaction(store: &Arc<Store>) {
+    let compaction_result = sqlx::query(
+        "DELETE FROM graph_edges
+         WHERE source_id NOT IN (SELECT id FROM entries WHERE status = ?1)
+            OR target_id NOT IN (SELECT id FROM entries WHERE status = ?1)",
+    )
+    .bind(Status::Active as u8 as i64)
+    .execute(store.write_pool_server())
+    .await;
+
+    match compaction_result {
+        Ok(result) => {
+            let rows_deleted = result.rows_affected();
+            if rows_deleted > 0 {
+                tracing::info!(
+                    rows_deleted = rows_deleted,
+                    "background tick: GRAPH_EDGES orphaned-edge compaction complete"
+                );
+            }
+        }
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                "background tick: GRAPH_EDGES compaction failed; proceeding with rebuild on pre-compaction state"
+            );
+        }
+    }
+}
+
+/// Rebuild typed graph state and swap it into the passed-in handle under a write
+/// lock, retaining the existing state on cycle / error / timeout.
+///
+/// Extracted verbatim from `run_single_tick` (the `562-599` block).
+pub(crate) async fn run_typed_graph_rebuild(
+    store: &Arc<Store>,
+    typed_graph_state: &TypedGraphStateHandle,
+) {
+    let store_clone = Arc::clone(store);
+    match tokio::time::timeout(
+        TICK_TIMEOUT,
+        tokio::spawn(async move { TypedGraphState::rebuild(&store_clone).await }),
+    )
+    .await
+    {
+        Ok(Ok(Ok(new_state))) => {
+            let mut guard = typed_graph_state.write().unwrap_or_else(|e| e.into_inner());
+            *guard = new_state;
+            tracing::debug!(
+                "typed graph state rebuilt ({} entries)",
+                guard.all_entries.len()
+            );
+        }
+        Ok(Ok(Err(ref e))) if e.to_string().contains("supersession cycle detected") => {
+            let mut guard = typed_graph_state.write().unwrap_or_else(|e| e.into_inner());
+            guard.use_fallback = true;
+            tracing::error!(
+                "TypedGraphState rebuild: cycle detected; search using FALLBACK_PENALTY"
+            );
+        }
+        Ok(Ok(Err(e))) => {
+            tracing::error!("typed graph state rebuild failed: {e}");
+        }
+        Ok(Err(e)) => {
+            tracing::error!("typed graph state rebuild task panicked: {e}");
+        }
+        Err(_) => {
+            tracing::warn!(
+                timeout_secs = TICK_TIMEOUT.as_secs(),
+                "typed graph state rebuild timed out; retaining existing cache"
+            );
+        }
+    }
+}
+
+/// Rebuild the phase-conditioned frequency table and swap it into the passed-in
+/// handle under a write lock, retaining existing state on error / timeout.
+///
+/// Extracted verbatim from `run_single_tick` (the `621-664` block, col-031).
+pub(crate) async fn run_phase_freq_rebuild(
+    store: &Arc<Store>,
+    inference_config: &Arc<InferenceConfig>,
+    phase_freq_table: &PhaseFreqTableHandle,
+) {
+    let store_clone = Arc::clone(store);
+    let lookback_days = inference_config.phase_freq_lookback_days;
+    let min_pairs = inference_config.min_phase_session_pairs;
+
+    match tokio::time::timeout(
+        TICK_TIMEOUT,
+        tokio::spawn(async move {
+            PhaseFreqTable::rebuild(&store_clone, lookback_days, min_pairs).await
+        }),
+    )
+    .await
+    {
+        Ok(Ok(Ok(new_table))) => {
+            let mut guard = phase_freq_table.write().unwrap_or_else(|e| e.into_inner());
+            *guard = new_table;
+            tracing::debug!("PhaseFreqTable rebuilt successfully");
+        }
+        Ok(Ok(Err(e))) => {
+            tracing::error!(
+                error = %e,
+                "PhaseFreqTable rebuild failed: store error; retaining existing state"
+            );
+        }
+        Ok(Err(join_err)) => {
+            tracing::error!(
+                error = %join_err,
+                "PhaseFreqTable rebuild task panicked; retaining existing state"
+            );
+        }
+        Err(_timeout) => {
+            tracing::warn!(
+                timeout_secs = TICK_TIMEOUT.as_secs(),
+                "PhaseFreqTable rebuild timed out; retaining existing state"
+            );
+        }
+    }
+}
+
+/// Interval-gated contradiction scan: fetch active entries, run the O(N) ONNX
+/// scan on the rayon pool, and write the result into the passed-in cache handle.
+///
+/// Extracted verbatim from `run_single_tick` (the `682-739` block). The caller
+/// (`ContradictionScanJob`) owns the `EveryN` cadence gate, so this body runs
+/// only when fired; the inner `embed adapter availability` gate is retained.
+pub(crate) async fn run_contradiction_scan(
+    store: &Arc<Store>,
+    vector_index: &Arc<VectorIndex>,
+    embed_service: &Arc<EmbedServiceHandle>,
+    ml_inference_pool: &Arc<RayonPool>,
+    contradiction_cache: &ContradictionScanCacheHandle,
+    current_tick: u32,
+) {
+    if let Ok(adapter) = embed_service.get_adapter().await {
+        let active_entries: Vec<EntryRecord> = match store.query_by_status(Status::Active).await {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(tick = current_tick, error = %e, "contradiction scan skipped: could not fetch entries");
+                vec![]
+            }
+        };
+
+        let vi_for_scan = Arc::clone(vector_index);
+        let adapter_for_scan = Arc::clone(&adapter);
+        let config_for_scan = ContradictionConfig::default();
+
+        tracing::debug!(tick = current_tick, "contradiction scan starting");
+
+        match ml_inference_pool
+            .spawn(move || {
+                let vs = VectorAdapter::new(vi_for_scan);
+                contradiction::scan_contradictions(
+                    active_entries,
+                    &vs,
+                    &*adapter_for_scan,
+                    &config_for_scan,
+                )
+            })
+            .await
+        {
+            Ok(Ok(pairs)) => {
+                let pair_count = pairs.len();
+                let mut guard = contradiction_cache
+                    .write()
+                    .unwrap_or_else(|e| e.into_inner());
+                *guard = Some(ContradictionScanResult { pairs });
+                tracing::debug!(
+                    tick = current_tick,
+                    pairs = pair_count,
+                    "contradiction scan complete; cache updated"
+                );
+            }
+            Ok(Err(e)) => {
+                tracing::warn!(tick = current_tick, error = %e, "contradiction scan failed; cache retained");
+            }
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    tick = current_tick,
+                    "contradiction scan rayon task cancelled; cache retained"
+                );
+            }
+        }
+    }
 }
 
 /// Run maintenance operations via StatusService.

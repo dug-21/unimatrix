@@ -245,6 +245,25 @@ pub(crate) struct MaintenanceDataSnapshot {
 }
 
 impl StatusService {
+    // crt-056 Wave 1 (AC-1): thin read-only accessors over the resolved-config fields
+    // threaded at construction, so a per-slug server's config parity against the daemon
+    // can be asserted field-by-field. No new state; no behavioral change.
+
+    /// Resolved confidence weights (AC-1).
+    pub(crate) fn confidence_params(&self) -> &Arc<unimatrix_engine::confidence::ConfidenceParams> {
+        &self.confidence_params
+    }
+
+    /// Resolved domain-pack / observation registry (AC-1).
+    pub(crate) fn observation_registry(&self) -> &Arc<DomainPackRegistry> {
+        &self.observation_registry
+    }
+
+    /// Resolved category allowlist / lifecycle policy (AC-1).
+    pub(crate) fn category_allowlist(&self) -> &Arc<CategoryAllowlist> {
+        &self.category_allowlist
+    }
+
     pub(crate) fn new(
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,

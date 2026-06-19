@@ -886,7 +886,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
         Arc::clone(&usage_dedup),
-        boosted_categories,
+        // crt-056 Wave 1: clone the resolved boosted set — each per-slug
+        // `build_project_server` (HTTP multi-project branch) threads the SAME set so
+        // per-slug parity matches this daemon ServiceLayer (Gate 3a MUST-CONFIRM, AC-1).
+        boosted_categories.clone(),
         Arc::clone(&ml_inference_pool),
         Arc::clone(&nli_handle), // clone: nli_handle also needed by spawn_background_tick
         config.inference.nli_top_k,
@@ -930,6 +933,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         // reuse the configured instructions for each slug's UnimatrixServer
         // (daemon path); harmless for the stdio path.
         server_instructions.clone(),
+        // crt-056 Wave 1 (ADR-001, C-6): the daemon's OWN server takes the SAME
+        // config-driven `Some(...)` parity path as the per-slug servers — no cloud-only
+        // branch (`None` is unit-test-only). Clone keeps `services` alive for the legacy
+        // handle extraction (~960) the Wave-1 tick still uses (retired in Wave 2).
+        Some(services.clone()),
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
@@ -953,42 +961,39 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     // act on the SAME store the registry routes drains/deltas through.
     server.transcript_hold = Arc::clone(&transcript_hold);
 
-    // Extract state handles before services is moved.
-    let confidence_state_handle = services.confidence_state_handle();
-    let effectiveness_state_handle = services.effectiveness_state_handle();
-    let typed_graph_handle = services.typed_graph_handle();
-    let contradiction_cache_handle = services.contradiction_cache_handle();
-    let phase_freq_table_handle = services.phase_freq_table_handle(); // col-031
-
     // Parse auto-quarantine threshold at startup (Constraint 14).
     let auto_quarantine_cycles = unimatrix_server::background::parse_auto_quarantine_cycles()
         .map_err(ServerError::ProjectInit)?;
 
-    // Spawn background tick for automated maintenance + extraction (col-013).
-    let tick_handle = unimatrix_server::background::spawn_background_tick(
+    // ── crt-056 Wave 2 (ADR-003/004/005): per-slug serial tick ──────────────────
+    // RETIRE the global-handle wiring. The pre-crt-056 path extracted the five
+    // singleton analytics handles from `services` and threaded them into
+    // `spawn_background_tick` over the single global store. That path is removed
+    // (the #4974 funnel guard: no surviving global-handle write path beside the
+    // per-slug seam). Instead we collect a `Vec<PerSlugTickContext>` — the daemon's
+    // OWN context plus one per registered slug — and drive the SAME serial loop
+    // (`spawn_per_slug_tick`) for both N=1 (daemon) and N>=2 (multi-project), one
+    // isolation seam (C-6).
+    //
+    // The daemon's own context borrows its `services` handle set (Arc::clone of the
+    // SAME `Arc<RwLock<_>>` the serving path reads) + its own `tick_metadata`. Built
+    // here, before `services`/`store`/etc. are moved into LifecycleHandles below.
+    use unimatrix_server::background::PerSlugTickContext;
+    use unimatrix_server::http::ProjectSlug;
+
+    let daemon_slug = ProjectSlug::try_from(PerSlugTickContext::DAEMON_SLUG)
+        .map_err(|e| ServerError::Config(format!("invalid daemon slug: {e}")))?;
+    let mut tick_contexts: Vec<PerSlugTickContext> = vec![PerSlugTickContext::from_service_layer(
+        daemon_slug,
         Arc::clone(&store),
         Arc::clone(&vector_index),
-        Arc::clone(&embed_handle),
+        &services,
+        Arc::clone(&server.tick_metadata),
         Arc::clone(&adapt_service),
         Arc::clone(&session_registry),
-        Arc::clone(&store),
         Arc::clone(&pending_entries_analysis),
-        Arc::clone(&server.tick_metadata),
-        None,
-        confidence_state_handle,
-        effectiveness_state_handle,
-        typed_graph_handle,
-        contradiction_cache_handle,
         Arc::clone(&audit),
-        auto_quarantine_cycles,
-        Arc::clone(&confidence_params),
-        Arc::clone(&ml_inference_pool),
-        nli_handle,                    // crt-023: NLI graph inference
-        Arc::clone(&inference_config), // crt-023: graph inference config
-        phase_freq_table_handle,       // col-031: shared with SearchService (ADR-005)
-        Arc::clone(&categories),       // crt-031: category allowlist for lifecycle guard stub
-        Arc::clone(&retention_config), // crt-036: activity data retention policy
-    );
+    )];
 
     // Create daemon CancellationToken (ADR-002).
     let daemon_token = shutdown::new_daemon_token();
@@ -1088,9 +1093,41 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     &embed_handle,
                     permissive,
                     server_instructions.clone(),
+                    // crt-056 Wave 1 (ADR-002): thread the daemon's RESOLVED config Arcs —
+                    // `Arc::clone` of the SAME values the daemon's own ServiceLayer uses
+                    // (880-898 scope), so per-slug servers reach the closed 8-field parity
+                    // (AC-1) over the global config and share the ONE loaded model (AC-2).
+                    &ml_inference_pool,
+                    &nli_handle, // the ONE loaded model — shared, never rebuilt (C-3, AC-2)
+                    config.inference.nli_top_k,
+                    config.inference.nli_enabled,
+                    &inference_config,
+                    &confidence_params,
+                    &categories,
+                    &observation_registry,
+                    &boosted_categories, // RESOLVED set (Gate 3a MUST-CONFIRM), not the default
                 )
                 .await?;
                 slug_servers.push(input);
+            }
+            // crt-056 Wave 2: build one PerSlugTickContext per registered slug from
+            // that slug's OWN server (its config-driven ServiceLayer handle set +
+            // tick_metadata + vector_index + per-slug subsystems). Borrow the handle
+            // set via the Wave-1 accessors (Arc::clone of the SAME Arc<RwLock<_>> the
+            // serving path reads) — NEVER freshly constructed (ADR-003, #4097). Done
+            // BEFORE `slug_servers` is moved into `from_servers`.
+            for input in &slug_servers {
+                tick_contexts.push(PerSlugTickContext::from_service_layer(
+                    input.slug.clone(),
+                    Arc::clone(&input.store),
+                    input.server.vector_index(),
+                    input.server.service_layer(),
+                    input.server.tick_metadata(),
+                    input.server.adapt_service(),
+                    Arc::clone(&input.server.session_registry),
+                    Arc::clone(&input.server.pending_entries_analysis),
+                    input.server.audit_log(),
+                ));
             }
             let router = MultiProjectRouter::from_servers(
                 slug_servers,
@@ -1155,6 +1192,28 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         );
         (None, None)
     };
+
+    // ── crt-056 Wave 2: build SharedTickResources ONCE and drive the per-slug
+    //    serial loop (the SOLE tick path ON THIS multi-project HTTP daemon path;
+    //    the legacy global-handle spawn_background_tick is retired here. The stdio
+    //    single-store path keeps its own legacy single-store tick — see the
+    //    tick_loop.rs module doc for the accepted N=1 carve-out). `tick_contexts`
+    //    already holds the daemon's own context + one per registered slug (if HTTP/projects on).
+    //    All shared resources are read-only Arcs of the SAME resolved values
+    //    threaded into each slug's ServiceLayer (C-3 — one model in memory). ───
+    let shared_tick_resources = unimatrix_server::background::SharedTickResources {
+        embed_service: Arc::clone(&embed_handle),
+        nli_handle: Arc::clone(&nli_handle), // the ONE loaded model
+        inference_config: Arc::clone(&inference_config),
+        confidence_params: Arc::clone(&confidence_params),
+        rayon_pool: Arc::clone(&ml_inference_pool),
+        category_allowlist: Arc::clone(&categories),
+        retention_config: Arc::clone(&retention_config),
+        auto_quarantine_cycles,
+        tick_interval_secs: unimatrix_server::background::read_tick_interval(),
+    };
+    let tick_handle =
+        unimatrix_server::background::spawn_per_slug_tick(tick_contexts, shared_tick_resources);
 
     // Signal handler: cancel daemon token on SIGTERM/SIGINT.
     // This is the ONLY path that triggers graceful_shutdown (C-04 / C-05).
@@ -1495,6 +1554,11 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         // reuse the configured instructions for each slug's UnimatrixServer
         // (daemon path); harmless for the stdio path.
         server_instructions.clone(),
+        // crt-056 Wave 1 (ADR-001): the stdio path is single-store and not part of the
+        // per-slug HTTP parity surface; it keeps the in-constructor test-default
+        // ServiceLayer. (The stdio path's config-driven `services` is wired separately
+        // for UDS + the legacy tick, unchanged here.)
+        None,
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
@@ -1530,6 +1594,15 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         .map_err(ServerError::ProjectInit)?;
 
     // Spawn background tick for automated maintenance + extraction (col-013).
+    //
+    // crt-056 carve-out (accepted scope): this is the STDIO single-store path —
+    // single-project, N=1, no `[[projects]]`, no per-slug servers. It deliberately
+    // retains the legacy global-handle `spawn_background_tick` over the one handle
+    // set. The crt-056 per-slug serial loop / global-handle retirement applies to
+    // the multi-project HTTP daemon path ONLY (where N>=2 sharing global handles
+    // would be the corruption hazard NFR-5/R-02 guards against). On a single store
+    // that hazard cannot materialize, so re-wiring stdio through spawn_per_slug_tick
+    // is unnecessary. See background/tick_loop.rs module doc.
     let tick_handle = unimatrix_server::background::spawn_background_tick(
         Arc::clone(&store),
         Arc::clone(&vector_index),

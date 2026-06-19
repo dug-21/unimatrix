@@ -51,6 +51,9 @@ thiserror = "2"
 tokio-rustls = "0.26"
 rustls-pemfile = "2"
 subtle = "2"
+# async-trait: crt-056 (ADR-004) — dyn-compatible async `BackgroundJob::run`
+# so the registry can be a `Vec<Box<dyn BackgroundJob>>`.
+async-trait = "0.1"
 tower = { version = "0.5", features = ["util"] }
 hyper = { version = "1", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["tokio", "http1"] }
