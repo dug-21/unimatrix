@@ -340,12 +340,11 @@ async fn test_round_trip_export_import_reexport() {
     let lines2: Vec<String> = lines2_all
         .iter()
         .filter(|l| {
-            if let Ok(v) = serde_json::from_str::<Value>(l) {
-                if v.get("_table").and_then(|t| t.as_str()) == Some("audit_log") {
-                    if v.get("operation").and_then(|o| o.as_str()) == Some("import") {
-                        return false;
-                    }
-                }
+            if let Ok(v) = serde_json::from_str::<Value>(l)
+                && v.get("_table").and_then(|t| t.as_str()) == Some("audit_log")
+                && v.get("operation").and_then(|o| o.as_str()) == Some("import")
+            {
+                return false;
             }
             true
         })
@@ -1520,12 +1519,11 @@ async fn test_round_trip_all_11_tables() {
     let lines2: Vec<String> = lines2_all
         .iter()
         .filter(|l| {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(l) {
-                if v.get("_table").and_then(|t| t.as_str()) == Some("audit_log")
-                    && v.get("operation").and_then(|o| o.as_str()) == Some("import")
-                {
-                    return false;
-                }
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(l)
+                && v.get("_table").and_then(|t| t.as_str()) == Some("audit_log")
+                && v.get("operation").and_then(|o| o.as_str()) == Some("import")
+            {
+                return false;
             }
             true
         })

@@ -19,7 +19,7 @@
 //! (`infra/transcript_hold_tests.rs`), where the disposition is "held-case
 //! assertions move to the AC-11 lifecycle test."
 
-use super::transcript::{Deps, buffer_contents, capture_tracing, dispatch_delta};
+use super::transcript::{Deps, capture_tracing, dispatch_delta};
 use super::*;
 
 const PURGE_OP: &str = "transcript_session_purged";

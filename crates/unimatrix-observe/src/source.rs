@@ -48,6 +48,7 @@ pub trait ObservationSource {
     /// Returns Ok(vec![]) in two cases:
     ///   1. No cycle_events rows exist for cycle_id (pre-col-024 features).
     ///   2. cycle_events rows exist but no observations match topic_signal within windows.
+    ///
     /// The caller must not treat Ok(vec![]) as an error -- the legacy fallback activates
     /// on this return value (FM-01).
     ///

@@ -65,6 +65,9 @@ pub(crate) struct StoreService {
     /// crt-022 (ADR-004): shared rayon thread pool for ML inference (ONNX embedding).
     pub(crate) rayon_pool: Arc<RayonPool>,
     /// crt-023 (ADR-004): NLI handle for post-store edge detection.
+    // rationale: injected for the post-store edge-detection path; held on the service
+    // for wiring symmetry but not yet read directly here.
+    #[allow(dead_code)]
     pub(crate) nli_handle: Arc<NliServiceHandle>,
 }
 
@@ -157,33 +160,32 @@ impl StoreService {
             .await
             .map_err(ServiceError::Core)?;
 
-        if let Some(top) = dup_results.first() {
-            if top.similarity >= DUPLICATE_THRESHOLD {
-                if let Ok(existing) = self.entry_store.get(top.entry_id).await {
-                    // Audit duplicate detection
-                    self.gateway.emit_audit(AuditEvent {
-                        event_id: 0,
-                        timestamp: 0,
-                        session_id: audit_ctx.session_id.clone().unwrap_or_default(),
-                        agent_id: audit_ctx.caller_id.clone(),
-                        operation: "context_store".to_string(),
-                        target_ids: vec![existing.id],
-                        outcome: Outcome::Success,
-                        detail: format!(
-                            "near-duplicate detected: entry #{} at {:.2} similarity",
-                            existing.id, top.similarity
-                        ),
-                        ..AuditEvent::default()
-                    });
-                    return Ok(InsertResult {
-                        entry: existing,
-                        duplicate_of: Some(top.entry_id),
-                        duplicate_similarity: Some(top.similarity),
-                    });
-                }
-                // Entry was deleted since search; proceed with store
-            }
+        if let Some(top) = dup_results.first()
+            && top.similarity >= DUPLICATE_THRESHOLD
+            && let Ok(existing) = self.entry_store.get(top.entry_id).await
+        {
+            // Audit duplicate detection
+            self.gateway.emit_audit(AuditEvent {
+                event_id: 0,
+                timestamp: 0,
+                session_id: audit_ctx.session_id.clone().unwrap_or_default(),
+                agent_id: audit_ctx.caller_id.clone(),
+                operation: "context_store".to_string(),
+                target_ids: vec![existing.id],
+                outcome: Outcome::Success,
+                detail: format!(
+                    "near-duplicate detected: entry #{} at {:.2} similarity",
+                    existing.id, top.similarity
+                ),
+                ..AuditEvent::default()
+            });
+            return Ok(InsertResult {
+                entry: existing,
+                duplicate_of: Some(top.entry_id),
+                duplicate_similarity: Some(top.similarity),
+            });
         }
+        // Entry was deleted since search; proceed with store
 
         // Step 4: Atomic insert with audit
         let audit_event = AuditEvent {

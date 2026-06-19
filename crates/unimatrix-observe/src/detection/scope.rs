@@ -102,20 +102,18 @@ impl DetectionRule for DesignArtifactCountRule {
 
         for record in &records {
             let tool = record.tool.as_deref().unwrap_or("");
-            if tool == "Write" || tool == "Edit" {
-                if let Some(input) = &record.input {
-                    if let Some(path) = input_to_file_path(input) {
-                        if path.contains("product/features/") && artifact_paths.insert(path.clone())
-                        {
-                            evidence.push(EvidenceRecord {
-                                description: "Design artifact modified".to_string(),
-                                ts: record.ts,
-                                tool: record.tool.clone(),
-                                detail: path,
-                            });
-                        }
-                    }
-                }
+            if (tool == "Write" || tool == "Edit")
+                && let Some(input) = &record.input
+                && let Some(path) = input_to_file_path(input)
+                && path.contains("product/features/")
+                && artifact_paths.insert(path.clone())
+            {
+                evidence.push(EvidenceRecord {
+                    description: "Design artifact modified".to_string(),
+                    ts: record.ts,
+                    tool: record.tool.clone(),
+                    detail: path,
+                });
             }
         }
 
@@ -163,21 +161,19 @@ impl DetectionRule for AdrCountRule {
         let mut evidence = Vec::new();
 
         for record in &records {
-            if record.tool.as_deref() == Some("Write") {
-                if let Some(input) = &record.input {
-                    if let Some(path) = input_to_file_path(input) {
-                        if let Some(filename) = path.rsplit('/').next() {
-                            if filename.starts_with("ADR-") && adr_paths.insert(path.clone()) {
-                                evidence.push(EvidenceRecord {
-                                    description: "ADR created".to_string(),
-                                    ts: record.ts,
-                                    tool: Some("Write".to_string()),
-                                    detail: path,
-                                });
-                            }
-                        }
-                    }
-                }
+            if record.tool.as_deref() == Some("Write")
+                && let Some(input) = &record.input
+                && let Some(path) = input_to_file_path(input)
+                && let Some(filename) = path.rsplit('/').next()
+                && filename.starts_with("ADR-")
+                && adr_paths.insert(path.clone())
+            {
+                evidence.push(EvidenceRecord {
+                    description: "ADR created".to_string(),
+                    ts: record.ts,
+                    tool: Some("Write".to_string()),
+                    detail: path,
+                });
             }
         }
 
@@ -228,17 +224,16 @@ impl DetectionRule for PostDeliveryIssuesRule {
             if record.ts > boundary
                 && record.tool.as_deref() == Some("Bash")
                 && record.event_type == "PreToolUse"
+                && let Some(input) = &record.input
             {
-                if let Some(input) = &record.input {
-                    let cmd = input_to_command_string(input);
-                    if cmd.contains("gh issue create") {
-                        issue_creates.push(EvidenceRecord {
-                            description: "Post-delivery issue creation".to_string(),
-                            ts: record.ts,
-                            tool: Some("Bash".to_string()),
-                            detail: truncate(&cmd, 200),
-                        });
-                    }
+                let cmd = input_to_command_string(input);
+                if cmd.contains("gh issue create") {
+                    issue_creates.push(EvidenceRecord {
+                        description: "Post-delivery issue creation".to_string(),
+                        ts: record.ts,
+                        tool: Some("Bash".to_string()),
+                        detail: truncate(&cmd, 200),
+                    });
                 }
             }
         }

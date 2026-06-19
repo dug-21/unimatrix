@@ -185,13 +185,12 @@ impl DetectionRule for FileBreadthRule {
 
         for record in &records {
             let tool = record.tool.as_deref().unwrap_or("");
-            if tool == "Read" || tool == "Write" || tool == "Edit" {
-                if let Some(input) = &record.input {
-                    if let Some(path) = input_to_file_path(input) {
-                        file_paths.insert(path.clone());
-                        *path_counts.entry(path).or_default() += 1;
-                    }
-                }
+            if (tool == "Read" || tool == "Write" || tool == "Edit")
+                && let Some(input) = &record.input
+                && let Some(path) = input_to_file_path(input)
+            {
+                file_paths.insert(path.clone());
+                *path_counts.entry(path).or_default() += 1;
             }
         }
 
@@ -247,12 +246,11 @@ impl DetectionRule for RereadRateRule {
         let mut read_counts: HashMap<String, u64> = HashMap::new();
 
         for record in &records {
-            if record.tool.as_deref() == Some("Read") {
-                if let Some(input) = &record.input {
-                    if let Some(path) = input_to_file_path(input) {
-                        *read_counts.entry(path).or_default() += 1;
-                    }
-                }
+            if record.tool.as_deref() == Some("Read")
+                && let Some(input) = &record.input
+                && let Some(path) = input_to_file_path(input)
+            {
+                *read_counts.entry(path).or_default() += 1;
             }
         }
 
@@ -314,19 +312,17 @@ impl DetectionRule for MutationSpreadRule {
 
         for record in &records {
             let tool = record.tool.as_deref().unwrap_or("");
-            if tool == "Write" || tool == "Edit" {
-                if let Some(input) = &record.input {
-                    if let Some(path) = input_to_file_path(input) {
-                        if mutated_files.insert(path.clone()) {
-                            evidence.push(EvidenceRecord {
-                                description: "File mutated".to_string(),
-                                ts: record.ts,
-                                tool: Some(tool.to_string()),
-                                detail: path,
-                            });
-                        }
-                    }
-                }
+            if (tool == "Write" || tool == "Edit")
+                && let Some(input) = &record.input
+                && let Some(path) = input_to_file_path(input)
+                && mutated_files.insert(path.clone())
+            {
+                evidence.push(EvidenceRecord {
+                    description: "File mutated".to_string(),
+                    ts: record.ts,
+                    tool: Some(tool.to_string()),
+                    detail: path,
+                });
             }
         }
 
@@ -387,18 +383,19 @@ impl DetectionRule for CompileCyclesRule {
         let mut evidence = Vec::new();
 
         for record in &records {
-            if record.tool.as_deref() == Some("Bash") && record.event_type == "PreToolUse" {
-                if let Some(input) = &record.input {
-                    let cmd = input_to_command_string(input);
-                    if is_compile_command(&cmd) {
-                        compile_count += 1;
-                        evidence.push(EvidenceRecord {
-                            description: "Compile command".to_string(),
-                            ts: record.ts,
-                            tool: Some("Bash".to_string()),
-                            detail: truncate(&cmd, 200),
-                        });
-                    }
+            if record.tool.as_deref() == Some("Bash")
+                && record.event_type == "PreToolUse"
+                && let Some(input) = &record.input
+            {
+                let cmd = input_to_command_string(input);
+                if is_compile_command(&cmd) {
+                    compile_count += 1;
+                    evidence.push(EvidenceRecord {
+                        description: "Compile command".to_string(),
+                        ts: record.ts,
+                        tool: Some("Bash".to_string()),
+                        detail: truncate(&cmd, 200),
+                    });
                 }
             }
         }
@@ -533,19 +530,6 @@ mod tests {
             source_domain: "claude-code".to_string(),
             session_id: "sess-1".to_string(),
             tool: Some("Write".to_string()),
-            input: Some(serde_json::json!({"file_path": path})),
-            response_size: None,
-            response_snippet: None,
-        }
-    }
-
-    fn make_pre_edit(ts: u64, path: &str) -> ObservationRecord {
-        ObservationRecord {
-            ts,
-            event_type: "PreToolUse".to_string(),
-            source_domain: "claude-code".to_string(),
-            session_id: "sess-1".to_string(),
-            tool: Some("Edit".to_string()),
             input: Some(serde_json::json!({"file_path": path})),
             response_size: None,
             response_snippet: None,

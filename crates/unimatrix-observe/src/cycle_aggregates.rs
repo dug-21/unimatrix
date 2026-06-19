@@ -140,10 +140,10 @@ pub fn reckon_phase_aggregates(events: &[CycleEventRecord]) -> PhaseAggregates {
                 // The cycle ended: close any still-open phase at stop time and count its
                 // duration. A phase closed by cycle_stop is NOT never-closed (the cycle
                 // genuinely ended) — clear the open set (#556 false-positive guard, R-14).
-                if let Some(p) = current_phase.as_ref() {
-                    if open_unclosed.contains(p) {
-                        total_duration_secs += (e.timestamp - current_start_secs).max(0);
-                    }
+                if let Some(p) = current_phase.as_ref()
+                    && open_unclosed.contains(p)
+                {
+                    total_duration_secs += (e.timestamp - current_start_secs).max(0);
                 }
                 open_unclosed.clear();
                 current_phase = None;

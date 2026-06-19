@@ -327,10 +327,12 @@ async fn goal_column_exists(store: &SqlxStore) -> bool {
 #[test]
 fn test_current_schema_version_is_at_least_16() {
     // Changed from == 17 to >= 16 (crt-033 cascade): constant advances with each schema bump.
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 16,
-        "CURRENT_SCHEMA_VERSION must be >= 16"
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 16,
+            "CURRENT_SCHEMA_VERSION must be >= 16"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -536,7 +538,7 @@ async fn test_schema_version_is_17_after_v15_to_v16_migration() {
     assert!(read_schema_version(&store).await >= 16);
 
     // Assert: Rust const is >= 16.
-    assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 16);
+    const { assert!(unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 16) };
 
     store.close().await.unwrap();
 }

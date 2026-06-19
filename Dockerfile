@@ -86,6 +86,10 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 # --- Full source build ---
 COPY crates/ crates/
+# Restore the real root manifest: `cargo chef cook` rewrites Cargo.toml to a
+# recipe skeleton that drops [workspace.lints], which member crates inherit via
+# `lints.workspace = true`. Re-copy so the final build sees the lint table.
+COPY Cargo.toml ./
 
 ENV RUSTFLAGS="-C link-arg=-Wl,-rpath,\$ORIGIN"
 

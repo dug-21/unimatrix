@@ -318,10 +318,9 @@ async fn ingest_rows(
     lines: impl Iterator<Item = io::Result<String>>,
 ) -> Result<ImportCounts, Box<dyn std::error::Error>> {
     let mut counts = ImportCounts::default();
-    let mut line_number: u64 = 1; // header was line 1
 
-    for line_result in lines {
-        line_number += 1;
+    // header was line 1; data lines start at line 2.
+    for (line_number, line_result) in (2_u64..).zip(lines) {
         let line = line_result.map_err(|e| format!("I/O error reading line {line_number}: {e}"))?;
 
         if line.is_empty() {

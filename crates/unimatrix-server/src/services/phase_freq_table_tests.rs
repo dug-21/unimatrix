@@ -354,6 +354,9 @@ fn test_apply_outcome_weights_per_phase_mean_not_per_cycle() {
 // -----------------------------------------------------------------------
 
 // Build a table with multiple buckets for testing phase_category_weights
+// rationale: nested-tuple Vec is a compact inline test-case literal; a type alias would
+// push the shape away from the call sites that read it.
+#[allow(clippy::type_complexity)]
 fn table_with_buckets(buckets: Vec<(&str, &str, Vec<(u64, f32)>)>) -> PhaseFreqTable {
     let mut m = HashMap::new();
     for (phase, cat, bucket) in buckets {

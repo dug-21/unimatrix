@@ -334,10 +334,12 @@ async fn cycle_review_index_exists(store: &SqlxStore) -> bool {
 
 #[test]
 fn test_current_schema_version_is_at_least_18() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 18,
-        "CURRENT_SCHEMA_VERSION must be >= 18"
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 18,
+            "CURRENT_SCHEMA_VERSION must be >= 18"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------

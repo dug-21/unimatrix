@@ -161,11 +161,11 @@ impl EventQueue {
                 Err(_) => continue,
             };
 
-            if let Ok(age) = now.duration_since(modified) {
-                if age > PRUNE_AGE {
-                    tracing::debug!(path = %path.display(), "pruning old queue file");
-                    fs::remove_file(&path)?;
-                }
+            if let Ok(age) = now.duration_since(modified)
+                && age > PRUNE_AGE
+            {
+                tracing::debug!(path = %path.display(), "pruning old queue file");
+                fs::remove_file(&path)?;
             }
         }
 

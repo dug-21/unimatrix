@@ -92,8 +92,13 @@ impl Display for EdgeDeleteError {
 #[derive(Debug)]
 pub(crate) enum EdgeRedirectError {
     /// `new_target_id` does not exist.
+    // rationale: completeness arm mirroring EdgeValidationError; the current redirect
+    // path validates upstream and only emits TransactionError, but the contract and
+    // Display arm are retained for the documented redirect error surface.
+    #[allow(dead_code)]
     TargetNotFound { target_id: u64 },
     /// `new_target_id` is quarantined.
+    #[allow(dead_code)]
     TargetQuarantined { target_id: u64 },
     /// SQLite transaction error (begin, execute, or commit).
     TransactionError(sqlx::Error),

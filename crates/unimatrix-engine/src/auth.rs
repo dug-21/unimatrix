@@ -110,12 +110,12 @@ pub fn authenticate_connection(
 
     // Layer 3: Process lineage (advisory, Linux only)
     #[cfg(target_os = "linux")]
-    if let Some(pid) = creds.pid {
-        if let Err(e) = verify_process_lineage(pid) {
-            tracing::warn!(
-                "process lineage check failed for pid {pid}: {e} (advisory, allowing connection)"
-            );
-        }
+    if let Some(pid) = creds.pid
+        && let Err(e) = verify_process_lineage(pid)
+    {
+        tracing::warn!(
+            "process lineage check failed for pid {pid}: {e} (advisory, allowing connection)"
+        );
     }
 
     Ok(creds)

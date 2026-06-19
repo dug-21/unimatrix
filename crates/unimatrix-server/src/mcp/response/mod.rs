@@ -1765,7 +1765,7 @@ mod tests {
         let result = format_status_report(&report, ResponseFormat::Json);
         let text = result_text(&result);
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
-        assert_eq!(parsed["graph_compacted"].as_bool().unwrap(), true);
+        assert!(parsed["graph_compacted"].as_bool().unwrap());
 
         report.graph_compacted = false;
         let result = format_status_report(&report, ResponseFormat::Markdown);

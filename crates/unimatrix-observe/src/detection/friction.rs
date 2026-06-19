@@ -188,17 +188,17 @@ impl DetectionRule for SleepWorkaroundsRule {
         let mut evidence = Vec::new();
 
         for record in &records {
-            if record.tool.as_deref() == Some("Bash") {
-                if let Some(input) = &record.input {
-                    let input_str = input_to_command_string(input);
-                    if contains_sleep_command(&input_str) {
-                        evidence.push(EvidenceRecord {
-                            description: "Sleep command in Bash input".to_string(),
-                            ts: record.ts,
-                            tool: Some("Bash".to_string()),
-                            detail: truncate(&input_str, 200),
-                        });
-                    }
+            if record.tool.as_deref() == Some("Bash")
+                && let Some(input) = &record.input
+            {
+                let input_str = input_to_command_string(input);
+                if contains_sleep_command(&input_str) {
+                    evidence.push(EvidenceRecord {
+                        description: "Sleep command in Bash input".to_string(),
+                        ts: record.ts,
+                        tool: Some("Bash".to_string()),
+                        detail: truncate(&input_str, 200),
+                    });
                 }
             }
         }
@@ -228,7 +228,7 @@ const SEARCH_VIA_BASH_THRESHOLD_PCT: f64 = 5.0;
 
 fn is_search_command(cmd: &str) -> bool {
     let trimmed = cmd.trim();
-    for segment in trimmed.split(|c: char| c == ';' || c == '\n') {
+    for segment in trimmed.split([';', '\n']) {
         let seg = segment.trim();
         if seg.starts_with("find ")
             || seg == "find"
@@ -334,14 +334,15 @@ impl DetectionRule for OutputParsingStruggleRule {
         sorted.sort_by_key(|r| r.ts);
 
         for record in &sorted {
-            if record.tool.as_deref() == Some("Bash") && record.event_type == "PreToolUse" {
-                if let Some(input) = &record.input {
-                    let cmd = input_to_command_string(input);
-                    if cmd.contains('|') {
-                        let base = cmd.split('|').next().unwrap_or("").trim().to_string();
-                        if !base.is_empty() {
-                            piped_commands.push((record.ts, base, cmd));
-                        }
+            if record.tool.as_deref() == Some("Bash")
+                && record.event_type == "PreToolUse"
+                && let Some(input) = &record.input
+            {
+                let cmd = input_to_command_string(input);
+                if cmd.contains('|') {
+                    let base = cmd.split('|').next().unwrap_or("").trim().to_string();
+                    if !base.is_empty() {
+                        piped_commands.push((record.ts, base, cmd));
                     }
                 }
             }
@@ -379,10 +380,8 @@ impl DetectionRule for OutputParsingStruggleRule {
                 let filters: HashSet<String> = in_window
                     .iter()
                     .filter_map(|(_, full)| {
-                        let after_pipe = full
-                            .split_once('|')
-                            .map(|(_, rest)| rest.trim().to_string());
-                        after_pipe
+                        full.split_once('|')
+                            .map(|(_, rest)| rest.trim().to_string())
                     })
                     .collect();
 

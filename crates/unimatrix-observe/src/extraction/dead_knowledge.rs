@@ -49,7 +49,7 @@ pub fn detect_dead_knowledge_candidates(
         }
     }
     let mut sessions_sorted: Vec<(String, u64)> = session_times.into_iter().collect();
-    sessions_sorted.sort_by(|a, b| b.1.cmp(&a.1)); // newest first
+    sessions_sorted.sort_by_key(|s| std::cmp::Reverse(s.1)); // newest first
 
     if sessions_sorted.len() < window {
         return None; // insufficient data

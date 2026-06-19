@@ -66,7 +66,7 @@ pub(super) async fn handle_inverse(
     // Step 3: Validate limit (default 100, range [1, 500]).
     let limit: u32 = match params.limit {
         None => DEFAULT_LIMIT,
-        Some(n) if n >= 1 && n <= MAX_LIMIT => n,
+        Some(n) if (1..=MAX_LIMIT).contains(&n) => n,
         Some(n) => {
             return Err(ErrorData::new(
                 ERROR_INVALID_PARAMS,

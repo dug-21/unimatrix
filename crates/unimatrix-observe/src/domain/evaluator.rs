@@ -152,18 +152,17 @@ pub(crate) fn detect_threshold(
         let mut total = 0.0f64;
         let mut extracted_count = 0u64;
         for record in &filtered {
-            if let Some(input) = &record.input {
-                if let Some(val) = input.pointer(&rule.field_path) {
-                    if let Some(n) = val.as_f64() {
-                        total += n;
-                        extracted_count += 1;
-                    }
-                    // Non-numeric field: silently skip (R-08).
-                    // Note: a WARN-level log would be emitted here once tracing is
-                    // added to unimatrix-observe's dependencies.
-                }
-                // Missing key: silently skip (normal case — not every record has every field)
+            if let Some(input) = &record.input
+                && let Some(val) = input.pointer(&rule.field_path)
+                && let Some(n) = val.as_f64()
+            {
+                total += n;
+                extracted_count += 1;
             }
+            // Non-numeric field: silently skip (R-08).
+            // Note: a WARN-level log would be emitted here once tracing is
+            // added to unimatrix-observe's dependencies.
+            // Missing key: silently skip (normal case — not every record has every field)
         }
         if extracted_count > 0 { total } else { 0.0 }
     };

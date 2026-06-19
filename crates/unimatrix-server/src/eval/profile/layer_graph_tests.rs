@@ -3,6 +3,9 @@
 //! Covers: three-layer graph rebuild assertion (AC-06, ADR-003) and degraded-mode
 //! cycle-abort-safety (AC-05, ADR-002).
 
+// rationale: file is included as `mod layer_graph_tests;`; the inner test module repeats
+// the name by the crate's test-file convention. Renaming would churn call sites.
+#[allow(clippy::module_inception)]
 #[cfg(test)]
 mod layer_graph_tests {
     use std::path::PathBuf;
@@ -105,27 +108,29 @@ mod layer_graph_tests {
                 Err(e) => panic!("from_profile must succeed on seeded snapshot; got: {e}"),
             };
 
-        // Layer 1: Handle state — use_fallback=false, entries populated (AC-01, AC-06).
+        // Layer 1 + 2: inspect handle state under a scoped read guard so the lock is
+        // provably released before the live search await below (deadlock prevention).
         let handle = layer.typed_graph_handle();
-        let guard = handle.read().unwrap_or_else(|e| e.into_inner());
-        assert!(
-            !guard.use_fallback,
-            "use_fallback must be false after rebuild with a seeded snapshot"
-        );
-        assert!(
-            guard.all_entries.len() >= 2,
-            "all_entries must contain at least the two seeded Active entries; got {}",
-            guard.all_entries.len()
-        );
-        // Layer 2: Graph connectivity — entry A is its own terminal (R-02, ADR-003).
-        // Entry A is Active and not superseded — find_terminal_active must return Some(id_a).
-        let terminal = find_terminal_active(id_a, &guard.typed_graph, &guard.all_entries);
-        assert_eq!(
-            terminal,
-            Some(id_a),
-            "Active entry A must be reachable as its own terminal via find_terminal_active"
-        );
-        drop(guard); // release read lock before live search (deadlock prevention)
+        {
+            let guard = handle.read().unwrap_or_else(|e| e.into_inner());
+            assert!(
+                !guard.use_fallback,
+                "use_fallback must be false after rebuild with a seeded snapshot"
+            );
+            assert!(
+                guard.all_entries.len() >= 2,
+                "all_entries must contain at least the two seeded Active entries; got {}",
+                guard.all_entries.len()
+            );
+            // Layer 2: Graph connectivity — entry A is its own terminal (R-02, ADR-003).
+            // Entry A is Active and not superseded — find_terminal_active must return Some(id_a).
+            let terminal = find_terminal_active(id_a, &guard.typed_graph, &guard.all_entries);
+            assert_eq!(
+                terminal,
+                Some(id_a),
+                "Active entry A must be reachable as its own terminal via find_terminal_active"
+            );
+        }
 
         // Layer 3: Live search returns Ok (R-01, R-02, SR-05, ADR-003).
         // CI has no embedding model; accept Ok or EmbeddingFailed — any other Err is a regression.

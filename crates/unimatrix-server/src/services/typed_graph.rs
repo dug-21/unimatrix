@@ -364,7 +364,7 @@ mod tests {
         use unimatrix_engine::graph::{CLEAN_REPLACEMENT_PENALTY, graph_penalty};
 
         // Build a state with one Supersedes edge A→B
-        let entry_a = make_test_entry(1, unimatrix_core::Status::Active, Some(2));
+        let _entry_a = make_test_entry(1, unimatrix_core::Status::Active, Some(2));
         let mut entry_b = make_test_entry(2, unimatrix_core::Status::Active, None);
         entry_b.supersedes = None; // entry_a superseded_by=2 means entry_b supersedes entry_a
         // Actually: supersedes field on entry drives the edge. entry_b.supersedes=Some(1) means
@@ -505,7 +505,7 @@ mod tests {
             .expect("quarantine entry");
 
         // Rebuild state
-        let store_ref: &Store = &*store;
+        let store_ref: &Store = &store;
         let state = TypedGraphState::rebuild(store_ref)
             .await
             .expect("rebuild ok");
@@ -641,7 +641,7 @@ mod tests {
 
         // Step 4: Call TypedGraphState::rebuild() — reads all bootstrap_only=0 edges from
         // GRAPH_EDGES, including both edges inserted above.
-        let store_ref: &Store = &*store;
+        let store_ref: &Store = &store;
         let state = TypedGraphState::rebuild(store_ref)
             .await
             .expect("rebuild must succeed");
@@ -707,7 +707,7 @@ mod tests {
             .await
             .expect("deprecate entry");
 
-        let store_ref: &Store = &*store;
+        let store_ref: &Store = &store;
         let state = TypedGraphState::rebuild(store_ref)
             .await
             .expect("rebuild ok");

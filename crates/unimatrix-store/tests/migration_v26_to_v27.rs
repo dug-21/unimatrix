@@ -400,11 +400,12 @@ const V27_INDEX_NAMES: [&str; 4] = [
 
 #[test]
 fn test_current_schema_version_is_at_least_27() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 27,
-        "CURRENT_SCHEMA_VERSION must be >= 27 after vnc-018, got {}",
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 27,
+            "CURRENT_SCHEMA_VERSION must be >= 27 after vnc-018"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------

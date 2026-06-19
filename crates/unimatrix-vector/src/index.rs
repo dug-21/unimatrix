@@ -352,12 +352,6 @@ impl VectorIndex {
         self.next_data_id.load(Ordering::Relaxed)
     }
 
-    /// Get a reference to the store (used by test helpers and persistence).
-    #[cfg(any(test, feature = "test-support"))]
-    pub(crate) fn store(&self) -> &Arc<SqlxStore> {
-        &self.store
-    }
-
     /// Allocate the next HNSW data ID without performing any insertion.
     ///
     /// Used by the server's combined write transaction to write VECTOR_MAP

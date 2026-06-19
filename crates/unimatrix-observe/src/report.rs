@@ -190,9 +190,11 @@ mod tests {
 
     #[test]
     fn test_build_report_includes_metrics() {
-        let mut mv = MetricVector::default();
-        mv.universal = UniversalMetrics {
-            total_tool_calls: 42,
+        let mv = MetricVector {
+            universal: UniversalMetrics {
+                total_tool_calls: 42,
+                ..Default::default()
+            },
             ..Default::default()
         };
         let report = build_report("col-002", &[], mv, vec![], None, None);
@@ -215,9 +217,14 @@ mod tests {
     #[test]
     fn test_build_report_self_contained() {
         let records = vec![make_record("s1"), make_record("s2")];
-        let mut mv = MetricVector::default();
-        mv.computed_at = 9999;
-        mv.universal.total_tool_calls = 2;
+        let mv = MetricVector {
+            computed_at: 9999,
+            universal: UniversalMetrics {
+                total_tool_calls: 2,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
 
         let hotspots = vec![HotspotFinding {
             category: HotspotCategory::Session,

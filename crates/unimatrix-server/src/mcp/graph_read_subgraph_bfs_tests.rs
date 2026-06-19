@@ -656,7 +656,7 @@ async fn test_subgraph_use_fallback_true_with_real_entries_falls_back_to_db() {
         edge_types: Some(vec!["Supports".to_string()]),
         ..Default::default()
     };
-    let result = handle_subgraph(&*store, &handle, &params).await;
+    let result = handle_subgraph(&store, &handle, &params).await;
     assert!(
         result.is_ok(),
         "DB-fallback subgraph must return Ok, got: {result:?}"
@@ -755,7 +755,7 @@ async fn test_subgraph_use_fallback_true_direction_incoming_forwarded() {
         direction: Some("incoming".to_string()),
         ..Default::default()
     };
-    let result = handle_subgraph(&*store, &handle, &params).await;
+    let result = handle_subgraph(&store, &handle, &params).await;
     assert!(
         result.is_ok(),
         "DB-fallback subgraph (incoming) must return Ok, got: {result:?}"

@@ -332,7 +332,7 @@ fn test_empty_database_export() {
     }
 
     // Every line is valid JSON (already verified by parse_lines)
-    assert!(data_lines.len() >= 1, "At least schema_version counter");
+    assert!(!data_lines.is_empty(), "At least schema_version counter");
 }
 
 // ---------------------------------------------------------------------------
@@ -1175,10 +1175,10 @@ fn test_all_11_tables_with_new_tables_populated() {
     let mut order: Vec<String> = Vec::new();
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     for line in lines.iter().skip(1) {
-        if let Some(t) = line.get("_table").and_then(|t| t.as_str()) {
-            if seen.insert(t.to_string()) {
-                order.push(t.to_string());
-            }
+        if let Some(t) = line.get("_table").and_then(|t| t.as_str())
+            && seen.insert(t.to_string())
+        {
+            order.push(t.to_string());
         }
     }
     let ge_pos = order.iter().position(|t| t == "graph_edges").unwrap();

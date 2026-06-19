@@ -19,3 +19,6 @@ rand = { version = "0.9", optional = true }
 tempfile = "3"
 rand = "0.9"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true

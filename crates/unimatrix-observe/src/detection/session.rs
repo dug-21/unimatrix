@@ -123,14 +123,12 @@ impl DetectionRule for ColdRestartRule {
                     if burst_record.ts > burst_window_end {
                         break;
                     }
-                    if burst_record.tool.as_deref() == Some("Read") {
-                        if let Some(input) = &burst_record.input {
-                            if let Some(path) = input_to_file_path(input) {
-                                if files_read_before.contains(&path) {
-                                    overlap.push(path);
-                                }
-                            }
-                        }
+                    if burst_record.tool.as_deref() == Some("Read")
+                        && let Some(input) = &burst_record.input
+                        && let Some(path) = input_to_file_path(input)
+                        && files_read_before.contains(&path)
+                    {
+                        overlap.push(path);
                     }
                 }
 
@@ -167,12 +165,11 @@ impl DetectionRule for ColdRestartRule {
             }
 
             // Track reads
-            if record.tool.as_deref() == Some("Read") {
-                if let Some(input) = &record.input {
-                    if let Some(path) = input_to_file_path(input) {
-                        files_read_before.insert(path);
-                    }
-                }
+            if record.tool.as_deref() == Some("Read")
+                && let Some(input) = &record.input
+                && let Some(path) = input_to_file_path(input)
+            {
+                files_read_before.insert(path);
             }
 
             prev_ts = record.ts;
@@ -207,21 +204,21 @@ impl DetectionRule for CoordinatorRespawnsRule {
         let mut evidence = Vec::new();
 
         for record in &records {
-            if record.event_type == "SubagentStart" {
-                if let Some(agent_type) = &record.tool {
-                    let lower = agent_type.to_lowercase();
-                    if lower.contains("scrum-master")
-                        || lower.contains("coordinator")
-                        || lower.contains("lead")
-                    {
-                        coordinator_spawns += 1;
-                        evidence.push(EvidenceRecord {
-                            description: "Coordinator spawn".to_string(),
-                            ts: record.ts,
-                            tool: Some(agent_type.clone()),
-                            detail: format!("Coordinator agent '{agent_type}' spawned"),
-                        });
-                    }
+            if record.event_type == "SubagentStart"
+                && let Some(agent_type) = &record.tool
+            {
+                let lower = agent_type.to_lowercase();
+                if lower.contains("scrum-master")
+                    || lower.contains("coordinator")
+                    || lower.contains("lead")
+                {
+                    coordinator_spawns += 1;
+                    evidence.push(EvidenceRecord {
+                        description: "Coordinator spawn".to_string(),
+                        ts: record.ts,
+                        tool: Some(agent_type.clone()),
+                        detail: format!("Coordinator agent '{agent_type}' spawned"),
+                    });
                 }
             }
         }
@@ -335,28 +332,27 @@ impl DetectionRule for ReworkEventsRule {
         sorted.sort_by_key(|r| r.ts);
 
         for record in &sorted {
-            if record.tool.as_deref() == Some("TaskUpdate") {
-                if let Some(input) = &record.input {
-                    let status = input.get("status").and_then(|v| v.as_str());
-                    let task_id = input
-                        .get("taskId")
-                        .or_else(|| input.get("subject"))
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("unknown");
+            if record.tool.as_deref() == Some("TaskUpdate")
+                && let Some(input) = &record.input
+            {
+                let status = input.get("status").and_then(|v| v.as_str());
+                let task_id = input
+                    .get("taskId")
+                    .or_else(|| input.get("subject"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
 
-                    if let Some(status) = status {
-                        let prev = task_states.get(task_id);
-                        if prev.map(|s| s.as_str()) == Some("completed") && status == "in_progress"
-                        {
-                            rework_evidence.push(EvidenceRecord {
-                                description: "Task rework: completed -> in_progress".to_string(),
-                                ts: record.ts,
-                                tool: Some("TaskUpdate".to_string()),
-                                detail: format!("Task '{task_id}' reopened"),
-                            });
-                        }
-                        task_states.insert(task_id.to_string(), status.to_string());
+                if let Some(status) = status {
+                    let prev = task_states.get(task_id);
+                    if prev.map(|s| s.as_str()) == Some("completed") && status == "in_progress" {
+                        rework_evidence.push(EvidenceRecord {
+                            description: "Task rework: completed -> in_progress".to_string(),
+                            ts: record.ts,
+                            tool: Some("TaskUpdate".to_string()),
+                            detail: format!("Task '{task_id}' reopened"),
+                        });
                     }
+                    task_states.insert(task_id.to_string(), status.to_string());
                 }
             }
         }

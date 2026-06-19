@@ -4,6 +4,9 @@
 //! invalid/valid confidence weights, and the GH-323 round-trip that verifies
 //! from_profile() loads a persisted VectorIndex instead of constructing a fresh one.
 
+// rationale: file is included as `mod layer_tests;`; the inner test module repeats the
+// name by convention across this crate's test files. Renaming would churn all call sites.
+#[allow(clippy::module_inception)]
 #[cfg(test)]
 mod layer_tests {
     use std::path::PathBuf;
@@ -110,16 +113,18 @@ mod layer_tests {
         let (_dir, snap) = make_snapshot_db().await;
 
         use crate::infra::config::{ConfidenceConfig, ConfidenceWeights};
-        let mut config_overrides = UnimatrixConfig::default();
-        config_overrides.confidence = ConfidenceConfig {
-            weights: Some(ConfidenceWeights {
-                base: 0.15,
-                usage: 0.15,
-                fresh: 0.15,
-                help: 0.15,
-                corr: 0.15,
-                trust: 0.15, // sum = 0.90, not 0.92
-            }),
+        let config_overrides = UnimatrixConfig {
+            confidence: ConfidenceConfig {
+                weights: Some(ConfidenceWeights {
+                    base: 0.15,
+                    usage: 0.15,
+                    fresh: 0.15,
+                    help: 0.15,
+                    corr: 0.15,
+                    trust: 0.15, // sum = 0.90, not 0.92
+                }),
+            },
+            ..Default::default()
         };
 
         let profile = EvalProfile {
@@ -348,16 +353,18 @@ mod layer_tests {
         let (_dir, snap) = make_snapshot_db().await;
 
         use crate::infra::config::{ConfidenceConfig, ConfidenceWeights};
-        let mut config_overrides = UnimatrixConfig::default();
-        config_overrides.confidence = ConfidenceConfig {
-            weights: Some(ConfidenceWeights {
-                base: 0.20,
-                usage: 0.15,
-                fresh: 0.17,
-                help: 0.15,
-                corr: 0.15,
-                trust: 0.10, // sum = 0.92
-            }),
+        let config_overrides = UnimatrixConfig {
+            confidence: ConfidenceConfig {
+                weights: Some(ConfidenceWeights {
+                    base: 0.20,
+                    usage: 0.15,
+                    fresh: 0.17,
+                    help: 0.15,
+                    corr: 0.15,
+                    trust: 0.10, // sum = 0.92
+                }),
+            },
+            ..Default::default()
         };
 
         let profile = EvalProfile {

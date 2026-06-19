@@ -381,11 +381,12 @@ async fn read_schema_version(store: &SqlxStore) -> i64 {
 
 #[test]
 fn test_current_schema_version_is_at_least_26() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 26,
-        "CURRENT_SCHEMA_VERSION must be >= 26 after bugfix-587, got {}",
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 26,
+            "CURRENT_SCHEMA_VERSION must be >= 26 after bugfix-587"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------

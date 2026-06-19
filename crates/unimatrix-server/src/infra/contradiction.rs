@@ -142,7 +142,7 @@ pub fn check_entry_contradiction(
             };
             if best
                 .as_ref()
-                .map_or(true, |b| conflict_score > b.conflict_score)
+                .is_none_or(|b| conflict_score > b.conflict_score)
             {
                 best = Some(pair);
             }
@@ -741,8 +741,10 @@ mod tests {
 
     #[test]
     fn test_dedup_canonical_pair_order() {
-        let pair_key_ab = (5u64.min(10), 5u64.max(10));
-        let pair_key_ba = (10u64.min(5), 10u64.max(5));
+        // Canonical key = (min, max); order of the two ids must not matter.
+        let (a, b) = (5u64, 10u64);
+        let pair_key_ab = (a.min(b), a.max(b));
+        let pair_key_ba = (b.min(a), b.max(a));
         assert_eq!(pair_key_ab, pair_key_ba);
         assert_eq!(pair_key_ab, (5, 10));
     }

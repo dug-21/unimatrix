@@ -5,9 +5,6 @@
 #[cfg(feature = "stdsimd")]
 use super::distsimd::*;
 
-#[cfg(feature = "simdeez_f")]
-use super::disteez::*;
-
 /// The trait describing distance.
 /// For example for the L1 distance
 ///

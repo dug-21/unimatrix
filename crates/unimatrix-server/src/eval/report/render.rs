@@ -28,6 +28,9 @@ pub(super) type NotableEntry<'a> = (String, String, f64, &'a [ScoredEntry], &'a 
 // render_report
 // ---------------------------------------------------------------------------
 
+// rationale: report renderer aggregates several independent stat sources; bundling
+// them into a struct would only relocate the same arity to the call site.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn render_report(
     stats: &[AggregateStats],
     phase_stats: &[PhaseAggregateStats],

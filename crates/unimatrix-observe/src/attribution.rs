@@ -28,10 +28,10 @@ fn extract_from_path(s: &str) -> Option<String> {
     let mut start = 0;
     while let Some(idx) = s[start..].find(marker) {
         let after = start + idx + marker.len();
-        if let Some(segment) = s[after..].split('/').next() {
-            if is_valid_feature_id(segment) {
-                return Some(segment.to_string());
-            }
+        if let Some(segment) = s[after..].split('/').next()
+            && is_valid_feature_id(segment)
+        {
+            return Some(segment.to_string());
         }
         start = after;
     }
@@ -138,17 +138,17 @@ pub fn attribute_sessions(
         let mut current_records: Vec<&ObservationRecord> = Vec::new();
 
         for record in &session.records {
-            if let Some(signal) = extract_feature_signal(record) {
-                if current_feature.as_deref() != Some(&signal) {
-                    // Feature switch point
-                    if !current_records.is_empty() {
-                        partitions.push((
-                            current_feature.clone(),
-                            std::mem::take(&mut current_records),
-                        ));
-                    }
-                    current_feature = Some(signal);
+            if let Some(signal) = extract_feature_signal(record)
+                && current_feature.as_deref() != Some(&signal)
+            {
+                // Feature switch point
+                if !current_records.is_empty() {
+                    partitions.push((
+                        current_feature.clone(),
+                        std::mem::take(&mut current_records),
+                    ));
                 }
+                current_feature = Some(signal);
             }
             current_records.push(record);
         }

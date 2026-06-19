@@ -135,7 +135,7 @@ fn build_exchange_pairs_malformed_lines_skipped() {
         !turns.is_empty(),
         "valid lines must produce turns despite malformed lines"
     );
-    assert!(!std::panic::catch_unwind(|| build_exchange_pairs(&lines)).is_err());
+    assert!(std::panic::catch_unwind(|| build_exchange_pairs(&lines)).is_ok());
 }
 
 #[test]

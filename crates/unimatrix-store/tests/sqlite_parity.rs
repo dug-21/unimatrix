@@ -692,8 +692,10 @@ async fn test_store_metrics_replace_phases() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
 
-    let mut mv1 = MetricVector::default();
-    mv1.computed_at = 100;
+    let mut mv1 = MetricVector {
+        computed_at: 100,
+        ..Default::default()
+    };
     mv1.phases.insert(
         "3a".to_string(),
         PhaseMetrics {
@@ -711,8 +713,10 @@ async fn test_store_metrics_replace_phases() {
     store.store_metrics("col-001", &mv1);
     let store = flush(store, &dir).await;
 
-    let mut mv2 = MetricVector::default();
-    mv2.computed_at = 200;
+    let mut mv2 = MetricVector {
+        computed_at: 200,
+        ..Default::default()
+    };
     mv2.phases.insert(
         "3a".to_string(),
         PhaseMetrics {
@@ -763,9 +767,14 @@ async fn test_list_all_metrics() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
 
-    let mut mv_a = MetricVector::default();
-    mv_a.computed_at = 100;
-    mv_a.universal.total_tool_calls = 10;
+    let mut mv_a = MetricVector {
+        computed_at: 100,
+        universal: UniversalMetrics {
+            total_tool_calls: 10,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     mv_a.phases.insert(
         "design".to_string(),
         PhaseMetrics {
@@ -774,9 +783,14 @@ async fn test_list_all_metrics() {
         },
     );
 
-    let mut mv_b = MetricVector::default();
-    mv_b.computed_at = 200;
-    mv_b.universal.total_tool_calls = 20;
+    let mut mv_b = MetricVector {
+        computed_at: 200,
+        universal: UniversalMetrics {
+            total_tool_calls: 20,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     mv_b.phases.insert(
         "impl".to_string(),
         PhaseMetrics {
@@ -821,9 +835,14 @@ async fn test_list_all_metrics_overlapping_phases() {
     let store = open_test_store(&dir).await;
 
     for i in 0..5_u64 {
-        let mut mv = MetricVector::default();
-        mv.computed_at = i * 100;
-        mv.universal.total_tool_calls = i * 10;
+        let mut mv = MetricVector {
+            computed_at: i * 100,
+            universal: UniversalMetrics {
+                total_tool_calls: i * 10,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
         mv.phases.insert(
             "3a".to_string(),
             PhaseMetrics {
@@ -979,14 +998,24 @@ async fn test_sql_analytics_query() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
 
-    let mut mv1 = MetricVector::default();
-    mv1.universal.session_count = 10;
-    mv1.universal.total_tool_calls = 100;
+    let mv1 = MetricVector {
+        universal: UniversalMetrics {
+            session_count: 10,
+            total_tool_calls: 100,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     store.store_metrics("feature-a", &mv1);
 
-    let mut mv2 = MetricVector::default();
-    mv2.universal.session_count = 3;
-    mv2.universal.total_tool_calls = 30;
+    let mv2 = MetricVector {
+        universal: UniversalMetrics {
+            session_count: 3,
+            total_tool_calls: 30,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     store.store_metrics("feature-b", &mv2);
     let store = flush(store, &dir).await;
 

@@ -75,10 +75,10 @@ fn extract_key_param(tool_name: &str, input: &serde_json::Value) -> String {
         _ => "",
     };
 
-    if !field_name.is_empty() {
-        if let Some(val) = input.get(field_name).and_then(|v| v.as_str()) {
-            return truncate_utf8(val, TOOL_KEY_PARAM_BYTES).to_string();
-        }
+    if !field_name.is_empty()
+        && let Some(val) = input.get(field_name).and_then(|v| v.as_str())
+    {
+        return truncate_utf8(val, TOOL_KEY_PARAM_BYTES).to_string();
     }
 
     if let Some(obj) = input.as_object() {
@@ -120,10 +120,10 @@ fn extract_tool_result_snippet(tool_result_block: &serde_json::Value) -> String 
         }
         Some(serde_json::Value::Array(blocks)) => {
             for block in blocks {
-                if block.get("type").and_then(|v| v.as_str()) == Some("text") {
-                    if let Some(text) = block.get("text").and_then(|v| v.as_str()) {
-                        return truncate_utf8(text, TOOL_RESULT_SNIPPET_BYTES).to_string();
-                    }
+                if block.get("type").and_then(|v| v.as_str()) == Some("text")
+                    && let Some(text) = block.get("text").and_then(|v| v.as_str())
+                {
+                    return truncate_utf8(text, TOOL_RESULT_SNIPPET_BYTES).to_string();
                 }
             }
             String::new()
@@ -245,27 +245,23 @@ fn build_exchange_pairs(lines: &[&str]) -> Vec<ExchangeTurn> {
 
                 if has_tool_use && i + 1 < lines.len() {
                     let next_line = lines[i + 1];
-                    if !next_line.trim().is_empty() {
-                        if let Ok(next_record) =
+                    if !next_line.trim().is_empty()
+                        && let Ok(next_record) =
                             serde_json::from_str::<serde_json::Value>(next_line)
-                        {
-                            if next_record.get("type").and_then(|v| v.as_str()) == Some("user") {
-                                let next_content = get_content_array(&next_record);
-                                for block in next_content {
-                                    if block.get("type").and_then(|v| v.as_str())
-                                        != Some("tool_result")
-                                    {
-                                        continue;
-                                    }
-                                    let tool_use_id =
-                                        match block.get("tool_use_id").and_then(|v| v.as_str()) {
-                                            Some(id) => id.to_string(),
-                                            None => continue,
-                                        };
-                                    let snippet = extract_tool_result_snippet(block);
-                                    result_map.insert(tool_use_id, snippet);
-                                }
+                        && next_record.get("type").and_then(|v| v.as_str()) == Some("user")
+                    {
+                        let next_content = get_content_array(&next_record);
+                        for block in next_content {
+                            if block.get("type").and_then(|v| v.as_str()) != Some("tool_result") {
+                                continue;
                             }
+                            let tool_use_id =
+                                match block.get("tool_use_id").and_then(|v| v.as_str()) {
+                                    Some(id) => id.to_string(),
+                                    None => continue,
+                                };
+                            let snippet = extract_tool_result_snippet(block);
+                            result_map.insert(tool_use_id, snippet);
                         }
                     }
                 }
@@ -368,7 +364,7 @@ pub fn extract_transcript_block(path: &str) -> Option<String> {
         }
 
         let reader = BufReader::new(file);
-        let raw_lines: Vec<String> = reader.lines().filter_map(|l| l.ok()).collect();
+        let raw_lines: Vec<String> = reader.lines().map_while(Result::ok).collect();
 
         let line_refs: Vec<&str> = raw_lines.iter().map(|s| s.as_str()).collect();
         block_from_lines(&line_refs)

@@ -42,13 +42,14 @@ fn compute_universal(
         .filter(|r| r.source_domain == "claude-code")
         .collect();
 
-    let mut m = UniversalMetrics::default();
-
     // Count tool calls (PreToolUse events)
-    m.total_tool_calls = records
-        .iter()
-        .filter(|r| r.event_type == hook_type::PRETOOLUSE)
-        .count() as u64;
+    let mut m = UniversalMetrics {
+        total_tool_calls: records
+            .iter()
+            .filter(|r| r.event_type == hook_type::PRETOOLUSE)
+            .count() as u64,
+        ..Default::default()
+    };
 
     // Total duration: max_ts - min_ts (in seconds, from millis)
     if let (Some(first), Some(last)) = (
@@ -174,12 +175,11 @@ fn compute_universal(
 
         let mut read_bytes: u64 = 0;
         for r in &sorted_records {
-            if r.event_type == hook_type::PRETOOLUSE {
-                if let Some(tool) = &r.tool {
-                    if tool == "Write" || tool == "Edit" {
-                        break;
-                    }
-                }
+            if r.event_type == hook_type::PRETOOLUSE
+                && let Some(tool) = &r.tool
+                && (tool == "Write" || tool == "Edit")
+            {
+                break;
             }
             if r.event_type == hook_type::POSTTOOLUSE && r.tool.as_deref() == Some("Read") {
                 read_bytes += r.response_size.unwrap_or(0);
@@ -234,25 +234,24 @@ fn compute_universal(
         // Find the last TaskUpdate PreToolUse with status "completed" in input
         let mut last_completion_ts: Option<u64> = None;
         for r in sorted_records.iter() {
-            if r.event_type == hook_type::PRETOOLUSE && r.tool.as_deref() == Some("TaskUpdate") {
-                if let Some(input) = &r.input {
-                    if let Some(obj) = input.as_object() {
-                        if obj.get("status").and_then(|v| v.as_str()) == Some("completed") {
-                            last_completion_ts = Some(r.ts);
-                        }
-                    }
-                }
+            if r.event_type == hook_type::PRETOOLUSE
+                && r.tool.as_deref() == Some("TaskUpdate")
+                && let Some(input) = &r.input
+                && let Some(obj) = input.as_object()
+                && obj.get("status").and_then(|v| v.as_str()) == Some("completed")
+            {
+                last_completion_ts = Some(r.ts);
             }
         }
 
-        if let Some(completion_ts) = last_completion_ts {
-            if total_pre > 0 {
-                let post_work = records
-                    .iter()
-                    .filter(|r| r.event_type == hook_type::PRETOOLUSE && r.ts > completion_ts)
-                    .count();
-                m.post_completion_work_pct = post_work as f64 / total_pre as f64 * 100.0;
-            }
+        if let Some(completion_ts) = last_completion_ts
+            && total_pre > 0
+        {
+            let post_work = records
+                .iter()
+                .filter(|r| r.event_type == hook_type::PRETOOLUSE && r.ts > completion_ts)
+                .count();
+            m.post_completion_work_pct = post_work as f64 / total_pre as f64 * 100.0;
         }
     }
 
@@ -319,16 +318,13 @@ fn compute_phases(records: &[ObservationRecord]) -> BTreeMap<String, PhaseMetric
     for record in records {
         // Check TaskCreate/TaskUpdate PreToolUse records for phase transitions (FR-07.3).
         // Phase names come from task subject prefixes using "{phase-id}: {description}".
-        if record.event_type == hook_type::PRETOOLUSE {
-            if let Some(tool) = &record.tool {
-                if tool == "TaskCreate" || tool == "TaskUpdate" {
-                    if let Some(input) = &record.input {
-                        if let Some(phase) = extract_phase_name(input) {
-                            current_phase = Some(phase);
-                        }
-                    }
-                }
-            }
+        if record.event_type == hook_type::PRETOOLUSE
+            && let Some(tool) = &record.tool
+            && (tool == "TaskCreate" || tool == "TaskUpdate")
+            && let Some(input) = &record.input
+            && let Some(phase) = extract_phase_name(input)
+        {
+            current_phase = Some(phase);
         }
 
         if let Some(ref phase) = current_phase {

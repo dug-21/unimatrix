@@ -324,8 +324,8 @@ enum Command {
 
     /// Project lifecycle (vnc-034 Wave 2, FR-C4): register / list / delete.
     ///
-    /// `register <slug>` creates the per-slug store (own DB + vector + hash chain
-    /// + analytics under `/data/.unimatrix/{slug}/`); `list` enumerates registered
+    /// `register <slug>` creates the per-slug store (own DB, vector, hash chain,
+    /// analytics under `/data/.unimatrix/{slug}/`); `list` enumerates registered
     /// slugs; `delete <slug>` de-registers (data preserved) and `delete <slug>
     /// --purge --confirm <slug>` destroys the on-disk store + hash chain. Operator-
     /// only — a client NEVER auto-creates a project (C5 / ADR-004).
@@ -393,7 +393,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Command::Hook { event, provider }) => {
             // Sync path: NO tokio, NO tracing init, NO database open
             // Minimal startup for <50ms budget
-            return unimatrix_server::uds::hook::run(event, provider, cli.project_dir);
+            unimatrix_server::uds::hook::run(event, provider, cli.project_dir)
         }
         Some(Command::Export {
             output,
@@ -401,12 +401,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             confirm,
         }) => {
             // Sync path: NO tokio, like Hook
-            return unimatrix_server::export::run_export(
+            unimatrix_server::export::run_export(
                 cli.project_dir.as_deref(),
                 output.as_deref(),
                 skip_quarantined,
                 confirm,
-            );
+            )
         }
         Some(Command::Import {
             input,
@@ -414,20 +414,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             force,
         }) => {
             // Sync path: NO tokio, like Hook and Export
-            return unimatrix_server::import::run_import(
+            unimatrix_server::import::run_import(
                 cli.project_dir.as_deref(),
                 &input,
                 skip_hash_validation,
                 force,
-            );
+            )
         }
         Some(Command::Version { force }) => {
             // Sync path: NO tokio
-            return handle_version(cli.project_dir, force);
+            handle_version(cli.project_dir, force)
         }
         Some(Command::ModelDownload { nli, nli_model }) => {
             // Sync path: NO tokio
-            return handle_model_download(nli, nli_model);
+            handle_model_download(nli, nli_model)
         }
         Some(Command::Health) => {
             // Sync path: NO tokio (ADR-003).
@@ -440,8 +440,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // leaf cert from the data volume, composes the per-slug URLs, and emits
             // the v:2 bundle (stdout = blob, stderr = url echo, token redacted —
             // ADR-008 / NFR-06).
-            return unimatrix_server::client_bundle::run_client_bundle(cli.project_dir, &slug)
-                .map_err(Into::into);
+            unimatrix_server::client_bundle::run_client_bundle(cli.project_dir, &slug)
+                .map_err(Into::into)
         }
         Some(Command::Stop) => {
             // Sync path: NO tokio (ADR-006)
@@ -452,26 +452,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Command::Snapshot { out }) => {
             // Sync path: dispatched pre-tokio (C-09, C-10).
             // run_snapshot uses block_export_sync internally for async sqlx.
-            return unimatrix_server::snapshot::run_snapshot(cli.project_dir.as_deref(), &out);
+            unimatrix_server::snapshot::run_snapshot(cli.project_dir.as_deref(), &out)
         }
         Some(Command::Eval { command: eval_cmd }) => {
             // Sync path: dispatched pre-tokio (C-10, ADR-005).
             // run_eval_command uses block_export_sync internally for async subcommands.
-            return unimatrix_server::eval::run_eval_command(eval_cmd, cli.project_dir.as_deref());
+            unimatrix_server::eval::run_eval_command(eval_cmd, cli.project_dir.as_deref())
         }
         Some(Command::Project { command }) => {
             // Sync path: NO tokio (C-10, vnc-034 Wave 2). Like Health/Version/
             // ClientBundle, dispatched before any runtime init. run_project_command
             // bridges the async Store::open via a current-thread runtime internally.
-            return unimatrix_server::projects::run_project_command(command, cli.project_dir)
-                .map_err(Into::into);
+            unimatrix_server::projects::run_project_command(command, cli.project_dir)
+                .map_err(Into::into)
         }
         Some(Command::Serve {
             foreground: true, ..
         }) => {
             // Foreground mode — direct tokio_main_daemon call (ADR-001).
             // No launcher, no child spawn, no setsid. PID 1 container mode.
-            return tokio_main_daemon(cli);
+            tokio_main_daemon(cli)
         }
         Some(Command::Serve {
             daemon: true,
@@ -489,12 +489,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // C-01: setsid() before Tokio runtime init.
                 unimatrix_server::infra::daemon::prepare_daemon_child()?;
                 // Fall through to tokio_main_daemon below.
-                return tokio_main_daemon(cli);
+                tokio_main_daemon(cli)
             } else {
                 // Launcher path: synchronous spawn + poll for socket.
                 let paths = compute_paths_sync(&cli.project_dir)?;
                 unimatrix_server::infra::daemon::run_daemon_launcher(&paths)?;
-                return Ok(());
+                Ok(())
             }
         }
         Some(Command::Serve {
@@ -504,7 +504,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }) => {
             // Stdio mode: serve --stdio or bare `serve` with no flags.
             // Identical to pre-vnc-005 default behavior (R-12 regression gate).
-            return tokio_main_stdio(cli);
+            tokio_main_stdio(cli)
         }
         None => {
             // No subcommand: bridge mode (vnc-005 default invocation).
@@ -515,7 +515,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 unimatrix_server::infra::daemon::prepare_daemon_child()?;
                 return tokio_main_daemon(cli);
             }
-            return tokio_main_bridge(cli);
+            tokio_main_bridge(cli)
         }
     }
 }
@@ -838,7 +838,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // crt-023 (ADR-001): apply NLI pool floor — when nli_enabled, pool must be >= 6 (max 8).
     let effective_pool_size = if config.inference.nli_enabled {
-        config.inference.rayon_pool_size.max(6).min(8)
+        config.inference.rayon_pool_size.clamp(6, 8)
     } else {
         config.inference.rayon_pool_size
     };
@@ -1521,7 +1521,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // crt-023 (ADR-001): apply NLI pool floor — when nli_enabled, pool must be >= 6 (max 8).
     let effective_pool_size = if config.inference.nli_enabled {
-        config.inference.rayon_pool_size.max(6).min(8)
+        config.inference.rayon_pool_size.clamp(6, 8)
     } else {
         config.inference.rayon_pool_size
     };
@@ -1800,6 +1800,9 @@ async fn tokio_main_bridge(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 /// Returns the effective config, the category allowlist (Arc-wrapped), and the
 /// domain pack registry (Arc-wrapped). Logs provenance at appropriate levels:
 /// INFO for loaded/global-not-found, WARN for project-not-found, WARN for home directory absent.
+// rationale: one-off internal loader return; the 4-tuple is consumed immediately at the
+// single call site, so a named type alias would add indirection without reuse.
+#[allow(clippy::type_complexity)]
 fn load_config_and_build_allowlist(
     data_dir: &Path,
 ) -> Result<

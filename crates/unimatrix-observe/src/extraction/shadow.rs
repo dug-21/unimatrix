@@ -61,7 +61,7 @@ impl ShadowEvaluator {
 
         let neural_cat = prediction.classification.category.to_string();
         let digest_bytes =
-            bincode::serde::encode_to_vec(&prediction.digest, bincode::config::standard())
+            bincode::serde::encode_to_vec(prediction.digest, bincode::config::standard())
                 .unwrap_or_default();
 
         self.evaluations.push(ShadowLogEntry {

@@ -955,7 +955,7 @@ impl Default for InferenceConfig {
         // On octa-core:   num_cpus = 8; 8/2 = 4; max(4, 4) = 4; min(4, 8) = 4.
         // On 20-core:    num_cpus = 20; 20/2 = 10; max(10, 4) = 10; min(10, 8) = 8.
         InferenceConfig {
-            rayon_pool_size: (num_cpus::get() / 2).max(4).min(8),
+            rayon_pool_size: (num_cpus::get() / 2).clamp(4, 8),
             embedding_model_sha256: None,
             nli_enabled: default_nli_enabled(),
             nli_model_name: None,
@@ -1279,15 +1279,15 @@ impl InferenceConfig {
         }
 
         // -- embedding_model_sha256: exactly 64 hex chars when Some (bugfix-651) --
-        if let Some(ref sha) = self.embedding_model_sha256 {
-            if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
-                return Err(ConfigError::NliFieldOutOfRange {
-                    path: path.to_path_buf(),
-                    field: "embedding_model_sha256",
-                    value: format!("{sha} ({} chars)", sha.len()),
-                    reason: "must be a 64-character lowercase hex string",
-                });
-            }
+        if let Some(ref sha) = self.embedding_model_sha256
+            && (sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()))
+        {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "embedding_model_sha256",
+                value: format!("{sha} ({} chars)", sha.len()),
+                reason: "must be a 64-character lowercase hex string",
+            });
         }
 
         // -- NLI usize range checks [1, 100] --
@@ -1343,27 +1343,27 @@ impl InferenceConfig {
         }
 
         // -- nli_model_name: recognized variant when Some --
-        if let Some(ref name) = self.nli_model_name {
-            if !is_recognized_nli_model_name(name) {
-                return Err(ConfigError::NliFieldOutOfRange {
-                    path: path.to_path_buf(),
-                    field: "nli_model_name",
-                    value: name.clone(),
-                    reason: "unrecognized model name; valid values: minilm2, minilm2-q8, deberta, deberta-q8",
-                });
-            }
+        if let Some(ref name) = self.nli_model_name
+            && !is_recognized_nli_model_name(name)
+        {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_model_name",
+                value: name.clone(),
+                reason: "unrecognized model name; valid values: minilm2, minilm2-q8, deberta, deberta-q8",
+            });
         }
 
         // -- nli_model_sha256: exactly 64 lowercase hex chars when Some --
-        if let Some(ref sha) = self.nli_model_sha256 {
-            if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
-                return Err(ConfigError::NliFieldOutOfRange {
-                    path: path.to_path_buf(),
-                    field: "nli_model_sha256",
-                    value: format!("{sha} ({} chars)", sha.len()),
-                    reason: "must be a 64-character lowercase hex string",
-                });
-            }
+        if let Some(ref sha) = self.nli_model_sha256
+            && (sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()))
+        {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "nli_model_sha256",
+                value: format!("{sha} ({} chars)", sha.len()),
+                reason: "must be a 64-character lowercase hex string",
+            });
         }
 
         // -- Cross-field invariant (ADR-007): nli_auto_quarantine_threshold > nli_contradiction_threshold --
@@ -1555,7 +1555,7 @@ impl InferenceConfig {
 
         // ppr_blend_weight: [0.0, 1.0] inclusive
         let v = self.ppr_blend_weight;
-        if !v.is_finite() || v < 0.0 || v > 1.0 {
+        if !v.is_finite() || !(0.0..=1.0).contains(&v) {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "ppr_blend_weight",
@@ -1598,7 +1598,7 @@ impl InferenceConfig {
 
         // -- crt-037: nli_informs_ppr_weight range check [0.0, 1.0] inclusive --
         let v = self.nli_informs_ppr_weight;
-        if !v.is_finite() || v < 0.0 || v > 1.0 {
+        if !v.is_finite() || !(0.0..=1.0).contains(&v) {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "nli_informs_ppr_weight",
@@ -2364,6 +2364,7 @@ impl Default for HttpConfig {
 /// TLS auto-enables (ADR-005).
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct TlsConfig {
     /// Explicit TLS enabled flag. `None` = auto-detect from cert/key presence.
     pub enabled: Option<bool>,
@@ -2371,16 +2372,6 @@ pub struct TlsConfig {
     pub cert_path: Option<PathBuf>,
     /// Path to the PEM-encoded private key.
     pub key_path: Option<PathBuf>,
-}
-
-impl Default for TlsConfig {
-    fn default() -> Self {
-        TlsConfig {
-            enabled: None,
-            cert_path: None,
-            key_path: None,
-        }
-    }
 }
 
 impl TlsConfig {
@@ -6685,7 +6676,7 @@ mod tests {
         // An empty deserialization must produce all 10 NLI fields at documented defaults.
         let config = InferenceConfig::default();
 
-        assert_eq!(config.nli_enabled, false);
+        assert!(!config.nli_enabled);
         assert_eq!(config.nli_model_name, None);
         assert_eq!(config.nli_model_path, None);
         assert_eq!(config.nli_model_sha256, None);
@@ -6713,7 +6704,7 @@ mod tests {
         // Deserializing from an empty TOML string must produce all NLI defaults.
         let config: InferenceConfig = toml::from_str("").unwrap();
 
-        assert_eq!(config.nli_enabled, false);
+        assert!(!config.nli_enabled);
         assert_eq!(config.nli_model_name, None);
         assert_eq!(config.nli_model_path, None);
         assert_eq!(config.nli_model_sha256, None);
@@ -7119,7 +7110,7 @@ mod tests {
         };
         assert!(config.nli_enabled);
         if config.nli_enabled {
-            config.rayon_pool_size = config.rayon_pool_size.max(6).min(8);
+            config.rayon_pool_size = config.rayon_pool_size.clamp(6, 8);
         }
         assert!(
             config.rayon_pool_size >= 6,
@@ -7140,7 +7131,7 @@ mod tests {
         assert!(!config.nli_enabled);
         // Simulate the startup floor logic
         let final_size = if config.nli_enabled {
-            config.rayon_pool_size.max(6).min(8)
+            config.rayon_pool_size.clamp(6, 8)
         } else {
             config.rayon_pool_size
         };
@@ -7158,7 +7149,7 @@ mod tests {
             ..InferenceConfig::default()
         };
         if config.nli_enabled {
-            config.rayon_pool_size = config.rayon_pool_size.max(6).min(8);
+            config.rayon_pool_size = config.rayon_pool_size.clamp(6, 8);
         }
         assert_eq!(config.rayon_pool_size, 8, "pool floor must not exceed 8");
     }
@@ -7539,13 +7530,15 @@ categories = ["some-cat"]
     // AC-02: Sum > 1.0 is rejected with FusionWeightSumExceeded
     #[test]
     fn test_inference_config_validate_rejects_sum_exceeding_one() {
-        let mut cfg = InferenceConfig::default();
-        cfg.w_sim = 0.5;
-        cfg.w_nli = 0.4;
-        cfg.w_conf = 0.15;
-        cfg.w_coac = 0.0;
-        cfg.w_util = 0.0;
-        cfg.w_prov = 0.0;
+        let cfg = InferenceConfig {
+            w_sim: 0.5,
+            w_nli: 0.4,
+            w_conf: 0.15,
+            w_coac: 0.0,
+            w_util: 0.0,
+            w_prov: 0.0,
+            ..Default::default()
+        };
         // sum = 1.05
         let err = cfg
             .validate(Path::new("/tmp/c.toml"))
@@ -7572,13 +7565,15 @@ categories = ["some-cat"]
     // AC-02b: Sum exactly 1.0 is valid (EC-02)
     #[test]
     fn test_inference_config_validate_accepts_sum_exactly_one() {
-        let mut cfg = InferenceConfig::default();
-        cfg.w_sim = 0.30;
-        cfg.w_nli = 0.35;
-        cfg.w_conf = 0.15;
-        cfg.w_coac = 0.10;
-        cfg.w_util = 0.05;
-        cfg.w_prov = 0.05;
+        let cfg = InferenceConfig {
+            w_sim: 0.30,
+            w_nli: 0.35,
+            w_conf: 0.15,
+            w_coac: 0.10,
+            w_util: 0.05,
+            w_prov: 0.05,
+            ..Default::default()
+        };
         // sum = 1.0
         assert!(
             cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
@@ -8030,8 +8025,10 @@ categories = ["some-cat"]
     #[test]
     fn test_config_validation_rejects_out_of_range_phase_weights() {
         // w_phase_histogram too high
-        let mut cfg = InferenceConfig::default();
-        cfg.w_phase_histogram = 1.5;
+        let cfg = InferenceConfig {
+            w_phase_histogram: 1.5,
+            ..Default::default()
+        };
         let result = cfg.validate(Path::new("/tmp/c.toml"));
         assert!(
             result.is_err(),
@@ -8039,8 +8036,10 @@ categories = ["some-cat"]
         );
 
         // w_phase_explicit negative
-        cfg = InferenceConfig::default();
-        cfg.w_phase_explicit = -0.1;
+        let cfg = InferenceConfig {
+            w_phase_explicit: -0.1,
+            ..Default::default()
+        };
         let result = cfg.validate(Path::new("/tmp/c.toml"));
         assert!(
             result.is_err(),
@@ -8048,17 +8047,22 @@ categories = ["some-cat"]
         );
 
         // valid boundary: 0.0 passes
-        cfg = InferenceConfig::default();
-        cfg.w_phase_histogram = 0.0;
-        cfg.w_phase_explicit = 0.0;
+        let cfg = InferenceConfig {
+            w_phase_histogram: 0.0,
+            w_phase_explicit: 0.0,
+            ..Default::default()
+        };
         assert!(
             cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
             "w_phase_histogram=0.0, w_phase_explicit=0.0 must pass validate()"
         );
 
         // valid boundary: 1.0 passes
-        cfg.w_phase_histogram = 1.0;
-        cfg.w_phase_explicit = 1.0;
+        let cfg = InferenceConfig {
+            w_phase_histogram: 1.0,
+            w_phase_explicit: 1.0,
+            ..Default::default()
+        };
         assert!(
             cfg.validate(Path::new("/tmp/c.toml")).is_ok(),
             "w_phase_histogram=1.0, w_phase_explicit=1.0 must pass validate()"
@@ -10691,8 +10695,8 @@ nli_informs_ppr_weight = 0.4
     #[test]
     fn test_inference_config_expander_fields_defaults() {
         let cfg = InferenceConfig::default();
-        assert_eq!(
-            cfg.ppr_expander_enabled, false,
+        assert!(
+            !cfg.ppr_expander_enabled,
             "ppr_expander_enabled default must be false"
         );
         assert_eq!(cfg.expansion_depth, 2, "expansion_depth default must be 2");
@@ -10706,8 +10710,8 @@ nli_informs_ppr_weight = 0.4
     fn test_inference_config_expander_fields_serde_defaults() {
         // Empty TOML — all fields absent.
         let cfg: InferenceConfig = toml::from_str("").unwrap();
-        assert_eq!(
-            cfg.ppr_expander_enabled, false,
+        assert!(
+            !cfg.ppr_expander_enabled,
             "absent ppr_expander_enabled must default to false via #[serde(default)]"
         );
         assert_eq!(
@@ -10724,7 +10728,7 @@ nli_informs_ppr_weight = 0.4
     fn test_unimatrix_config_expander_toml_omitted_produces_defaults() {
         let toml_str = "[inference]\n";
         let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
-        assert_eq!(config.inference.ppr_expander_enabled, false);
+        assert!(!config.inference.ppr_expander_enabled);
         assert_eq!(config.inference.expansion_depth, 2);
         assert_eq!(config.inference.max_expansion_candidates, 200);
     }
@@ -10889,8 +10893,8 @@ nli_informs_ppr_weight = 0.4
             merged.inference.max_expansion_candidates, 100,
             "project max_expansion_candidates at default (200); global (100) wins"
         );
-        assert_eq!(
-            merged.inference.ppr_expander_enabled, false,
+        assert!(
+            !merged.inference.ppr_expander_enabled,
             "ppr_expander_enabled must propagate correctly"
         );
     }
@@ -10914,10 +10918,7 @@ nli_informs_ppr_weight = 0.4
                         expansion_depth = 5\n\
                         max_expansion_candidates = 100\n";
         let cfg: InferenceConfig = toml::from_str(toml_str).unwrap();
-        assert_eq!(
-            cfg.ppr_expander_enabled, true,
-            "explicit ppr_expander_enabled"
-        );
+        assert!(cfg.ppr_expander_enabled, "explicit ppr_expander_enabled");
         assert_eq!(cfg.expansion_depth, 5, "explicit expansion_depth");
         assert_eq!(
             cfg.max_expansion_candidates, 100,
@@ -11064,78 +11065,100 @@ nli_informs_ppr_weight = 0.4
 
     #[test]
     fn test_nan_guard_nli_entailment_threshold() {
-        let mut c = InferenceConfig::default();
-        c.nli_entailment_threshold = f32::NAN;
+        let c = InferenceConfig {
+            nli_entailment_threshold: f32::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "nli_entailment_threshold");
     }
 
     #[test]
     fn test_nan_guard_nli_contradiction_threshold() {
-        let mut c = InferenceConfig::default();
-        c.nli_contradiction_threshold = f32::NAN;
+        let c = InferenceConfig {
+            nli_contradiction_threshold: f32::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "nli_contradiction_threshold");
     }
 
     #[test]
     fn test_nan_guard_nli_auto_quarantine_threshold() {
-        let mut c = InferenceConfig::default();
-        c.nli_auto_quarantine_threshold = f32::NAN;
+        let c = InferenceConfig {
+            nli_auto_quarantine_threshold: f32::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "nli_auto_quarantine_threshold");
     }
 
     #[test]
     fn test_nan_guard_supports_candidate_threshold() {
-        let mut c = InferenceConfig::default();
-        c.supports_candidate_threshold = f32::NAN;
+        let c = InferenceConfig {
+            supports_candidate_threshold: f32::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "supports_candidate_threshold");
     }
 
     #[test]
     fn test_nan_guard_supports_edge_threshold() {
-        let mut c = InferenceConfig::default();
-        c.supports_edge_threshold = f32::NAN;
+        let c = InferenceConfig {
+            supports_edge_threshold: f32::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "supports_edge_threshold");
     }
 
     #[test]
     fn test_nan_guard_ppr_alpha() {
-        let mut c = InferenceConfig::default();
-        c.ppr_alpha = f64::NAN;
+        let c = InferenceConfig {
+            ppr_alpha: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "ppr_alpha");
     }
 
     #[test]
     fn test_nan_guard_ppr_inclusion_threshold() {
-        let mut c = InferenceConfig::default();
-        c.ppr_inclusion_threshold = f64::NAN;
+        let c = InferenceConfig {
+            ppr_inclusion_threshold: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "ppr_inclusion_threshold");
     }
 
     #[test]
     fn test_nan_guard_ppr_blend_weight() {
-        let mut c = InferenceConfig::default();
-        c.ppr_blend_weight = f64::NAN;
+        let c = InferenceConfig {
+            ppr_blend_weight: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "ppr_blend_weight");
     }
 
     #[test]
     fn test_nan_guard_nli_informs_cosine_floor() {
-        let mut c = InferenceConfig::default();
-        c.nli_informs_cosine_floor = f32::NAN;
+        let c = InferenceConfig {
+            nli_informs_cosine_floor: f32::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "nli_informs_cosine_floor");
     }
 
     #[test]
     fn test_nan_guard_nli_informs_ppr_weight() {
-        let mut c = InferenceConfig::default();
-        c.nli_informs_ppr_weight = f32::NAN;
+        let c = InferenceConfig {
+            nli_informs_ppr_weight: f32::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "nli_informs_ppr_weight");
     }
 
     #[test]
     fn test_nan_guard_supports_cosine_threshold() {
-        let mut c = InferenceConfig::default();
-        c.supports_cosine_threshold = f32::NAN;
+        let c = InferenceConfig {
+            supports_cosine_threshold: f32::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "supports_cosine_threshold");
     }
 
@@ -11143,43 +11166,55 @@ nli_informs_ppr_weight = 0.4
 
     #[test]
     fn test_nan_guard_w_sim() {
-        let mut c = InferenceConfig::default();
-        c.w_sim = f64::NAN;
+        let c = InferenceConfig {
+            w_sim: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "w_sim");
     }
 
     #[test]
     fn test_nan_guard_w_nli() {
-        let mut c = InferenceConfig::default();
-        c.w_nli = f64::NAN;
+        let c = InferenceConfig {
+            w_nli: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "w_nli");
     }
 
     #[test]
     fn test_nan_guard_w_conf() {
-        let mut c = InferenceConfig::default();
-        c.w_conf = f64::NAN;
+        let c = InferenceConfig {
+            w_conf: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "w_conf");
     }
 
     #[test]
     fn test_nan_guard_w_coac() {
-        let mut c = InferenceConfig::default();
-        c.w_coac = f64::NAN;
+        let c = InferenceConfig {
+            w_coac: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "w_coac");
     }
 
     #[test]
     fn test_nan_guard_w_util() {
-        let mut c = InferenceConfig::default();
-        c.w_util = f64::NAN;
+        let c = InferenceConfig {
+            w_util: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "w_util");
     }
 
     #[test]
     fn test_nan_guard_w_prov() {
-        let mut c = InferenceConfig::default();
-        c.w_prov = f64::NAN;
+        let c = InferenceConfig {
+            w_prov: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "w_prov");
     }
 
@@ -11187,15 +11222,19 @@ nli_informs_ppr_weight = 0.4
 
     #[test]
     fn test_nan_guard_w_phase_histogram() {
-        let mut c = InferenceConfig::default();
-        c.w_phase_histogram = f64::NAN;
+        let c = InferenceConfig {
+            w_phase_histogram: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "w_phase_histogram");
     }
 
     #[test]
     fn test_nan_guard_w_phase_explicit() {
-        let mut c = InferenceConfig::default();
-        c.w_phase_explicit = f64::NAN;
+        let c = InferenceConfig {
+            w_phase_explicit: f64::NAN,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "w_phase_explicit");
     }
 
@@ -11203,15 +11242,19 @@ nli_informs_ppr_weight = 0.4
 
     #[test]
     fn test_inf_guard_nli_entailment_threshold_f32() {
-        let mut c = InferenceConfig::default();
-        c.nli_entailment_threshold = f32::INFINITY;
+        let c = InferenceConfig {
+            nli_entailment_threshold: f32::INFINITY,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "nli_entailment_threshold");
     }
 
     #[test]
     fn test_inf_guard_ppr_alpha_f64() {
-        let mut c = InferenceConfig::default();
-        c.ppr_alpha = f64::INFINITY;
+        let c = InferenceConfig {
+            ppr_alpha: f64::INFINITY,
+            ..Default::default()
+        };
         assert_validate_fails_with_field(c, "ppr_alpha");
     }
 
@@ -11976,8 +12019,10 @@ foo = "bar"
     #[test]
     fn test_validate_http_invalid_bind_address() {
         let path = Path::new("test.toml");
-        let mut config = HttpConfig::default();
-        config.bind_address = "not-an-ip".to_string();
+        let config = HttpConfig {
+            bind_address: "not-an-ip".to_string(),
+            ..Default::default()
+        };
         let err = validate_http_config(&config, path).unwrap_err();
         assert!(matches!(
             err,
@@ -11992,8 +12037,10 @@ foo = "bar"
     #[test]
     fn test_validate_http_zero_max_sessions() {
         let path = Path::new("test.toml");
-        let mut config = HttpConfig::default();
-        config.max_concurrent_sessions = 0;
+        let config = HttpConfig {
+            max_concurrent_sessions: 0,
+            ..Default::default()
+        };
         let err = validate_http_config(&config, path).unwrap_err();
         assert!(matches!(
             err,
@@ -12008,8 +12055,10 @@ foo = "bar"
     #[test]
     fn test_validate_http_zero_body_bytes() {
         let path = Path::new("test.toml");
-        let mut config = HttpConfig::default();
-        config.max_request_body_bytes = 0;
+        let config = HttpConfig {
+            max_request_body_bytes: 0,
+            ..Default::default()
+        };
         let err = validate_http_config(&config, path).unwrap_err();
         assert!(matches!(
             err,
@@ -12024,8 +12073,10 @@ foo = "bar"
     #[test]
     fn test_validate_http_zero_timeout() {
         let path = Path::new("test.toml");
-        let mut config = HttpConfig::default();
-        config.connection_timeout_secs = 0;
+        let config = HttpConfig {
+            connection_timeout_secs: 0,
+            ..Default::default()
+        };
         let err = validate_http_config(&config, path).unwrap_err();
         assert!(matches!(
             err,

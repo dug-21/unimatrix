@@ -116,7 +116,7 @@ pub(super) fn write_scenario_result(
     result: ScenarioResult,
     out_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let filename = result.scenario_id.replace('/', "_").replace('\\', "_") + ".json";
+    let filename = result.scenario_id.replace(['/', '\\'], "_") + ".json";
     let out_path = out_dir.join(&filename);
     let json = serde_json::to_string_pretty(&result)?;
     std::fs::write(&out_path, json.as_bytes())?;

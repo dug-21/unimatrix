@@ -74,7 +74,7 @@ fn profile_round_trip_expert() {
 // T-PROF-02: All 5 standard profiles produce distinct confidence values
 #[test]
 fn all_profiles_distinct_confidence() {
-    let profiles = vec![
+    let profiles = [
         expert_human_fresh(),
         good_agent_entry(),
         auto_extracted_new(),

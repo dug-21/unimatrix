@@ -109,11 +109,10 @@ pub(crate) fn input_to_file_path(input: &serde_json::Value) -> Option<String> {
 
 /// Check if a string contains a sleep command (not part of another word).
 pub(crate) fn contains_sleep_command(s: &str) -> bool {
-    s.split(|c: char| c == ';' || c == '|' || c == '&' || c == '\n')
-        .any(|segment| {
-            let trimmed = segment.trim();
-            trimmed.starts_with("sleep ") || trimmed == "sleep"
-        })
+    s.split([';', '|', '&', '\n']).any(|segment| {
+        let trimmed = segment.trim();
+        trimmed.starts_with("sleep ") || trimmed == "sleep"
+    })
 }
 
 /// Truncate a string to a maximum length, appending "..." if truncated.
@@ -133,19 +132,17 @@ pub(crate) fn find_completion_boundary(records: &[&ObservationRecord]) -> Option
     let mut last_completion_ts: Option<u64> = None;
 
     for record in records {
-        if record.tool.as_deref() == Some("TaskUpdate") {
-            if let Some(input) = &record.input {
-                if let Some(status) = input.get("status").and_then(|v| v.as_str()) {
-                    if status == "completed" {
-                        match last_completion_ts {
-                            None => last_completion_ts = Some(record.ts),
-                            Some(prev) if record.ts > prev => {
-                                last_completion_ts = Some(record.ts);
-                            }
-                            _ => {}
-                        }
-                    }
+        if record.tool.as_deref() == Some("TaskUpdate")
+            && let Some(input) = &record.input
+            && let Some(status) = input.get("status").and_then(|v| v.as_str())
+            && status == "completed"
+        {
+            match last_completion_ts {
+                None => last_completion_ts = Some(record.ts),
+                Some(prev) if record.ts > prev => {
+                    last_completion_ts = Some(record.ts);
                 }
+                _ => {}
             }
         }
     }
@@ -156,7 +153,7 @@ pub(crate) fn find_completion_boundary(records: &[&ObservationRecord]) -> Option
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{EvidenceRecord, Severity};
+    use crate::types::Severity;
 
     fn make_pre(ts: u64, tool: &str) -> ObservationRecord {
         ObservationRecord {
@@ -424,7 +421,7 @@ mod tests {
 
     #[test]
     fn test_find_completion_boundary_found() {
-        let records = vec![ObservationRecord {
+        let records = [ObservationRecord {
             ts: 5000,
             event_type: "PreToolUse".to_string(),
             source_domain: "claude-code".to_string(),
@@ -440,7 +437,7 @@ mod tests {
 
     #[test]
     fn test_find_completion_boundary_last_used() {
-        let records = vec![
+        let records = [
             ObservationRecord {
                 ts: 3000,
                 event_type: "PreToolUse".to_string(),
@@ -468,14 +465,14 @@ mod tests {
 
     #[test]
     fn test_find_completion_boundary_not_found() {
-        let records = vec![make_pre(1000, "Read")];
+        let records = [make_pre(1000, "Read")];
         let refs: Vec<&ObservationRecord> = records.iter().collect();
         assert_eq!(find_completion_boundary(&refs), None);
     }
 
     #[test]
     fn test_find_completion_boundary_non_completed() {
-        let records = vec![ObservationRecord {
+        let records = [ObservationRecord {
             ts: 5000,
             event_type: "PreToolUse".to_string(),
             source_domain: "claude-code".to_string(),

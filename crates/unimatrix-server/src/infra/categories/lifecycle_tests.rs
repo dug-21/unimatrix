@@ -4,7 +4,7 @@
 //! delegation chain, pinned-by-default, and poison recovery for adaptive lock.
 
 use super::*;
-use tests::{poison_adaptive_lock, poison_allowlist as _poison_allowlist};
+use tests::poison_adaptive_lock;
 
 // --- crt-031: new lifecycle policy tests ---
 

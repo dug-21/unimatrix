@@ -286,7 +286,6 @@ impl SqlxStore {
 mod tests {
     use super::*;
     use crate::cycle_review_index::{CycleReviewRecord, SUMMARY_SCHEMA_VERSION};
-    use crate::schema::{AuditEvent, Outcome};
     use crate::sessions::{SessionLifecycleStatus, SessionRecord};
     use crate::test_helpers::open_test_store;
 

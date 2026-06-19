@@ -396,11 +396,12 @@ async fn topic_source_column_count(store: &SqlxStore) -> i64 {
 #[test]
 #[allow(clippy::assertions_on_constants)] // version constant is compile-time; assertion guards the bump
 fn test_current_schema_version_is_28() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 28,
-        "CURRENT_SCHEMA_VERSION must be >= 28 after vnc-030, got {}",
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION
-    );
+    const {
+        assert!(
+            unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 28,
+            "CURRENT_SCHEMA_VERSION must be >= 28 after vnc-030"
+        )
+    };
 }
 
 // ---------------------------------------------------------------------------

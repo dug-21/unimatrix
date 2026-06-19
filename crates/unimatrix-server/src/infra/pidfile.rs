@@ -53,7 +53,7 @@ impl PidGuard {
         // Truncate after lock is held, then write our PID.
         file.set_len(0)?;
         file.seek(io::SeekFrom::Start(0))?;
-        write!(file, "{}\n", std::process::id())?;
+        writeln!(file, "{}", std::process::id())?;
         file.flush()?;
         Ok(PidGuard {
             _file: file,
@@ -64,14 +64,14 @@ impl PidGuard {
 
 impl Drop for PidGuard {
     fn drop(&mut self) {
-        if let Err(e) = fs::remove_file(&self.path) {
-            if e.kind() != io::ErrorKind::NotFound {
-                tracing::warn!(
-                    error = %e,
-                    path = %self.path.display(),
-                    "failed to remove PID file on drop"
-                );
-            }
+        if let Err(e) = fs::remove_file(&self.path)
+            && e.kind() != io::ErrorKind::NotFound
+        {
+            tracing::warn!(
+                error = %e,
+                path = %self.path.display(),
+                "failed to remove PID file on drop"
+            );
         }
         // Lock is released automatically when self._file is dropped (fd closes).
     }
@@ -157,10 +157,10 @@ pub fn is_unimatrix_process(pid: u32) -> bool {
         }
         // Extract the filename component from the argument (handles full paths
         // like /usr/bin/unimatrix or /usr/bin/unimatrix-server).
-        if let Some(name) = Path::new(arg).file_name() {
-            if name == "unimatrix" || name == "unimatrix-server" {
-                return true;
-            }
+        if let Some(name) = Path::new(arg).file_name()
+            && (name == "unimatrix" || name == "unimatrix-server")
+        {
+            return true;
         }
     }
 

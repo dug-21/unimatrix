@@ -530,7 +530,7 @@ mod tests {
         handles.retain(|h| !h.is_finished());
 
         assert!(
-            handles.len() == 0,
+            handles.is_empty(),
             "after retain sweep of aborted handles, Vec must be 0; got {}",
             handles.len()
         );
@@ -767,7 +767,7 @@ mod tests {
 
         // run_session must return promptly once the client's behaviour yields a
         // failed serve(...) — bound it so a regression that hangs is caught.
-        let _ = tokio::time::timeout(
+        tokio::time::timeout(
             Duration::from_secs(5),
             run_session(server_stream, server, token.child_token()),
         )

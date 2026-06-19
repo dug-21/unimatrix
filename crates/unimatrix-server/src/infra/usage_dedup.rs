@@ -41,6 +41,12 @@ pub struct UsageDedup {
     inner: Mutex<DedupState>,
 }
 
+impl Default for UsageDedup {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UsageDedup {
     /// Create a new empty dedup tracker.
     pub fn new() -> Self {

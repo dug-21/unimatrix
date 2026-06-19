@@ -264,6 +264,9 @@ impl StatusService {
         &self.category_allowlist
     }
 
+    // rationale: status service constructor wires together its injected collaborators;
+    // grouping them into a struct would not reduce the real input surface.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,
@@ -532,7 +535,7 @@ impl StatusService {
 
         // Sort feature cycles by count descending, take top 10
         let mut fc_sorted: Vec<(String, u64)> = outcomes_by_feature_cycle.into_iter().collect();
-        fc_sorted.sort_by(|a, b| b.1.cmp(&a.1));
+        fc_sorted.sort_by_key(|f| std::cmp::Reverse(f.1));
         fc_sorted.truncate(10);
 
         // Build initial StatusReport
@@ -613,47 +616,41 @@ impl StatusService {
         }
 
         // Phase 3: Embedding consistency (opt-in)
-        if check_embeddings {
-            if let Ok(adapter) = self.embed_service.get_adapter().await {
-                // GH #358: fetch entries in Tokio context before dispatching to rayon.
-                // Rayon workers have no Tokio runtime; Handle::current() inside the
-                // closure panics and silently breaks embedding consistency checks.
-                let active_entries = match self
-                    .store
-                    .query_by_status(unimatrix_store::Status::Active)
-                    .await
-                {
-                    Ok(v) => v,
-                    Err(_) => {
-                        // Graceful degradation: skip consistency check if entries cannot be read.
-                        vec![]
-                    }
-                };
+        if check_embeddings && let Ok(adapter) = self.embed_service.get_adapter().await {
+            // GH #358: fetch entries in Tokio context before dispatching to rayon.
+            // Rayon workers have no Tokio runtime; Handle::current() inside the
+            // closure panics and silently breaks embedding consistency checks.
+            // Graceful degradation: on read error, fall back to empty so the
+            // consistency check is skipped rather than aborting the tick.
+            let active_entries: Vec<unimatrix_store::EntryRecord> = self
+                .store
+                .query_by_status(unimatrix_store::Status::Active)
+                .await
+                .unwrap_or_default();
 
-                let vi_for_embed = Arc::clone(&self.vector_index);
-                let adapter_for_embed = Arc::clone(&adapter);
-                let config_for_embed = contradiction::ContradictionConfig::default();
+            let vi_for_embed = Arc::clone(&self.vector_index);
+            let adapter_for_embed = Arc::clone(&adapter);
+            let config_for_embed = contradiction::ContradictionConfig::default();
 
-                match self
-                    .rayon_pool
-                    .spawn_with_timeout(MCP_HANDLER_TIMEOUT, move || {
-                        let vs = VectorAdapter::new(vi_for_embed);
-                        contradiction::check_embedding_consistency(
-                            active_entries,
-                            &vs,
-                            &*adapter_for_embed,
-                            &config_for_embed,
-                        )
-                    })
-                    .await
-                {
-                    Ok(Ok(inconsistencies)) => {
-                        report.embedding_inconsistencies = inconsistencies;
-                        report.embedding_check_performed = true;
-                    }
-                    _ => {
-                        // Check failed or timed out -- graceful degradation
-                    }
+            match self
+                .rayon_pool
+                .spawn_with_timeout(MCP_HANDLER_TIMEOUT, move || {
+                    let vs = VectorAdapter::new(vi_for_embed);
+                    contradiction::check_embedding_consistency(
+                        active_entries,
+                        &vs,
+                        &*adapter_for_embed,
+                        &config_for_embed,
+                    )
+                })
+                .await
+            {
+                Ok(Ok(inconsistencies)) => {
+                    report.embedding_inconsistencies = inconsistencies;
+                    report.embedding_check_performed = true;
+                }
+                _ => {
+                    // Check failed or timed out -- graceful degradation
                 }
             }
         }
@@ -792,7 +789,7 @@ impl StatusService {
             }
 
             let mut coherence_by_source = Vec::new();
-            for (source, _entries) in &source_groups {
+            for source in source_groups.keys() {
                 let source_lambda = coherence::compute_lambda(
                     report.graph_quality_score,
                     embed_dim,
@@ -1010,16 +1007,19 @@ impl StatusService {
     /// 0b. Heal pass: re-embed active entries with `embedding_dim = 0` (GH #444)
     /// 1. Co-access stale pair cleanup
     /// 2. Confidence refresh (batch 500, 200ms wall-clock guard — crt-019)
-    /// 2b. Empirical prior + spread computation (crt-019)
+    ///    2b. Empirical prior + spread computation (crt-019)
     /// 3. Graph compaction (if stale ratio > trigger)
     /// 4. Cycle-based activity GC (crt-036: replaces 60-day DELETE)
-    /// 4f. audit_log time-based GC
+    ///    4f. audit_log time-based GC
     /// 5. Stale session sweep + signal processing
     /// 6. Session GC (timeout + delete thresholds)
     ///
     /// Tick ordering for GH #444: prune → heal → graph compaction.
     /// Prune fires first so quarantined HNSW points are absent from compaction input.
     /// Heal fires second so newly-embedded entries are included in the compaction.
+    // rationale: maintenance pass threads several independent configs and mutable
+    // outputs; each is a distinct parameter, not shared state.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn run_maintenance(
         &self,
         active_entries: &[EntryRecord],
@@ -1362,41 +1362,41 @@ impl StatusService {
 
         // 3. Graph compaction (if stale ratio > trigger)
         let mut graph_compacted = false;
-        if report.graph_stale_ratio > coherence::DEFAULT_STALE_RATIO_TRIGGER {
-            if let Ok(adapter) = self.embed_service.get_adapter().await {
-                let pairs: Vec<(String, String)> = active_entries
-                    .iter()
-                    .map(|e| (e.title.clone(), e.content.clone()))
-                    .collect();
+        if report.graph_stale_ratio > coherence::DEFAULT_STALE_RATIO_TRIGGER
+            && let Ok(adapter) = self.embed_service.get_adapter().await
+        {
+            let pairs: Vec<(String, String)> = active_entries
+                .iter()
+                .map(|e| (e.title.clone(), e.content.clone()))
+                .collect();
 
-                match adapter.embed_entries(&pairs) {
-                    Ok(embeddings) => {
-                        let compact_input: Vec<(u64, Vec<f32>)> = active_entries
-                            .iter()
-                            .zip(embeddings.into_iter())
-                            .map(|(entry, raw_emb)| {
-                                let adapted = self.adapt_service.adapt_embedding(
-                                    &raw_emb,
-                                    Some(&entry.category),
-                                    Some(&entry.topic),
-                                );
-                                (entry.id, unimatrix_embed::l2_normalized(&adapted))
-                            })
-                            .collect();
+            match adapter.embed_entries(&pairs) {
+                Ok(embeddings) => {
+                    let compact_input: Vec<(u64, Vec<f32>)> = active_entries
+                        .iter()
+                        .zip(embeddings)
+                        .map(|(entry, raw_emb)| {
+                            let adapted = self.adapt_service.adapt_embedding(
+                                &raw_emb,
+                                Some(&entry.category),
+                                Some(&entry.topic),
+                            );
+                            (entry.id, unimatrix_embed::l2_normalized(&adapted))
+                        })
+                        .collect();
 
-                        match self.vector_index.compact(compact_input).await {
-                            Ok(()) => {
-                                report.graph_compacted = true;
-                                graph_compacted = true;
-                            }
-                            Err(e) => {
-                                tracing::warn!("graph compaction failed: {e}");
-                            }
+                    match self.vector_index.compact(compact_input).await {
+                        Ok(()) => {
+                            report.graph_compacted = true;
+                            graph_compacted = true;
+                        }
+                        Err(e) => {
+                            tracing::warn!("graph compaction failed: {e}");
                         }
                     }
-                    Err(e) => {
-                        tracing::warn!("re-embedding for compaction failed: {e}");
-                    }
+                }
+                Err(e) => {
+                    tracing::warn!("re-embedding for compaction failed: {e}");
                 }
             }
         }
@@ -1633,7 +1633,7 @@ impl StatusService {
                     let store_fc = Arc::clone(&store_for_sweep);
                     let sid = sweep_result.session_id.clone();
                     let fc_owned = fc.clone();
-                    let _ = tokio::spawn(async move {
+                    let _detached = tokio::spawn(async move {
                         if let Err(e) = crate::uds::listener::update_session_feature_cycle_pub(
                             &store_fc, &sid, &fc_owned,
                         )
@@ -1835,11 +1835,11 @@ mod tests {
         let voted_entries: Vec<(u32, u32)> = (0..10).map(|_| (5u32, 5u32)).collect();
         let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
         assert!(
-            alpha0 >= 0.5 && alpha0 <= 50.0,
+            (0.5..=50.0).contains(&alpha0),
             "alpha0 out of clamp range: {alpha0}"
         );
         assert!(
-            beta0 >= 0.5 && beta0 <= 50.0,
+            (0.5..=50.0).contains(&beta0),
             "beta0 out of clamp range: {beta0}"
         );
     }
@@ -1850,8 +1850,8 @@ mod tests {
         // Main assertion: no panic, values clamped.
         let voted_entries: Vec<(u32, u32)> = (0..15).map(|_| (8u32, 2u32)).collect();
         let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
-        assert!(alpha0 >= 0.5 && alpha0 <= 50.0);
-        assert!(beta0 >= 0.5 && beta0 <= 50.0);
+        assert!((0.5..=50.0).contains(&alpha0));
+        assert!((0.5..=50.0).contains(&beta0));
     }
 
     // ---------------------------------------------------------------------------
@@ -1878,8 +1878,8 @@ mod tests {
         // p_bar = 0.5, variance > 0 → empirical path; symmetric → alpha0 ≈ beta0
         assert!(!alpha0.is_nan(), "alpha0 must not be NaN");
         assert!(!beta0.is_nan(), "beta0 must not be NaN");
-        assert!(alpha0 >= 0.5 && alpha0 <= 50.0, "alpha0={alpha0}");
-        assert!(beta0 >= 0.5 && beta0 <= 50.0, "beta0={beta0}");
+        assert!((0.5..=50.0).contains(&alpha0), "alpha0={alpha0}");
+        assert!((0.5..=50.0).contains(&beta0), "beta0={beta0}");
     }
 
     // ---------------------------------------------------------------------------
@@ -1897,10 +1897,10 @@ mod tests {
         );
         assert!(!beta0.is_nan(), "beta0 must not be NaN with zero variance");
         assert!(
-            alpha0 >= 0.5 && alpha0 <= 50.0,
+            (0.5..=50.0).contains(&alpha0),
             "alpha0 out of clamp: {alpha0}"
         );
-        assert!(beta0 >= 0.5 && beta0 <= 50.0, "beta0 out of clamp: {beta0}");
+        assert!((0.5..=50.0).contains(&beta0), "beta0 out of clamp: {beta0}");
     }
 
     #[test]
@@ -1910,8 +1910,8 @@ mod tests {
         let (alpha0, beta0) = compute_empirical_prior(&voted_entries);
         assert!(!alpha0.is_nan(), "alpha0 must not be NaN");
         assert!(!beta0.is_nan(), "beta0 must not be NaN");
-        assert!(alpha0 >= 0.5 && alpha0 <= 50.0);
-        assert!(beta0 >= 0.5 && beta0 <= 50.0);
+        assert!((0.5..=50.0).contains(&alpha0));
+        assert!((0.5..=50.0).contains(&beta0));
     }
 
     #[test]
@@ -1936,8 +1936,8 @@ mod tests {
             !alpha0.is_nan() && !beta0.is_nan(),
             "NaN propagation detected"
         );
-        assert!(alpha0 >= 0.5 && alpha0 <= 50.0, "alpha0={alpha0}");
-        assert!(beta0 >= 0.5 && beta0 <= 50.0, "beta0={beta0}");
+        assert!((0.5..=50.0).contains(&alpha0), "alpha0={alpha0}");
+        assert!((0.5..=50.0).contains(&beta0), "beta0={beta0}");
     }
 
     // ---------------------------------------------------------------------------
@@ -2038,7 +2038,7 @@ mod tests {
             (w - 0.183875).abs() < 1e-6,
             "initial spread: expected ~0.184, got {w}"
         );
-        assert!(w >= 0.15 && w <= 0.25);
+        assert!((0.15..=0.25).contains(&w));
     }
 
     #[test]
@@ -2156,11 +2156,11 @@ mod confidence_refresh_tests {
 
         // Both must be in valid range
         assert!(
-            conf_cold >= 0.0 && conf_cold <= 1.0,
+            (0.0..=1.0).contains(&conf_cold),
             "cold-start confidence out of range: {conf_cold}"
         );
         assert!(
-            conf_empirical >= 0.0 && conf_empirical <= 1.0,
+            (0.0..=1.0).contains(&conf_empirical),
             "empirical-prior confidence out of range: {conf_empirical}"
         );
     }
@@ -2200,6 +2200,9 @@ mod confidence_refresh_tests {
     //
     // Integration-level coverage (actual spawn_blocking panic → recovery) lives in
     // test_availability.py::test_sustained_multi_tick.
+    // rationale: the test deliberately seeds a literal `Err` to exercise the JoinError
+    // recovery chain; the literal is the point of the simulation, not a mistake.
+    #[allow(clippy::unnecessary_literal_unwrap)]
     #[test]
     fn test_join_error_recovery_pattern_observation_stats() {
         // Simulate the recovery chain for observation stats:
@@ -2239,6 +2242,9 @@ mod confidence_refresh_tests {
     }
 
     // GH-275: verify JoinError recovery pattern for metric vectors.
+    // rationale: the test deliberately seeds a literal `Err` to exercise the JoinError
+    // recovery chain; the literal is the point of the simulation, not a mistake.
+    #[allow(clippy::unnecessary_literal_unwrap)]
     #[test]
     fn test_join_error_recovery_pattern_metric_vectors() {
         // Simulate: JoinHandle::await -> Err(JoinError)  =>  unwrap_or_else returns Ok(vec![])
@@ -3116,7 +3122,7 @@ mod crt_036_phase_freq_table_guard_tests {
         let now = now_secs();
         // Oldest retained reviewed 1 day ago; lookback = 3 days.
         // cutoff = now - 3d. oldest = now - 1d. oldest > cutoff → no warn.
-        let oldest_retained = Some(now - 1 * 86_400);
+        let oldest_retained = Some(now - 86_400);
 
         run_phase_freq_table_alignment_check(&oldest_retained, 3, 5);
 
@@ -3870,6 +3876,9 @@ mod tests_crt047 {
     ///
     /// `ts_offset` is subtracted from now to give each row a distinct,
     /// predictable timestamp (positive offset = older row).
+    // rationale: test fixture seeds a full curation row; the arity mirrors the table
+    // columns and splitting into a struct would obscure per-case values.
+    #[allow(clippy::too_many_arguments)]
     async fn seed_curation_row(
         store: &Arc<Store>,
         feature_cycle: &str,
@@ -4017,8 +4026,8 @@ mod tests_crt047 {
             seed_curation_row(
                 &store,
                 &format!("cyc7-{i}"),
-                (i + 1) as i64,
-                (i + 1) as i64,
+                i + 1,
+                i + 1,
                 0,
                 0,
                 0,

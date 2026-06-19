@@ -15,7 +15,10 @@ use unimatrix_adapt::AdaptationService;
 use unimatrix_core::Store;
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::observation::hook_type;
-use unimatrix_core::{EmbedService, NewEntry, Status, VectorAdapter};
+use unimatrix_core::{EmbedService, VectorAdapter};
+// Used only by the test module (via `use super::*`); gated so the lib build stays clean.
+#[cfg(test)]
+use unimatrix_core::Status;
 use unimatrix_engine::auth;
 use unimatrix_engine::coaccess::generate_pairs;
 use unimatrix_engine::confidence::rerank_score;
@@ -297,7 +300,7 @@ fn spawn_blocking_fire_and_forget<F>(f: F)
 where
     F: FnOnce() + Send + 'static,
 {
-    let _ = tokio::task::spawn_blocking(f);
+    let _detached = tokio::task::spawn_blocking(f);
 }
 
 /// Minimum cosine similarity for injection candidates.
@@ -328,14 +331,14 @@ impl SocketGuard {
 
 impl Drop for SocketGuard {
     fn drop(&mut self) {
-        if let Err(e) = fs::remove_file(&self.path) {
-            if e.kind() != io::ErrorKind::NotFound {
-                tracing::warn!(
-                    error = %e,
-                    path = %self.path.display(),
-                    "failed to remove socket file on drop"
-                );
-            }
+        if let Err(e) = fs::remove_file(&self.path)
+            && e.kind() != io::ErrorKind::NotFound
+        {
+            tracing::warn!(
+                error = %e,
+                path = %self.path.display(),
+                "failed to remove socket file on drop"
+            );
         }
     }
 }
@@ -368,6 +371,9 @@ pub fn handle_stale_socket(socket_path: &Path) -> io::Result<()> {
 ///
 /// Returns a `JoinHandle` for the accept loop task and a `SocketGuard`
 /// for RAII socket file cleanup.
+// rationale: listener wiring threads the full set of shared services into the
+// accept loop; each is a distinct injected dependency, not shared state.
+#[allow(clippy::too_many_arguments)]
 pub async fn start_uds_listener(
     socket_path: &Path,
     store: Arc<Store>,
@@ -421,6 +427,9 @@ pub async fn start_uds_listener(
 /// Accept loop: waits for connections and spawns per-connection handlers.
 ///
 /// Never panics -- errors in accept are logged and the loop continues (R-19).
+// rationale: accept loop forwards the same injected service set to each connection;
+// bundling into a struct would not reduce the real dependency surface.
+#[allow(clippy::too_many_arguments)]
 async fn accept_loop(
     listener: tokio::net::UnixListener,
     store: Arc<Store>,
@@ -536,6 +545,9 @@ fn negotiate_text_response(response: HookResponse, wants_text: bool) -> HookResp
     }
 }
 
+// rationale: per-connection handler receives the same injected service set as the
+// accept loop; each is a distinct dependency, not shared state.
+#[allow(clippy::too_many_arguments)]
 async fn handle_connection(
     stream: tokio::net::UnixStream,
     store: Arc<Store>,
@@ -566,7 +578,7 @@ async fn handle_connection(
             // F-23: Audit auth failure (fire-and-forget)
             let audit_log = Arc::clone(&audit_log);
             let error_msg = format!("{e}");
-            let _ = tokio::task::spawn_blocking(move || {
+            let _detached = tokio::task::spawn_blocking(move || {
                 let event = AuditEvent {
                     event_id: 0,
                     timestamp: 0,
@@ -671,13 +683,13 @@ async fn handle_connection(
     // and treat as success so the WARN catch-all at the accept loop is not triggered.
     if let Err(e) = write_response(&mut writer, &wire_response).await {
         // Downcast Box<dyn Error> → &io::Error to inspect the kind.
-        if let Some(io_err) = e.downcast_ref::<io::Error>() {
-            if io_err.kind() == io::ErrorKind::BrokenPipe {
-                tracing::debug!(
-                    "UDS: broken pipe writing response (fire-and-forget client disconnected)"
-                );
-                return Ok(());
-            }
+        if let Some(io_err) = e.downcast_ref::<io::Error>()
+            && io_err.kind() == io::ErrorKind::BrokenPipe
+        {
+            tracing::debug!(
+                "UDS: broken pipe writing response (fire-and-forget client disconnected)"
+            );
+            return Ok(());
         }
         return Err(e);
     }
@@ -688,6 +700,9 @@ async fn handle_connection(
 /// Dispatch a hook request and return the appropriate response.
 ///
 /// Fully async per ADR-002. All handler arms are async.
+// rationale: request dispatcher threads every injected service plus the request and
+// capabilities; each is a distinct input, not consolidatable shared state.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn dispatch_request(
     request: HookRequest,
     store: &Arc<Store>,
@@ -751,20 +766,20 @@ pub(crate) async fn dispatch_request(
             // After register_session so the session exists in the registry.
             // Only attempt if the session has a non-empty feature_cycle.
             // DB error degrades to None + warn; session registration always completes.
-            if let Some(ref fc) = clean_feature {
-                if !fc.is_empty() {
-                    let goal = store.get_cycle_start_goal(fc).await.unwrap_or_else(|e| {
-                        tracing::warn!(
-                            error = %e,
-                            cycle_id = %fc,
-                            "col-025: goal resume lookup failed, degrading to None"
-                        );
-                        None
-                    });
-                    // Always call set_current_goal even when goal is None to make the
-                    // invariant explicit (ADR-004 §Decision).
-                    session_registry.set_current_goal(&session_id, goal);
-                }
+            if let Some(ref fc) = clean_feature
+                && !fc.is_empty()
+            {
+                let goal = store.get_cycle_start_goal(fc).await.unwrap_or_else(|e| {
+                    tracing::warn!(
+                        error = %e,
+                        cycle_id = %fc,
+                        "col-025: goal resume lookup failed, degrading to None"
+                    );
+                    None
+                });
+                // Always call set_current_goal even when goal is None to make the
+                // invariant explicit (ADR-004 §Decision).
+                session_registry.set_current_goal(&session_id, goal);
             }
 
             // col-010: Persist SessionRecord to SESSIONS table
@@ -889,14 +904,14 @@ pub(crate) async fn dispatch_request(
             // vnc-030 tally-skip (R-05): a stamped event must NOT feed the vote tally —
             // belt-and-suspenders against a mixed/buggy client (the client also strips
             // topic_signal from stamped non-CYCLE_* frames).
-            if event.cycle_stamp.is_none() {
-                if let Some(ref signal) = event.topic_signal {
-                    session_registry.record_topic_signal(
-                        &event.session_id,
-                        signal.clone(),
-                        event.timestamp,
-                    );
-                }
+            if event.cycle_stamp.is_none()
+                && let Some(ref signal) = event.topic_signal
+            {
+                session_registry.record_topic_signal(
+                    &event.session_id,
+                    signal.clone(),
+                    event.timestamp,
+                );
             }
 
             // col-019: Persist rework PostToolUse as observation (fire-and-forget)
@@ -1023,7 +1038,7 @@ pub(crate) async fn dispatch_request(
                         let store_fc = Arc::clone(store);
                         let sid = event.session_id.clone();
                         let fc_owned = fc_clean;
-                        let _ = tokio::spawn(async move {
+                        let _detached = tokio::spawn(async move {
                             if let Err(e) =
                                 update_session_feature_cycle(&store_fc, &sid, &fc_owned).await
                             {
@@ -1044,26 +1059,25 @@ pub(crate) async fn dispatch_request(
                     // #198 Part 2: Check eager attribution after signal accumulation
                     if let Some(winner) =
                         session_registry.check_eager_attribution(&event.session_id)
+                        && session_registry.set_feature_if_absent(&event.session_id, &winner)
                     {
-                        if session_registry.set_feature_if_absent(&event.session_id, &winner) {
-                            tracing::info!(
-                                session_id = %event.session_id,
-                                feature_cycle = %winner,
-                                "#198: feature_cycle set via eager attribution"
-                            );
-                            let store_eager = Arc::clone(store);
-                            let sid = event.session_id.clone();
-                            let _ = tokio::spawn(async move {
-                                if let Err(e) =
-                                    update_session_feature_cycle(&store_eager, &sid, &winner).await
-                                {
-                                    tracing::warn!(
-                                        error = %e,
-                                        "#198: eager attribution persist failed"
-                                    );
-                                }
-                            });
-                        }
+                        tracing::info!(
+                            session_id = %event.session_id,
+                            feature_cycle = %winner,
+                            "#198: feature_cycle set via eager attribution"
+                        );
+                        let store_eager = Arc::clone(store);
+                        let sid = event.session_id.clone();
+                        let _detached = tokio::spawn(async move {
+                            if let Err(e) =
+                                update_session_feature_cycle(&store_eager, &sid, &winner).await
+                            {
+                                tracing::warn!(
+                                    error = %e,
+                                    "#198: eager attribution persist failed"
+                                );
+                            }
+                        });
                     }
                 }
             }
@@ -1130,7 +1144,7 @@ pub(crate) async fn dispatch_request(
                         let store_fc = Arc::clone(store);
                         let sid = event.session_id.clone();
                         let fc_owned = fc_clean;
-                        let _ = tokio::spawn(async move {
+                        let _detached = tokio::spawn(async move {
                             if let Err(e) =
                                 update_session_feature_cycle(&store_fc, &sid, &fc_owned).await
                             {
@@ -1172,27 +1186,26 @@ pub(crate) async fn dispatch_request(
                 if eager_resolved.contains(sid) {
                     continue;
                 }
-                if let Some(winner) = session_registry.check_eager_attribution(sid) {
-                    if session_registry.set_feature_if_absent(sid, &winner) {
-                        tracing::info!(
-                            session_id = %sid,
-                            feature_cycle = %winner,
-                            "#198: feature_cycle set via eager attribution (batch)"
-                        );
-                        let store_eager = Arc::clone(store);
-                        let sid_owned = sid.to_string();
-                        let _ = tokio::spawn(async move {
-                            if let Err(e) =
-                                update_session_feature_cycle(&store_eager, &sid_owned, &winner)
-                                    .await
-                            {
-                                tracing::warn!(
-                                    error = %e,
-                                    "#198: eager attribution persist failed"
-                                );
-                            }
-                        });
-                    }
+                if let Some(winner) = session_registry.check_eager_attribution(sid)
+                    && session_registry.set_feature_if_absent(sid, &winner)
+                {
+                    tracing::info!(
+                        session_id = %sid,
+                        feature_cycle = %winner,
+                        "#198: feature_cycle set via eager attribution (batch)"
+                    );
+                    let store_eager = Arc::clone(store);
+                    let sid_owned = sid.to_string();
+                    let _detached = tokio::spawn(async move {
+                        if let Err(e) =
+                            update_session_feature_cycle(&store_eager, &sid_owned, &winner).await
+                        {
+                            tracing::warn!(
+                                error = %e,
+                                "#198: eager attribution persist failed"
+                            );
+                        }
+                    });
                 }
             }
 
@@ -1270,14 +1283,14 @@ pub(crate) async fn dispatch_request(
                     message: "insufficient capability: Search required".to_string(),
                 };
             }
-            if let Some(ref sid) = session_id {
-                if let Err(e) = sanitize_session_id(sid) {
-                    tracing::warn!(session_id = sid, error = %e, "UDS: ContextSearch rejected: invalid session_id");
-                    return HookResponse::Error {
-                        code: ERR_INVALID_PAYLOAD,
-                        message: e,
-                    };
-                }
+            if let Some(ref sid) = session_id
+                && let Err(e) = sanitize_session_id(sid)
+            {
+                tracing::warn!(session_id = sid, error = %e, "UDS: ContextSearch rejected: invalid session_id");
+                return HookResponse::Error {
+                    code: ERR_INVALID_PAYLOAD,
+                    message: e,
+                };
             }
 
             // col-025 ADR-003: SubagentStart goal-present branch.
@@ -1374,45 +1387,45 @@ pub(crate) async fn dispatch_request(
             // col-024: Enrich topic_signal from session registry when extract returns None.
             let topic_signal = unimatrix_observe::extract_topic_signal(&query);
 
-            if let Some(ref sid) = session_id {
-                if !query.is_empty() {
-                    // col-024 / vnc-030: enrich-with-source before recording. ContextSearch
-                    // carries no cycle_stamp (it is a query, not a RecordEvent frame), so it
-                    // takes the heuristic decision tree directly — topic_source comes from the
-                    // same path that sets topic_signal (ADR-005 §2; signal/source agree).
-                    let (enriched_signal, enriched_source) =
-                        enrich_topic_signal_with_source(topic_signal, sid, session_registry);
+            if let Some(ref sid) = session_id
+                && !query.is_empty()
+            {
+                // col-024 / vnc-030: enrich-with-source before recording. ContextSearch
+                // carries no cycle_stamp (it is a query, not a RecordEvent frame), so it
+                // takes the heuristic decision tree directly — topic_source comes from the
+                // same path that sets topic_signal (ADR-005 §2; signal/source agree).
+                let (enriched_signal, enriched_source) =
+                    enrich_topic_signal_with_source(topic_signal, sid, session_registry);
 
-                    if let Some(ref signal) = enriched_signal {
-                        session_registry.record_topic_signal(sid, signal.clone(), unix_now_secs());
-                    }
-
-                    let truncated_input: String = query.chars().take(4096).collect();
-                    // crt-043: capture phase before struct construction — same timing contract as topic_signal enrichment.
-                    let phase: Option<String> = session_registry
-                        .get_state(sid.as_str())
-                        .and_then(|s| s.current_phase.clone());
-                    let obs = ObservationRow {
-                        session_id: sid.clone(),
-                        ts_millis: (unix_now_secs() as i64).saturating_mul(1000),
-                        // GH #354: allowlist-validated; see sanitize_observation_source (ADR-004 crt-028)
-                        hook: sanitize_observation_source(source.as_deref()),
-                        tool: None,
-                        input: Some(truncated_input),
-                        response_size: None,
-                        response_snippet: None,
-                        topic_signal: enriched_signal,
-                        phase,                         // crt-043
-                        topic_source: enriched_source, // vnc-030 (ADR-005)
-                    };
-
-                    let store_for_obs = Arc::clone(store);
-                    spawn_blocking_fire_and_forget(move || {
-                        if let Err(e) = insert_observation(&store_for_obs, &obs) {
-                            tracing::error!(error = %e, "col-018: observation write failed");
-                        }
-                    });
+                if let Some(ref signal) = enriched_signal {
+                    session_registry.record_topic_signal(sid, signal.clone(), unix_now_secs());
                 }
+
+                let truncated_input: String = query.chars().take(4096).collect();
+                // crt-043: capture phase before struct construction — same timing contract as topic_signal enrichment.
+                let phase: Option<String> = session_registry
+                    .get_state(sid.as_str())
+                    .and_then(|s| s.current_phase.clone());
+                let obs = ObservationRow {
+                    session_id: sid.clone(),
+                    ts_millis: (unix_now_secs() as i64).saturating_mul(1000),
+                    // GH #354: allowlist-validated; see sanitize_observation_source (ADR-004 crt-028)
+                    hook: sanitize_observation_source(source.as_deref()),
+                    tool: None,
+                    input: Some(truncated_input),
+                    response_size: None,
+                    response_snippet: None,
+                    topic_signal: enriched_signal,
+                    phase,                         // crt-043
+                    topic_source: enriched_source, // vnc-030 (ADR-005)
+                };
+
+                let store_for_obs = Arc::clone(store);
+                spawn_blocking_fire_and_forget(move || {
+                    if let Err(e) = insert_observation(&store_for_obs, &obs) {
+                        tracing::error!(error = %e, "col-018: observation write failed");
+                    }
+                });
             }
 
             handle_context_search(
@@ -1620,72 +1633,74 @@ async fn handle_context_search(
     );
 
     // 10. Injection tracking (col-008)
-    if let Some(ref sid) = session_id {
-        if !sid.is_empty() && !filtered.is_empty() {
-            let injection_entries: Vec<(u64, f64)> = filtered
-                .iter()
-                .map(|(entry, _sim)| (entry.id, entry.confidence))
-                .collect();
-            session_registry.record_injection(sid, &injection_entries);
+    if let Some(ref sid) = session_id
+        && !sid.is_empty()
+        && !filtered.is_empty()
+    {
+        let injection_entries: Vec<(u64, f64)> = filtered
+            .iter()
+            .map(|(entry, _sim)| (entry.id, entry.confidence))
+            .collect();
+        session_registry.record_injection(sid, &injection_entries);
 
-            tracing::debug!(
-                target: "unimatrix_server::obs",
-                session_id = %sid,
-                entry_count = filtered.len(),
-                entries = ?filtered.iter().map(|(e, _)| (e.id, truncate_at_utf8_boundary(&e.title, 60))).collect::<Vec<_>>(),
-                "UDS: injecting entries"
-            );
-        }
+        tracing::debug!(
+            target: "unimatrix_server::obs",
+            session_id = %sid,
+            entry_count = filtered.len(),
+            entries = ?filtered.iter().map(|(e, _)| (e.id, truncate_at_utf8_boundary(&e.title, 60))).collect::<Vec<_>>(),
+            "UDS: injecting entries"
+        );
     }
 
     // 10b. col-010: Persist injection log batch to INJECTION_LOG (fire-and-forget, ADR-003)
-    if let Some(ref sid) = session_id {
-        if !sid.is_empty() && !filtered.is_empty() {
-            let now = unix_now_secs();
-            // crt-019: use adaptive confidence_weight from shared ConfidenceState (#258)
-            let confidence_weight = {
-                let handle = services.confidence_state_handle();
-                let guard = handle.read().unwrap_or_else(|e| e.into_inner());
-                guard.confidence_weight
-            };
-            let records: Vec<InjectionLogRecord> = filtered
-                .iter()
-                .map(|(entry, sim)| InjectionLogRecord {
-                    log_id: 0, // allocated by insert_injection_log_batch
-                    session_id: sid.clone(),
-                    entry_id: entry.id,
-                    confidence: rerank_score(*sim, entry.confidence, confidence_weight),
-                    timestamp: now,
-                })
-                .collect();
-            let store_clone = Arc::clone(store);
-            spawn_blocking_fire_and_forget(move || {
-                store_clone.insert_injection_log_batch(&records);
-            });
-        }
+    if let Some(ref sid) = session_id
+        && !sid.is_empty()
+        && !filtered.is_empty()
+    {
+        let now = unix_now_secs();
+        // crt-019: use adaptive confidence_weight from shared ConfidenceState (#258)
+        let confidence_weight = {
+            let handle = services.confidence_state_handle();
+            let guard = handle.read().unwrap_or_else(|e| e.into_inner());
+            guard.confidence_weight
+        };
+        let records: Vec<InjectionLogRecord> = filtered
+            .iter()
+            .map(|(entry, sim)| InjectionLogRecord {
+                log_id: 0, // allocated by insert_injection_log_batch
+                session_id: sid.clone(),
+                entry_id: entry.id,
+                confidence: rerank_score(*sim, entry.confidence, confidence_weight),
+                timestamp: now,
+            })
+            .collect();
+        let store_clone = Arc::clone(store);
+        spawn_blocking_fire_and_forget(move || {
+            store_clone.insert_injection_log_batch(&records);
+        });
     }
 
     // 10c. nxs-010: Persist query_log row (fire-and-forget, ADR-002)
-    if let Some(ref sid) = session_id {
-        if !sid.is_empty() {
-            let entry_ids: Vec<u64> = filtered.iter().map(|(e, _)| e.id).collect();
-            let scores: Vec<f64> = filtered.iter().map(|(_, sim)| *sim).collect();
+    if let Some(ref sid) = session_id
+        && !sid.is_empty()
+    {
+        let entry_ids: Vec<u64> = filtered.iter().map(|(e, _)| e.id).collect();
+        let scores: Vec<f64> = filtered.iter().map(|(_, sim)| *sim).collect();
 
-            let record = QueryLogRecord::new(
-                sid.clone(),
-                query.clone(),
-                &entry_ids,
-                &scores,
-                "strict",
-                "uds",
-                None, // col-028: UDS compile-fix only — no phase semantics (C-08, SR-03)
-            );
+        let record = QueryLogRecord::new(
+            sid.clone(),
+            query.clone(),
+            &entry_ids,
+            &scores,
+            "strict",
+            "uds",
+            None, // col-028: UDS compile-fix only — no phase semantics (C-08, SR-03)
+        );
 
-            let store_clone = Arc::clone(store);
-            spawn_blocking_fire_and_forget(move || {
-                store_clone.insert_query_log(&record);
-            });
-        }
+        let store_clone = Arc::clone(store);
+        spawn_blocking_fire_and_forget(move || {
+            store_clone.insert_query_log(&record);
+        });
     }
 
     // 11. Co-access pair recording with dedup (col-008: use session_id)
@@ -1968,7 +1983,7 @@ fn format_compaction_payload(
 
         if !hist_entries.is_empty() {
             // Sort by count descending (tiebreaking non-deterministic — acceptable per EC-04)
-            hist_entries.sort_by(|a, b| b.1.cmp(&a.1));
+            hist_entries.sort_by_key(|h| std::cmp::Reverse(h.1));
 
             // Cap at top-5 (EC-07)
             hist_entries.truncate(5);
@@ -2144,7 +2159,7 @@ async fn process_session_close(
             let store_fc = Arc::clone(store);
             let sid = sweep_result.session_id.clone();
             let fc_owned = fc.clone();
-            let _ = tokio::spawn(async move {
+            let _detached = tokio::spawn(async move {
                 if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc_owned).await {
                     tracing::warn!(error = %e, "#198: stale session feature_cycle persist failed");
                 }
@@ -2222,10 +2237,10 @@ async fn process_session_close(
         {
             let sid = session_id.to_string();
             let store_clone = Arc::clone(store);
-            let status_clone = final_status.clone();
+            let status_clone = final_status;
             let outcome_owned = outcome_str.to_string();
             let fc = final_feature_cycle.clone();
-            let _ = tokio::spawn(async move {
+            let _detached = tokio::spawn(async move {
                 let result = store_clone
                     .update_session(&sid, |r| {
                         r.status = status_clone;
@@ -2344,10 +2359,8 @@ fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option
     for candidate in &candidates {
         let attributed = unimatrix_observe::attribute_sessions(&sessions, candidate);
         let count = attributed.len();
-        if count > 0 {
-            if best.is_none() || count > best.as_ref().map(|(_, c)| *c).unwrap_or(0) {
-                best = Some((candidate.clone(), count));
-            }
+        if count > 0 && (best.is_none() || count > best.as_ref().map(|(_, c)| *c).unwrap_or(0)) {
+            best = Some((candidate.clone(), count));
         }
     }
 
@@ -2464,12 +2477,11 @@ pub(crate) async fn run_confidence_consumer(
                     .and_then(|b| b.entries.get_mut(&entry_id))
                     .is_some();
                 if in_bucket {
-                    if session_counted.insert((signal.session_id.clone(), entry_id)) {
-                        if let Some(b) = pending_guard.buckets.get_mut(feature_cycle) {
-                            if let Some(existing) = b.entries.get_mut(&entry_id) {
-                                existing.success_session_count += 1;
-                            }
-                        }
+                    if session_counted.insert((signal.session_id.clone(), entry_id))
+                        && let Some(b) = pending_guard.buckets.get_mut(feature_cycle)
+                        && let Some(existing) = b.entries.get_mut(&entry_id)
+                    {
+                        existing.success_session_count += 1;
                     }
                 } else {
                     needing_fetch.push(entry_id);
@@ -2503,12 +2515,11 @@ pub(crate) async fn run_confidence_consumer(
                         .is_some();
                     if in_bucket {
                         // Entry exists (added between passes or by earlier signal iteration)
-                        if session_counted.insert((signal.session_id.clone(), entry_id)) {
-                            if let Some(b) = pending_guard.buckets.get_mut(feature_cycle) {
-                                if let Some(existing) = b.entries.get_mut(&entry_id) {
-                                    existing.success_session_count += 1;
-                                }
-                            }
+                        if session_counted.insert((signal.session_id.clone(), entry_id))
+                            && let Some(b) = pending_guard.buckets.get_mut(feature_cycle)
+                            && let Some(existing) = b.entries.get_mut(&entry_id)
+                        {
+                            existing.success_session_count += 1;
                         }
                     } else {
                         // New entry — insert with session-aware count via upsert
@@ -2564,7 +2575,7 @@ pub(crate) async fn run_retrospective_consumer(
                 !pending_guard
                     .buckets
                     .get(feature_cycle)
-                    .map_or(false, |b| b.entries.contains_key(id))
+                    .is_some_and(|b| b.entries.contains_key(id))
             })
             .collect::<HashSet<_>>()
             .into_iter()
@@ -2599,16 +2610,16 @@ pub(crate) async fn run_retrospective_consumer(
                 let in_bucket = pending_guard
                     .buckets
                     .get(feature_cycle)
-                    .map_or(false, |b| b.entries.contains_key(&entry_id));
+                    .is_some_and(|b| b.entries.contains_key(&entry_id));
                 if in_bucket {
                     // rework_flag_count: always increment (event counter, no dedup)
-                    if let Some(b) = pending_guard.buckets.get_mut(feature_cycle) {
-                        if let Some(existing) = b.entries.get_mut(&entry_id) {
-                            existing.rework_flag_count += 1;
-                            // rework_session_count: dedup per (session_id, entry_id)
-                            if session_counted.insert((signal.session_id.clone(), entry_id)) {
-                                existing.rework_session_count += 1;
-                            }
+                    if let Some(b) = pending_guard.buckets.get_mut(feature_cycle)
+                        && let Some(existing) = b.entries.get_mut(&entry_id)
+                    {
+                        existing.rework_flag_count += 1;
+                        // rework_session_count: dedup per (session_id, entry_id)
+                        if session_counted.insert((signal.session_id.clone(), entry_id)) {
+                            existing.rework_session_count += 1;
                         }
                     }
                 } else {
@@ -2921,22 +2932,22 @@ fn handle_cycle_event(
     // All spawns below are fire-and-forget; they do not affect session state reads.
 
     // Step 4: Persist feature_cycle to SQLite for Start events (col-022, fire-and-forget).
-    if lifecycle == CycleLifecycle::Start && !feature_cycle.is_empty() {
-        if let Some(result) = attribution_result {
-            if matches!(
-                result,
-                SetFeatureResult::Set | SetFeatureResult::Overridden { .. }
-            ) {
-                let store_fc = Arc::clone(store);
-                let sid = event.session_id.clone();
-                let fc = feature_cycle.clone();
-                let _ = tokio::spawn(async move {
-                    if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc).await {
-                        tracing::warn!(error = %e, "col-022: feature_cycle persist failed");
-                    }
-                });
+    if lifecycle == CycleLifecycle::Start
+        && !feature_cycle.is_empty()
+        && let Some(result) = attribution_result
+        && matches!(
+            result,
+            SetFeatureResult::Set | SetFeatureResult::Overridden { .. }
+        )
+    {
+        let store_fc = Arc::clone(store);
+        let sid = event.session_id.clone();
+        let fc = feature_cycle.clone();
+        let _detached = tokio::spawn(async move {
+            if let Err(e) = update_session_feature_cycle(&store_fc, &sid, &fc).await {
+                tracing::warn!(error = %e, "col-022: feature_cycle persist failed");
             }
-        }
+        });
     }
 
     // Step 5: Fire-and-forget CYCLE_EVENTS INSERT (crt-025).
@@ -2966,7 +2977,7 @@ fn handle_cycle_event(
         // col-025: capture goal for spawn; None for PhaseEnd and Stop events.
         let goal_for_db = goal_for_event.clone();
 
-        let _ = tokio::spawn(async move {
+        let _detached = tokio::spawn(async move {
             let seq = store_clone.get_next_cycle_seq(&cycle_id).await;
             if let Err(e) = store_clone
                 .insert_cycle_event(
@@ -3011,7 +3022,7 @@ fn handle_cycle_event(
             let store_embed = Arc::clone(store);
             let cycle_id_embed = feature_cycle.clone(); // feature_cycle from Step 1
 
-            let _ = tokio::spawn(async move {
+            let _detached = tokio::spawn(async move {
                 match embed_svc.get_adapter().await {
                     Err(e) => {
                         // Embed service not ready — accepted degradation path (FR-B-10).
@@ -3160,7 +3171,7 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
             (tool, input, response_size, response_snippet)
         }
 
-        "SubagentStop" | _ => (None, None, None, None),
+        _ => (None, None, None, None),
     };
 
     // col-019: Normalize rework candidate hook type to PostToolUse for observation consistency
@@ -3195,13 +3206,13 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
 /// legacy `response_size`/`response_snippet` fields for backward compatibility.
 fn extract_response_fields(payload: &serde_json::Value) -> (Option<i64>, Option<String>) {
     // Primary: compute from tool_response (Claude Code's actual field)
-    if let Some(response) = payload.get("tool_response") {
-        if !response.is_null() {
-            let serialized = serde_json::to_string(response).unwrap_or_default();
-            let size = serialized.len() as i64;
-            let snippet: String = serialized.chars().take(500).collect();
-            return (Some(size), Some(snippet));
-        }
+    if let Some(response) = payload.get("tool_response")
+        && !response.is_null()
+    {
+        let serialized = serde_json::to_string(response).unwrap_or_default();
+        let size = serialized.len() as i64;
+        let snippet: String = serialized.chars().take(500).collect();
+        return (Some(size), Some(snippet));
     }
 
     // Fallback: legacy field names (test fixtures, future compatibility)
@@ -5004,7 +5015,7 @@ mod tests {
     fn extract_response_fields_multibyte_utf8_truncation() {
         // T-13: Multi-byte UTF-8 characters -> snippet truncated at char boundary, no panic
         // Each emoji is 1 char but multiple bytes
-        let emojis: String = std::iter::repeat('\u{1F600}').take(600).collect();
+        let emojis: String = "\u{1F600}".repeat(600);
         let payload = serde_json::json!({"tool_response": emojis});
         let (size, snippet) = extract_response_fields(&payload);
         assert!(size.is_some());

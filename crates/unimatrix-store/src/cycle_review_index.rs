@@ -1995,7 +1995,6 @@ mod tests {
     #[tokio::test]
     async fn test_get_curation_snapshot_counts_corrections_by_trust_source() {
         use crate::schema::{NewEntry, Status};
-        use sqlx::Row;
 
         let dir = tempfile::TempDir::new().expect("tempdir");
         let store = open_test_store(&dir).await;

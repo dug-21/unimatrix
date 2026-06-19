@@ -394,10 +394,8 @@ fn test_is_reserved_slug_helper_and_constant() {
 fn test_config_slug_roundtrips_with_route_grammar() {
     let from_config =
         validate_projects_config(&entries(&["alpha"]), test_path()).expect("alpha valid");
-    let from_route = match parse_key_for_test("/v1/alpha/tools").expect("parse") {
-        ProjectKey::Slug(s) => s,
-        other => panic!("expected Slug, got {other:?}"),
-    };
+    // ProjectKey has a single variant, so this destructure is irrefutable.
+    let ProjectKey::Slug(from_route) = parse_key_for_test("/v1/alpha/tools").expect("parse");
     assert_eq!(
         from_config[0], from_route,
         "config and route grammar must yield the identical ProjectSlug"

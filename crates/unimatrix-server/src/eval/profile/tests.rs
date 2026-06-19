@@ -1,5 +1,8 @@
 //! Tests for the eval profile module (nan-007).
 
+// rationale: file is included as `mod tests;`; the inner `tests` module repeats the name
+// by the crate's test-file convention. Renaming would churn call sites for no gain.
+#[allow(clippy::module_inception)]
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -9,7 +12,7 @@ mod tests {
     use crate::infra::config::UnimatrixConfig;
 
     use super::super::error::EvalError;
-    use super::super::types::{AnalyticsMode, EvalProfile};
+    use super::super::types::AnalyticsMode;
     use super::super::validation::validate_confidence_weights;
     use crate::eval::profile::parse_profile_toml;
 
@@ -98,18 +101,19 @@ mod tests {
         trust: f64,
     ) -> UnimatrixConfig {
         use crate::infra::config::{ConfidenceConfig, ConfidenceWeights};
-        let mut cfg = UnimatrixConfig::default();
-        cfg.confidence = ConfidenceConfig {
-            weights: Some(ConfidenceWeights {
-                base,
-                usage,
-                fresh,
-                help,
-                corr,
-                trust,
-            }),
-        };
-        cfg
+        UnimatrixConfig {
+            confidence: ConfidenceConfig {
+                weights: Some(ConfidenceWeights {
+                    base,
+                    usage,
+                    fresh,
+                    help,
+                    corr,
+                    trust,
+                }),
+            },
+            ..Default::default()
+        }
     }
 
     #[test]

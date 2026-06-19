@@ -48,6 +48,9 @@ pub(super) const REDIRECT_CEILING: usize = 50;
 /// Exposed as `pub(crate)` so sibling test modules can assert on disclosure text
 /// without re-embedding the string (AC-13, R-11 vnc-019 test plan; AC-19, R-01 vnc-020).
 /// Must match the `#[tool(description = "...")]` attribute literal on `context_graph`.
+// rationale: the #[tool] macro requires an inline string literal, so this single-source
+// constant is asserted against only by sibling test modules.
+#[allow(dead_code)]
 pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowledge graph in seven modes:\n\
     - chain: walk the supersession history of an entry (forward toward newer, \
       backward toward older, or both). forward: returns descendants (entries that \
@@ -596,7 +599,7 @@ impl UnimatrixServer {
             );
 
             let store_clone = Arc::clone(&self.store);
-            let _ = tokio::task::spawn_blocking(move || {
+            let _detached = tokio::task::spawn_blocking(move || {
                 store_clone.insert_query_log(&record);
             });
         }
@@ -710,12 +713,12 @@ impl UnimatrixServer {
         // col-028 ADR-004: confirmed_entries — request-side cardinality.
         // Single-ID lookup (params.id path) always resolves exactly one entry or
         // errors before reaching here. Multi-ID filter results are NOT explicit fetches.
-        if target_ids.len() == 1 && params.id.is_some() {
-            if let Some(sid) = ctx.audit_ctx.session_id.as_deref() {
-                if let Some(&entry_id) = target_ids.first() {
-                    self.session_registry.record_confirmed_entry(sid, entry_id);
-                }
-            }
+        if target_ids.len() == 1
+            && params.id.is_some()
+            && let Some(sid) = ctx.audit_ctx.session_id.as_deref()
+            && let Some(&entry_id) = target_ids.first()
+        {
+            self.session_registry.record_confirmed_entry(sid, entry_id);
         }
 
         Ok(result)
@@ -1234,18 +1237,18 @@ impl UnimatrixServer {
             append_to_first_text(&mut result, &format_edges_carried(carry_summary.carried));
         }
 
-        if let Some(rs) = redirect_summary {
-            if let Some(summary_text) = format_redirect_summary(
+        if let Some(rs) = redirect_summary
+            && let Some(summary_text) = format_redirect_summary(
                 rs.found,
                 rs.skipped,
                 rs.redirected,
                 rs.failed,
                 rs.truncated,
                 rs.total_raw,
-            ) {
-                // Append redirect summary line to the first content item's text.
-                append_to_first_text(&mut result, &summary_text);
-            }
+            )
+        {
+            // Append redirect summary line to the first content item's text.
+            append_to_first_text(&mut result, &summary_text);
         }
         Ok(result)
     }
@@ -2007,8 +2010,7 @@ impl UnimatrixServer {
         // 3. Load observations from SQL via ObservationSource (col-024)
         //    Three-path lookup: primary cycle_events-based → legacy sessions.feature_cycle → content-scan.
         //    Primary path introduced in col-024; legacy paths preserved for backward compatibility.
-        //    col-026: attribution_path_label is set inside each path branch for step 10i.
-        let mut attribution_path_label: Option<&'static str> = None;
+        //    col-026: attribution_path_label is bound from obs_path_label below for step 10i.
         let store_for_obs = Arc::clone(&self.store);
         let registry_for_obs = Arc::clone(&self.observation_registry);
         let feature_cycle_for_load = params.feature_cycle.clone();
@@ -2064,7 +2066,7 @@ impl UnimatrixServer {
         .map_err(|e| ServerError::ObservationError(e.to_string()))
         .map_err(rmcp::ErrorData::from)?;
 
-        attribution_path_label = Some(obs_path_label);
+        let attribution_path_label: Option<&'static str> = Some(obs_path_label);
 
         let store = Arc::clone(&self.store);
         let feature_cycle = params.feature_cycle.clone();
@@ -2538,7 +2540,7 @@ impl UnimatrixServer {
             let session_data: Option<(
                 Vec<unimatrix_observe::SessionSummary>,
                 Vec<unimatrix_store::SessionRecord>,
-            )> = match (|| async {
+            )> = match async {
                 // Step 11: Compute session summaries (C1)
                 let mut summaries = unimatrix_observe::compute_session_summaries(&attributed);
 
@@ -2563,7 +2565,7 @@ impl UnimatrixServer {
                 }
 
                 Ok::<_, Box<dyn std::error::Error + Send + Sync>>((summaries, session_records))
-            })()
+            }
             .await
             {
                 Ok(data) => Some(data),
@@ -2673,7 +2675,7 @@ impl UnimatrixServer {
                 report.rework_session_count = Some(rework_count);
 
                 // Step 16: Attribution metadata (ADR-003)
-                match (|| async {
+                match async {
                     let store_for_discover = Arc::clone(&store);
                     let registry_for_discover = Arc::clone(&self.observation_registry);
                     let fc_for_discover = feature_cycle.clone();
@@ -2704,7 +2706,7 @@ impl UnimatrixServer {
                             total_session_count: total_count,
                         },
                     )
-                })()
+                }
                 .await
                 {
                     Ok(meta) => report.attribution = Some(meta),
@@ -2794,68 +2796,65 @@ impl UnimatrixServer {
             // col-026: outer option to hold events for steps 10h and 10i
             let mut cycle_events_vec: Option<Vec<unimatrix_observe::CycleEventRecord>> = None;
 
-            if let Ok(event_rows) = event_rows {
-                if !event_rows.is_empty() {
-                    use unimatrix_observe::{CycleEventRecord, PhaseCategoryDist};
+            if let Ok(event_rows) = event_rows
+                && !event_rows.is_empty()
+            {
+                use unimatrix_observe::{CycleEventRecord, PhaseCategoryDist};
 
-                    // Map rows to CycleEventRecord
-                    let events: Vec<CycleEventRecord> = event_rows
-                        .iter()
-                        .map(|row| {
-                            use sqlx::Row;
-                            CycleEventRecord {
-                                seq: row.try_get::<i64, _>("seq").unwrap_or(0),
-                                event_type: row
-                                    .try_get::<String, _>("event_type")
-                                    .unwrap_or_default(),
-                                phase: row.try_get::<Option<String>, _>("phase").unwrap_or(None),
-                                outcome: row
-                                    .try_get::<Option<String>, _>("outcome")
-                                    .unwrap_or(None),
-                                next_phase: row
-                                    .try_get::<Option<String>, _>("next_phase")
-                                    .unwrap_or(None),
-                                timestamp: row.try_get::<i64, _>("timestamp").unwrap_or(0),
-                            }
-                        })
-                        .collect();
+                // Map rows to CycleEventRecord
+                let events: Vec<CycleEventRecord> = event_rows
+                    .iter()
+                    .map(|row| {
+                        use sqlx::Row;
+                        CycleEventRecord {
+                            seq: row.try_get::<i64, _>("seq").unwrap_or(0),
+                            event_type: row.try_get::<String, _>("event_type").unwrap_or_default(),
+                            phase: row.try_get::<Option<String>, _>("phase").unwrap_or(None),
+                            outcome: row.try_get::<Option<String>, _>("outcome").unwrap_or(None),
+                            next_phase: row
+                                .try_get::<Option<String>, _>("next_phase")
+                                .unwrap_or(None),
+                            timestamp: row.try_get::<i64, _>("timestamp").unwrap_or(0),
+                        }
+                    })
+                    .collect();
 
-                    // Query 2: current feature phase/category distribution
-                    let current_dist: PhaseCategoryDist = match sqlx::query(
-                        "SELECT fe.phase, e.category, COUNT(*) AS cnt \
+                // Query 2: current feature phase/category distribution
+                let current_dist: PhaseCategoryDist = match sqlx::query(
+                    "SELECT fe.phase, e.category, COUNT(*) AS cnt \
                            FROM feature_entries fe \
                            JOIN entries e ON e.id = fe.entry_id \
                           WHERE fe.feature_id = ?1 \
                             AND fe.phase IS NOT NULL \
                           GROUP BY fe.phase, e.category",
-                    )
-                    .bind(&feature_cycle)
-                    .fetch_all(store.write_pool_server())
-                    .await
-                    {
-                        Ok(rows) => {
-                            use sqlx::Row;
-                            let mut dist: PhaseCategoryDist = std::collections::HashMap::new();
-                            for row in &rows {
-                                let phase: String = row.try_get("phase").unwrap_or_default();
-                                let category: String = row.try_get("category").unwrap_or_default();
-                                let cnt: i64 = row.try_get("cnt").unwrap_or(0);
-                                dist.entry(phase).or_default().insert(category, cnt as u64);
-                            }
-                            dist
+                )
+                .bind(&feature_cycle)
+                .fetch_all(store.write_pool_server())
+                .await
+                {
+                    Ok(rows) => {
+                        use sqlx::Row;
+                        let mut dist: PhaseCategoryDist = std::collections::HashMap::new();
+                        for row in &rows {
+                            let phase: String = row.try_get("phase").unwrap_or_default();
+                            let category: String = row.try_get("category").unwrap_or_default();
+                            let cnt: i64 = row.try_get("cnt").unwrap_or(0);
+                            dist.entry(phase).or_default().insert(category, cnt as u64);
                         }
-                        Err(e) => {
-                            tracing::warn!(
-                                "crt-025: phase/category dist query failed for {}: {}",
-                                feature_cycle,
-                                e
-                            );
-                            std::collections::HashMap::new()
-                        }
-                    };
+                        dist
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "crt-025: phase/category dist query failed for {}: {}",
+                            feature_cycle,
+                            e
+                        );
+                        std::collections::HashMap::new()
+                    }
+                };
 
-                    // Query 3: cross-feature baseline (excludes current feature)
-                    let cross_dist: std::collections::HashMap<String, PhaseCategoryDist> =
+                // Query 3: cross-feature baseline (excludes current feature)
+                let cross_dist: std::collections::HashMap<String, PhaseCategoryDist> =
                         match sqlx::query(
                             "SELECT fe.feature_id, fe.phase, e.category, COUNT(*) AS cnt \
                                FROM feature_entries fe \
@@ -2904,35 +2903,31 @@ impl UnimatrixServer {
                             }
                         };
 
-                    // Build phase narrative (pure function); borrows &events
-                    let narrative = unimatrix_observe::build_phase_narrative(
-                        &events,
-                        &current_dist,
-                        &cross_dist,
-                    );
-                    report.phase_narrative = Some(narrative);
+                // Build phase narrative (pure function); borrows &events
+                let narrative =
+                    unimatrix_observe::build_phase_narrative(&events, &current_dist, &cross_dist);
+                report.phase_narrative = Some(narrative);
 
-                    // Extract cycle outcome from cycle_stop event for step 8b.
-                    // cycle_stop carries the authoritative outcome for the cycle.
-                    // Fallback: last cycle_phase_end outcome (if no cycle_stop yet).
-                    cycle_outcome = events
-                        .iter()
-                        .find(|e| e.event_type == "cycle_stop")
-                        .and_then(|e| e.outcome.clone())
-                        .or_else(|| {
-                            events
-                                .iter()
-                                .rev()
-                                .find(|e| e.event_type == "cycle_phase_end")
-                                .and_then(|e| e.outcome.clone())
-                        });
+                // Extract cycle outcome from cycle_stop event for step 8b.
+                // cycle_stop carries the authoritative outcome for the cycle.
+                // Fallback: last cycle_phase_end outcome (if no cycle_stop yet).
+                cycle_outcome = events
+                    .iter()
+                    .find(|e| e.event_type == "cycle_stop")
+                    .and_then(|e| e.outcome.clone())
+                    .or_else(|| {
+                        events
+                            .iter()
+                            .rev()
+                            .find(|e| e.event_type == "cycle_phase_end")
+                            .and_then(|e| e.outcome.clone())
+                    });
 
-                    // Stash events for steps 10h and 10i (both borrow from this vec)
-                    cycle_events_vec = Some(events);
-                }
-                // If event_rows is empty, phase_narrative remains None (AC-12/13)
-                // and cycle_events_vec remains None → is_in_progress = None
+                // Stash events for steps 10h and 10i (both borrow from this vec)
+                cycle_events_vec = Some(events);
             }
+            // If event_rows is empty, phase_narrative remains None (AC-12/13)
+            // and cycle_events_vec remains None → is_in_progress = None
 
             // 10h. col-026: PhaseStats computation (best-effort, pure — no DB)
             {
@@ -2956,13 +2951,13 @@ impl UnimatrixServer {
             review_agg.populate_rank_1(cycle_events_vec.as_deref().unwrap_or(&[]));
 
             // 10i. col-026: goal, cycle_type, is_in_progress, attribution_path (best-effort)
-            match (|| async {
+            match async {
                 let goal = store
                     .get_cycle_start_goal(&feature_cycle)
                     .await
                     .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
                 Ok::<_, Box<dyn std::error::Error + Send + Sync>>(goal)
-            })()
+            }
             .await
             {
                 Ok(goal_opt) => {
@@ -3391,20 +3386,19 @@ impl UnimatrixServer {
             ));
         }
         // For redirect mode: also check source_id != new_target_id
-        if params.mode == "redirect" {
-            if let Some(new_id) = params.new_target_id {
-                if params.source_id == new_id {
-                    return Err(rmcp::ErrorData::from(
-                        crate::error::ServerError::InvalidInput {
-                            field: "new_target_id".to_string(),
-                            reason: format!(
-                                "self-referential edge rejected: source_id equals new_target_id ({})",
-                                params.source_id
-                            ),
-                        },
-                    ));
-                }
-            }
+        if params.mode == "redirect"
+            && let Some(new_id) = params.new_target_id
+            && params.source_id == new_id
+        {
+            return Err(rmcp::ErrorData::from(
+                crate::error::ServerError::InvalidInput {
+                    field: "new_target_id".to_string(),
+                    reason: format!(
+                        "self-referential edge rejected: source_id equals new_target_id ({})",
+                        params.source_id
+                    ),
+                },
+            ));
         }
 
         // ── Step 5: new_target_id presence check (R-13) ──────────────────────
@@ -4694,7 +4688,7 @@ fn infer_gate_result(outcome: Option<&str>, pass_count: u32) -> unimatrix_observ
 
     let outcome_lower = match outcome {
         None => return GateResult::Unknown,
-        Some(s) if s.is_empty() => return GateResult::Unknown,
+        Some("") => return GateResult::Unknown,
         Some(s) => s.to_lowercase(),
     };
 
@@ -4733,7 +4727,7 @@ fn infer_gate_result(outcome: Option<&str>, pass_count: u32) -> unimatrix_observ
 fn derive_is_in_progress(events: Option<&[unimatrix_observe::CycleEventRecord]>) -> Option<bool> {
     match events {
         None => None,
-        Some(evts) if evts.is_empty() => None,
+        Some([]) => None,
         Some(evts) => {
             if evts.iter().any(|e| e.event_type == "cycle_stop") {
                 Some(false) // confirmed complete
@@ -4750,7 +4744,7 @@ fn derive_is_in_progress(events: Option<&[unimatrix_observe::CycleEventRecord]>)
 fn infer_cycle_type(goal: Option<&str>) -> String {
     let goal_lower = match goal {
         None => return "Unknown".to_string(),
-        Some(s) if s.is_empty() => return "Unknown".to_string(),
+        Some("") => return "Unknown".to_string(),
         Some(s) => s.to_lowercase(),
     };
 
@@ -4791,10 +4785,10 @@ fn infer_cycle_type(goal: Option<&str>) -> String {
 ///
 /// Prefers obs.input["tool_name"], falls back to obs.tool.
 fn extract_agent_name(obs: &unimatrix_observe::ObservationRecord) -> Option<String> {
-    if let Some(input) = &obs.input {
-        if let Some(name) = input.get("tool_name").and_then(|v| v.as_str()) {
-            return Some(name.to_string());
-        }
+    if let Some(input) = &obs.input
+        && let Some(name) = input.get("tool_name").and_then(|v| v.as_str())
+    {
+        return Some(name.to_string());
     }
     obs.tool.clone()
 }
@@ -4827,7 +4821,7 @@ fn compute_phase_stats(
     attributed: &[unimatrix_observe::ObservationRecord],
 ) -> Vec<unimatrix_observe::PhaseStats> {
     use std::collections::{HashMap, HashSet};
-    use unimatrix_observe::{GateResult, PhaseStats, ToolDistribution};
+    use unimatrix_observe::{PhaseStats, ToolDistribution};
 
     // Fast-path: no events → no phase windows
     if events.is_empty() {
@@ -4971,10 +4965,10 @@ fn compute_phase_stats(
         let mut agents: Vec<String> = Vec::new();
         let mut seen_agents: HashSet<String> = HashSet::new();
         for obs in filtered.iter().filter(|o| o.event_type == "SubagentStart") {
-            if let Some(name) = extract_agent_name(obs) {
-                if seen_agents.insert(name.clone()) {
-                    agents.push(name);
-                }
+            if let Some(name) = extract_agent_name(obs)
+                && seen_agents.insert(name.clone())
+            {
+                agents.push(name);
             }
         }
 
@@ -5002,7 +4996,7 @@ fn compute_phase_stats(
                 o.tool
                     .as_deref()
                     .map(unimatrix_observe::normalize_tool_name)
-                    .map_or(false, |t| {
+                    .is_some_and(|t| {
                         matches!(t, "context_search" | "context_lookup" | "context_get")
                     })
             })
@@ -5018,7 +5012,7 @@ fn compute_phase_stats(
                 o.tool
                     .as_deref()
                     .map(unimatrix_observe::normalize_tool_name)
-                    .map_or(false, |t| t == "context_store")
+                    == Some("context_store")
             })
             .count() as u64;
 
@@ -5563,7 +5557,7 @@ mod tests {
         assert_eq!(params.k.unwrap(), 10);
         assert_eq!(params.format.unwrap(), "json");
         assert_eq!(params.feature.unwrap(), "crt-001");
-        assert_eq!(params.helpful.unwrap(), true);
+        assert!(params.helpful.unwrap());
     }
 
     #[test]
@@ -6130,7 +6124,7 @@ mod tests {
     fn test_status_params_check_embeddings_field() {
         let json = r#"{"check_embeddings": true}"#;
         let params: StatusParams = serde_json::from_str(json).unwrap();
-        assert_eq!(params.check_embeddings.unwrap(), true);
+        assert!(params.check_embeddings.unwrap());
     }
 
     #[test]
@@ -7499,8 +7493,8 @@ mod tests {
         // The duplicate guard must precede the histogram record.
         // If duplicate_of.is_some() → histogram NOT incremented (T-SH-01).
         // If duplicate_of.is_none() → histogram IS incremented (T-SH-02).
-        // Verified by the two tests above. This test is an invariant anchor.
-        assert!(true);
+        // Verified by the two tests above; this test is an invariant anchor with no
+        // additional assertions of its own.
     }
 
     // ---- crt-026: Component 4 (context_search pre-resolution) tests ----
@@ -7670,7 +7664,6 @@ mod tests {
     #[test]
     fn context_briefing_default_k_20() {
         use crate::services::IndexBriefingParams;
-        use std::collections::HashMap;
 
         // Simulate handler building IndexBriefingParams with no k param supplied.
         // Handler always uses k=20 (hardcoded per ADR-003).
@@ -8821,10 +8814,11 @@ mod col028_confirmed_entries_tests {
         // Simulate: single-ID lookup (target_ids.len() == 1 && params.id.is_some())
         let target_ids: Vec<u64> = vec![99];
         let has_explicit_id = true; // simulates params.id.is_some()
-        if target_ids.len() == 1 && has_explicit_id {
-            if let Some(&entry_id) = target_ids.first() {
-                registry.record_confirmed_entry("sess-g", entry_id);
-            }
+        if target_ids.len() == 1
+            && has_explicit_id
+            && let Some(&entry_id) = target_ids.first()
+        {
+            registry.record_confirmed_entry("sess-g", entry_id);
         }
 
         let state = registry.get_state("sess-g").unwrap();
@@ -8844,10 +8838,11 @@ mod col028_confirmed_entries_tests {
         // Simulate: multi-ID filter result (target_ids.len() != 1 || params.id.is_none())
         let target_ids: Vec<u64> = vec![10, 20];
         let has_explicit_id = false; // simulates filter-based path, no params.id
-        if target_ids.len() == 1 && has_explicit_id {
-            if let Some(&entry_id) = target_ids.first() {
-                registry.record_confirmed_entry("sess-h", entry_id);
-            }
+        if target_ids.len() == 1
+            && has_explicit_id
+            && let Some(&entry_id) = target_ids.first()
+        {
+            registry.record_confirmed_entry("sess-h", entry_id);
         }
 
         let state = registry.get_state("sess-h").unwrap();
@@ -8865,10 +8860,11 @@ mod col028_confirmed_entries_tests {
 
         let target_ids: Vec<u64> = vec![];
         let has_explicit_id = true; // params.id set, but result is empty
-        if target_ids.len() == 1 && has_explicit_id {
-            if let Some(&entry_id) = target_ids.first() {
-                registry.record_confirmed_entry("sess-empty", entry_id);
-            }
+        if target_ids.len() == 1
+            && has_explicit_id
+            && let Some(&entry_id) = target_ids.first()
+        {
+            registry.record_confirmed_entry("sess-empty", entry_id);
         }
 
         let state = registry.get_state("sess-empty").unwrap();
@@ -9865,9 +9861,9 @@ mod cycle_review_integration_tests {
         // When baseline is None, the block has snapshot but no baseline comparison.
         let block = CurationHealthBlock {
             snapshot: snapshot.clone(),
-            baseline: baseline.and_then(|b| {
+            baseline: baseline.map(|b| {
                 let h = b.history_cycles;
-                Some(compare_to_baseline(&snapshot, &b, h))
+                compare_to_baseline(&snapshot, &b, h)
             }),
         };
         assert!(
@@ -10682,7 +10678,7 @@ mod vnc012_coercion_tests {
         );
         // Double assertion: guard against silent truncation to integer
         assert!(
-            !result.is_ok(),
+            result.is_err(),
             "float JSON Number must not silently truncate to Ok(id=3)"
         );
     }
@@ -10999,9 +10995,13 @@ mod vnc014_audit_field_tests {
     fn test_tool_u10_agent_attribution_independent_of_agent_id() {
         // Simulate: client_type=None (no transport-attested identity),
         // agent_id="attacker-injected" (agent-declared, spoofable)
+        // rationale: the literal `None` is the scenario under test (no transport-attested
+        // identity); the unwrap_or_default models the production attribution path exactly.
+        #[allow(clippy::unnecessary_literal_unwrap)]
         let client_type: Option<String> = None;
         let _agent_id = "attacker-injected".to_string();
         // agent_attribution comes from client_type only
+        #[allow(clippy::unnecessary_literal_unwrap)]
         let agent_attribution = client_type.unwrap_or_default();
         assert_eq!(
             agent_attribution, "",

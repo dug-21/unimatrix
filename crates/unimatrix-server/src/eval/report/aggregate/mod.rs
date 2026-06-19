@@ -186,7 +186,7 @@ pub(super) fn compute_entry_rank_changes(results: &[ScenarioResult]) -> EntryRan
         .collect();
 
     // Sort for deterministic output.
-    mean_deltas.sort_by(|a, b| a.0.cmp(&b.0));
+    mean_deltas.sort_by_key(|a| a.0);
 
     // Most promoted: highest positive delta (ascending from_rank to_rank means promoted).
     let mut promoted = mean_deltas.clone();
@@ -395,7 +395,7 @@ fn baseline_metrics(result: &ScenarioResult) -> Option<(f64, f64, f64, f64)> {
 }
 
 pub(super) mod distribution;
-pub(super) use distribution::{DistributionGateResult, MetricGateRow, check_distribution_targets};
+pub(super) use distribution::check_distribution_targets;
 
 mod regression;
 pub(super) use regression::find_regressions;

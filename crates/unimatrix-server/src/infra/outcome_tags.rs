@@ -94,65 +94,53 @@ fn parse_structured_tag(tag: &str) -> Option<(&str, &str)> {
 /// Validate a structured tag key-value pair.
 fn validate_tag_key_value(key: &str, value: &str) -> Result<(), ServerError> {
     match key {
-        "type" => {
-            if !VALID_TYPES.contains(&value) {
-                return Err(ServerError::InvalidInput {
-                    field: "tags".to_string(),
-                    reason: format!(
-                        "invalid type value '{}'. Valid: {}",
-                        value,
-                        VALID_TYPES.join(", ") // keep dynamic so tests stay consistent
-                    ),
-                });
-            }
+        "type" if !VALID_TYPES.contains(&value) => {
+            return Err(ServerError::InvalidInput {
+                field: "tags".to_string(),
+                reason: format!(
+                    "invalid type value '{}'. Valid: {}",
+                    value,
+                    VALID_TYPES.join(", ") // keep dynamic so tests stay consistent
+                ),
+            });
         }
-        "result" => {
-            if !VALID_RESULTS.contains(&value) {
-                return Err(ServerError::InvalidInput {
-                    field: "tags".to_string(),
-                    reason: format!(
-                        "invalid result value '{}'. Valid: {}",
-                        value,
-                        VALID_RESULTS.join(", ")
-                    ),
-                });
-            }
+        "result" if !VALID_RESULTS.contains(&value) => {
+            return Err(ServerError::InvalidInput {
+                field: "tags".to_string(),
+                reason: format!(
+                    "invalid result value '{}'. Valid: {}",
+                    value,
+                    VALID_RESULTS.join(", ")
+                ),
+            });
         }
-        "phase" => {
-            if !VALID_PHASES.contains(&value) {
-                return Err(ServerError::InvalidInput {
-                    field: "tags".to_string(),
-                    reason: format!(
-                        "invalid phase value '{}'. Valid: {}",
-                        value,
-                        VALID_PHASES.join(", ")
-                    ),
-                });
-            }
+        "phase" if !VALID_PHASES.contains(&value) => {
+            return Err(ServerError::InvalidInput {
+                field: "tags".to_string(),
+                reason: format!(
+                    "invalid phase value '{}'. Valid: {}",
+                    value,
+                    VALID_PHASES.join(", ")
+                ),
+            });
         }
-        "gate" => {
-            if value.is_empty() {
-                return Err(ServerError::InvalidInput {
-                    field: "tags".to_string(),
-                    reason: "gate tag value cannot be empty".to_string(),
-                });
-            }
+        "gate" if value.is_empty() => {
+            return Err(ServerError::InvalidInput {
+                field: "tags".to_string(),
+                reason: "gate tag value cannot be empty".to_string(),
+            });
         }
-        "agent" => {
-            if value.is_empty() {
-                return Err(ServerError::InvalidInput {
-                    field: "tags".to_string(),
-                    reason: "agent tag value cannot be empty".to_string(),
-                });
-            }
+        "agent" if value.is_empty() => {
+            return Err(ServerError::InvalidInput {
+                field: "tags".to_string(),
+                reason: "agent tag value cannot be empty".to_string(),
+            });
         }
-        "wave" => {
-            if value.parse::<u32>().is_err() {
-                return Err(ServerError::InvalidInput {
-                    field: "tags".to_string(),
-                    reason: format!("wave value '{}' must be a non-negative integer", value),
-                });
-            }
+        "wave" if value.parse::<u32>().is_err() => {
+            return Err(ServerError::InvalidInput {
+                field: "tags".to_string(),
+                reason: format!("wave value '{}' must be a non-negative integer", value),
+            });
         }
         _ => {
             // Already checked in validate_outcome_tags, but defensive

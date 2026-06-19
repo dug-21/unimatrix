@@ -457,9 +457,9 @@ mod tests {
         }
 
         // Re-embed 10 entries
-        for i in 0..10 {
+        for &id in ids.iter().take(10) {
             loaded
-                .insert(ids[i], &random_normalized_embedding(384))
+                .insert(id, &random_normalized_embedding(384))
                 .await
                 .unwrap();
         }

@@ -146,7 +146,7 @@ async fn run_single_profile(
         .entries
         .into_iter()
         .map(|se| ScoredEntry {
-            id: se.entry.id as u64,
+            id: se.entry.id,
             title: se.entry.title.clone(),
             content: se.entry.content.clone(),
             category: se.entry.category.clone(),

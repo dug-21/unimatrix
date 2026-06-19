@@ -122,24 +122,24 @@ impl EvalServiceLayer {
         let nli_cfg = &profile.config_overrides.inference;
         if nli_cfg.nli_enabled {
             // Validate that nli_model_name is a recognized variant if set.
-            if let Some(ref name) = nli_cfg.nli_model_name {
-                if NliModel::from_config_name(name).is_none() {
-                    return Err(EvalError::ConfigInvariant(format!(
-                        "nli_model_name '{}' is not a recognized model variant; valid: minilm2, minilm2-q8, deberta, deberta-q8",
-                        name
-                    )));
-                }
+            if let Some(ref name) = nli_cfg.nli_model_name
+                && NliModel::from_config_name(name).is_none()
+            {
+                return Err(EvalError::ConfigInvariant(format!(
+                    "nli_model_name '{}' is not a recognized model variant; valid: minilm2, minilm2-q8, deberta, deberta-q8",
+                    name
+                )));
             }
             // Warn if nli_model_path is set but the file does not exist.
             // ADR-006: SKIP behavior on load failure, not immediate error here.
-            if let Some(ref path) = nli_cfg.nli_model_path {
-                if !path.exists() {
-                    tracing::warn!(
-                        profile = %profile.name,
-                        path = %path.display(),
-                        "eval: nli_model_path not found; profile may be SKIPPED if model unavailable"
-                    );
-                }
+            if let Some(ref path) = nli_cfg.nli_model_path
+                && !path.exists()
+            {
+                tracing::warn!(
+                    profile = %profile.name,
+                    path = %path.display(),
+                    "eval: nli_model_path not found; profile may be SKIPPED if model unavailable"
+                );
             }
         }
 
@@ -185,7 +185,7 @@ impl EvalServiceLayer {
         // Errors degrade gracefully: log tracing::warn!, leave rebuilt_state
         // as None so the handle stays cold-start (use_fallback=true). (C-02)
         // ----------------------------------------------------------------
-        let rebuilt_state: Option<TypedGraphState> = match TypedGraphState::rebuild(&*store_arc)
+        let rebuilt_state: Option<TypedGraphState> = match TypedGraphState::rebuild(&store_arc)
             .await
         {
             Ok(state) => {
@@ -444,6 +444,9 @@ impl EvalServiceLayer {
     /// Return the NLI handle if present (NLI-enabled profiles only).
     ///
     /// `None` for baseline profiles. Used by `runner.rs` to poll readiness.
+    // rationale: diagnostic accessor exercised only under the test-support feature/tests;
+    // kept on the lib API for parity with the other handle accessors.
+    #[allow(dead_code)]
     pub(crate) fn nli_handle(&self) -> Option<Arc<NliServiceHandle>> {
         self.nli_handle.clone()
     }
@@ -463,6 +466,9 @@ impl EvalServiceLayer {
     ///
     /// `pub(crate)`: mirrors `embed_handle()` and `nli_handle()` visibility.
     /// No `#[cfg(test)]` guard: also used by `runner.rs` for diagnostics (ADR-004, C-10).
+    // rationale: diagnostic accessor exercised only under the test-support feature/tests
+    // in the lib build; retained for parity with the other handle accessors.
+    #[allow(dead_code)]
     pub(crate) fn typed_graph_handle(&self) -> TypedGraphStateHandle {
         self.inner.typed_graph_handle()
     }

@@ -204,7 +204,7 @@ pub fn run(
             .transcript_path
             .as_deref()
             .filter(|p| !p.is_empty())
-            .and_then(|p| extract_transcript_block(p));
+            .and_then(extract_transcript_block);
         match query {
             Some(q) => HookRequest::ContextSearch {
                 query: q,
@@ -237,7 +237,7 @@ pub fn run(
             .transcript_path
             .as_deref()
             .filter(|p| !p.is_empty())
-            .and_then(|p| extract_transcript_block(p))
+            .and_then(extract_transcript_block)
     } else {
         None
     };
@@ -261,7 +261,7 @@ pub fn run(
             let _ = queue.replay(&mut transport);
 
             // Reconnect since replay may have used the connection
-            let _ = transport.disconnect();
+            transport.disconnect();
 
             if is_fire_and_forget {
                 if let Err(e) = transport.fire_and_forget(&request) {
@@ -356,10 +356,10 @@ fn resolve_cwd(input: &HookInput, project_dir: Option<&Path>) -> PathBuf {
         return dir.to_path_buf();
     }
 
-    if let Some(cwd) = &input.cwd {
-        if !cwd.is_empty() {
-            return PathBuf::from(cwd);
-        }
+    if let Some(cwd) = &input.cwd
+        && !cwd.is_empty()
+    {
+        return PathBuf::from(cwd);
     }
 
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
@@ -899,10 +899,10 @@ fn is_rework_eligible_tool(tool_name: &str) -> bool {
 /// Failure = exit_code is non-zero integer, OR interrupted is true.
 /// All other cases (missing fields, non-integer exit_code) return false.
 fn is_bash_failure(extra: &serde_json::Value) -> bool {
-    if let Some(exit_code) = extra.get("exit_code").and_then(|v| v.as_i64()) {
-        if exit_code != 0 {
-            return true;
-        }
+    if let Some(exit_code) = extra.get("exit_code").and_then(|v| v.as_i64())
+        && exit_code != 0
+    {
+        return true;
     }
     if extra
         .get("interrupted")
@@ -1855,7 +1855,7 @@ mod tests {
     fn resolve_cwd_fallback_to_process_cwd() {
         let input = test_input();
         let result = resolve_cwd(&input, None);
-        assert!(result.is_absolute() || result == PathBuf::from("."));
+        assert!(result.is_absolute() || result == std::path::Path::new("."));
     }
 
     #[test]
@@ -2425,7 +2425,8 @@ mod tests {
                 "url": "https://api-v2.example.com"
             }),
         );
-        let signal = extract_event_topic_signal("SomeEvent", &input);
+        // Call documents non-panic behavior; the result is intentionally not asserted.
+        let _signal = extract_event_topic_signal("SomeEvent", &input);
         // api-v2 is a valid feature ID pattern but it's just a URL segment
         // Our current extractor may match it; this documents the behavior
         // The majority vote mechanism handles false positives at the session level

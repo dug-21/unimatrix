@@ -25,7 +25,12 @@ enum EmbedState {
     /// Model failed to load. Retryable if attempts < MAX_RETRIES.
     Failed { message: String, attempts: u32 },
     /// Retry in progress (loading after a previous failure).
-    Retrying { attempt: u32 },
+    // rationale: attempt count is read only by the `#[cfg(test)]` `current_attempts`
+    // probe; it documents retry progression in the state machine.
+    Retrying {
+        #[allow(dead_code)]
+        attempt: u32,
+    },
 }
 
 /// Lazy-loading handle for the embedding service.
@@ -439,8 +444,10 @@ mod tests {
     #[tokio::test]
     async fn test_max_retries_constant() {
         // Verify the retry limit is reasonable.
-        assert!(MAX_RETRIES >= 2, "should allow at least 2 retries");
-        assert!(MAX_RETRIES <= 10, "should not retry excessively");
+        const {
+            assert!(MAX_RETRIES >= 2, "should allow at least 2 retries");
+            assert!(MAX_RETRIES <= 10, "should not retry excessively");
+        }
     }
 
     #[tokio::test]

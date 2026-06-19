@@ -77,6 +77,9 @@ pub(crate) enum CallerId {
     /// UDS caller identified by session_id.
     UdsSession(String),
     /// HTTP bearer-token caller (vnc-021). NOT exempt from rate limiting.
+    // rationale: forward-API arm for the HTTP bearer caller path still being wired
+    // (vnc-021); constructed once that ingress lands.
+    #[allow(dead_code)]
     HttpBearer(String),
 }
 
@@ -375,6 +378,9 @@ impl ServiceLayer {
         &self.ml_inference_pool
     }
 
+    // rationale: service-layer constructor injects the full set of shared stores and
+    // configs; a params struct would mirror them one-to-one.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,
@@ -419,6 +425,9 @@ impl ServiceLayer {
         )
     }
 
+    // rationale: rate-config constructor variant injects the same collaborator set
+    // plus tuning params; grouping into a struct would not reduce the input surface.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn with_rate_config(
         store: Arc<Store>,
         vector_index: Arc<VectorIndex>,

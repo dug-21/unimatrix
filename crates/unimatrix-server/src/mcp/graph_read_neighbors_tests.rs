@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use super::super::GraphParams;
 use super::*;
-use unimatrix_store::{NewEntry, PoolConfig, SqlxStore, Status};
+use unimatrix_store::{PoolConfig, SqlxStore, Status};
 
 async fn open_test_store() -> (SqlxStore, tempfile::TempDir) {
     let dir = tempfile::tempdir().expect("temp dir");
