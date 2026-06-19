@@ -43,6 +43,14 @@ trap cleanup EXIT
 # /data (default) — used for all distroless-volume filesystem inspection.
 vol() { docker run --rm -v "$VOL:/data:ro" busybox "$@"; }
 
+# WAL-robust, non-decreasing size signal over a store DIRECTORY (AC-05/ADR-005).
+# The main unimatrix.db file size is NOT monotone on one small committed write:
+# under WAL autocheckpoint (~1000 pages, ADR #329) the write can sit in -wal and
+# not enlarge the main .db until checkpoint. `du -s` over the store dir counts
+# unimatrix.db + -wal + -shm, giving a signal that grows on a real write. All
+# sampling is read-only via vol() — never `docker exec` into the distroless image.
+store_size() { vol du -s "$1" | awk '{print $1}'; }
+
 # -- Preflight: Docker must be available -----------------------------------
 if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
   echo "[783-smoke] SKIP: Docker not available in this environment." >&2
@@ -111,6 +119,12 @@ while ! docker logs "$CNAME" 2>&1 | grep -q "HTTP transport active"; do
   sleep 2
 done
 
+# -- AC-05 BEFORE sample: after register+restart, BEFORE the per-slug POST ---
+# WAL-robust dir-size of both stores so the post-write deltas are comparable.
+SLUG_DIR="/data/.unimatrix/${SLUG}"
+SLUG_BEFORE="$(store_size "$SLUG_DIR")"
+HASH_BEFORE="$(store_size "$HASH_DIR")"
+
 # -- Write through the per-slug HTTPS route /v1/<slug>/observe --------------
 # Pull token + cert out of the volume (busybox sidecar) for a cert-pinned,
 # bearer-auth POST. Token/cert live under the path-hash dir, NOT /data root.
@@ -138,5 +152,19 @@ log "per-slug observe route returned 204 => slug IS routed over HTTP. PASS gate 
 SLUG_DB="/data/.unimatrix/${SLUG}/unimatrix.db"
 vol test -f "$SLUG_DB" || fail "per-slug store $SLUG_DB missing"
 log "per-slug store present at $SLUG_DB. PASS gate 3"
+
+# -- AC-05 AFTER sample: after the 204 is confirmed -------------------------
+SLUG_AFTER="$(store_size "$SLUG_DIR")"
+HASH_AFTER="$(store_size "$HASH_DIR")"
+
+# GATE 4 (AC-05): the per-slug write must have GROWN the per-slug store and the
+# hash store must be UNCHANGED — pinning the literal #783 mis-route symptom
+# (slug dir empty, hash dir populated) even if the route returns 204 via some
+# future different mechanism. Both via the existing fail() (exit 1).
+[ "$SLUG_AFTER" -gt "$SLUG_BEFORE" ] \
+  || fail "per-slug store did not grow after the write (before=$SLUG_BEFORE after=$SLUG_AFTER) => write did not land in the per-slug store"
+[ "$HASH_AFTER" -eq "$HASH_BEFORE" ] \
+  || fail "hash store changed after a per-slug write (before=$HASH_BEFORE after=$HASH_AFTER) => write mis-routed to the hash dir (the #783 symptom)"
+log "per-slug store grew ($SLUG_BEFORE -> $SLUG_AFTER) and hash store unchanged ($HASH_BEFORE) => write landed correctly. PASS gate 4 (AC-05)"
 
 log "ALL GATES PASSED — clean image boots HTTP-on and routes the registered slug over HTTPS."
