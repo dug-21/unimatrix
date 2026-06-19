@@ -19,6 +19,8 @@
 #
 # Requires Docker. Exits 3 (with a clear SKIP reason) when Docker is
 # unavailable so CI flags it as a deferred step rather than false-green.
+# In IMAGE= mode, exits 4 when the prebuilt tag can neither be pulled nor found
+# locally (tag not pushed / network unhealthy) — distinct from fail()'s exit 1.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
@@ -59,8 +61,21 @@ if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
 fi
 
 # -- Build (or reuse) the production image ---------------------------------
+# Precondition for the IMAGE= mode: the caller must set/activate IMAGE; in that
+# mode this script PULLS the tag (or falls back to a present local image) rather
+# than building — the first docker op below is `inspect`, which never pulls, so a
+# cross-runner cache miss would otherwise false-fail the gate (#795).
 if [ -n "${IMAGE:-}" ]; then
   log "using prebuilt image: $IMAGE"
+  # Pull-preferring with local fallback: on a fresh hosted runner this really
+  # pulls the pushed bytes (ADR-002); on a dev box with a locally-built tag (not
+  # in any registry) it falls back to the present image; only when genuinely
+  # unavailable do we exit 4 (distinct from fail()'s exit 1). The `|| ... || {}`
+  # chain is intentionally not routed through fail() and must run all arms before
+  # set -e/pipefail trips.
+  docker pull "$IMAGE" \
+    || docker image inspect "$IMAGE" >/dev/null 2>&1 \
+    || { printf '[783-smoke] FAIL: could not pull %s (confirm the tag was pushed and network is healthy)\n' "$IMAGE" >&2; exit 4; }
 else
   IMAGE="unimatrix:783-smoke"
   log "building image $IMAGE from $REPO_ROOT/Dockerfile (this is slow) ..."

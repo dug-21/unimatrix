@@ -15,6 +15,7 @@
 #   exit 0 + marker absent (early-exit-0) -> RED  "exited 0 but never printed ALL GATES PASSED"
 #   exit 1                               -> RED  "first-run path is broken"
 #   exit 3                               -> RED  "mis-provisioned ... HARD failure"
+#   exit 4                               -> RED  "could not pull prebuilt IMAGE" (#795)
 #   exit 2 / 139 (unexpected)            -> RED  "exited unexpectedly (exit N)"
 #   marker as a mid-line substring only  -> RED  (anchored grep must not be spoofed — R-03)
 
@@ -83,6 +84,13 @@ run_case test_gate_fail_exit1_no_marker \
 run_case test_gate_skip_exit3_hard_fail \
   3 "SKIP: Docker not available" stdout \
   1 "mis-provisioned"
+
+# Row: (4, could-not-pull) — prebuilt IMAGE unavailable is a distinct HARD failure (#795).
+# Must NOT be mapped to the exit-1 "first-run path is broken" diagnosis (the false
+# diagnosis this bug removed), and is now a KNOWN code — no longer caught by the *) arm.
+run_case test_gate_pull_failed_exit4 \
+  4 "[783-smoke] FAIL: could not pull ghcr.io/x/unimatrix:latest-amd64" stdout \
+  1 "could not pull prebuilt IMAGE"
 
 # Row: (0, no marker) — early-exit-0.
 run_case test_gate_early_exit0_marker_absent \

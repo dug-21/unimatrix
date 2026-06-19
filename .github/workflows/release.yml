@@ -19,6 +19,7 @@ env:
 
 jobs:
   build-linux-x64:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -110,6 +111,7 @@ jobs:
           retention-days: 1
 
   build-linux-arm64:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v4
@@ -202,6 +204,7 @@ jobs:
 
   package-npm:
     needs: [build-linux-x64, build-linux-arm64]
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       id-token: write

@@ -8,6 +8,7 @@
 #
 # Contracts (VERBATIM — IMPLEMENTATION-BRIEF Data Structures / ADR-003 / ADR-002 / ADR-004):
 #   smoke exit contract : 0 = ran+passed · 1 = ran+failed (fail()) · 3 = self-skipped (Docker absent)
+#                         · 4 = IMAGE= prebuilt tag could not be pulled / not present locally (#795)
 #   positive run-marker : terminal line  [783-smoke] ALL GATES PASSED  (printed only after all gates)
 #   tag resolution      : push    -> TAG="${GITHUB_REF_NAME}"  (UN-stripped, keeps the v) => :v<version>-<arch>
 #                         dispatch -> TAG="latest"                                          => :latest-<arch>
@@ -49,6 +50,7 @@ run_smoke_gate() {
   case "${rc}" in
     0) : ;;
     3) echo "::error::smoke SKIPPED (exit 3): Docker-capable lane mis-provisioned — HARD failure (SR-01)."; return 1 ;;
+    4) echo "::error::smoke FAILED (exit 4): could not pull prebuilt IMAGE — confirm the tag was pushed / network healthy (#795)."; return 1 ;;
     1) echo "::error::smoke FAILED (exit 1): shipped image first-run path is broken."; return 1 ;;
     *) echo "::error::smoke exited unexpectedly (exit ${rc})."; return 1 ;;
   esac
