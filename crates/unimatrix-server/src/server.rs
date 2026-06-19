@@ -278,6 +278,14 @@ impl UnimatrixServer {
     /// compiled default (`SERVER_INSTRUCTIONS_DEFAULT`). Validation of length and
     /// injection is performed upstream in `validate_config` — this constructor is
     /// infallible.
+    ///
+    /// `services` (crt-056 Wave 1, ADR-001): when `Some(layer)`, the caller-built
+    /// config-driven [`ServiceLayer`] is used verbatim (the parity path — daemon and
+    /// per-slug HTTP servers both pass `Some(...)`). When `None`, the historical
+    /// test-default `ServiceLayer` is constructed in-line (NLI off, size-1 rayon
+    /// pool, `InferenceConfig::default`, `ConfidenceParams::default`, empty
+    /// `CategoryAllowlist`, unloaded `NliServiceHandle`). `None` is reachable ONLY
+    /// from unit tests — there is no cloud-only branch (one isolation seam, C-6).
     pub fn new(
         entry_store: Arc<Store>,
         vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
@@ -289,6 +297,7 @@ impl UnimatrixServer {
         vector_index: Arc<VectorIndex>,
         adapt_service: Arc<AdaptationService>,
         instructions: Option<String>,
+        services: Option<ServiceLayer>,
     ) -> Self {
         let implementation = Implementation::new(SERVER_NAME, env!("CARGO_PKG_VERSION"))
             .with_description("Self-learning knowledge engine for agentic workflows");
@@ -303,34 +312,43 @@ impl UnimatrixServer {
 
         let usage_dedup = Arc::new(UsageDedup::new());
 
-        let test_pool = Arc::new(
-            crate::infra::rayon_pool::RayonPool::new(1, "test-pool")
-                .expect("test RayonPool construction must succeed"),
-        );
+        // crt-056 Wave 1 (ADR-001): `Some(layer)` ⇒ use the caller's config-driven
+        // ServiceLayer (the parity path). `None` ⇒ the historical test-default body,
+        // preserved byte-for-byte (C-4, AC-6). `usage_dedup` (built above) is consumed
+        // ONLY by the `None` arm; the `Some` layer already owns its own.
+        let services = match services {
+            Some(layer) => layer,
+            None => {
+                let test_pool = Arc::new(
+                    crate::infra::rayon_pool::RayonPool::new(1, "test-pool")
+                        .expect("test RayonPool construction must succeed"),
+                );
 
-        let services = ServiceLayer::new(
-            Arc::clone(&store),
-            Arc::clone(&vector_index),
-            Arc::clone(&vector_store),
-            Arc::clone(&entry_store),
-            Arc::clone(&embed_service),
-            Arc::clone(&adapt_service),
-            Arc::clone(&audit),
-            Arc::clone(&usage_dedup),
-            crate::infra::config::default_boosted_categories_set(),
-            test_pool,
-            // crt-023: disabled NLI for test server (no model in test env)
-            crate::infra::nli_handle::NliServiceHandle::new(),
-            20,    // nli_top_k default
-            false, // nli_enabled: disabled for tests
-            Arc::new(crate::infra::config::InferenceConfig::default()),
-            // col-023: built-in default registry for test server
-            Arc::new(DomainPackRegistry::with_builtin_claude_code()),
-            // GH #311: default params for tests; production paths supply resolved params.
-            Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
-            // crt-031: default lifecycle policy for tests.
-            Arc::new(crate::infra::categories::CategoryAllowlist::new()),
-        );
+                ServiceLayer::new(
+                    Arc::clone(&store),
+                    Arc::clone(&vector_index),
+                    Arc::clone(&vector_store),
+                    Arc::clone(&entry_store),
+                    Arc::clone(&embed_service),
+                    Arc::clone(&adapt_service),
+                    Arc::clone(&audit),
+                    Arc::clone(&usage_dedup),
+                    crate::infra::config::default_boosted_categories_set(),
+                    test_pool,
+                    // crt-023: disabled NLI for test server (no model in test env)
+                    crate::infra::nli_handle::NliServiceHandle::new(),
+                    20,    // nli_top_k default
+                    false, // nli_enabled: disabled for tests
+                    Arc::new(crate::infra::config::InferenceConfig::default()),
+                    // col-023: built-in default registry for test server
+                    Arc::new(DomainPackRegistry::with_builtin_claude_code()),
+                    // GH #311: default params for tests; production paths supply resolved params.
+                    Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+                    // crt-031: default lifecycle policy for tests.
+                    Arc::new(crate::infra::categories::CategoryAllowlist::new()),
+                )
+            }
+        };
 
         // crt-018b: extract handle after ServiceLayer is fully constructed so
         // main.rs can pass the same Arc to `spawn_background_tick` (mirrors
@@ -383,6 +401,33 @@ impl UnimatrixServer {
             // vnc-014 (ADR-001): empty map; populated by ServerHandler::initialize override.
             client_type_map: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    /// crt-056 Wave 1 (G-2): borrow the server's config-driven [`ServiceLayer`].
+    ///
+    /// Thin additive accessor (no new state) so the daemon HTTP boot loop can build a
+    /// `PerSlugTickContext` from each server's OWN handle set after
+    /// `build_project_server` returns. The Wave-2 tick borrows the same
+    /// `Arc<RwLock<_>>` analytics handles the serving path reads.
+    pub fn service_layer(&self) -> &ServiceLayer {
+        &self.services
+    }
+
+    /// crt-056 Wave 1 (G-2): clone the server's per-server `TickMetadata` counter.
+    ///
+    /// One `Arc<Mutex<TickMetadata>>` per server ⇒ the per-slug tick counter falls
+    /// out for free (ADR-005). Thin additive accessor; no new state.
+    pub fn tick_metadata(&self) -> Arc<Mutex<TickMetadata>> {
+        Arc::clone(&self.tick_metadata)
+    }
+
+    /// crt-056 Wave 1 (G-3): clone the server's per-slug [`VectorIndex`] handle.
+    ///
+    /// Thin additive accessor so the boot loop can populate
+    /// `PerSlugTickContext.vector_index` off the server (rather than widening
+    /// `ProjectServerInput`). No new state.
+    pub fn vector_index(&self) -> Arc<VectorIndex> {
+        Arc::clone(&self.vector_index)
     }
 
     /// Resolve an agent identity from tool parameters.
@@ -1228,7 +1273,127 @@ pub(crate) mod tests {
             vector_index,
             adapt_service,
             None, // use compiled default instructions
+            None, // crt-056: test-default ServiceLayer
         )
+    }
+
+    /// crt-056 Wave 1 (AC-6) test helper: assemble the 9 base inputs + a caller-built
+    /// config-driven `ServiceLayer` over a fresh store, then construct the server via
+    /// the `Some(...)` arm. Returns `(server, supplied_effectiveness_handle)` so the
+    /// caller can `Arc::ptr_eq`-assert the handle-identity invariant (R-03).
+    async fn make_server_with_some_layer() -> (UnimatrixServer, EffectivenessStateHandle) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("test.db");
+        let store = Arc::new(
+            Store::open(&path, unimatrix_store::pool_config::PoolConfig::default())
+                .await
+                .expect("open store"),
+        );
+        std::mem::forget(dir);
+
+        let vector_config = unimatrix_core::VectorConfig::default();
+        let vector_index =
+            Arc::new(unimatrix_core::VectorIndex::new(Arc::clone(&store), vector_config).unwrap());
+        let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
+        let vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
+        let embed_service = EmbedServiceHandle::new();
+        let registry = Arc::new(AgentRegistry::new(Arc::clone(&store), true, vec![]).unwrap());
+        registry.bootstrap_defaults().unwrap();
+        let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+        let categories = Arc::new(CategoryAllowlist::new());
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+
+        // Build a config-driven layer with NLI ENABLED (distinct from the test-default
+        // `None`-arm shape) so the assertion proves the supplied layer is used verbatim.
+        let pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(2, "some-arm-pool").expect("rayon pool"),
+        );
+        let layer = ServiceLayer::new(
+            Arc::clone(&store),
+            Arc::clone(&vector_index),
+            Arc::clone(&vector_store),
+            Arc::clone(&store),
+            Arc::clone(&embed_service),
+            Arc::clone(&adapt_service),
+            Arc::clone(&audit),
+            Arc::new(crate::infra::usage_dedup::UsageDedup::new()),
+            crate::infra::config::default_boosted_categories_set(),
+            pool,
+            crate::infra::nli_handle::NliServiceHandle::new(),
+            10,
+            true, // nli_enabled — config-driven shape, NOT the test default (false)
+            Arc::new(crate::infra::config::InferenceConfig::default()),
+            Arc::new(DomainPackRegistry::with_builtin_claude_code()),
+            Arc::new(unimatrix_engine::confidence::ConfidenceParams::default()),
+            Arc::new(crate::infra::categories::CategoryAllowlist::new()),
+        );
+        // Capture the supplied layer's effectiveness handle BEFORE it is moved.
+        let supplied_handle = layer.effectiveness_state_handle();
+
+        let server = UnimatrixServer::new(
+            Arc::clone(&store),
+            vector_store,
+            embed_service,
+            registry,
+            audit,
+            categories,
+            Arc::clone(&store),
+            vector_index,
+            adapt_service,
+            None,
+            Some(layer),
+        );
+        (server, supplied_handle)
+    }
+
+    /// AC-6.3 — the `Some(layer)` arm uses the SUPPLIED layer verbatim (no rebuild, no
+    /// fallback to defaults). Proven structurally via handle identity (R-03): the server's
+    /// `service_layer()` and its extracted `effectiveness_state` are the SAME
+    /// `Arc<RwLock<_>>` as the supplied layer's handle.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_server_new_some_uses_supplied_service_layer() {
+        let (server, supplied_handle) = make_server_with_some_layer().await;
+
+        // The server's own ServiceLayer is the supplied one: its effectiveness handle is
+        // Arc::ptr_eq to the handle captured from the supplied layer pre-move.
+        assert!(
+            Arc::ptr_eq(
+                &server.service_layer().effectiveness_state_handle(),
+                &supplied_handle
+            ),
+            "Some-arm server must use the supplied ServiceLayer's handle set, not rebuild"
+        );
+        // The constructor-extracted `effectiveness_state` is wired to the SAME layer
+        // (serving consumers hold Arc::clones — pattern #4097).
+        assert!(
+            Arc::ptr_eq(&server.effectiveness_state, &supplied_handle),
+            "extracted effectiveness_state must point at the supplied layer's handle"
+        );
+    }
+
+    /// AC-6.1 — the `None` arm preserves the historical test-default construction: it
+    /// builds a valid server with its own (test-default) ServiceLayer, and the
+    /// constructor-extracted `effectiveness_state` is wired to THAT layer (handle
+    /// identity holds on the `None` path too — the serve-side wiring is unchanged).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_server_new_none_yields_test_defaults() {
+        let server = make_server().await; // constructed via `None`
+
+        // Serve-side handle wiring is intact on the None path: the extracted
+        // effectiveness_state is the same Arc the test-default layer exposes.
+        assert!(
+            Arc::ptr_eq(
+                &server.effectiveness_state,
+                &server.service_layer().effectiveness_state_handle()
+            ),
+            "None-arm server must wire effectiveness_state to its own test-default layer"
+        );
+        // The server is fully usable (no panic, default ServerInfo) — byte-for-byte the
+        // prior test-default server behavior (the existing unit suite is the broader guard).
+        let info = rmcp::ServerHandler::get_info(&server);
+        assert_eq!(info.server_info.name, "unimatrix");
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -1355,6 +1520,7 @@ pub(crate) mod tests {
             vector_index,
             adapt_service,
             Some("custom instructions".to_string()),
+            None, // crt-056: test-default ServiceLayer
         );
 
         let info = rmcp::ServerHandler::get_info(&server);

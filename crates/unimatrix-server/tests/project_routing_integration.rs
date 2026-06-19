@@ -129,6 +129,7 @@ async fn build_server() -> ServerBundle {
         vector_index,
         adapt_service,
         None,
+        None, // crt-056: test-default ServiceLayer
     );
 
     ServerBundle {

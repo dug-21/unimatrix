@@ -17,6 +17,7 @@
 //! `resolve_store(&ProjectKey::Default)`: there is no default store; both MCP and
 //! observe resolve per-request through the same funnel keyed by `ProjectKey::Slug`.
 
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -25,6 +26,8 @@ use tokio_rustls::TlsAcceptor;
 use unimatrix_adapt::{AdaptConfig, AdaptationService};
 use unimatrix_core::async_wrappers::AsyncVectorStore;
 use unimatrix_core::{CoreError, VectorAdapter, VectorConfig};
+use unimatrix_engine::confidence::ConfidenceParams;
+use unimatrix_observe::domain::DomainPackRegistry;
 use unimatrix_server::error::ServerError;
 use unimatrix_server::http::{
     Env, ProjectServerInput, ProjectSlug, PublicUrl, build_tls_acceptor, derive_public_url,
@@ -32,10 +35,13 @@ use unimatrix_server::http::{
 };
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
-use unimatrix_server::infra::config::TlsConfig;
+use unimatrix_server::infra::config::{InferenceConfig, TlsConfig};
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
+use unimatrix_server::infra::nli_handle::NliServiceHandle;
+use unimatrix_server::infra::rayon_pool::RayonPool;
 use unimatrix_server::infra::registry::AgentRegistry;
 use unimatrix_server::server::UnimatrixServer;
+use unimatrix_server::services::ServiceLayer;
 use unimatrix_store::{PoolConfig, SqlxStore};
 use unimatrix_vector::VectorIndex;
 
@@ -122,12 +128,31 @@ const PROJECT_VECTOR_DIR: &str = "vector";
 /// this NEVER auto-creates a slug's store. A missing store dir surfaces a loud,
 /// actionable [`ServerError::Config`] naming the `register` remedy. No `.unwrap()`,
 /// no panic.
+#[allow(clippy::too_many_arguments)]
 pub async fn build_project_server(
     base_dir: &Path,
     slug: &ProjectSlug,
     embed_handle: &Arc<EmbedServiceHandle>,
     permissive: bool,
     instructions: Option<String>,
+    // crt-056 Wave 1 (ADR-002): config-parity inputs, params-at-end. Every value is an
+    // `Arc::clone` of the daemon's RESOLVED config (main.rs:880-898) — the per-slug
+    // server reaches the closed 8-field parity over the global config (C-7, AC-1) and
+    // shares the ONE loaded model (C-3, AC-2). A missing field is a compile error at the
+    // call site, never a silent test-default fallback (anti-Defect-1 guard).
+    rayon_pool: &Arc<RayonPool>,
+    nli_handle: &Arc<NliServiceHandle>,
+    nli_top_k: usize,
+    nli_enabled: bool,
+    inference_config: &Arc<InferenceConfig>,
+    confidence_params: &Arc<ConfidenceParams>,
+    categories: &Arc<CategoryAllowlist>,
+    observation_registry: &Arc<DomainPackRegistry>,
+    // The daemon resolves `boosted_categories` from `config.knowledge.boosted_categories`
+    // (main.rs:681-686) and passes that RESOLVED set into its own ServiceLayer
+    // (main.rs:889) — NOT `default_boosted_categories_set()`. Thread the SAME resolved
+    // set here so AC-1's domain-pack/category parity holds (Gate 3a MUST-CONFIRM).
+    boosted_categories: &HashSet<String>,
 ) -> Result<ProjectServerInput, ServerError> {
     // SINGLE path-join site. `slug` is allowlist-validated, so this cannot escape
     // `{base_dir}/` (AC-W2-R6).
@@ -177,23 +202,54 @@ pub async fn build_project_server(
     )?);
     registry.bootstrap_defaults()?;
     let audit = Arc::new(AuditLog::new(Arc::clone(&store)));
+    // crt-056 ADR-006: `adapt_service` stays PER-SLUG INDEPENDENT STATE (same config).
+    // `AdaptConfig::default()` is the resolved adapt value today; #785 would thread it if
+    // it becomes operator-configurable. Keep the per-slug construction (NOT shared).
     let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
-    let categories = Arc::new(CategoryAllowlist::new());
 
     let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
     let async_vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
+    // crt-056 ADR-002 CORE CHANGE: build the config-driven per-slug ServiceLayer,
+    // mirroring the daemon's own construction (main.rs:880-898) field-for-field with the
+    // threaded resolved values. The pre-crt-056 per-slug `CategoryAllowlist::new()` empty
+    // default (former line 181) is REPLACED by the threaded operator `categories`; the
+    // ONE loaded `nli_handle` is `Arc::clone`d — NEVER `NliServiceHandle::new()` here
+    // (C-3, AC-2). `usage_dedup` is per-slug, exactly as the daemon builds its own.
+    let usage_dedup = Arc::new(unimatrix_server::infra::usage_dedup::UsageDedup::new());
+    let service_layer = ServiceLayer::new(
+        Arc::clone(&store),              // store
+        Arc::clone(&vector_index),       // vector_index
+        Arc::clone(&async_vector_store), // vector_store
+        Arc::clone(&store),              // entry_store
+        Arc::clone(embed_handle),        // SHARED stateless embed (already shared today)
+        Arc::clone(&adapt_service),      // per-slug independent (ADR-006)
+        Arc::clone(&audit),
+        usage_dedup,
+        boosted_categories.clone(), // same RESOLVED set the daemon uses (Gate 3a MUST-CONFIRM)
+        Arc::clone(rayon_pool),     // FR-5: shared config-sized pool, NOT size-1
+        Arc::clone(nli_handle),     // FR-6/AC-2: the ONE loaded model — Arc::clone, NEVER new()
+        nli_top_k,                  // FR-2/FR-3: threaded, not 20-default
+        nli_enabled,                // FR-2: config value, NEVER hardcoded false
+        Arc::clone(inference_config), // FR-3: resolved fusion/PPR, not ::default()
+        Arc::clone(observation_registry), // FR-4: operator domain packs, not builtin-only
+        Arc::clone(confidence_params), // FR-3: operator weights, not ::default()
+        Arc::clone(categories),     // FR-4: operator allowlist + lifecycle, not ::new()
+    );
+
+    // crt-056 ADR-001: hand the config-driven layer to the constructor via `Some(...)`.
     let server = UnimatrixServer::new(
         Arc::clone(&store),
         async_vector_store,
         Arc::clone(embed_handle), // SHARED stateless model handle (OQ-PR-6)
         registry,
         audit,
-        categories,
+        Arc::clone(categories), // constructor `categories`: pass the threaded operator set
         Arc::clone(&store),
-        vector_index,
+        Arc::clone(&vector_index),
         adapt_service,
         instructions,
+        Some(service_layer),
     );
 
     Ok(ProjectServerInput {

@@ -886,7 +886,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&adapt_service),
         Arc::clone(&audit),
         Arc::clone(&usage_dedup),
-        boosted_categories,
+        // crt-056 Wave 1: clone the resolved boosted set — each per-slug
+        // `build_project_server` (HTTP multi-project branch) threads the SAME set so
+        // per-slug parity matches this daemon ServiceLayer (Gate 3a MUST-CONFIRM, AC-1).
+        boosted_categories.clone(),
         Arc::clone(&ml_inference_pool),
         Arc::clone(&nli_handle), // clone: nli_handle also needed by spawn_background_tick
         config.inference.nli_top_k,
@@ -930,6 +933,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         // reuse the configured instructions for each slug's UnimatrixServer
         // (daemon path); harmless for the stdio path.
         server_instructions.clone(),
+        // crt-056 Wave 1 (ADR-001, C-6): the daemon's OWN server takes the SAME
+        // config-driven `Some(...)` parity path as the per-slug servers — no cloud-only
+        // branch (`None` is unit-test-only). Clone keeps `services` alive for the legacy
+        // handle extraction (~960) the Wave-1 tick still uses (retired in Wave 2).
+        Some(services.clone()),
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
@@ -983,7 +991,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         auto_quarantine_cycles,
         Arc::clone(&confidence_params),
         Arc::clone(&ml_inference_pool),
-        nli_handle,                    // crt-023: NLI graph inference
+        // crt-056 Wave 1: clone (was a bare move) so `nli_handle` stays alive for the
+        // per-slug `build_project_server` calls below — the ONE loaded model is shared by
+        // `Arc::clone`, NEVER rebuilt (C-3, AC-2; entry #3779).
+        Arc::clone(&nli_handle),       // crt-023: NLI graph inference
         Arc::clone(&inference_config), // crt-023: graph inference config
         phase_freq_table_handle,       // col-031: shared with SearchService (ADR-005)
         Arc::clone(&categories),       // crt-031: category allowlist for lifecycle guard stub
@@ -1088,6 +1099,19 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     &embed_handle,
                     permissive,
                     server_instructions.clone(),
+                    // crt-056 Wave 1 (ADR-002): thread the daemon's RESOLVED config Arcs —
+                    // `Arc::clone` of the SAME values the daemon's own ServiceLayer uses
+                    // (880-898 scope), so per-slug servers reach the closed 8-field parity
+                    // (AC-1) over the global config and share the ONE loaded model (AC-2).
+                    &ml_inference_pool,
+                    &nli_handle, // the ONE loaded model — shared, never rebuilt (C-3, AC-2)
+                    config.inference.nli_top_k,
+                    config.inference.nli_enabled,
+                    &inference_config,
+                    &confidence_params,
+                    &categories,
+                    &observation_registry,
+                    &boosted_categories, // RESOLVED set (Gate 3a MUST-CONFIRM), not the default
                 )
                 .await?;
                 slug_servers.push(input);
@@ -1495,6 +1519,11 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         // reuse the configured instructions for each slug's UnimatrixServer
         // (daemon path); harmless for the stdio path.
         server_instructions.clone(),
+        // crt-056 Wave 1 (ADR-001): the stdio path is single-store and not part of the
+        // per-slug HTTP parity surface; it keeps the in-constructor test-default
+        // ServiceLayer. (The stdio path's config-driven `services` is wired separately
+        // for UDS + the legacy tick, unchanged here.)
+        None,
     );
     // Share pending_entries_analysis and session_registry with the MCP server (col-009).
     server.pending_entries_analysis = Arc::clone(&pending_entries_analysis);
