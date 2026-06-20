@@ -128,6 +128,7 @@ Then the Design Leader presents SCOPE.md to the human together with the product 
 **Product Review Rules** (apply at every `uni-zero-reviewer` spawn):
 - The spawn prompt carries ONLY agent ID, gate, feature/issue IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
 - The review is advisory input to the human gate. The Design Leader relays the stance and location verbatim and NEVER parses, acts on, or gates on it.
+- At `scope-review` and `design-review`, the review includes a **capability-coverage verdict** — whole vs. visible-partial against the target capability's `done_when` (pulled from the corpus; design-review is authorized to verify against code). The reviewer reads but never mutates the map; any status implication is relayed to the human for uni-zero to apply.
 
 ### Phase 1b: Scope Risk Assessment
 

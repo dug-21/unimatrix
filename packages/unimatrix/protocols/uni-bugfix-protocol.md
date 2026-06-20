@@ -331,15 +331,22 @@ Task(subagent_type: "uni-validator",
     GATE: Bug Fix Validation
     Issue: #{issue-number}
 
+    Validate FROM ARTIFACTS — read the diff and the tester's already-posted results
+    (its GH Issue comment). Do NOT re-execute cargo/clippy/pytest suites yourself:
+    the tester (Phase 3) already ran them; re-running duplicates minutes of work and
+    risks the gate hanging mid-suite and never posting a verdict (lesson #5207).
+    If the tester's results are missing or ambiguous, return REWORKABLE FAIL rather
+    than re-running — the gap is the tester's to close.
+
     Validate:
     - Fix addresses the diagnosed root cause (not just symptoms)
     - No todo!(), unimplemented!(), TODO, FIXME, or placeholder functions
-    - All tests pass (new bug-specific tests + existing suite)
-    - No new clippy warnings
+    - All tests pass (new bug-specific tests + existing suite) — per the tester's posted results
+    - No new clippy warnings — per the tester's posted results
     - No unsafe code introduced
     - Fix is minimal (no unrelated changes included)
     - New test(s) would have caught the original bug
-    - Integration smoke tests passed
+    - Integration smoke tests passed — per the tester's posted results
     - Any xfail markers added have corresponding GH Issues
     - If bug was discovered by integration test, that test's xfail marker was removed
     - Knowledge stewardship: investigator, architect, and rust-dev phase comments each contain

@@ -3,6 +3,12 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.3] - 2026-06-20
+
+### Fixes
+- /shared read-write default + first-boot embed-readiness release gate (#767) (#810)
+- enable HTTP multi-project posture in cloud Docker image (#783) (#786)
+
 ## [0.8.2] - 2026-06-18
 
 ### Fixes
