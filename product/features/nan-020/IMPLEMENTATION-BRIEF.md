@@ -83,8 +83,15 @@ These three are HARD obligations of this revision. They are not open questions; 
 | `README.md` bundle-example fix (converge all `--remote unimatrix-bundle:`/`--remote <bundle>` forms on `init --bundle <blob>`) | pseudocode/readme-bundle-example.md | test-plan/readme-bundle-example.md |
 | `.claude/agents/uni/uni-docs.md` remit widen (README-only → all of `docs/`, blast-radius-scoped) | pseudocode/uni-docs-remit.md | test-plan/uni-docs-remit.md |
 
-> pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists the
-> components from the architecture; actual file paths are filled during delivery.
+> **Stage 3a COMPLETE** (2026-06-20) — all pseudocode + test-plan files produced at the paths above; OVERVIEW files present in both dirs. Paths confirmed against reality.
+>
+> **Stage 3b routing constraints (MANDATORY — leader-set):**
+> - **Same-file coupling:** `docker-http-posture-smoke.md` + `hermeticity-sandbox.md` both edit `product/test/infra-001/scripts/docker-http-posture-smoke.sh` → route BOTH to ONE agent. The sandbox lifecycle is the environment Gates 6–7 run inside; concurrent edits would conflict and break gate ordering.
+> - **Stub-drivability seam (load-bearing):** the Gate 5–7 logic MUST be factored so the three new external commands (`client-bundle`, host `node init --bundle`, hook-fire) are env-injectable (reuse the nan-019 `run_smoke_gate`/`SMOKE_CMD` indirection). Without this seam the R-07 negative control and the truth table are not stub-drivable pre-merge. Owned by the same single agent.
+> - **Same-PR pairing:** `release.yml` setup-node provisioning + the script's node-absent `fail()` enforcement land together.
+> - **Shared doc contract:** `docs-client-setup` + `readme-bundle-example` share one contract — identical `init --bundle <blob>` (no `--slug`) and identical "legacy" marking for `--remote`. README has **four** bundle-via-`--remote` occurrences (lines 123, 130, 585, 587) to converge; line 113 is the legacy `--remote <url> --token` form (mark legacy, do NOT converge).
+> - **Independent:** `uni-docs-remit` is fully standalone.
+> - The stub-driven gate-logic test (extends nan-019 `release-gate-logic-test.sh`) is a distinct task but must read the FINAL script shape.
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
