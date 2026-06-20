@@ -41,6 +41,7 @@ use unimatrix_store::PoolConfig;
 
 use crate::error::ServerError;
 use crate::http::ProjectSlug;
+use crate::infra::config;
 use crate::infra::config::is_reserved_slug;
 use crate::project;
 
@@ -127,6 +128,11 @@ fn per_slug_data_dir(base: &Path, slug: &ProjectSlug) -> PathBuf {
 fn db_path(dir: &Path) -> PathBuf {
     dir.join(PROJECT_DB_NAME)
 }
+
+/// Per-slug `config.toml` file name — file (b). Byte-identical to
+/// `http_provision::PROJECT_CONFIG_NAME` (module-private there), so the seed writes
+/// EXACTLY where `resolve_slug_config` reads (vnc-041 C3, AC-02).
+const PROJECT_CONFIG_NAME: &str = "config.toml";
 
 /// Bridge a sync subcommand to the async `Store::open` via a current-thread
 /// runtime (mirrors `snapshot`/`eval`; C-09). No outer runtime is assumed —
@@ -303,6 +309,8 @@ impl ProjectRegistry {
             // eprintln! of hand-edit instructions). Idempotent; preserves all other
             // config. Restart applies via the unchanged boot read.
             self.ensure_project_stanza(&slug)?;
+            // vnc-041 C3 (ADR-002): seed file (b). Best-effort — NEVER gates re-attach.
+            self.write_per_slug_seed(&slug);
             println!(
                 "re-attached project '{slug}' to its preserved store at {}; \
                  routing intent written. Restart to apply.",
@@ -340,11 +348,28 @@ impl ProjectRegistry {
         // ADR-007: store-first, THEN write the routing intent atomically (was an
         // eprintln! of hand-edit instructions). Same command as State B / project N.
         self.ensure_project_stanza(&slug)?;
+        // vnc-041 C3 (ADR-002): seed file (b). Best-effort — NEVER gates registration.
+        self.write_per_slug_seed(&slug);
         println!(
             "registered project '{slug}' at {}; routing intent written. Restart to apply.",
             dir.display()
         );
         Ok(())
+    }
+
+    /// Seed file (b) — the editable per-slug `config.toml` (vnc-041 C3, ADR-002).
+    ///
+    /// Writes ONLY (b) at the SINGLE per-slug join site (SR-09), byte-identical to what
+    /// `resolve_slug_config` reads (AC-02). NEVER touches the shared (a)≡(c) path-hash
+    /// file; `ensure_project_stanza` (its owner) is UNCHANGED, so no clobber surface
+    /// exists (SR-05). Body is the C2 classification-derived template; the write is
+    /// no-clobber (`create_new`, C1) so an operator-authored (b) survives (AC-05).
+    /// Best-effort: [`config::write_if_absent`] warns-and-continues and returns `()`,
+    /// so a failure NEVER propagates — register's hash-chain steps already ran (R-10).
+    fn write_per_slug_seed(&self, slug: &ProjectSlug) {
+        let path = per_slug_data_dir(&self.base_dir, slug).join(PROJECT_CONFIG_NAME);
+        let body = config::render_per_slug_seed_toml();
+        config::write_if_absent(&path, &body);
     }
 
     /// Ensure a `[[projects]] slug = "<slug>"` stanza exists in `config.toml`,

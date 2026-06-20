@@ -1009,6 +1009,19 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     // --- HTTP LISTENER STARTUP (vnc-021 + vnc-034) ---
     let (http_acceptor_handle, http_listener_addr) = if config.http.enabled {
+        // vnc-041 (C4, ADR-004 #5238): seed the GLOBAL annotated config (file (a))
+        // at the path-hash path on a container `serve`, closing the #783 devex gap
+        // where only `init`/`version` seed (a) and `serve` only READS it. The seed
+        // is container-only by STRUCTURAL branch placement: it lives INSIDE this
+        // `if config.http.enabled` block, so the local STDIO/UDS `else` branch has
+        // NO seed call site (AC-06 holds by construction). The gate is
+        // `http.enabled`, NOT the `base_dir` argument — every live `serve` call
+        // passes `base_dir = None`, so a `base_dir`-keyed seed would never fire.
+        // `false` selects the no-clobber `create_new` branch (skip-if-exists,
+        // never clobbering operator-authored config); the call is best-effort and
+        // infallible (warns internally), so a write failure does NOT abort startup.
+        write_default_config_if_absent(&paths.data_dir.join("config.toml"), false);
+
         use unimatrix_server::http::{
             MultiProjectRouter, ObserveContext, PathRouter, ProjectServerInput,
             StaticTokenAuthLayer, StoreResolver, load_or_generate_token, start_http_listener,
@@ -2135,3 +2148,9 @@ mod tests;
 #[cfg(test)]
 #[path = "per_slug_loop_tests.rs"]
 mod per_slug_loop_tests;
+
+// vnc-041 (C4): global serve-time seed component tests. Separate child module so the
+// C4 suite stays focused and `main_tests.rs` is not bloated past the cap.
+#[cfg(test)]
+#[path = "global_serve_seed_tests.rs"]
+mod global_serve_seed_tests;

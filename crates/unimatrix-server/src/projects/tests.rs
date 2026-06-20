@@ -918,3 +918,309 @@ fn test_register_on_unwritable_root_fails_loud() {
         "error must be actionable: {err}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// F. vnc-041 C3 — per-slug seed file (b) (ADR-002; R-05, R-10, R-13, R-03/AC-05)
+//
+// register seeds the editable per-slug `config.toml` (file b) at the SINGLE join
+// site `per_slug_data_dir(base, slug).join("config.toml")` — byte-identical to
+// what `resolve_slug_config` reads — at BOTH success branches (State B re-attach +
+// State C genesis). It NEVER touches the shared (a)≡(c) path-hash file. Best-effort.
+// ---------------------------------------------------------------------------
+
+/// File (b) — the per-slug seed path, computed by the SAME formula the resolver
+/// (`http_provision::resolve_slug_config`) uses: `base_dir.join(slug).join("config.toml")`.
+fn slug_seed_path(fx: &Fixture, slug: &str) -> PathBuf {
+    fx.slug_dir(slug).join("config.toml")
+}
+
+// --- R-05 / AC-02: (b) lands at exactly the resolver's path ---
+
+#[test]
+fn test_register_writes_b_at_per_slug_data_dir_path() {
+    // R-05 scenario 2 / SR-09: after register, (b) exists at exactly
+    // per_slug_data_dir(base, slug).join("config.toml") — a SIBLING of, NOT inside,
+    // the path-hash dir.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register alpha");
+
+    let b = slug_seed_path(&fx, "alpha");
+    assert!(
+        b.is_file(),
+        "per-slug seed (b) must exist at {}",
+        b.display()
+    );
+    // It is the resolver's literal formula: base_dir.join(slug).join("config.toml").
+    assert_eq!(b, fx.base_dir.join("alpha").join("config.toml"));
+}
+
+#[test]
+fn test_register_seeds_b_with_rendered_classification_body() {
+    // The seed body is the C2 render (classification-derived legend + DEFAULT_CONFIG_TOML),
+    // NOT empty and NOT the [[projects]] routing text. Proves register wrote the C2 body.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register alpha");
+
+    let body = std::fs::read_to_string(slug_seed_path(&fx, "alpha")).expect("read (b)");
+    let expected = config::render_per_slug_seed_toml();
+    assert_eq!(
+        body, expected,
+        "(b) body must be the C2 rendered seed verbatim"
+    );
+    assert!(
+        !body.contains("[[projects]]"),
+        "(b) is the per-slug overlay, never the routing stanza"
+    );
+}
+
+#[test]
+fn test_register_b_path_is_sibling_not_inside_path_hash_dir() {
+    // R-05 / SR-09 forcing function: (b)'s dir (base_dir/slug) is NOT config_data_dir
+    // (where (a)/(c) lives). Structural proof the seed uses per_slug_data_dir, the single
+    // join site, not the config data dir.
+    let fx = Fixture::new();
+    assert_ne!(
+        fx.slug_dir("alpha"),
+        fx.config_data_dir,
+        "(b) dir must be a sibling of the path-hash (a)/(c) dir, never the same dir"
+    );
+    // And (b) is NOT under config_data_dir at all.
+    assert!(
+        !slug_seed_path(&fx, "alpha").starts_with(&fx.config_data_dir),
+        "(b) must not live inside the path-hash dir"
+    );
+}
+
+// --- R-05: (a)/(c) byte-unchanged by the seed's presence (isolation) ---
+
+#[test]
+fn test_register_does_not_modify_shared_a_c_file() {
+    // R-05 scenario 1 / SR-05: the per-slug seed (b) NEVER touches the shared (a)≡(c)
+    // path-hash file. Compare the (a)/(c) bytes after a register that seeds (b) against
+    // the bytes ensure_project_stanza alone produces — they must be identical, proving
+    // the seed writer targets a different file.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register alpha");
+    let with_seed = read_config(&fx); // (a)/(c) after register (stanza + any seed effect)
+
+    // Control: a second, distinct registry over a fresh config dir whose (a)/(c) is
+    // produced by ensure_project_stanza for the SAME slug — the seed writes a different
+    // file, so the routing file must match byte-for-byte.
+    let ctrl = Fixture::new();
+    ctrl.registry().register("alpha").expect("register control");
+    let ctrl_cfg =
+        std::fs::read_to_string(ctrl.config_data_dir.join("config.toml")).expect("control (a)/(c)");
+
+    assert_eq!(
+        with_seed, ctrl_cfg,
+        "(a)/(c) must be byte-identical — the seed never writes the path-hash file"
+    );
+    // And the seed file (b) is a genuinely different path that DOES exist.
+    assert!(slug_seed_path(&fx, "alpha").is_file());
+}
+
+#[test]
+fn test_register_seed_does_not_create_config_in_path_hash_dir() {
+    // The seed must not drop a per-slug body into config_data_dir. After a register where
+    // the routing config does NOT pre-exist, config_data_dir/config.toml is ONLY the
+    // stanza file (a)/(c) — it must NOT contain the per-slug seed legend.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register alpha");
+    let ac = read_config(&fx);
+    assert!(
+        ac.contains("[[projects]]"),
+        "(a)/(c) carries the routing stanza"
+    );
+    assert!(
+        !ac.contains("per-slug overlay registry"),
+        "the per-slug seed legend must NOT leak into the (a)/(c) path-hash file"
+    );
+}
+
+// --- R-13: seed on State C genesis AND State B re-attach (re-attach not missed) ---
+
+#[test]
+fn test_register_state_c_genesis_writes_b() {
+    // R-13 scenario 1: fresh slug, no store, no stanza => State C genesis. (b) written.
+    let fx = Fixture::new();
+    assert!(
+        !slug_seed_path(&fx, "alpha").exists(),
+        "precondition: no (b) yet"
+    );
+    fx.registry().register("alpha").expect("State C genesis");
+    assert!(
+        slug_seed_path(&fx, "alpha").is_file(),
+        "State C genesis must seed (b)"
+    );
+}
+
+#[test]
+fn test_register_state_b_reattach_writes_b() {
+    // R-13 scenario 2 (the gap the risk register calls out): a re-registered slug whose
+    // store survives but is de-routed lands in State B; the seed MUST fire there too.
+    let fx = Fixture::new();
+    fx.registry()
+        .register("alpha")
+        .expect("first register (State C)");
+    // Remove the seed so its re-appearance proves State B seeded it (not the first run).
+    std::fs::remove_file(slug_seed_path(&fx, "alpha")).expect("remove (b)");
+    // De-route (config-side) so the next register is State B (data exists, not routed).
+    fx.set_routing(&[]);
+
+    fx.registry()
+        .register("alpha")
+        .expect("State B re-attach must succeed");
+
+    assert!(
+        slug_seed_path(&fx, "alpha").is_file(),
+        "State B re-attach must (re-)seed (b) — ADR-002 requires the seed at BOTH branches"
+    );
+}
+
+#[test]
+fn test_register_state_a_already_routed_errors_no_seed() {
+    // R-13 scenario 3: slug already registered + routed => State A. Loud error BEFORE any
+    // write; no (b) written on the error path (no clobber, no partial write).
+    let fx = Fixture::new();
+    let b = slug_seed_path(&fx, "alpha");
+    // Arrange State A directly: data dir + db exist AND the slug is routed, WITHOUT any
+    // prior register having created (b).
+    std::fs::create_dir_all(fx.slug_dir("alpha")).unwrap();
+    open_store(&fx.slug_db("alpha")); // create the db so data_exists is true
+    fx.set_routing(&["alpha"]); // route it so is_routed is true
+    assert!(
+        !b.exists(),
+        "precondition: no (b) before the State A attempt"
+    );
+
+    let err = fx
+        .registry()
+        .register("alpha")
+        .expect_err("State A must error loud");
+    assert!(
+        err.to_string().contains("already registered and routing"),
+        "State A error, got: {err}"
+    );
+    assert!(
+        !b.exists(),
+        "State A returns before any write — no seed on the error path"
+    );
+}
+
+// --- R-03 / AC-05: no-clobber on (b) (operator file survives) ---
+
+#[test]
+fn test_register_does_not_clobber_pre_placed_b() {
+    // AC-05 / R-03 scenario 2: a pre-placed operator (b) survives register byte-for-byte
+    // (skip-if-exists via C1's create_new).
+    let fx = Fixture::new();
+    std::fs::create_dir_all(fx.slug_dir("alpha")).unwrap();
+    let operator = "# operator per-slug config\n";
+    std::fs::write(slug_seed_path(&fx, "alpha"), operator).unwrap();
+
+    fx.registry().register("alpha").expect("register");
+
+    let after = std::fs::read_to_string(slug_seed_path(&fx, "alpha")).unwrap();
+    assert_eq!(
+        after, operator,
+        "operator (b) must be untouched (no-clobber)"
+    );
+}
+
+#[test]
+fn test_register_twice_does_not_overwrite_b() {
+    // Idempotent: the second seed is a no-op. (b) content is unchanged after re-register.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("first register");
+    let first = std::fs::read_to_string(slug_seed_path(&fx, "alpha")).unwrap();
+
+    fx.set_routing(&[]); // de-route so the second register is State B (still seeds)
+    fx.registry().register("alpha").expect("re-register");
+    let second = std::fs::read_to_string(slug_seed_path(&fx, "alpha")).unwrap();
+
+    assert_eq!(first, second, "second seed must be a no-op (no overwrite)");
+}
+
+// --- R-10: best-effort — seed failure does not fail register (C-09, NFR-07) ---
+
+#[test]
+fn test_register_seed_write_failure_does_not_fail_register() {
+    // R-10 scenario 1: make ONLY the seed write fail (place a DIRECTORY at the (b) path
+    // so create_new cannot create the file) while leaving the hash-chain-critical steps
+    // healthy. register MUST still reach Ok — warn-and-continue, no error, no panic.
+    let fx = Fixture::new();
+    std::fs::create_dir_all(fx.slug_dir("alpha")).unwrap();
+    // (b) path is a directory => write_if_absent's create_new open fails (warn-and-continue).
+    std::fs::create_dir_all(slug_seed_path(&fx, "alpha")).unwrap();
+
+    let result = fx.registry().register("alpha");
+
+    assert!(
+        result.is_ok(),
+        "seed-write failure must NOT fail register (best-effort), got: {result:?}"
+    );
+    // The store + stanza (the critical steps) still landed.
+    assert!(
+        fx.slug_db("alpha").exists(),
+        "store opened despite seed failure"
+    );
+    assert_eq!(
+        stanza_count(&fx, "alpha"),
+        1,
+        "routing intent still written"
+    );
+    // (b) remains the directory we placed — the seed never clobbered it.
+    assert!(
+        slug_seed_path(&fx, "alpha").is_dir(),
+        "the obstructing dir survives; seed was a no-op"
+    );
+}
+
+// --- R-05 scenario 3 / AC-02: register -> resolver round-trip (in-scope half) ---
+//
+// `resolve_slug_config` is declared in the BINARY crate, so the empirical resolver
+// call cannot be reached from this lib-crate test module. We close the round-trip
+// here by (1) proving register writes (b) at the resolver's LITERAL path formula
+// `base_dir.join(slug).join("config.toml")` (the resolver computes exactly this at
+// http_provision.rs:318), and (2) reproducing the resolver's file-present arm logic
+// (load_single_config -> validate -> merge -> validate, all pub in `infra::config`)
+// on the SEEDED (b) — proving the file register wrote is resolver-loadable and
+// overlays nothing. See the agent report for the bin-target empirical-resolver FLAG.
+
+#[test]
+fn test_register_seeded_b_path_is_the_resolver_formula() {
+    // The seed lands at EXACTLY base_dir.join(slug).join("config.toml") — byte-identical
+    // to resolve_slug_config's probe path (http_provision.rs:318), with no recomputed base.
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register");
+
+    let resolver_formula = fx.base_dir.join("alpha").join("config.toml");
+    assert_eq!(
+        slug_seed_path(&fx, "alpha"),
+        resolver_formula,
+        "(b) must sit at the resolver's literal probe formula"
+    );
+    assert!(
+        resolver_formula.is_file(),
+        "register wrote (b) at that path"
+    );
+}
+
+#[test]
+fn test_register_seeded_b_is_resolver_loadable() {
+    // Reproduce resolve_slug_config's file-present arm on the SEEDED (b): the file register
+    // wrote must parse + per-file-validate + merge + post-merge-validate WITHOUT error —
+    // i.e. it is resolver-loadable, not a malformed body that would make startup fail loud.
+    // This is the C3-scope half of the round-trip; the empirical resolver call lives in the
+    // binary crate (see the agent report FLAG).
+    let fx = Fixture::new();
+    fx.registry().register("alpha").expect("register");
+    let b = slug_seed_path(&fx, "alpha");
+
+    let global = config::UnimatrixConfig::default();
+    let slug_file = config::load_single_config(&b).expect("seeded (b) must be loadable");
+    config::validate_config(&slug_file, &b).expect("seeded (b) must validate");
+    let merged = config::merge_configs(global, slug_file);
+    config::validate_config(&merged, &b)
+        .expect("merged config must pass post-merge validation (no startup-fail body)");
+}

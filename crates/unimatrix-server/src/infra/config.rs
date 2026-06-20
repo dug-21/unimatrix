@@ -4556,6 +4556,89 @@ pub fn is_per_slug_overlayable(key: &str) -> bool {
         .is_some_and(|entry| entry.disposition == OverlayDisposition::PerSlugOverlayable)
 }
 
+// ---------------------------------------------------------------------------
+// vnc-041 C2 — Per-slug seed renderer (ADR-003 #5237)
+// ---------------------------------------------------------------------------
+
+/// Render ONE legend line for a classified config key, keyed purely on the
+/// entry's `key` string + `disposition` (vnc-041 C2, ADR-003).
+///
+/// This is the AC-03 contract surface: the rendered annotation is a pure
+/// function of the registry's `disposition`, so a classification flip
+/// (overlayable ↔ locked) mechanically flips the rendered line ("proven, not
+/// restated"). It NEVER dereferences a `UnimatrixConfig` field, so a field-less
+/// entry (`permissive`, `tls`, `http`, the `*_sha256` descriptors) renders a
+/// "managed globally" line with no editable knob and cannot panic (SR-03/R-12).
+///
+/// The `match` on [`OverlayDisposition`] is EXHAUSTIVE with NO catch-all `_`
+/// arm: a future variant is an INTENDED compile break (ADR-003 forcing
+/// function, R-06) — the renderer must classify every disposition.
+fn render_legend_line(entry: &ConfigKeyClass) -> String {
+    match entry.disposition {
+        OverlayDisposition::PerSlugOverlayable => {
+            format!(
+                "# {} — editable here (overlays the global per-slug)\n",
+                entry.key
+            )
+        }
+        OverlayDisposition::GlobalLocked => {
+            format!(
+                "# {} — managed globally; a value here is IGNORED\n",
+                entry.key
+            )
+        }
+    }
+}
+
+/// Render the body written to a per-slug `config.toml` seed (file (b)).
+///
+/// The body has two parts (ADR-003 #5237):
+/// 1. A **classification-derived legend block** — one commented line per entry
+///    in [`PER_SLUG_CONFIG_CLASSIFICATION`], rendered via [`render_legend_line`]
+///    (overlayable ⇒ "editable here"; locked ⇒ "managed globally"). The legend
+///    iterates the registry IN ORDER and restates NO key list (the A→B one-way
+///    contract, C-01).
+/// 2. The reused [`DEFAULT_CONFIG_TOML`] template appended verbatim as the
+///    editable-knob body. No struct→TOML serializer is added (Non-Goal).
+///
+/// Pure and deterministic (same registry + template ⇒ same output) and
+/// infallible — no I/O, no fallible calls, never panics. The legend lines are
+/// all `#`-prefixed comments and the appended template is the proven parseable
+/// default, so the full body parses as TOML and resolves to compiled defaults
+/// with no WARN (a pristine seed sets no key — everything is commented; R-14).
+pub fn render_per_slug_seed_toml() -> String {
+    let mut out = String::new();
+
+    // --- Per-slug header (static comment block; documents intent) ---
+    out.push_str("# Per-slug config overlay for this project.\n");
+    out.push_str(
+        "# Edit the per-slug-overlayable keys below; they overlay the daemon-global config\n",
+    );
+    out.push_str(
+        "# on the next restart (no hot-reload). Keys marked 'managed globally' are ignored\n",
+    );
+    out.push_str("# here — set them in the global config.toml instead.\n");
+    out.push_str("#\n");
+    out.push_str(
+        "# --- key classification (derived from the daemon's per-slug overlay registry) ---\n",
+    );
+
+    // --- Legend block: iterate the registry IN ORDER. The exhaustive match
+    //     (no catch-all) lives in render_legend_line — see R-06 forcing function. ---
+    for entry in PER_SLUG_CONFIG_CLASSIFICATION {
+        out.push_str(&render_legend_line(entry));
+    }
+
+    out.push_str("#\n");
+    out.push_str("# --- editable knobs (defaults shown; uncomment and edit to override) ---\n");
+    out.push('\n');
+
+    // --- Reused template body, verbatim. No struct serialization (Non-Goal). ---
+    out.push_str(DEFAULT_CONFIG_TOML);
+
+    out
+}
+
 /// Unix-only: check file permissions before reading.
 ///
 /// World-writable → abort startup (`WorldWritable`).
@@ -4824,16 +4907,99 @@ pub static DEFAULT_CONFIG_TOML: &str = r#"# Unimatrix configuration file.
 // Default config write helper
 // ---------------------------------------------------------------------------
 
+/// Write `content` to `path` if and only if `path` does not already exist.
+///
+/// Shared, TOCTOU-safe, no-clobber seed-write primitive. Used by both seeds: the
+/// global default-config seed (via [`write_default_config_if_absent`]) and the
+/// per-slug seed (via `projects.rs`). Hence `pub(crate)`.
+///
+/// Behaviour:
+/// - Parent directory is created best-effort with `create_dir_all` first.
+/// - The no-clobber guarantee is provided atomically by `OpenOptions::create_new(true)`
+///   (`O_EXCL`). There is intentionally **no** `path.exists()` precheck — the single
+///   `create_new` open IS the existence guard, so no check-then-write window exists
+///   that could truncate operator-authored content.
+/// - `AlreadyExists` is a silent no-op (skip-if-exists): the file is left untouched.
+/// - Every failure (parent undetermined, `create_dir_all` fails, `write_all` fails,
+///   non-`AlreadyExists` open error) is logged with `tracing::warn` and swallowed.
+///
+/// Best-effort and infallible: returns `()`, never an error, never panics. Provisioning
+/// must never gate the command/daemon, so callers never observe a result.
+pub(crate) fn write_if_absent(path: &std::path::Path, content: &str) {
+    let parent = match path.parent() {
+        Some(p) => p,
+        None => {
+            tracing::warn!(
+                path = %path.display(),
+                "write_if_absent: cannot determine parent directory; skipping"
+            );
+            return;
+        }
+    };
+
+    if let Err(e) = std::fs::create_dir_all(parent) {
+        tracing::warn!(
+            path = %path.display(),
+            error = %e,
+            "write_if_absent: failed to create parent directory; skipping"
+        );
+        return;
+    }
+
+    // ATOMIC no-clobber open. NO path.exists() precheck — O_EXCL is the guard.
+    use std::io::Write as _;
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+    {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(content.as_bytes()) {
+                tracing::warn!(
+                    path = %path.display(),
+                    error = %e,
+                    "write_if_absent: write_all failed"
+                );
+            } else {
+                tracing::info!(
+                    path = %path.display(),
+                    "config seed written"
+                );
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            // SKIP-IF-EXISTS: file already present — silent no-op, operator content
+            // survives. No log (matches prior behaviour; avoids boot-time noise).
+        }
+        Err(e) => {
+            tracing::warn!(
+                path = %path.display(),
+                error = %e,
+                "write_if_absent: open failed"
+            );
+        }
+    }
+}
+
 /// Write `DEFAULT_CONFIG_TOML` to `path` if it does not already exist.
 ///
-/// - `force = false`: atomic create-new (avoids TOCTOU). If the file already exists,
-///   returns `Ok(())` silently.
-/// - `force = true`: unconditional overwrite via `fs::write`.
+/// - `force = false`: delegates to [`write_if_absent`] — atomic create-new (no TOCTOU).
+///   If the file already exists, it is left untouched.
+/// - `force = true`: unconditional overwrite via `fs::write` (intentional overwrite used
+///   by `handle_version --force`; this is NOT a seed and is never routed through the
+///   no-clobber primitive).
 ///
-/// Parent directory is created with `create_dir_all` before writing.
-/// If the parent path cannot be determined or any I/O fails, a `warn` is logged
-/// and the function returns `Ok(())` — never propagates errors to the caller.
+/// For the `force = true` branch the parent directory is created with `create_dir_all`
+/// before writing. If the parent path cannot be determined or any I/O fails, a `warn`
+/// is logged and the function returns — never propagates errors to the caller.
 pub fn write_default_config_if_absent(path: &std::path::Path, force: bool) {
+    if !force {
+        // DELEGATE the no-clobber seed write to the shared primitive.
+        write_if_absent(path, DEFAULT_CONFIG_TOML);
+        return;
+    }
+
+    // force = true: intentional overwrite. Keep its own parent handling.
     let parent = match path.parent() {
         Some(p) => p,
         None => {
@@ -4854,50 +5020,16 @@ pub fn write_default_config_if_absent(path: &std::path::Path, force: bool) {
         return;
     }
 
-    if force {
-        match std::fs::write(path, DEFAULT_CONFIG_TOML) {
-            Ok(()) => tracing::info!(
-                path = %path.display(),
-                "default config.toml written (force)"
-            ),
-            Err(e) => tracing::warn!(
-                path = %path.display(),
-                error = %e,
-                "write_default_config_if_absent: write failed"
-            ),
-        }
-    } else {
-        use std::io::Write as _;
-        match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(path)
-        {
-            Ok(mut file) => {
-                if let Err(e) = file.write_all(DEFAULT_CONFIG_TOML.as_bytes()) {
-                    tracing::warn!(
-                        path = %path.display(),
-                        error = %e,
-                        "write_default_config_if_absent: write_all failed"
-                    );
-                } else {
-                    tracing::info!(
-                        path = %path.display(),
-                        "default config.toml written"
-                    );
-                }
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                // File already present — not an error.
-            }
-            Err(e) => {
-                tracing::warn!(
-                    path = %path.display(),
-                    error = %e,
-                    "write_default_config_if_absent: open failed"
-                );
-            }
-        }
+    match std::fs::write(path, DEFAULT_CONFIG_TOML) {
+        Ok(()) => tracing::info!(
+            path = %path.display(),
+            "default config.toml written (force)"
+        ),
+        Err(e) => tracing::warn!(
+            path = %path.display(),
+            error = %e,
+            "write_default_config_if_absent: write failed"
+        ),
     }
 }
 
@@ -11346,6 +11478,146 @@ nli_informs_ppr_weight = 0.4
     }
 
     // -----------------------------------------------------------------------
+    // write_if_absent primitive tests (vnc-041 C1, ADR-001)
+    // R-03 (no-clobber, atomic), R-10 (best-effort), R-11 (idempotent)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_write_if_absent_creates_file_when_absent_returns_content() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("seed.toml");
+
+        write_if_absent(&path, "hello");
+
+        assert!(path.exists(), "file should have been created");
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(content, "hello", "content must be written byte-for-byte");
+    }
+
+    #[test]
+    fn test_write_if_absent_does_not_overwrite_existing_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("seed.toml");
+        std::fs::write(&path, "operator content\n").expect("pre-write");
+
+        write_if_absent(&path, "SEED BODY");
+
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(
+            content, "operator content\n",
+            "existing operator content must survive; seed body never written"
+        );
+    }
+
+    #[test]
+    fn test_write_if_absent_already_exists_is_silent_noop() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("seed.toml");
+        std::fs::write(&path, "operator content\n").expect("pre-write");
+        let mtime_before = std::fs::metadata(&path)
+            .expect("metadata")
+            .modified()
+            .expect("mtime");
+
+        // Must not panic; returns ().
+        write_if_absent(&path, "SEED BODY");
+
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(content, "operator content\n", "content unchanged");
+        let mtime_after = std::fs::metadata(&path)
+            .expect("metadata")
+            .modified()
+            .expect("mtime");
+        assert_eq!(
+            mtime_before, mtime_after,
+            "AlreadyExists is a no-op: inode never truncated/rewritten"
+        );
+    }
+
+    #[test]
+    fn test_write_if_absent_idempotent_second_call_no_change() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("seed.toml");
+
+        write_if_absent(&path, "first body");
+        let mtime_after_first = std::fs::metadata(&path)
+            .expect("metadata")
+            .modified()
+            .expect("mtime");
+
+        // Second call with a different body must be a no-op.
+        write_if_absent(&path, "second body");
+
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(content, "first body", "first body wins; second is a no-op");
+        let mtime_after_second = std::fs::metadata(&path)
+            .expect("metadata")
+            .modified()
+            .expect("mtime");
+        assert_eq!(
+            mtime_after_first, mtime_after_second,
+            "idempotent: second call leaves inode untouched"
+        );
+    }
+
+    #[test]
+    fn test_write_if_absent_swallows_write_failure_no_panic() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let ro_dir = dir.path().join("readonly");
+        std::fs::create_dir(&ro_dir).expect("mkdir");
+        let mut perms = std::fs::metadata(&ro_dir).expect("metadata").permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(0o555); // r-xr-xr-x: no write permission
+        }
+        std::fs::set_permissions(&ro_dir, perms).expect("set_permissions");
+
+        let path = ro_dir.join("seed.toml");
+
+        // Must not panic regardless of whether the write succeeds or fails.
+        write_if_absent(&path, "body");
+
+        // Restore permissions so tempdir cleanup can succeed.
+        let mut perms = std::fs::metadata(&ro_dir).expect("metadata").permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(0o755);
+        }
+        std::fs::set_permissions(&ro_dir, perms).expect("restore_permissions");
+    }
+
+    #[test]
+    fn test_write_if_absent_creates_missing_parent_dirs() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("a").join("b").join("c").join("config.toml");
+
+        write_if_absent(&path, "nested");
+
+        assert!(path.exists(), "missing parent dirs should be created");
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(content, "nested");
+    }
+
+    #[test]
+    fn test_write_default_config_delegates_to_write_if_absent_for_force_false() {
+        // Behavioural delegation proof: force=false on a pre-existing file leaves it
+        // unchanged (same no-clobber semantics as write_if_absent).
+        let dir = tempfile::tempdir().expect("tempdir");
+        let config_path = dir.path().join("config.toml");
+        std::fs::write(&config_path, "operator content\n").expect("pre-write");
+
+        write_default_config_if_absent(&config_path, false);
+
+        let content = std::fs::read_to_string(&config_path).expect("read");
+        assert_eq!(
+            content, "operator content\n",
+            "force=false must delegate to write_if_absent (no-clobber)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
     // UNIMATRIX_CONFIG env var override tests (nan-014, ADR-005)
     //
     // Tests target resolve_env_config_path_for_test() to avoid env var
@@ -12279,6 +12551,291 @@ connection_timeout_secs = 60
         assert_eq!(config.max_concurrent_sessions, 64);
         assert_eq!(config.max_request_body_bytes, 2_097_152);
         assert_eq!(config.connection_timeout_secs, 60);
+    }
+
+    // -----------------------------------------------------------------------
+    // vnc-041 C2 — render_per_slug_seed_toml (ADR-003 #5237)
+    // Test plan: product/features/vnc-041/test-plan/per-slug-seed-renderer.md
+    // Risks: R-04 (Critical), R-06, R-12, R-14. AC: AC-03.
+    // -----------------------------------------------------------------------
+
+    /// The substring marker an OVERLAYABLE legend line carries.
+    const EDITABLE_MARKER: &str = "editable here";
+    /// The substring marker a LOCKED legend line carries.
+    const LOCKED_MARKER: &str = "managed globally";
+
+    /// Return only the legend lines of the rendered seed. The legend block is
+    /// the slice BETWEEN the classification header and the "editable knobs"
+    /// footer — scoping to that block is load-bearing because the appended
+    /// `DEFAULT_CONFIG_TOML` template also contains `# … — …` comment lines
+    /// (e.g. `# [profile] — knowledge-lifecycle preset`) that must NOT be
+    /// counted as legend lines.
+    fn legend_lines(body: &str) -> Vec<&str> {
+        const HEADER: &str =
+            "# --- key classification (derived from the daemon's per-slug overlay registry) ---";
+        const FOOTER: &str =
+            "# --- editable knobs (defaults shown; uncomment and edit to override) ---";
+
+        let mut lines = body.lines();
+        // Advance past the classification header.
+        for l in lines.by_ref() {
+            if l == HEADER {
+                break;
+            }
+        }
+        // Collect until the footer; legend lines name a key via `# {key} — …`.
+        lines
+            .take_while(|l| *l != FOOTER)
+            .filter(|l| l.starts_with("# ") && l.contains(" — "))
+            .collect()
+    }
+
+    // R-04 / AC-03 — full-registry annotation coverage -------------------
+
+    #[test]
+    fn test_render_legend_covers_every_registry_entry() {
+        let body = render_per_slug_seed_toml();
+        let lines = legend_lines(&body);
+
+        // Every registry key appears in exactly one legend line.
+        for entry in PER_SLUG_CONFIG_CLASSIFICATION {
+            let matches: Vec<&&str> = lines
+                .iter()
+                .filter(|l| l.contains(&format!("# {} — ", entry.key)))
+                .collect();
+            assert_eq!(
+                matches.len(),
+                1,
+                "key {:?} should appear in exactly one legend line, found {}",
+                entry.key,
+                matches.len()
+            );
+        }
+
+        // Legend line count == registry length: no extra keys, none missing.
+        assert_eq!(
+            lines.len(),
+            PER_SLUG_CONFIG_CLASSIFICATION.len(),
+            "legend line count must equal registry length (no extra/missing keys)"
+        );
+    }
+
+    #[test]
+    fn test_render_overlayable_keys_render_editable_line() {
+        let body = render_per_slug_seed_toml();
+        for entry in PER_SLUG_CONFIG_CLASSIFICATION {
+            if entry.disposition == OverlayDisposition::PerSlugOverlayable {
+                let line = format!("# {} — ", entry.key);
+                let rendered = body.lines().find(|l| l.contains(&line)).unwrap_or_else(|| {
+                    panic!("no legend line for overlayable key {:?}", entry.key)
+                });
+                assert!(
+                    rendered.contains(EDITABLE_MARKER),
+                    "overlayable key {:?} legend line missing {EDITABLE_MARKER:?}: {rendered:?}",
+                    entry.key
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_render_locked_keys_render_managed_globally_line() {
+        let body = render_per_slug_seed_toml();
+        for entry in PER_SLUG_CONFIG_CLASSIFICATION {
+            if entry.disposition == OverlayDisposition::GlobalLocked {
+                let line = format!("# {} — ", entry.key);
+                let rendered = body
+                    .lines()
+                    .find(|l| l.contains(&line))
+                    .unwrap_or_else(|| panic!("no legend line for locked key {:?}", entry.key));
+                // Commented-out (the whole legend line is a `#` comment) AND
+                // marked "managed globally" + "IGNORED" per AC-03/ADR-003.
+                assert!(
+                    rendered.starts_with("# "),
+                    "locked key {:?} legend line must be commented out: {rendered:?}",
+                    entry.key
+                );
+                assert!(
+                    rendered.contains(LOCKED_MARKER),
+                    "locked key {:?} legend line missing {LOCKED_MARKER:?}: {rendered:?}",
+                    entry.key
+                );
+                assert!(
+                    rendered.contains("IGNORED"),
+                    "locked key {:?} legend line missing IGNORED marker: {rendered:?}",
+                    entry.key
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_render_legend_lines_keyed_on_registry_disposition() {
+        // The render is a pure function of the registry: derive the expected
+        // marker from entry.disposition and assert the rendered line matches.
+        let body = render_per_slug_seed_toml();
+        for entry in PER_SLUG_CONFIG_CLASSIFICATION {
+            let rendered = body
+                .lines()
+                .find(|l| l.contains(&format!("# {} — ", entry.key)))
+                .unwrap_or_else(|| panic!("no legend line for key {:?}", entry.key));
+            let expected_marker = match entry.disposition {
+                OverlayDisposition::PerSlugOverlayable => EDITABLE_MARKER,
+                OverlayDisposition::GlobalLocked => LOCKED_MARKER,
+            };
+            assert!(
+                rendered.contains(expected_marker),
+                "key {:?} ({:?}) legend line must contain {expected_marker:?}: {rendered:?}",
+                entry.key,
+                entry.disposition
+            );
+        }
+    }
+
+    // R-04 / R-06 / AC-03 — the FLIP TEST (proven, not restated) --------
+
+    #[test]
+    fn test_render_legend_flips_when_disposition_flips() {
+        // The AC-03 "proven, not restated" proof: render ONE key under each
+        // disposition via the same render path the production legend uses. The
+        // rendered annotation must flip editable ↔ managed-globally purely from
+        // the disposition, proving the legend derives from the disposition at
+        // render time (no hardcoded per-key string).
+        let key = "inference.w_sim"; // any stable key — value is irrelevant
+
+        let overlayable = render_legend_line(&ConfigKeyClass {
+            key,
+            disposition: OverlayDisposition::PerSlugOverlayable,
+        });
+        let locked = render_legend_line(&ConfigKeyClass {
+            key,
+            disposition: OverlayDisposition::GlobalLocked,
+        });
+
+        assert!(
+            overlayable.contains(EDITABLE_MARKER) && !overlayable.contains(LOCKED_MARKER),
+            "overlayable disposition must render {EDITABLE_MARKER:?}: {overlayable:?}"
+        );
+        assert!(
+            locked.contains(LOCKED_MARKER) && !locked.contains(EDITABLE_MARKER),
+            "locked disposition must render {LOCKED_MARKER:?}: {locked:?}"
+        );
+        // One flip → the rendered annotation flips.
+        assert_ne!(
+            overlayable, locked,
+            "flipping the disposition must flip the rendered legend line"
+        );
+        // Both name the SAME key — only the marker changed.
+        assert!(overlayable.contains(key) && locked.contains(key));
+    }
+
+    // R-12 — field-less / shape-mismatched locks render safely ----------
+
+    #[test]
+    fn test_render_fieldless_locks_render_managed_globally_no_knob() {
+        // Field-less / non-struct-field locks: keyed on the registry string +
+        // disposition, never a UnimatrixConfig field. Each appears as a
+        // "managed globally" legend line; none emits an editable-knob legend line.
+        let body = render_per_slug_seed_toml();
+        let fieldless_locks = [
+            "permissive",
+            "tls",
+            "http",
+            "inference.embedding_model_sha256",
+            "inference.nli_model_sha256",
+        ];
+        for key in fieldless_locks {
+            let rendered = body
+                .lines()
+                .find(|l| l.contains(&format!("# {key} — ")))
+                .unwrap_or_else(|| panic!("no legend line for field-less lock {key:?}"));
+            assert!(
+                rendered.contains(LOCKED_MARKER),
+                "field-less lock {key:?} must render {LOCKED_MARKER:?}: {rendered:?}"
+            );
+            assert!(
+                !rendered.contains(EDITABLE_MARKER),
+                "field-less lock {key:?} must NOT render an editable knob: {rendered:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_render_does_not_panic_for_any_registry_entry() {
+        // Rendering the full body (covering every field-less entry) completes
+        // without panic — the legend never dereferences a struct field.
+        let body = render_per_slug_seed_toml();
+        assert!(!body.is_empty());
+        // Also render each entry's line individually through the same path.
+        for entry in PER_SLUG_CONFIG_CLASSIFICATION {
+            let _ = render_legend_line(entry);
+        }
+    }
+
+    #[test]
+    fn test_render_legend_lists_exactly_registry_dotted_keys() {
+        use std::collections::BTreeSet;
+        let body = render_per_slug_seed_toml();
+
+        // The legend's key set == the registry's dotted-key set, count matches.
+        let rendered_keys: BTreeSet<String> = legend_lines(&body)
+            .iter()
+            .filter_map(|l| {
+                // Line shape: "# {key} — …". Extract {key}.
+                let after_hash = l.strip_prefix("# ")?;
+                let key = after_hash.split(" — ").next()?;
+                Some(key.to_string())
+            })
+            .collect();
+        let registry_keys: BTreeSet<String> = PER_SLUG_CONFIG_CLASSIFICATION
+            .iter()
+            .map(|e| e.key.to_string())
+            .collect();
+
+        assert_eq!(
+            rendered_keys, registry_keys,
+            "legend key set must equal the registry dotted-key set"
+        );
+        assert_eq!(
+            rendered_keys.len(),
+            PER_SLUG_CONFIG_CLASSIFICATION.len(),
+            "legend key count must equal registry length"
+        );
+    }
+
+    // R-14 — seeded body is valid TOML (the body half of the round-trip) -
+
+    #[test]
+    fn test_render_output_parses_as_valid_toml() {
+        let body = render_per_slug_seed_toml();
+        let parsed = toml::from_str::<toml::Value>(&body);
+        assert!(
+            parsed.is_ok(),
+            "rendered seed body must parse as valid TOML: {:?}",
+            parsed.err()
+        );
+    }
+
+    #[test]
+    fn test_render_output_deserializes_same_as_bare_template() {
+        // R-14 "overlays nothing": the rendered seed prepends a comment-only
+        // legend to DEFAULT_CONFIG_TOML, so it must deserialize to the EXACT
+        // same UnimatrixConfig as the bare template — the legend block sets no
+        // field. Comparing against the bare template (not
+        // UnimatrixConfig::default()) is deliberate: the template relies on
+        // serde default fns, and two of those (boosted_categories /
+        // adaptive_categories) diverge from the programmatic Default impl
+        // (config.rs:415-416 — serde fn yields ["lesson-learned"], Default
+        // yields []). The bare template is the correct "overlays nothing"
+        // oracle; equality with it proves the legend prepend is inert.
+        let seed: UnimatrixConfig = toml::from_str(&render_per_slug_seed_toml())
+            .expect("rendered seed must deserialize as UnimatrixConfig");
+        let bare_template: UnimatrixConfig = toml::from_str(DEFAULT_CONFIG_TOML)
+            .expect("DEFAULT_CONFIG_TOML must deserialize as UnimatrixConfig");
+        assert_eq!(
+            seed, bare_template,
+            "the comment-only legend prepend must not change the deserialized config"
+        );
     }
 }
 

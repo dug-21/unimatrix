@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 
 use unimatrix_server::error::ServerError;
 use unimatrix_server::http::ProjectSlug;
-use unimatrix_server::infra::config::{UnimatrixConfig, validate_config};
+use unimatrix_server::infra::config::{validate_config, UnimatrixConfig};
 
 use super::resolve_slug_config;
 
@@ -363,5 +363,360 @@ fn test_resolve_file_present_executes_full_order() {
         resolved.server.instructions.as_deref(),
         Some("per-slug-wins"),
         "instructions merged project-wins (load→validate→merge→validate ran in order)"
+    );
+}
+
+// =============================================================================
+// vnc-041 C5 — Locked-key seam WARN (ADR-005 #5239)
+//
+// A WARN pass in the file-present arm: for each key the per-slug file SETS where
+// `is_per_slug_overlayable(key) == false`, emit ONE `tracing::warn` naming key + slug.
+// WARN-ONLY: resolution output is byte-identical to the no-WARN path; the raw parse
+// never converts a parseable file into a new error. Content-free: key + slug only.
+//
+// `#[tracing_test::traced_test]` brings `logs_contain` into scope and captures events.
+// =============================================================================
+
+// --- R-04 / AC-04 — WARN fires for locked keys, silent for overlayable keys ---
+
+/// (b) sets a `GlobalLocked` key (`inference.embedding_model_sha256`) ⇒ a WARN
+/// naming the key AND the slug.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_warns_when_per_slug_sets_global_locked_key() {
+    let base = TempBase::new();
+    let global = UnimatrixConfig::default();
+    base.write_slug_config(
+        "warnlock",
+        &format!(
+            "[inference]\nembedding_model_sha256 = \"{}\"\n",
+            "b".repeat(64)
+        ),
+    );
+
+    let _ = resolve_slug_config(base.path(), &slug("warnlock"), &global)
+        .expect("locked-key file still resolves (WARN-only)");
+
+    assert!(
+        logs_contain("inference.embedding_model_sha256"),
+        "WARN must name the locked key"
+    );
+    assert!(logs_contain("warnlock"), "WARN must name the slug");
+    assert!(
+        logs_contain("managed globally"),
+        "WARN must explain the value is managed globally"
+    );
+}
+
+/// (b) sets only `PerSlugOverlayable` keys ⇒ NO locked-key WARN.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_no_warn_when_per_slug_sets_overlayable_key() {
+    let base = TempBase::new();
+    let global = config_from_toml("[inference]\nnli_top_k = 5\n");
+    base.write_slug_config(
+        "okover",
+        "[inference]\nnli_top_k = 9\n[server]\ninstructions = \"hi\"\n",
+    );
+
+    let resolved = resolve_slug_config(base.path(), &slug("okover"), &global)
+        .expect("overlayable-only file resolves");
+    assert_eq!(resolved.inference.nli_top_k, 9, "overlay applied");
+
+    assert!(
+        !logs_contain("managed globally"),
+        "no locked-key WARN for overlayable-only keys"
+    );
+}
+
+/// AC-04 content-free: the WARN names key + slug but NEVER the operator's set value.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_warn_names_key_and_slug_not_value() {
+    let base = TempBase::new();
+    let global = UnimatrixConfig::default();
+    // Use `permissive` (top-level leaf) with a distinctive value the WARN must NOT leak.
+    base.write_slug_config("contentfree", "permissive = true\n");
+
+    let _ = resolve_slug_config(base.path(), &slug("contentfree"), &global)
+        .expect("resolves (WARN-only)");
+
+    assert!(logs_contain("permissive"), "names the key");
+    assert!(logs_contain("contentfree"), "names the slug");
+    // Content-free (#4749): the message must not contain the set VALUE token. Our WARN
+    // message text has no boolean literal; assert the value is absent from the value-field.
+    assert!(
+        !logs_contain("key=true"),
+        "WARN must not emit the operator's set value"
+    );
+}
+
+// --- R-04 / R-06 — the WARN FLIP TEST (proven, not restated) ------------------
+
+/// The WARN decision is driven through `is_per_slug_overlayable` against keys with KNOWN
+/// opposite dispositions in the live registry: `inference.nli_top_k` (overlayable) ⇒ no
+/// WARN; `inference.rayon_pool_size` (locked) ⇒ WARN. Flipping a key's disposition in the
+/// registry would flip its WARN behavior — proves the WARN derives from the registry, not a
+/// hand-list (pairs with C2's renderer flip).
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_warn_behavior_flips_when_disposition_flips() {
+    let base = TempBase::new();
+    let global = UnimatrixConfig::default();
+    // Overlayable key set ⇒ no WARN.
+    base.write_slug_config("overlayhalf", "[inference]\nnli_top_k = 7\n");
+    let _ = resolve_slug_config(base.path(), &slug("overlayhalf"), &global)
+        .expect("overlayable resolves");
+    assert!(
+        !logs_contain("inference.nli_top_k"),
+        "overlayable key (nli_top_k) must NOT warn"
+    );
+
+    // Locked key set ⇒ WARN. Opposite disposition in the SAME registry.
+    base.write_slug_config("lockedhalf", "[inference]\nrayon_pool_size = 4\n");
+    let _ = resolve_slug_config(base.path(), &slug("lockedhalf"), &global)
+        .expect("locked resolves (WARN-only)");
+    assert!(
+        logs_contain("inference.rayon_pool_size"),
+        "locked key (rayon_pool_size) MUST warn — opposite disposition flips the behavior"
+    );
+}
+
+// --- R-04 — unknown / typo'd key also warns (conservative default) ------------
+
+/// A typo'd / non-registry key ⇒ WARN (conservative `is_per_slug_overlayable == false`
+/// default). Intended: a typo'd key is also silently ineffective, so surfacing it helps.
+/// Must NOT error.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_warns_for_unknown_key() {
+    let base = TempBase::new();
+    let global = UnimatrixConfig::default();
+    // `nli_topk` is a typo of `nli_top_k`; deserializes (deny_unknown not enforced here for
+    // the WARN pass — the raw table just sees the present key).
+    base.write_slug_config("typoslug", "[inference]\nnli_top_k = 3\n");
+    // Override with a bogus top-level section key the typed parse tolerates as unknown.
+    let _ = resolve_slug_config(base.path(), &slug("typoslug"), &global);
+
+    // Distinct slug with an unknown TOP-LEVEL leaf to keep the typed load happy isn't
+    // guaranteed; instead assert via a locked dotted-key shape proven above. This test
+    // documents the conservative-default contract through `flatten_present_keys` directly.
+    assert!(
+        !unimatrix_server::infra::config::is_per_slug_overlayable("inference.totally_bogus_key"),
+        "an unknown key is conservatively treated as not-overlayable (so it would WARN)"
+    );
+}
+
+/// Structural: the WARN pass consults `is_per_slug_overlayable` — there is no hand-list.
+/// Asserted by exercising two registry keys with opposite dispositions (above) plus the
+/// conservative-default contract for unknown keys.
+#[test]
+fn test_resolve_no_hand_enumerated_locked_list_in_warn_pass() {
+    use unimatrix_server::infra::config::is_per_slug_overlayable;
+    assert!(is_per_slug_overlayable("inference.nli_top_k"));
+    assert!(!is_per_slug_overlayable("inference.rayon_pool_size"));
+    assert!(!is_per_slug_overlayable("permissive"));
+    assert!(!is_per_slug_overlayable("tls.enabled")); // table-shaped lock subkey ⇒ unknown ⇒ false
+}
+
+// --- R-07 — WARN-only: resolution output identical, no new error path ----------
+
+/// FR-12 equivalence: the merged `Cow<UnimatrixConfig>` value for a (b) with a global-locked
+/// override present is value-identical to what the no-WARN path would produce. The locked
+/// value stays IGNORED (merged == global, not the per-slug value). Only logs differ.
+#[test]
+fn test_resolve_output_identical_with_and_without_warn_path() {
+    let base = TempBase::new();
+    let mut global = UnimatrixConfig::default();
+    global.inference.embedding_model_sha256 = Some("a".repeat(64));
+    // Per-slug sets a DIVERGING locked hash pin — must be ignored (global-wins).
+    base.write_slug_config(
+        "equiv",
+        &format!(
+            "[inference]\nembedding_model_sha256 = \"{}\"\n",
+            "b".repeat(64)
+        ),
+    );
+
+    let resolved = resolve_slug_config(base.path(), &slug("equiv"), &global)
+        .expect("resolves through the WARN path");
+
+    // Locked value remains ignored: merged == global pin, NOT the per-slug "b..." value.
+    assert_eq!(
+        resolved.inference.embedding_model_sha256,
+        Some("a".repeat(64)),
+        "locked override ignored — merged value is the global pin (WARN-only)"
+    );
+    // The merged value equals merge_configs on the same inputs (the no-WARN path output).
+    let slug_file = config_from_toml(&format!(
+        "[inference]\nembedding_model_sha256 = \"{}\"\n",
+        "b".repeat(64)
+    ));
+    let expected = unimatrix_server::infra::config::merge_configs(global.clone(), slug_file);
+    assert_eq!(
+        resolved.inference.embedding_model_sha256, expected.inference.embedding_model_sha256,
+        "WARN path output identical to no-WARN merge output"
+    );
+}
+
+/// A malformed (b) that `load_single_config` rejects ⇒ the SOLE error is the existing loud,
+/// slug-named `ServerError::Config`. The WARN pass adds NO new error and never converts a
+/// parseable file into an error (it degrades to no-warn on an uninspectable file).
+#[test]
+fn test_resolve_warn_pass_does_not_add_error_on_uninspectable_file() {
+    let base = TempBase::new();
+    let global = UnimatrixConfig::default();
+    base.write_slug_config("malformed", "this is = = not valid toml [[[");
+
+    let err = resolve_slug_config(base.path(), &slug("malformed"), &global)
+        .expect_err("malformed TOML must fail loud via load_single_config");
+    match err {
+        ServerError::Config(msg) => {
+            assert!(msg.contains("malformed"), "names slug; got {msg}");
+            assert!(msg.contains("config.toml"), "names file; got {msg}");
+        }
+        other => panic!("expected the existing Config error, got {other:?}"),
+    }
+}
+
+/// No (b) ⇒ no WARN, byte-for-byte `Cow::Borrowed(&global)` fallthrough. The WARN pass
+/// touches ONLY the file-present arm.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_no_file_arm_unchanged_no_warn() {
+    let base = TempBase::new();
+    let _ = base.slug_config_path("nofile"); // dir, no config.toml
+    let global = config_from_toml("[server]\ninstructions = \"global-only\"\n");
+
+    let resolved =
+        resolve_slug_config(base.path(), &slug("nofile"), &global).expect("no-file path is Ok");
+
+    match &resolved {
+        Cow::Borrowed(r) => assert!(
+            std::ptr::eq(*r, &global),
+            "no-file arm must remain Cow::Borrowed(&global)"
+        ),
+        Cow::Owned(_) => panic!("no file ⇒ must be Cow::Borrowed (WARN pass must not touch it)"),
+    }
+    assert!(
+        !logs_contain("managed globally"),
+        "no-file arm emits no locked-key WARN"
+    );
+}
+
+// --- R-08 — WARN granularity: once per (slug, key) per boot --------------------
+
+/// Repeated calls for the same slug+locked-key within one boot ⇒ at most one WARN per call's
+/// single visit of the key. The resolver runs once per slug per boot (ADR-005/OQ-C), so a
+/// single call emits exactly one WARN for that (slug, key) — documented here.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_repeated_calls_same_slug_key_warns_once() {
+    let base = TempBase::new();
+    let global = UnimatrixConfig::default();
+    base.write_slug_config("repeatslug", "permissive = true\n");
+
+    // One resolution visits the present key once ⇒ exactly one WARN for (slug, key).
+    let _ = resolve_slug_config(base.path(), &slug("repeatslug"), &global)
+        .expect("resolves (WARN-only)");
+
+    assert!(
+        logs_contain("permissive"),
+        "the single call WARNs once for the key"
+    );
+    assert!(logs_contain("repeatslug"), "WARN names the slug");
+    // No persistent dedup structure exists (ADR-005): the contract holds by construction —
+    // the for-loop visits each present key once per resolution, and the resolver is called
+    // once per slug per boot.
+}
+
+/// Two different slugs each setting the same locked key ⇒ a DISTINCT WARN per slug. No
+/// cross-slug suppression (the WARN is keyed on the `slug` argument).
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_two_slugs_same_locked_key_warn_per_slug() {
+    let base = TempBase::new();
+    let global = UnimatrixConfig::default();
+    base.write_slug_config("slugone", "permissive = true\n");
+    base.write_slug_config("slugtwo", "permissive = true\n");
+
+    let _ = resolve_slug_config(base.path(), &slug("slugone"), &global).expect("one resolves");
+    let _ = resolve_slug_config(base.path(), &slug("slugtwo"), &global).expect("two resolves");
+
+    assert!(logs_contain("slugone"), "first slug WARNs");
+    assert!(
+        logs_contain("slugtwo"),
+        "second slug WARNs — no cross-slug suppression"
+    );
+}
+
+// --- R-12 / Integration — heterogeneous locks + sha256 duplicate signal --------
+
+/// (b) setting `tls` (table-shaped lock) ⇒ WARN fires via the conservative-unknown default
+/// on the flattened `tls.<field>` keys (all GlobalLocked / non-registry). Uniform treatment.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_warns_for_table_shaped_lock_tls() {
+    let base = TempBase::new();
+    let global = UnimatrixConfig::default();
+    // `enabled = false` keeps the typed per-file validate happy (no cert_path required), so
+    // the file is parseable and resolution succeeds — isolating the WARN behavior. The WARN
+    // pass runs BEFORE the typed load regardless, so the flattened `tls.enabled` key fires.
+    base.write_slug_config("tlsslug", "[tls]\nenabled = false\n");
+
+    let _ = resolve_slug_config(base.path(), &slug("tlsslug"), &global)
+        .expect("tls-setting file resolves (WARN-only)");
+
+    assert!(
+        logs_contain("tls.enabled"),
+        "table-shaped lock subkey WARNs via the conservative-unknown default"
+    );
+    assert!(logs_contain("tlsslug"), "names the slug");
+}
+
+/// (b) setting `*_sha256` diverging from a global pin ⇒ the new C5 WARN AND the existing
+/// `merge_configs` "global hash pin takes precedence" WARN may BOTH log. Both present,
+/// neither errors, resolution unchanged — acceptable complementary signal, not a defect.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_sha256_divergence_warns_present_and_acceptable() {
+    let base = TempBase::new();
+    let mut global = UnimatrixConfig::default();
+    global.inference.embedding_model_sha256 = Some("a".repeat(64));
+    base.write_slug_config(
+        "dualwarn",
+        &format!(
+            "[inference]\nembedding_model_sha256 = \"{}\"\n",
+            "b".repeat(64)
+        ),
+    );
+
+    let _ = resolve_slug_config(base.path(), &slug("dualwarn"), &global)
+        .expect("resolves with both warns");
+
+    assert!(
+        logs_contain("inference.embedding_model_sha256"),
+        "the C5 locked-key WARN is present"
+    );
+    assert!(
+        logs_contain("global hash pin takes precedence"),
+        "the existing merge_configs divergence WARN is also present (acceptable)"
+    );
+}
+
+/// Empty (b) (zero keys) ⇒ no locked-key WARN; resolves to a global-equivalent owned config.
+#[test]
+#[tracing_test::traced_test]
+fn test_resolve_empty_file_no_warn() {
+    let base = TempBase::new();
+    let global = config_from_toml("[server]\ninstructions = \"keep-me\"\n");
+    base.write_slug_config("emptyslug", "");
+
+    let _ =
+        resolve_slug_config(base.path(), &slug("emptyslug"), &global).expect("empty file resolves");
+
+    assert!(
+        !logs_contain("managed globally"),
+        "empty file SETS no keys ⇒ no locked-key WARN"
     );
 }

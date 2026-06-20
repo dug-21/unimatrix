@@ -31,13 +31,14 @@ use unimatrix_engine::confidence::ConfidenceParams;
 use unimatrix_observe::domain::DomainPackRegistry;
 use unimatrix_server::error::ServerError;
 use unimatrix_server::http::{
-    Env, ProjectServerInput, ProjectSlug, PublicUrl, build_tls_acceptor, derive_public_url,
-    load_or_generate_cert,
+    build_tls_acceptor, derive_public_url, load_or_generate_cert, Env, ProjectServerInput,
+    ProjectSlug, PublicUrl,
 };
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
 use unimatrix_server::infra::config::{
-    InferenceConfig, TlsConfig, UnimatrixConfig, load_single_config, merge_configs, validate_config,
+    is_per_slug_overlayable, load_single_config, merge_configs, validate_config, InferenceConfig,
+    TlsConfig, UnimatrixConfig,
 };
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::nli_handle::NliServiceHandle;
@@ -330,6 +331,17 @@ pub fn resolve_slug_config<'a>(
     // (3) FILE-PRESENT ARM — load → per-file validate → merge → post-merge validate.
     tracing::debug!(slug = %slug, path = %path.display(), "resolving per-slug config overlay");
 
+    // 3a-WARN. Locked-key seam WARN pass (vnc-041 C5, ADR-005 #5239). PURE OBSERVATION:
+    //     read the text and raw-parse it to enumerate which keys the file actually SETS,
+    //     then WARN (key + slug, content-free) for each key that is NOT per-slug overlayable.
+    //     WARN-ONLY (SR-06): this changes the resolution output by exactly nothing — the
+    //     locked value is already ignored by `merge_configs`. The raw read/parse NEVER adds a
+    //     failure mode: a read or parse error here is swallowed (no WARN), and the canonical,
+    //     loud, slug-named error is left to `load_single_config` below (it re-reads the path).
+    if let Ok(text) = std::fs::read_to_string(&path) {
+        warn_locked_keys(&text, slug);
+    }
+
     // 3a. Parse + hardening (REUSE — 64 KiB cap #2395 + #[cfg(unix)] 0o022 check, R-10).
     let slug_file =
         load_single_config(&path).map_err(|e| config_err(slug, &path, &e.to_string()))?;
@@ -365,6 +377,70 @@ fn config_err(slug: &ProjectSlug, path: &Path, detail: &str) -> ServerError {
         slug.as_str(),
         path.display()
     ))
+}
+
+/// Emit one `tracing::warn` per global-locked key the per-slug file SETS (vnc-041 C5,
+/// ADR-005 #5239). The locked surface DERIVES from the Feature A registry at runtime
+/// (`is_per_slug_overlayable == false`) — NO hand-list in B (SR-02/SR-07).
+///
+/// PURE OBSERVATION — infallible, emits only logs, NEVER errors (SR-06, R-07):
+/// - The raw parse is INDEPENDENT of the typed `load_single_config`. On a raw-parse
+///   failure this returns with no WARN; the canonical loud, slug-named `ServerError::Config`
+///   is left to `load_single_config`. The WARN pass never converts a parseable file into an
+///   error, nor pre-empts the typed parse's error.
+/// - CONTENT-FREE (C-11, #4749): the WARN names the bounded key + the validated slug newtype
+///   ONLY — never the operator's set VALUE.
+///
+/// Dedup (OQ-C / R-08): the resolver runs once per slug per boot (main.rs per-slug loop), so
+/// once-per-resolution IS once-per-boot. A key appears once in the raw table, so the loop
+/// visits it once — naturally one WARN per (slug, key) per boot with no dedup structure (and
+/// no cross-boot / cross-slug shared state, which R-08 forbids: the WARN is keyed on the
+/// `slug` argument so each slug warns independently).
+fn warn_locked_keys(text: &str, slug: &ProjectSlug) {
+    // Raw parse — degrade silently on failure (no WARN, no error).
+    let raw: toml::Value = match toml::from_str(text) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+
+    for key in flatten_present_keys(&raw) {
+        // `is_per_slug_overlayable(key) == false` ⇒ GlobalLocked OR unknown/non-seam key.
+        // The conservative default also returns false, so a typo'd / unknown key warns too
+        // (it is silently ineffective otherwise — desirable signal, ADR-005).
+        if !is_per_slug_overlayable(&key) {
+            tracing::warn!(
+                slug = %slug,
+                key = %key,
+                "per-slug config sets a global-locked key; value is ignored (managed globally)"
+            );
+        }
+    }
+}
+
+/// Flatten the PRESENT keys of a raw per-slug TOML table into dotted identifiers matching
+/// the `PER_SLUG_CONFIG_CLASSIFICATION` `key` strings (vnc-041 C5).
+///
+/// One level of nesting covers the entire registry surface: top-level leaves render as
+/// `"key"` (e.g. `permissive`); top-level sub-tables render as `"section.subkey"`
+/// (e.g. `inference.embedding_model_sha256`). For table-shaped locks (`tls` / `http`),
+/// the sub-keys flatten to `tls.<field>` / `http.<field>`, which are NOT in the registry —
+/// so the conservative-unknown default (`is_per_slug_overlayable == false`) still fires the
+/// WARN correctly (Gate 3a observation). Deeper nesting is not part of the per-slug seam.
+fn flatten_present_keys(raw: &toml::Value) -> Vec<String> {
+    let mut keys = Vec::new();
+    if let toml::Value::Table(top) = raw {
+        for (name, value) in top {
+            match value {
+                toml::Value::Table(sub) => {
+                    for sub_name in sub.keys() {
+                        keys.push(format!("{name}.{sub_name}"));
+                    }
+                }
+                _ => keys.push(name.clone()),
+            }
+        }
+    }
+    keys
 }
 
 #[cfg(test)]
