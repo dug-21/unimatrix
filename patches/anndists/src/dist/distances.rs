@@ -5,6 +5,13 @@
 #[cfg(feature = "stdsimd")]
 use super::distsimd::*;
 
+// Only x86 builds call into the simdeez impls (every call site below is
+// #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]-gated). Gating the
+// import the same way keeps it in scope where it is used while avoiding an
+// unused-import warning on non-x86 targets under the -D warnings clippy gate (#798).
+#[cfg(all(feature = "simdeez_f", any(target_arch = "x86", target_arch = "x86_64")))]
+use super::disteez::*;
+
 /// The trait describing distance.
 /// For example for the L1 distance
 ///
