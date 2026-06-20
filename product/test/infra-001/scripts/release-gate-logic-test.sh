@@ -25,6 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB="${SCRIPT_DIR}/release-gate-lib.sh"
 STUB="${SCRIPT_DIR}/fixtures/stub-smoke.sh"
 SMOKE="${SCRIPT_DIR}/docker-http-posture-smoke.sh"
+EMBED_SMOKE="${SCRIPT_DIR}/docker-embed-readiness-smoke.sh"
 
 # --- consume the SHIPPED gate bytes (single source of truth) -----------------------------
 # shellcheck source=release-gate-lib.sh
@@ -143,11 +144,33 @@ printf '%s' "$LOG_DEF" | grep -qF "[783-smoke] %s" || { byte_ident_ok=0; bi_why=
 printf '%s' "$SMOKE_MSG_LINE" | grep -qE 'log[[:space:]]+"ALL GATES PASSED' || { byte_ident_ok=0; bi_why="marker not emitted via log(): $SMOKE_MSG_LINE"; }
 # (c) reconstruct the runtime line and confirm the SHIPPED lib grep matches it
 SMOKE_RUNTIME="${MARKER} — clean image boots HTTP-on and routes the registered slug over HTTPS."
-printf '%s\n' "$SMOKE_RUNTIME" | grep -qx '\[783-smoke\] ALL GATES PASSED.*' || { byte_ident_ok=0; bi_why="lib pattern does not match runtime line: $SMOKE_RUNTIME"; }
+printf '%s\n' "$SMOKE_RUNTIME" | grep -qxE '\[[a-z0-9-]+-smoke\] ALL GATES PASSED.*' || { byte_ident_ok=0; bi_why="lib pattern does not match runtime line: $SMOKE_RUNTIME"; }
 if [ "$byte_ident_ok" -eq 1 ]; then
   pass "test_gate_marker_byte_identical"
 else
   oops "test_gate_marker_byte_identical" "${bi_why:-unknown}"
+fi
+
+# Same byte-identity binding for the #767 embed-readiness smoke: it shares the
+# gate spine (release-gate-lib.sh), so its terminal marker MUST satisfy the same
+# generalized [*-smoke] ALL GATES PASSED grep. Bind to the real emission, not a
+# hand-copied literal.
+echo "== embed-readiness smoke (#767) marker byte-identity cross-check =="
+embed_ident_ok=1
+if [ -f "$EMBED_SMOKE" ]; then
+  E_LOG_DEF="$(grep -m1 'log() {' "$EMBED_SMOKE")"
+  E_MSG_LINE="$(grep -m1 'ALL GATES PASSED' "$EMBED_SMOKE")"
+  printf '%s' "$E_LOG_DEF" | grep -qF "[767-embed-smoke] %s" || { embed_ident_ok=0; ei_why="embed smoke log() prefix changed: $E_LOG_DEF"; }
+  printf '%s' "$E_MSG_LINE" | grep -qE 'log[[:space:]]+"ALL GATES PASSED' || { embed_ident_ok=0; ei_why="embed marker not emitted via log(): $E_MSG_LINE"; }
+  E_RUNTIME="[767-embed-smoke] ALL GATES PASSED — first boot downloaded the model into /shared and the embed path is live."
+  printf '%s\n' "$E_RUNTIME" | grep -qxE '\[[a-z0-9-]+-smoke\] ALL GATES PASSED.*' || { embed_ident_ok=0; ei_why="lib pattern does not match embed runtime line: $E_RUNTIME"; }
+  if [ "$embed_ident_ok" -eq 1 ]; then
+    pass "test_embed_smoke_marker_byte_identical"
+  else
+    oops "test_embed_smoke_marker_byte_identical" "${ei_why:-unknown}"
+  fi
+else
+  oops "test_embed_smoke_marker_byte_identical" "embed smoke script not found at $EMBED_SMOKE"
 fi
 
 # --- R-02: RC survives capture, verified by EXECUTION not by reading (the #4873 class) ----
