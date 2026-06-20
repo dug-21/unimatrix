@@ -4824,16 +4824,99 @@ pub static DEFAULT_CONFIG_TOML: &str = r#"# Unimatrix configuration file.
 // Default config write helper
 // ---------------------------------------------------------------------------
 
+/// Write `content` to `path` if and only if `path` does not already exist.
+///
+/// Shared, TOCTOU-safe, no-clobber seed-write primitive. Used by both seeds: the
+/// global default-config seed (via [`write_default_config_if_absent`]) and the
+/// per-slug seed (via `projects.rs`). Hence `pub(crate)`.
+///
+/// Behaviour:
+/// - Parent directory is created best-effort with `create_dir_all` first.
+/// - The no-clobber guarantee is provided atomically by `OpenOptions::create_new(true)`
+///   (`O_EXCL`). There is intentionally **no** `path.exists()` precheck — the single
+///   `create_new` open IS the existence guard, so no check-then-write window exists
+///   that could truncate operator-authored content.
+/// - `AlreadyExists` is a silent no-op (skip-if-exists): the file is left untouched.
+/// - Every failure (parent undetermined, `create_dir_all` fails, `write_all` fails,
+///   non-`AlreadyExists` open error) is logged with `tracing::warn` and swallowed.
+///
+/// Best-effort and infallible: returns `()`, never an error, never panics. Provisioning
+/// must never gate the command/daemon, so callers never observe a result.
+pub(crate) fn write_if_absent(path: &std::path::Path, content: &str) {
+    let parent = match path.parent() {
+        Some(p) => p,
+        None => {
+            tracing::warn!(
+                path = %path.display(),
+                "write_if_absent: cannot determine parent directory; skipping"
+            );
+            return;
+        }
+    };
+
+    if let Err(e) = std::fs::create_dir_all(parent) {
+        tracing::warn!(
+            path = %path.display(),
+            error = %e,
+            "write_if_absent: failed to create parent directory; skipping"
+        );
+        return;
+    }
+
+    // ATOMIC no-clobber open. NO path.exists() precheck — O_EXCL is the guard.
+    use std::io::Write as _;
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+    {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(content.as_bytes()) {
+                tracing::warn!(
+                    path = %path.display(),
+                    error = %e,
+                    "write_if_absent: write_all failed"
+                );
+            } else {
+                tracing::info!(
+                    path = %path.display(),
+                    "config seed written"
+                );
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            // SKIP-IF-EXISTS: file already present — silent no-op, operator content
+            // survives. No log (matches prior behaviour; avoids boot-time noise).
+        }
+        Err(e) => {
+            tracing::warn!(
+                path = %path.display(),
+                error = %e,
+                "write_if_absent: open failed"
+            );
+        }
+    }
+}
+
 /// Write `DEFAULT_CONFIG_TOML` to `path` if it does not already exist.
 ///
-/// - `force = false`: atomic create-new (avoids TOCTOU). If the file already exists,
-///   returns `Ok(())` silently.
-/// - `force = true`: unconditional overwrite via `fs::write`.
+/// - `force = false`: delegates to [`write_if_absent`] — atomic create-new (no TOCTOU).
+///   If the file already exists, it is left untouched.
+/// - `force = true`: unconditional overwrite via `fs::write` (intentional overwrite used
+///   by `handle_version --force`; this is NOT a seed and is never routed through the
+///   no-clobber primitive).
 ///
-/// Parent directory is created with `create_dir_all` before writing.
-/// If the parent path cannot be determined or any I/O fails, a `warn` is logged
-/// and the function returns `Ok(())` — never propagates errors to the caller.
+/// For the `force = true` branch the parent directory is created with `create_dir_all`
+/// before writing. If the parent path cannot be determined or any I/O fails, a `warn`
+/// is logged and the function returns — never propagates errors to the caller.
 pub fn write_default_config_if_absent(path: &std::path::Path, force: bool) {
+    if !force {
+        // DELEGATE the no-clobber seed write to the shared primitive.
+        write_if_absent(path, DEFAULT_CONFIG_TOML);
+        return;
+    }
+
+    // force = true: intentional overwrite. Keep its own parent handling.
     let parent = match path.parent() {
         Some(p) => p,
         None => {
@@ -4854,50 +4937,16 @@ pub fn write_default_config_if_absent(path: &std::path::Path, force: bool) {
         return;
     }
 
-    if force {
-        match std::fs::write(path, DEFAULT_CONFIG_TOML) {
-            Ok(()) => tracing::info!(
-                path = %path.display(),
-                "default config.toml written (force)"
-            ),
-            Err(e) => tracing::warn!(
-                path = %path.display(),
-                error = %e,
-                "write_default_config_if_absent: write failed"
-            ),
-        }
-    } else {
-        use std::io::Write as _;
-        match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(path)
-        {
-            Ok(mut file) => {
-                if let Err(e) = file.write_all(DEFAULT_CONFIG_TOML.as_bytes()) {
-                    tracing::warn!(
-                        path = %path.display(),
-                        error = %e,
-                        "write_default_config_if_absent: write_all failed"
-                    );
-                } else {
-                    tracing::info!(
-                        path = %path.display(),
-                        "default config.toml written"
-                    );
-                }
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                // File already present — not an error.
-            }
-            Err(e) => {
-                tracing::warn!(
-                    path = %path.display(),
-                    error = %e,
-                    "write_default_config_if_absent: open failed"
-                );
-            }
-        }
+    match std::fs::write(path, DEFAULT_CONFIG_TOML) {
+        Ok(()) => tracing::info!(
+            path = %path.display(),
+            "default config.toml written (force)"
+        ),
+        Err(e) => tracing::warn!(
+            path = %path.display(),
+            error = %e,
+            "write_default_config_if_absent: write failed"
+        ),
     }
 }
 
@@ -11343,6 +11392,146 @@ nli_informs_ppr_weight = 0.4
             perms.set_mode(0o755);
         }
         std::fs::set_permissions(&ro_dir, perms).expect("restore_permissions");
+    }
+
+    // -----------------------------------------------------------------------
+    // write_if_absent primitive tests (vnc-041 C1, ADR-001)
+    // R-03 (no-clobber, atomic), R-10 (best-effort), R-11 (idempotent)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_write_if_absent_creates_file_when_absent_returns_content() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("seed.toml");
+
+        write_if_absent(&path, "hello");
+
+        assert!(path.exists(), "file should have been created");
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(content, "hello", "content must be written byte-for-byte");
+    }
+
+    #[test]
+    fn test_write_if_absent_does_not_overwrite_existing_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("seed.toml");
+        std::fs::write(&path, "operator content\n").expect("pre-write");
+
+        write_if_absent(&path, "SEED BODY");
+
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(
+            content, "operator content\n",
+            "existing operator content must survive; seed body never written"
+        );
+    }
+
+    #[test]
+    fn test_write_if_absent_already_exists_is_silent_noop() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("seed.toml");
+        std::fs::write(&path, "operator content\n").expect("pre-write");
+        let mtime_before = std::fs::metadata(&path)
+            .expect("metadata")
+            .modified()
+            .expect("mtime");
+
+        // Must not panic; returns ().
+        write_if_absent(&path, "SEED BODY");
+
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(content, "operator content\n", "content unchanged");
+        let mtime_after = std::fs::metadata(&path)
+            .expect("metadata")
+            .modified()
+            .expect("mtime");
+        assert_eq!(
+            mtime_before, mtime_after,
+            "AlreadyExists is a no-op: inode never truncated/rewritten"
+        );
+    }
+
+    #[test]
+    fn test_write_if_absent_idempotent_second_call_no_change() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("seed.toml");
+
+        write_if_absent(&path, "first body");
+        let mtime_after_first = std::fs::metadata(&path)
+            .expect("metadata")
+            .modified()
+            .expect("mtime");
+
+        // Second call with a different body must be a no-op.
+        write_if_absent(&path, "second body");
+
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(content, "first body", "first body wins; second is a no-op");
+        let mtime_after_second = std::fs::metadata(&path)
+            .expect("metadata")
+            .modified()
+            .expect("mtime");
+        assert_eq!(
+            mtime_after_first, mtime_after_second,
+            "idempotent: second call leaves inode untouched"
+        );
+    }
+
+    #[test]
+    fn test_write_if_absent_swallows_write_failure_no_panic() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let ro_dir = dir.path().join("readonly");
+        std::fs::create_dir(&ro_dir).expect("mkdir");
+        let mut perms = std::fs::metadata(&ro_dir).expect("metadata").permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(0o555); // r-xr-xr-x: no write permission
+        }
+        std::fs::set_permissions(&ro_dir, perms).expect("set_permissions");
+
+        let path = ro_dir.join("seed.toml");
+
+        // Must not panic regardless of whether the write succeeds or fails.
+        write_if_absent(&path, "body");
+
+        // Restore permissions so tempdir cleanup can succeed.
+        let mut perms = std::fs::metadata(&ro_dir).expect("metadata").permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            perms.set_mode(0o755);
+        }
+        std::fs::set_permissions(&ro_dir, perms).expect("restore_permissions");
+    }
+
+    #[test]
+    fn test_write_if_absent_creates_missing_parent_dirs() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("a").join("b").join("c").join("config.toml");
+
+        write_if_absent(&path, "nested");
+
+        assert!(path.exists(), "missing parent dirs should be created");
+        let content = std::fs::read_to_string(&path).expect("read");
+        assert_eq!(content, "nested");
+    }
+
+    #[test]
+    fn test_write_default_config_delegates_to_write_if_absent_for_force_false() {
+        // Behavioural delegation proof: force=false on a pre-existing file leaves it
+        // unchanged (same no-clobber semantics as write_if_absent).
+        let dir = tempfile::tempdir().expect("tempdir");
+        let config_path = dir.path().join("config.toml");
+        std::fs::write(&config_path, "operator content\n").expect("pre-write");
+
+        write_default_config_if_absent(&config_path, false);
+
+        let content = std::fs::read_to_string(&config_path).expect("read");
+        assert_eq!(
+            content, "operator content\n",
+            "force=false must delegate to write_if_absent (no-clobber)"
+        );
     }
 
     // -----------------------------------------------------------------------
