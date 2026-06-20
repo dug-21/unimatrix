@@ -38,9 +38,12 @@ services:
       - "8443:8443"
     volumes:
       - unimatrix-data:/data
-      # Preserve the nan-014 :ro hardening on /shared (re-downloadable models;
-      # read-only prevents model tampering after first populate).
-      - unimatrix-shared:/shared:ro
+      # /shared is READ-WRITE by default (ADR-003 nan-015 #4652). The image bakes
+      # NO model (pattern #4658), so first boot MUST be able to download the ONNX
+      # models into /shared — a :ro default makes that write fail with EROFS and
+      # embed lands EmbedFailed (#767). `:ro` is OPTIONAL hardening to apply ONLY
+      # AFTER the volume has been populated; see the unimatrix-shared note below.
+      - unimatrix-shared:/shared
       # unimatrix-data: databases, vector indexes, config, logs (integrity-critical, back up).
       # unimatrix-shared: ONNX models (re-downloadable, backup optional).
       # Config: per-project config.toml lives inside the data volume.
@@ -66,10 +69,18 @@ volumes:
     # Backup optional -- models re-download from HuggingFace if lost.
     #
     # Security notes:
-    #   - Mounted :ro above (nan-014 hardening) to prevent model tampering.
-    #   - First populate: with :ro the models must already be present. Pre-populate
-    #     once with a writable mount (drop the :ro, start, let models download),
-    #     then restore :ro; or pre-seed the volume for air-gapped hosts.
+    #   - Default is :rw (above) — required for the first-boot model download
+    #     (no model is baked into the image, pattern #4658).
+    #   - Optional hardening: AFTER first boot has populated the volume, you may
+    #     append `:ro` to the mount (`- unimatrix-shared:/shared:ro`) to prevent
+    #     model tampering. Do NOT start with :ro on a virgin volume — first boot
+    #     has nowhere to write the download and embed fails (#767).
+    #   - Air-gap: pre-populate the volume FIRST (e.g.
+    #       docker run --rm -v unimatrix-shared:/shared ghcr.io/dug-21/unimatrix \
+    #         --project-dir /data model-download
+    #     or pre-seed it from a populated host), THEN mount :ro.
+    #   - Bind-mount caveat: a host bind-mount for /shared must be writable by
+    #     UID 65532 (the nonroot runtime user) or first-boot download fails loud.
     #   - Set nli_model_sha256 in config.toml to pin NLI model integrity.
     #   - Embedding model hash enforcement tracked as #651.
 

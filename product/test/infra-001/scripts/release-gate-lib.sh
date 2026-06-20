@@ -7,9 +7,11 @@
 # shipped logic (test-gate-logic-stub-smoke.md, OQ — extraction mechanism (a), R-01).
 #
 # Contracts (VERBATIM — IMPLEMENTATION-BRIEF Data Structures / ADR-003 / ADR-002 / ADR-004):
-#   smoke exit contract : 0 = ran+passed · 1 = ran+failed (fail()) · 3 = self-skipped (Docker absent)
+#   smoke exit contract : 0 = ran+passed · 1 = ran+failed (fail()) · 3 = self-skipped (Docker/net absent)
 #                         · 4 = IMAGE= prebuilt tag could not be pulled / not present locally (#795)
-#   positive run-marker : terminal line  [783-smoke] ALL GATES PASSED  (printed only after all gates)
+#   positive run-marker : terminal line  [<name>-smoke] ALL GATES PASSED  (printed only after all gates).
+#                         <name> is the per-smoke tag, e.g. 783 (http-posture) or 767 (embed-readiness);
+#                         the gate matches any [*-smoke] ALL GATES PASSED line so one spine drives all smokes.
 #   tag resolution      : push    -> TAG="${GITHUB_REF_NAME}"  (UN-stripped, keeps the v) => :v<version>-<arch>
 #                         dispatch -> TAG="latest"                                          => :latest-<arch>
 #                         NEVER ${GITHUB_REF_NAME#v}
@@ -54,7 +56,7 @@ run_smoke_gate() {
     1) echo "::error::smoke FAILED (exit 1): shipped image first-run path is broken."; return 1 ;;
     *) echo "::error::smoke exited unexpectedly (exit ${rc})."; return 1 ;;
   esac
-  echo "${out}" | grep -qx '\[783-smoke\] ALL GATES PASSED.*' \
+  echo "${out}" | grep -qxE '\[[a-z0-9-]+-smoke\] ALL GATES PASSED.*' \
     || { echo "::error::smoke exited 0 but never printed ALL GATES PASSED — early-exit-0 (SR-01)."; return 1; }
   return 0
 }

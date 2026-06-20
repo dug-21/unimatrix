@@ -445,8 +445,57 @@ jobs:
           echo "smoke target IMAGE=${IMAGE}"
           run_smoke_gate "${IMAGE}" bash product/test/infra-001/scripts/docker-http-posture-smoke.sh
 
+  # First-boot EMBEDDING-READINESS gates (#767). Separate from the HTTP-posture
+  # smoke because this gate downloads the ONNX model from HuggingFace and waits
+  # PAST the embed retry/backoff window (~70s+) — a 70s+ first-boot wait must NOT
+  # run per-PR; it belongs only on the release gate. It mounts BOTH volumes with
+  # /shared in the compose-declared mode and asserts a REAL context_store ->
+  # context_search embedding round trip (not /health liveness — that PASSES on the
+  # broken state). Shares the SAME run_smoke_gate spine (single source of truth).
+  embed-amd64:
+    needs: [build-container-x64]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Embed-readiness gate, pushed amd64 image (#767)
+        run: |
+          set -euo pipefail
+          source product/test/infra-001/scripts/release-gate-lib.sh
+          IMAGE="$(resolve_image "${GITHUB_REPOSITORY_OWNER}" "${GITHUB_EVENT_NAME}" "${GITHUB_REF_NAME}" amd64)"
+          echo "embed-readiness target IMAGE=${IMAGE}"
+          run_smoke_gate "${IMAGE}" bash product/test/infra-001/scripts/docker-embed-readiness-smoke.sh
+
+  embed-arm64:
+    needs: [build-container-arm64]
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Embed-readiness gate, pushed arm64 image (#767)
+        run: |
+          set -euo pipefail
+          source product/test/infra-001/scripts/release-gate-lib.sh
+          IMAGE="$(resolve_image "${GITHUB_REPOSITORY_OWNER}" "${GITHUB_EVENT_NAME}" "${GITHUB_REF_NAME}" arm64)"
+          echo "embed-readiness target IMAGE=${IMAGE}"
+          run_smoke_gate "${IMAGE}" bash product/test/infra-001/scripts/docker-embed-readiness-smoke.sh
+
   create-container-manifest:
-    needs: [smoke-amd64, smoke-arm64]
+    needs: [smoke-amd64, smoke-arm64, embed-amd64, embed-arm64]
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
