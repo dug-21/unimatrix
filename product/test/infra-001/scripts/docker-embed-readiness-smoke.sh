@@ -74,6 +74,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# busybox is unpinned here; digest-pinning for all release-gate smoke sidecars (incl. this embed lane) is tracked by #793 (harden(nan-019)).
 # busybox sidecar with the SHARED volume mounted read-only — for distroless
 # filesystem inspection of the downloaded model files.
 shared() { docker run --rm -v "$SVOL:/shared:ro" busybox "$@"; }
