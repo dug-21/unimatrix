@@ -1,145 +1,73 @@
-# Client Setup — Remote Unimatrix Server
+# Connecting a Client to a Remote Unimatrix Server
 
-Connect Claude Code, Codex CLI, or Gemini CLI to a remote Unimatrix instance over HTTPS. All three clients connect via MCP (tool calls) and use curl-based shell hooks for telemetry. No local `unimatrix` binary is required on the client machine.
+Connect Claude Code, Codex CLI, or Gemini CLI to a remote Unimatrix instance over HTTPS. A client attaches with a single `init` command that wires both the MCP tool surface and the pure-JS HTTP hook client automatically. Telemetry then flows over the per-slug route `POST /v1/{slug}/observe` — there are no hand-rolled curl hook scripts and no local `unimatrix` platform binary on the client machine.
 
-**Prerequisites:**
-- A running Unimatrix server with `[http] enabled = true` (see SCOPE.md or server config docs)
-- The bearer token printed at first server start (`[UNIMATRIX TOKEN] <64-hex-chars>`)
-- The server's hostname or IP and content port (default 8443)
-- `curl` available on the client machine (POSIX systems only)
+## Prerequisites
 
----
-
-## Claude Code
-
-### MCP Connection
-
-Use `claude mcp add` with the `-H` flag to attach the authorization header directly. This is required due to [anthropics/claude-code#28293](https://github.com/anthropics/claude-code/issues/28293) — headers defined in `.mcp.json` are not forwarded on tool call POSTs.
-
-```bash
-claude mcp add unimatrix \
-  -H "Authorization: Bearer <token>" \
-  -- https://<host>:8443
-```
-
-Replace `<token>` with the 64-character hex token from the server. Replace `<host>` with the server hostname or IP.
-
-### Shell Hook (curl-based)
-
-Add to your Claude Code hook configuration. The hook POSTs observation events to the remote `/observe` endpoint. No local binary needed.
-
-```bash
-#!/bin/sh
-# .claude/hooks/unimatrix-observe.sh
-# Posts hook events to remote Unimatrix /observe endpoint.
-# Returns 501 until W2-7 ships the remote telemetry handler.
-
-UNIMATRIX_URL="https://<host>:8443"
-UNIMATRIX_TOKEN="<token>"
-
-curl -s -X POST "${UNIMATRIX_URL}/observe" \
-  -H "Authorization: Bearer ${UNIMATRIX_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d @- < /dev/stdin
-```
-
-Make the script executable:
-
-```bash
-chmod +x .claude/hooks/unimatrix-observe.sh
-```
-
-Reference this script in your Claude Code hook configuration for the events you want to observe (e.g., `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `Stop`).
-
-> **Note:** The `/observe` endpoint returns HTTP 501 until W2-7 (remote telemetry transport) is shipped. The hooks are ready — install them now so they activate automatically when the server-side handler lands.
+- Node.js >= 18 on the client machine, with `npx` access to `@dug-21/unimatrix`. The remote attach is pure JS — no platform binary and no ONNX model are required, so it runs on Linux, macOS (Apple Silicon), and Windows.
+- A running Unimatrix server reachable over HTTPS (the container HTTPS posture: TLS-only port 8443, `GET /health` the only unauthenticated endpoint).
+- At least one project registered on the server (`unimatrix project register <slug>`) and a connection bundle emitted for it (see below). A client never mints a slug; it attaches to one the operator has already registered.
 
 ---
 
-## Codex CLI
+## Attach modes
 
-### MCP Connection
+There are two ways to attach a client. The **canonical** path is the per-project connection bundle (`init --bundle <blob>`). The **legacy** `--remote <url> --token <tok>` path is documented for completeness only.
 
-Add the Unimatrix server to your Codex CLI MCP configuration:
+### Bundle attach (canonical)
 
-```json
-{
-  "mcpServers": {
-    "unimatrix": {
-      "url": "https://<host>:8443",
-      "headers": {
-        "Authorization": "Bearer <token>"
-      }
-    }
-  }
-}
-```
+The operator emits a per-project connection bundle on the server, then the client consumes it.
 
-Replace `<token>` and `<host>` with your server's values.
-
-### Shell Hook (curl-based)
+**1. Operator emits the bundle (on the server):**
 
 ```bash
-#!/bin/sh
-# .codex/hooks/unimatrix-observe.sh
-# Posts hook events to remote Unimatrix /observe endpoint.
-# Returns 501 until W2-7 ships the remote telemetry handler.
-
-UNIMATRIX_URL="https://<host>:8443"
-UNIMATRIX_TOKEN="<token>"
-
-curl -s -X POST "${UNIMATRIX_URL}/observe" \
-  -H "Authorization: Bearer ${UNIMATRIX_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d @- < /dev/stdin
+unimatrix client-bundle <slug>
 ```
 
-Make the script executable and reference it in `.codex/hooks.json` for the desired events.
+Stdout is a single opaque `unimatrix-bundle:` (`v:2`) blob — it carries the server-composed MCP and observe endpoint URLs (the slug is already baked in by the server), the bearer token, and the certificate's `sha256:` fingerprint. The token is never printed to stderr; stderr echoes only the decoded URLs and fingerprint for the operator to eyeball.
 
-> **Note:** The `/observe` endpoint returns HTTP 501 until W2-7. Codex CLI requires `--provider codex-cli` when using the local `unimatrix hook` subcommand, but the curl-based remote hook does not need this flag — the server identifies the caller from the MCP session's `clientInfo.name`.
+**2. Client attaches (on the client machine):**
+
+```bash
+npx @dug-21/unimatrix init --bundle <blob>
+```
+
+The bundle path takes **no `--slug`** — the blob already encodes the slug, and the client composes no paths. `init` wires the pure-JS HTTP hook client into `.claude/settings.json` and registers a `stdio` `unimatrix` MCP server in `.mcp.json` (a fingerprint-pinned stdio→HTTPS bridge), so a bundle attach gives the full `context_*` MCP tool set over HTTPS, not just telemetry. The bearer credential (token, `observe_url`, `mcp_url`, and the certificate fingerprint) is written out-of-tree to `~/.unimatrix/<projectHash>/remote.json` (mode 0600) — never inside the repo working tree — so a stray `git add -A` cannot commit a live credential. `init` validates connectivity with a pinned `Ping` over fingerprint-pinned HTTPS before writing config.
+
+**3. Telemetry flows automatically.** The wired hook client reads `observe_url` and the certificate fingerprint from the credential store and POSTs `HookRequest` frames to the server-composed `POST /v1/{slug}/observe` route over fingerprint-pinned HTTPS. The client posts to the finished URL verbatim, so it can never mis-target another project's store.
+
+### Direct attach (legacy)
+
+> **Legacy.** This `--remote <url> --token <tok>` form is documented for completeness only. It is effectively unused, will not be invested in, and does **not** support cloud MCP — cloud MCP is bundle-only. Prefer bundle attach above.
+
+```bash
+npx @dug-21/unimatrix init --remote https://uni.example.com --token <token>
+```
+
+This wires the HTTP hook client for telemetry only. `init` does not register a `unimatrix` MCP server on this path and emits a loud, deterministic message stating that cloud MCP requires a `v:2` bundle. The path forward for a legacy client is to migrate to a `v:2` bundle.
 
 ---
 
-## Gemini CLI
+## How telemetry works
 
-### MCP Connection
+The `init`-wired pure-JS hook client reads `observe_url` and the certificate fingerprint from the out-of-tree credential store and POSTs `HookRequest` frames to `/v1/{slug}/observe` over fingerprint-pinned HTTPS. Sync events (`UserPromptSubmit`, `PreCompact`, `SubagentStart`) request `Accept: text/plain` so the server formats injection text; fire-and-forget events stream transcript deltas in a separate POST so the server's per-session buffer stays authoritative. The client is fail-open (exit 0 always, never blocks the host CLI) and uses a disk-backed event queue for graceful degradation.
 
-Add the Unimatrix server to your Gemini CLI MCP configuration (`.gemini/settings.json`):
+The client pins the server's exact leaf certificate by its `sha256:` fingerprint — there is no certificate-authority trust path — so a self-signed cert is trusted by pinning rather than by a CA. The published port is TLS-only 8443; `GET /health` is the only unauthenticated endpoint.
 
-```json
-{
-  "mcpServers": {
-    "unimatrix": {
-      "url": "https://<host>:8443",
-      "headers": {
-        "Authorization": "Bearer <token>"
-      }
-    }
-  }
-}
-```
+Multiple distinct LLM CLIs (Claude Code, Codex CLI, Gemini CLI) attach the same server identically, each as a separate client connection. Each client instance is bound to exactly one project; a different project means a separate bundle and a separate client instance.
 
-Replace `<token>` and `<host>` with your server's values. Requires Gemini CLI v0.31+.
+---
 
-### Shell Hook (curl-based)
+## Certificate rotation
+
+When the operator rotates the server certificate, re-emit the bundle and re-run the attach on each client:
 
 ```bash
-#!/bin/sh
-# .gemini/hooks/unimatrix-observe.sh
-# Posts hook events to remote Unimatrix /observe endpoint.
-# Returns 501 until W2-7 ships the remote telemetry handler.
-
-UNIMATRIX_URL="https://<host>:8443"
-UNIMATRIX_TOKEN="<token>"
-
-curl -s -X POST "${UNIMATRIX_URL}/observe" \
-  -H "Authorization: Bearer ${UNIMATRIX_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d @- < /dev/stdin
+unimatrix client-bundle <slug>          # operator: re-emit with the new fingerprint
+npx @dug-21/unimatrix init --bundle <blob>   # each client: re-attach
 ```
 
-Make the script executable and reference it in your Gemini CLI hook configuration for the desired events (`BeforeTool`, `AfterTool`, `SessionEnd` — these are normalized to canonical Unimatrix names server-side).
-
-> **Note:** The `/observe` endpoint returns HTTP 501 until W2-7. Install hooks now; they activate when the server-side handler ships.
+A presented certificate that does not match the pinned fingerprint is rejected with a clear, diagnosable mismatch error directing you to re-bundle. See [docs/cert-rotation.md](cert-rotation.md) for the operator rotation procedure.
 
 ---
 
@@ -149,8 +77,8 @@ If you need to rotate the bearer token:
 
 1. Stop the server
 2. Delete `{data_volume}/token`
-3. Restart the server — a new token is generated and printed to stdout
-4. Update all client configurations with the new token
+3. Restart the server — a new token is generated
+4. Re-emit the bundle (`unimatrix client-bundle <slug>`) and re-run `init --bundle <blob>` on each client to pick up the new credential
 
 ---
 
@@ -158,11 +86,9 @@ If you need to rotate the bearer token:
 
 When TLS is terminated by a reverse proxy (nginx, Caddy, cloud load balancer), set `[tls] enabled = false` in the server's `config.toml`. The server binds plain HTTP; the proxy handles TLS. Bearer token auth still applies — the proxy does not handle authentication.
 
-Update client URLs to match your proxy's external address (the proxy forwards to the Unimatrix content port).
-
 ---
 
-## Health Check
+## Verifying the connection
 
 The `/health` endpoint requires no authentication:
 
@@ -177,3 +103,7 @@ Returns:
 ```
 
 Use this for Docker HEALTHCHECK or external monitoring.
+
+---
+
+_Verified on v0.x.y_
