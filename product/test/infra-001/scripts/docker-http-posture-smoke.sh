@@ -80,15 +80,24 @@ emit_bundle() {
 }
 
 # consume_bundle <blob> -> rc only (hermetic; HOME on the CHILD, never in-process).
+# #812: the init child's stderr+stdout are NO LONGER discarded — they are captured
+# to $SANDBOX/init.out (reaped by the cleanup() trap, hermetic). The file is the
+# diagnostic surface the caller tail-dumps ON FAILURE ONLY (Gate 6 was undiagnosable
+# by construction while this went to /dev/null). Safe to capture: init's stderr on a
+# Ping failure is a connect/URL/fingerprint string and NEVER the token (NFR-06; the
+# bearer is flushed to the request body only after the pin verifies, never to a
+# stream). This captures ONLY the init child — emit_bundle's blob-bearing stderr
+# (L78) stays dropped. Redirect to a FILE, never a pipe, so set -e/pipefail and the
+# rc capture (#4873 class) are unaffected.
 consume_bundle() {
   local blob="$1"
   if [ -n "${SMOKE_INIT_CMD:-}" ]; then
     # shellcheck disable=SC2086
-    HOME="$SANDBOX/home" $SMOKE_INIT_CMD "$blob" "$SANDBOX/proj" >/dev/null 2>&1
+    HOME="$SANDBOX/home" $SMOKE_INIT_CMD "$blob" "$SANDBOX/proj" >"$SANDBOX/init.out" 2>&1
   else
     HOME="$SANDBOX/home" \
       node "$REPO_ROOT/packages/unimatrix/bin/unimatrix.js" \
-        init --bundle "$blob" --project-dir "$SANDBOX/proj" >/dev/null 2>&1
+        init --bundle "$blob" --project-dir "$SANDBOX/proj" >"$SANDBOX/init.out" 2>&1
   fi
 }
 
@@ -179,8 +188,22 @@ bundle_attach_gates() {
   consume_bundle "$BUNDLE"
   init_rc=$?
   set -e
-  [ "$init_rc" -eq 0 ] \
-    || fail "init --bundle failed (rc=$init_rc) — bundle attach broken"
+  if [ "$init_rc" -ne 0 ]; then
+    # #812: surface the init child's captured streams (was /dev/null — undiagnosable
+    # by construction). FAILURE PATH ONLY (happy path stays quiet, no stdout pollution).
+    # Tail-bounded to cap CI-log volume. The dump is init's stream only — never the
+    # blob (emit_bundle's token-bearing stderr is dropped at L78), so no token leak.
+    log "---- init --bundle stderr/stdout (tail, on failure) ----"
+    if [ -s "$SANDBOX/init.out" ]; then
+      tail -n 50 "$SANDBOX/init.out" | while IFS= read -r line; do
+        log "init: $line"
+      done
+    else
+      log "init: (no output captured)"
+    fi
+    log "---- end init --bundle output ----"
+    fail "init --bundle failed (rc=$init_rc) — bundle attach broken"
+  fi
   log "init --bundle attached against the booted image (hermetic HOME). PASS gate 6"
 
   # ---- GATE 7: fire one hook event through the wired client; assert observe + store grow ----
