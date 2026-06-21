@@ -3,6 +3,15 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.4] - 2026-06-21
+
+### Fixes
+- release: make npm publish steps idempotent on re-run (#821) (#822)
+- smoke Gate 7 fires SessionStart (persisting) + bounded poll (#818)
+- set UNIMATRIX_PUBLIC_URL on smoke emit container + guard placeholder bundle (#812)
+- capture init --bundle stderr in release smoke Gate 6 (#812)
+- anndists: restore arch-gated simdeez_f import dropped by #798
+
 ## [0.8.3] - 2026-06-20
 
 ### Fixes
