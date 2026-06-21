@@ -263,17 +263,53 @@ jobs:
             fi
           done
 
+      # INVARIANT: every publish/push step in this workflow MUST be safe to
+      # re-run on an already-completed version. Re-running the same tag is the
+      # standard release-recovery path (see #812, #818) — a non-idempotent step
+      # breaks recovery and cascades (e.g. skips create-release via `needs:`).
+      # npm versions are immutable, so each publish below is guarded: gate on
+      # NON-EMPTY `npm view` stdout, never exit code — `npm view pkg@ver version`
+      # exits 0 with empty stdout when the version is missing but the package
+      # name exists, and only exits non-zero (E404) when the name was never
+      # published; gating on $? would silently skip a new package's first publish.
       - name: Publish @dug-21/unimatrix-linux-arm64
         working-directory: packages/unimatrix-linux-arm64
-        run: npm publish --access public --provenance
+        run: |
+          set -euo pipefail
+          PKG=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          if [ -n "$(npm view "${PKG}@${VER}" version 2>/dev/null)" ]; then
+            echo "skip: ${PKG}@${VER} already published"
+          else
+            echo "publish: ${PKG}@${VER}"
+            npm publish --access public --provenance
+          fi
 
       - name: Publish @dug-21/unimatrix-linux-x64
         working-directory: packages/unimatrix-linux-x64
-        run: npm publish --access public --provenance
+        run: |
+          set -euo pipefail
+          PKG=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          if [ -n "$(npm view "${PKG}@${VER}" version 2>/dev/null)" ]; then
+            echo "skip: ${PKG}@${VER} already published"
+          else
+            echo "publish: ${PKG}@${VER}"
+            npm publish --access public --provenance
+          fi
 
       - name: Publish @dug-21/unimatrix
         working-directory: packages/unimatrix
-        run: npm publish --access public --provenance
+        run: |
+          set -euo pipefail
+          PKG=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          if [ -n "$(npm view "${PKG}@${VER}" version 2>/dev/null)" ]; then
+            echo "skip: ${PKG}@${VER} already published"
+          else
+            echo "publish: ${PKG}@${VER}"
+            npm publish --access public --provenance
+          fi
 
   create-release:
     needs: package-npm
@@ -319,6 +355,10 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      # INVARIANT: re-run-safe. softprops/action-gh-release@v2 updates an
+      # existing release rather than erroring, so re-running the same tag is OK.
+      # Do not switch to `gh release create` (errors if the release exists)
+      # without adding a view-or-create / --clobber guard.
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
