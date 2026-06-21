@@ -121,7 +121,7 @@ fire_hook() {
     # is the load-bearing assertion. We emit nothing => observe_code stays "".
     printf '%s' "$HOOK_EVENT_JSON" \
       | HOME="$SANDBOX/home" \
-        node "$REPO_ROOT/packages/unimatrix/lib/hook-client/index.js" Stop \
+        node "$REPO_ROOT/packages/unimatrix/lib/hook-client/index.js" SessionStart \
         >/dev/null 2>&1 || true
     printf ''
   fi
@@ -138,8 +138,9 @@ gate7_store_size() {
   fi
 }
 
-# A minimal hook stdin event for ONE observable record (Stop is a benign,
-# always-emitted lifecycle event). Overridable by the stub harness. cwd is
+# A minimal hook stdin event for ONE observable record (#818: SessionStart ->
+# SessionRegister, the first event a freshly-bundled client fires, proven to
+# persist on the per-slug route). Overridable by the stub harness. cwd is
 # stamped at fire time (Gate 7) once $SANDBOX/proj exists.
 HOOK_EVENT_JSON="${HOOK_EVENT_JSON:-}"
 
@@ -242,8 +243,15 @@ bundle_attach_gates() {
   BUNDLE_BEFORE="$(gate7_store_size "$SLUG_DIR")"
 
   # Stamp the event cwd into the isolated proj tree at fire time (once $SANDBOX exists).
+  # #818: probe is SessionStart (-> SessionRegister, build-request.js:50-57), NOT Stop.
+  # SessionStart is the FIRST event a freshly-bundled client fires and is proven to
+  # persist on this exact per-slug route (Gate 2 fires the identical SessionRegister
+  # frame; Gate 4 asserts its store delta). A Stop -> SessionClose for a never-
+  # registered id is a server no-op (no write) => the old probe could never grow the
+  # store. Use a FRESH, unique id (s-818-bundle, never s-783) so this delta is solely
+  # attributable to THIS fire (R-07 sc.4 fresh-write evidence).
   [ -n "$HOOK_EVENT_JSON" ] \
-    || HOOK_EVENT_JSON="{\"hook_event_name\":\"Stop\",\"session_id\":\"s-783-bundle\",\"cwd\":\"$SANDBOX/proj\"}"
+    || HOOK_EVENT_JSON="{\"hook_event_name\":\"SessionStart\",\"session_id\":\"s-818-bundle\",\"cwd\":\"$SANDBOX/proj\"}"
 
   # Fire ONE hook event through the SAME isolated HOME so the hook client reads THIS run's
   # credstore ($SANDBOX/home/.unimatrix/<hash>/remote.json), never the runner's real
@@ -258,11 +266,31 @@ bundle_attach_gates() {
     fail "documented bundle attach observe returned HTTP $observe_code (expected 204)"
   fi
 
-  # Load-bearing, un-retryable, non-skip assertion (R-07 sc.4 / #4977): the per-slug store
-  # grew by THIS run's write. A delta of 0 = the attach silently no-opped => RED.
-  BUNDLE_AFTER="$(gate7_store_size "$SLUG_DIR")"
-  [ "$BUNDLE_AFTER" -gt "$BUNDLE_BEFORE" ] \
-    || fail "bundle-path observe did not land in per-slug store"
+  # Load-bearing, non-skip assertion (R-07 sc.4 / #4977): the per-slug store grew by
+  # THIS run's write. A persistent delta of 0 = the attach silently no-opped => RED.
+  # The ASSERTION stays mandatory; only the SAMPLING is a bounded deadline-poll
+  # (#818): the server write is tokio::spawn fire-and-forget + WAL synchronous=NORMAL,
+  # so it lands sub-second but is NOT synced before the 204. Re-sample the WHOLE slug
+  # dir (must include -wal) until it grows, with a ~10s deadline (arm64-CI headroom,
+  # well under the 90s boot waits above). On timeout, the EXISTING fail() (exit 1, same
+  # message) fires — append-only exit contract (nan-019 ADR-001), no new exit code. This
+  # mirrors the in-file boot-wait idiom (the GATE 1 / restart loops above).
+  #
+  # SCOPE BOUNDARY (#818): Gate 7 proves the bundle-configured client's LIFECYCLE-
+  # REGISTER leg — transport + bundle config + project-hash + cert-pin + persistence of
+  # a SessionRegister via /observe. It does NOT exercise the BEHAVIORAL-OBSERVE payload
+  # (PostToolUse / transcript deltas) that self-learning (C11/C0) depends on: transcript
+  # is never-persist by design, so it produces no knowledge-store `du` delta and cannot
+  # be asserted this way. Behavioral-observe coverage lives in #814 (real-server round-
+  # trip) and the existing server-logged PostToolUse path (vnc-039).
+  deadline=$(( $(date +%s) + 10 ))
+  while :; do
+    BUNDLE_AFTER="$(gate7_store_size "$SLUG_DIR")"
+    [ "$BUNDLE_AFTER" -gt "$BUNDLE_BEFORE" ] && break
+    [ "$(date +%s)" -gt "$deadline" ] \
+      && fail "bundle-path observe did not land in per-slug store"
+    sleep 1
+  done
   log "bundle-path observe landed (store $BUNDLE_BEFORE -> $BUNDLE_AFTER). PASS gate 7"
 }
 # === end nan-020 seam ======================================================
