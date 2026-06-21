@@ -75,7 +75,14 @@ emit_bundle() {
     # shellcheck disable=SC2086
     $SMOKE_EMIT_CMD 2>/dev/null
   else
-    docker run --rm -v "$VOL:/data" "$IMAGE" --project-dir /data client-bundle "$SLUG" 2>/dev/null
+    # #812: the emit container MUST receive UNIMATRIX_PUBLIC_URL — env does not cross
+    # containers, so without it the server bakes the `<EDIT-ME>` placeholder into the
+    # v:2 bundle's observe_url and the host `init --bundle` rejects it as an invalid
+    # URL. Same scheme/host/port as the boot container (L290) and Gate 2 curl: one
+    # consistent source of truth across boot / curl / emit (nan-020 ADR-002 #5256).
+    docker run --rm -v "$VOL:/data" \
+      -e UNIMATRIX_PUBLIC_URL="https://localhost:${PORT}" \
+      "$IMAGE" --project-dir /data client-bundle "$SLUG" 2>/dev/null
   fi
 }
 
@@ -171,6 +178,29 @@ bundle_attach_gates() {
     *) fail "client-bundle produced no/invalid bundle blob" ;;
   esac
   log "client-bundle emitted a unimatrix-bundle: blob. PASS gate 5"
+
+  # #812: emit-time guard — assert the decoded bundle's observe_url is well-formed
+  # (rejects the `<EDIT-ME>` placeholder a PUBLIC_URL-less emit container would bake,
+  # AND confirms it parses). Converts the entire bug class from an opaque Gate-6
+  # "(invalid URL)" 30+ lines later into a precise emit-time failure. Folds into the
+  # EXISTING fail()/exit-1 contract (ADR-001 #5249) — no new exit code. Decode mirrors
+  # the client (bundle.js): base64url body of the `unimatrix-bundle:` blob -> JSON.
+  # Prints ONLY observe_url (never the token-bearing blob/JSON) — token-safe (R-05).
+  # Runs on the REAL emit path only: the SMOKE_EMIT_CMD stub seam injects synthetic
+  # (non-base64url) blobs for the gate-logic truth table, which this guard would
+  # spuriously reject — same real-vs-stub split the rest of the seam already uses.
+  if [ -z "${SMOKE_EMIT_CMD:-}" ]; then
+    local OBSERVE_URL
+    OBSERVE_URL="$(printf '%s' "$BUNDLE" \
+      | node -e 'let b="";process.stdin.on("data",c=>b+=c).on("end",()=>{try{const j=JSON.parse(Buffer.from(b.trim().slice("unimatrix-bundle:".length),"base64url").toString("utf8"));process.stdout.write(String(j.observe_url||""))}catch{process.exit(0)}})' 2>/dev/null)"
+    case "$OBSERVE_URL" in
+      *"<EDIT-ME>"*) fail "bundle carries placeholder URL — emit container missing UNIMATRIX_PUBLIC_URL" ;;
+    esac
+    if ! node -e 'new URL(process.argv[1])' "$OBSERVE_URL" >/dev/null 2>&1; then
+      fail "bundle observe_url is not a parseable URL — emit container env malformed"
+    fi
+    log "bundle observe_url is well-formed (no placeholder, parseable). PASS gate 5 guard"
+  fi
 
   # ---- HERMETIC SANDBOX (ADR-005): per-run, HOME-isolated, throwaway --project-dir ----
   # Established at the SHELL/PROCESS boundary. mktemp -d is already fresh; the explicit
