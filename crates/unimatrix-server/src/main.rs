@@ -995,6 +995,12 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&audit),
     )];
 
+    // #823: per-slug (vector_index, dir) pairs for the shutdown dump. Populated
+    // from each `ProjectServerInput` in the per-slug loop below (multi-project
+    // HTTP only). Empty otherwise — the daemon's own index dumps via the
+    // `vector_index`/`vector_dir` LifecycleHandles pair, exactly as before.
+    let mut per_slug_vectors: Vec<(Arc<VectorIndex>, std::path::PathBuf)> = Vec::new();
+
     // Create daemon CancellationToken (ADR-002).
     let daemon_token = shutdown::new_daemon_token();
 
@@ -1200,6 +1206,9 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     Arc::clone(&input.server.pending_entries_analysis),
                     input.server.audit_log(),
                 ));
+                // #823: register this slug's index for the shutdown dump to its
+                // OWN `{slug}/vector/` dir (vector_dir was a dropped local before).
+                per_slug_vectors.push((input.server.vector_index(), input.vector_dir.clone()));
             }
             let router = MultiProjectRouter::from_servers(
                 slug_servers,
@@ -1302,6 +1311,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         store,
         vector_index,
         vector_dir: paths.vector_dir.clone(),
+        per_slug_vectors, // #823: per-slug indices (empty unless multi-project HTTP)
         registry,
         audit,
         adapt_service,
@@ -1707,6 +1717,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         store,
         vector_index,
         vector_dir: paths.vector_dir.clone(),
+        // #823: stdio mode has no per-slug servers; the daemon pair above covers it.
+        per_slug_vectors: Vec::new(),
         registry,
         audit,
         adapt_service,

@@ -12,7 +12,8 @@
 //! 3. `uds_handle`           — abort + join (hook IPC accept loop)
 //! 4. `socket_guard`         — removes `unimatrix.sock`
 //! 5. `tick_handle`          — abort + join (background tick Arc holders)
-//! 6. All `Arc<Store>` holders (services, adapt_service, registry, audit, vector_index)
+//!    5a. daemon + per-slug vector dumps (#823) — dump before the Arc drops below
+//! 6. All `Arc<Store>` holders (services, adapt_service, registry, audit, vector_index, per_slug_vectors)
 //! 7. `Arc::try_unwrap(store)` → compaction
 //!
 //! `PidGuard` is NOT in this struct; it lives in `main()` as a local and drops after
@@ -48,6 +49,15 @@ pub struct LifecycleHandles {
     pub vector_index: Arc<VectorIndex>,
     /// Directory for vector dump files.
     pub vector_dir: PathBuf,
+    /// Per-slug `(VectorIndex, dir)` pairs to dump on shutdown (#823).
+    ///
+    /// In multi-project HTTP mode each registered slug has its OWN in-memory
+    /// `VectorIndex` over `{base}/{slug}/vector`. These were never registered
+    /// for the shutdown dump, so the per-slug HNSW index was lost on restart
+    /// (semantic search silently degraded). Each pair is dumped in Step 1
+    /// (warn-and-continue per entry) BEFORE the Step 2 Arc drops. Empty in
+    /// single-project / stdio mode (the daemon pair above covers those).
+    pub per_slug_vectors: Vec<(Arc<VectorIndex>, PathBuf)>,
     /// Registry (holds Arc<Store>; must drop before try_unwrap).
     pub registry: Arc<AgentRegistry>,
     /// Audit log (holds Arc<Store>; must drop before try_unwrap).
@@ -175,6 +185,26 @@ pub async fn graceful_shutdown(mut handles: LifecycleHandles) -> Result<(), Serv
         Err(e) => tracing::warn!(error = %e, "vector dump failed, continuing shutdown"),
     }
 
+    // Step 1-slug: Dump each per-slug vector index to its OWN dir (#823).
+    // Multi-project HTTP mode only — empty in single-project / stdio.
+    // Warn-and-continue PER ENTRY (N1): one bad slug dir cannot abort the
+    // others, nor block the daemon `try_unwrap` in Step 3. Same step band as the
+    // daemon dump above (BEFORE the Step 2 Arc drops) and the same dump idiom.
+    // These Arcs hold per-slug stores (NOT the daemon `store` Step 3 unwraps), so
+    // they add no try_unwrap hazard — they drop with `handles` at function end.
+    for (index, dir) in &handles.per_slug_vectors {
+        match index.dump(dir) {
+            Ok(()) => {
+                tracing::info!(dir = %dir.display(), "per-slug vector index dumped successfully")
+            }
+            Err(e) => tracing::warn!(
+                error = %e,
+                dir = %dir.display(),
+                "per-slug vector dump failed, continuing shutdown"
+            ),
+        }
+    }
+
     // Step 1b: Save adaptation state (crt-006).
     tracing::info!("saving adaptation state");
     match handles.adapt_service.save_state(&handles.data_dir) {
@@ -192,6 +222,9 @@ pub async fn graceful_shutdown(mut handles: LifecycleHandles) -> Result<(), Serv
     drop(handles.registry);
     drop(handles.audit);
     drop(handles.vector_index);
+    // #823: release the per-slug index Arcs (they hold per-slug stores, not the
+    // daemon store, so this is independent of the Step 3 try_unwrap below).
+    handles.per_slug_vectors.clear();
 
     // Step 3: Try to unwrap Store for compaction.
     match Arc::try_unwrap(handles.store) {
@@ -349,6 +382,7 @@ mod tests {
             store,
             vector_index,
             vector_dir,
+            per_slug_vectors: Vec::new(),
             registry,
             audit,
             adapt_service,
@@ -499,6 +533,7 @@ mod tests {
             store,
             vector_index,
             vector_dir,
+            per_slug_vectors: Vec::new(),
             registry,
             audit,
             adapt_service,
@@ -582,6 +617,7 @@ mod tests {
             store,
             vector_index,
             vector_dir,
+            per_slug_vectors: Vec::new(),
             registry,
             audit,
             adapt_service,
@@ -670,6 +706,7 @@ mod tests {
             store,
             vector_index,
             vector_dir,
+            per_slug_vectors: Vec::new(),
             registry,
             audit,
             adapt_service,
@@ -721,6 +758,7 @@ mod tests {
             store,
             vector_index,
             vector_dir,
+            per_slug_vectors: Vec::new(),
             registry,
             audit,
             adapt_service,
@@ -759,5 +797,171 @@ mod tests {
             Ok(Ok(())) => {}
             Err(_timeout) => panic!("abort + join timed out unexpectedly"),
         }
+    }
+
+    // --- #823: per-slug vector dump regression ---
+
+    /// Read `point_count` out of a dumped `unimatrix-vector.meta` (`-1` if the file
+    /// is missing, so callers can distinguish "never dumped" from "dumped empty").
+    fn meta_point_count(vector_dir: &std::path::Path) -> i64 {
+        let meta_path = vector_dir.join("unimatrix-vector.meta");
+        let Ok(text) = std::fs::read_to_string(&meta_path) else {
+            return -1;
+        };
+        for line in text.lines() {
+            if let Some(v) = line.strip_prefix("point_count=") {
+                return v.trim().parse::<i64>().unwrap_or(-1);
+            }
+        }
+        -1
+    }
+
+    /// Insert one store entry + its embedding into a `VectorIndex` (mirrors the
+    /// vector crate's `seed_vectors` helper without pulling its test-support
+    /// feature). Returns the seeded entry id and the embedding used.
+    async fn seed_one_vector(
+        store: &Arc<SqlxStore>,
+        vi: &VectorIndex,
+        dim: usize,
+    ) -> (u64, Vec<f32>) {
+        use unimatrix_store::{NewEntry, Status};
+
+        let entry = NewEntry {
+            title: "slug vector entry".to_string(),
+            content: "content for the per-slug persistence round-trip".to_string(),
+            topic: "test".to_string(),
+            category: "vector".to_string(),
+            tags: vec![],
+            source: "test".to_string(),
+            status: Status::Active,
+            created_by: String::new(),
+            feature_cycle: String::new(),
+            trust_source: String::new(),
+        };
+        let entry_id = store.insert(entry).await.expect("insert store entry");
+
+        // Deterministic unit vector (one hot dimension) — normalized, valid for HNSW.
+        let mut embedding = vec![0.0f32; dim];
+        embedding[0] = 1.0;
+        vi.insert(entry_id, &embedding)
+            .await
+            .expect("insert vector");
+
+        (entry_id, embedding)
+    }
+
+    /// #823 regression: in multi-project HTTP mode the per-slug `VectorIndex` must
+    /// be dumped to its OWN `{slug}/vector/` dir on graceful shutdown, and that dump
+    /// must NOT land in the daemon's hash-rooted dir.
+    ///
+    /// Drives the REAL `graceful_shutdown` (not a simulated drop sequence) so the
+    /// Step 1 per-slug dump loop actually runs, then asserts:
+    /// 1. `{slug}/vector/unimatrix-vector.meta` exists with a non-zero point_count.
+    /// 2. The daemon hash dir did NOT gain the slug's vectors (its meta is empty).
+    /// 3. Round-trip: `VectorIndex::load` of the slug dir restores the entry and
+    ///    `search` returns it (parity with single-project behavior).
+    #[tokio::test]
+    async fn test_graceful_shutdown_dumps_per_slug_vector_index() {
+        use unimatrix_adapt::{AdaptConfig, AdaptationService};
+        use unimatrix_core::VectorConfig;
+
+        use crate::infra::audit::AuditLog;
+        use crate::infra::registry::AgentRegistry;
+
+        let base = tempfile::TempDir::new().unwrap();
+        let base_path = base.path();
+
+        // --- daemon (hash-rooted) subsystems: empty index, distinct dir ---
+        let hash_dir = base_path.join("deadbeefhash");
+        let daemon_db = hash_dir.join("unimatrix.db");
+        let daemon_vector_dir = hash_dir.join("vector");
+        std::fs::create_dir_all(&daemon_vector_dir).unwrap();
+
+        let daemon_store = open_store(&daemon_db).await;
+        let daemon_index =
+            Arc::new(VectorIndex::new(Arc::clone(&daemon_store), VectorConfig::default()).unwrap());
+        let dim = daemon_index.config().dimension;
+
+        // --- per-slug subsystems: SEEDED index, its OWN `{slug}/vector/` dir ---
+        let slug_dir = base_path.join("alpha");
+        let slug_db = slug_dir.join("unimatrix.db");
+        let slug_vector_dir = slug_dir.join("vector");
+        std::fs::create_dir_all(&slug_vector_dir).unwrap();
+
+        let slug_store = open_store(&slug_db).await;
+        let slug_index =
+            Arc::new(VectorIndex::new(Arc::clone(&slug_store), VectorConfig::default()).unwrap());
+        let (slug_entry_id, query) = seed_one_vector(&slug_store, &slug_index, dim).await;
+        assert!(slug_index.point_count() > 0, "slug index must be seeded");
+
+        // Daemon-side holders required by LifecycleHandles (mirror main.rs wiring).
+        let registry =
+            Arc::new(AgentRegistry::new(Arc::clone(&daemon_store), true, vec![]).unwrap());
+        let audit = Arc::new(AuditLog::new(Arc::clone(&daemon_store)));
+        let adapt_service = Arc::new(AdaptationService::new(AdaptConfig::default()));
+
+        // Keep a slug-store clone for the post-shutdown round-trip `load`.
+        let slug_store_for_load = Arc::clone(&slug_store);
+
+        let handles = LifecycleHandles {
+            store: daemon_store,
+            vector_index: daemon_index,
+            vector_dir: daemon_vector_dir.clone(),
+            // #823: the slug index is registered here for its OWN dir.
+            per_slug_vectors: vec![(slug_index, slug_vector_dir.clone())],
+            registry,
+            audit,
+            adapt_service,
+            data_dir: hash_dir.clone(),
+            mcp_socket_guard: None,
+            mcp_acceptor_handle: None,
+            socket_guard: None,
+            uds_handle: None,
+            tick_handle: None,
+            services: None,
+            http_acceptor_handle: None,
+            http_listener_addr: None,
+        };
+
+        // Drop our local seed handle to the slug store so `slug_store_for_load`
+        // is the only outstanding clone aside from the one inside the slug index.
+        drop(slug_store);
+
+        graceful_shutdown(handles).await.expect("graceful shutdown");
+
+        // 1. The slug's index dumped to its OWN dir with a non-zero point_count.
+        assert!(
+            slug_vector_dir.join("unimatrix-vector.meta").exists(),
+            "per-slug {{slug}}/vector/unimatrix-vector.meta must exist after shutdown (#823)"
+        );
+        assert!(
+            meta_point_count(&slug_vector_dir) > 0,
+            "per-slug vector dump must report a non-zero point_count"
+        );
+
+        // 2. The daemon hash dir did NOT gain the slug's vectors (its meta is empty).
+        assert_eq!(
+            meta_point_count(&daemon_vector_dir),
+            0,
+            "daemon hash-rooted vector dir must NOT contain the slug's vectors"
+        );
+
+        // 3. Round-trip: the slug dir loads and search returns the seeded entry.
+        let loaded = VectorIndex::load(
+            slug_store_for_load,
+            VectorConfig::default(),
+            &slug_vector_dir,
+        )
+        .await
+        .expect("load per-slug index from its dumped dir");
+        assert!(
+            loaded.point_count() > 0,
+            "loaded slug index must be non-empty"
+        );
+        let results = loaded.search(&query, 5, 32).expect("search loaded index");
+        assert!(
+            results.iter().any(|r| r.entry_id == slug_entry_id),
+            "search on the reloaded per-slug index must return the seeded entry"
+        );
     }
 }
