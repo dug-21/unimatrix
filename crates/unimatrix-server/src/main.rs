@@ -734,11 +734,27 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     let vector_index = if meta_path.exists() {
         tracing::info!("loading existing vector index");
-        Arc::new(
-            VectorIndex::load(Arc::clone(&store), vector_config, &paths.vector_dir)
-                .await
-                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
-        )
+        // Graceful degradation (Architectural Principle 5): a torn/missing dump
+        // (e.g. SIGKILL mid-dump leaving a meta over a missing graph) must NOT
+        // hard-abort boot. Fall back to an empty index; the capped
+        // run_maintenance heal pass re-populates it from the store on the next
+        // tick. See GH-824 / lesson #5272.
+        match VectorIndex::load(Arc::clone(&store), vector_config.clone(), &paths.vector_dir).await
+        {
+            Ok(idx) => Arc::new(idx),
+            Err(e) => {
+                tracing::warn!(
+                    vector_dir = %paths.vector_dir.display(),
+                    error = %e,
+                    "failed to load vector index; booting empty and deferring to \
+                     maintenance heal pass"
+                );
+                Arc::new(
+                    VectorIndex::new(Arc::clone(&store), vector_config)
+                        .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
+                )
+            }
+        }
     } else {
         tracing::info!("creating new vector index");
         Arc::new(
@@ -1448,11 +1464,27 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     let vector_index = if meta_path.exists() {
         tracing::info!("loading existing vector index");
-        Arc::new(
-            VectorIndex::load(Arc::clone(&store), vector_config, &paths.vector_dir)
-                .await
-                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
-        )
+        // Graceful degradation (Architectural Principle 5): a torn/missing dump
+        // (e.g. SIGKILL mid-dump leaving a meta over a missing graph) must NOT
+        // hard-abort boot. Fall back to an empty index; the capped
+        // run_maintenance heal pass re-populates it from the store on the next
+        // tick. See GH-824 / lesson #5272.
+        match VectorIndex::load(Arc::clone(&store), vector_config.clone(), &paths.vector_dir).await
+        {
+            Ok(idx) => Arc::new(idx),
+            Err(e) => {
+                tracing::warn!(
+                    vector_dir = %paths.vector_dir.display(),
+                    error = %e,
+                    "failed to load vector index; booting empty and deferring to \
+                     maintenance heal pass"
+                );
+                Arc::new(
+                    VectorIndex::new(Arc::clone(&store), vector_config)
+                        .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
+                )
+            }
+        }
     } else {
         tracing::info!("creating new vector index");
         Arc::new(
