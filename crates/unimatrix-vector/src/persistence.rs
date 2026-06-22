@@ -18,46 +18,115 @@ impl VectorIndex {
     ///
     /// Creates `.hnsw.graph`, `.hnsw.data`, and `.meta` files in `dir`.
     /// The directory is created if it does not exist.
+    ///
+    /// The publish is atomic against a SIGKILL mid-dump: the graph/data files
+    /// are written to sibling temp files inside `dir` and then `rename`d into
+    /// place, with the `.meta` (which claims `point_count`) renamed LAST. A
+    /// crash at any point therefore never leaves a `.meta` overclaiming a
+    /// missing/torn graph — an observer sees either the prior dump or the new
+    /// complete one.
+    ///
+    /// NOTE: power-loss durability (fsync of files + directory before/after
+    /// rename) is intentionally OUT OF SCOPE. `rename(2)` is atomic for
+    /// observers but not guaranteed durable across a power-loss without fsync;
+    /// the bug this guards (GH-824, SIGKILL mid-dump) is fully covered by
+    /// temp+rename alone.
     pub fn dump(&self, dir: &Path) -> Result<()> {
         // Create directory if needed
         std::fs::create_dir_all(dir).map_err(|e| {
             VectorError::Persistence(format!("failed to create directory {}: {e}", dir.display()))
         })?;
 
-        // Dump hnsw_rs index (read lock)
+        // Dump hnsw_rs index to SIBLING temp files inside `dir` (read lock).
+        // Temp files MUST live in `dir` so the rename below is intra-filesystem
+        // (a cross-device rename fails with EXDEV).
         let point_count;
         let actual_basename;
+        let temp_graph = dir.join(format!(".{DUMP_BASENAME}.hnsw.graph.tmp"));
+        let temp_data = dir.join(format!(".{DUMP_BASENAME}.hnsw.data.tmp"));
         {
             let hnsw = self.hnsw_read();
             point_count = hnsw.get_nb_point();
 
             if point_count > 0 {
-                actual_basename = hnsw.file_dump(dir, DUMP_BASENAME).map_err(|e| {
+                // hnsw_rs writes `{basename}.hnsw.graph` / `.hnsw.data` directly;
+                // it cannot target arbitrary temp names, so dump under a temp
+                // basename and rename the produced files into their final names.
+                let temp_basename = format!(".{DUMP_BASENAME}.tmp");
+                let produced = hnsw.file_dump(dir, &temp_basename).map_err(|e| {
                     VectorError::Persistence(format!(
                         "failed to dump hnsw index to {}: {e}",
                         dir.display()
                     ))
                 })?;
+                // hnsw_rs may return a basename distinct from the one requested
+                // (datamap_opt path); the produced files use `{produced}.hnsw.*`.
+                let produced_graph = dir.join(format!("{produced}.hnsw.graph"));
+                let produced_data = dir.join(format!("{produced}.hnsw.data"));
+                std::fs::rename(&produced_graph, &temp_graph).map_err(|e| {
+                    VectorError::Persistence(format!(
+                        "failed to stage graph temp {}: {e}",
+                        temp_graph.display()
+                    ))
+                })?;
+                std::fs::rename(&produced_data, &temp_data).map_err(|e| {
+                    VectorError::Persistence(format!(
+                        "failed to stage data temp {}: {e}",
+                        temp_data.display()
+                    ))
+                })?;
+                // Final published basename is the stable DUMP_BASENAME.
+                actual_basename = DUMP_BASENAME.to_string();
             } else {
                 // hnsw_rs cannot dump an empty index (no entry point).
-                // Write empty placeholder files so load detects "empty" cleanly.
+                // The published set is meta-only.
                 actual_basename = DUMP_BASENAME.to_string();
             }
         }
 
-        // Write metadata file with the actual basename used by file_dump.
-        // hnsw_rs may generate a unique basename when datamap_opt is set
-        // (true after load_hnsw, even without mmap).
         let next = self.next_data_id_value();
+        let final_graph = dir.join(format!("{actual_basename}.hnsw.graph"));
+        let final_data = dir.join(format!("{actual_basename}.hnsw.data"));
         let meta_path = dir.join(METADATA_FILENAME);
+        let temp_meta = dir.join(format!(".{METADATA_FILENAME}.tmp"));
+
         let meta_content = format!(
             "basename={actual_basename}\npoint_count={point_count}\ndimension={}\nnext_data_id={next}\n",
             self.config().dimension,
         );
-
-        std::fs::write(&meta_path, meta_content).map_err(|e| {
+        std::fs::write(&temp_meta, meta_content).map_err(|e| {
             VectorError::Persistence(format!(
-                "failed to write metadata to {}: {e}",
+                "failed to write metadata temp {}: {e}",
+                temp_meta.display()
+            ))
+        })?;
+
+        // Publish. Graph/data first, meta LAST: a crash before the meta rename
+        // leaves the prior (consistent) meta in place over the prior graph.
+        if point_count > 0 {
+            std::fs::rename(&temp_graph, &final_graph).map_err(|e| {
+                VectorError::Persistence(format!(
+                    "failed to publish graph {}: {e}",
+                    final_graph.display()
+                ))
+            })?;
+            std::fs::rename(&temp_data, &final_data).map_err(|e| {
+                VectorError::Persistence(format!(
+                    "failed to publish data {}: {e}",
+                    final_data.display()
+                ))
+            })?;
+        } else {
+            // Empty dump (meta-only): remove any stale graph/data left by a
+            // prior non-empty dump so the published set is self-consistent —
+            // a `point_count=0` meta must never sit beside an orphan graph (F3).
+            remove_if_exists(&final_graph)?;
+            remove_if_exists(&final_data)?;
+        }
+
+        std::fs::rename(&temp_meta, &meta_path).map_err(|e| {
+            VectorError::Persistence(format!(
+                "failed to publish metadata {}: {e}",
                 meta_path.display()
             ))
         })?;
@@ -139,6 +208,19 @@ impl VectorIndex {
             next_data_id,
             mappings,
         ))
+    }
+}
+
+/// Remove a file if present; absence is not an error. ENOENT is tolerated so
+/// the atomic empty-dump cleanup is idempotent across repeated empty dumps.
+fn remove_if_exists(path: &Path) -> Result<()> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(VectorError::Persistence(format!(
+            "failed to remove stale file {}: {e}",
+            path.display()
+        ))),
     }
 }
 
@@ -238,6 +320,100 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(loaded.point_count(), 0);
+    }
+
+    // -- GH-824: Atomic dump crash-safety --
+
+    /// After a normal non-empty dump, the published set uses the EXACT final
+    /// filenames and leaves no sibling `.tmp` artifacts — the published dir is
+    /// internally self-consistent (meta + graph + data, no stragglers).
+    #[tokio::test]
+    async fn test_dump_atomic_no_temp_artifacts() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 20).await;
+        let dump_dir = tvi.dir().join("index");
+        tvi.vi().dump(&dump_dir).unwrap();
+
+        // Exact final names present.
+        assert!(dump_dir.join("unimatrix.hnsw.graph").exists());
+        assert!(dump_dir.join("unimatrix.hnsw.data").exists());
+        assert!(dump_dir.join("unimatrix-vector.meta").exists());
+
+        // No leftover temp siblings.
+        for entry in std::fs::read_dir(&dump_dir).unwrap() {
+            let name = entry.unwrap().file_name();
+            let name = name.to_string_lossy();
+            assert!(
+                !name.ends_with(".tmp"),
+                "atomic dump left a temp artifact: {name}"
+            );
+        }
+    }
+
+    /// An empty (meta-only) dump that follows a prior NON-EMPTY dump must remove
+    /// the stale `.hnsw.graph` / `.hnsw.data` so a `point_count=0` meta never
+    /// sits beside an orphan graph (F3). The published set must always be
+    /// self-consistent: a non-zero meta implies present graph+data; a zero meta
+    /// implies neither.
+    #[tokio::test]
+    async fn test_empty_dump_removes_stale_graph_data() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 15).await;
+        let dump_dir = tvi.dir().join("index");
+
+        // First: a non-empty dump leaves graph + data on disk.
+        tvi.vi().dump(&dump_dir).unwrap();
+        assert!(dump_dir.join("unimatrix.hnsw.graph").exists());
+        assert!(dump_dir.join("unimatrix.hnsw.data").exists());
+
+        // Now dump a fresh EMPTY index into the same dir.
+        let empty = VectorIndex::new(tvi.store().clone(), VectorConfig::default()).unwrap();
+        empty.dump(&dump_dir).unwrap();
+
+        // Meta now claims zero points...
+        let meta = std::fs::read_to_string(dump_dir.join("unimatrix-vector.meta")).unwrap();
+        assert!(meta.contains("point_count=0"));
+        // ...and the stale graph/data are gone — no orphan beside the empty meta.
+        assert!(!dump_dir.join("unimatrix.hnsw.graph").exists());
+        assert!(!dump_dir.join("unimatrix.hnsw.data").exists());
+
+        // Self-consistency: load must succeed and return an empty index, not Err.
+        let loaded = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir)
+            .await
+            .unwrap();
+        assert_eq!(loaded.point_count(), 0);
+    }
+
+    /// Crash-safety contract: an interrupted dump (we simulate the failure
+    /// window by aborting BEFORE the meta is published) never leaves a meta
+    /// overclaiming a missing/torn graph. With temp+rename the meta is the LAST
+    /// thing published, so a crash before it leaves the prior good meta in place
+    /// — the on-disk set load() observes is always self-consistent.
+    #[tokio::test]
+    async fn test_interrupted_dump_keeps_prior_consistent_set() {
+        let tvi = TestVectorIndex::new().await;
+        seed_vectors(tvi.vi(), tvi.store(), 12).await;
+        let dump_dir = tvi.dir().join("index");
+
+        // A first, complete dump — the "prior good" published set.
+        tvi.vi().dump(&dump_dir).unwrap();
+        let prior_meta = std::fs::read_to_string(dump_dir.join("unimatrix-vector.meta")).unwrap();
+        assert!(prior_meta.contains("point_count=12"));
+
+        // Simulate a crash mid-dump: a NEW staged graph temp exists but the meta
+        // was never republished. The published meta still describes the prior set.
+        std::fs::write(dump_dir.join(".unimatrix.hnsw.graph.tmp"), b"torn").unwrap();
+
+        // load() reads only the PUBLISHED names and must see the prior consistent
+        // set — it must NOT pick up the torn temp, and must NOT Err.
+        let loaded = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir)
+            .await
+            .unwrap();
+        assert_eq!(loaded.point_count(), 12);
+
+        // The published meta still matches the prior good dump.
+        let meta_now = std::fs::read_to_string(dump_dir.join("unimatrix-vector.meta")).unwrap();
+        assert_eq!(meta_now, prior_meta);
     }
 
     // -- AC-10: Load Restores Index --

@@ -2486,6 +2486,182 @@ mod bugfix_444_tests {
         }
     }
 
+    /// Deterministic 384-dim normalized embedding provider — no ONNX model.
+    /// Mirrors the eval `DeterministicProvider` pattern; `unimatrix-embed`'s
+    /// `MockProvider` is behind a `test-support` feature this crate does not
+    /// enable, so the provider is defined inline (the established convention).
+    struct HealTestProvider;
+
+    impl unimatrix_embed::EmbeddingProvider for HealTestProvider {
+        fn embed(&self, text: &str) -> unimatrix_embed::Result<Vec<f32>> {
+            use std::collections::hash_map::DefaultHasher;
+            use std::hash::{Hash, Hasher};
+            let mut hasher = DefaultHasher::new();
+            text.hash(&mut hasher);
+            let seed = hasher.finish();
+            let mut v = vec![0.0f32; 384];
+            for (i, val) in v.iter_mut().enumerate() {
+                let h = seed
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(i as u64);
+                *val = (h as f32) / (u64::MAX as f32) * 2.0 - 1.0;
+            }
+            let norm: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+            if norm > 0.0 {
+                for x in &mut v {
+                    *x /= norm;
+                }
+            } else {
+                v[0] = 1.0;
+            }
+            Ok(v)
+        }
+
+        fn embed_batch(&self, texts: &[&str]) -> unimatrix_embed::Result<Vec<Vec<f32>>> {
+            texts.iter().map(|t| self.embed(t)).collect()
+        }
+
+        fn dimension(&self) -> usize {
+            384
+        }
+
+        fn name(&self) -> &str {
+            "heal-test"
+        }
+    }
+
+    /// Build a `StatusService` over `vector_index` whose embed handle is READY
+    /// with a deterministic provider, so the heal pass actually re-embeds and
+    /// inserts (not the "adapter unavailable, skipping" branch).
+    async fn make_status_service_with_ready_embed(
+        store: &Arc<Store>,
+        vector_index: Arc<VectorIndex>,
+    ) -> StatusService {
+        let embed_service = EmbedServiceHandle::new();
+        embed_service
+            .set_ready_with_provider(Arc::new(HealTestProvider))
+            .await;
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+        let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
+        let contradiction_cache = new_contradiction_cache_handle();
+        let test_rayon_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "test_pool").expect("test rayon pool"),
+        );
+        let observation_registry =
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
+        let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        let category_allowlist = Arc::new(crate::infra::categories::CategoryAllowlist::new());
+        StatusService::new(
+            Arc::clone(store),
+            vector_index,
+            embed_service,
+            adapt_service,
+            confidence_state,
+            confidence_params,
+            contradiction_cache,
+            test_rayon_pool,
+            observation_registry,
+            category_allowlist,
+        )
+    }
+
+    /// GH-824 Test 3 (HARD ACCEPTANCE): per-slug heal-after-degrade.
+    ///
+    /// Simulates the post-load-fallback state of a PER-SLUG index in
+    /// multi-project mode: a slug whose store is populated (entries already
+    /// embedded, `embedding_dim > 0`, VECTOR_MAP rows present) but whose
+    /// `VectorIndex` booted EMPTY because its dump was torn (Item 1 fallback).
+    /// One maintenance heal tick (run_maintenance Sub-case B) must re-populate
+    /// the index from the store — proving the Item-1 degradation is recoverable
+    /// WITHOUT the deferred Item 2 eager boot rebuild.
+    ///
+    /// Proves per-slug recovery DIRECTLY (not by analogy to the daemon index —
+    /// the #823 / crt-056 failure mode).
+    #[tokio::test]
+    async fn test_per_slug_index_heals_after_degrade_to_empty() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        // The slug's OWN store (per-slug isolation): populate it as if the slug
+        // had been serving and embedding entries before the crash.
+        let slug_store = open_store(&dir).await;
+
+        // A "populated" index that embedded N entries into the slug store.
+        let populated_index = Arc::new(
+            VectorIndex::new(Arc::clone(&slug_store), VectorConfig::default()).expect("vi"),
+        );
+        let provider = HealTestProvider;
+        let mut entry_ids = Vec::new();
+        for i in 0..5 {
+            let entry_id = slug_store
+                .insert(NewEntry {
+                    title: format!("slug entry {i}"),
+                    content: format!("content {i}"),
+                    topic: "test".to_string(),
+                    category: "convention".to_string(),
+                    tags: vec![],
+                    source: "test".to_string(),
+                    status: Status::Active,
+                    created_by: "test".to_string(),
+                    feature_cycle: "bugfix-824".to_string(),
+                    trust_source: "agent".to_string(),
+                })
+                .await
+                .expect("insert");
+            let emb = unimatrix_embed::EmbeddingProvider::embed(
+                &provider,
+                &format!("slug entry {i}content {i}"),
+            )
+            .expect("embed");
+            // insert() writes VECTOR_MAP + HNSW point + sets embedding_dim > 0.
+            populated_index
+                .insert(entry_id, &emb)
+                .await
+                .expect("insert vector");
+            entry_ids.push(entry_id);
+        }
+        // Confirm the store now records embedded entries (embedding_dim > 0).
+        for id in &entry_ids {
+            assert!(
+                slug_store.get_vector_mapping(*id).await.unwrap().is_some(),
+                "store must have a VECTOR_MAP row for embedded entry"
+            );
+        }
+        drop(populated_index);
+
+        // DEGRADE: boot a FRESH EMPTY per-slug index over the SAME populated
+        // store — exactly the Item-1 load-fallback outcome (torn dump → empty).
+        let degraded_index = Arc::new(
+            VectorIndex::new(Arc::clone(&slug_store), VectorConfig::default()).expect("vi"),
+        );
+        assert_eq!(
+            degraded_index.point_count(),
+            0,
+            "per-slug index boots empty after load-fallback"
+        );
+
+        // One maintenance heal tick over the per-slug index.
+        let svc =
+            make_status_service_with_ready_embed(&slug_store, Arc::clone(&degraded_index)).await;
+        let config = make_inference_config_batch(20);
+        run_maintenance_simple(&svc, &slug_store, &config).await;
+
+        // The per-slug index self-healed: point_count rose from the store.
+        assert!(
+            degraded_index.point_count() > 0,
+            "per-slug index must self-heal via the maintenance heal pass; \
+             point_count stayed {}",
+            degraded_index.point_count()
+        );
+        // Specifically, the previously-embedded entries are back in the index.
+        for id in &entry_ids {
+            assert!(
+                degraded_index.contains(*id),
+                "healed per-slug index must contain previously-embedded entry {id}"
+            );
+        }
+    }
+
     async fn run_maintenance_simple(
         svc: &StatusService,
         store: &Arc<Store>,

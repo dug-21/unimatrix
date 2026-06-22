@@ -186,11 +186,27 @@ pub async fn build_project_server(
     let vector_config = VectorConfig::default();
     let meta_path = vector_dir.join("unimatrix-vector.meta");
     let vector_index = if meta_path.exists() {
-        Arc::new(
-            VectorIndex::load(Arc::clone(&store), vector_config, &vector_dir)
-                .await
-                .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
-        )
+        // Graceful degradation (Architectural Principle 5): a torn/missing dump
+        // (e.g. SIGKILL mid-dump leaving a meta over a missing graph) must NOT
+        // hard-abort this slug's boot. Fall back to an empty index; the capped
+        // run_maintenance heal pass (services/status.rs) re-populates it from
+        // the store on the next tick. See GH-824 / lesson #5272.
+        match VectorIndex::load(Arc::clone(&store), vector_config.clone(), &vector_dir).await {
+            Ok(idx) => Arc::new(idx),
+            Err(e) => {
+                tracing::warn!(
+                    slug = %slug,
+                    vector_dir = %vector_dir.display(),
+                    error = %e,
+                    "failed to load per-slug vector index; booting empty and \
+                     deferring to maintenance heal pass"
+                );
+                Arc::new(
+                    VectorIndex::new(Arc::clone(&store), vector_config)
+                        .map_err(|e| ServerError::Core(CoreError::Vector(e)))?,
+                )
+            }
+        }
     } else {
         Arc::new(
             VectorIndex::new(Arc::clone(&store), vector_config)
@@ -448,3 +464,6 @@ fn flatten_present_keys(raw: &toml::Value) -> Vec<String> {
 
 #[cfg(test)]
 mod slug_config_tests;
+
+#[cfg(test)]
+mod boot_fallback_tests;
