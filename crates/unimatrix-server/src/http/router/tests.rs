@@ -2676,11 +2676,15 @@ async fn test_observe_per_slug_funnel_isolation_n2() {
         slug: ProjectSlug::try_from("alpha").expect("valid"),
         store: Arc::clone(&alpha.store),
         server: alpha,
+        // #823: inert here (router tests never drive shutdown); carries the
+        // per-slug dump dir only for the listener wiring path.
+        vector_dir: std::path::PathBuf::from("alpha/vector"),
     };
     let beta_input = ProjectServerInput {
         slug: ProjectSlug::try_from("beta").expect("valid"),
         store: Arc::clone(&beta.store),
         server: beta,
+        vector_dir: std::path::PathBuf::from("beta/vector"),
     };
     let inner = MultiProjectRouter::from_servers(
         vec![alpha_input, beta_input],
@@ -2737,6 +2741,8 @@ async fn test_observe_unregistered_slug_is_loud_404_not_default() {
         slug: ProjectSlug::try_from("only").expect("valid"),
         store: Arc::clone(&only.store),
         server: only,
+        // #823: inert here (router tests never drive shutdown).
+        vector_dir: std::path::PathBuf::from("only/vector"),
     };
     let inner = MultiProjectRouter::from_servers(
         vec![only_input],

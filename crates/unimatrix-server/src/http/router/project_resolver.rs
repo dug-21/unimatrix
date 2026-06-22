@@ -130,6 +130,14 @@ pub struct ProjectServerInput {
     pub store: Arc<Store>,
     /// The assembled per-slug MCP server.
     pub server: UnimatrixServer,
+    /// The slug's own vector dump directory (`{base_dir}/{slug}/vector`).
+    ///
+    /// Carried so the listener wiring can register this slug's `VectorIndex`
+    /// (reachable via `server.vector_index()`) for the per-slug shutdown dump
+    /// (#823). Without this, the per-slug HNSW index was an in-memory-only
+    /// dropped local that was never persisted, silently degrading semantic
+    /// search after a restart in multi-project HTTP mode.
+    pub vector_dir: std::path::PathBuf,
 }
 
 impl std::fmt::Debug for ProjectServerInput {

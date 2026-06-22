@@ -31,14 +31,14 @@ use unimatrix_engine::confidence::ConfidenceParams;
 use unimatrix_observe::domain::DomainPackRegistry;
 use unimatrix_server::error::ServerError;
 use unimatrix_server::http::{
-    build_tls_acceptor, derive_public_url, load_or_generate_cert, Env, ProjectServerInput,
-    ProjectSlug, PublicUrl,
+    Env, ProjectServerInput, ProjectSlug, PublicUrl, build_tls_acceptor, derive_public_url,
+    load_or_generate_cert,
 };
 use unimatrix_server::infra::audit::AuditLog;
 use unimatrix_server::infra::categories::CategoryAllowlist;
 use unimatrix_server::infra::config::{
-    is_per_slug_overlayable, load_single_config, merge_configs, validate_config, InferenceConfig,
-    TlsConfig, UnimatrixConfig,
+    InferenceConfig, TlsConfig, UnimatrixConfig, is_per_slug_overlayable, load_single_config,
+    merge_configs, validate_config,
 };
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::nli_handle::NliServiceHandle;
@@ -260,6 +260,9 @@ pub async fn build_project_server(
         slug: slug.clone(),
         store,
         server,
+        // #823: carry the per-slug vector dir into shutdown so this slug's HNSW
+        // index is dumped to its OWN `{slug}/vector/` (it was a dropped local).
+        vector_dir,
     })
 }
 

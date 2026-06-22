@@ -35,10 +35,13 @@ async fn make_slug_input(slug: &str) -> (ProjectServerInput, Arc<Store>) {
     // resolved store IS this one.
     let store = Arc::clone(&server.store);
     let slug = ProjectSlug::try_from(slug).expect("valid slug");
+    // #823: inert in resolver tests (no shutdown drive); a faithful per-slug dir.
+    let vector_dir = std::path::PathBuf::from(slug.as_str()).join("vector");
     let input = ProjectServerInput {
         slug,
         store: Arc::clone(&store),
         server,
+        vector_dir,
     };
     (input, store)
 }

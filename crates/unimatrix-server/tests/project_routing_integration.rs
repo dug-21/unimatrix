@@ -171,10 +171,14 @@ async fn wired_router(slugs: &[&str]) -> (SlugRouter, Vec<Arc<Store>>) {
         let bundle = build_server().await;
         let slug = ProjectSlug::try_from(name).expect("valid test slug");
         slug_stores.push(Arc::clone(&bundle.store));
+        // #823: inert here (routing test never drives shutdown); a faithful
+        // per-slug dump dir for the new ProjectServerInput field.
+        let vector_dir = std::path::PathBuf::from(slug.as_str()).join("vector");
         inputs.push(ProjectServerInput {
             slug,
             store: bundle.store,
             server: bundle.input_server,
+            vector_dir,
         });
     }
 
