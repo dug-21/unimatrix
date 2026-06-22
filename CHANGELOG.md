@@ -3,6 +3,12 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.5] - 2026-06-22
+
+### Fixes
+- atomic per-slug vector dump (temp+rename, meta-last) + boot load-fallback for torn/missing index — degrade & self-heal instead of aborting slug boot (#824) (#826)
+- dump per-slug vector index on shutdown so the dump→load round-trip persists (#823) (#825)
+
 ## [0.8.4] - 2026-06-21
 
 ### Fixes
