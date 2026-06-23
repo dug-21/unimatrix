@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.6] - 2026-06-23
+
+### Fixes
+- self-heal stale cloud MCP session: server keep_alive override (4h finite bound) + bridge re-init-on-404 with single-flight guard (#830) (#831)
+
 ## [0.8.5] - 2026-06-22
 
 ### Fixes
