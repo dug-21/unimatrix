@@ -15,7 +15,7 @@ const path = require("path");
 
 const { StdioFramer } = require("../../lib/hook-client/mcp-bridge/stdio-frame.js");
 const { SseParser } = require("../../lib/hook-client/mcp-bridge/sse-parse.js");
-const { dispatchResponse, correlateById } = require("../../lib/hook-client/mcp-bridge/dispatch.js");
+const { dispatchResponse, correlateById, isSessionNotFound, SESSION_NOT_FOUND } = require("../../lib/hook-client/mcp-bridge/dispatch.js");
 const { Lifecycle, CLIENT_INFO_NAME } = require("../../lib/hook-client/mcp-bridge/lifecycle.js");
 const { HttpSession, SESSION_HEADER_LC } = require("../../lib/hook-client/mcp-bridge/http-session.js");
 const bridge = require("../../lib/hook-client/mcp-bridge.js");
@@ -372,6 +372,158 @@ describe("lifecycle (R-17)", () => {
     const out = await lc.handle({ jsonrpc: "2.0", id: 5, method: "tools/list" });
     assert.strictEqual(out.id, 5);
     assert.ok(out.error);
+  });
+});
+
+// ── self-heal on idle eviction (#830, design-review B3/C1-C3) ────────────────
+
+describe("session self-heal on 404 (#830)", () => {
+  // dispatch.js: the 404 "session not found" body class is distinguishable.
+  it("test_dispatch_404SessionNotFound_classifiedDistinctly", async () => {
+    const body = Buffer.from(JSON.stringify({ error: "Session not found" }));
+    assert.strictEqual(isSessionNotFound(404, body), true);
+    assert.strictEqual(isSessionNotFound(404, Buffer.from("other 404")), false);
+    assert.strictEqual(isSessionNotFound(401, body), false); // auth, not session
+    assert.strictEqual(isSessionNotFound(500, body), false); // server fault
+    const out = await dispatchResponse({ status: 404, contentType: "application/json",
+      res: bodyStream(Buffer.from(JSON.stringify({ id: 7, error: "Session not found" }))) });
+    assert.strictEqual(out[0].error.code, SESSION_NOT_FOUND);
+    assert.strictEqual(out[0].id, 7);
+  });
+
+  // Build a fake session whose responder is wired to the eviction scenario.
+  // The responder returns a {status, contentType, res} triplet; the session
+  // tracks sessionId the way HttpSession would (init mints a new id).
+  function evictingSession(plan) {
+    const sess = {
+      sent: [],
+      sessionId: null,
+      protocolVersion: null,
+      initCount: 0,
+      idCounter: 0,
+      request(body, opts) {
+        sess.sent.push({ body, opts, sessionAtSend: sess.sessionId });
+        if (opts && opts.isInitialize) {
+          sess.initCount += 1;
+          sess.sessionId = "SID-" + ++sess.idCounter; // server mints fresh id
+          return Promise.resolve(jsonRes({ jsonrpc: "2.0", id: body.id, result: { protocolVersion: "2025-06-18" } }));
+        }
+        return Promise.resolve(plan(body, sess));
+      },
+    };
+    return sess;
+  }
+  function jsonRes(obj) {
+    return { status: 200, contentType: "application/json", res: bodyStream(Buffer.from(JSON.stringify(obj))) };
+  }
+  function sessionNotFoundRes(id) {
+    return { status: 404, contentType: "application/json",
+      res: bodyStream(Buffer.from(JSON.stringify({ id, error: "Session not found" }))) };
+  }
+  async function initialized(lc) {
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize", params: { clientInfo: { name: "claude-code" } } });
+  }
+
+  it("test_selfHeal_404OnToolsCall_reinitsOnceAndRetrySucceeds", async () => {
+    let firstCall = true;
+    const sess = evictingSession((body) => {
+      if (firstCall) { firstCall = false; return sessionNotFoundRes(body.id); } // evicted
+      return jsonRes({ jsonrpc: "2.0", id: body.id, result: { ok: true } }); // retry on new id
+    });
+    const errs = [];
+    const lc = new Lifecycle(sess, { errOut: (s) => errs.push(s) });
+    await initialized(lc);
+    assert.strictEqual(sess.initCount, 1);
+
+    const out = await lc.handle({ jsonrpc: "2.0", id: 9, method: "tools/call", params: {} });
+    assert.strictEqual(out.id, 9);
+    assert.deepStrictEqual(out.result, { ok: true }, "retry result surfaced");
+    assert.strictEqual(sess.initCount, 2, "exactly one re-initialize");
+    // vnc-039: the re-init preserved the STABLE clientInfo.name (B3).
+    const reinit = sess.sent.filter((s) => s.opts && s.opts.isInitialize)[1];
+    assert.strictEqual(reinit.body.params.clientInfo.name, CLIENT_INFO_NAME);
+    // The retry went out under the NEW session id, never the dead one.
+    const retry = sess.sent[sess.sent.length - 1];
+    assert.strictEqual(retry.sessionAtSend, "SID-2");
+    assert.match(errs.join(""), /session evicted \(404\); re-init/);
+  });
+
+  it("test_selfHeal_secondConsecutive404_doesNotLoop", async () => {
+    // Server always 404s tools/call (eviction persists) -> heal once, the retry
+    // 404s again, and we surface an error WITHOUT a second re-init or recursion.
+    const sess = evictingSession((body) => sessionNotFoundRes(body.id));
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await initialized(lc);
+
+    const out = await lc.handle({ jsonrpc: "2.0", id: 11, method: "tools/call", params: {} });
+    assert.strictEqual(out.id, 11);
+    assert.ok(out.error, "error surfaced, not retried forever");
+    assert.notStrictEqual(out.error.code, SESSION_NOT_FOUND, "sentinel never reaches client");
+    assert.strictEqual(sess.initCount, 2, "exactly one re-init (init + one heal), no loop");
+  });
+
+  it("test_selfHeal_reinitFailure_aborts_noLoop", async () => {
+    // tools/call 404s; the re-init transport-fails -> abort, surface original.
+    let reinitTried = false;
+    let initCount = 0;
+    const sess = {
+      sent: [], sessionId: "OLD", protocolVersion: null,
+      request(body, opts) {
+        sess.sent.push({ body, opts });
+        if (opts && opts.isInitialize) {
+          initCount += 1;
+          if (initCount > 1) { // first init = handshake; second = self-heal re-init
+            reinitTried = true;
+            return Promise.reject(Object.assign(new Error("down"), { code: "ECONNREFUSED" }));
+          }
+          sess.sessionId = "SID-NEW";
+          return Promise.resolve(jsonRes({ jsonrpc: "2.0", id: body.id, result: {} }));
+        }
+        return Promise.resolve(sessionNotFoundRes(body.id));
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    const out = await lc.handle({ jsonrpc: "2.0", id: 13, method: "tools/call", params: {} });
+    assert.ok(reinitTried, "re-init was attempted");
+    assert.ok(out.error, "original error surfaced after failed re-init");
+    assert.strictEqual(out.id, 13);
+  });
+
+  it("test_selfHeal_concurrent404s_singleReinit", async () => {
+    // Two tools/call in flight both 404; only ONE re-init must occur (C2).
+    const evictedIds = new Set();
+    const sess = evictingSession((body) => {
+      if (!evictedIds.has(body.id)) { evictedIds.add(body.id); return sessionNotFoundRes(body.id); }
+      return jsonRes({ jsonrpc: "2.0", id: body.id, result: { id: body.id } });
+    });
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await initialized(lc);
+
+    const [a, b] = await Promise.all([
+      lc.handle({ jsonrpc: "2.0", id: 21, method: "tools/call", params: {} }),
+      lc.handle({ jsonrpc: "2.0", id: 22, method: "tools/call", params: {} }),
+    ]);
+    assert.deepStrictEqual(a.result, { id: 21 });
+    assert.deepStrictEqual(b.result, { id: 22 });
+    assert.strictEqual(sess.initCount, 2, "one initial + exactly one shared re-init (single-flight)");
+  });
+
+  it("test_selfHeal_404OnInitialize_isFatal_noReinit", async () => {
+    // An initialize that itself 404s must NOT trigger self-heal recursion.
+    const sess = {
+      sent: [], sessionId: null, protocolVersion: null, initCount: 0,
+      request(body, opts) {
+        sess.sent.push({ body, opts });
+        if (opts && opts.isInitialize) sess.initCount += 1;
+        return Promise.resolve(sessionNotFoundRes(body.id));
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    const out = await lc.handle({ jsonrpc: "2.0", id: 1, method: "initialize" });
+    assert.strictEqual(sess.initCount, 1, "no re-init triggered for a 404 on initialize");
+    assert.ok(out.error);
+    assert.notStrictEqual(out.error.code, SESSION_NOT_FOUND);
   });
 });
 
