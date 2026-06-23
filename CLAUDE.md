@@ -68,7 +68,6 @@ Features use `{phase}-{NNN}` naming. Track via **GitHub Issues**; commits refere
 Knowledge engine (MCP server). **Use it.**
 
 - `/uni-store-adr` — after each architectural decision (Unimatrix-only, no ADR files)
-- `/uni-record-outcome` — at the end of every session
 - `/uni-store-procedure` — when a reusable technique evolves
 - `/uni-store-lesson` — after failures and gate rejections
 

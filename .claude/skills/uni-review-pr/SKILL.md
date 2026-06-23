@@ -129,14 +129,3 @@ If BLOCKED:
 
 Human action required: Approve and merge, or address blocking items.
 ```
-
----
-
-## Step 5: Record Outcome
-
-Use `/uni-record-outcome` with:
-- Feature: `{feature-id}`
-- Type: `feature` (or `bugfix`)
-- Phase: `review`
-- Result: `pass` (or `blocked`)
-- Content: `PR review complete. Security: {risk level}. Merge readiness: {READY|BLOCKED}.`

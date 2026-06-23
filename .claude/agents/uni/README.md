@@ -147,7 +147,7 @@ These are produced in Session 1 and validated against throughout Session 2:
 ├── uni-design-protocol.md     # Session 1 flow
 ├── uni-delivery-protocol.md   # Session 2 flow
 ├── uni-bugfix-protocol.md     # Bug fix flow
-└── uni-agent-routing.md       # Agent roster, composition templates, skills
+└── uni-research-protocol.md   # Research spike flow
 
 .claude/skills/
 ├── review-pr/SKILL.md         # PR security review + merge readiness
@@ -155,7 +155,6 @@ These are produced in Session 1 and validated against throughout Session 2:
 ├── uni-git/SKILL.md           # Git conventions
 ├── query-patterns/SKILL.md    # Check existing patterns before work
 ├── store-adr/SKILL.md         # Store architectural decisions
-├── record-outcome/SKILL.md    # Record session outcomes
 ├── store-procedure/SKILL.md   # Store reusable techniques
 ├── store-lesson/SKILL.md      # Store failure lessons
 ├── knowledge-search/SKILL.md  # Semantic search

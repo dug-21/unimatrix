@@ -9,14 +9,14 @@ Unimatrix knowledge engine via the `context_cycle` MCP tool.
 
 ## What These Protocols Are
 
-The four files in this directory describe three session types:
+The four files in this directory describe four session types:
 
 | File | Session Type | Triggers On |
 |------|-------------|-------------|
 | `uni-design-protocol.md` | Design (Session 1) | specification, architecture, scope definition |
 | `uni-delivery-protocol.md` | Delivery (Session 2) | implement, build, code, deliver |
 | `uni-bugfix-protocol.md` | Bug Fix (single session) | bug, fix, regression, failing |
-| `uni-agent-routing.md` | Routing reference | agent selection and swarm composition |
+| `uni-research-protocol.md` | Research (spike) | run the spike, execute the research, ASS spike execution |
 
 Each protocol is a coordinator playbook: it defines which specialist agents to spawn,
 in what order, and what validation gates must pass before the session can advance.

@@ -153,14 +153,14 @@ package directory, not the repo root):
 cp .claude/protocols/uni/uni-design-protocol.md protocols/uni-design-protocol.md
 cp .claude/protocols/uni/uni-delivery-protocol.md protocols/uni-delivery-protocol.md
 cp .claude/protocols/uni/uni-bugfix-protocol.md protocols/uni-bugfix-protocol.md
-cp .claude/protocols/uni/uni-agent-routing.md protocols/uni-agent-routing.md
+cp .claude/protocols/uni/uni-research-protocol.md protocols/uni-research-protocol.md
 cp protocols/README.md protocols/README.md  # already exists; update if changed
 
 # npm package copy (what npm pack actually includes)
 cp .claude/protocols/uni/uni-design-protocol.md packages/unimatrix/protocols/uni-design-protocol.md
 cp .claude/protocols/uni/uni-delivery-protocol.md packages/unimatrix/protocols/uni-delivery-protocol.md
 cp .claude/protocols/uni/uni-bugfix-protocol.md packages/unimatrix/protocols/uni-bugfix-protocol.md
-cp .claude/protocols/uni/uni-agent-routing.md packages/unimatrix/protocols/uni-agent-routing.md
+cp .claude/protocols/uni/uni-research-protocol.md packages/unimatrix/protocols/uni-research-protocol.md
 cp protocols/README.md packages/unimatrix/protocols/README.md
 ```
 
@@ -170,11 +170,11 @@ Verify each copy is identical to its source (run for both destinations):
 diff .claude/protocols/uni/uni-design-protocol.md protocols/uni-design-protocol.md
 diff .claude/protocols/uni/uni-delivery-protocol.md protocols/uni-delivery-protocol.md
 diff .claude/protocols/uni/uni-bugfix-protocol.md protocols/uni-bugfix-protocol.md
-diff .claude/protocols/uni/uni-agent-routing.md protocols/uni-agent-routing.md
+diff .claude/protocols/uni/uni-research-protocol.md protocols/uni-research-protocol.md
 diff protocols/uni-design-protocol.md packages/unimatrix/protocols/uni-design-protocol.md
 diff protocols/uni-delivery-protocol.md packages/unimatrix/protocols/uni-delivery-protocol.md
 diff protocols/uni-bugfix-protocol.md packages/unimatrix/protocols/uni-bugfix-protocol.md
-diff protocols/uni-agent-routing.md packages/unimatrix/protocols/uni-agent-routing.md
+diff protocols/uni-research-protocol.md packages/unimatrix/protocols/uni-research-protocol.md
 diff protocols/README.md packages/unimatrix/protocols/README.md
 ```
 

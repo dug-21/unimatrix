@@ -71,10 +71,9 @@ This phase produces a terminal-only recommendation report. **Do not write any fi
    No agent files found at .claude/agents/. Skipping agent scan.
    ```
 
-3. **For each agent file found**, read its content and check for the presence of these three patterns:
+3. **For each agent file found**, read its content and check for the presence of these two patterns:
 
    - **context_briefing**: Does the file contain `context_briefing`? (This indicates the agent calls the Unimatrix briefing tool at session start.)
-   - **Outcome reporting**: Does the file contain `/uni-record-outcome` or reference `context_store` with `category: "outcome"`? (This indicates the agent records session outcomes.)
    - **uni-\* skill reference**: Does the file contain any reference to `uni-` prefixed skills (e.g., `/uni-init`, `/uni-seed`)?
 
 4. **Print the Agent Orientation Report** to the terminal:
@@ -88,14 +87,13 @@ This phase produces a terminal-only recommendation report. **Do not write any fi
 
    For each agent file, print a row:
    - **Agent**: the filename (without path prefix)
-   - **Missing**: which of the three patterns are absent
+   - **Missing**: which of the two patterns are absent
    - **Suggested Addition**: concrete, skill-level recommendation. Examples:
      - Missing context_briefing: "Add orientation section: call context_briefing at session start for relevant knowledge"
-     - Missing outcome reporting: "Add session end: invoke /uni-record-outcome to capture what was learned"
      - Missing uni-* skills: "Reference /uni-init and /uni-seed for onboarding new repos"
      - All present: "fully wired" / "none"
 
-5. **If all agents have all three patterns**: Print after the table:
+5. **If all agents have all patterns**: Print after the table:
    ```
    All agents fully wired.
    ```
