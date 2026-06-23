@@ -1146,6 +1146,65 @@ fn mcp_post_with_host(host: &str) -> Request<TestBody> {
 
 const HOST_FORBIDDEN_BODY: &str = "Host header is not allowed";
 
+// ===========================================================================
+// bug #830 (Layer A): MCP session idle keep_alive override.
+//
+// rmcp's LocalSessionManager defaults `session_config.keep_alive` to
+// DEFAULT_KEEP_ALIVE = 300s, evicting idle sessions after 5 minutes → the next
+// call with the stale Mcp-Session-Id gets HTTP 404 and the bridge hangs until a
+// manual /mcp re-init. McpAdapter::new must override it to a long FINITE bound.
+// These tests assert the override is in force WITHOUT waiting 4h: they check the
+// named const and that the manager is built with that TTL the way McpAdapter::new
+// builds it (Default + field mutation on the pub `session_config.keep_alive`).
+// ===========================================================================
+
+/// rmcp's default idle keep_alive (DEFAULT_KEEP_ALIVE). The override must move
+/// off this value — landing on it would mean the bug is unfixed.
+const RMCP_DEFAULT_KEEP_ALIVE: Duration = Duration::from_secs(300);
+
+// T-830-1: the configured keep_alive is the long 4h bound, not rmcp's 300s
+// default, and is finite (Some, not None — None would leak sessions, B2).
+#[test]
+fn test_session_keep_alive_is_long_finite_bound_not_rmcp_default() {
+    assert_eq!(
+        SESSION_KEEP_ALIVE,
+        Duration::from_secs(4 * 60 * 60),
+        "keep_alive must be the 4h bound (#830)"
+    );
+    assert_ne!(
+        SESSION_KEEP_ALIVE, RMCP_DEFAULT_KEEP_ALIVE,
+        "keep_alive must NOT be rmcp's 300s default — that is the bug (#830)"
+    );
+    assert!(
+        SESSION_KEEP_ALIVE > RMCP_DEFAULT_KEEP_ALIVE,
+        "the override must be longer than the 300s default that evicts idle sessions"
+    );
+}
+
+// T-830-2: building the session manager the way McpAdapter::new does yields the
+// long finite TTL on `session_config.keep_alive` — proving the override lands on
+// the correct field (not StreamableHttpServerConfig.sse_keep_alive), and that a
+// fresh LocalSessionManager::default() would otherwise carry the 300s default.
+#[test]
+fn test_session_manager_keep_alive_overridden_to_long_bound() {
+    // The default carries rmcp's 300s eviction — the pre-fix behavior.
+    let default_mgr = LocalSessionManager::default();
+    assert_eq!(
+        default_mgr.session_config.keep_alive,
+        Some(RMCP_DEFAULT_KEEP_ALIVE),
+        "sanity: rmcp's default is the 300s idle eviction this fix overrides"
+    );
+
+    // Mirror McpAdapter::new's construction.
+    let mut mgr = LocalSessionManager::default();
+    mgr.session_config.keep_alive = Some(SESSION_KEEP_ALIVE);
+    assert_eq!(
+        mgr.session_config.keep_alive,
+        Some(SESSION_KEEP_ALIVE),
+        "session_config.keep_alive must hold the long finite bound after override (#830)"
+    );
+}
+
 // T-774-1: a non-localhost public host wired through the adapter is NOT 403'd
 // on the Host gate, while an unrelated Host IS. This is the regression that
 // escaped vnc-034 (the configured public host was rejected before auth/MCP).

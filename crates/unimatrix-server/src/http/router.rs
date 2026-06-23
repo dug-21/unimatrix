@@ -17,6 +17,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
+use std::time::Duration;
 
 use bytes::Bytes;
 use http::{Method, Request, Response};
@@ -38,6 +39,23 @@ use crate::services::ServiceLayer;
 
 /// Maximum request body size default (1 MB). Used when no config override.
 const DEFAULT_MAX_BODY_BYTES: usize = 1_048_576;
+
+/// Idle keep-alive (TTL) for rmcp Streamable-HTTP MCP sessions (#830).
+///
+/// rmcp's `SessionConfig::keep_alive` defaults to `DEFAULT_KEEP_ALIVE = 300s`,
+/// which evicts an idle session after 5 minutes. A normal agent think-gap >5min
+/// then loses its server-side session → the next call with the stale
+/// `Mcp-Session-Id` gets HTTP 404 "Session not found" and the bridge hangs until
+/// a manual `/mcp` re-init (#830 cloud staleness).
+///
+/// We override it to a long FINITE bound (4 hours), set on
+/// `LocalSessionManager.session_config.keep_alive` (NOT
+/// `StreamableHttpServerConfig.sse_keep_alive` — a different SSE-ping field that
+/// would NOT fix this). 4h ≫ any realistic idle gap, while keeping rmcp's
+/// finite-TTL safety net so sessions from clients that drop without a clean
+/// DELETE still self-evict (a `None`/unbounded TTL would leak them forever,
+/// growing the session map without bound — #830 design review B2).
+const SESSION_KEEP_ALIVE: Duration = Duration::from_secs(4 * 60 * 60);
 
 // ---------------------------------------------------------------------------
 // ObserveContext — service handle bundle for /observe handler (ADR-001)
@@ -337,7 +355,14 @@ impl McpAdapter {
         allowed_origins: Vec<String>,
         allowed_hosts: Vec<String>,
     ) -> Self {
-        let session_manager = Arc::new(LocalSessionManager::default());
+        // #830: override rmcp's 300s idle session eviction (DEFAULT_KEEP_ALIVE)
+        // with a long finite TTL so an agent think-gap does not silently kill the
+        // server-side MCP session. The TTL lives on the session manager's
+        // `session_config.keep_alive` (a `pub` field) — NOT on
+        // `StreamableHttpServerConfig`. Set it BEFORE wrapping in the `Arc`.
+        let mut session_manager = LocalSessionManager::default();
+        session_manager.session_config.keep_alive = Some(SESSION_KEEP_ALIVE);
+        let session_manager = Arc::new(session_manager);
         let mut config = StreamableHttpServerConfig::default();
         config.allowed_origins = allowed_origins;
         config.allowed_hosts = allowed_hosts;
