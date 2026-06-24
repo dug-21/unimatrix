@@ -7560,12 +7560,14 @@ mod tests {
     fn test_apply_stamp_to_row_unstamped_extracted_source() {
         let registry = make_registry();
         registry.register_session("s1", None, Some("col-099".to_string())); // Inferred(Registered)
-        let event = unstamped_event("s1", "PostToolUse", Some("extracted-feat"));
-        let mut row = blank_row("s1", Some("extracted-feat"));
+        // bugfix-832: use a canonical feature-ID-shaped extraction ({alpha}-{digits}).
+        // A bare alpha-alpha placeholder is now demoted as a command fragment (B2).
+        let event = unstamped_event("s1", "PostToolUse", Some("ext-001"));
+        let mut row = blank_row("s1", Some("ext-001"));
         apply_stamp_to_row(&mut row, &event, &registry);
         assert_eq!(
             row.topic_signal,
-            Some("extracted-feat".to_string()),
+            Some("ext-001".to_string()),
             "extraction wins vs Inferred"
         );
         assert_eq!(row.topic_source, Some("extracted".to_string()));
@@ -7618,8 +7620,10 @@ mod tests {
     fn test_apply_stamp_to_row_unstamped_never_stamp_declared() {
         let registry = make_registry();
         registry.register_session("s1", None, Some("col-099".to_string()));
-        let event = unstamped_event("s1", "PostToolUse", Some("extracted-feat"));
-        let mut row = blank_row("s1", Some("extracted-feat"));
+        // bugfix-832: feature-ID-shaped extraction so the heuristic 'extracted' path
+        // is exercised (alpha-alpha placeholders are now demoted as fragments, B2).
+        let event = unstamped_event("s1", "PostToolUse", Some("ext-001"));
+        let mut row = blank_row("s1", Some("ext-001"));
         apply_stamp_to_row(&mut row, &event, &registry);
         // Source reflects the heuristic path, not a stamp.
         assert_eq!(row.topic_source, Some("extracted".to_string()));

@@ -4400,3 +4400,148 @@ def test_cycle_review_behavioral_signals_directional_qualifier(server):
         f"AC-21: the exactly-counted 'Compactions' line must NOT carry the directional "
         f"qualifier; got '{comp_rendered}'"
     )
+
+
+# === bugfix-832: cloud cycle-attribution — behavioral acceptance (BA-1 / BA-2) ====
+#
+# THE BUG (#832): on the cloud/HTTPS path, observations landed with NULL or a
+# command-fragment `topic_signal` (apt-get / ls-files) instead of the cycle feature.
+# Because `load_cycle_observations` joins `observations.topic_signal = cycle_id`
+# (services/observation.rs Step 2), `context_cycle_review` returned
+# "No observation data found" even though ~22 observations existed.
+#
+# HARNESS LIMITATION (stated explicitly, per the verifier charter): this harness
+# spawns the server in stdio-MCP mode only (harness/conftest.py:105
+# `serve --stdio`). It has NO HTTPS-bridge fixture, NO TLS, and NO live hook
+# (UDS) socket daemon — observation attribution is exercised by SQL-seeding the
+# `observations` table (the established lifecycle pattern,
+# `_seed_observation_sql_lifecycle`). Therefore BA-1 *cannot* be driven literally
+# end-to-end over the HTTPS bridge here. These tests are the CLOSEST ACHIEVABLE
+# PARITY proof: they assert the OBSERVABLE OUTCOME at the exact join the bug lives
+# on — `context_cycle_review` returns the cycle's metrics when observations carry
+# `topic_signal == feature` (BA-1), and returns NO reviewable cycle when the only
+# observations carry command-fragment topic_signals (BA-2). The end-to-end HTTPS
+# == UDS parity run remains owed at a layer this harness does not reach (the
+# client-side session-id fix is unit-covered in packages/unimatrix).
+
+
+def _seed_attributed_observations_832(db_path, cycle_id, topic_signal, num_records=20):
+    """bugfix-832: seed observations whose `topic_signal` is set explicitly.
+
+    Distinct from `_seed_observation_sql_lifecycle` (which leaves topic_signal
+    NULL): here `topic_signal` is the exact value the cycle-review Step-2 join
+    matches on (`WHERE topic_signal = cycle_id`). Pass `topic_signal == cycle_id`
+    to model a correctly-attributed cycle (BA-1); pass a command fragment to
+    model the pre-fix pollution (BA-2).
+    """
+    import sqlite3 as _sqlite3
+    import time as _time
+    import uuid as _uuid
+
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    now_secs = int(_time.time())
+    base_ts_millis = now_secs * 1000 - 86_400_000
+    session_id = f"http-{_uuid.uuid4().hex[:8]}"  # mimic the cloud http- prefixed key
+    conn.execute(
+        "INSERT INTO sessions (session_id, feature_cycle, started_at, status) "
+        "VALUES (?, ?, ?, 0)",
+        (session_id, cycle_id, now_secs),
+    )
+    for i in range(num_records):
+        ts_millis = base_ts_millis + (i * 300_000)
+        hook = "PreToolUse" if i % 2 == 0 else "PostToolUse"
+        conn.execute(
+            "INSERT INTO observations "
+            "(session_id, ts_millis, hook, tool, input, response_size, "
+            "response_snippet, topic_signal, topic_source) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                session_id, ts_millis, hook, "Read", None,
+                1024 if hook == "PostToolUse" else None,
+                "out" if hook == "PostToolUse" else None,
+                topic_signal,
+                "declared" if topic_signal == cycle_id else "extracted",
+            ),
+        )
+    conn.commit()
+    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn.close()
+
+
+def test_cycle_review_attributed_observations_returns_metrics_832(server):
+    """BA-1 (closest achievable parity): a cycle whose observations carry
+    `topic_signal == feature` produces a NON-EMPTY context_cycle_review — the
+    observable outcome the #832 bug broke on cloud.
+
+    Drives the same surface the bug manifested on: the Step-2 cycle-review join
+    `observations.topic_signal = cycle_id`. Asserts review does NOT return the
+    "No observation data found" empty path and surfaces cycle metrics.
+    """
+    import time as _time
+
+    topic = "shd-001"  # the field-data cycle feature shape
+    now = int(_time.time())
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+
+    server.context_cycle("start", topic, next_phase="scope", agent_id="human")
+    server.context_cycle("stop", topic, phase="scope", agent_id="human")
+
+    # Correctly-attributed observations (post-fix invariant: topic_signal == feature).
+    _seed_attributed_observations_832(db_path, topic, topic_signal=topic, num_records=20)
+    _seed_cycle_events_lifecycle(db_path, topic, [
+        {"seq": 0, "event_type": "cycle_start", "next_phase": "scope", "timestamp": now - 300},
+        {"seq": 1, "event_type": "cycle_stop", "phase": "scope", "timestamp": now - 100},
+    ])
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="markdown",
+                                       force=True, timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    assert "No observation data found" not in text, (
+        f"BA-1: context_cycle_review must return the cycle's metrics when observations "
+        f"carry topic_signal == feature (this is exactly what #832 broke on cloud). "
+        f"Got: {text[:400]}"
+    )
+    # The review surfaced cycle content — it joined the attributed observations.
+    assert topic in text, (
+        f"BA-1: review output must reference the cycle '{topic}'. Got: {text[:400]}"
+    )
+
+
+def test_cycle_review_command_fragment_topic_signal_not_reviewable_832(server):
+    """BA-2 (negative behavioral): when the ONLY observations carry a command-
+    fragment topic_signal (`apt-get`, `ls-files`), there is no reviewable cycle —
+    `context_cycle_review` for the fragment returns the empty path. Command
+    fragments must never masquerade as a cycle (the "stop writing wrong
+    attribution" outcome, asserted behaviorally — no reach into topic_signal
+    internals).
+    """
+    import time as _time
+
+    feature = "shd-002"
+    now = int(_time.time())
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+
+    server.context_cycle("start", feature, next_phase="scope", agent_id="human")
+    server.context_cycle("stop", feature, phase="scope", agent_id="human")
+
+    # Pre-fix pollution shape: observations stamped with command fragments, never
+    # the real feature. (Mirrors the field data: apt-get / ls-files in topic_signal.)
+    _seed_attributed_observations_832(db_path, feature, topic_signal="apt-get", num_records=10)
+    _seed_attributed_observations_832(db_path, feature, topic_signal="ls-files", num_records=10)
+    _seed_cycle_events_lifecycle(db_path, feature, [
+        {"seq": 0, "event_type": "cycle_start", "next_phase": "scope", "timestamp": now - 300},
+        {"seq": 1, "event_type": "cycle_stop", "phase": "scope", "timestamp": now - 100},
+    ])
+
+    # A review for each command fragment must find NO reviewable cycle — the
+    # fragment is not a declared cycle, so no cycle_events match and the cycle-join
+    # surfaces nothing reviewable.
+    for fragment in ("apt-get", "ls-files"):
+        resp = server.context_cycle_review(fragment, agent_id="human",
+                                           format="markdown", force=True, timeout=30.0)
+        # The empty path surfaces as a tool error ("No observation data found"),
+        # never a populated review — the fragment is not a declared/reviewable cycle.
+        assert_tool_error(resp, "No observation data found")
