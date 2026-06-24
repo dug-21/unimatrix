@@ -331,6 +331,15 @@ bundle_attach_gates() {
 }
 # === end nan-020 seam ======================================================
 
+# === nan-021 C2: cloud cycle gate (sourced) ===============================
+# The bridge-driven Gate 8 (cloud_cycle_gates) lives in cloud-cycle-lib.sh to
+# keep this file <=500 lines (workspace rule). Sourced here so it runs in the
+# smoke's scope (uses log/fail/store_size/vol + $SLUG/$SLUG_DIR/$TMP/$TOKEN).
+# Like release-gate-lib.sh, it only DEFINES functions on source.
+# shellcheck source=product/test/infra-001/scripts/cloud-cycle-lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/cloud-cycle-lib.sh"
+# === end nan-021 C2 sourced seam ==========================================
+
 # Sourced-guard (#5192): when this file is SOURCED (the pre-merge gate-logic
 # test sources it to call bundle_attach_gates against stubs), stop here — do
 # NOT run the Docker preflight / Gates 1–4 / terminal marker. When EXECUTED
@@ -471,5 +480,15 @@ log "per-slug store grew ($SLUG_BEFORE -> $SLUG_AFTER) and hash store unchanged 
 # Gates 5–7 (documented bundle attach) — defined in the seam section above as
 # bundle_attach_gates(); reuses the SAME container/volume/slug/port/cert as Gates 1–4.
 bundle_attach_gates
+
+# Gate 8 (nan-021 C2 cloud cycle) — runs ONLY when the pytest orchestrator wired
+# the C2 inputs (MANIFEST_PATH/RUN_TOKEN/HTTPS_VECTOR_OUT). The standalone #783
+# smoke (no nan-021 env) skips it so its contract is unchanged (append-only).
+if [ -n "${MANIFEST_PATH:-}" ] && [ -n "${RUN_TOKEN:-}" ] && [ -n "${HTTPS_VECTOR_OUT:-}" ]; then
+  log "nan-021 C2 inputs present — driving the cloud cycle through the bridge (gate 8) ..."
+  cloud_cycle_gates
+else
+  log "nan-021 C2 inputs absent — skipping gate 8 (standalone #783 posture smoke)."
+fi
 
 log "ALL GATES PASSED — clean image boots HTTP-on and routes the registered slug over HTTPS."
