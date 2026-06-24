@@ -544,6 +544,73 @@ jobs:
           echo "embed-readiness target IMAGE=${IMAGE}"
           run_smoke_gate "${IMAGE}" bash product/test/infra-001/scripts/docker-embed-readiness-smoke.sh
 
+  # nan-021 HTTPS-vs-UDS MetricVector parity gate (D-3 / ADR-005 / AC-05). A
+  # STANDING gate in the release-gate Docker lane via workflow_dispatch/tag —
+  # NOT the JS-only ci.yml pull_request matrix (Rust/container validation lives
+  # here, per the standing rule). It runs the pytest orchestrator
+  # (suites/test_https_uds_parity.py -m parity, ADR-001 pytest-as-orchestrator):
+  # the UDS leg runs in-process against a live daemon, and the HTTPS leg is the
+  # smoke's C1+C2 cloud_cycle_gates shelled out via UNIMATRIX_HTTPS_SMOKE ->
+  # cloud-cycle-https-leg.sh, which wraps docker-http-posture-smoke.sh in the
+  # SHIPPED release-gate-lib.sh:run_smoke_gate (verify-by-name exit-code
+  # discriminator + anchored [*-smoke] ALL GATES PASSED marker — Docker-absent
+  # exit 3 is a HARD failure, an early-exit-0 without the marker is RED; the
+  # nan-019 docker pull||inspect||exit-4 acquisition is reused verbatim by the
+  # smoke). pytest then ingests the token-correlated MetricVector(HTTPS) and runs
+  # the C4 comparator field-for-field (modulo the closed D-5 wall-clock set).
+  #
+  # FIRST-GREEN BUDGET (ADR-005 / #5266/#5267): this lane has never run green —
+  # the bridge/cert/SSE path is first truly exercised here, so it is expected to
+  # surface failures in sequence across N tag rounds (cert -> bridge -> cycle ->
+  # review -> parity). It is therefore wired as an INDEPENDENT gate (its result
+  # is visible on every tag + dispatch) and is intentionally NOT in
+  # create-container-manifest's `needs:` until first-green is achieved — a
+  # never-green lane must not block every release while the round-trip is
+  # budgeted. Promote it into the manifest `needs:` once it greens (it ADVANCES
+  # C0; the proven flip is held by #837). The gate spine is stub-driven pre-merge
+  # by release-gate-cloud-cycle-logic-test.sh (R-12) so this is not the first
+  # place the gate logic runs.
+  nan-021-https-uds-parity:
+    needs: [build-container-x64]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Provision pinned Node for the shipped mcp-bridge.js leg
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Provision Python for the pytest orchestrator
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pytest harness deps
+        run: pip install pytest pytest-timeout pytest-json-report
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: HTTPS-vs-UDS parity gate (pytest orchestrator + verify-by-name HTTPS leg)
+        working-directory: product/test/infra-001
+        run: |
+          set -euo pipefail
+          source scripts/release-gate-lib.sh
+          IMAGE="$(resolve_image "${GITHUB_REPOSITORY_OWNER}" "${GITHUB_EVENT_NAME}" "${GITHUB_REF_NAME}" amd64)"
+          echo "parity target IMAGE=${IMAGE}"
+          # The HTTPS leg is the smoke wrapped in run_smoke_gate (false-green
+          # discriminator); pytest's run_https_leg shells it out with the C2
+          # contract env. IMAGE is exported so the wrapper's run_smoke_gate
+          # passes it to the smoke's nan-019 acquisition path.
+          export IMAGE
+          export UNIMATRIX_HTTPS_SMOKE="$(pwd)/scripts/cloud-cycle-https-leg.sh"
+          python -m pytest suites/test_https_uds_parity.py -v -m parity --timeout=900
+
   create-container-manifest:
     needs: [smoke-amd64, smoke-arm64, embed-amd64, embed-arm64]
     if: github.event_name != 'workflow_dispatch'
