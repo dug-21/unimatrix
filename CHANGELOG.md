@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.7] - 2026-06-24
+
+### Fixes
+- anchor cloud cycle attribution on the Claude Code session id so HTTP/cloud observations carry the cycle feature in topic_signal — context_cycle_review now returns metrics over HTTPS as it does over local UDS; enrich safety-net rejects command fragments and makes the unattributed branch loud (#832) (#834)
+
 ## [0.8.6] - 2026-06-23
 
 ### Fixes
