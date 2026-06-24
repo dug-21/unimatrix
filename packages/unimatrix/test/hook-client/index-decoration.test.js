@@ -474,6 +474,90 @@ describe("decorateCycleStamp: fail-open (C-04)", () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────
+// 8. #832 — declaration/observe session-id convergence (Path A end-to-end).
+//    Behavioral-at-unit: drive the REAL buildRequest for a context_cycle
+//    declaration and a per-tool observe, decorate both, and assert the OUTCOME —
+//    the observe spawn reads + stamps the tracker the declaration wrote (same
+//    key). The bug was these two spawns keying on different ids.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe("#832 declaration/observe converge → stamp readable", () => {
+  beforeEach(() => freshStateDir());
+  afterEach(() => cleanupStateDir());
+
+  // Build the real declaration frame (PreToolUse context_cycle, start).
+  function declInput(session_id, transcript_path) {
+    return {
+      hook_event_name: "PreToolUse",
+      session_id: session_id,
+      cwd: null,
+      transcript_path: transcript_path,
+      prompt: null,
+      provider: "claude-code",
+      mcp_context: null,
+      extra: {
+        tool_name: "mcp__unimatrix__context_cycle",
+        tool_input: { type: "start", topic: "shd-001" },
+      },
+    };
+  }
+  // Build the real observe frame (PostToolUse Bash — a fragment producer).
+  function obsInput(session_id, transcript_path) {
+    return {
+      hook_event_name: "PostToolUse",
+      session_id: session_id,
+      cwd: null,
+      transcript_path: transcript_path,
+      prompt: null,
+      provider: "claude-code",
+      mcp_context: null,
+      extra: { tool_name: "Bash", tool_input: { command: "git ls-files" } },
+    };
+  }
+
+  it("test_http_declaration_and_observe_share_key_when_session_id_present", () => {
+    // The cloud common case: both spawns carry the same CC input.session_id.
+    const sd = tmpDir;
+    const decl = buildRequest.buildRequest("PreToolUse", declInput("http-472aace5", "/p/t.jsonl"));
+    index.decorateCycleStamp(decl, declInput("http-472aace5", "/p/t.jsonl"), config(sd));
+    const obs = buildRequest.buildRequest("PostToolUse", obsInput("http-472aace5", "/p/t.jsonl"));
+    index.decorateCycleStamp(obs, obsInput("http-472aace5", "/p/t.jsonl"), config(sd));
+    // OUTCOME: the observe frame was stamped with the declared cycle (not NULL,
+    // not the `ls-files` fragment) → cycle-review join would succeed.
+    assert.strictEqual(obs.cycle_stamp.topic, "shd-001");
+    assert.strictEqual(obs.topic_signal, undefined, "fragment suppressed by the stamp");
+  });
+
+  it("test_null_session_id_still_converges_via_transcript (B1, no ppid split)", () => {
+    // The BUG: a declaration spawn with a null session_id fell to a per-spawn
+    // ppid, diverging from observe → tracker written under a key observe never
+    // read. Now both derive the SAME transcript-anchored id, so the stamp is
+    // readable even with no CC session_id on either spawn.
+    const sd = tmpDir;
+    const tp = "/proj/.claude/conv-xyz.jsonl";
+    const decl = buildRequest.buildRequest("PreToolUse", declInput(null, tp));
+    index.decorateCycleStamp(decl, declInput(null, tp), config(sd));
+    const obs = buildRequest.buildRequest("PostToolUse", obsInput(null, tp));
+    index.decorateCycleStamp(obs, obsInput(null, tp), config(sd));
+    assert.strictEqual(decl.session_id, obs.session_id, "no divergence, no ppid split");
+    assert.ok(decl.session_id.startsWith("cc-"), "stable transcript-anchored id");
+    assert.strictEqual(obs.cycle_stamp.topic, "shd-001", "observe stamped → key matched");
+  });
+
+  it("test_R1_uds_path_a_stamp_round_trip (UDS no-regression)", () => {
+    // R-1: the existing UDS flow where every spawn carries the same CC session id
+    // must STILL work — declaration writes cycles/{sid}.json, observe reads+stamps.
+    const sd = tmpDir;
+    const decl = buildRequest.buildRequest("PreToolUse", declInput("uds-sess-1", null));
+    index.decorateCycleStamp(decl, declInput("uds-sess-1", null), config(sd));
+    assert.ok(fs.existsSync(cycles.cyclePath(sd, "uds-sess-1")), "tracker written under CC id");
+    const obs = buildRequest.buildRequest("PostToolUse", obsInput("uds-sess-1", null));
+    index.decorateCycleStamp(obs, obsInput("uds-sess-1", null), config(sd));
+    assert.strictEqual(obs.cycle_stamp.topic, "shd-001", "observe reads + stamps the tracker");
+  });
+});
+
 // ═════════════════════════════════════════════════════════════════════════
 // SPAWN-LEVEL: seam survival (R-07 / FR-28 / ADR-007 §1) — GATE 1
 // (cross-referenced from seam-and-roundtrip.md §1; driven through the rebased

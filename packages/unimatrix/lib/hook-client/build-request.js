@@ -15,15 +15,13 @@
  */
 
 const tools = require("./build-request-tools");
+const sessionIdMod = require("./session-id");
 
 const {
   safeCwd,
   extraGet,
   strOr,
-  payloadFromExtra,
   countWhitespaceWords,
-  extractEventTopicSignal,
-  recordEventFrame,
   genericRecordEvent,
   buildPostToolUse,
   buildPreToolUse,
@@ -40,9 +38,18 @@ const {
  * @returns {object} HookRequest
  */
 function buildRequest(event, input) {
-  // session_id ppid fallback (hook.rs:449-453); process.ppid ≙ parent_id().
-  const sessionId =
-    input.session_id == null ? "ppid-" + process.ppid : input.session_id;
+  // #832: deterministic CC session-id resolution shared by the cycle DECLARATION
+  // and per-tool OBSERVE spawns so both key Path A (tracker) and Path B (registry)
+  // on ONE id. input.session_id → cc-<hash>(transcript_path) → ppid- last resort.
+  // The frame session_id IS the tracker key (decorateCycleStamp reads it back via
+  // sessionIdOf), so fixing it here fixes both paths at once.
+  const sessionId = sessionIdMod.resolveSessionId(input);
+  // #832 B1 trace (gated to UNIMATRIX_HOOK_DEBUG, off the hot path otherwise) so a
+  // live remote run can confirm declaration vs observe converge. Never throws.
+  sessionIdMod.traceSessionId(
+    event === "PreToolUse" ? "declaration?" : "observe",
+    sessionId
+  );
   // cwd fallback to process.cwd(), "" on failure (hook.rs:455-459).
   const cwd = input.cwd == null ? safeCwd() : input.cwd;
 
@@ -70,17 +77,16 @@ function buildRequest(event, input) {
 
     case "UserPromptSubmit": {
       const query = input.prompt == null ? "" : input.prompt;
-      // Guard 1: empty / whitespace-only → RecordEvent (EC-01).
-      if (query.trim() === "") {
-        return genericRecordEvent(event, sessionId, input);
-      }
-      // Guard 2: word-count threshold (FR-05). Query value itself is NOT trimmed.
-      if (countWhitespaceWords(query) < MIN_QUERY_WORDS) {
+      // Guard 1 empty/whitespace-only (EC-01); Guard 2 word-count threshold
+      // (FR-05, query value itself NOT trimmed) → RecordEvent.
+      if (query.trim() === "" || countWhitespaceWords(query) < MIN_QUERY_WORDS) {
         return genericRecordEvent(event, sessionId, input);
       }
       return {
         type: "ContextSearch",
         query: query,
+        // raw CC id (NOT the resolved tracker id), null when absent (#832); the
+        // search session_id is omit-when-null parity, distinct from FNF framing.
         session_id: input.session_id == null ? null : input.session_id,
         // source key OMITTED (None → skip_serializing_if)
         role: null,
@@ -106,14 +112,9 @@ function buildRequest(event, input) {
       return buildPostToolUse(sessionId, input);
 
     case "PostToolUseFailure":
-      // Explicit arm — never wildcard, never rework (hook.rs:641-661).
-      return recordEventFrame(
-        "PostToolUseFailure",
-        sessionId,
-        payloadFromExtra(input),
-        extractEventTopicSignal(event, input),
-        input.provider
-      );
+      // Explicit arm — never wildcard, never rework (hook.rs:641-661). Shape is
+      // identical to the generic frame (event/payload/topic_signal/provider).
+      return genericRecordEvent("PostToolUseFailure", sessionId, input);
 
     case "PreToolUse":
       return buildPreToolUse(event, sessionId, input);

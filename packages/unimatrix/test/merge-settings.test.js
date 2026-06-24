@@ -531,10 +531,41 @@ describe("ADR-004 PreToolUse matcher narrowing", function () {
     const group = unimatrixPreToolUseGroup(result.content);
     assert.ok(group, "expected a unimatrix-owned PreToolUse matcher group");
     // EXACTLY the cycle tools — no longer "*". The hook no longer spawns for
-    // ordinary tool calls.
-    assert.strictEqual(group.matcher, "context_cycle|mcp__unimatrix__context_cycle");
+    // ordinary tool calls. #832: anchored so the two alternatives are mutually
+    // exclusive (the namespaced name CONTAINS the bare name → double-fire before).
+    assert.strictEqual(group.matcher, "^context_cycle$|^mcp__unimatrix__context_cycle$");
     assert.strictEqual(group.matcher, PRETOOLUSE_CYCLE_MATCHER);
-    assert.strictEqual(EVENT_MATCHERS.PreToolUse, "context_cycle|mcp__unimatrix__context_cycle");
+    assert.strictEqual(
+      EVENT_MATCHERS.PreToolUse,
+      "^context_cycle$|^mcp__unimatrix__context_cycle$"
+    );
+  });
+
+  it("test_pretooluse_matcher_single_fires_each_cycle_tool_name (#832, R-5)", function () {
+    // Claude Code matches a tool name against the matcher regex. The bug was the
+    // unanchored alternation matching the NAMESPACED name on BOTH branches; the
+    // anchored form must single-fire EACH name — and must NOT drop the bare
+    // `context_cycle` that UDS/STDIO uses (R-5 regression guard).
+    const re = new RegExp(PRETOOLUSE_CYCLE_MATCHER);
+    // Count distinct alternatives a name satisfies (the double-fire fingerprint).
+    function alternativesMatched(name) {
+      return PRETOOLUSE_CYCLE_MATCHER.split("|").filter((alt) =>
+        new RegExp(alt).test(name)
+      ).length;
+    }
+    // R-5: bare context_cycle (UDS) still matches — exactly one alternative.
+    assert.ok(re.test("context_cycle"), "bare context_cycle must still match (UDS)");
+    assert.strictEqual(alternativesMatched("context_cycle"), 1, "bare → single-fire");
+    // HTTP: namespaced name matches — exactly one alternative (was 2 before the fix).
+    assert.ok(re.test("mcp__unimatrix__context_cycle"), "namespaced must match (HTTP)");
+    assert.strictEqual(
+      alternativesMatched("mcp__unimatrix__context_cycle"),
+      1,
+      "namespaced → single-fire (no longer double)"
+    );
+    // A non-cycle name still matches nothing (no spurious spawn).
+    assert.ok(!re.test("Bash"), "non-cycle tool never matches");
+    assert.ok(!re.test("evil_context_cycle_bypass"), "anchored: no substring bypass");
   });
 
   it("test_pretooluse_stays_in_hook_events", function () {

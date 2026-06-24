@@ -46,7 +46,15 @@ const HOOK_EVENTS = [
  * regex-matcher semantics are load-bearing for cycle interception (R-11); the
  * client-side exact-equality sentinel is the defense-in-depth backstop.
  */
-const PRETOOLUSE_CYCLE_MATCHER = "context_cycle|mcp__unimatrix__context_cycle";
+// #832: the alternatives are ANCHORED so they are mutually exclusive. The
+// literal `mcp__unimatrix__context_cycle` CONTAINS the substring `context_cycle`,
+// so the prior unanchored form `context_cycle|mcp__unimatrix__context_cycle`
+// matched the namespaced invocation on BOTH branches → Claude Code fired the
+// PreToolUse hook twice (the duplicate cycle_start). Anchoring single-fires each:
+// bare `context_cycle` (UDS, R-5) matches only the first alternative; the
+// namespaced form matches only the second. Exactly one declaration emitter fires.
+const PRETOOLUSE_CYCLE_MATCHER =
+  "^context_cycle$|^mcp__unimatrix__context_cycle$";
 
 /**
  * SubagentStop opt-in key (ADR-004 §2, vnc-027). Resolved from
