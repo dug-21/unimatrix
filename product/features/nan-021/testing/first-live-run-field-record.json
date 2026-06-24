@@ -1,0 +1,265 @@
+{
+  "at_risk_fields": [
+    "cold_restart_events",
+    "coordinator_respawn_count",
+    "context_load_before_first_write_kb",
+    "total_context_loaded_kb",
+    "permission_friction_events"
+  ],
+  "domain_metrics_https": {},
+  "domain_metrics_uds": {},
+  "excluded_set": [
+    "computed_at",
+    "phases.*.duration_secs",
+    "universal.total_duration_secs"
+  ],
+  "phases_https": {
+    "delivery": {
+      "duration_secs": 0,
+      "tool_call_count": 4
+    }
+  },
+  "phases_uds": {
+    "delivery": {
+      "duration_secs": 0,
+      "tool_call_count": 4
+    }
+  },
+  "raw_https": {
+    "computed_at": 1782275609,
+    "domain_metrics": {},
+    "phases": {
+      "delivery": {
+        "duration_secs": 0,
+        "tool_call_count": 4
+      }
+    },
+    "universal": {
+      "agent_hotspot_count": 0,
+      "bash_for_search_count": 0,
+      "cold_restart_events": 0,
+      "context_load_before_first_write_kb": 2,
+      "coordinator_respawn_count": 0,
+      "edit_bloat_ratio": 0,
+      "edit_bloat_total_kb": 0,
+      "follow_up_issues_created": 0,
+      "friction_hotspot_count": 0,
+      "knowledge_entries_stored": 0,
+      "parallel_call_rate": 1,
+      "permission_friction_events": 1,
+      "post_completion_work_pct": 0,
+      "scope_hotspot_count": 0,
+      "search_miss_rate": 0,
+      "session_count": 1,
+      "session_hotspot_count": 0,
+      "sleep_workaround_count": 0,
+      "total_context_loaded_kb": 3.5,
+      "total_duration_secs": 0,
+      "total_tool_calls": 4
+    }
+  },
+  "raw_uds": {
+    "computed_at": 1782275601,
+    "domain_metrics": {},
+    "phases": {
+      "delivery": {
+        "duration_secs": 0,
+        "tool_call_count": 4
+      }
+    },
+    "universal": {
+      "agent_hotspot_count": 0,
+      "bash_for_search_count": 0,
+      "cold_restart_events": 0,
+      "context_load_before_first_write_kb": 2.0,
+      "coordinator_respawn_count": 0,
+      "edit_bloat_ratio": 0.0,
+      "edit_bloat_total_kb": 0.0,
+      "follow_up_issues_created": 0,
+      "friction_hotspot_count": 0,
+      "knowledge_entries_stored": 0,
+      "parallel_call_rate": 1.0,
+      "permission_friction_events": 1,
+      "post_completion_work_pct": 0.0,
+      "scope_hotspot_count": 0,
+      "search_miss_rate": 0.0,
+      "session_count": 1,
+      "session_hotspot_count": 0,
+      "sleep_workaround_count": 0,
+      "total_context_loaded_kb": 3.5,
+      "total_duration_secs": 0,
+      "total_tool_calls": 4
+    }
+  },
+  "run_token": "nan-021-parity-session-0001",
+  "universal_table": [
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.total_tool_calls",
+      "https": 4,
+      "uds": 4
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": true,
+      "field": "universal.total_duration_secs",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.session_count",
+      "https": 1,
+      "uds": 1
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.search_miss_rate",
+      "https": 0,
+      "uds": 0.0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.edit_bloat_total_kb",
+      "https": 0,
+      "uds": 0.0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.edit_bloat_ratio",
+      "https": 0,
+      "uds": 0.0
+    },
+    {
+      "at_risk": true,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.permission_friction_events",
+      "https": 1,
+      "uds": 1
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.bash_for_search_count",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": true,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.cold_restart_events",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": true,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.coordinator_respawn_count",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.parallel_call_rate",
+      "https": 1,
+      "uds": 1.0
+    },
+    {
+      "at_risk": true,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.context_load_before_first_write_kb",
+      "https": 2,
+      "uds": 2.0
+    },
+    {
+      "at_risk": true,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.total_context_loaded_kb",
+      "https": 3.5,
+      "uds": 3.5
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.post_completion_work_pct",
+      "https": 0,
+      "uds": 0.0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.follow_up_issues_created",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.knowledge_entries_stored",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.sleep_workaround_count",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.agent_hotspot_count",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.friction_hotspot_count",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.session_hotspot_count",
+      "https": 0,
+      "uds": 0
+    },
+    {
+      "at_risk": false,
+      "equal": true,
+      "excluded": false,
+      "field": "universal.scope_hotspot_count",
+      "https": 0,
+      "uds": 0
+    }
+  ]
+}

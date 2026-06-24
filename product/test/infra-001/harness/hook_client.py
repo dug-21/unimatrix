@@ -304,3 +304,158 @@ class UnimatrixHookClient:
             },
             timeout=timeout,
         )
+
+    # -- Live-wire HookRequest methods (nan-021 C3) ------------------------
+    #
+    # The 5 typed methods above predate the current `unimatrix_engine::wire`
+    # `HookRequest` enum and emit `type` tags (`SessionStart`/`PostToolUse`/…) the
+    # daemon's `#[serde(tag="type")]` router no longer has variants for — a live
+    # daemon answers those frames with `HookResponse::Error{invalid request}` and
+    # records NOTHING. The methods below speak the ACTUAL wire enum
+    # (`SessionRegister` / `SessionClose` / `RecordEvent`) so observations land
+    # durably and attribute through the session registry. They EXTEND this client
+    # (no new transport/framing/socket path — same `_request` / length-prefix
+    # framing) so the C3 UDS leg can drive real attributed observations (FR-5).
+    #
+    # CYCLE_START_EVENT / CYCLE_STOP_EVENT mirror `infra::validation` constants
+    # ("cycle_start"/"cycle_stop"); a `cycle_start` RecordEvent declares the cycle
+    # (set_feature_force → FeatureSource::Declared) AND records the cycle_events row
+    # that `context_cycle_review`'s primary (col-024) path reads.
+
+    def session_register(
+        self,
+        session_id: str,
+        *,
+        cwd: str = "",
+        agent_role: str | None = None,
+        feature: str | None = None,
+        timeout: float | None = None,
+    ) -> HookResponse:
+        """Send SessionRegister (the live wire variant). Registers the session in
+        the daemon's SessionRegistry with an optional declared feature cycle."""
+        return self._request(
+            {
+                "type": "SessionRegister",
+                "session_id": session_id,
+                "cwd": cwd,
+                "agent_role": agent_role,
+                "feature": feature,
+            },
+            timeout=timeout,
+        )
+
+    def session_close(
+        self,
+        session_id: str,
+        *,
+        outcome: str | None = None,
+        duration_secs: int = 0,
+        timeout: float | None = None,
+    ) -> HookResponse:
+        """Send SessionClose (the live wire variant)."""
+        return self._request(
+            {
+                "type": "SessionClose",
+                "session_id": session_id,
+                "outcome": outcome,
+                "duration_secs": duration_secs,
+            },
+            timeout=timeout,
+        )
+
+    def record_event(
+        self,
+        session_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        *,
+        timestamp: int | None = None,
+        topic_signal: str | None = None,
+        timeout: float | None = None,
+    ) -> HookResponse:
+        """Send a single RecordEvent (the live wire variant). The flattened
+        `ImplantEvent` carries `event_type` + `payload`; the daemon turns it into a
+        durable ObservationRow (or a cycle_events row for `cycle_*`)."""
+        event: dict[str, Any] = {
+            "event_type": event_type,
+            "session_id": session_id,
+            "timestamp": timestamp if timestamp is not None else int(time.time()),
+            "payload": payload,
+        }
+        if topic_signal is not None:
+            event["topic_signal"] = topic_signal
+        # RecordEvent #[serde(flatten)]s ImplantEvent — the event fields sit at the
+        # top level beside the `type` tag.
+        request = {"type": "RecordEvent", **event}
+        return self._request(request, timeout=timeout)
+
+    def record_cycle_start(
+        self,
+        session_id: str,
+        feature_cycle: str,
+        *,
+        phase: str | None = None,
+        timeout: float | None = None,
+    ) -> HookResponse:
+        """RecordEvent(`cycle_start`) — declares the cycle (Declared attribution)
+        and writes the cycle_events row the review primary path reads."""
+        payload: dict[str, Any] = {"feature_cycle": feature_cycle}
+        if phase is not None:
+            payload["next_phase"] = phase
+        return self.record_event(
+            session_id, "cycle_start", payload, timeout=timeout
+        )
+
+    def record_cycle_stop(
+        self,
+        session_id: str,
+        feature_cycle: str,
+        *,
+        timeout: float | None = None,
+    ) -> HookResponse:
+        """RecordEvent(`cycle_stop`) — closes the cycle declaration."""
+        return self.record_event(
+            session_id, "cycle_stop", {"feature_cycle": feature_cycle}, timeout=timeout
+        )
+
+    def record_pre_tool_use(
+        self,
+        session_id: str,
+        tool: str,
+        *,
+        tool_input: dict[str, Any] | None = None,
+        timeout: float | None = None,
+    ) -> HookResponse:
+        """RecordEvent(`PreToolUse`) — the event `UniversalMetrics.total_tool_calls`
+        counts (metrics.rs: total_tool_calls = count of PreToolUse). A real tool call
+        fires Pre THEN Post; the Pre is what increments the tool-call total."""
+        payload: dict[str, Any] = {"tool_name": tool}
+        if tool_input is not None:
+            payload["tool_input"] = tool_input
+        return self.record_event(
+            session_id, "PreToolUse", payload, timeout=timeout
+        )
+
+    def record_post_tool_use(
+        self,
+        session_id: str,
+        tool: str,
+        *,
+        response_size: int = 0,
+        response_snippet: str = "",
+        tool_input: dict[str, Any] | None = None,
+        timeout: float | None = None,
+    ) -> HookResponse:
+        """RecordEvent(`PostToolUse`) — records one observation row. `tool_name` +
+        the legacy `response_size`/`response_snippet` payload keys are the fields
+        `extract_observation_fields` / `extract_response_fields` consume."""
+        payload: dict[str, Any] = {
+            "tool_name": tool,
+            "response_size": response_size,
+            "response_snippet": response_snippet,
+        }
+        if tool_input is not None:
+            payload["tool_input"] = tool_input
+        return self.record_event(
+            session_id, "PostToolUse", payload, timeout=timeout
+        )

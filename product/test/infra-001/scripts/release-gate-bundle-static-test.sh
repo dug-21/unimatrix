@@ -184,15 +184,43 @@ test_setup_node_ordering() {
 test_setup_node_ordering
 
 echo "== R-15 no new smoke script; round-trip lives in the extended smoke (static) =="
+# KNOWN-AND-PERMITTED smoke scripts — the closed allow-list this gate enforces.
+# The R-15 intent is "no FORKED parallel smoke is silently added"; it is NOT
+# "exactly one smoke exists" — #767 docker-embed-readiness-smoke.sh has shipped
+# alongside #783 docker-http-posture-smoke.sh since before nan-020. The original
+# `-eq 1` assertion was wrong-scoped and FAILED on clean HEAD (counted 2). It is
+# re-scoped to an explicit allow-list: every smoke on disk must be a known one,
+# AND every known one must be present. A NEW *smoke*.sh not on this list (a fork)
+# goes RED; a known smoke vanishing goes RED. nan-021's cloud-cycle-lib.sh is a
+# SOURCED library (not a *smoke*.sh) so it does not — and must not — trip this.
+KNOWN_SMOKE_SCRIPTS=(
+  docker-http-posture-smoke.sh   # #783 — the HTTP-posture smoke (Gates 1–8)
+  docker-embed-readiness-smoke.sh # #767 — first-boot embedding-readiness smoke
+)
 test_no_new_smoke_script() {
-  # Gates 5–7 live inside docker-http-posture-smoke.sh — there must be no second
-  # *smoke* script. (Fixtures + the gate-logic tests are permitted additions.)
-  local n
-  n="$(ls "$SCRIPT_DIR"/*smoke*.sh 2>/dev/null | grep -v 'stub-smoke.sh' | wc -l | tr -d ' ')"
-  if [ "$n" -eq 1 ]; then
-    pass "test_no_new_smoke_script (only docker-http-posture-smoke.sh)"
+  # Enumerate the *smoke* scripts on disk (excluding the stub fixture), then assert
+  # the on-disk set EQUALS the known allow-list exactly — neither a fork addition
+  # nor a silent removal passes.
+  local on_disk known unknown missing f base
+  on_disk="$(ls "$SCRIPT_DIR"/*smoke*.sh 2>/dev/null | grep -v 'stub-smoke.sh' \
+             | xargs -r -n1 basename | sort)"
+  known="$(printf '%s\n' "${KNOWN_SMOKE_SCRIPTS[@]}" | sort)"
+
+  unknown=""
+  for f in $on_disk; do
+    printf '%s\n' "$known" | grep -qxF "$f" || unknown="${unknown:+$unknown }$f"
+  done
+  missing=""
+  for base in "${KNOWN_SMOKE_SCRIPTS[@]}"; do
+    [ -f "$SCRIPT_DIR/$base" ] || missing="${missing:+$missing }$base"
+  done
+
+  if [ -n "$unknown" ]; then
+    oops "test_no_new_smoke_script" "FORK smell — unknown smoke script(s) added: $unknown (extend an existing smoke or add to KNOWN_SMOKE_SCRIPTS with rationale)"
+  elif [ -n "$missing" ]; then
+    oops "test_no_new_smoke_script" "known smoke script(s) missing: $missing"
   else
-    oops "test_no_new_smoke_script" "expected exactly 1 smoke script, found $n"
+    pass "test_no_new_smoke_script (on-disk smokes match the known allow-list: ${KNOWN_SMOKE_SCRIPTS[*]})"
   fi
 }
 test_no_new_smoke_script

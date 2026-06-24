@@ -1,0 +1,29 @@
+[783-smoke] using prebuilt image: unimatrix:783-smoke
+Error retrieving credentials: Post "http://localhost:12049/docker-credentials": dial tcp [::1]:12049: connect: connection refused
+EOF
+[783-smoke] boot 1: clean docker run (no UNIMATRIX_HTTP_ENABLED override) ...
+[783-smoke] daemon logged 'HTTP transport active' => image boots HTTP-ON by default. PASS gate 1
+[783-smoke] path-hash data dir: /data/.unimatrix/bd47413b5c03dfc6
+[783-smoke] registering slug 'arch-research' ...
+registered project 'arch-research' at /data/.unimatrix/arch-research; routing intent written. Restart to apply.
+[783-smoke] POST SessionRegister -> https://localhost:18443/v1/arch-research/observe (per-slug funnel) ...
+[783-smoke] per-slug observe route returned 204 => slug IS routed over HTTP. PASS gate 2
+[783-smoke] per-slug store present at /data/.unimatrix/arch-research/unimatrix.db. PASS gate 3
+[783-smoke] per-slug store grew (368 -> 384) and hash store unchanged (412) => write landed correctly. PASS gate 4 (AC-05)
+[783-smoke] client-bundle emitted a unimatrix-bundle: blob. PASS gate 5
+[783-smoke] bundle observe_url is well-formed (no placeholder, parseable). PASS gate 5 guard
+[783-smoke] hermetic sandbox at /var/tmp/tmp.n7KQrAVXZY (isolated HOME + throwaway --project-dir)
+[783-smoke] init --bundle attached against the booted image (hermetic HOME). PASS gate 6
+[783-smoke] credstore present at mode 0600 (projectHash 8760d55cf13be1f7) before any bridge spawn. PASS gate 6 readiness
+[783-smoke] bundle-path observe landed (store 384 -> 400). PASS gate 7
+[783-smoke] nan-021 C2 inputs present — driving the cloud cycle through the bridge (gate 8) ...
+[783-smoke] projectHash read back as 8760d55cf13be1f7 (credstore present)
+[783-smoke] cycle driven THROUGH the bridge (start -> tools -> stop). PASS gate 8a
+[783-smoke] drove the C3-canonical cycle over pinned /observe (11 frames, 4 PreToolUse => total_tool_calls, 3 PostToolUse observes, phase 'delivery'). PASS gate 8 hooks
+[783-smoke] bridge carried it: SSE Accept sent, text/event-stream parsed, Mcp-Session-Id b699fccf-7012-4d48-a8d1-9ca748d6e218 replayed byte-stable. PASS (FR-9/AC-02)
+[783-smoke] negative control: JSON-only Accept did not yield a parseable JSON MCP reply (ct='none') => REAL SSE required. PASS (R-04)
+[783-smoke] durability barrier released (HTTPS): store size 688 stable (expected_observes>=3). PASS
+[783-smoke] context_cycle_review over the bridge yielded a MetricVector. PASS gate 8c
+[783-smoke] emitted MetricVector(HTTPS)+RUN_TOKEN to /var/tmp/claude-1000/-workspaces-unimatrix/f92ca5e1-9df8-4597-a233-fa8a1d7197a9/scratchpad/https_only/sandbox/https_metric_vector.json. PASS gate 8 (cloud cycle)
+[783-smoke] ALL GATES PASSED — clean image boots HTTP-on and routes the registered slug over HTTPS.
+HTTPS_LEG_DONE rc=0

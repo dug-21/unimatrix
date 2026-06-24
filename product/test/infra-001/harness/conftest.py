@@ -8,7 +8,11 @@ workspace fallback, plus a session-scoped binary version preflight.
 import logging
 import os
 import re
+import shutil
+import signal
 import subprocess
+import threading
+import time
 import tomllib
 
 import pytest
@@ -22,6 +26,12 @@ logger = logging.getLogger("unimatrix.fixtures")
 BINARY_PATH: str | None = None
 
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+
+# daemon_server (nan-021 C3): how long to poll for the UDS + hook sockets to appear
+# after `serve --foreground` is spawned, and how long to wait for graceful SIGTERM exit.
+_DAEMON_SOCKET_DEADLINE_S = 15.0
+_DAEMON_SOCKET_POLL_S = 0.25
+_DAEMON_STOP_TIMEOUT_S = 15.0
 
 
 def _resolve_binary() -> str:
@@ -267,3 +277,186 @@ def admin_server(server):
     """
     server._admin_agent_id = "human"
     return server
+
+
+# ---------------------------------------------------------------------------
+# daemon_server (nan-021 C3 / entry #1928) — a LIVE UDS+hook daemon
+# ---------------------------------------------------------------------------
+#
+# The existing `server` fixture spawns `serve --stdio` and opens NO UDS sockets,
+# so it cannot back UnimatrixUdsClient / UnimatrixHookClient. The C3 UDS-leg
+# baseline drives the parity workload over the real local transports, which need
+# a foreground daemon binding both `unimatrix-mcp.sock` (MCP) and `unimatrix.sock`
+# (hook IPC). This fixture is the documented daemon tier (#1928): spawn
+# `serve --foreground`, poll for both sockets, yield their paths + the per-slug
+# store DIR (the durability-barrier sampling target), then SIGTERM on teardown.
+#
+# EXTENDS the conftest fixture family — it does NOT fork a new spawn/transport
+# path; UnimatrixUdsClient / UnimatrixHookClient are the existing clients that
+# connect to the sockets this fixture surfaces (AC-07).
+
+
+def _drain_stream(stream, sink: list[str], lock: threading.Lock) -> None:
+    """Continuously drain a child stream into `sink` (capture-first; #5266/#5267)."""
+    try:
+        for line_bytes in iter(stream.readline, b""):
+            try:
+                line = line_bytes.decode("utf-8", errors="replace").rstrip()
+            except Exception:
+                line = repr(line_bytes)
+            with lock:
+                sink.append(line)
+    except Exception:
+        pass
+
+
+@pytest.fixture(scope="function")
+def daemon_server(tmp_path):
+    """Live local daemon over UDS + hook IPC (the C3 UDS-leg substrate).
+
+    Spawns ``unimatrix --project-dir <tmp> serve --foreground`` so the daemon
+    binds the real MCP UDS socket and hook socket under an ISOLATED per-test
+    data dir (the project hash derives from the git-less tmp project dir, so no
+    real ``~/.unimatrix`` state is touched). Yields a dict:
+
+        {
+            "mcp_socket_path": <…/unimatrix-mcp.sock>,   # UnimatrixUdsClient target
+            "socket_path":     <…/unimatrix.sock>,       # UnimatrixHookClient target
+            "store_dir":       <data_dir>,               # durability-barrier sample dir
+            "project_dir":     <tmp_path>,
+            "pid":             <int>,
+        }
+
+    Teardown SIGTERMs the daemon, waits up to 15 s, SIGKILLs on timeout, dumps
+    captured stderr on a non-clean exit, and removes the isolated data dir.
+    """
+    binary = get_binary_path()
+    project_dir = tmp_path / "project"
+    project_dir.mkdir(parents=True, exist_ok=True)
+
+    env = os.environ.copy()
+    env.setdefault("RUST_LOG", "info")
+
+    stderr_lines: list[str] = []
+    stderr_lock = threading.Lock()
+
+    proc = subprocess.Popen(
+        [binary, "--project-dir", str(project_dir), "serve", "--foreground"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    drain = threading.Thread(
+        target=_drain_stream, args=(proc.stderr, stderr_lines, stderr_lock), daemon=True
+    )
+    drain.start()
+
+    def _stderr_tail(n: int = 20) -> str:
+        with stderr_lock:
+            return "\n".join(stderr_lines[-n:])
+
+    # The daemon derives its data dir from the project hash; we discover the data
+    # dir (and both socket paths) by polling for the MCP socket to appear. The
+    # hook socket is a sibling in the same data dir.
+    mcp_socket: Path | None = None
+    hook_socket: Path | None = None
+    store_dir: Path | None = None
+    deadline = time.monotonic() + _DAEMON_SOCKET_DEADLINE_S
+
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            _kill(proc)
+            pytest.fail(
+                f"daemon exited (code {proc.returncode}) before binding sockets.\n"
+                f"--- daemon stderr ---\n{_stderr_tail()}"
+            )
+        found = _find_daemon_data_dir(project_dir, binary, env)
+        if found is not None:
+            data_dir, mcp_socket, hook_socket = found
+            if mcp_socket.exists() and hook_socket.exists():
+                store_dir = data_dir
+                break
+        time.sleep(_DAEMON_SOCKET_POLL_S)
+
+    if mcp_socket is None or store_dir is None:
+        _kill(proc)
+        pytest.fail(
+            f"daemon sockets did not appear within {_DAEMON_SOCKET_DEADLINE_S}s.\n"
+            f"--- daemon stderr ---\n{_stderr_tail()}"
+        )
+
+    try:
+        yield {
+            "mcp_socket_path": str(mcp_socket),
+            "socket_path": str(hook_socket),
+            "store_dir": str(store_dir),
+            "project_dir": str(project_dir),
+            "pid": proc.pid,
+        }
+    finally:
+        rc = _stop_daemon(proc)
+        if rc not in (0, -signal.SIGTERM):
+            logger.warning(
+                "daemon teardown non-clean exit (rc=%s); stderr tail:\n%s",
+                rc,
+                _stderr_tail(),
+            )
+        # Remove the isolated data dir so per-test daemons never accumulate state.
+        if store_dir is not None:
+            shutil.rmtree(store_dir, ignore_errors=True)
+
+
+def _project_hash(project_dir: Path) -> str:
+    """Mirror unimatrix-engine project hashing: first 16 hex of SHA-256 over the
+    canonical project-root path string (project.rs::compute_project_hash). The
+    tmp project dir is git-less, so detect_project_root resolves it to itself —
+    we canonicalize identically (realpath) so the hash matches the daemon's."""
+    import hashlib
+
+    canonical = os.path.realpath(str(project_dir))
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return digest[:16]
+
+
+def _find_daemon_data_dir(
+    project_dir: Path, binary: str, env: dict
+) -> tuple[Path, Path, Path] | None:
+    """Resolve the daemon's data dir for `project_dir` and return
+    (data_dir, mcp_socket, hook_socket), or None if not yet resolvable.
+
+    The data dir is ``{base}/{hash16}`` (project.rs::ensure_data_directory) where
+    ``hash16`` is the deterministic project hash — computed here identically to
+    the Rust side, so the lookup is exact and parallel-safe (no newest-socket
+    heuristic). The base is ``$HOME/.unimatrix`` (production default; no base-dir
+    override exists in the shipped binary, so we honor it exactly — NFR-1).
+    """
+    home = Path(env.get("HOME") or os.path.expanduser("~"))
+    data_dir = home / ".unimatrix" / _project_hash(project_dir)
+    if not data_dir.is_dir():
+        return None
+    return data_dir, data_dir / "unimatrix-mcp.sock", data_dir / "unimatrix.sock"
+
+
+def _kill(proc: subprocess.Popen) -> None:
+    """Best-effort hard kill of a daemon process."""
+    try:
+        proc.kill()
+        proc.wait(timeout=5)
+    except Exception:
+        pass
+
+
+def _stop_daemon(proc: subprocess.Popen) -> int | None:
+    """SIGTERM the daemon, wait up to the stop timeout, SIGKILL on overrun."""
+    if proc.poll() is not None:
+        return proc.returncode
+    try:
+        proc.send_signal(signal.SIGTERM)
+    except Exception:
+        pass
+    try:
+        return proc.wait(timeout=_DAEMON_STOP_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        _kill(proc)
+        return proc.returncode

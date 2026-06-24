@@ -237,6 +237,42 @@ bundle_attach_gates() {
   fi
   log "init --bundle attached against the booted image (hermetic HOME). PASS gate 6"
 
+  # ---- GATE 6 READINESS (nan-021 C1): credstore materialized, mode 0600, under the hermetic HOME ----
+  # The C1->C2 boundary the bridge spawn waits on (ADR-002 #5294 "credstore present" gate; c1 test plan
+  # test_c1_gate_remote_json_present_mode_0600). init's rc==0 alone does NOT prove the credstore file
+  # actually landed at the expected path/mode — credstore.js can null-out on no-homedir. This gate makes
+  # the standup VERIFIABLY produce the artifact the Wave-2 cloud_cycle_gates() reads back.
+  #
+  # projectHash is READ BACK by listing the single dir under $SANDBOX/home/.unimatrix/ — NEVER recomputed,
+  # NO hashing primitive in this path (OQ1/R-11; init.js writes exactly one <projectHash>/ here, a 16-hex
+  # SHA-256). If a future init.js change writes zero or >1 dirs, this read-back fails LOUD (contract drift
+  # surfaced, not silently miscomputed). All inspection is host-side under the hermetic sandbox (R-14) —
+  # no busybox/docker, no real ~/.unimatrix touched.
+  #
+  # REAL-PATH ONLY (same real-vs-stub split as the Gate-5 guard at L193): mode-0600 + single-projectHash
+  # are properties of the REAL credstore.js write; the SMOKE_INIT_CMD stub drives the exit-code truth table
+  # (it writes a fixed `stub-hash` dir at the umask default, not 0600) — asserting them on the stub would
+  # spuriously fail the C5 logic-test happy path. The stub's credstore-absence is already covered at Gate 7
+  # (STUB_INIT_WRITE_CRED=0 → "observe did not land"). On the live tag run this gate always runs.
+  if [ -z "${SMOKE_INIT_CMD:-}" ]; then
+    local cred_root="$SANDBOX/home/.unimatrix" project_hash hash_count cred_file cred_mode
+    [ -d "$cred_root" ] \
+      || fail "credstore root $cred_root absent after init --bundle — hermetic HOME not populated (R-14/C1->C2)"
+    hash_count="$(find "$cred_root" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+    [ "$hash_count" = "1" ] \
+      || fail "projectHash read-back ambiguous: expected exactly 1 dir under $cred_root, found $hash_count (init.js contract drift)"
+    project_hash="$(find "$cred_root" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)"
+    cred_file="$cred_root/$project_hash/remote.json"
+    [ -f "$cred_file" ] \
+      || fail "credstore $cred_file absent after init --bundle — bridge cannot attach (C1->C2 boundary)"
+    # Mode 0600 is the trust boundary (credstore.js STORE_MODE 0o600): the bearer must not be world/group
+    # readable. stat -c works on GNU coreutils (CI ubuntu lanes); -f %Lp is the BSD/macOS dev-box fallback.
+    cred_mode="$(stat -c '%a' "$cred_file" 2>/dev/null || stat -f '%Lp' "$cred_file" 2>/dev/null)"
+    [ "$cred_mode" = "600" ] \
+      || fail "credstore $cred_file mode is $cred_mode, expected 600 (bearer must be owner-only — R-14)"
+    log "credstore present at mode 0600 (projectHash $project_hash) before any bridge spawn. PASS gate 6 readiness"
+  fi
+
   # ---- GATE 7: fire one hook event through the wired client; assert observe + store grow ----
   # Fresh BEFORE sample of the per-slug store, taken NOW (after Gates 1–4 already wrote), so
   # the delta attributable to THIS hook fire is isolated (R-07 sc.4 — fresh-write evidence).
@@ -294,6 +330,15 @@ bundle_attach_gates() {
   log "bundle-path observe landed (store $BUNDLE_BEFORE -> $BUNDLE_AFTER). PASS gate 7"
 }
 # === end nan-020 seam ======================================================
+
+# === nan-021 C2: cloud cycle gate (sourced) ===============================
+# The bridge-driven Gate 8 (cloud_cycle_gates) lives in cloud-cycle-lib.sh to
+# keep this file <=500 lines (workspace rule). Sourced here so it runs in the
+# smoke's scope (uses log/fail/store_size/vol + $SLUG/$SLUG_DIR/$TMP/$TOKEN).
+# Like release-gate-lib.sh, it only DEFINES functions on source.
+# shellcheck source=product/test/infra-001/scripts/cloud-cycle-lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/cloud-cycle-lib.sh"
+# === end nan-021 C2 sourced seam ==========================================
 
 # Sourced-guard (#5192): when this file is SOURCED (the pre-merge gate-logic
 # test sources it to call bundle_attach_gates against stubs), stop here — do
@@ -435,5 +480,15 @@ log "per-slug store grew ($SLUG_BEFORE -> $SLUG_AFTER) and hash store unchanged 
 # Gates 5–7 (documented bundle attach) — defined in the seam section above as
 # bundle_attach_gates(); reuses the SAME container/volume/slug/port/cert as Gates 1–4.
 bundle_attach_gates
+
+# Gate 8 (nan-021 C2 cloud cycle) — runs ONLY when the pytest orchestrator wired
+# the C2 inputs (MANIFEST_PATH/RUN_TOKEN/HTTPS_VECTOR_OUT). The standalone #783
+# smoke (no nan-021 env) skips it so its contract is unchanged (append-only).
+if [ -n "${MANIFEST_PATH:-}" ] && [ -n "${RUN_TOKEN:-}" ] && [ -n "${HTTPS_VECTOR_OUT:-}" ]; then
+  log "nan-021 C2 inputs present — driving the cloud cycle through the bridge (gate 8) ..."
+  cloud_cycle_gates
+else
+  log "nan-021 C2 inputs absent — skipping gate 8 (standalone #783 posture smoke)."
+fi
 
 log "ALL GATES PASSED — clean image boots HTTP-on and routes the registered slug over HTTPS."
