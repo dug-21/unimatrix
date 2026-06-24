@@ -11,6 +11,10 @@ const INTERNAL_ERROR = -32603;
 // 404 "session not found" so lifecycle.js can self-heal (#830, design-review C1).
 // Never reaches the client: lifecycle re-inits + retries before surfacing.
 const SESSION_NOT_FOUND = -32099;
+// Bridge-internal sentinel for a silent (hung-socket) eviction: the transport
+// timed out (#839). Heals through the same single-flight re-init as 404, then
+// normalizes to a generic error if exhausted — never reaches the client.
+const TRANSPORT_TIMEOUT = -32098;
 
 function jsonRpcError(id, code, message) {
   return { jsonrpc: "2.0", id: id === undefined ? null : id, error: { code, message } };
@@ -97,4 +101,5 @@ module.exports = {
   isSessionNotFound,
   INTERNAL_ERROR,
   SESSION_NOT_FOUND,
+  TRANSPORT_TIMEOUT,
 };

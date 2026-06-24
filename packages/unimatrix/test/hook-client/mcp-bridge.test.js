@@ -13,6 +13,8 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
+const http = require("http");
+const { startSilentTcpServer } = require("../helpers/stub-server.js");
 const { StdioFramer } = require("../../lib/hook-client/mcp-bridge/stdio-frame.js");
 const { SseParser } = require("../../lib/hook-client/mcp-bridge/sse-parse.js");
 const { dispatchResponse, correlateById, isSessionNotFound, SESSION_NOT_FOUND } = require("../../lib/hook-client/mcp-bridge/dispatch.js");
@@ -524,6 +526,128 @@ describe("session self-heal on 404 (#830)", () => {
     assert.strictEqual(sess.initCount, 1, "no re-init triggered for a 404 on initialize");
     assert.ok(out.error);
     assert.notStrictEqual(out.error.code, SESSION_NOT_FOUND);
+  });
+});
+
+// ── transport timeout + silent-eviction self-heal (#839) ─────────────────────
+
+describe("transport timeout self-heal (#839)", () => {
+  // (a) Connect/TLS-handshake stall fails fast within the configured deadline,
+  // not forever. TLS-stall trick (#4768): an https-shaped request to a silent
+  // plain-TCP listener connects but secureConnect never fires, so the connect
+  // timer is the only thing that can settle the Promise.
+  it("test_timeout_connectStall_failsFastWithinDeadline", async () => {
+    const silent = await startSilentTcpServer();
+    try {
+      const s = HttpSession.create({
+        mcpUrl: "https://127.0.0.1:" + silent.port + "/v1/slug",
+        token: "TKN", pinnedFp: "sha256:" + "a".repeat(64),
+        connectMs: 80, idleMs: 5000,
+      });
+      // Real socket to the silent listener; secureConnect never fires.
+      s.requester = (opts) => http.request({ host: "127.0.0.1", port: silent.port, method: opts.method });
+      const t0 = Date.now();
+      await assert.rejects(
+        s.request({ method: "tools/call", id: 1 }, {}),
+        (e) => e && e.code === "ETIMEDOUT"
+      );
+      assert.ok(Date.now() - t0 < 4000, "settled near the 80ms deadline, not at test-runner timeout");
+    } finally {
+      await silent.close();
+    }
+  });
+
+  // _send maps an ETIMEDOUT throw to the distinct TRANSPORT_TIMEOUT sentinel so
+  // handle() can heal it (F2) — and normalizes it on the surface (never leaks).
+  it("test_timeout_mapsToTransportTimeoutSentinel_normalizedOnExhaustion", async () => {
+    // No initialize captured -> heal cannot fire -> sentinel must be normalized.
+    const sess = { sent: [], sessionId: null, protocolVersion: null,
+      request: () => Promise.reject(Object.assign(new Error("x"), { code: "ETIMEDOUT" })) };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    const out = await lc.handle({ jsonrpc: "2.0", id: 7, method: "tools/call", params: {} });
+    assert.strictEqual(out.id, 7);
+    assert.ok(out.error);
+    assert.notStrictEqual(out.error.code, -32098, "internal TRANSPORT_TIMEOUT sentinel never reaches client");
+    assert.match(out.error.message, /timed out/);
+  });
+
+  // (b) A transport timeout on the first call triggers EXACTLY ONE transparent
+  // re-init through the existing single-flight; the retry under the new session
+  // succeeds. The re-init POST shares request(), so it cannot re-hang.
+  it("test_timeout_singleTransparentReinitThenSuccess", async () => {
+    let initCount = 0, firstCall = true;
+    const sess = {
+      sent: [], sessionId: null, protocolVersion: null,
+      request(body, opts) {
+        sess.sent.push({ opts });
+        if (opts && opts.isInitialize) {
+          initCount += 1; sess.sessionId = "SID-" + initCount;
+          return Promise.resolve({ status: 200, contentType: "application/json",
+            res: bodyStream(Buffer.from(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: { protocolVersion: "2025-06-18" } }))) });
+        }
+        if (firstCall) { firstCall = false; return Promise.reject(Object.assign(new Error("stall"), { code: "ETIMEDOUT" })); }
+        return Promise.resolve({ status: 200, contentType: "application/json",
+          res: bodyStream(Buffer.from(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: { ok: true } }))) });
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    assert.strictEqual(initCount, 1);
+    const out = await lc.handle({ jsonrpc: "2.0", id: 9, method: "tools/call", params: {} });
+    assert.deepStrictEqual(out.result, { ok: true }, "retry succeeded after one re-init");
+    assert.strictEqual(initCount, 2, "exactly one transparent re-init on a transport timeout");
+  });
+
+  // (c) When the re-init ALSO times out, surface a bounded error with no loop:
+  // request() bounds the re-init POST (same timeout), newId stays null -> false.
+  it("test_timeout_reinitAlsoStalls_boundedError_noLoop", async () => {
+    let initCount = 0;
+    const sess = {
+      sent: [], sessionId: "OLD", protocolVersion: null,
+      request(body, opts) {
+        sess.sent.push({ opts });
+        if (opts && opts.isInitialize) {
+          initCount += 1;
+          if (initCount === 1) { // first handshake ok
+            sess.sessionId = "SID-1";
+            return Promise.resolve({ status: 200, contentType: "application/json",
+              res: bodyStream(Buffer.from(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: {} }))) });
+          }
+          return Promise.reject(Object.assign(new Error("stall"), { code: "ETIMEDOUT" })); // re-init stalls
+        }
+        return Promise.reject(Object.assign(new Error("stall"), { code: "ETIMEDOUT" })); // call stalls
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    const out = await lc.handle({ jsonrpc: "2.0", id: 13, method: "tools/call", params: {} });
+    assert.strictEqual(out.id, 13);
+    assert.ok(out.error, "bounded error surfaced");
+    assert.notStrictEqual(out.error.code, -32098, "sentinel normalized, never leaked");
+    assert.strictEqual(initCount, 2, "exactly one re-init attempt; no loop/storm");
+  });
+
+  // The widened heal trigger is NARROW: it must NOT fire on auth/5xx errors.
+  it("test_timeout_doesNotHealOnGenericTransportError", async () => {
+    let initCount = 0, calls = 0;
+    const sess = {
+      sent: [], sessionId: null, protocolVersion: null,
+      request(body, opts) {
+        if (opts && opts.isInitialize) {
+          initCount += 1; sess.sessionId = "SID-1";
+          return Promise.resolve({ status: 200, contentType: "application/json",
+            res: bodyStream(Buffer.from(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: {} }))) });
+        }
+        calls += 1;
+        return Promise.reject(Object.assign(new Error("refused"), { code: "ECONNREFUSED" }));
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    const out = await lc.handle({ jsonrpc: "2.0", id: 5, method: "tools/call", params: {} });
+    assert.ok(out.error);
+    assert.strictEqual(initCount, 1, "no re-init on a non-timeout transport fault (no storm)");
+    assert.strictEqual(calls, 1, "the call was not retried");
   });
 });
 

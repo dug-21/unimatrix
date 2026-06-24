@@ -12,18 +12,13 @@ const { applyCertPin, verifyPeerFingerprint } = require("../cert-pin.js");
 // rmcp 1.7.0 wire constants (OVERVIEW "VERIFIED WIRE VALUES"; CONFIRM LIVE).
 const SESSION_HEADER = "Mcp-Session-Id";
 const SESSION_HEADER_LC = "mcp-session-id";
-const ACCEPT_VALUE = "application/json, text/event-stream";
-const CONTENT_TYPE_REQUEST = "application/json";
 const BODY_LIMIT_BYTES = 1048576;
+// Generous defaults (ms) so slow-but-healthy calls (large embeddings) are never
+// aborted; the tighter connect/TLS-handshake deadline catches the half-open
+// socket (agent:false → secureConnect can hang; socket `timeout` misses it).
 
 function stripIPv6Brackets(h) {
   return h && h.startsWith("[") && h.endsWith("]") ? h.slice(1, -1) : h;
-}
-
-// Fail-loud exit on pin mismatch; token-free message (NFR-06).
-function failLoud(session, message) {
-  try { session.errOut("mcp-bridge: " + message + "\n"); } catch (_e) {}
-  session.exit(1);
 }
 
 class HttpSession {
@@ -31,7 +26,7 @@ class HttpSession {
     return new HttpSession(opts);
   }
 
-  constructor({ mcpUrl, token, pinnedFp, exit, errOut }) {
+  constructor({ mcpUrl, token, pinnedFp, exit, errOut, connectMs, idleMs }) {
     this.url = new URL(mcpUrl); // POSTed VERBATIM (AC-05)
     this.token = token;
     this.pinnedFp = pinnedFp;
@@ -40,13 +35,15 @@ class HttpSession {
     this.exit = exit || ((c) => process.exit(c));
     this.errOut = errOut || ((s) => process.stderr.write(s));
     this.requester = (o) => https.request(o); // injectable for tests
+    this.connectMs = connectMs || 15000;
+    this.idleMs = idleMs || 120000;
   }
 
   _headers(body, opts) {
     const headers = {
-      "Content-Type": CONTENT_TYPE_REQUEST,
+      "Content-Type": "application/json",
       "Content-Length": body.length,
-      Accept: ACCEPT_VALUE,
+      Accept: "application/json, text/event-stream",
       Authorization: "Bearer " + this.token,
     };
     if (this.sessionId !== null) headers[SESSION_HEADER] = this.sessionId;
@@ -66,6 +63,7 @@ class HttpSession {
         method,
         headers,
         agent: false, // no pool — fresh re-pinned socket per request (R-02)
+        timeout: this.idleMs, // idle on an established socket; emits "timeout" only
       },
       true,
       this.pinnedFp
@@ -75,9 +73,10 @@ class HttpSession {
   // Re-pin THIS socket on secureConnect, BEFORE any body byte. onPin() runs the
   // body flush (req.end) only on a match; mismatch → destroy + fail-loud. The
   // sole place req.end is reached — an unwritten request cannot leak the token.
-  _pinThenFlush(req, onPin, onMismatch) {
+  _pinThenFlush(req, onPin, onMismatch, onConnect) {
     req.on("socket", (s) => {
       s.once("secureConnect", () => {
+        if (onConnect) onConnect(); // clear the connect/TLS deadline (F4)
         let err;
         try {
           err = verifyPeerFingerprint(s, this.pinnedFp);
@@ -104,26 +103,39 @@ class HttpSession {
       }
       const req = this.requester(this._options("POST", this._headers(body, opts)));
       let flushed = false;
+      let settled = false; // single settle-guard (F3, vnc-039 C2 double-settle)
+      // ETIMEDOUT-coded so lifecycle.js maps it to "MCP endpoint timed out".
+      const kill = () => { try { req.destroy(Object.assign(new Error("timed out"), { code: "ETIMEDOUT" })); } catch (_e) {} };
+      // Connect/TLS-handshake deadline (F4): armed before connect, cleared in
+      // secureConnect (clearCt) — covers the half-open-socket stall the socket
+      // `timeout` option does NOT. Idle (post-connect): Node emits "timeout".
+      const ct = setTimeout(kill, this.connectMs);
+      ct.unref();
+      const clearCt = () => clearTimeout(ct);
+      const settle = (fn, v) => { if (settled) return; settled = true; clearCt(); fn(v); };
+      req.on("timeout", kill);
       this._pinThenFlush(
         req,
         () => { flushed = true; req.end(body); }, // pin OK — flush Bearer body
-        (err) => {
-          // Production: failLoud exits non-zero. Tests inject a recording exit;
-          // settle the promise (token-free) so awaiting callers do not hang.
-          failLoud(this, err.message); // token-free expected-vs-presented
-          reject(err);
-        }
+        (err) => { // fail-loud exit on pin mismatch, token-free (NFR-06); settle under injected exit
+          try { this.errOut("mcp-bridge: " + err.message + "\n"); } catch (_e) {}
+          this.exit(1);
+          settle(reject, err);
+        },
+        clearCt
       );
       req.on("response", (res) => {
         if (opts && opts.isInitialize) {
           const sid = res.headers[SESSION_HEADER_LC];
           if (sid) this.sessionId = sid; // stable for process life (R-17)
         }
-        resolve({ status: res.statusCode, contentType: res.headers["content-type"] || "", res });
+        settle(resolve, { status: res.statusCode, contentType: res.headers["content-type"] || "", res });
       });
       req.on("error", (err) => {
-        if (!flushed && this.pinnedFp) return; // mismatch already exited loud
-        reject(err);
+        // Swallow the post-pin-mismatch destroy (no body byte written), BUT never
+        // swallow a timeout reject — gate on the error code, not `flushed` (F3).
+        if (!flushed && this.pinnedFp && err.code !== "ETIMEDOUT") return;
+        settle(reject, err);
       });
     });
   }
@@ -151,8 +163,5 @@ module.exports = {
   HttpSession,
   SESSION_HEADER,
   SESSION_HEADER_LC,
-  ACCEPT_VALUE,
-  CONTENT_TYPE_REQUEST,
   BODY_LIMIT_BYTES,
-  stripIPv6Brackets,
 };

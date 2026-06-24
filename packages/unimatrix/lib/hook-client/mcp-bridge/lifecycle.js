@@ -14,9 +14,11 @@
 // call EXACTLY ONCE. Single-flight: concurrent 404s share one re-init. Any other
 // error, a failed re-init, or a second 404 propagates — no storms, no loops.
 
-const { dispatchResponse, jsonRpcError, correlateById, INTERNAL_ERROR, SESSION_NOT_FOUND } = require("./dispatch.js");
+const { dispatchResponse, jsonRpcError, correlateById, INTERNAL_ERROR, SESSION_NOT_FOUND, TRANSPORT_TIMEOUT } = require("./dispatch.js");
 
 const CLIENT_INFO_NAME = "unimatrix-mcp-bridge"; // STABLE, fixed (FR-03a/AC-12)
+// Exhausted-heal normalization: an internal sentinel never reaches the client.
+const SENTINEL_TEXT = { [SESSION_NOT_FOUND]: "MCP session lost, re-init failed", [TRANSPORT_TIMEOUT]: "MCP endpoint timed out" };
 
 class Lifecycle {
   constructor(session, deps) {
@@ -51,9 +53,8 @@ class Lifecycle {
     if (!msg || msg.id == null) return null; // notification — no response
     const m = correlateById(out, msg.id) || out[0] || jsonRpcError(msg.id, INTERNAL_ERROR, "empty response");
     // A leaked sentinel (heal exhausted) is normalized — never reaches a client.
-    return m && m.error && m.error.code === SESSION_NOT_FOUND
-      ? jsonRpcError(msg.id, INTERNAL_ERROR, "MCP session lost, re-init failed")
-      : m;
+    const why = SENTINEL_TEXT[m && m.error && m.error.code];
+    return why ? jsonRpcError(msg.id, INTERNAL_ERROR, why) : m;
   }
 
   // One request + dispatch -> jsonRpcMessage[]. Transport-class failures (already
@@ -65,8 +66,10 @@ class Lifecycle {
       resp = await this.session.request(msg, { isInitialize: isInit });
     } catch (err) {
       const id = msg && msg.id != null ? msg.id : null;
-      const why = err && err.code === "ETIMEDOUT" ? "MCP endpoint timed out" : "MCP endpoint unreachable";
-      return [jsonRpcError(id, INTERNAL_ERROR, why)];
+      // A transport TIMEOUT gets a distinct sentinel so handle() can self-heal it
+      // like a 404 (#839 F2); any other transport fault is a terminal error.
+      if (err && err.code === "ETIMEDOUT") return [jsonRpcError(id, TRANSPORT_TIMEOUT, "MCP endpoint timed out")];
+      return [jsonRpcError(id, INTERNAL_ERROR, "MCP endpoint unreachable")];
     }
     const out = await dispatchResponse(resp);
     if (isInit) {
@@ -98,17 +101,16 @@ class Lifecycle {
     this.session.sessionId = null; // discard the dead id before re-init
     await this._send(init, true); // protocolVersion re-captured inside
     const newId = this.session.sessionId;
-    if (newId == null || newId === prevId) return false; // no fresh session
-    this.errOut("mcp-bridge: re-init ok; new session\n");
-    return true;
+    return !(newId == null || newId === prevId); // fresh session id minted?
   }
 }
 
-// True when the SESSION_NOT_FOUND sentinel is the response for this id (#830).
-// `out` is always a message[] (dispatchResponse / _send both guarantee it).
+// True when a heal-triggering sentinel is the response for this id: a 404
+// eviction (#830) OR a transport timeout / silent eviction (#839) — ONLY the two
+// SENTINEL_TEXT keys, never auth/5xx (avoids re-init storms). `out` is message[].
 function lostId(out, id) {
   const m = correlateById(out, id) || out[0];
-  return !!(m && m.error && m.error.code === SESSION_NOT_FOUND);
+  return !!(m && m.error && m.error.code in SENTINEL_TEXT);
 }
 
 module.exports = { Lifecycle, CLIENT_INFO_NAME };
