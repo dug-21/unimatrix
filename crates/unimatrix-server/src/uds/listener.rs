@@ -174,12 +174,23 @@ fn enrich_topic_signal(
 ///     unstamped-window #588 remedy); the inverted forensics log fires when a
 ///     declared feature overrides a contradicting extraction.
 ///  2. extracted signal present → `('extracted')` — extraction wins only against an
-///     Inferred / absent registry now.
+///     Inferred / absent registry now. bugfix-832 (B2): the extracted value may
+///     enter `topic_signal` (the cycle-join column) ONLY when it has the canonical
+///     feature-ID shape (`looks_like_feature_id`, `{phase}-{NNN}`). A command
+///     fragment (`apt-get`, `ls-files`, `Re-add`) extracted from Bash tool text is
+///     NOT a cycle declaration and must NEVER pollute the join column when no
+///     Declared / registry feature exists — it falls through to case 3/4. A
+///     legitimate feature-ID extracted before registration is still written (the
+///     #3382/#198/#588 remedy is preserved).
 ///  3. registry fill, split by `InferredOrigin`:
 ///     `Inferred(Registered)` → `('registry-fill')`,
 ///     `Inferred(Voted)` → `('vote')` (OQ-A: the ONLY row-level 'vote' site),
 ///     `Declared` NULL-fill → `('declared')`.
-///  4. nothing → `(None, None)` — `topic_source` NULL, UNATTRIBUTED.
+///  4. nothing → `(None, None)` — `topic_source` NULL, UNATTRIBUTED. bugfix-832
+///     (Part 3, ADR-003 #3373): this branch is LOUD — it emits a structured
+///     `tracing` event so an observation that lands with no cycle attribution is
+///     never silent. No new DB read / lock / await is added (the same single
+///     `get_state` above feeds the branch); pure branch + one tracing line.
 ///
 /// This is a synchronous Mutex read (~microseconds); no await, no spawn_blocking.
 fn enrich_topic_signal_with_source(
@@ -211,11 +222,27 @@ fn enrich_topic_signal_with_source(
     }
 
     // 2. Explicit extracted signal present — extraction wins (against Inferred/absent only).
+    //
+    // bugfix-832 (B2): only a value with the canonical feature-ID shape may win into
+    // the cycle-join column here. A command fragment (`apt-get`, `ls-files`, `Re-add`)
+    // extracted from Bash tool text is NOT a cycle declaration; when no Declared /
+    // registry feature exists, it must fall through to case 3/4 rather than masquerade
+    // as cycle attribution (the silent-wrong-attribution defect). A legitimate
+    // feature-ID extracted before registration STILL wins (#3382/#198/#588 preserved).
     if let Some(ex) = extracted {
-        return (Some(ex), Some("extracted".to_string()));
+        if looks_like_feature_id(&ex) {
+            return (Some(ex), Some("extracted".to_string()));
+        }
+        // Non-feature-ID fragment: do not let it enter topic_signal. Fall through to
+        // the registry-fill / unattributed branches below with extraction discarded.
+        tracing::debug!(
+            session_id,
+            rejected_signal = %ex,
+            "enrich_topic_signal: discarded non-feature-ID extraction (bugfix-832 B2)"
+        );
     }
 
-    // 3. No extraction — registry fill, split by InferredOrigin for the F6 evidence base.
+    // 3. No usable extraction — registry fill, split by InferredOrigin for the F6 evidence base.
     match (&feat, &src) {
         (Some(f), Some(FeatureSource::Inferred(InferredOrigin::Registered))) => {
             (Some(f.clone()), Some("registry-fill".to_string()))
@@ -230,9 +257,49 @@ fn enrich_topic_signal_with_source(
         // Declared with no extraction (case 1 handled the with-extraction subcase) —
         // this is declared NULL-fill.
         (Some(f), Some(FeatureSource::Declared)) => (Some(f.clone()), Some("declared".to_string())),
-        // 4. Nothing attributed the row.
-        _ => (None, None),
+        // 4. Nothing attributed the row — LOUD per ADR-003 (#3373), bugfix-832 Part 3.
+        // No new DB read/lock/await: reuses the single `get_state` above (R-6).
+        _ => {
+            tracing::debug!(
+                session_id,
+                path = "enrich_unattributed",
+                "enrich_topic_signal: observation landed with no cycle attribution \
+                 (no stamp, no declared/registry feature, no feature-ID extraction) \
+                 (ADR-003 #3373)"
+            );
+            (None, None)
+        }
     }
+}
+
+/// True when `value` has the canonical feature-ID shape `{alpha-prefix}-{digits}`
+/// (e.g. `shd-001`, `vnc-038`, `bugfix-342`, `col-024`) — at least one hyphen-
+/// delimited segment that is entirely ASCII digits, AND at least one alphabetic
+/// segment for the prefix.
+///
+/// bugfix-832 (B2): the `extracted` heuristic (`extract_topic_signal` over Bash
+/// tool text) can yield EITHER a legitimate feature-ID extracted from text before
+/// the registry registered it (the #3382/#198/#588 unstamped-window remedy — MUST
+/// be preserved) OR a command fragment (`apt-get`, `ls-files`, `syntax-check`,
+/// `Re-add`) that is garbage in the cycle-join column. Both pass the loose
+/// `is_valid_feature_id` (all contain a hyphen), so this TIGHTER check is what
+/// distinguishes them: a feature-ID always carries a numeric component
+/// (`{phase}-{NNN}`), command fragments never do. Pure, synchronous, no I/O —
+/// safe on the hot path.
+fn looks_like_feature_id(value: &str) -> bool {
+    let mut has_digit_segment = false;
+    let mut has_alpha_segment = false;
+    for segment in value.split('-') {
+        if segment.is_empty() {
+            continue;
+        }
+        if segment.chars().all(|c| c.is_ascii_digit()) {
+            has_digit_segment = true;
+        } else if segment.chars().any(|c| c.is_ascii_alphabetic()) {
+            has_alpha_segment = true;
+        }
+    }
+    has_digit_segment && has_alpha_segment
 }
 
 /// True for any CYCLE_* lifecycle event_type (vnc-030, ADR-004). A CYCLE_* row's
@@ -7175,6 +7242,188 @@ mod tests {
 
         let result = enrich_topic_signal(None, "sess-1", &registry);
         assert_eq!(result, None);
+    }
+
+    // ── bugfix-832: cycle-join column safety net (case 2 fragment demotion + ──
+    // ── loud case-4 unattributed branch). The defect was that a command       ──
+    // ── fragment extracted from Bash tool text (`apt-get`, `ls-files`) won     ──
+    // ── into topic_signal (the cycle-join column) when no Declared/registry    ──
+    // ── feature existed, silently polluting context_cycle_review. The fix      ──
+    // ── distinguishes a legitimate feature-ID (`{phase}-{NNN}`) from a command ──
+    // ── fragment via looks_like_feature_id; only the former may proceed.       ──
+
+    /// looks_like_feature_id: legitimate feature-IDs accepted, command fragments rejected.
+    #[test]
+    fn test_looks_like_feature_id_distinguishes_fragments() {
+        // Legitimate feature-IDs (the #3382/#198/#588 extractions that MUST survive).
+        for id in ["shd-001", "vnc-038", "bugfix-342", "col-024", "ass-007"] {
+            assert!(looks_like_feature_id(id), "{id} should look like a feature-ID");
+        }
+        // Command fragments from the field data (must NOT pollute the cycle-join column).
+        for frag in ["apt-get", "ls-files", "syntax-check", "Re-add", "git", "install"] {
+            assert!(
+                !looks_like_feature_id(frag),
+                "{frag} must NOT look like a feature-ID"
+            );
+        }
+    }
+
+    /// R-2 (UDS no-regression): a Declared registry feature still overrides extraction.
+    /// Case 1 untouched — declared wins, source = 'declared'.
+    #[test]
+    fn test_enrich_832_declared_still_overrides_extraction() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, None);
+        registry.set_feature_force("sess-1", "shd-001");
+
+        let (signal, source) =
+            enrich_topic_signal_with_source(Some("vnc-038".to_string()), "sess-1", &registry);
+
+        assert_eq!(signal, Some("shd-001".to_string()), "declared feature wins");
+        assert_eq!(source, Some("declared".to_string()));
+    }
+
+    /// R-3 (UDS no-regression): case 3 vote/registry-fill still fills the unstamped
+    /// window (#3382/#198). No extraction, registry has an Inferred(Voted) feature →
+    /// the row is filled from the vote site.
+    #[test]
+    fn test_enrich_832_vote_fill_unstamped_window_preserved() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, None);
+        // Eager-set vote path (#198): Inferred(Voted).
+        registry.set_feature_if_absent("sess-1", "shd-002");
+
+        let (signal, source) = enrich_topic_signal_with_source(None, "sess-1", &registry);
+
+        assert_eq!(signal, Some("shd-002".to_string()), "vote fills the window");
+        assert_eq!(source, Some("vote".to_string()));
+
+        // registry-fill half of case 3: Inferred(Registered) with no extraction.
+        registry.register_session("sess-2", None, Some("col-031".to_string()));
+        let (signal2, source2) = enrich_topic_signal_with_source(None, "sess-2", &registry);
+        assert_eq!(signal2, Some("col-031".to_string()));
+        assert_eq!(source2, Some("registry-fill".to_string()));
+    }
+
+    /// R-4 (UDS no-regression): a legitimate feature-ID extracted BEFORE registration
+    /// is STILL written (not dropped by the part-2 fragment demotion). Session has no
+    /// registry feature; extraction is a valid feature-ID → it wins via case 2.
+    #[test]
+    fn test_enrich_832_valid_extraction_preserved_before_registration() {
+        let registry = make_registry();
+        // Session known but no feature yet (pre-registration window).
+        registry.register_session("sess-1", None, None);
+
+        let (signal, source) =
+            enrich_topic_signal_with_source(Some("shd-001".to_string()), "sess-1", &registry);
+
+        assert_eq!(
+            signal,
+            Some("shd-001".to_string()),
+            "valid feature-ID extraction must still be written (#3382/#198/#588)"
+        );
+        assert_eq!(source, Some("extracted".to_string()));
+
+        // Also holds when the session is entirely unknown to the registry.
+        let (signal2, source2) =
+            enrich_topic_signal_with_source(Some("vnc-038".to_string()), "sess-unknown", &registry);
+        assert_eq!(signal2, Some("vnc-038".to_string()));
+        assert_eq!(source2, Some("extracted".to_string()));
+    }
+
+    /// New-bug guard: a command fragment (`apt-get`) extracted with NO Declared/registry
+    /// feature does NOT enter topic_signal — returns (None, None), so context_cycle_review
+    /// cannot be polluted with command-derived garbage.
+    #[test]
+    fn test_enrich_832_command_fragment_not_written_when_no_feature() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, None);
+
+        for frag in ["apt-get", "ls-files", "syntax-check", "Re-add"] {
+            let (signal, source) =
+                enrich_topic_signal_with_source(Some(frag.to_string()), "sess-1", &registry);
+            assert_eq!(
+                signal, None,
+                "command fragment {frag} must NOT enter the cycle-join column"
+            );
+            assert_eq!(source, None, "no topic_source for a rejected fragment");
+        }
+
+        // Same for a session entirely unknown to the registry.
+        let (signal, source) =
+            enrich_topic_signal_with_source(Some("apt-get".to_string()), "sess-unknown", &registry);
+        assert_eq!(signal, None);
+        assert_eq!(source, None);
+    }
+
+    /// New-bug guard variant: a command fragment is discarded, but a real registry
+    /// feature still fills the row (the fragment falls through to case 3, it does not
+    /// suppress legitimate attribution).
+    #[test]
+    fn test_enrich_832_fragment_falls_through_to_registry_fill() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, Some("shd-001".to_string()));
+
+        let (signal, source) =
+            enrich_topic_signal_with_source(Some("apt-get".to_string()), "sess-1", &registry);
+
+        // Fragment discarded; case 3 registry-fill supplies the real feature.
+        assert_eq!(signal, Some("shd-001".to_string()));
+        assert_eq!(source, Some("registry-fill".to_string()));
+    }
+
+    /// Part 3 (ADR-003 #3373): the unattributed branch (case 4) is LOUD. No stamp, no
+    /// declared/registry feature, no feature-ID extraction → (None, None) AND a
+    /// structured tracing event fires. The fragment that was rejected is the trigger.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_enrich_832_unattributed_branch_is_loud() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, None);
+
+        // Pure no-attribution case: no extraction at all.
+        let (signal, source) = enrich_topic_signal_with_source(None, "sess-1", &registry);
+        assert_eq!(signal, None);
+        assert_eq!(source, None);
+        assert!(
+            logs_contain("no cycle attribution"),
+            "case-4 unattributed branch must emit a loud structured log (ADR-003 #3373)"
+        );
+    }
+
+    /// R-6: the loud-log path adds NO second registry read — the function performs a
+    /// single get_state and both the rejection log and the unattributed log are pure
+    /// branches off it. This test asserts the behavioral contract (one synchronous
+    /// read, no new I/O): exercising every branch (declared, vote, registry-fill,
+    /// rejected-fragment, unattributed) leaves registry state unchanged — none of the
+    /// branches mutate or re-query the registry. (The single get_state is structurally
+    /// the only registry call in the function; see enrich_topic_signal_with_source.)
+    #[test]
+    fn test_enrich_832_no_second_registry_read_on_loud_path() {
+        let registry = make_registry();
+        registry.register_session("sess-1", None, None);
+
+        // Snapshot before.
+        let before = registry.get_state("sess-1");
+
+        // Drive the loud rejection + unattributed branches.
+        let _ = enrich_topic_signal_with_source(Some("apt-get".to_string()), "sess-1", &registry);
+        let _ = enrich_topic_signal_with_source(None, "sess-1", &registry);
+
+        // State is unchanged: the loud path reads, never writes or re-queries new keys.
+        let after = registry.get_state("sess-1");
+        assert_eq!(
+            before.and_then(|s| s.feature),
+            after.and_then(|s| s.feature),
+            "the loud/unattributed path must not mutate registry state"
+        );
+        // An unknown session is never created as a side effect of the loud path.
+        let _ =
+            enrich_topic_signal_with_source(Some("apt-get".to_string()), "sess-ghost", &registry);
+        assert!(
+            registry.get_state("sess-ghost").is_none(),
+            "the loud path must not create a registry entry (no extra write/read)"
+        );
     }
 
     // ── vnc-030: apply_stamp_to_row 3-site round-trip + per-value topic_source ──

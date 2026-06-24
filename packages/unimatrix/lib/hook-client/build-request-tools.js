@@ -35,27 +35,16 @@ function nowSecs() {
 
 /** ImplantEvent. topic_signal/provider OMITTED when null/undefined (serde skip_serializing_if parity). */
 function implantEvent(eventType, sessionId, payload, topicSignal, provider) {
-  const e = {
-    event_type: eventType,
-    session_id: sessionId,
-    timestamp: nowSecs(),
-    payload: payload,
-  };
-  if (topicSignal !== null && topicSignal !== undefined) {
-    e.topic_signal = topicSignal;
-  }
-  if (provider !== null && provider !== undefined) {
-    e.provider = provider;
-  }
+  const e = { event_type: eventType, session_id: sessionId, timestamp: nowSecs(), payload: payload };
+  // topic_signal then provider — omit-when-null (serde skip_serializing_if).
+  if (topicSignal !== null && topicSignal !== undefined) e.topic_signal = topicSignal;
+  if (provider !== null && provider !== undefined) e.provider = provider;
   return e;
 }
 
 /** RecordEvent frame = { type:"RecordEvent" } + flattened ImplantEvent. */
 function recordEventFrame(eventType, sessionId, payload, topicSignal, provider) {
-  return Object.assign(
-    { type: "RecordEvent" },
-    implantEvent(eventType, sessionId, payload, topicSignal, provider)
-  );
+  return Object.assign({ type: "RecordEvent" }, implantEvent(eventType, sessionId, payload, topicSignal, provider));
 }
 
 // -- Small accessors (Rust Option/Value chaining parity) --
@@ -111,39 +100,22 @@ function extractEventTopicSignal(event, input) {
     case "PostToolUse":
     case "PostToolUseFailure": {
       const v = extraGet(input, "tool_input");
-      let text;
-      if (typeof v === "string") {
-        text = v;
-      } else if (v === undefined) {
-        text = "";
-      } else {
-        text = JSON.stringify(v);
-      }
+      const text = typeof v === "string" ? v : v === undefined ? "" : JSON.stringify(v);
       return extractTopicSignal(text);
     }
     case "SubagentStart":
       return extractTopicSignal(strOr(extraGet(input, "agent_type"), ""));
     case "UserPromptSubmit":
       return extractTopicSignal(input.prompt == null ? "" : input.prompt);
-    default: {
-      if (input.extra === null) {
-        return null;
-      }
-      return extractTopicSignal(JSON.stringify(input.extra));
-    }
+    default:
+      return input.extra === null ? null : extractTopicSignal(JSON.stringify(input.extra));
   }
 }
 
 // -- Generic arm (hook.rs:866-878) --
 
 function genericRecordEvent(event, sessionId, input) {
-  return recordEventFrame(
-    event,
-    sessionId,
-    payloadFromExtra(input),
-    extractEventTopicSignal(event, input),
-    input.provider
-  );
+  return recordEventFrame(event, sessionId, payloadFromExtra(input), extractEventTopicSignal(event, input), input.provider);
 }
 
 // -- PostToolUse rework helpers (hook.rs:881-951) --
@@ -227,39 +199,24 @@ function reworkPayload(toolName, filePath, hadFailure, input) {
 function buildPostToolUse(sessionId, input) {
   const provider = input.provider == null ? "claude-code" : input.provider;
   const topicSignal = extractEventTopicSignal("PostToolUse", input);
+  // Plain (non-rework) PostToolUse frame — the 4 identical fallthrough returns.
+  const plain = () =>
+    recordEventFrame("PostToolUse", sessionId, payloadFromExtra(input), topicSignal, input.provider);
 
   if (provider !== "claude-code") {
-    return recordEventFrame(
-      "PostToolUse",
-      sessionId,
-      payloadFromExtra(input),
-      topicSignal,
-      input.provider
-    );
+    return plain();
   }
 
   const toolName = strOr(extraGet(input, "tool_name"), "");
 
   if (!isReworkEligibleTool(toolName)) {
-    return recordEventFrame(
-      "PostToolUse",
-      sessionId,
-      payloadFromExtra(input),
-      topicSignal,
-      input.provider
-    );
+    return plain();
   }
 
   if (toolName === "MultiEdit") {
     const pairs = extractReworkEventsForMultiEdit(input.extra);
     if (pairs.length === 0) {
-      return recordEventFrame(
-        "PostToolUse",
-        sessionId,
-        payloadFromExtra(input),
-        topicSignal,
-        input.provider
-      );
+      return plain();
     }
     const events = pairs.map(([filePath, hadFailure]) =>
       implantEvent(
@@ -275,13 +232,8 @@ function buildPostToolUse(sessionId, input) {
 
   const hadFailure = toolName === "Bash" ? isBashFailure(input.extra) : false;
   const filePath = extractFilePath(input.extra, toolName);
-  return recordEventFrame(
-    "post_tool_use_rework_candidate",
-    sessionId,
-    reworkPayload(toolName, filePath, hadFailure, input),
-    topicSignal,
-    input.provider
-  );
+  const reworkP = reworkPayload(toolName, filePath, hadFailure, input);
+  return recordEventFrame("post_tool_use_rework_candidate", sessionId, reworkP, topicSignal, input.provider);
 }
 
 // -- PreToolUse arm + context_cycle interception (hook.rs:663-861) --
@@ -296,15 +248,9 @@ function buildPreToolUse(event, sessionId, input) {
   if (bare !== null) {
     // Clone — never mutate the caller's input (R-01).
     const promoted = Object.assign({}, input);
-    if (
-      !promoted.extra ||
-      typeof promoted.extra !== "object" ||
-      Array.isArray(promoted.extra)
-    ) {
-      promoted.extra = {};
-    } else {
-      promoted.extra = Object.assign({}, promoted.extra);
-    }
+    const e = promoted.extra;
+    const plainExtra = e && typeof e === "object" && !Array.isArray(e);
+    promoted.extra = plainExtra ? Object.assign({}, e) : {};
     promoted.extra.tool_name = bare;
     return buildCycleEventOrFallthrough(event, sessionId, promoted);
   }
@@ -328,15 +274,11 @@ function buildCycleEventOrFallthrough(event, sessionId, input) {
 
   const toolInput = extraGet(input, "tool_input");
   if (toolInput === undefined) {
-    process.stderr.write(
-      "unimatrix: context_cycle PreToolUse missing tool_input\n"
-    );
+    process.stderr.write("unimatrix: context_cycle PreToolUse missing tool_input\n");
     return null; // sentinel — stderr diagnostic retained (R-11 s2)
   }
   const tiObj =
-    toolInput && typeof toolInput === "object" && !Array.isArray(toolInput)
-      ? toolInput
-      : {};
+    toolInput && typeof toolInput === "object" && !Array.isArray(toolInput) ? toolInput : {};
 
   const validated = validateCycleParams(
     strOr(tiObj.type, ""),
@@ -347,58 +289,41 @@ function buildCycleEventOrFallthrough(event, sessionId, input) {
   );
   if (!validated.ok) {
     process.stderr.write(
-      "unimatrix: context_cycle validation failed in hook (tool_name=" +
-        toolName +
-        ")\n"
+      "unimatrix: context_cycle validation failed in hook (tool_name=" + toolName + ")\n"
     );
     return null; // sentinel — stderr diagnostic retained (R-11 s2)
   }
 
-  let eventType;
-  if (validated.cycleType === "start") {
-    eventType = CYCLE_START_EVENT;
-  } else if (validated.cycleType === "phase-end") {
-    eventType = CYCLE_PHASE_END_EVENT;
-  } else {
-    eventType = CYCLE_STOP_EVENT;
-  }
+  const eventType =
+    validated.cycleType === "start"
+      ? CYCLE_START_EVENT
+      : validated.cycleType === "phase-end"
+        ? CYCLE_PHASE_END_EVENT
+        : CYCLE_STOP_EVENT;
 
   // goal only on Start, byte-truncated at a UTF-8 boundary (hook.rs:808-823)
   let goal = null;
   if (validated.cycleType === "start" && typeof tiObj.goal === "string") {
     const g = tiObj.goal;
     if (Buffer.byteLength(g, "utf8") > MAX_GOAL_BYTES) {
-      process.stderr.write(
-        "[unimatrix hook] goal exceeds MAX_GOAL_BYTES, truncating\n"
-      );
+      process.stderr.write("[unimatrix hook] goal exceeds MAX_GOAL_BYTES, truncating\n");
       goal = truncateUtf8(g, MAX_GOAL_BYTES);
     } else {
       goal = g;
     }
   }
 
-  // Insertion order: feature_cycle first (json! parity), then optionals
+  // Insertion order: feature_cycle first (json! parity), then optionals — each
+  // key set only when non-null (omit-when-null). Sequence pins the key order.
   const payload = { feature_cycle: validated.topic };
-  if (validated.phase !== null) {
-    payload.phase = validated.phase;
-  }
-  if (validated.outcome !== null) {
-    payload.outcome = validated.outcome;
-  }
-  if (validated.nextPhase !== null) {
-    payload.next_phase = validated.nextPhase;
-  }
-  if (goal !== null) {
-    payload.goal = goal;
-  }
+  const put = (key, val) => { if (val !== null) payload[key] = val; };
+  put("phase", validated.phase);
+  put("outcome", validated.outcome);
+  put("next_phase", validated.nextPhase);
+  put("goal", goal);
 
-  return recordEventFrame(
-    eventType,
-    sessionId,
-    payload,
-    validated.topic, // topic_signal = topic
-    input.provider
-  );
+  // topic_signal = topic (the cycle declaration keeps it).
+  return recordEventFrame(eventType, sessionId, payload, validated.topic, input.provider);
 }
 
 // -- SubagentStart arm (hook.rs:698-723) --
