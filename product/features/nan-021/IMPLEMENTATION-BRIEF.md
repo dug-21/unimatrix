@@ -110,8 +110,9 @@ guard). See the DELIVERY GATE section above — these are the delivery-time obli
 
 ## Component Map
 
-The five fixture components (ARCHITECTURE §Component Breakdown). Pseudocode and test-plan file paths are
-filled during Session 2 Stage 3a; the components below are the expected decomposition.
+The five fixture components (ARCHITECTURE §Component Breakdown). Pseudocode and test-plan file paths below
+are CONFIRMED — produced in Session 2 Stage 3a (pseudocode agent nan-021-agent-1, tester agent nan-021-agent-2)
+and present on disk.
 
 | Component | Responsibility | Extends (parent asset) | Pseudocode | Test Plan |
 |-----------|----------------|------------------------|-----------|-----------|
