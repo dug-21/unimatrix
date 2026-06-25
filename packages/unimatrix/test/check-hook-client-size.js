@@ -31,7 +31,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const PRIMARY_LIMIT = 101000; // comment-stripped bytes (decimal) — TEMP raise 100000→101000 for #839 critical availability fix (transport/connect timeout + silent-eviction self-heal): irreducible +579 stripped after ~1420B in-bridge reclaim + F6 deferral. Reclaim to 100000 tracked in #840; F6 in #841. Human-approved, recorded on #839.
+const PRIMARY_LIMIT = 102000; // comment-stripped bytes (decimal) — TEMP raise 100000→102000 for the COMPLETE #839 critical availability fix (transport/connect timeout + silent-eviction self-heal + F6 mid-stream idle-read deadline + SSE-timeout heal routing): stripped 101483 after ~1420B in-bridge reclaim. Reclaim to 100000 tracked in #840. Human-approved, recorded on #839.
 const BACKSTOP_LIMIT = 180000; // raw bytes (decimal) — raised 160000→180000 for the vnc-039 stdio→HTTPS MCP bridge (~24KB new pure-JS); PRIMARY/stripped budget still passes. Human-approved, recorded on #775.
 const ROOT = path.resolve(__dirname, "..", "lib", "hook-client");
 
