@@ -5,27 +5,43 @@
 // event. Multi-line data: joins with "\n"; blank line = record boundary; ":"
 // lines = keep-alive. Chunk-split-invariant (records emit only on terminator).
 
+// Local copy (avoids a dispatch<->sse-parse require cycle). Generous default;
+// the caller threads its configured idle budget.
+const DEFAULT_READ_MS = 120000;
+
 class SseParser {
-  // Collect every JSON-RPC object carried by data: events. Bounded at `limit`.
-  static async collect(res, limit) {
+  // Collect every JSON-RPC object carried by data: events. Bounded at `limit`
+  // bytes AND `readMs` idle-stall (#839 F6): a connect-then-stall-mid-stream
+  // bounds bytes but not stall time. On idle expiry the stream is destroyed with
+  // an ETIMEDOUT-coded error; the for-await rethrows it so _send maps it to the
+  // SAME TRANSPORT_TIMEOUT sentinel as the connect/request path (N1 -> self-heal).
+  static async collect(res, limit, readMs) {
     const messages = [];
     let buffer = "";
     let total = 0;
-    for await (const chunk of res) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      total += buf.length;
-      buffer += buf.toString("utf8");
-      buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-      let sep;
-      while ((sep = buffer.indexOf("\n\n")) !== -1) {
-        const record = buffer.slice(0, sep);
-        buffer = buffer.slice(sep + 2);
-        SseParser._emit(record, messages);
+    let t;
+    const arm = () => { if (t) clearTimeout(t); t = setTimeout(() => { try { res.destroy(Object.assign(new Error("MCP endpoint timed out"), { code: "ETIMEDOUT" })); } catch (_e) {} }, readMs || DEFAULT_READ_MS); if (t.unref) t.unref(); };
+    arm();
+    try {
+      for await (const chunk of res) {
+        arm();
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        total += buf.length;
+        buffer += buf.toString("utf8");
+        buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        let sep;
+        while ((sep = buffer.indexOf("\n\n")) !== -1) {
+          const record = buffer.slice(0, sep);
+          buffer = buffer.slice(sep + 2);
+          SseParser._emit(record, messages);
+        }
+        if (total > limit) {
+          try { res.destroy(); } catch (_e) {}
+          break;
+        }
       }
-      if (total > limit) {
-        try { res.destroy(); } catch (_e) {}
-        break;
-      }
+    } finally {
+      if (t) clearTimeout(t);
     }
     // Flush a trailing record with no terminating blank line.
     if (buffer.trim() !== "") SseParser._emit(buffer, messages);

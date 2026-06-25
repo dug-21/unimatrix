@@ -259,7 +259,12 @@ describe("size-gate header", function () {
   });
 
   it("test_limits_are_decimal", function () {
-    assert.strictEqual(PRIMARY_LIMIT, 100000);
+    // PRIMARY raised 100000→102000 (TEMP) for the COMPLETE #839 critical
+    // availability fix (transport/connect timeout + silent-eviction self-heal
+    // + F6 mid-stream idle-read deadline + SSE-timeout heal routing).
+    // Human-approved, recorded on #839; reclaim to 100000 tracked in #840.
+    // Keep this meta-assertion in lockstep with check-hook-client-size.js:34.
+    assert.strictEqual(PRIMARY_LIMIT, 102000);
     // BACKSTOP raised 160000→180000 for the vnc-039 stdio→HTTPS MCP bridge
     // (~24KB new pure-JS); human-approved, recorded on #775. Keep this
     // meta-assertion in lockstep with check-hook-client-size.js:35.
