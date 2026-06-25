@@ -649,6 +649,96 @@ describe("transport timeout self-heal (#839)", () => {
     assert.strictEqual(initCount, 1, "no re-init on a non-timeout transport fault (no storm)");
     assert.strictEqual(calls, 1, "the call was not retried");
   });
+
+  // ── mid-stream stall (F6 + N1): connect ok, stream starts, then stalls ──────
+  // An SSE response that yields a priming chunk then HANGS mid-frame (no end),
+  // exactly like a server that accepts + starts streaming then goes silent. The
+  // for-await rethrows whatever res.destroy(err) is called with (mirrors Node), so
+  // the idle-read deadline in SseParser.collect routes ETIMEDOUT into _send.
+  function stallingSse(primer) {
+    const r = new EventEmitter();
+    let onKill;
+    const killed = new Promise((res) => { onKill = res; });
+    r.destroy = (err) => onKill(err || new Error("destroyed"));
+    r.resume = () => {};
+    r[Symbol.asyncIterator] = async function* () {
+      yield Buffer.from(primer); // priming event arrives, then the stream stalls
+      throw await killed; // resolves only when collect's idle timer destroys us
+    };
+    r.on = EventEmitter.prototype.on.bind(r);
+    return r;
+  }
+  function sseStall() {
+    return { status: 200, contentType: "text/event-stream", res: stallingSse(": keep-alive\n\n") };
+  }
+
+  // (d) Mid-stream stall is BOUNDED by the idle-read deadline, not forever.
+  it("test_timeout_midStreamStall_boundedByIdleReadDeadline", async () => {
+    // No initialize captured -> heal cannot fire -> sentinel normalized; the call
+    // must still SETTLE (within the 60ms idle budget), not hang to runner-timeout.
+    const sess = { sent: [], sessionId: null, protocolVersion: null, idleMs: 60,
+      request: () => Promise.resolve(sseStall()) };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    const t0 = Date.now();
+    const out = await lc.handle({ jsonrpc: "2.0", id: 7, method: "tools/call", params: {} });
+    assert.ok(Date.now() - t0 < 4000, "settled near the 60ms idle deadline, not forever");
+    assert.strictEqual(out.id, 7);
+    assert.ok(out.error);
+    assert.notStrictEqual(out.error.code, -32098, "TRANSPORT_TIMEOUT sentinel normalized, never leaked");
+    assert.match(out.error.message, /timed out/);
+  });
+
+  // (e) Mid-stream timeout -> EXACTLY ONE transparent re-init then success
+  // (parity with the connect-stall case; the re-init reply is a clean JSON 200).
+  it("test_timeout_midStreamStall_singleReinitThenSuccess", async () => {
+    let initCount = 0, firstCall = true;
+    const sess = {
+      sent: [], sessionId: null, protocolVersion: null, idleMs: 60,
+      request(body, opts) {
+        if (opts && opts.isInitialize) {
+          initCount += 1; sess.sessionId = "SID-" + initCount;
+          return Promise.resolve({ status: 200, contentType: "application/json",
+            res: bodyStream(Buffer.from(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: { protocolVersion: "2025-06-18" } }))) });
+        }
+        if (firstCall) { firstCall = false; return Promise.resolve(sseStall()); } // mid-stream stall
+        return Promise.resolve({ status: 200, contentType: "application/json",
+          res: bodyStream(Buffer.from(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: { ok: true } }))) });
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    assert.strictEqual(initCount, 1);
+    const out = await lc.handle({ jsonrpc: "2.0", id: 9, method: "tools/call", params: {} });
+    assert.deepStrictEqual(out.result, { ok: true }, "retry succeeded after one re-init");
+    assert.strictEqual(initCount, 2, "exactly one transparent re-init on a mid-stream timeout");
+  });
+
+  // (f) Mid-stream re-init that ALSO stalls -> bounded error, no loop/storm.
+  it("test_timeout_midStreamReinitAlsoStalls_boundedError_noLoop", async () => {
+    let initCount = 0;
+    const sess = {
+      sent: [], sessionId: "OLD", protocolVersion: null, idleMs: 60,
+      request(body, opts) {
+        if (opts && opts.isInitialize) {
+          initCount += 1;
+          if (initCount === 1) { // first handshake ok (clean JSON)
+            sess.sessionId = "SID-1";
+            return Promise.resolve({ status: 200, contentType: "application/json",
+              res: bodyStream(Buffer.from(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: {} }))) });
+          }
+          return Promise.resolve(sseStall()); // re-init's read stalls mid-stream
+        }
+        return Promise.resolve(sseStall()); // call's read stalls mid-stream
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    const out = await lc.handle({ jsonrpc: "2.0", id: 13, method: "tools/call", params: {} });
+    assert.strictEqual(out.id, 13);
+    assert.ok(out.error, "bounded error surfaced");
+    assert.notStrictEqual(out.error.code, -32098, "sentinel normalized, never leaked");
+    assert.strictEqual(initCount, 2, "exactly one re-init attempt; no loop/storm");
+  });
 });
 
 // ── identity across spawns/projects (R-17) ───────────────────────────────────

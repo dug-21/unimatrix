@@ -61,9 +61,14 @@ class Lifecycle {
   // exited loud if pin-class) become a per-request JSON-RPC error array; they are
   // never SESSION_NOT_FOUND, so they neither trigger nor satisfy self-heal.
   async _send(msg, isInit) {
-    let resp;
+    let out;
     try {
-      resp = await this.session.request(msg, { isInitialize: isInit });
+      const resp = await this.session.request(msg, { isInitialize: isInit });
+      // N1 (#839): dispatchResponse reads the body; an idle-read stall mid-stream
+      // (SSE or JSON) rejects ETIMEDOUT. Keep it INSIDE the try so the mid-stream
+      // timeout routes into the SAME TRANSPORT_TIMEOUT self-heal as the connect
+      // path — the SSE branch reaches parity with the connect/request branch.
+      out = await dispatchResponse(resp, this.session.idleMs);
     } catch (err) {
       const id = msg && msg.id != null ? msg.id : null;
       // A transport TIMEOUT gets a distinct sentinel so handle() can self-heal it
@@ -71,7 +76,6 @@ class Lifecycle {
       if (err && err.code === "ETIMEDOUT") return [jsonRpcError(id, TRANSPORT_TIMEOUT, "MCP endpoint timed out")];
       return [jsonRpcError(id, INTERNAL_ERROR, "MCP endpoint unreachable")];
     }
-    const out = await dispatchResponse(resp);
     if (isInit) {
       // Capture the negotiated protocolVersion for the MCP-Protocol-Version echo.
       for (const m of out) {
