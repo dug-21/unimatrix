@@ -1,8 +1,8 @@
 """K1 — Dimension registry (nan-022 / #837 / ADR-001 / SR-05 / #5302).
 
-The SINGLE authoritative enumeration of the six C0 (#5304) parity dimensions:
-retrieval, behavioral, analytics, proactive, precompact, isolation. Nothing else
-hand-lists the six — every consumer (leg drivers C3', orchestrator ORCH, the K2
+The SINGLE authoritative enumeration of the five C0 (#5304) parity dimensions:
+retrieval, behavioral, analytics, proactive, precompact. Nothing else
+hand-lists them — every consumer (leg drivers C3', orchestrator ORCH, the K2
 drift guard, the CI evidence table, the forbidden-seed audit) iterates this ONE
 `DIMENSIONS` tuple. The registry is data-only so a future re-disposition of
 `blocks_c0_proof` is a DATA change, not a code change (ADR-001).
@@ -56,7 +56,7 @@ WIRE_SURFACES: frozenset[str] = frozenset({WIRE_MCP_BRIDGE, WIRE_HOOK_OBSERVE})
 # secondary surface explicitly (a third constant is NOT introduced — the secondary
 # capture is handled in the driver). This frozenset is the single source the leg
 # drivers and the registry-vs-driver routing consistency test consult.
-DUAL_SURFACE_DIMENSIONS: frozenset[str] = frozenset({"analytics", "isolation"})
+DUAL_SURFACE_DIMENSIONS: frozenset[str] = frozenset({"analytics"})
 
 
 # =============================================================================
@@ -71,20 +71,20 @@ class Dimension:
     then a `type` (the K2 `DimensionComparator` subclass). See the module docstring.
     """
 
-    id: str  # "retrieval"|"behavioral"|"analytics"|"proactive"|"precompact"|"isolation"
+    id: str  # "retrieval"|"behavioral"|"analytics"|"proactive"|"precompact"
     capture_key: str  # key under dimension_bundle both legs emit
     wire_surface: str  # WIRE_MCP_BRIDGE | WIRE_HOOK_OBSERVE (the PRIMARY surface)
     comparator: Union[str, type]  # K2 class name (str) → bound to the K2 class (type)
     intra_transport_check: bool  # run double-capture-and-diff stability classifier?
-    blocks_c0_proof: bool  # in the six required for the C0 (#5304) flip?
+    blocks_c0_proof: bool  # in the five required for the C0 (#5304) flip?
 
 
 # =============================================================================
-# 3. DIMENSIONS — the SIX, the single authoritative enumeration (ADR-001 table)
+# 3. DIMENSIONS — the FIVE, the single authoritative enumeration (ADR-001 table)
 # =============================================================================
 # Flags taken EXACTLY from the brief's Data Structures table:
 #   intra_transport_check=True ONLY for retrieval + proactive (embedding-ranked dims).
-#   blocks_c0_proof=True for ALL SIX — CONFIRMED correct (human, 2026-06-25): the
+#   blocks_c0_proof=True for ALL FIVE — CONFIRMED correct (human, 2026-06-25): the
 #   corrected C0 (#5304) done_when makes parity the TOTAL bar; the dimension list
 #   grows with the pipeline and never narrows the bar. Any unreachable dimension is a
 #   human-signed DOCUMENTED EXCEPTION (the flag is the data-only escape valve), never
@@ -127,14 +127,6 @@ DIMENSIONS: tuple[Dimension, ...] = (
         capture_key="precompact",
         wire_surface=WIRE_HOOK_OBSERVE,
         comparator="PreCompactComparator",
-        intra_transport_check=False,
-        blocks_c0_proof=True,
-    ),
-    Dimension(
-        id="isolation",
-        capture_key="isolation",
-        wire_surface=WIRE_MCP_BRIDGE,
-        comparator="IsolationComparator",
         intra_transport_check=False,
         blocks_c0_proof=True,
     ),

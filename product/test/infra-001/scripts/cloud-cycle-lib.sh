@@ -32,9 +32,9 @@
 #
 # nan-022 (C5'): the out-file payload WIDENS from {run_token, metric_vector} to
 # {run_token, dimension_bundle:{retrieval, behavioral, analytics, proactive,
-# precompact, isolation}} (ADR-005 / cloud-cycle-lib.md). The /observe-surface +
-# container-side captures the SHELL owns (behavioral D2, isolation D6, precompact
-# D5) and the full six-key bundle assembly live in cloud-bundle-lib.sh (sourced
+# precompact}} (ADR-005 / cloud-cycle-lib.md). The /observe-surface +
+# container-side captures the SHELL owns (behavioral D2, precompact
+# D5) and the full five-key bundle assembly live in cloud-bundle-lib.sh (sourced
 # below) to keep BOTH files <=500 lines (the nan-021 lib-split precedent). The MCP-
 # bridge-surface captures (retrieval, proactive, analytics) come from the C2'
 # bridge-cycle-driver.js fragment ($REVIEW_OUT). Shell captures are taken AFTER the
@@ -268,13 +268,13 @@ cloud_cycle_gates() {
   # R-04: the symmetric durability barrier (step 5 above) has released, so all
   # driven observes are flushed. ONLY NOW do the container-side DB reads run — a
   # pre-barrier read is an INFRA condition, never a parity verdict. The captures
-  # (behavioral D2, isolation D6, precompact D5) live in cloud-bundle-lib.sh.
+  # (behavioral D2, precompact D5) live in cloud-bundle-lib.sh.
   local SHELL_CAPTURES="$SANDBOX/shell_captures.json"
   assemble_shell_captures "$SLUG_DIR" "$MANIFEST_PATH" "$SHELL_CAPTURES"
 
-  # ---- 8. assemble + emit the SIX-key dimension bundle to the out-file (R-09) ----
+  # ---- 8. assemble + emit the FIVE-key dimension bundle to the out-file (R-09) ----
   # Compose {run_token, dimension_bundle:{retrieval, behavioral, analytics,
-  # proactive, precompact, isolation}} from the C2' driver fragment + the shell-
+  # proactive, precompact}} from the C2' driver fragment + the shell-
   # owned captures. The never-empty guard fires BEFORE the write: any missing/empty
   # non-D5 capture => exit 1, never an empty-key bundle. Python load_https_bundle
   # re-validates on ingest (the binding guard — R-09 contract-tested both sides).

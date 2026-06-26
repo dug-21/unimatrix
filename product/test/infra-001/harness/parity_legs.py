@@ -3,8 +3,8 @@
 EXTENDED IN PLACE, cumulative (nan-022 / #837 / ADR-001 / ADR-005). Started life as
 the nan-021 single-`MetricVector` leg driver (`drive_uds_leg`); nan-022 ADDS
 `drive_uds_bundle`, which drives the AUGMENTED workload once and returns the full
-dimension-keyed BUNDLE (retrieval, behavioral, analytics, proactive, precompact,
-isolation), routing each dimension to its correct wire surface and double-capturing
+dimension-keyed BUNDLE (retrieval, behavioral, analytics, proactive, precompact),
+routing each dimension to its correct wire surface and double-capturing
 the intra-check dimensions. The nan-021 `drive_uds_leg` is KEPT BYTE-FOR-BYTE VERBATIM
 so the committed `test_https_uds_parity` MetricVector path (and its source-inspection
 tests) stay GREEN (AC-11 cumulative — removing/refactoring it churns a proven path);
@@ -211,7 +211,7 @@ def drive_uds_bundle(
     dimension BUNDLE keyed by `Dimension.capture_key`::
 
         { "retrieval": {...}, "behavioral": {...}, "analytics": {...},
-          "proactive": {...}, "precompact": {...}, "isolation": {...} }
+          "proactive": {...}, "precompact": {...} }
 
     iterating `DIMENSIONS` (the single authoritative enumeration — no hand-list).
     ALL captures run under the ONE stable session id (#832). The barrier gates every
@@ -229,7 +229,7 @@ def drive_uds_bundle(
                MetricVector is the analytics dimension's `metric_vector`.
       PHASE 3  per-dimension capture, routed by `Dimension.wire_surface`; intra-check
                dimensions (retrieval, proactive) are double-captured; dual-surface
-               dimensions (analytics, isolation) fan out BOTH surfaces explicitly. A
+               dimensions (analytics) fan out BOTH surfaces explicitly. A
                dimension routed to the wrong surface records nothing → empty capture →
                K4 INFRA-ERROR (C-9), never an empty-pass.
     """

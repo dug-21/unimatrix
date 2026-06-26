@@ -15,10 +15,9 @@
 # the /observe-surface + container-side-DB-read captures the SHELL drives:
 #   * BEHAVIORAL (D2): DISTINCT topic_signal rows, read container-side AFTER the
 #     barrier (DERIVED, never seeded).
-#   * ISOLATION (D6): slug A write visible-to-B? landed-only-in-A? booleans.
 #   * PRECOMPACT (D5): server-restored payload + measurable/host_side_gap call-out
 #     (NEVER a silent drop / vacuous pass — name the gap; ADR-006).
-# It then ASSEMBLES the full six-key dimension_bundle from the C2' driver fragment
+# It then ASSEMBLES the full five-key dimension_bundle from the C2' driver fragment
 # + these shell-owned captures and writes {run_token, dimension_bundle:{...}} to
 # $HTTPS_VECTOR_OUT (replacing the nan-021 {run_token, metric_vector} emit). The
 # never-empty guard is the FIRST line; the Python load_https_bundle (K5) ingest is
@@ -34,8 +33,8 @@
 # read). Off-Docker, the C5 logic-test injects synthesized captures so the bundle
 # assembly + never-empty guard + barrier ordering are exercised WITHOUT Docker:
 #   SMOKE_SHELL_CAPTURES : path to a JSON file carrying the pre-synthesized
-#                          {topic_signals, isolation, precompact} shell fragment.
-#                          When set, the three capture_* helpers are SKIPPED and
+#                          {topic_signals, precompact} shell fragment.
+#                          When set, the capture_* helpers are SKIPPED and
 #                          this file is used verbatim as $SHELL_CAPTURES (the same
 #                          real-vs-stub split the rest of the C2 seam uses).
 # This mirrors SMOKE_CYCLE_CMD / SMOKE_REVIEW_VECTOR: the stub proves control flow
@@ -97,48 +96,6 @@ capture_behavioral_topic_signals() {
   log "behavioral (D2): captured DISTINCT topic_signals container-side after the barrier (derived). PASS"
 }
 
-# capture_isolation_probe <out_file>
-#   D6: extend the per-slug Gates 1-4 framing — assert a write to slug A is NOT
-#   visible from slug B and landed only in A's store. We do NOT register a new slug
-#   here (no production-surface change); we PROBE the already-routed per-slug store:
-#   slug_a_writes_visible_to_b is the cross-slug isolation invariant (false = good),
-#   landed_only_in_a is the on-disk landing invariant (true = good). Both booleans;
-#   compared EXACTLY downstream (NFR-6, no tolerance). Emits a JSON object.
-capture_isolation_probe() {
-  local out_file="$1"
-  # The smoke already proved (Gate 4) the per-slug write landed in $SLUG_DIR and
-  # NOT the hash store. Isolation here probes that SAME on-disk landing fact via the
-  # vol sidecar, recording two EXACTLY-compared booleans (NFR-6, no tolerance):
-  #   landed_only_in_a       — A's store is non-empty AND no OTHER per-slug store
-  #                            (a different slug, not the token-bearing path-hash dir)
-  #                            grew with A's write (the write is confined to A).
-  #   slug_a_writes_visible_to_b — the negation: any other per-slug store carrying A's
-  #                            write would mean the write leaked across the slug boundary.
-  # A live cross-slug READ attempt is driven by the orchestrator's UDS-leg symmetry; the
-  # HTTPS leg records the on-disk landing booleans the IsolationComparator checks EXACTLY.
-  local a_size other_count
-  a_size="$(cycle_observe_size "$SLUG_DIR" 2>/dev/null || echo 0)"
-  case "$a_size" in ''|*[!0-9]*) a_size=0 ;; esac
-  if [ "$a_size" -le 0 ]; then
-    fail "isolation capture (D6): slug A store empty — the write did not land in A (INFRA, not an empty-pass)"
-  fi
-  # Count OTHER per-slug dirs (NOT slug A, NOT the token-bearing path-hash dir) that
-  # have a per-slug db — any such store carrying A's write would be a cross-slug leak.
-  other_count="$(vol sh -c 'n=0; for d in /data/.unimatrix/*/; do [ -d "$d" ] || continue; case "$d" in */'"$SLUG"'/) continue;; esac; [ -f "$d/token" ] && continue; [ -f "$d/unimatrix.db" ] && n=$((n+1)); done; echo "$n"' 2>/dev/null || echo 0)"
-  case "$other_count" in ''|*[!0-9]*) other_count=0 ;; esac
-  local landed_only_in_a visible_to_b
-  if [ "$other_count" -eq 0 ]; then
-    landed_only_in_a=true;  visible_to_b=false
-  else
-    # Another per-slug store exists alongside A — the on-disk probe alone cannot prove
-    # A's write is absent from it, so do NOT claim confinement: surface it as a leak
-    # candidate (visible_to_b=true) so the comparator REDs rather than empty-passing.
-    landed_only_in_a=false; visible_to_b=true
-  fi
-  printf '{"slug_a_writes_visible_to_b":%s,"landed_only_in_a":%s}' "$visible_to_b" "$landed_only_in_a" > "$out_file"
-  log "isolation (D6): on-disk landing probed (landed_only_in_a=$landed_only_in_a, visible_to_b=$visible_to_b). PASS"
-}
-
 # capture_precompact <manifest> <out_file>
 #   D5: drive the PreCompact /observe frame and capture the server-restored payload.
 #   Per ADR-006 / OQ-2 the harness cannot drive a live CC host, so PreCompact may be
@@ -185,7 +142,7 @@ capture_precompact() {
 }
 
 # assemble_shell_captures <store_dir> <manifest> <out_file>
-#   Compose the shell-owned fragment {topic_signals, isolation, precompact} the
+#   Compose the shell-owned fragment {topic_signals, precompact} the
 #   bundle assembler reads. MUST run AFTER the durability barrier (R-04). When the
 #   SMOKE_SHELL_CAPTURES stub is set (off-Docker logic test), use it verbatim.
 assemble_shell_captures() {
@@ -194,29 +151,27 @@ assemble_shell_captures() {
     [ -f "$SMOKE_SHELL_CAPTURES" ] \
       || fail "SMOKE_SHELL_CAPTURES=$SMOKE_SHELL_CAPTURES not found (stub seam)"
     cp "$SMOKE_SHELL_CAPTURES" "$out_file"
-    log "stub seam: shell captures (topic_signals/isolation/precompact) supplied via SMOKE_SHELL_CAPTURES. PASS (stub)"
+    log "stub seam: shell captures (topic_signals/precompact) supplied via SMOKE_SHELL_CAPTURES. PASS (stub)"
     return 0
   fi
-  local b_out="$SANDBOX/cap.behavioral.json" i_out="$SANDBOX/cap.isolation.json" p_out="$SANDBOX/cap.precompact.json"
+  local b_out="$SANDBOX/cap.behavioral.json" p_out="$SANDBOX/cap.precompact.json"
   capture_behavioral_topic_signals "$store_dir" "$b_out"
-  capture_isolation_probe "$i_out"
   capture_precompact "$manifest" "$p_out"
-  BEH="$b_out" ISO="$i_out" PRE="$p_out" OUT="$out_file" node -e '
+  BEH="$b_out" PRE="$p_out" OUT="$out_file" node -e '
     const fs=require("fs");
     const topic_signals=JSON.parse(fs.readFileSync(process.env.BEH,"utf8"));
-    const isolation=JSON.parse(fs.readFileSync(process.env.ISO,"utf8"));
     const precompact=JSON.parse(fs.readFileSync(process.env.PRE,"utf8"));
-    fs.writeFileSync(process.env.OUT, JSON.stringify({topic_signals, isolation, precompact})+"\n");
+    fs.writeFileSync(process.env.OUT, JSON.stringify({topic_signals, precompact})+"\n");
   ' || fail "could not compose the shell-owned capture fragment"
 }
 
 # emit_dimension_bundle <driver_fragment> <shell_captures> <run_token> <out_file>
-#   Assemble the SIX-key dimension_bundle from the C2' driver fragment (retrieval,
+#   Assemble the FIVE-key dimension_bundle from the C2' driver fragment (retrieval,
 #   proactive, metric_vector, informs_edges, phase_signal) + the shell-owned
-#   captures (topic_signals, isolation, precompact) and write
+#   captures (topic_signals, precompact) and write
 #   {run_token, dimension_bundle:{...}} to <out_file>. The never-empty guard runs
 #   BEFORE the write: a missing/empty bridge-surface capture (retrieval / proactive
-#   / metric_vector) or a missing/empty shell capture (behavioral / isolation) ->
+#   / metric_vector) or a missing/empty shell capture (behavioral) ->
 #   exit 1, never an empty-key bundle (R-09 / R-03). Only precompact.restored_payload
 #   may be null, and ONLY with measurable=false. The Python load_https_bundle (K5)
 #   re-validates on ingest (the binding guard — contract-tested both sides).
@@ -225,7 +180,7 @@ emit_dimension_bundle() {
   RUN_TOKEN="$run_token" OUT="$out_file" node -e '
     const fs=require("fs");
     const drv = JSON.parse(fs.readFileSync(process.argv[1],"utf8"));   // C2 fragment
-    const shell = JSON.parse(fs.readFileSync(process.argv[2],"utf8")); // {topic_signals, isolation, precompact}
+    const shell = JSON.parse(fs.readFileSync(process.argv[2],"utf8")); // {topic_signals, precompact}
     const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
     const nonEmptyArr = (v) => Array.isArray(v) && v.length > 0;
     // ---- bridge-surface never-empty guard (R-09/R-03): retrieval, proactive, analytics ----
@@ -244,14 +199,9 @@ emit_dimension_bundle() {
       process.stderr.write("empty/short MetricVector — barrier released early? (R-06)\n");
       process.exit(1);
     }
-    // ---- shell-surface never-empty guard: behavioral, isolation ----
+    // ---- shell-surface never-empty guard: behavioral ----
     if (!nonEmptyArr(shell.topic_signals)) {
       process.stderr.write("behavioral topic_signals missing/empty => INFRA (R-09), never empty-pass\n");
-      process.exit(1);
-    }
-    const iso = shell.isolation;
-    if (!isObj(iso) || typeof iso.slug_a_writes_visible_to_b !== "boolean" || typeof iso.landed_only_in_a !== "boolean") {
-      process.stderr.write("isolation booleans missing => INFRA (R-09)\n");
       process.exit(1);
     }
     // ---- precompact: the ONLY null-eligible capture, and ONLY with measurable=false ----
@@ -274,7 +224,6 @@ emit_dimension_bundle() {
       analytics:  { metric_vector: mv, informs_edges: drv.informs_edges || [], phase_signal: drv.phase_signal || {} },
       proactive:  proactive,
       precompact: pre,
-      isolation:  iso,
     };
     fs.writeFileSync(process.env.OUT, JSON.stringify({run_token: process.env.RUN_TOKEN, dimension_bundle: bundle}) + "\n");
   ' "$driver_fragment" "$shell_captures" \

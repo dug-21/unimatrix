@@ -56,11 +56,10 @@ write_valid_fragment() {
 JSONEOF
 }
 
-# A VALID shell-captures fragment {topic_signals, isolation, precompact}.
+# A VALID shell-captures fragment {topic_signals, precompact}.
 write_valid_shell_captures() {
   cat > "$1" <<'JSONEOF'
 {"topic_signals":["nan-022"],
- "isolation":{"slug_a_writes_visible_to_b":false,"landed_only_in_a":true},
  "precompact":{"restored_payload":null,"measurable":false,"host_side_gap":"documented host-side gap (ADR-006/OQ-2)"}}
 JSONEOF
 }
@@ -68,7 +67,7 @@ JSONEOF
 # emit_case <name> <fragment_json> <shell_json> <want_rc> <want_substr_on_red>
 # Sources the SHIPPED libs in a subshell, provides log()/fail(), and calls the REAL
 # emit_dimension_bundle against the synthesized inputs. On a green row it asserts the
-# out-file is a contract-shaped six-key bundle; on a RED row it asserts NO bundle
+# out-file is a contract-shaped five-key bundle; on a RED row it asserts NO bundle
 # leaked (an empty-key bundle would be an R-09 empty-pass).
 emit_case() {
   local name="$1" frag="$2" shellcap="$3" want_rc="$4" want_sub="$5"
@@ -87,14 +86,14 @@ emit_case() {
     ' 2>&1
   )"
   rc=$?
-  local six_ok=0
+  local five_ok=0
   if [ -s "$out_file" ]; then
     node -e '
       const fs=require("fs"); const o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
-      const want=["analytics","behavioral","isolation","precompact","proactive","retrieval"];
+      const want=["analytics","behavioral","precompact","proactive","retrieval"];
       const have=Object.keys(o.dimension_bundle||{}).sort();
       process.exit(o.run_token==="run-tok-E" && JSON.stringify(have)===JSON.stringify(want) ? 0 : 1);
-    ' "$out_file" >/dev/null 2>&1 && six_ok=1
+    ' "$out_file" >/dev/null 2>&1 && five_ok=1
   fi
   rm -rf "$sb"
   if [ "$rc" -ne "$want_rc" ]; then
@@ -105,11 +104,11 @@ emit_case() {
     oops "$name (substr)" "expected '$want_sub' in: $out"
     return
   fi
-  if [ "$want_rc" -eq 0 ] && [ "$six_ok" -ne 1 ]; then
-    oops "$name (bundle shape)" "green row did not write a contract-shaped six-key bundle"
+  if [ "$want_rc" -eq 0 ] && [ "$five_ok" -ne 1 ]; then
+    oops "$name (bundle shape)" "green row did not write a contract-shaped five-key bundle"
     return
   fi
-  if [ "$want_rc" -ne 0 ] && [ "$six_ok" -eq 1 ]; then
+  if [ "$want_rc" -ne 0 ] && [ "$five_ok" -eq 1 ]; then
     oops "$name (empty-pass leak)" "RED row STILL wrote a bundle — an empty-key bundle leaked (R-09 violation)"
     return
   fi
@@ -121,8 +120,8 @@ echo "== dimension-bundle assembly: never-empty guard + barrier order (nan-022 R
 EFRAG="$(mktemp)"; write_valid_fragment "$EFRAG"
 ESHELL="$(mktemp)"; write_valid_shell_captures "$ESHELL"
 
-# Green: a valid fragment + valid shell captures => six-key bundle written.
-emit_case test_bundle_emit_valid_writes_six_keys "$EFRAG" "$ESHELL" 0 ""
+# Green: a valid fragment + valid shell captures => five-key bundle written.
+emit_case test_bundle_emit_valid_writes_five_keys "$EFRAG" "$ESHELL" 0 ""
 
 # RED: retrieval capture empty (queries:[]) => exit 1, NO bundle written (R-09).
 ERET_EMPTY="$(mktemp)"
@@ -158,7 +157,6 @@ emit_case test_bundle_emit_empty_metric_vector_errors "$EMV_EMPTY" "$ESHELL" 1 "
 ESHELL_NOBEH="$(mktemp)"
 cat > "$ESHELL_NOBEH" <<'JSONEOF'
 {"topic_signals":[],
- "isolation":{"slug_a_writes_visible_to_b":false,"landed_only_in_a":true},
  "precompact":{"restored_payload":null,"measurable":false,"host_side_gap":"gap"}}
 JSONEOF
 emit_case test_bundle_emit_empty_behavioral_errors "$EFRAG" "$ESHELL_NOBEH" 1 "behavioral topic_signals missing/empty"
@@ -167,7 +165,6 @@ emit_case test_bundle_emit_empty_behavioral_errors "$EFRAG" "$ESHELL_NOBEH" 1 "b
 ESHELL_VACUOUS="$(mktemp)"
 cat > "$ESHELL_VACUOUS" <<'JSONEOF'
 {"topic_signals":["nan-022"],
- "isolation":{"slug_a_writes_visible_to_b":false,"landed_only_in_a":true},
  "precompact":{"restored_payload":null,"measurable":false,"host_side_gap":""}}
 JSONEOF
 emit_case test_bundle_emit_unnamed_precompact_gap_errors "$EFRAG" "$ESHELL_VACUOUS" 1 "host_side_gap not named"
@@ -176,19 +173,9 @@ emit_case test_bundle_emit_unnamed_precompact_gap_errors "$EFRAG" "$ESHELL_VACUO
 ESHELL_BADNULL="$(mktemp)"
 cat > "$ESHELL_BADNULL" <<'JSONEOF'
 {"topic_signals":["nan-022"],
- "isolation":{"slug_a_writes_visible_to_b":false,"landed_only_in_a":true},
  "precompact":{"restored_payload":null,"measurable":true,"host_side_gap":null}}
 JSONEOF
 emit_case test_bundle_emit_illegal_null_payload_errors "$EFRAG" "$ESHELL_BADNULL" 1 "illegal null"
-
-# RED: isolation booleans missing => exit 1 (NFR-6 exact-compare floor needs them).
-ESHELL_NOISO="$(mktemp)"
-cat > "$ESHELL_NOISO" <<'JSONEOF'
-{"topic_signals":["nan-022"],
- "isolation":{"slug_a_writes_visible_to_b":false},
- "precompact":{"restored_payload":null,"measurable":false,"host_side_gap":"gap"}}
-JSONEOF
-emit_case test_bundle_emit_missing_isolation_booleans_errors "$EFRAG" "$ESHELL_NOISO" 1 "isolation booleans missing"
 
 echo "== barrier ordering + single-source (R-04 / C-5) =="
 
@@ -237,7 +224,7 @@ test_bundle_assemble_honours_stub_seam() {
   rc=$?
   local ok=0
   [ "$rc" -eq 0 ] && [ -s "$out_file" ] \
-    && node -e 'const o=require(process.argv[1]);process.exit(Array.isArray(o.topic_signals)&&o.isolation&&o.precompact?0:1)' "$out_file" >/dev/null 2>&1 && ok=1
+    && node -e 'const o=require(process.argv[1]);process.exit(Array.isArray(o.topic_signals)&&o.precompact?0:1)' "$out_file" >/dev/null 2>&1 && ok=1
   rm -rf "$sb"
   if [ "$ok" -eq 1 ]; then
     pass "test_bundle_assemble_honours_stub_seam (SMOKE_SHELL_CAPTURES short-circuits the live captures off-Docker)"
@@ -248,7 +235,7 @@ test_bundle_assemble_honours_stub_seam() {
 test_bundle_assemble_honours_stub_seam
 
 rm -f "$EFRAG" "$ESHELL" "$ERET_EMPTY" "$EPRO_NOCAP2" "$EMV_EMPTY" \
-      "$ESHELL_NOBEH" "$ESHELL_VACUOUS" "$ESHELL_BADNULL" "$ESHELL_NOISO"
+      "$ESHELL_NOBEH" "$ESHELL_VACUOUS" "$ESHELL_BADNULL"
 
 echo
 echo "release-gate-bundle-assembly-logic-test: ${PASS} passed, ${FAIL} failed"

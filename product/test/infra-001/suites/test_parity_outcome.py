@@ -250,8 +250,8 @@ def test_classify_precompact_null_capture_both_legs_measurable_true_is_infra():
 # ---------------------------------------------------------------------------
 def test_classify_dimension_null_capture_non_d5_is_infra():
     """A null capture for a non-D5 dimension -> INFRA_ERROR (R-09 sc.2)."""
-    dim = _StubDim("isolation", intra_transport_check=False, comparator=_RaisingComparator)
-    cap = {"slug_a_writes_visible_to_b": False, "landed_only_in_a": True}
+    dim = _StubDim("behavioral", intra_transport_check=False, comparator=_RaisingComparator)
+    cap = {"topic_signals": ["s1", "s2"]}
     res = classify_dimension(dim, cap_uds=None, cap_https=cap)
     assert res.outcome == Outcome.INFRA_ERROR
 
@@ -271,7 +271,7 @@ def test_classify_intra_dimension_missing_capture_2_is_infra():
 # Determinism floor (NFR-6) — exact dims never invoke ranking_parity
 # ---------------------------------------------------------------------------
 def test_classify_dimension_exact_compare_for_non_ranking_dims(monkeypatch):
-    """For a non-ranking dim (behavioral, isolation) the comparison is EXACT — the
+    """For a non-ranking dim (behavioral) the comparison is EXACT — the
     intra_transport_check=False dims never invoke ranking_parity (NFR-6)."""
     import harness.parity_outcome as po
 

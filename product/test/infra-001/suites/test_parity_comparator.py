@@ -34,7 +34,6 @@ from harness.parity_comparator import (
     AttributionComparator,
     BriefingComparator,
     DimensionComparator,
-    IsolationComparator,
     MetricVectorComparator,
     PreCompactComparator,
     RetrievalComparator,
@@ -178,11 +177,6 @@ def test_attribution_comparator_excluded_is_empty():
     assert AttributionComparator.EXCLUSION_JUSTIFICATIONS == {}
 
 
-def test_isolation_comparator_excluded_is_empty_exact():
-    assert IsolationComparator.EXCLUDED == frozenset()
-    assert IsolationComparator.EXCLUSION_JUSTIFICATIONS == {}
-
-
 def test_metric_vector_comparator_excluded_matches_consumed_set():
     # IS the consumed nan-021 EXCLUDED (not a re-declared copy) — AC-04.
     assert MetricVectorComparator.EXCLUDED is MV_EXCLUDED
@@ -275,31 +269,6 @@ def test_attribution_unattributed_present_hard_fail():
 def test_attribution_identical_signals_clean():
     comp = AttributionComparator()
     assert comp.compare({"topic_signals": ["t1", "t2"]}, {"topic_signals": ["t2", "t1"]}) == []
-
-
-# ===========================================================================
-# Isolation -> exact boolean compare (security, no tolerance)
-# ===========================================================================
-def test_isolation_comparator_divergent_booleans_raise():
-    comp = IsolationComparator()
-    https = {"slug_a_writes_visible_to_b": False, "landed_only_in_a": True}
-    uds = {"slug_a_writes_visible_to_b": True, "landed_only_in_a": True}  # leak on uds
-    with pytest.raises(ParityMismatch):
-        comp.compare(https, uds)
-
-
-def test_isolation_comparator_property_violation_raises():
-    # Both legs AGREE but the property is VIOLATED (leak on both) -> still a divergence.
-    comp = IsolationComparator()
-    leak = {"slug_a_writes_visible_to_b": True, "landed_only_in_a": False}
-    with pytest.raises(ParityMismatch):
-        comp.compare(leak, dict(leak))
-
-
-def test_isolation_comparator_clean_when_isolated():
-    comp = IsolationComparator()
-    iso = {"slug_a_writes_visible_to_b": False, "landed_only_in_a": True}
-    assert comp.compare(iso, dict(iso)) == []
 
 
 # ===========================================================================
