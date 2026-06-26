@@ -18,8 +18,10 @@ from harness.parity_workload import (
     AT_RISK_FIELDS,
     EXCLUDED,
     EXCLUSION_JUSTIFICATIONS,
+    FORBIDDEN_SEED_SITES,
     UNIVERSAL_FIELDS,
     DurabilityTimeout,
+    InfraError,
     ParityMismatch,
     ParityWorkload,
     ToolCall,
@@ -27,9 +29,11 @@ from harness.parity_workload import (
     default_workload,
     durability_barrier,
     field_by_field_record,
+    load_https_bundle,
     load_https_vector,
     observe_count,
 )
+from harness.ranking_tolerance import STABLE_PREFIX_FLOOR
 
 
 # ---------------------------------------------------------------------------
@@ -485,3 +489,238 @@ def test_c4_is_only_substantial_net_new():
     assert hasattr(pw, "compare_metric_vectors")
     assert hasattr(pw, "durability_barrier")
     assert hasattr(pw, "ParityWorkload")
+
+
+# ===========================================================================
+# nan-022 C4' — augmented workload: seed-corpus + query phase (ADR-007 #5311)
+# ===========================================================================
+#
+# These EXTEND (do not replace) the nan-021 tests above. They cover R-13 (one
+# identity/token/barrier post-augmentation), R-06 (non-degenerate corpus depth),
+# R-15 (seed-content-only + extended no-seed audit), R-09/R-12 (load_https_bundle).
+
+
+def _well_formed_bundle(run_token: str = "run-022") -> dict:
+    """A well-formed `{run_token, dimension_bundle}` out-file payload — every required
+    capture_key present, precompact measurable. Mirrors the OVERVIEW cross-language shape."""
+    return {
+        "run_token": run_token,
+        "dimension_bundle": {
+            "retrieval": {"queries": [{"tool": "context_search", "args": {}, "result_ids": [1, 2, 3], "scores": [0.9, 0.8, 0.7]}], "capture_2": []},
+            "behavioral": {"topic_signals": ["nan-022"]},
+            "analytics": {"metric_vector": {}, "informs_edges": [], "phase_signal": {}},
+            "proactive": {"briefing_ids": [1, 2, 3], "briefing_scores": [0.9, 0.8, 0.7], "injection_set": [], "capture_2": {}},
+            "precompact": {"restored_payload": {"k": "v"}, "measurable": True, "host_side_gap": None},
+            "isolation": {"slug_a_writes_visible_to_b": False, "landed_only_in_a": True},
+        },
+    }
+
+
+# --- R-13: ONE-identity / ONE-token / ONE-barrier invariant post-augmentation ----------
+
+
+def test_default_workload_single_parity_workload_object():
+    # Seed + cycle + query phases live in ONE ParityWorkload, not split sub-workloads.
+    wl = default_workload()
+    assert isinstance(wl, ParityWorkload)
+    # All three phases are present in the single tool_calls list (VIEWS over one manifest).
+    assert wl.seed_calls and wl.cycle_calls and wl.query_calls
+    assert len(wl.tool_calls) == len(wl.seed_calls) + len(wl.cycle_calls) + len(wl.query_calls)
+
+
+def test_run_token_equals_session_id():
+    # The single stable correlation token is preserved after augmentation (SR-05/#832).
+    wl = default_workload()
+    assert wl.session_id  # one stable CC identity
+    assert wl.to_dict()["session_id"] == wl.session_id  # == the run-correlation token
+
+
+def test_one_barrier_helper_after_augmentation():
+    # The augmented workload still uses the ONE shared durability_barrier helper; the
+    # seed/query phases use observe=False so the barrier predicate target is unchanged.
+    wl = default_workload()
+    # Only the nan-021 cycle calls observe — seed/query are reads, not observed tool uses.
+    assert wl.expected_observe_count == sum(1 for tc in wl.cycle_calls if tc.observe)
+    assert all(not tc.observe for tc in wl.seed_calls + wl.query_calls)
+    assert callable(durability_barrier)
+
+
+def test_augmented_manifest_round_trip_stable(tmp_path):
+    # to_json/from_json round-trip of the AUGMENTED manifest is byte-stable (both legs
+    # replay the SAME manifest byte-identically).
+    wl = default_workload()
+    path = wl.write_manifest(tmp_path / "parity_workload.json")
+    reloaded = ParityWorkload.read_manifest(path)
+    assert reloaded.to_dict() == wl.to_dict()
+    # And byte-stable across two serializations.
+    assert wl.to_json() == ParityWorkload.from_json(wl.to_json()).to_json()
+
+
+def test_augmented_validate_still_enforces_one_bash_token():
+    # validate() still asserts EXACTLY ONE load-bearing Bash call carrying the feature token.
+    wl = default_workload()
+    wl.validate()  # passes
+    assert wl.bash_call.name == "Bash"
+    assert wl.feature_cycle in wl.bash_call.response_snippet
+
+
+# --- R-06: seed-corpus depth — non-degenerate ranking (OQ-C / K3 floor) ----------------
+
+
+def test_seed_corpus_size_yields_prefix_floor_gt_one():
+    # The corpus is deep enough that the K3 stable-prefix floor (N > 1) is achievable: a
+    # single-hit ranking is a vacuous pass (#5177). Corpus size > floor > 1.
+    wl = default_workload()
+    assert STABLE_PREFIX_FLOOR > 1
+    assert len(wl.seed_calls) >= STABLE_PREFIX_FLOOR
+    assert len(wl.seed_calls) > 1
+
+
+def test_seed_corpus_query_set_non_trivial():
+    # The query set issues > 1 distinct retrieval/briefing query so the ranking is
+    # exercised, not a single trivial hit.
+    wl = default_workload()
+    assert len(wl.retrieval_calls) > 1
+    assert len(wl.briefing_calls) > 1
+    # Distinct queries (not the same call repeated).
+    retrieval_args = [json.dumps(tc.args, sort_keys=True) for tc in wl.retrieval_calls]
+    assert len(set(retrieval_args)) > 1
+
+
+# --- R-15: seed writes CONTENT only, never compared outputs (#5285) --------------------
+
+
+def test_seed_writes_via_context_store_path_only():
+    # The seed phase writes corpus CONTENT via the normal context_store tool-call path —
+    # NOT a SQL/struct seeder. Every seed call is a context_store with content/topic args.
+    wl = default_workload()
+    assert wl.seed_calls
+    for tc in wl.seed_calls:
+        assert tc.name == "context_store"
+        assert "content" in tc.args
+        assert tc.observe is False  # store writes, not observed tool uses
+
+
+def test_seed_does_not_set_topic_signal():
+    # No seed call sets topic_signal or any compared OUTPUT (MetricVector field, edge id,
+    # briefing id, topic_signal) — the column stays DERIVED over the wire.
+    wl = default_workload()
+    for tc in wl.seed_calls:
+        keys = set(tc.args)
+        assert "topic_signal" not in keys
+        assert "metric_vector" not in keys
+        assert "informs_edges" not in keys
+        assert "briefing_ids" not in keys
+        # The seed snippet is a content echo, not a derived output value.
+        assert "topic_signal" not in tc.response_snippet
+
+
+def test_seed_corpus_module_free_of_forbidden_sites():
+    # The seed-corpus loader source itself reaches no forbidden seed site (it issues
+    # context_store/search/briefing tool calls, never a seeder).
+    from harness import parity_seed_corpus
+
+    pw.assert_no_seed_reachable(parity_seed_corpus.__file__)
+
+
+# --- R-15: no-seed static audit extended to ALL net-new modules ------------------------
+
+
+def test_assert_no_seed_reachable_covers_all_net_new_modules():
+    # assert_no_seed_reachable over EVERY net-new module (K1-K5, comparators) + the
+    # seed-corpus loader + the extended parity_legs/parity_workload — forbidden seed sites
+    # unreachable from each.
+    from harness import (
+        metric_comparator,
+        parity_comparator,
+        parity_dimensions,
+        parity_legs,
+        parity_outcome,
+        parity_seed_corpus,
+        ranking_tolerance,
+        transport_health,
+    )
+
+    pw.assert_no_seed_reachable(
+        parity_dimensions.__file__,
+        parity_comparator.__file__,
+        ranking_tolerance.__file__,
+        parity_outcome.__file__,
+        transport_health.__file__,
+        parity_legs.__file__,
+        metric_comparator.__file__,
+        parity_seed_corpus.__file__,
+    )
+
+
+def test_forbidden_seed_sites_referenced_from_one_definition():
+    # FORBIDDEN_SEED_SITES is the single C4' definition; K2 re-exports the SAME tuple
+    # object (no private copy). R-05/R-15 single-source.
+    from harness import parity_comparator
+
+    assert FORBIDDEN_SEED_SITES is pw.FORBIDDEN_SEED_SITES
+    assert parity_comparator.FORBIDDEN_SEED_SITES is pw.FORBIDDEN_SEED_SITES
+
+
+# --- R-09 / R-12: load_https_bundle — token-guarded, never-empty ingest -----------------
+
+
+def test_load_https_bundle_well_formed_returns_dimension_bundle(tmp_path):
+    out = tmp_path / "https_bundle.json"
+    out.write_text(json.dumps(_well_formed_bundle("run-ok")), encoding="utf-8")
+    bundle = load_https_bundle(out, "run-ok")
+    assert set(bundle) >= {"retrieval", "behavioral", "analytics", "proactive", "precompact", "isolation"}
+    assert bundle["retrieval"]["queries"]
+
+
+def test_load_https_bundle_missing_capture_key_raises_infra(tmp_path):
+    payload = _well_formed_bundle("run-x")
+    del payload["dimension_bundle"]["isolation"]  # drop a required capture
+    out = tmp_path / "https_bundle.json"
+    out.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(InfraError):
+        load_https_bundle(out, "run-x")
+
+
+def test_load_https_bundle_null_capture_non_precompact_raises_infra(tmp_path):
+    payload = _well_formed_bundle("run-x")
+    payload["dimension_bundle"]["retrieval"] = None  # only precompact may be null
+    out = tmp_path / "https_bundle.json"
+    out.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(InfraError):
+        load_https_bundle(out, "run-x")
+
+
+def test_load_https_bundle_stale_token_raises_infra(tmp_path):
+    out = tmp_path / "https_bundle.json"
+    out.write_text(json.dumps(_well_formed_bundle("OLD-tag")), encoding="utf-8")
+    with pytest.raises(InfraError) as ei:
+        load_https_bundle(out, "run-this")
+    assert "stale" in str(ei.value).lower()
+
+
+def test_load_https_bundle_empty_or_truncated_raises_infra(tmp_path):
+    out = tmp_path / "https_bundle.json"
+    out.write_text('{"run_token": "run-x", "dimension_bun', encoding="utf-8")  # truncated
+    with pytest.raises(InfraError):
+        load_https_bundle(out, "run-x")
+
+
+def test_load_https_bundle_missing_file_raises_infra(tmp_path):
+    with pytest.raises(InfraError):
+        load_https_bundle(tmp_path / "absent.json", "run-x")
+
+
+def test_load_https_bundle_precompact_null_only_with_measurable_false(tmp_path):
+    # restored_payload may be null ONLY with measurable=False (ADR-006 host-side gap).
+    payload = _well_formed_bundle("run-pc")
+    payload["dimension_bundle"]["precompact"] = {"restored_payload": None, "measurable": False, "host_side_gap": "host CC"}
+    out = tmp_path / "https_bundle.json"
+    out.write_text(json.dumps(payload), encoding="utf-8")
+    bundle = load_https_bundle(out, "run-pc")  # legal documented-exception
+    assert bundle["precompact"]["measurable"] is False
+    # Null payload with measurable!=False is illegal.
+    payload["dimension_bundle"]["precompact"] = {"restored_payload": None, "measurable": True, "host_side_gap": None}
+    out.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(InfraError):
+        load_https_bundle(out, "run-pc")

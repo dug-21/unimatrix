@@ -121,6 +121,40 @@ class ParityWorkload:
             )
         return bash_calls[0]
 
+    # --- Phase VIEWS over the single tool_calls list (NOT a second manifest) -----------
+    # The augmented workload (ADR-007) weaves a seed-corpus + query phase into the SAME
+    # tool_calls list. These properties let the leg drivers (C3'/C5') identify which calls
+    # are seed vs retrieval vs briefing vs cycle WITHOUT a second manifest/identity/token.
+
+    @property
+    def seed_calls(self) -> list[ToolCall]:
+        """PHASE 1 view — the corpus CONTENT writes (`context_store`, content-only)."""
+        return [tc for tc in self.tool_calls if tc.name == "context_store"]
+
+    @property
+    def retrieval_calls(self) -> list[ToolCall]:
+        """PHASE 3a view — the retrieval query set (search/lookup/get)."""
+        return [
+            tc
+            for tc in self.tool_calls
+            if tc.name in ("context_search", "context_lookup", "context_get")
+        ]
+
+    @property
+    def briefing_calls(self) -> list[ToolCall]:
+        """PHASE 3b view — the proactive/briefing query set (`context_briefing`)."""
+        return [tc for tc in self.tool_calls if tc.name == "context_briefing"]
+
+    @property
+    def query_calls(self) -> list[ToolCall]:
+        """PHASE 3 view — the full query set (retrieval + briefing), in manifest order."""
+        return self.retrieval_calls + self.briefing_calls
+
+    @property
+    def cycle_calls(self) -> list[ToolCall]:
+        """PHASE 2 view — the nan-021 observe cycle calls (Read/Bash/Grep)."""
+        return [tc for tc in self.tool_calls if tc.name in ("Read", "Bash", "Grep")]
+
     def validate(self) -> None:
         """Structural invariants asserted before either leg drives (fail-loud)."""
         if not self.session_id:
@@ -183,45 +217,74 @@ DEFAULT_FEATURE_CYCLE = "nan-021"
 DEFAULT_SESSION_ID = "nan-021-parity-session-0001"
 
 
+def _cycle_calls(feature_cycle: str) -> list[ToolCall]:
+    """PHASE 2 — the nan-021 observe cycle (verbatim): the Read/Bash/Grep `/observe` calls.
+    The EXACTLY-ONE load-bearing Bash call carries the feature-ID token (FR-3/R-07)."""
+    return [
+        ToolCall(
+            name="Read",
+            args={"file_path": f"product/features/{feature_cycle}/SCOPE.md"},
+            observe=True,
+            response_size=2048,
+            response_snippet=f"# {feature_cycle} scope ...",
+        ),
+        ToolCall(
+            name="Bash",
+            args={"command": f"git log --oneline -- product/features/{feature_cycle}/"},
+            observe=True,
+            response_size=512,
+            # Load-bearing: carries the feature-ID token (FR-3/R-07 derivation input).
+            response_snippet=(
+                f"working on feature/{feature_cycle} — see "
+                f"product/features/{feature_cycle}/IMPLEMENTATION-BRIEF.md"
+            ),
+        ),
+        ToolCall(
+            name="Grep",
+            args={"pattern": "MetricVector", "path": "crates/"},
+            observe=True,
+            response_size=1024,
+            response_snippet="crates/unimatrix-store/src/metrics.rs: MetricVector",
+        ),
+    ]
+
+
 def default_workload(
     *,
     session_id: str = DEFAULT_SESSION_ID,
     feature_cycle: str = DEFAULT_FEATURE_CYCLE,
 ) -> ParityWorkload:
-    """The single canonical parity workload replayed by both legs."""
+    """The single canonical parity workload replayed by both legs (nan-022 ADR-007 #5311).
+
+    Augmented (cumulative on nan-021) with a deterministic SEED-CORPUS + QUERY phase so the
+    retrieval (D1) and briefing (D4) rankings are NON-DEGENERATE (SR-06 / K3
+    STABLE_PREFIX_FLOOR), while preserving the ONE-manifest / ONE-identity / ONE-token /
+    ONE-barrier invariant (R-13): a SINGLE `ParityWorkload` under ONE `session_id` (= the
+    run-correlation token), three ordered phases woven into the SAME `tool_calls` list:
+
+      PHASE 1 (seed corpus): deterministic `context_store` CONTENT writes — CONTENT ONLY,
+        never a `topic_signal`/output (R-15 / #5285). These build the identical corpus both
+        legs rank over.
+      PHASE 2 (nan-021 cycle): the Read/Bash/Grep `/observe` calls verbatim; the ONE
+        load-bearing Bash call still carries the feature-ID token (validate() enforces it).
+      PHASE 3 (query set): deterministic `context_search`/`lookup`/`get` + `context_briefing`
+        calls against the seeded corpus — the RANKED retrieval/briefing captures.
+
+    `expected_observe_count` is recomputed from `observe=True` calls (the seed/query phases
+    use `observe=False`, so the barrier predicate is unchanged). The seed/query sub-lists are
+    exposed as VIEWS (`seed_calls`/`retrieval_calls`/`briefing_calls`/`query_calls`/
+    `cycle_calls`) over the single `tool_calls` list — never a second manifest.
+    """
+    # Lazy import avoids a circular import at module load (the sub-module imports ToolCall).
+    from harness.parity_seed_corpus import query_calls, seed_corpus_calls
+
     wl = ParityWorkload(
         session_id=session_id,
         feature_cycle=feature_cycle,
         tool_calls=[
-            ToolCall(
-                name="Read",
-                args={"file_path": f"product/features/{feature_cycle}/SCOPE.md"},
-                observe=True,
-                response_size=2048,
-                response_snippet=f"# {feature_cycle} scope ...",
-            ),
-            ToolCall(
-                name="Bash",
-                args={
-                    "command": (
-                        f"git log --oneline -- product/features/{feature_cycle}/"
-                    )
-                },
-                observe=True,
-                response_size=512,
-                # Load-bearing: carries the feature-ID token (FR-3/R-07 derivation input).
-                response_snippet=(
-                    f"working on feature/{feature_cycle} — see "
-                    f"product/features/{feature_cycle}/IMPLEMENTATION-BRIEF.md"
-                ),
-            ),
-            ToolCall(
-                name="Grep",
-                args={"pattern": "MetricVector", "path": "crates/"},
-                observe=True,
-                response_size=1024,
-                response_snippet="crates/unimatrix-store/src/metrics.rs: MetricVector",
-            ),
+            *seed_corpus_calls(),  # PHASE 1 — content-only corpus
+            *_cycle_calls(feature_cycle),  # PHASE 2 — nan-021 observe cycle (verbatim)
+            *query_calls(),  # PHASE 3 — retrieval + briefing query set
         ],
     )
     wl.validate()
@@ -374,8 +437,35 @@ def load_https_vector(out_path: str | Path, expected_run_token: str) -> dict:
         )
     mv = payload.get("metric_vector")
     if not isinstance(mv, dict):
-        raise ValueError(f"HTTPS out-file {p} has no 'metric_vector' dict")
+        # nan-022 widened the HTTPS out-file from {run_token, metric_vector} to
+        # {run_token, dimension_bundle:{analytics:{metric_vector}, ...}} (C5' bundle
+        # emit). The nan-021 single-vector test stays UNCHANGED (AC-11), so read the
+        # analytics dimension's metric_vector from the bundle when the legacy top-level
+        # key is absent (Stage-3c first-live-run fix — Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md). Missing in BOTH shapes
+        # is still a hard error, never an empty compare.
+        bundle = payload.get("dimension_bundle")
+        if isinstance(bundle, dict):
+            analytics = bundle.get("analytics")
+            if isinstance(analytics, dict):
+                mv = analytics.get("metric_vector")
+        if not isinstance(mv, dict):
+            raise ValueError(
+                f"HTTPS out-file {p} has no 'metric_vector' dict (neither top-level nor "
+                f"dimension_bundle.analytics.metric_vector)"
+            )
     return mv
+
+
+# --- Generalized token-guarded bundle ingest (nan-022 ADR-002 / R-09 / R-12) ------------
+# `load_https_vector` (above) stays for the existing nan-021 MetricVector-only orchestrator
+# path (AC-11 cumulative — removing it churns a proven path). The new matrix orchestrator
+# uses `load_https_bundle`, whose LOGIC lives in K5 `transport_health.py` so it can raise
+# `InfraError` without a circular import (it depends on `InfraError`). C4' RE-EXPORTS it to
+# preserve the single import surface (both legs may import it from `harness.parity_workload`).
+from harness.transport_health import (  # noqa: E402,F401  (re-export — single import surface)
+    InfraError,
+    load_https_bundle,
+)
 
 
 # =============================================================================
@@ -414,39 +504,9 @@ def assert_no_seed_reachable(*source_paths: str | Path) -> None:
                 )
 
 
-# =============================================================================
-# CLI — the shell C2 leg's single entrypoint into the shared predicate + manifest.
-# Keeps OQ-A/OQ-C single-sourced: shell calls THIS module, never a parallel script.
-# =============================================================================
-
-
-def _main(argv: list[str]) -> int:
-    if len(argv) < 2:
-        sys.stderr.write(
-            "usage: python -m harness.parity_workload "
-            "{observe-count <store_dir> | emit-manifest <path> | expected-observe-count}\n"
-        )
-        return 2
-    cmd = argv[1]
-    if cmd == "observe-count":
-        if len(argv) != 3:
-            sys.stderr.write("usage: observe-count <store_dir>\n")
-            return 2
-        sys.stdout.write(f"{observe_count(argv[2])}\n")
-        return 0
-    if cmd == "emit-manifest":
-        if len(argv) != 3:
-            sys.stderr.write("usage: emit-manifest <path>\n")
-            return 2
-        path = default_workload().write_manifest(argv[2])
-        sys.stdout.write(f"{path}\n")
-        return 0
-    if cmd == "expected-observe-count":
-        sys.stdout.write(f"{default_workload().expected_observe_count}\n")
-        return 0
-    sys.stderr.write(f"unknown command: {cmd}\n")
-    return 2
-
-
+# CLI argv shim lives in `parity_workload_cli.py` (≤500-line split); the
+# `python -m harness.parity_workload ...` entrypoint delegates to it.
 if __name__ == "__main__":  # pragma: no cover - thin CLI shim
-    raise SystemExit(_main(sys.argv))
+    from harness.parity_workload_cli import main as _cli_main
+
+    raise SystemExit(_cli_main(sys.argv))

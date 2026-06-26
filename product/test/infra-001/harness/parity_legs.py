@@ -1,19 +1,39 @@
-"""C3 — the two transport LEG drivers for the nan-021 HTTPS-vs-UDS parity gate.
+"""C3' — the two transport LEG drivers for the HTTPS-vs-UDS parity matrix.
 
-Split out of the orchestrator suite (≤500-line rule, single responsibility): the
-reusable leg-driving logic the pytest orchestrator (`suites/test_https_uds_parity.py`)
-composes. CONSUMES the C4 contract (`parity_workload`) verbatim — it does NOT
-redefine the manifest, the durability barrier, the comparator, or the stale-token
-guard (AC-07 / SR-04). EXTENDS the existing harness clients (`UnimatrixUdsClient`,
-`UnimatrixHookClient`); no new transport / spawn / framing path.
+EXTENDED IN PLACE, cumulative (nan-022 / #837 / ADR-001 / ADR-005). Started life as
+the nan-021 single-`MetricVector` leg driver (`drive_uds_leg`); nan-022 ADDS
+`drive_uds_bundle`, which drives the AUGMENTED workload once and returns the full
+dimension-keyed BUNDLE (retrieval, behavioral, analytics, proactive, precompact,
+isolation), routing each dimension to its correct wire surface and double-capturing
+the intra-check dimensions. The nan-021 `drive_uds_leg` is KEPT BYTE-FOR-BYTE VERBATIM
+so the committed `test_https_uds_parity` MetricVector path (and its source-inspection
+tests) stay GREEN (AC-11 cumulative — removing/refactoring it churns a proven path);
+the Wave-E ORCH sibling matrix test consumes `drive_uds_bundle`. `drive_uds_bundle`
+COMPOSES `drive_uds_leg` (seed corpus → `drive_uds_leg` drives the ONE #5298 11-frame
+cycle + the ONE shared barrier + returns the analytics MetricVector) then layers the
+per-dimension captures on top — there is NO second cycle and NO second barrier.
+
+CONSUMES the C4' contract (`parity_workload`) and the K1 registry
+(`parity_dimensions`) verbatim — it does NOT redefine the manifest, the durability
+barrier, the comparators, the stale-token guard, or the dimension enumeration.
+EXTENDS the existing harness clients (`UnimatrixUdsClient`, `UnimatrixHookClient`);
+no new transport / spawn / framing path.
 
 Contains:
-  * `drive_uds_leg`        — drive the C4 manifest over local hook IPC + MCP UDS,
-                              apply the symmetric durability barrier, return the
-                              parsed MetricVector (FR-5 / FR-10 / R-06).
-  * `assert_derived_attribution` — AC-03: topic_signal == feature, derived not seeded.
-  * `run_https_leg`        — shell out to the smoke's C1+C2 HTTPS gate (R-03 seam).
+  * `drive_uds_leg`        — nan-021 VERBATIM: drive the manifest over local hook IPC
+                              + MCP UDS, apply the symmetric durability barrier, return
+                              the parsed MetricVector (FR-5 / FR-10 / R-06).
+  * `drive_uds_bundle`     — nan-022: compose `drive_uds_leg` then return the dimension
+                              BUNDLE keyed by `Dimension.capture_key`; per-dimension
+                              wire-surface routing + double-capture for intra dims
+                              (FR-12 / R-03).
+  * `assert_derived_attribution` — AC-03 (consumed verbatim).
+  * `run_https_leg`        — shell out to the smoke's C1+C2 HTTPS gate (consumed verbatim).
   * `PARITY_PHASE`         — the single phase BOTH legs declare (shared contract).
+
+Per-dimension CAPTURE logic lives in `parity_legs_capture.py` (≤500-line split); this
+module owns the DRIVE (the #5298 11-frame observe cycle + the barrier in
+`drive_uds_leg`, plus the per-dimension routing fan-out in `drive_uds_bundle`).
 
 A note on the wire surface (why the live-wire hook methods exist): the daemon's
 `HookRequest` enum routes `SessionRegister` / `SessionClose` / `RecordEvent` — NOT
@@ -40,8 +60,10 @@ from harness.parity_workload import (
     DurabilityTimeout,
     durability_barrier,
 )
+from harness.parity_dimensions import DIMENSIONS
 from harness.uds_client import UnimatrixUdsClient
 from harness.hook_client import UnimatrixHookClient
+from harness import parity_legs_capture as cap
 
 
 # The single phase BOTH legs declare in cycle_start so observations bucket into a
@@ -55,7 +77,7 @@ HTTPS_SMOKE_TIMEOUT_S = float(os.environ.get("UNIMATRIX_HTTPS_SMOKE_TIMEOUT_S", 
 
 
 # ===========================================================================
-# UDS-leg driver (FR-5) — drive the identical manifest, barrier, then review.
+# UDS-leg driver (FR-5) — nan-021 VERBATIM. Drive the manifest, barrier, review.
 # ===========================================================================
 
 
@@ -86,6 +108,10 @@ def drive_uds_leg(
     The hook IPC listener serves EXACTLY ONE framed message per connection
     (uds/listener.rs handle_connection — read header+body, respond, close), so each
     hook event opens a FRESH UnimatrixHookClient connection.
+
+    nan-022 KEEPS this function byte-for-byte and layers the dimension BUNDLE on top via
+    `drive_uds_bundle`, which COMPOSES this driver (same cycle, same barrier) so the
+    committed orchestrator + its source-inspection tests stay green (AC-11).
     """
     sid = workload.session_id  # the #832 stable identity — SAME value as the HTTPS leg
 
@@ -168,7 +194,106 @@ def drive_uds_leg(
 
 
 # ===========================================================================
+# UDS-leg bundle driver (nan-022 FR-12 / ADR-001 / ADR-005) — drive once, bundle.
+# ===========================================================================
+
+
+def drive_uds_bundle(
+    uds: UnimatrixUdsClient,
+    hook_socket_path: str | Path,
+    workload: pw.ParityWorkload,
+    store_dir: str | Path,
+    *,
+    agent_id: str = "nan-022-uds-leg",
+    hook_timeout: float = 30.0,
+) -> dict:
+    """Drive the augmented manifest over local hook IPC + MCP UDS and return the
+    dimension BUNDLE keyed by `Dimension.capture_key`::
+
+        { "retrieval": {...}, "behavioral": {...}, "analytics": {...},
+          "proactive": {...}, "precompact": {...}, "isolation": {...} }
+
+    iterating `DIMENSIONS` (the single authoritative enumeration — no hand-list).
+    ALL captures run under the ONE stable session id (#832). The barrier gates every
+    DB-reading capture (R-04).
+
+    Sequence (ADR-001 / ADR-005 / FR-5 / FR-10 / FR-12):
+      PHASE 0  seed the corpus over MCP (`context_store`) so both legs rank the
+               IDENTICAL corpus (CONTENT only — never a compared output; R-15).
+      PHASE 1+2 COMPOSE `drive_uds_leg`: it drives the ONE #5298 11-frame observe
+               cycle (byte-identical to the HTTPS leg — analytics cycle frames +
+               behavioral attribution land here) AND applies the ONE SYMMETRIC
+               durability barrier (the SHARED C4' helper, leg="UDS") AFTER cycle_stop.
+               Every PHASE-3 DB-reading capture therefore runs AFTER the barrier
+               (R-04) — there is NO second cycle and NO second barrier. The returned
+               MetricVector is the analytics dimension's `metric_vector`.
+      PHASE 3  per-dimension capture, routed by `Dimension.wire_surface`; intra-check
+               dimensions (retrieval, proactive) are double-captured; dual-surface
+               dimensions (analytics, isolation) fan out BOTH surfaces explicitly. A
+               dimension routed to the wrong surface records nothing → empty capture →
+               K4 INFRA-ERROR (C-9), never an empty-pass.
+    """
+    sid = workload.session_id  # the #832 stable identity — SAME value as the HTTPS leg
+
+    # ---- PHASE 0: seed the corpus over MCP (content-only; R-15) ----
+    _seed_corpus_uds(uds, workload)
+
+    # ---- PHASE 1+2: drive the cycle + barrier via the committed driver (one cycle,
+    #      one barrier). The returned MetricVector is the analytics capture; the
+    #      barrier it applies gates every PHASE-3 DB read (R-04). ----
+    metric_vector = drive_uds_leg(
+        uds,
+        hook_socket_path,
+        workload,
+        store_dir,
+        agent_id=agent_id,
+        hook_timeout=hook_timeout,
+    )
+
+    # ---- PHASE 3: per-dimension capture, routed by wire_surface (iterate DIMENSIONS) ----
+    bundle: dict = {}
+    for dim in DIMENSIONS:
+        bundle[dim.capture_key] = _capture_dimension(
+            dim,
+            uds,
+            hook_socket_path,
+            workload,
+            store_dir,
+            sid,
+            metric_vector=metric_vector,
+            agent_id=agent_id,
+            hook_timeout=hook_timeout,
+        )
+    return bundle
+
+
+# ===========================================================================
+# Bundle-phase helpers (seed + per-dimension capture routing).
+# ===========================================================================
+
+
+def _seed_corpus_uds(uds: UnimatrixUdsClient, workload: pw.ParityWorkload) -> None:
+    """PHASE 0 — replay the workload's seed-corpus `context_store` calls over MCP UDS
+    so the store is IDENTICALLY seeded on both legs (CONTENT only — never a compared
+    output; R-15). Iterates `workload.seed_calls` (a VIEW over the single manifest)."""
+    for call in workload.seed_calls:
+        args = dict(call.args)
+        content = args.pop("content", "")
+        topic = args.pop("topic", "")
+        category = args.pop("category", "")
+        uds.context_store(content, topic, category, **cap._clean(args))
+
+
+# Per-dimension capture + wire-surface routing live in `parity_legs_capture.py`
+# (the routing fan-out + DRIVER_WIRE_SURFACES). `_capture_dimension` re-exported here
+# under its private name so the driver and tests keep one import surface.
+_capture_dimension = cap.capture_dimension
+DRIVER_WIRE_SURFACES = cap.DRIVER_WIRE_SURFACES
+
+
+# ===========================================================================
 # Derived-attribution assertion (AC-03 / FR-6 / R-07) — derived, never seeded.
+# (Consumed verbatim from nan-021 — extends to a capture both legs emit via D2.)
 # ===========================================================================
 
 
@@ -209,7 +334,7 @@ def assert_derived_attribution(feature: str, store_dir: str | Path) -> None:
 
 
 # ===========================================================================
-# HTTPS leg shell-out (C1+C2) — single-execution seam (R-03).
+# HTTPS leg shell-out (C1+C2) — single-execution seam (R-03). Consumed verbatim.
 # ===========================================================================
 
 
@@ -259,7 +384,7 @@ def run_https_leg(
 
 
 # ===========================================================================
-# Helpers
+# Helpers (consumed verbatim from nan-021)
 # ===========================================================================
 
 

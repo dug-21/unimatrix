@@ -29,6 +29,17 @@
 # Stub seam (R-12, mirrors SMOKE_*_CMD): SMOKE_CYCLE_CMD overrides the bridge
 # drive so C5's logic-test can drive control flow (marker, exit codes, out-file
 # write, witness assertions) with a synthetic vector BEFORE the live tag run.
+#
+# nan-022 (C5'): the out-file payload WIDENS from {run_token, metric_vector} to
+# {run_token, dimension_bundle:{retrieval, behavioral, analytics, proactive,
+# precompact, isolation}} (ADR-005 / cloud-cycle-lib.md). The /observe-surface +
+# container-side captures the SHELL owns (behavioral D2, isolation D6, precompact
+# D5) and the full six-key bundle assembly live in cloud-bundle-lib.sh (sourced
+# below) to keep BOTH files <=500 lines (the nan-021 lib-split precedent). The MCP-
+# bridge-surface captures (retrieval, proactive, analytics) come from the C2'
+# bridge-cycle-driver.js fragment ($REVIEW_OUT). Shell captures are taken AFTER the
+# symmetric durability barrier (R-04) — a pre-barrier DB read is INFRA, never a
+# parity verdict.
 
 REPO_ROOT_DEFAULT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # product/test/infra-001 (PYTHONPATH root for harness.*)
@@ -36,6 +47,10 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BRIDGE_JS="$REPO_ROOT_DEFAULT/packages/unimatrix/lib/hook-client/mcp-bridge.js"
 WITNESS_JS="$SCRIPTS_DIR/bridge-witness.js"
 DRIVER_JS="$SCRIPTS_DIR/bridge-cycle-driver.js"
+
+# nan-022 C5': the dimension-bundle captures + assembly (sourced; defines fns only).
+# shellcheck source=product/test/infra-001/scripts/cloud-bundle-lib.sh
+. "$SCRIPTS_DIR/cloud-bundle-lib.sh"
 
 # C4-single-sourced observe predicate over the per-slug store DIR. The store
 # lives INSIDE the distroless container volume, so it is sampled via the busybox
@@ -205,20 +220,39 @@ cloud_cycle_gates() {
   [ "${store_after:-0}" -gt "${store_before:-0}" ] \
     || fail "cycle observes did not grow the per-slug store ($store_before -> $store_after) => not durable"
 
-  # ---- 6. context_cycle_review over the bridge -> MetricVector(HTTPS) ----
-  # The driver returns {ok, metric_vector:<DICT>}: metric_vector is the parsed
-  # MetricVector (RetrospectiveReport.metrics, c2 pseudocode L69) — a JSON object,
-  # the SAME shape C3's UDS leg hands the comparator (ADR-003 reads .universal/
-  # .phases/.domain_metrics directly). $REVIEW_OUT carries that JSON.
+  # ---- 6. context_cycle_review over the bridge -> the C2' driver fragment ----
+  # nan-022: the driver now returns the MCP-bridge-surface FRAGMENT
+  # {ok, metric_vector, retrieval, proactive, informs_edges, phase_signal, ...}.
+  # metric_vector is the parsed MetricVector (the analytics dimension); retrieval/
+  # proactive are the D1/D4 ranked captures (with capture_2 for the intra double-
+  # capture). The shape C3's UDS leg hands the comparators (ADR-003/ADR-005).
+  # $REVIEW_OUT carries the fragment JSON.
   local REVIEW_OUT="$SANDBOX/bridge.review.json"
   if [ -n "${SMOKE_CYCLE_CMD:-}" ]; then
-    # Stub: synthesize the driver's {ok,metric_vector} envelope (control-flow /
-    # out-file shape test). SMOKE_REVIEW_VECTOR is a MetricVector JSON object.
-    local stub_mv="${SMOKE_REVIEW_VECTOR:-}"
-    [ -n "$stub_mv" ] || stub_mv='{"universal":{"total_tool_calls":3}}'
-    SMOKE_REVIEW_VECTOR="$stub_mv" \
-      node -e 'const v=process.env.SMOKE_REVIEW_VECTOR;let mv;try{mv=JSON.parse(v)}catch(e){process.exit(1)}process.stdout.write(JSON.stringify({ok:true,metric_vector:mv})+"\n")' \
-        >"$REVIEW_OUT" || fail "stub review vector is not valid JSON"
+    # Stub: synthesize the driver's bridge-surface fragment (control-flow / out-file
+    # shape test). SMOKE_BUNDLE_FRAGMENT (preferred) carries a full fragment JSON;
+    # SMOKE_REVIEW_VECTOR (nan-021 back-compat) carries just a MetricVector, wrapped
+    # into a minimal valid fragment so the legacy stub still exercises the spine.
+    if [ -n "${SMOKE_BUNDLE_FRAGMENT:-}" ]; then
+      [ -f "$SMOKE_BUNDLE_FRAGMENT" ] \
+        || fail "SMOKE_BUNDLE_FRAGMENT=$SMOKE_BUNDLE_FRAGMENT not found (stub seam)"
+      node -e 'const fs=require("fs");let o;try{o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"))}catch(e){process.exit(1)}if(o.ok!==true){process.exit(1)}process.stdout.write(JSON.stringify(o)+"\n")' \
+        "$SMOKE_BUNDLE_FRAGMENT" >"$REVIEW_OUT" || fail "stub bundle fragment is not a valid ok:true fragment"
+    else
+      local stub_mv="${SMOKE_REVIEW_VECTOR:-}"
+      [ -n "$stub_mv" ] || stub_mv='{"universal":{"total_tool_calls":3}}'
+      SMOKE_REVIEW_VECTOR="$stub_mv" \
+        node -e '
+          const v=process.env.SMOKE_REVIEW_VECTOR;let mv;try{mv=JSON.parse(v)}catch(e){process.exit(1)}
+          // minimal bridge-surface fragment: a back-compat MetricVector-only stub still
+          // carries the retrieval/proactive keys the bundle assembler requires so the
+          // never-empty guard is exercised on a legitimate (non-empty) capture.
+          process.stdout.write(JSON.stringify({ok:true,metric_vector:mv,
+            retrieval:{queries:[{tool:"context_search",args:{},result_ids:["1"],scores:[0.9]}],capture_2:[{tool:"context_search",args:{},result_ids:["1"],scores:[0.9]}]},
+            proactive:{briefing_ids:["1"],briefing_scores:[0.9],injection_set:["1"],capture_2:{briefing_ids:["1"],briefing_scores:[0.9],injection_set:["1"]}},
+            informs_edges:[],phase_signal:{}})+"\n");
+        ' >"$REVIEW_OUT" || fail "stub review vector is not valid JSON"
+    fi
   else
     HOME="$SANDBOX/home" REVIEW_INLINE=1 \
       node "$DRIVER_JS" "$project_hash" "$MANIFEST_PATH" \
@@ -228,23 +262,24 @@ cloud_cycle_gates() {
   fi
   grep -q '"ok": *true\|"ok":true' "$REVIEW_OUT" \
     || { _dump_bridge_err "$BRIDGE_ERR"; fail "context_cycle_review reported ok:false"; }
-  log "context_cycle_review over the bridge yielded a MetricVector. PASS gate 8c"
+  log "context_cycle_review over the bridge yielded the bridge-surface bundle fragment. PASS gate 8c"
 
-  # ---- 7. emit MetricVector(HTTPS)+RUN_TOKEN to the out-file (R-03) ----
-  # Re-wrap the driver's metric_vector DICT under this run's RUN_TOKEN, asserting
-  # it is a non-empty object (a null/empty vector = barrier released early -> R-06).
-  RUN_TOKEN="$RUN_TOKEN" OUT="$HTTPS_VECTOR_OUT" node -e '
-    const fs=require("fs");
-    const o=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
-    const mv=o.metric_vector;
-    if (mv===null || typeof mv!=="object" || Array.isArray(mv) || Object.keys(mv).length===0) {
-      process.stderr.write("empty/short MetricVector — barrier released early? (R-06)\n");
-      process.exit(1);
-    }
-    fs.writeFileSync(process.env.OUT, JSON.stringify({run_token:process.env.RUN_TOKEN, metric_vector:mv})+"\n");
-  ' "$REVIEW_OUT" || { _dump_bridge_err "$BRIDGE_ERR"; fail "failed to emit HTTPS MetricVector out-file $HTTPS_VECTOR_OUT (empty/short vector?)"; }
-  [ -s "$HTTPS_VECTOR_OUT" ] || fail "HTTPS MetricVector out-file $HTTPS_VECTOR_OUT empty after emit"
-  log "emitted MetricVector(HTTPS)+RUN_TOKEN to $HTTPS_VECTOR_OUT. PASS gate 8 (cloud cycle)"
+  # ---- 7. assemble the shell-owned /observe-surface captures (POST-barrier) ----
+  # R-04: the symmetric durability barrier (step 5 above) has released, so all
+  # driven observes are flushed. ONLY NOW do the container-side DB reads run — a
+  # pre-barrier read is an INFRA condition, never a parity verdict. The captures
+  # (behavioral D2, isolation D6, precompact D5) live in cloud-bundle-lib.sh.
+  local SHELL_CAPTURES="$SANDBOX/shell_captures.json"
+  assemble_shell_captures "$SLUG_DIR" "$MANIFEST_PATH" "$SHELL_CAPTURES"
+
+  # ---- 8. assemble + emit the SIX-key dimension bundle to the out-file (R-09) ----
+  # Compose {run_token, dimension_bundle:{retrieval, behavioral, analytics,
+  # proactive, precompact, isolation}} from the C2' driver fragment + the shell-
+  # owned captures. The never-empty guard fires BEFORE the write: any missing/empty
+  # non-D5 capture => exit 1, never an empty-key bundle. Python load_https_bundle
+  # re-validates on ingest (the binding guard — R-09 contract-tested both sides).
+  emit_dimension_bundle "$REVIEW_OUT" "$SHELL_CAPTURES" "$RUN_TOKEN" "$HTTPS_VECTOR_OUT"
+  log "emitted dimension_bundle(HTTPS)+RUN_TOKEN to $HTTPS_VECTOR_OUT. PASS gate 8 (cloud cycle)"
 }
 
 # Drive the live cycle over pinned /observe as the C3-CANONICAL HookRequest

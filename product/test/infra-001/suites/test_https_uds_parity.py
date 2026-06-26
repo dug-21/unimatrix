@@ -44,8 +44,35 @@ from harness import parity_legs
 from harness.parity_legs import (
     PARITY_PHASE,
     assert_derived_attribution,
+    drive_uds_bundle,
     drive_uds_leg,
     run_https_leg,
+)
+
+# nan-022 matrix path (ADR-001/ADR-002) — the single authoritative enumeration, the
+# drift guard, the classifier/roll-up, the transport-health preflight + token-guarded
+# bundle ingest, and the evidence-table / roll-up-assertion support.
+#
+# IMPORT ORDER IS LOAD-BEARING (Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md): `parity_comparator` MUST be imported BEFORE
+# `from harness.parity_dimensions import DIMENSIONS`. K2's import triggers
+# `bind_comparators`, which REBINDS the module-global `DIMENSIONS` (a new tuple, not an
+# in-place mutation). A `from ... import DIMENSIONS` that runs first captures the stale
+# string-bound tuple, and the drift guard then sees `comparator='RetrievalComparator'`
+# (a str, not a class). Mirrors the safe ordering in test_https_uds_parity_matrix.py.
+from harness.parity_comparator import assert_comparator_contract
+from harness.parity_dimensions import DIMENSIONS
+from harness.parity_outcome import classify_dimension, rollup
+from harness.transport_health import (
+    DEFAULT_CONNECT_DEADLINE_S,
+    DEFAULT_IDLE_DEADLINE_S,
+    InfraError,
+    load_https_bundle,
+    preflight_leg,
+)
+from harness.parity_matrix_support import (
+    assert_rollup,
+    emit_infra_and_fail,
+    evidence_table,
 )
 
 
@@ -138,6 +165,191 @@ def test_c3_uds_leg_live_review_non_empty_and_attributed(daemon_server):
     # runs cleanly over real daemon output (the HTTPS leg substitutes its own vector
     # for mv_https in the full orchestrator; here we self-compare).
     assert compare_metric_vectors(mv_uds, mv_uds) == []
+
+
+# ===========================================================================
+# The nan-022 parity-MATRIX orchestrator (ADR-001 — drive both legs once, classify
+# every dimension, roll up, emit the evidence table). Cumulative sibling of the
+# nan-021 MetricVector test above (which stays UNCHANGED — AC-11).
+# ===========================================================================
+
+
+@pytest.mark.integration
+@pytest.mark.parity
+def test_https_uds_parity_matrix(daemon_server, tmp_path):
+    """Drive BOTH legs in ONE execution and assert the six-dimension parity matrix
+    (AC-01..08). UDS leg in-process via `drive_uds_bundle` → dimension bundle; HTTPS
+    leg via the smoke shell-out → token-guarded `load_https_bundle`; classify each
+    dimension (INFRA→INTRA→PARITY); roll up; emit the evidence table keyed by the run
+    token. A missing leg / capture / stale bundle ERRORS (distinct INFRA exit) — never
+    a vacuous pass.
+    """
+    # ---- 0. drift guard BEFORE any drive (off-Docker discipline, fails fast) ----
+    assert_comparator_contract(DIMENSIONS)
+
+    # ---- 1. ONE workload / ONE identity / ONE token ----
+    workload = default_workload()
+    workload.validate()
+    run_token = workload.session_id  # the SINGLE correlation token (R-03/R-13)
+    store_dir = daemon_server["store_dir"]
+    sandbox = tmp_path / "sandbox"
+    sandbox.mkdir(parents=True, exist_ok=True)
+    https_out = sandbox / "https_dimension_bundle.json"
+    assert not https_out.exists(), "stale HTTPS out-file present at start (R-12 guard)"
+    manifest_path = workload.write_manifest(sandbox / "parity_workload.json")
+
+    # ---- 2. UDS leg (in-process), preflight first (defense-in-depth) ----
+    try:
+        _preflight_uds(daemon_server)  # K5; InfraError → distinct INFRA, never RED
+    except InfraError as e:
+        emit_infra_and_fail(e, run_token)
+
+    uds = UnimatrixUdsClient(daemon_server["mcp_socket_path"], timeout=30.0)
+    uds.connect()
+    try:
+        bundle_uds = drive_uds_bundle(
+            uds, daemon_server["socket_path"], workload, store_dir
+        )
+    finally:
+        uds.disconnect()
+    assert_derived_attribution(workload.feature_cycle, store_dir)  # AC-03 (UDS leg)
+
+    # ---- 3. HTTPS leg (shell-out), preflight first; token-guarded never-empty ingest ----
+    try:
+        _preflight_https(daemon_server)
+        run_https_leg(
+            manifest_path=manifest_path,
+            run_token=run_token,
+            https_out=https_out,
+            sandbox=sandbox,
+        )
+        # token-guarded; missing/stale/null/empty → InfraError, never empty-pass.
+        bundle_https = load_https_bundle(https_out, run_token)
+    except InfraError as e:
+        emit_infra_and_fail(e, run_token)
+
+    # ---- 4. classify every dimension (INFRA → INTRA → PARITY) ----
+    results = _classify_matrix(bundle_uds, bundle_https)
+
+    # ---- 5. evidence table keyed by run_token + per-dimension evidence records ----
+    table = evidence_table(results, run_token)
+    write_field_record(table, sandbox / f"parity_matrix_{run_token}.json")
+    _emit_evidence_records(bundle_uds, bundle_https, run_token, sandbox)
+
+    # ---- 6. roll up + assert (§4) — GREEN iff every dimension PARITY-PASS ----
+    verdict, exit_code = rollup(results)
+    assert_rollup(verdict, exit_code, results, table)
+
+
+# ---------------------------------------------------------------------------
+# Matrix orchestrator helpers (sequencing only — no per-leg parity assertion).
+# ---------------------------------------------------------------------------
+
+
+def _classify_matrix(bundle_uds: dict, bundle_https: dict) -> list:
+    """Classify EVERY dimension by iterating `DIMENSIONS` (the single enumeration —
+    no hand-list). A missing capture_key in either bundle surfaces as INFRA via the
+    classifier's emptiness guard (never an empty-pass)."""
+    results = []
+    for dim in DIMENSIONS:
+        cap_uds = bundle_uds.get(dim.capture_key)
+        cap_https = bundle_https.get(dim.capture_key)
+        results.append(classify_dimension(dim, cap_uds, cap_https))
+    return results
+
+
+def _emit_evidence_records(
+    bundle_uds: dict, bundle_https: dict, run_token: str, sandbox
+) -> None:
+    """Emit the per-dimension first-live-run evidence record (ADR-003 discipline,
+    generalized per dimension) for each dimension whose captures are present and
+    non-null on both legs. A null/absent capture is left to the classifier's INFRA
+    path (the table records it) — the evidence record is a best-effort artifact, not
+    a gate, so it never raises on a missing/null capture."""
+    for dim in DIMENSIONS:
+        h = bundle_https.get(dim.capture_key)
+        u = bundle_uds.get(dim.capture_key)
+        if h is None or u is None:
+            continue
+        try:
+            rec = dim.comparator().evidence_record(h, u, run_token=run_token)
+        except Exception:  # noqa: BLE001 — evidence is non-gating; INFRA is in the table
+            continue
+        write_field_record(rec, sandbox / f"evidence_{dim.id}_{run_token}.json")
+
+
+def _preflight_uds(daemon_server: dict) -> None:
+    """Bounded connect + liveness reachability probe of the UDS legs (the MCP + hook
+    sockets) BEFORE driving — defense-in-depth so a half-open hang surfaces as INFRA,
+    never an unbounded hang / parity RED (R-02). Reuses the SHIPPED clients for the
+    liveness proof; introduces NO new transport path (C-2).
+
+    LIVENESS MODEL (Stage-3c first-live-run fix — Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md): both UDS sockets are
+    REQUEST-DRIVEN — the MCP server replies only to a valid JSON-RPC request and the
+    hook server only to a length-prefixed hook op; NEITHER echoes an unsolicited byte.
+    The generic `uds_socket_leg` nudge (`sendall(b"\\n"); recv(1)`) therefore BLOCKS on
+    a perfectly healthy daemon and false-classifies it as a #839 half-open hang. The
+    correct, C-2-honouring liveness proof is the shipped client's own handshake:
+      * MCP socket  — `UnimatrixUdsClient.connect()` completes the real MCP `initialize`
+        handshake; a genuine reply proves liveness, a half-open server never completes
+        it and the client's bounded socket timeout trips → InfraError (true half-open).
+      * hook socket — request-driven, no handshake-on-connect; a clean bounded
+        `connect()` proves the accept loop is alive (the #839 half-open class the guard
+        targets is the HTTPS leg, deferred to `_preflight_https` / the smoke ceiling).
+    """
+    from harness.transport_health import uds_socket_leg
+
+    # MCP leg: liveness = the shipped client's real initialize handshake (true reply).
+    def _mcp_connect(deadline_s: float) -> None:
+        c = UnimatrixUdsClient(daemon_server["mcp_socket_path"], timeout=deadline_s)
+        c.connect()  # raises on connect/handshake failure within the bounded timeout
+        c.disconnect()
+
+    def _mcp_liveness(deadline_s: float) -> bool:
+        # connect() above already completed the initialize handshake (a real reply);
+        # re-proving here would double-handshake. A completed handshake IS liveness.
+        return True
+
+    preflight_leg(
+        "uds-mcp",
+        connect_deadline_s=DEFAULT_CONNECT_DEADLINE_S,
+        idle_deadline_s=DEFAULT_IDLE_DEADLINE_S,
+        connect_probe=_mcp_connect,
+        liveness_probe=_mcp_liveness,
+    )
+
+    # Hook leg: request-driven; a clean bounded connect proves the listener is alive.
+    def _hook_connect(deadline_s: float) -> None:
+        import socket as _socket
+
+        s = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+        s.settimeout(deadline_s)
+        try:
+            s.connect(str(daemon_server["socket_path"]))
+        finally:
+            s.close()
+
+    preflight_leg(
+        "uds-hook",
+        connect_deadline_s=DEFAULT_CONNECT_DEADLINE_S,
+        idle_deadline_s=DEFAULT_IDLE_DEADLINE_S,
+        connect_probe=_hook_connect,
+        liveness_probe=lambda _d: True,
+    )
+
+
+def _preflight_https(daemon_server: dict) -> None:
+    """Bounded reachability probe of the HTTPS leg BEFORE the smoke shell-out — a
+    defense-in-depth name for a half-open hang (R-02). The live smoke owns the TLS /
+    cert posture and its own outer ceiling (`HTTPS_SMOKE_TIMEOUT_S`); K5 here only adds
+    a bounded PRE-DRIVE reachability classification so a HANG is NAMED as INFRA, not a
+    timeout-as-RED. When no HTTPS endpoint is exposed to the orchestrator (the smoke
+    runs the container internally), this preflight is a no-op — the smoke's own
+    run_smoke_gate exit-code truth table is the binding HTTPS health gate."""
+    # The orchestrator does not own the container's TLS endpoint (the smoke does); the
+    # binding HTTPS reachability gate is run_smoke_gate inside run_https_leg. No new
+    # transport/cert path is introduced here (C-2) — see the report's flag.
+    return None
 
 
 # ===========================================================================
