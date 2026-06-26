@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.8] - 2026-06-26
+
+### Fixes
+- arm transport/connect timeout + silent-eviction self-heal in the HTTPS MCP bridge: the first MCP call after long client dormancy no longer hangs forever on a half-open socket — a bounded connect/TLS/idle transport timeout fails fast and transparently re-inits the session, with the self-heal now reachable on silent (hung-socket) eviction as well as signalled (404) eviction (#839) (#842)
+
 ## [0.8.7] - 2026-06-24
 
 ### Fixes
