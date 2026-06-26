@@ -231,8 +231,6 @@ def _fixture_capture(dim_id: str, feature_cycle: str, n: int) -> dict:
             "measurable": False,
             "host_side_gap": "documented host-side gap (fixture seam)",
         }
-    if dim_id == "isolation":
-        return {"slug_a_writes_visible_to_b": False, "landed_only_in_a": True}
     raise InfraError("fixture", f"no fixture capture for dimension {dim_id!r}")
 
 

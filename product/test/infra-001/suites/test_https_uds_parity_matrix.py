@@ -88,8 +88,8 @@ def test_matrix_orchestrator_seam_with_fixture_bundle(tmp_path):
     table = evidence_table(results, run_token)
 
     by_dim = {r.dimension: r for r in results}
-    # The five measurable dimensions are PARITY-PASS on identical golden captures.
-    for dim_id in ("retrieval", "behavioral", "analytics", "proactive", "isolation"):
+    # The four measurable dimensions are PARITY-PASS on identical golden captures.
+    for dim_id in ("retrieval", "behavioral", "analytics", "proactive"):
         assert by_dim[dim_id].outcome == Outcome.PARITY_PASS, (
             f"{dim_id}: {by_dim[dim_id].detail}"
         )
@@ -261,7 +261,7 @@ def test_matrix_missing_capture_key_in_bundle_errors(tmp_path):
     records nothing — never an empty-pass on the absent dimension, C-9)."""
     wl = default_workload()
     bundle = fixture_dimension_bundle(feature_cycle=wl.feature_cycle)
-    del bundle["isolation"]
+    del bundle["behavioral"]
     https_out = tmp_path / "https_dimension_bundle.json"
     https_out.write_text(
         json.dumps({"run_token": wl.session_id, "dimension_bundle": bundle}),

@@ -256,7 +256,7 @@ async function main() {
     // proactive D4) ride the SAME REVIEW_INLINE invocation/session as the analytics
     // review (one bridge session = SSE + Mcp-Session-Id replay asserted by the
     // witness; idle-window min preserved). The /observe-surface dimensions
-    // (behavioral, precompact, isolation) are NOT driven here — the shell gate (C5')
+    // (behavioral, precompact) are NOT driven here — the shell gate (C5')
     // owns those over pinned /observe. Single source per dimension (no double-capture
     // across components).
     let mv = null;
@@ -351,7 +351,7 @@ async function main() {
     // MCP-bridge-surface captures (retrieval, proactive) alongside the analytics
     // metric_vector. The shell gate (C5') assembles the FULL dimension_bundle from
     // this fragment plus the /observe-surface captures IT owns (behavioral,
-    // precompact, isolation). retrieval/proactive are emitted ONLY on the review
+    // precompact). retrieval/proactive are emitted ONLY on the review
     // invocation; the bare cycle invocation keeps the nan-021 shape (metric_vector
     // null) so its existing consumers stay unchanged (AC-11 cumulative).
     const out = {

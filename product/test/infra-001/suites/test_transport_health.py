@@ -268,7 +268,6 @@ def _full_bundle() -> dict:
         "proactive": {"briefing_ids": [1], "briefing_scores": [0.9],
                       "injection_set": [1], "capture_2": {"briefing_ids": [1]}},
         "precompact": {"restored_payload": {"x": 1}, "measurable": True, "host_side_gap": None},
-        "isolation": {"slug_a_writes_visible_to_b": False, "landed_only_in_a": True},
     }
 
 
@@ -284,7 +283,7 @@ def test_load_https_bundle_full_bundle_round_trips(tmp_path):
     out = _write_payload(tmp_path, {"run_token": _TOKEN, "dimension_bundle": _full_bundle()})
     bundle = load_https_bundle(out, _TOKEN)
     assert set(bundle) >= {
-        "retrieval", "behavioral", "analytics", "proactive", "precompact", "isolation",
+        "retrieval", "behavioral", "analytics", "proactive", "precompact",
     }
     assert bundle["behavioral"]["topic_signals"] == ["nan-022"]
 

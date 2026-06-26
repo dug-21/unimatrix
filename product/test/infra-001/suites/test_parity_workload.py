@@ -511,7 +511,6 @@ def _well_formed_bundle(run_token: str = "run-022") -> dict:
             "analytics": {"metric_vector": {}, "informs_edges": [], "phase_signal": {}},
             "proactive": {"briefing_ids": [1, 2, 3], "briefing_scores": [0.9, 0.8, 0.7], "injection_set": [], "capture_2": {}},
             "precompact": {"restored_payload": {"k": "v"}, "measurable": True, "host_side_gap": None},
-            "isolation": {"slug_a_writes_visible_to_b": False, "landed_only_in_a": True},
         },
     }
 
@@ -669,13 +668,13 @@ def test_load_https_bundle_well_formed_returns_dimension_bundle(tmp_path):
     out = tmp_path / "https_bundle.json"
     out.write_text(json.dumps(_well_formed_bundle("run-ok")), encoding="utf-8")
     bundle = load_https_bundle(out, "run-ok")
-    assert set(bundle) >= {"retrieval", "behavioral", "analytics", "proactive", "precompact", "isolation"}
+    assert set(bundle) >= {"retrieval", "behavioral", "analytics", "proactive", "precompact"}
     assert bundle["retrieval"]["queries"]
 
 
 def test_load_https_bundle_missing_capture_key_raises_infra(tmp_path):
     payload = _well_formed_bundle("run-x")
-    del payload["dimension_bundle"]["isolation"]  # drop a required capture
+    del payload["dimension_bundle"]["behavioral"]  # drop a required capture
     out = tmp_path / "https_bundle.json"
     out.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(InfraError):

@@ -321,7 +321,7 @@ def preflight_leg(
 # The required capture keys are SINGLE-SOURCED from K1 `parity_dimensions.capture_keys()`
 # (C-5 — no hand-list). K5 is in the same off-Docker wave as K1, so we import it
 # LAZILY at call time: when K1 is present we use its tuple; before K1 lands (or in an
-# isolated off-Docker unit run) we fall back to the canonical six. The fallback equals
+# isolated off-Docker unit run) we fall back to the canonical five. The fallback equals
 # K1's keys by construction (asserted by K1's own registry tests) — it is a bootstrap
 # for the off-Docker seam, never a second authoritative source.
 _CANONICAL_CAPTURE_KEYS: tuple[str, ...] = (
@@ -330,7 +330,6 @@ _CANONICAL_CAPTURE_KEYS: tuple[str, ...] = (
     "analytics",
     "proactive",
     "precompact",
-    "isolation",
 )
 # The ONLY capture whose value may legally be `null`, and ONLY with measurable=False
 # (ADR-006 / OVERVIEW). Single source for the null-capture exception.

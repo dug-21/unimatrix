@@ -275,10 +275,6 @@ def _capture_is_empty(dim: Any, cap: Any) -> bool:
         if cap.get("measurable") is False:
             return False
         return cap.get("restored_payload") is None
-    if dim_id == "isolation":
-        return (
-            "slug_a_writes_visible_to_b" not in cap or "landed_only_in_a" not in cap
-        )
     # Unknown dimension: be conservative — an unrecognized non-empty dict is not
     # treated as empty (the registry is the single source; an orphan id is caught
     # by the drift guard upstream).

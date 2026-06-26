@@ -8,7 +8,7 @@ Lifts the nan-021 `metric_comparator` shape into ONE base class so the five new
 C0 dimensions cannot drift from the closed-exclusion-set discipline by
 construction, not by convention (the structural #5302 fix). Single-sources:
 
-  * ONE `DimensionComparator` ABC + six concrete comparators.
+  * ONE `DimensionComparator` ABC + five concrete comparators.
   * ONE `ranking_parity` tolerance (imported from K3) shared by retrieval +
     briefing — there is NO second tie policy (SR-03 / NFR-4 / C-5).
   * ONE `FORBIDDEN_SEED_SITES` tuple — re-exported from C4' `parity_workload`
@@ -28,7 +28,7 @@ REGISTRY BINDING (Wave A → Wave B late-binding hook, K1-prescribed)
 --------------------------------------------------------------------------------
 K1's `Dimension.comparator` holds the comparator CLASS NAME (str) until bound.
 At module import this module calls `parity_dimensions.bind_comparators({...})`
-ONCE with all six {name: class} pairs so the registry resolves names → classes.
+ONCE with all five {name: class} pairs so the registry resolves names → classes.
 Without this the orchestrator / drift-guard subclass checks fail loudly (intended).
 """
 
@@ -70,7 +70,6 @@ __all__ = [
     "BriefingComparator",
     "AttributionComparator",
     "PreCompactComparator",
-    "IsolationComparator",
     "ParityMismatch",
     "FORBIDDEN_SEED_SITES",
     "assert_comparator_contract",
@@ -92,7 +91,7 @@ class DimensionComparator(ABC):
     any non-excluded diff — the ONLY exit from a non-excluded divergence (C-4).
 
     An EMPTY `EXCLUDED` is permitted ONLY where the dimension is provably
-    exclusion-free (transport-invariant booleans/strings — attribution, isolation);
+    exclusion-free (transport-invariant booleans/strings — attribution);
     the drift guard encodes that policy. For an empty set, `EXCLUSION_JUSTIFICATIONS`
     is also empty and the key-coverage invariant holds vacuously.
     """
@@ -375,44 +374,10 @@ class PreCompactComparator(DimensionComparator):
 
 
 # =============================================================================
-# 6. Isolation (D6) — boolean-exact, EXCLUDED empty (security-load-bearing, NFR-6)
-# =============================================================================
-class IsolationComparator(DimensionComparator):
-    """Per-slug isolation (D6) — isolation booleans compared EXACTLY (no tolerance).
-
-    A tolerance here would mask a cross-tenant leak; per NFR-6 isolation probes are
-    compared exactly. Additionally the isolation property must HOLD on each leg:
-    `slug_a_writes_visible_to_b` must be False and `landed_only_in_a` must be True.
-    """
-
-    EXCLUDED = frozenset()  # boolean isolation property; no wall-clock field
-    EXCLUSION_JUSTIFICATIONS = {}
-
-    def compare(self, https: Any, uds: Any) -> list[tuple[str, Any, Any]]:
-        # capture: {"slug_a_writes_visible_to_b":bool, "landed_only_in_a":bool}
-        diffs: list[tuple[str, Any, Any]] = []
-        # cross-leg parity: the isolation booleans must agree EXACTLY.
-        for f in ("slug_a_writes_visible_to_b", "landed_only_in_a"):
-            if https[f] != uds[f]:
-                diffs.append((f, https[f], uds[f]))
-        # security property: a VIOLATION on either leg is a parity-relevant divergence.
-        for leg_label, cap in (("HTTPS", https), ("UDS", uds)):
-            if cap["slug_a_writes_visible_to_b"]:
-                diffs.append(
-                    (f"{leg_label}.slug_a_writes_visible_to_b", True, False)
-                )
-            if not cap["landed_only_in_a"]:
-                diffs.append((f"{leg_label}.landed_only_in_a", False, True))
-        if diffs:
-            raise ParityMismatch(diffs)
-        return diffs
-
-
-# =============================================================================
-# 7. Cross-dimension drift guard (the structural SR-05/#5302 fix)
+# 6. Cross-dimension drift guard (the structural SR-05/#5302 fix)
 # =============================================================================
 # Dimensions whose spec declares a NON-EMPTY justified exclusion set. The empty-set
-# dimensions (behavioral/isolation) are transport-invariant booleans/strings.
+# dimension (behavioral) is transport-invariant booleans/strings.
 _MUST_EXCLUDE = ("retrieval", "analytics", "proactive", "precompact")
 
 
@@ -469,7 +434,7 @@ def assert_comparator_contract(dimensions: tuple) -> None:
 
 
 # =============================================================================
-# 8. Late-binding: resolve K1 registry comparator NAMES -> these classes (ONCE)
+# 7. Late-binding: resolve K1 registry comparator NAMES -> these classes (ONCE)
 # =============================================================================
 # K1's Dimension.comparator holds the class NAME (str) until bound. Call the
 # K1-published hook ONCE at import so the registry resolves names -> classes and
@@ -481,6 +446,5 @@ parity_dimensions.bind_comparators(
         "MetricVectorComparator": MetricVectorComparator,
         "BriefingComparator": BriefingComparator,
         "PreCompactComparator": PreCompactComparator,
-        "IsolationComparator": IsolationComparator,
     }
 )

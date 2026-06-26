@@ -3,7 +3,7 @@
 Covers the DRIVER half of the nan-022 parity matrix (#837): the dimension-bundle
 assembly, per-dimension WIRE-SURFACE routing (registry-vs-driver consistency, R-03),
 double-capture for the intra-check dimensions (R-07), the dual-surface fan-out
-(analytics, isolation), the barrier-gating discipline for DB reads (R-04), the
+(analytics), the barrier-gating discipline for DB reads (R-04), the
 wrong-surface → missing-capture → INFRA classification (C-9 / R-03), and the
 PreCompact measurability-honesty (ADR-006 / R-08). Plus the nan-021 backward-compat
 guards (the committed `drive_uds_leg` MetricVector path is untouched).
@@ -111,10 +111,6 @@ class FakeUdsClient:
 
     def context_search(self, query, **k):
         self.calls.append("context_search")
-        # The isolation slug-B probe searches an isolation marker — return EMPTY so the
-        # cross-slug read shows no leak (the healthy isolation case).
-        if "isolation-marker" in (query or ""):
-            return self._text_result({"entries": []})
         return self._text_result({"entries": self._entries})
 
     def context_lookup(self, **k):
@@ -154,7 +150,7 @@ class FakeUdsClient:
 def fake_bundle(monkeypatch, tmp_path):
     """Drive `drive_uds_bundle` with fake clients off-Docker and return
     ``(bundle, uds, hook_frames)``. Patches the hook client constructor, the barrier
-    (no real store dir), and the DB-reading captures (behavioral/isolation)."""
+    (no real store dir), and the DB-reading captures (behavioral)."""
     workload = default_workload()
     hook_frames: list = []
 
@@ -165,13 +161,12 @@ def fake_bundle(monkeypatch, tmp_path):
     monkeypatch.setattr(cap, "UnimatrixHookClient", _fake_hook_ctor)
     # Barrier is a no-op off-Docker (no real WAL); the ordering is asserted by source.
     monkeypatch.setattr(parity_legs, "durability_barrier", lambda **k: 1)
-    # DB-reading captures: behavioral topic_signals + isolation landing read the
-    # per-slug sqlite db, absent off-Docker. Patch them to deterministic values so the
-    # bundle assembles (the live DB read is Tier B / Stage 3c).
+    # DB-reading captures: behavioral topic_signals reads the per-slug sqlite db,
+    # absent off-Docker. Patch it to a deterministic value so the bundle assembles
+    # (the live DB read is Tier B / Stage 3c).
     monkeypatch.setattr(
         cap, "read_topic_signals", lambda store_dir: [workload.feature_cycle]
     )
-    monkeypatch.setattr(cap, "_marker_present_in_db", lambda store_dir, fc: True)
 
     uds = FakeUdsClient()
     bundle = drive_uds_bundle(uds, tmp_path / "hook.sock", workload, tmp_path / "store")
@@ -198,7 +193,6 @@ def test_drive_uds_bundle_returns_full_dimension_bundle(fake_bundle):
     assert {"restored_payload", "measurable", "host_side_gap"} <= set(
         bundle["precompact"]
     )
-    assert {"slug_a_writes_visible_to_b", "landed_only_in_a"} <= set(bundle["isolation"])
 
 
 def test_drive_uds_bundle_keys_iterate_registry_not_handlist(fake_bundle):
@@ -222,7 +216,7 @@ def test_intra_dims_carry_capture_2(fake_bundle):
     assert bundle["retrieval"]["capture_2"] is not None
     assert bundle["proactive"]["capture_2"] is not None
     # Non-intra dims have no capture_2 field.
-    for non_intra in ("behavioral", "analytics", "precompact", "isolation"):
+    for non_intra in ("behavioral", "analytics", "precompact"):
         assert "capture_2" not in bundle[non_intra]
 
 
@@ -232,8 +226,8 @@ def test_intra_dims_double_capture_invoked(fake_bundle):
     _, uds, _ = fake_bundle
     workload = default_workload()
     n_retrieval = len(workload.retrieval_calls)
-    # context_search/lookup/get fired once per retrieval call PER capture (x2), plus
-    # the isolation slug-B probe (one context_search). Assert at least 2x the set.
+    # context_search/lookup/get fired once per retrieval call PER capture (x2 — the
+    # double-capture). No other dimension uses these tools. Assert at least 2x the set.
     retrieval_tool_calls = sum(
         uds.calls.count(t)
         for t in ("context_search", "context_lookup", "context_get")
@@ -267,11 +261,10 @@ def test_driver_wire_surfaces_match_registry_primary_surface():
 
 
 def test_dual_surface_dimensions_touch_both_surfaces():
-    """analytics + isolation fan out BOTH wire surfaces (a missed fan-out captures
-    HALF a dimension — the two-surface fan-out integration risk)."""
+    """analytics fans out BOTH wire surfaces (a missed fan-out captures HALF a
+    dimension — the two-surface fan-out integration risk)."""
     both = {WIRE_MCP_BRIDGE, WIRE_HOOK_OBSERVE}
     assert DRIVER_WIRE_SURFACES["analytics"] == both
-    assert DRIVER_WIRE_SURFACES["isolation"] == both
     # Single-surface dims touch exactly one.
     for single in ("retrieval", "behavioral", "proactive", "precompact"):
         assert len(DRIVER_WIRE_SURFACES[single]) == 1
@@ -279,16 +272,12 @@ def test_dual_surface_dimensions_touch_both_surfaces():
 
 def test_dual_surface_fanout_complete(fake_bundle):
     """analytics fans out: cycle frames on the hook surface (PHASE 1) + review read +
-    informs edges over MCP. isolation fans out: slug-A on-disk landing + slug-B MCP
-    probe. Both perform BOTH halves (no half-capture, R-03)."""
+    informs edges over MCP. It performs BOTH halves (no half-capture, R-03)."""
     bundle, uds, frames = fake_bundle
     # analytics MCP half: review read happened over MCP; cycle frames over hook.
     assert "context_cycle_review" in uds.calls
     assert any(lbl == "cycle_start" for lbl, _ in frames)
     assert bundle["analytics"]["informs_edges"] == [10, 11]
-    # isolation: slug-B probe over MCP + slug-A landing (booleans both present).
-    assert bundle["isolation"]["slug_a_writes_visible_to_b"] is False
-    assert bundle["isolation"]["landed_only_in_a"] is True
 
 
 def test_wrong_surface_capture_empty_classifies_infra():
@@ -428,15 +417,14 @@ def test_uses_the_one_shared_barrier_helper():
 
 
 def test_db_reads_are_post_barrier_helpers():
-    """The DB-reading captures (behavioral topic_signals, isolation on-disk landing)
-    live in the capture module and are invoked ONLY from PHASE 3 (after the composed
-    `drive_uds_leg` barrier) — never inside the cycle/barrier phase."""
+    """The DB-reading capture (behavioral topic_signals) lives in the capture module
+    and is invoked ONLY from PHASE 3 (after the composed `drive_uds_leg` barrier) —
+    never inside the cycle/barrier phase."""
     bundle_src = inspect.getsource(drive_uds_bundle)
     # The DB-reading captures are routed via _capture_dimension (PHASE 3), not before.
     assert "read_topic_signals" not in bundle_src  # only reached via routing
     cap_src = inspect.getsource(cap.capture_dimension)
     assert "read_topic_signals" in cap_src
-    assert "capture_isolation" in cap_src
 
 
 # ===========================================================================
@@ -465,7 +453,7 @@ def test_drive_uds_leg_still_returns_metric_vector():
         parity_legs.UnimatrixHookClient = orig_hook
     # MetricVector shape, NOT a dimension bundle.
     assert "universal" in mv
-    assert "retrieval" not in mv and "isolation" not in mv
+    assert "retrieval" not in mv and "precompact" not in mv
 
 
 def test_drive_uds_leg_source_unbroken_for_committed_inspection():

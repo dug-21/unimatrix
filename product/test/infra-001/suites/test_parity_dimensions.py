@@ -29,18 +29,17 @@ from harness.parity_dimensions import (
     dimension_by_id,
 )
 
-# The six dimension ids — the C0 (#5304) dimension list; broadening is out of scope.
+# The five dimension ids — the C0 (#5304) dimension list; broadening is out of scope.
 EXPECTED_IDS = {
     "retrieval",
     "behavioral",
     "analytics",
     "proactive",
     "precompact",
-    "isolation",
 }
 
 # Architecture routing table (ARCHITECTURE §5 / brief Data Structures): the PRIMARY
-# wire_surface each dimension is registered under. analytics + isolation also touch
+# wire_surface each dimension is registered under. analytics also touches
 # the secondary surface (the leg-driver fan-out), declared via DUAL_SURFACE_DIMENSIONS.
 EXPECTED_PRIMARY_SURFACE = {
     "retrieval": WIRE_MCP_BRIDGE,
@@ -48,7 +47,6 @@ EXPECTED_PRIMARY_SURFACE = {
     "analytics": WIRE_MCP_BRIDGE,
     "proactive": WIRE_MCP_BRIDGE,
     "precompact": WIRE_HOOK_OBSERVE,
-    "isolation": WIRE_MCP_BRIDGE,
 }
 
 # The brief's Data Structures table comparator names (pre-binding, the K2 class names).
@@ -58,15 +56,14 @@ EXPECTED_COMPARATOR_NAME = {
     "analytics": "MetricVectorComparator",
     "proactive": "BriefingComparator",
     "precompact": "PreCompactComparator",
-    "isolation": "IsolationComparator",
 }
 
 
 # ===========================================================================
 # Enumeration completeness + identity (SR-05 single-source)
 # ===========================================================================
-def test_dimensions_enumerates_exactly_six():
-    assert len(DIMENSIONS) == 6
+def test_dimensions_enumerates_exactly_five():
+    assert len(DIMENSIONS) == 5
     assert {d.id for d in DIMENSIONS} == EXPECTED_IDS
 
 
@@ -82,7 +79,7 @@ def test_dimension_is_frozen_dataclass():
 def test_capture_keys_unique():
     keys = capture_keys()
     assert len(keys) == len(set(keys))
-    assert len(keys) == 6
+    assert len(keys) == 5
 
 
 def test_capture_keys_match_bundle_schema():
@@ -105,8 +102,8 @@ def test_wire_surface_assignments_match_architecture(dim_id, surface):
 
 
 def test_dual_surface_dimensions_declared():
-    # analytics + isolation touch BOTH surfaces — the fan-out the leg driver performs.
-    assert pd.DUAL_SURFACE_DIMENSIONS == {"analytics", "isolation"}
+    # analytics touches BOTH surfaces — the fan-out the leg driver performs.
+    assert pd.DUAL_SURFACE_DIMENSIONS == {"analytics"}
     assert pd.DUAL_SURFACE_DIMENSIONS <= EXPECTED_IDS
 
 

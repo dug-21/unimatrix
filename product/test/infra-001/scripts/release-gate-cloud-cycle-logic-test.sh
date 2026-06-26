@@ -233,14 +233,13 @@ STUBEOF
 }
 
 # A contract-shaped shell-captures fragment (nan-022 SMOKE_SHELL_CAPTURES seam):
-# {topic_signals, isolation, precompact} the bundle assembler composes with the
+# {topic_signals, precompact} the bundle assembler composes with the
 # bridge-surface fragment. Defaults to a VALID (non-empty) fragment; callers can
 # point SMOKE_SHELL_CAPTURES at a malformed one to drive the never-empty RED rows.
 make_shell_captures() {
   local f="$1"
   cat > "$f" <<'STUBEOF'
 {"topic_signals":["nan-022"],
- "isolation":{"slug_a_writes_visible_to_b":false,"landed_only_in_a":true},
  "precompact":{"restored_payload":null,"measurable":false,"host_side_gap":"documented host-side gap (ADR-006/OQ-2)"}}
 STUBEOF
 }
@@ -340,11 +339,11 @@ else
 fi
 
 # nan-022 R-09: the emitted out-file is {run_token, dimension_bundle:{...}} with ALL
-# SIX capture_keys present (matching parity_bundle_contract.md), NOT the nan-021
+# FIVE capture_keys present (matching parity_bundle_contract.md), NOT the nan-021
 # bare metric_vector. Asserted on the captured content via a small node shape check.
-test_c5_cloud_cycle_emits_six_key_bundle() {
+test_c5_cloud_cycle_emits_five_key_bundle() {
   if [ -z "$LAST_OUT_CONTENT" ]; then
-    oops "test_c5_cloud_cycle_emits_six_key_bundle" "no out-file content captured from the happy path"
+    oops "test_c5_cloud_cycle_emits_five_key_bundle" "no out-file content captured from the happy path"
     return
   fi
   local rc
@@ -354,25 +353,23 @@ test_c5_cloud_cycle_emits_six_key_bundle() {
       if (typeof o.run_token !== "string" || !o.run_token) { console.error("run_token missing/non-string"); process.exit(1) }
       const db=o.dimension_bundle;
       if (db===null || typeof db!=="object") { console.error("dimension_bundle missing"); process.exit(1) }
-      const want=["retrieval","behavioral","analytics","proactive","precompact","isolation"];
+      const want=["retrieval","behavioral","analytics","proactive","precompact"];
       const have=Object.keys(db).sort();
       if (JSON.stringify(have)!==JSON.stringify([...want].sort())) { console.error("keys="+have.join(",")); process.exit(1) }
       // analytics carries the nan-021 metric_vector (consumed-verbatim slice).
       if (!db.analytics || typeof db.analytics.metric_vector!=="object") { console.error("analytics.metric_vector missing"); process.exit(1) }
       // precompact carries the documented host-side gap (never a vacuous pass).
       if (db.precompact.measurable!==false || !db.precompact.host_side_gap) { console.error("precompact gap not named"); process.exit(1) }
-      // isolation booleans present (compared EXACTLY downstream — NFR-6).
-      if (typeof db.isolation.slug_a_writes_visible_to_b!=="boolean" || typeof db.isolation.landed_only_in_a!=="boolean") { console.error("isolation booleans missing"); process.exit(1) }
     });
   '
   rc=$?
   if [ "$rc" -eq 0 ]; then
-    pass "test_c5_cloud_cycle_emits_six_key_bundle (run_token + all 6 capture_keys, analytics.metric_vector, named precompact gap, isolation booleans)"
+    pass "test_c5_cloud_cycle_emits_five_key_bundle (run_token + all 5 capture_keys, analytics.metric_vector, named precompact gap)"
   else
-    oops "test_c5_cloud_cycle_emits_six_key_bundle" "emitted out-file is not a contract-shaped six-key dimension bundle"
+    oops "test_c5_cloud_cycle_emits_five_key_bundle" "emitted out-file is not a contract-shaped five-key dimension bundle"
   fi
 }
-test_c5_cloud_cycle_emits_six_key_bundle
+test_c5_cloud_cycle_emits_five_key_bundle
 
 # Drive reports ok:false => gate 8a RED (the drive failed).
 run_cloud_case test_c5_cloud_cycle_drive_not_ok_red 1 "bridge cycle reported ok:false" false
@@ -432,7 +429,7 @@ test_c5_cloud_cycle_requires_manifest_env() {
 test_c5_cloud_cycle_requires_manifest_env
 
 # nan-022 NOTE: the dimension-bundle ASSEMBLY scenarios (never-empty guard, barrier
-# ordering, six-key shape, missing-capture->error) live in the sibling
+# ordering, five-key shape, missing-capture->error) live in the sibling
 # release-gate-bundle-assembly-logic-test.sh — split out so neither file exceeds the
 # 500-line workspace rule (mirrors the nan-021 cloud-cycle-lib.sh lib factor-out).
 # This file keeps the C5 false-green discriminator + cloud_cycle_gates control-flow

@@ -9,14 +9,14 @@ documented capture shape (architecture §8 / `parity_bundle_contract.md`).
 
 Wire-surface routing (ADR-005 / SR-08):
   * WIRE_MCP_BRIDGE  → `UnimatrixUdsClient` MCP tool calls (retrieval, proactive,
-                       analytics review-read, isolation slug-B read).
+                       analytics review-read).
   * WIRE_HOOK_OBSERVE → `UnimatrixHookClient` RecordEvent frames (behavioral,
-                       precompact, analytics cycle frames, isolation slug-A write).
+                       precompact, analytics cycle frames).
 A dimension routed to the WRONG surface records NOTHING → the returned capture is
 empty → K4 `_capture_is_empty` classifies it INFRA-ERROR (C-9), NEVER an empty-pass.
 
-Barrier discipline (R-04): every DB-READING capture (behavioral topic_signals,
-isolation on-disk landing) MUST run AFTER the shared `durability_barrier`; the driver
+Barrier discipline (R-04): every DB-READING capture (behavioral topic_signals)
+MUST run AFTER the shared `durability_barrier`; the driver
 gates the barrier before invoking any of these — a pre-barrier read is an INFRA-ERROR,
 never a parity verdict. These helpers therefore assume the barrier has already
 released (the driver enforces the ordering — see `parity_legs.drive_uds_leg`).
@@ -48,7 +48,6 @@ DRIVER_WIRE_SURFACES: dict[str, frozenset[str]] = {
     "analytics": frozenset({WIRE_MCP_BRIDGE, WIRE_HOOK_OBSERVE}),
     "proactive": frozenset({WIRE_MCP_BRIDGE}),
     "precompact": frozenset({WIRE_HOOK_OBSERVE}),
-    "isolation": frozenset({WIRE_MCP_BRIDGE, WIRE_HOOK_OBSERVE}),
 }
 
 
@@ -393,75 +392,6 @@ def capture_precompact(
 
 
 # ===========================================================================
-# Isolation (D6) — DUAL surface: write slug A (hook), read slug B (MCP) + on-disk
-# ===========================================================================
-
-
-def capture_isolation(
-    uds: UnimatrixUdsClient,
-    hook_socket_path: str | Path,
-    store_dir: str | Path,
-    sid: str,
-    workload: ParityWorkload,
-) -> dict:
-    """Per-slug isolation probe (D6) — DUAL surface fan-out:
-      * WRITE an isolation marker into slug A's store via the analytics cycle on the
-        hook `/observe` surface (already driven in PHASE 1) + read its on-disk landing;
-      * READ from slug B via the MCP surface to confirm the slug-A write is NOT visible.
-
-    Returns ``{"slug_a_writes_visible_to_b": bool, "landed_only_in_a": bool}`` — both
-    booleans compared EXACTLY (NFR-6 — a tolerance here would mask a cross-tenant leak).
-
-    The on-disk landing read MUST run AFTER the barrier (R-04 — the driver enforces
-    the ordering). `slug_a_writes_visible_to_b` queries slug B over MCP for the slug-A
-    marker content; a non-empty result is a leak (True). `landed_only_in_a` confirms
-    the marker IS present in slug A's per-slug db (it landed) — both halves captured
-    so a missed fan-out is a half-capture (caught by the dual-surface fan-out test).
-    """
-    marker = f"isolation-marker-{sid}"
-
-    # --- slug A on-disk landing (hook /observe write already landed in PHASE 1) ---
-    landed_in_a = _marker_present_in_db(store_dir, workload.feature_cycle)
-
-    # --- slug B visibility probe over the MCP surface (the cross-slug read) ---
-    # A read scoped to a DIFFERENT slug must NOT return slug A's marker. The probe
-    # searches slug B's view; any hit on the slug-A marker is a leak.
-    try:
-        resp = uds.context_search(
-            marker, k=5, format="json", feature="nan-022-isolation-slug-b"
-        )
-        slug_b_text = _result_text(resp)
-        b_ids, _ = _parse_ranked_result(slug_b_text)
-        visible_to_b = bool(b_ids)
-    except InfraError:
-        # A failed cross-slug probe is INFRA upstream, not a silent False.
-        raise
-    return {
-        "slug_a_writes_visible_to_b": visible_to_b,
-        "landed_only_in_a": bool(landed_in_a),
-    }
-
-
-def _marker_present_in_db(store_dir: str | Path, feature_cycle: str) -> bool:
-    """Confirm slug A's per-slug db carries the cycle's landed observations (the write
-    landed durably in slug A). Reads the observations table for the cycle's attributed
-    rows — barrier-gated upstream (R-04). Absent db / empty → False (K4 names the
-    resulting empty capture INFRA, never a vacuous isolation pass)."""
-    db = Path(store_dir) / "unimatrix.db"
-    if not db.is_file():
-        return False
-    conn = sqlite3.connect(str(db))
-    try:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM observations WHERE topic_signal = ?",
-            (feature_cycle,),
-        ).fetchone()
-    finally:
-        conn.close()
-    return bool(row and row[0] > 0)
-
-
-# ===========================================================================
 # Per-dimension routing — route ONE dimension to its correct wire surface (R-03).
 # ===========================================================================
 
@@ -482,7 +412,7 @@ def capture_dimension(
 
     Routed by `dim.id` (each id's wire surface is asserted == `dim.wire_surface` by the
     off-Docker registry-vs-driver consistency test against DRIVER_WIRE_SURFACES). Dual-
-    surface dimensions (analytics, isolation) fan out BOTH surfaces explicitly. Intra-
+    surface dimensions (analytics) fan out BOTH surfaces explicitly. Intra-
     check dimensions (retrieval, proactive) double-capture so K4's
     `intra_transport_stable` can detect per-leg instability. The barrier has ALREADY
     been applied by `drive_uds_leg` (R-04), so every DB read here is post-barrier. An
@@ -526,11 +456,6 @@ def capture_dimension(
         return capture_precompact(
             hook_socket_path, workload, sid, hook_timeout=hook_timeout
         )
-
-    if dim.id == "isolation":
-        # DUAL surface: write slug A (hook /observe, PHASE 1) + read slug B (MCP) +
-        # on-disk landing (barrier-gated). Booleans compared EXACTLY (NFR-6).
-        return capture_isolation(uds, hook_socket_path, store_dir, sid, workload)
 
     # Never silently skip an unrouted dimension (R-03) — fold into INFRA upstream.
     raise InfraError("uds", f"unrouted dimension {dim.id}")
