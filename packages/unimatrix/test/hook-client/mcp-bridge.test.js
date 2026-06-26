@@ -17,7 +17,7 @@ const http = require("http");
 const { startSilentTcpServer } = require("../helpers/stub-server.js");
 const { StdioFramer } = require("../../lib/hook-client/mcp-bridge/stdio-frame.js");
 const { SseParser } = require("../../lib/hook-client/mcp-bridge/sse-parse.js");
-const { dispatchResponse, correlateById, isSessionNotFound, SESSION_NOT_FOUND } = require("../../lib/hook-client/mcp-bridge/dispatch.js");
+const { dispatchResponse, correlateById, isSessionNotFound, SESSION_NOT_FOUND, readBounded } = require("../../lib/hook-client/mcp-bridge/dispatch.js");
 const { Lifecycle, CLIENT_INFO_NAME } = require("../../lib/hook-client/mcp-bridge/lifecycle.js");
 const { HttpSession, SESSION_HEADER_LC } = require("../../lib/hook-client/mcp-bridge/http-session.js");
 const bridge = require("../../lib/hook-client/mcp-bridge.js");
@@ -738,6 +738,38 @@ describe("transport timeout self-heal (#839)", () => {
     assert.ok(out.error, "bounded error surfaced");
     assert.notStrictEqual(out.error.code, -32098, "sentinel normalized, never leaked");
     assert.strictEqual(initCount, 2, "exactly one re-init attempt; no loop/storm");
+  });
+
+  // ── F6 unref regression (#847): the idle-read deadline must be REF'd ─────────
+  // Exercise SseParser.collect AND readBounded DIRECTLY against a handle-free
+  // stall (stallingSse: a bare EventEmitter, no socket/timer/libuv handle) with
+  // NO other ref'd handle armed in the test — the F6 deadline is the sole liveness
+  // source. We must NOT add a competing keepalive timer here: a ref'd race timer
+  // would itself hold the loop open and mask an unref'd deadline. We bound the
+  // wall-clock with Date.now() instead. If either setTimeout is .unref()'d, the
+  // loop drains before the deadline on Node 18/20/22 and the awaited promise never
+  // settles -> the runner reports it unresolved (deterministic failure). REF'd, it
+  // fires and rejects within the tiny idle budget.
+  it("test_f6_sseCollect_idleDeadline_refd_settlesWithNoOtherHandle", async () => {
+    const t0 = Date.now();
+    await assert.rejects(
+      SseParser.collect(stallingSse(": keep-alive\n\n"), 1 << 20, 30),
+      /timed out/,
+      "collect's ref'd idle deadline must reject, not hang the idle loop"
+    );
+    assert.ok(Date.now() - t0 < 4000, "settled at the ~30ms idle deadline, not forever");
+  });
+
+  it("test_f6_readBounded_idleDeadline_refd_settlesWithNoOtherHandle", async () => {
+    // stallingSse never emits data/end/error/close, so readBounded's only settle
+    // path is its arm() deadline -> res.destroy() + reject(ETIMEDOUT).
+    const t0 = Date.now();
+    await assert.rejects(
+      readBounded(stallingSse(""), 1 << 20, 30),
+      (e) => e && e.code === "ETIMEDOUT",
+      "readBounded's ref'd idle deadline must reject, not hang the idle loop"
+    );
+    assert.ok(Date.now() - t0 < 4000, "settled at the ~30ms idle deadline, not forever");
   });
 });
 
