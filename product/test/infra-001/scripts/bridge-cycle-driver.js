@@ -36,6 +36,10 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+// nan-022 C2': per-dimension MCP-bridge-surface capture helpers (retrieval D1 +
+// briefing D4). Sibling split (≤500-line rule); NO net-new transport/cert/spawn code
+// — it consumes ONLY this driver's rpc/toolCall/resultText over the SAME bridge.
+const capture = require("./bridge-cycle-capture.js");
 
 function die(msg) {
   process.stdout.write(
@@ -61,6 +65,24 @@ function parseArgs(argv) {
 // MCP envelope helpers (standard JSON-RPC; mirrors harness/client.py).
 function toolCall(id, name, args) {
   return { jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: args || {} } };
+}
+
+// Phase VIEWS over the single manifest tool_calls list (NOT a second manifest) —
+// mirror the Python `ParityWorkload` seed_calls / retrieval_calls / briefing_calls
+// properties so this driver replays the IDENTICAL seed/query set the UDS leg drives.
+function seedCalls(toolCalls) {
+  return toolCalls.filter((tc) => tc.name === "context_store");
+}
+function retrievalCalls(toolCalls) {
+  return toolCalls.filter(
+    (tc) =>
+      tc.name === "context_search" ||
+      tc.name === "context_lookup" ||
+      tc.name === "context_get"
+  );
+}
+function briefingCalls(toolCalls) {
+  return toolCalls.filter((tc) => tc.name === "context_briefing");
 }
 
 async function main() {
@@ -230,7 +252,18 @@ async function main() {
     // driver supports an inline review when REVIEW_INLINE=1, else it returns here
     // so the shell can barrier, then re-drive review on a fresh bridge. Default:
     // inline review is NOT taken — the shell owns barrier ordering (ADR-006).
+    // nan-022 C2': the MCP-bridge-surface dimension captures (retrieval D1 +
+    // proactive D4) ride the SAME REVIEW_INLINE invocation/session as the analytics
+    // review (one bridge session = SSE + Mcp-Session-Id replay asserted by the
+    // witness; idle-window min preserved). The /observe-surface dimensions
+    // (behavioral, precompact, isolation) are NOT driven here — the shell gate (C5')
+    // owns those over pinned /observe. Single source per dimension (no double-capture
+    // across components).
     let mv = null;
+    let retrieval = null;
+    let proactive = null;
+    let informsEdges = null;
+    let phaseSignal = null;
     if (process.env.REVIEW_INLINE === "1") {
       // format:"json" is REQUIRED — the default review result is a markdown
       // report; only json yields the parseable RetrospectiveReport carrying the
@@ -257,6 +290,55 @@ async function main() {
         throw new Error("context_cycle_review result was not JSON: " + txt.slice(0, 200));
       }
       mv = parsed && typeof parsed.metrics === "object" && parsed.metrics !== null ? parsed.metrics : parsed;
+
+      // Analytics (D3) secondary captures, both DERIVED from the SAME review document
+      // the UDS leg reads (read_informs_edges / read_phase_signal). The driver owns the
+      // MCP-bridge-surface review read on BOTH legs (single source); the shell assembler
+      // folds these under analytics. Empty/absent -> []/{} (the comparator surfaces a
+      // real cross-leg edge/phase diff, never swallows it).
+      informsEdges = capture.informsEdgesFromReport(parsed);
+      phaseSignal = capture.phaseSignalFromMetricVector(mv);
+
+      // ---- nan-022 MCP-bridge-surface captures (D1 retrieval, D4 proactive) ----
+      // A single `drive(name, args)` closure over the EXISTING rpc — adds NO
+      // transport/cert/spawn code (C-2 fork-smell guard), only new tools/call
+      // envelopes carried by the SAME bridge session.
+      const drive = async (name, args) =>
+        ensureOk(await rpc((id) => toolCall(id, name, args)), name);
+
+      // SEED phase (R-15): replay the manifest seed_calls as context_store CONTENT
+      // writes so the corpus the queries rank over exists on this leg (CONTENT only —
+      // never a compared output). Identical seeding to the UDS leg's _seed_corpus_uds.
+      for (const s of seedCalls(toolCalls)) {
+        const a = s.args || {};
+        // Mirror _seed_corpus_uds: content/topic/category as the store positionals
+        // plus the whitelisted remainder. content/topic/category default "" (the
+        // Python pop default) so the MCP arguments shape matches byte-for-byte.
+        const storeArgs = Object.assign(
+          { content: a.content || "", topic: a.topic || "", category: a.category || "" },
+          capture.cleanArgs(a)
+        );
+        ensureOk(
+          await rpc((id) => toolCall(id, "context_store", storeArgs)),
+          "context_store(seed)"
+        );
+      }
+
+      // RETRIEVAL (D1) — double-capture (intra) — two passes over the SAME query set,
+      // so the orchestrator's intra-stability check has data on the HTTPS leg too.
+      const retrieval_1 = await capture.driveRetrieval(retrievalCalls(toolCalls), drive, resultText);
+      const retrieval_2 = await capture.driveRetrieval(retrievalCalls(toolCalls), drive, resultText);
+      retrieval = { queries: retrieval_1, capture_2: retrieval_2 };
+
+      // PROACTIVE (D4) — double-capture (intra).
+      const briefing_1 = await capture.driveBriefing(briefingCalls(toolCalls), drive, resultText);
+      const briefing_2 = await capture.driveBriefing(briefingCalls(toolCalls), drive, resultText);
+      proactive = {
+        briefing_ids: briefing_1.ids,
+        briefing_scores: briefing_1.scores,
+        injection_set: briefing_1.injection_set,
+        capture_2: { briefing_ids: briefing_2.ids, briefing_scores: briefing_2.scores },
+      };
     }
 
     // Close the bridge (stdin EOF -> teardown DELETE -> exit 0).
@@ -265,15 +347,25 @@ async function main() {
 
     if (bridgeExitErr) throw bridgeExitErr;
 
-    process.stdout.write(
-      JSON.stringify({
-        ok: true,
-        phase: process.env.REVIEW_INLINE === "1" ? "review" : "cycle",
-        metric_vector: mv,
-        session_id: sid,
-        error: null,
-      }) + "\n"
-    );
+    // nan-022: the REVIEW_INLINE invocation widens the stdout JSON to carry the
+    // MCP-bridge-surface captures (retrieval, proactive) alongside the analytics
+    // metric_vector. The shell gate (C5') assembles the FULL dimension_bundle from
+    // this fragment plus the /observe-surface captures IT owns (behavioral,
+    // precompact, isolation). retrieval/proactive are emitted ONLY on the review
+    // invocation; the bare cycle invocation keeps the nan-021 shape (metric_vector
+    // null) so its existing consumers stay unchanged (AC-11 cumulative).
+    const out = {
+      ok: true,
+      phase: process.env.REVIEW_INLINE === "1" ? "review" : "cycle",
+      metric_vector: mv,
+      session_id: sid,
+      error: null,
+    };
+    if (retrieval !== null) out.retrieval = retrieval;
+    if (proactive !== null) out.proactive = proactive;
+    if (informsEdges !== null) out.informs_edges = informsEdges;
+    if (phaseSignal !== null) out.phase_signal = phaseSignal;
+    process.stdout.write(JSON.stringify(out) + "\n");
     process.exit(0);
   } catch (e) {
     try { bridge.stdin.end(); } catch (_e) {}
@@ -282,4 +374,12 @@ async function main() {
   }
 }
 
-main();
+// Run main() ONLY when invoked as the entry script (so off-Docker tests can require
+// this module for the manifest-VIEW helpers without spawning a bridge / calling exit).
+if (require.main === module) {
+  main();
+}
+
+// Exported for off-Docker driver-shape tests (the manifest phase VIEWS — mirror the
+// Python ParityWorkload properties). No side effects on require.
+module.exports = { parseArgs, toolCall, seedCalls, retrievalCalls, briefingCalls };
