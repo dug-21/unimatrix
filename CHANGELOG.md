@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.9] - 2026-06-26
+
+### Fixes
+- ref the F6 mid-stream idle-read deadline timers so they fire when the event loop is otherwise idle — the post-dormancy mid-stream stall guard added in 0.8.8 now reliably triggers ETIMEDOUT → self-heal instead of hanging on an unref'd timer; fixes red CI on Node 18/22 (#847) (#848)
+
 ## [0.8.8] - 2026-06-26
 
 ### Fixes
