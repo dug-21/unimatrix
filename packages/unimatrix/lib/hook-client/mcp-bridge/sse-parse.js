@@ -20,7 +20,8 @@ class SseParser {
     let buffer = "";
     let total = 0;
     let t;
-    const arm = () => { if (t) clearTimeout(t); t = setTimeout(() => { try { res.destroy(Object.assign(new Error("MCP endpoint timed out"), { code: "ETIMEDOUT" })); } catch (_e) {} }, readMs || DEFAULT_READ_MS); if (t.unref) t.unref(); };
+    // Kept REF'd (#847): load-bearing idle deadline; cleared in the finally below.
+    const arm = () => { if (t) clearTimeout(t); t = setTimeout(() => { try { res.destroy(Object.assign(new Error("MCP endpoint timed out"), { code: "ETIMEDOUT" })); } catch (_e) {} }, readMs || DEFAULT_READ_MS); };
     arm();
     try {
       for await (const chunk of res) {

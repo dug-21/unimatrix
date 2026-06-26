@@ -53,7 +53,8 @@ function readBounded(res, limit, readMs) {
     let received = 0;
     let t;
     const stop = () => { if (t) { clearTimeout(t); t = null; } };
-    const arm = () => { stop(); t = setTimeout(() => { try { res.destroy(); } catch (_e) {} reject(readTimedOut()); }, readMs || DEFAULT_READ_MS); if (t.unref) t.unref(); };
+    // Kept REF'd (#847): load-bearing idle deadline; cleared on every settle via stop().
+    const arm = () => { stop(); t = setTimeout(() => { try { res.destroy(); } catch (_e) {} reject(readTimedOut()); }, readMs || DEFAULT_READ_MS); };
     const ok = () => { stop(); resolve(Buffer.concat(chunks)); };
     arm();
     res.on("data", (c) => {
