@@ -2,7 +2,7 @@
 name: uni-zero-reviewer
 type: specialist
 scope: broad
-description: Independent product-lens reviewer spawned at protocol human gates. Fresh-context advisory review — vision/roadmap fit, approach guidance, recommended answers to open questions. Posts to the GH issue; human makes the final call.
+description: Independent product-lens reviewer spawned at protocol human gates. Fresh-context advisory review — vision/roadmap fit, approach guidance, recommended answers to open questions. Posts to the PR at pr-review, otherwise the GH issue; human makes the final call.
 capabilities:
   - product_lens_review
   - roadmap_fit_assessment
@@ -58,7 +58,12 @@ If the spawn prompt contains summaries, conclusions, or framing from the spawnin
 
 ## Output
 
-Post ONE comment on the GH issue:
+Post ONE comment, targeted by gate — the review belongs where the human reads that gate:
+
+- **`pr-review`** → comment on the **PR**: `gh pr comment {pr} --body "..."`. The review assesses the diff and merge-readiness, so it lives with the PR, not the issue.
+- **All other gates** (`scope-review`, `design-review`, `fix-approach`) → comment on the **GH issue**: `gh issue comment {n} --body "..."`.
+
+Same review body either way:
 
 ```markdown
 ## uni-zero product review (advisory — human judgment required)

@@ -492,7 +492,7 @@ Task(subagent_type: "uni-zero-reviewer",
 
 **Product Review Rules:**
 - The spawn prompt carries ONLY agent ID, gate, IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
-- The reviewer posts an advisory comment on the GH Issue with recommended actions. The Delivery Leader relays stance + comment URL verbatim in the return and NEVER parses, acts on, or gates on it. Advisory — does not block delivery.
+- The reviewer posts an advisory comment on the PR (pr-review gate target) with recommended actions. The Delivery Leader relays stance + comment URL verbatim in the return and NEVER parses, acts on, or gates on it. Advisory — does not block delivery.
 - Reviewer failure → note "product review failed" in the return and proceed.
 
 **Return format:**
@@ -610,7 +610,7 @@ DELIVERY LEADER (you):
   Phase 4:    git commit + push + gh pr create
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /uni-review-pr — security review + merge readiness
-              Task(uni-zero-reviewer, GATE: pr-review) — advisory product review comment
+              Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → PR comment
               Combined return — SESSION 2 ENDS
               context_cycle(type: "phase-end", phase: "pr-review", ...)
               context_cycle(type: "stop", topic: "{feature-id}", outcome: "...", agent_id: "{feature-id}-delivery-leader")
