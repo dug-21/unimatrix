@@ -125,50 +125,86 @@ def test_blocks_c0_proof_all_six_true():
 # ===========================================================================
 # Comparator binding (couples to K2 drift guard) — exercised via the late-binding hook
 # ===========================================================================
-def test_comparator_field_is_class_name_before_binding():
-    # In Wave A (pre-K2) each comparator field is the K2 class NAME (data the brief
-    # fixes), NOT a stub class — K1 must be importable without K2.
+def _comparator_name(comparator) -> str:
+    """The K2 class NAME for a comparator field, whether it is still a string (Wave-A,
+    pre-bind) or already bound to a real K2 class (any K2 importer in the session)."""
+    return comparator if isinstance(comparator, str) else comparator.__name__
+
+
+def _restring_dimensions(snapshot):
+    """A copy of `snapshot` with every comparator field forced back to its string name,
+    so `bind_comparators` (which only re-binds `str` entries) acts on it deterministically
+    no matter what a prior K2 importer left bound (the #5317 contamination shape)."""
+    return tuple(
+        dataclasses.replace(d, comparator=_comparator_name(d.comparator))
+        for d in snapshot
+    )
+
+
+def test_comparator_field_resolves_to_expected_name():
+    # Each comparator field resolves to the brief's Data-Structures-table class NAME —
+    # order-independent: a string in Wave A, a real K2 class once K2 has bound it. K1
+    # must be importable without K2; the bound-class case is the K2-in-session path.
     for d in DIMENSIONS:
-        assert d.comparator == EXPECTED_COMPARATOR_NAME[d.id], d.id
-        assert isinstance(d.comparator, str), d.id
+        assert _comparator_name(d.comparator) == EXPECTED_COMPARATOR_NAME[d.id], d.id
 
 
 def test_each_dimension_comparator_is_dimension_comparator_subclass():
     # The structural subclass check is K2's drift guard; here we prove the late-binding
     # hook resolves names → classes so the bound registry satisfies it. Local stand-in
     # classes simulate K2's DimensionComparator subclasses (NOT a module stub).
+    #
+    # Order-/contamination-robust (pattern #5317): snapshot DIMENSIONS and restore it in
+    # finally, and re-string the registry BEFORE the local bind. `bind_comparators` only
+    # re-binds `str` entries, so without re-stringing, a real K2 import-time bind already
+    # in the session would make the local bind a no-op and the issubclass(_Base) check
+    # would run against the real K2 classes and fail. The snapshot restores real bindings.
     class _Base:
         pass
 
     classes = {
         name: type(name, (_Base,), {}) for name in EXPECTED_COMPARATOR_NAME.values()
     }
-    original = pd.DIMENSIONS
+    snapshot = pd.DIMENSIONS
     try:
+        pd.DIMENSIONS = _restring_dimensions(snapshot)
         bind_comparators(classes)
         for d in pd.DIMENSIONS:
             assert isinstance(d.comparator, type), d.id
             assert issubclass(d.comparator, _Base), d.id
             assert d.comparator is classes[EXPECTED_COMPARATOR_NAME[d.id]], d.id
     finally:
-        pd.DIMENSIONS = original
+        pd.DIMENSIONS = snapshot
 
 
 def test_bind_comparators_rejects_missing_name():
-    classes = {
-        name: type(name, (object,), {})
-        for name in EXPECTED_COMPARATOR_NAME.values()
-        if name != "RetrievalComparator"
-    }
-    with pytest.raises(KeyError):
-        bind_comparators(classes)
+    snapshot = pd.DIMENSIONS
+    try:
+        pd.DIMENSIONS = _restring_dimensions(snapshot)
+        classes = {
+            name: type(name, (object,), {})
+            for name in EXPECTED_COMPARATOR_NAME.values()
+            if name != "RetrievalComparator"
+        }
+        with pytest.raises(KeyError):
+            bind_comparators(classes)
+    finally:
+        pd.DIMENSIONS = snapshot
 
 
 def test_bind_comparators_rejects_extra_name():
-    classes = {name: type(name, (object,), {}) for name in EXPECTED_COMPARATOR_NAME.values()}
-    classes["GhostComparator"] = type("GhostComparator", (object,), {})
-    with pytest.raises(KeyError):
-        bind_comparators(classes)
+    snapshot = pd.DIMENSIONS
+    try:
+        pd.DIMENSIONS = _restring_dimensions(snapshot)
+        classes = {
+            name: type(name, (object,), {})
+            for name in EXPECTED_COMPARATOR_NAME.values()
+        }
+        classes["GhostComparator"] = type("GhostComparator", (object,), {})
+        with pytest.raises(KeyError):
+            bind_comparators(classes)
+    finally:
+        pd.DIMENSIONS = snapshot
 
 
 # ===========================================================================
