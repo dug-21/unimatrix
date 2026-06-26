@@ -88,6 +88,30 @@ test("parseBriefingResult: 'injected' alias + empty on garbage", () => {
   assert.deepEqual(cap.parseBriefingResult("garbage"), { ids: [], scores: null, injection_set: [] });
 });
 
+test("parseBriefingResult: text-table fallback (the shape context_briefing emits)", () => {
+  // context_briefing does NOT honour format=json — it returns this ranked table.
+  const text = [
+    "Use context_get with the entry ID for full content when relevant.",
+    "",
+    " #      id  topic                 cat               conf  snippet",
+    "--  ------  --------------------  --------------  ------  --------",
+    " 1       3  nan-022-parity-corpu  pattern           0.67  entry 02",
+    " 2       1  nan-022-parity-corpu  pattern           0.63  entry 00",
+    " 3       2  nan-022-parity-corpu  pattern           0.61  entry 01",
+  ].join("\n");
+  const r = cap.parseBriefingResult(text);
+  assert.deepEqual(r.ids, [3, 1, 2], "ranked id column in printed order");
+  assert.deepEqual(r.scores, [0.67, 0.63, 0.61], "conf column -> aligned scores");
+  assert.deepEqual(r.injection_set, [], "table carries no injection set");
+});
+
+test("parseBriefingTable: header/rule rows ignored; ids-only when conf absent", () => {
+  const text = [" #  id  topic", "--  --  -----", " 1  9  t", " 2  8  t"].join("\n");
+  const r = cap.parseBriefingTable(text);
+  assert.deepEqual(r.ids, [9, 8]);
+  assert.equal(r.scores, null, "no conf column -> membership-only (scores null)");
+});
+
 // ===========================================================================
 // MCP-arguments parity — byte-identical to the UDS leg's MCP arguments
 // ===========================================================================

@@ -54,12 +54,37 @@ SEED_TOPIC: str = "nan-022-parity-corpus"
 SEED_CATEGORY: str = "pattern"
 
 
+# Per-entry distinct subjects (Stage-3c first-live-run fix — Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md / R-06 / OQ-3).
+# The corpus MUST survive the server's near-duplicate collapse: the previous boilerplate
+# entries differed only by a 2-digit index and the server deduped ALL of them into a single
+# entry (`similarity: 1.00 | duplicate: true`), so retrieval returned a single hit (< the
+# STABLE_PREFIX_FLOOR of 3) — a degenerate, vacuous ranking (R-06). Each entry now carries a
+# semantically DISTINCT subject so the embeddings differ enough to land as separate entries
+# while all sharing the SEED_TOPIC keyword (so a topic query still returns >= the floor).
+# CONTENT ONLY — never a compared output (no topic_signal / edge / briefing id; R-15).
+_SEED_SUBJECTS: tuple[str, ...] = (
+    "transport-layer socket framing and unix-domain stream handshakes",
+    "embedding-vector similarity scoring and approximate nearest-neighbour recall",
+    "write-ahead-log checkpoint durability and per-slug store isolation",
+    "proactive briefing index ranking and injection-set selection heuristics",
+    "behavioral observation attribution from declared cycle topic signals",
+    "JSON-RPC tool-call envelope routing over the pinned HTTPS bridge surface",
+    "contradiction detection across incompatible stored directive entries",
+    "confidence Wilson-score re-ranking under sparse vote evidence",
+)
+
+
 def _seed_entry_content(i: int) -> str:
-    """Deterministic, distinct CONTENT for corpus entry i. Distinct enough to rank, related
-    enough (shared SEED_TOPIC keyword) that a query over the topic returns >= the floor."""
+    """Deterministic, DISTINCT content for corpus entry i. Each entry carries a unique
+    subject (`_SEED_SUBJECTS`) so it survives the server's near-duplicate collapse and the
+    corpus ranks to depth >= STABLE_PREFIX_FLOOR; the shared SEED_TOPIC keyword keeps a topic
+    query returning the whole corpus (related enough to rank together, distinct enough not to
+    dedup). Index `i` is taken modulo the subject pool so any SEED_CORPUS_SIZE stays distinct."""
+    subject = _SEED_SUBJECTS[i % len(_SEED_SUBJECTS)]
     return (
-        f"{SEED_TOPIC} corpus entry {i:02d}: cross-transport parity seed content for "
-        f"deterministic retrieval and briefing ranking (HTTPS-vs-UDS), entry index {i:02d}."
+        f"{SEED_TOPIC} corpus entry {i:02d}: {subject}. This entry documents {subject} "
+        f"as cross-transport parity reference material number {i:02d} for retrieval and "
+        f"briefing ranking over the HTTPS-vs-UDS canonical workload."
     )
 
 

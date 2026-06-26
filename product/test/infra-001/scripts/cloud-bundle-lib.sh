@@ -65,10 +65,21 @@ capture_behavioral_topic_signals() {
   # empty capture that empty-passes — same hard-fail discipline as node-absence in
   # docker-http-posture-smoke.sh. The off-Docker logic test drives this fn via the
   # SMOKE_SHELL_CAPTURES stub, so it does not depend on sqlite3 being present here.
+  # WAL discipline (Stage-3c first-live-run fix — Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md / R-04): the per-slug store
+  # runs in WAL mode and the durability barrier proves the bytes are DURABLE on disk
+  # (it counts the `-wal`), but it does NOT checkpoint the WAL into the main db file.
+  # Copying ONLY `unimatrix.db` therefore reads a PRE-CHECKPOINT snapshot — the freshly
+  # observed rows live in `unimatrix.db-wal` and are invisible, yielding a FALSE empty
+  # capture (the barrier said durable, the single-file copy defeated it). Copy the main
+  # db AND its `-wal`/`-shm` sidecars so sqlite3 sees the post-barrier DURABLE view.
   local tmp_db="$SANDBOX/behavioral.db"
   if ! vol cat "$slug_db" > "$tmp_db" 2>/dev/null || [ ! -s "$tmp_db" ]; then
     fail "behavioral capture (D2): could not read per-slug store $slug_db from the volume (post-barrier) — INFRA"
   fi
+  # Sidecars are best-effort: absent (already-checkpointed) is fine; present is required
+  # for the durable view. A missing main db is the INFRA above; a missing WAL is not.
+  vol cat "${slug_db}-wal" > "${tmp_db}-wal" 2>/dev/null || rm -f "${tmp_db}-wal"
+  vol cat "${slug_db}-shm" > "${tmp_db}-shm" 2>/dev/null || rm -f "${tmp_db}-shm"
   command -v sqlite3 >/dev/null 2>&1 \
     || fail "behavioral capture (D2): sqlite3 not provisioned on the host — mis-provisioned lane (INFRA, never an empty-pass; provision sqlite3 like node)"
   local signals

@@ -84,23 +84,50 @@ function parseRankedResult(text) {
 // Mirrors `_parse_briefing_result`: ranked entries (entries/results) + the injected
 // set (injection_set/injected, mapped to ids). Unparseable JSON yields empties so the
 // Python emptiness guard names it INFRA.
+// Tolerant of BOTH shapes: a JSON object, AND the human-readable RANKED TABLE that
+// context_briefing actually returns over the wire (it does NOT honour format=json —
+// Stage-3c first-live-run finding, Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md). Parsed identically to the Python
+// `_parse_briefing_result` so the cross-language bundle contract holds (R-09).
 function parseBriefingResult(text) {
-  let doc;
-  try {
-    doc = JSON.parse(text);
-  } catch (_e) {
-    return { ids: [], scores: null, injection_set: [] };
+  const stripped = (text || "").trim();
+  if (stripped.startsWith("{") || stripped.startsWith("[")) {
+    let doc;
+    try {
+      doc = JSON.parse(text);
+    } catch (_e) {
+      doc = null;
+    }
+    if (doc && typeof doc === "object" && !Array.isArray(doc)) {
+      const entries = doc.entries || doc.results || [];
+      const { ids, scores } = idsScoresFromEntries(entries);
+      const injected = doc.injection_set || doc.injected || [];
+      const injection_set = (Array.isArray(injected) ? injected : []).map((e) =>
+        e && typeof e === "object" ? (e.id !== undefined ? e.id : null) : e
+      );
+      return { ids, scores, injection_set };
+    }
   }
-  if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
-    return { ids: [], scores: null, injection_set: [] };
+  return parseBriefingTable(text);
+}
+
+// Parse the context_briefing ranked text table into {ids, scores|null, injection_set:[]}.
+// The id column (2nd numeric column) is the ranked proactive-delivery key; the conf
+// column gives aligned scores when EVERY ranked row carries one (else null). Mirrors the
+// Python `_parse_briefing_table` byte-for-byte (R-09).
+function parseBriefingTable(text) {
+  const ids = [];
+  const scores = [];
+  let haveScores = true;
+  for (const line of (text || "").split("\n")) {
+    const cols = line.trim().split(/\s+/).filter((c) => c.length > 0);
+    if (cols.length < 2) continue;
+    if (!/^\d+$/.test(cols[0]) || !/^\d+$/.test(cols[1])) continue;
+    ids.push(parseInt(cols[1], 10));
+    const conf = cols.slice(2).find((c) => c.includes(".") && !Number.isNaN(Number(c)));
+    if (conf === undefined) haveScores = false;
+    else scores.push(Number(conf));
   }
-  const entries = doc.entries || doc.results || [];
-  const { ids, scores } = idsScoresFromEntries(entries);
-  const injected = doc.injection_set || doc.injected || [];
-  const injection_set = (Array.isArray(injected) ? injected : []).map((e) =>
-    e && typeof e === "object" ? (e.id !== undefined ? e.id : null) : e
-  );
-  return { ids, scores, injection_set };
+  return { ids, scores: haveScores && scores.length ? scores : null, injection_set: [] };
 }
 
 // Build the MCP `arguments` for a retrieval manifest call, byte-identical to what the
@@ -210,6 +237,7 @@ module.exports = {
   idsScoresFromEntries,
   parseRankedResult,
   parseBriefingResult,
+  parseBriefingTable,
   retrievalArgs,
   briefingArgs,
   informsEdgesFromReport,

@@ -52,8 +52,15 @@ from harness.parity_legs import (
 # nan-022 matrix path (ADR-001/ADR-002) — the single authoritative enumeration, the
 # drift guard, the classifier/roll-up, the transport-health preflight + token-guarded
 # bundle ingest, and the evidence-table / roll-up-assertion support.
-from harness.parity_dimensions import DIMENSIONS
+#
+# IMPORT ORDER IS LOAD-BEARING (Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md): `parity_comparator` MUST be imported BEFORE
+# `from harness.parity_dimensions import DIMENSIONS`. K2's import triggers
+# `bind_comparators`, which REBINDS the module-global `DIMENSIONS` (a new tuple, not an
+# in-place mutation). A `from ... import DIMENSIONS` that runs first captures the stale
+# string-bound tuple, and the drift guard then sees `comparator='RetrievalComparator'`
+# (a str, not a class). Mirrors the safe ordering in test_https_uds_parity_matrix.py.
 from harness.parity_comparator import assert_comparator_contract
+from harness.parity_dimensions import DIMENSIONS
 from harness.parity_outcome import classify_dimension, rollup
 from harness.transport_health import (
     DEFAULT_CONNECT_DEADLINE_S,
@@ -272,19 +279,63 @@ def _emit_evidence_records(
 
 
 def _preflight_uds(daemon_server: dict) -> None:
-    """Bounded connect + idle reachability probe of the UDS legs (the MCP + hook
+    """Bounded connect + liveness reachability probe of the UDS legs (the MCP + hook
     sockets) BEFORE driving — defense-in-depth so a half-open hang surfaces as INFRA,
-    never an unbounded hang / parity RED (R-02). Reuses the shipped stdlib UDS-socket
-    posture (`uds_socket_leg`); introduces NO new transport path (C-2)."""
+    never an unbounded hang / parity RED (R-02). Reuses the SHIPPED clients for the
+    liveness proof; introduces NO new transport path (C-2).
+
+    LIVENESS MODEL (Stage-3c first-live-run fix — Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md): both UDS sockets are
+    REQUEST-DRIVEN — the MCP server replies only to a valid JSON-RPC request and the
+    hook server only to a length-prefixed hook op; NEITHER echoes an unsolicited byte.
+    The generic `uds_socket_leg` nudge (`sendall(b"\\n"); recv(1)`) therefore BLOCKS on
+    a perfectly healthy daemon and false-classifies it as a #839 half-open hang. The
+    correct, C-2-honouring liveness proof is the shipped client's own handshake:
+      * MCP socket  — `UnimatrixUdsClient.connect()` completes the real MCP `initialize`
+        handshake; a genuine reply proves liveness, a half-open server never completes
+        it and the client's bounded socket timeout trips → InfraError (true half-open).
+      * hook socket — request-driven, no handshake-on-connect; a clean bounded
+        `connect()` proves the accept loop is alive (the #839 half-open class the guard
+        targets is the HTTPS leg, deferred to `_preflight_https` / the smoke ceiling).
+    """
     from harness.transport_health import uds_socket_leg
 
-    for label, key in (("uds-mcp", "mcp_socket_path"), ("uds-hook", "socket_path")):
-        leg = uds_socket_leg(label, daemon_server[key])
-        preflight_leg(
-            leg,
-            connect_deadline_s=DEFAULT_CONNECT_DEADLINE_S,
-            idle_deadline_s=DEFAULT_IDLE_DEADLINE_S,
-        )
+    # MCP leg: liveness = the shipped client's real initialize handshake (true reply).
+    def _mcp_connect(deadline_s: float) -> None:
+        c = UnimatrixUdsClient(daemon_server["mcp_socket_path"], timeout=deadline_s)
+        c.connect()  # raises on connect/handshake failure within the bounded timeout
+        c.disconnect()
+
+    def _mcp_liveness(deadline_s: float) -> bool:
+        # connect() above already completed the initialize handshake (a real reply);
+        # re-proving here would double-handshake. A completed handshake IS liveness.
+        return True
+
+    preflight_leg(
+        "uds-mcp",
+        connect_deadline_s=DEFAULT_CONNECT_DEADLINE_S,
+        idle_deadline_s=DEFAULT_IDLE_DEADLINE_S,
+        connect_probe=_mcp_connect,
+        liveness_probe=_mcp_liveness,
+    )
+
+    # Hook leg: request-driven; a clean bounded connect proves the listener is alive.
+    def _hook_connect(deadline_s: float) -> None:
+        import socket as _socket
+
+        s = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+        s.settimeout(deadline_s)
+        try:
+            s.connect(str(daemon_server["socket_path"]))
+        finally:
+            s.close()
+
+    preflight_leg(
+        "uds-hook",
+        connect_deadline_s=DEFAULT_CONNECT_DEADLINE_S,
+        idle_deadline_s=DEFAULT_IDLE_DEADLINE_S,
+        connect_probe=_hook_connect,
+        liveness_probe=lambda _d: True,
+    )
 
 
 def _preflight_https(daemon_server: dict) -> None:

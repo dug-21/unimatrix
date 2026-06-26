@@ -191,22 +191,78 @@ def capture_briefing(uds: UnimatrixUdsClient, workload: ParityWorkload) -> dict:
 
 def _parse_briefing_result(text: str) -> tuple[list, list | None, list]:
     """Parse a context_briefing result into ``(briefing_ids, scores|None,
-    injection_set)``. The briefing JSON carries the ranked entries it surfaced and
-    the injected set; tolerant of the entries/injected shapes the server emits.
-    Unparseable JSON yields empty lists so K4's emptiness guard names it INFRA."""
+    injection_set)``. Tolerant of BOTH shapes the server may emit:
+
+      * a JSON object (`{"entries":[...]}` / `{"results":[...]}` + injected set), and
+      * the human-readable RANKED TABLE that `context_briefing` actually returns over
+        the wire — `context_briefing` does NOT honour `format=json` (Stage-3c first-live-
+        run finding, Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md): it always emits the `# id topic cat conf snippet` table.
+        The ranked `id` column IS the proactive-delivery ranking, so the table is parsed
+        for the ranked ids (the conf column supplies aligned scores when present).
+
+    Unparseable input (neither JSON nor the known table) yields empty lists so K4's
+    emptiness guard names it INFRA, never a vacuous pass. Parsed identically by the JS
+    bridge leg (`parseBriefingResult`) so the cross-language bundle contract holds (R-09)."""
+    stripped = text.strip()
+    if stripped.startswith("{") or stripped.startswith("["):
+        try:
+            doc = json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            doc = None
+        if isinstance(doc, dict):
+            entries = doc.get("entries") or doc.get("results") or []
+            ids, scores = _ids_scores_from_entries(entries)
+            injected = doc.get("injection_set") or doc.get("injected") or []
+            injection_set = [
+                e.get("id") if isinstance(e, dict) else e for e in injected
+            ]
+            return ids, scores, injection_set
+    # Text-table fallback — the shape context_briefing actually emits.
+    return _parse_briefing_table(text)
+
+
+def _parse_briefing_table(text: str) -> tuple[list, list | None, list]:
+    """Parse the `context_briefing` ranked text table into ``(ids, scores|None, [])``.
+
+    Table shape (server `summary`/`markdown` briefing output)::
+
+         #      id  topic                 cat               conf  snippet
+        --  ------  --------------------  --------------  ------  --------...
+         1       3  nan-022-parity-corpu  pattern           0.67  ...
+
+    The `id` column (2nd numeric column) is the ranked proactive-delivery key; the
+    `conf` column supplies aligned scores when every ranked row carries one (else None,
+    K3 membership-only fallback). Rows are taken in printed (ranked) order. The
+    injection set is not represented in the table, so it is `[]` — the proactive
+    comparator compares the ranked id sequence (the briefing index), which IS present."""
+    ids: list = []
+    scores: list = []
+    have_scores = True
+    for line in text.splitlines():
+        cols = line.split()
+        # A data row begins with the rank counter, then the entry id (both ints), and
+        # carries a float conf column. Header (`#`/`id`) and rule (`--`) rows fail this.
+        if len(cols) < 2:
+            continue
+        if not (cols[0].isdigit() and cols[1].isdigit()):
+            continue
+        ids.append(int(cols[1]))
+        conf = next(
+            (c for c in cols[2:] if _is_float(c) and "." in c), None
+        )
+        if conf is None:
+            have_scores = False
+        else:
+            scores.append(float(conf))
+    return ids, (scores if have_scores and scores else None), []
+
+
+def _is_float(tok: str) -> bool:
     try:
-        doc = json.loads(text)
-    except (json.JSONDecodeError, TypeError):
-        return [], None, []
-    if not isinstance(doc, dict):
-        return [], None, []
-    entries = doc.get("entries") or doc.get("results") or []
-    ids, scores = _ids_scores_from_entries(entries)
-    injected = doc.get("injection_set") or doc.get("injected") or []
-    injection_set = [
-        e.get("id") if isinstance(e, dict) else e for e in injected
-    ]
-    return ids, scores, injection_set
+        float(tok)
+        return True
+    except ValueError:
+        return False
 
 
 # ===========================================================================

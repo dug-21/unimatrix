@@ -437,7 +437,22 @@ def load_https_vector(out_path: str | Path, expected_run_token: str) -> dict:
         )
     mv = payload.get("metric_vector")
     if not isinstance(mv, dict):
-        raise ValueError(f"HTTPS out-file {p} has no 'metric_vector' dict")
+        # nan-022 widened the HTTPS out-file from {run_token, metric_vector} to
+        # {run_token, dimension_bundle:{analytics:{metric_vector}, ...}} (C5' bundle
+        # emit). The nan-021 single-vector test stays UNCHANGED (AC-11), so read the
+        # analytics dimension's metric_vector from the bundle when the legacy top-level
+        # key is absent (Stage-3c first-live-run fix — Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md). Missing in BOTH shapes
+        # is still a hard error, never an empty compare.
+        bundle = payload.get("dimension_bundle")
+        if isinstance(bundle, dict):
+            analytics = bundle.get("analytics")
+            if isinstance(analytics, dict):
+                mv = analytics.get("metric_vector")
+        if not isinstance(mv, dict):
+            raise ValueError(
+                f"HTTPS out-file {p} has no 'metric_vector' dict (neither top-level nor "
+                f"dimension_bundle.analytics.metric_vector)"
+            )
     return mv
 
 
