@@ -44,12 +44,31 @@ paths below are the expected components from the architecture.
 | C5′ HTTPS smoke gate | `scripts/cloud-cycle-lib.sh` (`cloud_cycle_gates`) | Ext | pseudocode/cloud-cycle-lib.md | test-plan/cloud-cycle-lib.md |
 | ORCH Parity-matrix orchestrator | `suites/test_https_uds_parity.py` (+ sibling matrix test) | Ext | pseudocode/test_https_uds_parity.md | test-plan/test_https_uds_parity.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (populated during Stage 3a — CONFIRMED present)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Cross-language bundle-contract test plan (R-09) | test-plan/parity_bundle_contract.md | Stage 3b (C2′/C3′), Stage 3c, Gate 3a |
+
+All 11 Component Map rows have confirmed pseudocode/{component}.md + test-plan/{component}.md
+files present. MC (`metric_comparator.md`) is consumed-verbatim — its pseudocode/test-plan
+document the wrap surface, not a re-author.
+
+### Stage 3b Wave Plan (dependency order, from pseudocode OVERVIEW)
+
+| Wave | Components | Notes |
+|------|-----------|-------|
+| A | K3 ranking_tolerance, K5 transport_health, K1 parity_dimensions (dataclass+constants), MC (confirm wrap) | Foundations, off-Docker, no inter-dep |
+| B | K2 parity_comparator (needs K3+MC+K1) → bind `Dimension.comparator` in K1 → K4 parity_outcome (needs K2+K3+K5) | Comparators + registry close |
+| C | C4′ parity_workload, then C3′ parity_legs | Workload + legs, off-Docker seam |
+| D | C2′ bridge-cycle-driver.js, C5′ cloud-cycle-lib.sh | Docker-bound HTTPS leg; share bundle contract |
+| E | ORCH test_https_uds_parity.py | Consumes all |
+
+Within a wave, components are independent and spawn in parallel; waves commit sequentially.
+`load_https_bundle` ownership (OQ-flagged): define in K5 (raises InfraError, no circular
+import), re-export from C4′ — to confirm at Gate 3a / Wave A.
 
 ## Goal
 
