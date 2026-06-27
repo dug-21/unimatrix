@@ -72,3 +72,66 @@
 
 ## Rework Required
 None blocking. Recommended (non-blocking): coordinator attach/confirm implementation-wave stewardship evidence (impl agents ran `/uni-query-patterns`; `Stored:` or "nothing novel -- {reason}") to fully satisfy Gate 3b check 7.
+
+---
+
+# Gate 3b — iter2 (#859 fold-in)
+
+> Re-validation of commit `511ba824` (feature/infra-004 HEAD): PII-safe gate markers.
+> Date: 2026-06-27
+> Result: **PASS** (prior iter1 WARN now resolved)
+> Scope: TEST-ONLY fold-in. Re-checked the changed files only (per validation-iteration discipline); the iter1 PASS for C-WB/C-TS/C-LN/C-FLIP stands and is regression-confirmed by unchanged counts.
+
+## What changed
+`crates/unimatrix-server/src/infra/scanning.rs` (`#[cfg(test)]` anchor only), `product/test/infra-001/scripts/{isolation-probe-lib.sh, multi-tenant-isolation-smoke.sh, release-gate-isolation-logic-test.sh}`, new `product/test/infra-001/scripts/fixtures/isolation-nonce-logic-cases.sh`, + 2 agent reports. **Zero production crates/ change; zero scanner behavior change.**
+
+## Summary
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| 1. Pseudocode/approach fidelity (B1/B2/B3 + N2/N3/N4) | PASS | Code matches the #859 design-reviewed + product-reviewed approach exactly. |
+| 2. Architecture compliance | PASS | No server change; observe/MCP scan asymmetry left intact (correct, vision-mandated); test-only marker-contract fix. |
+| 3. Interface implementation | PASS | `_default_nonce` single seam routed by both `derive_markers` + `warmup_barrier`; PID_OVERRIDE/EPOCH_OVERRIDE injectable; prefixes/predicates preserved. |
+| 4. Test case alignment | PASS | (c) cases realize the documented Missing Test; golden set shared bash↔Rust; counts 43/19/15/13 = 90 + Rust anchor 1. |
+| 5. Code quality | PASS | shellcheck -S warning CLEAN x4; all files ≤500 (smoke 499, logic 491 — fixture split kept both under); no stubs/TODO/unsafe added. |
+| 6. Security | PASS | Canary withholds offending digits (N4); charset-reduced ERE only (no bash-invalid `\d`/`\s`/`\b`); synthetic markers only. |
+| 7. Knowledge stewardship | PASS | agent-5 + investigator reports carry `## Knowledge Stewardship` (Queried + Stored/"nothing novel -- reason"); design + product reviews on #859 likewise. **Resolves the iter1 WARN.** |
+
+## Detailed findings
+
+### B1 — construction-safe nonce is genuinely shape-safe (not probabilistic) — PASS
+`_default_nonce -> <b36(pid)>x<b36(epoch)>` (isolation-probe-lib.sh). Phone shape requires 10 consecutive digits (`[2-9][0-9]{2}[0-9]{3}[0-9]{4}`, hyphens optional and absent inside RUN); base36 components are ≤7 chars and the **letter** `x` separator plus prefix hyphens (bounded by letters `mcp`/`a`) block any cross-boundary digit run — 10 consecutive digits cannot form. SSN shape (`[0-9]{3}-[0-9]{2}-[0-9]{4}`) needs internal hyphens that never appear inside RUN. Shapes are structurally unreachable. Verified the golden encoding `eaqxthaqu3 = b36(18530)·x·b36(1782573915)` is correct.
+
+### B2 — charset-reduced ERE canary, fail-loud, no digit echo — PASS
+`assert_marker_pii_safe` uses ERE `1?[2-9][0-9]{2}-?[0-9]{3}-?[0-9]{4}` / `[0-9]{3}-[0-9]{2}-[0-9]{4}` (no `\d`/`\s`/`\b`/`(?:)`). Invoked AFTER the R-12 charset loop in `assert_markers_distinct` and after the charset guard in `warmup_barrier`. `infra_fail` (exit 2, INFRA). Message reports shape CATEGORY with "digits withheld" (N4). `test_c_canary_trips_on_regression` proves teeth + no-echo.
+
+### B3 — injectable seam routed by both call sites — PASS
+`derive_markers` and `warmup_barrier` both use `RUN="${RUN:-$(_default_nonce)}"`; the off-Docker (c) cases drive the REAL default path (RUN unset) via PID_OVERRIDE/EPOCH_OVERRIDE — closing the historical RUN=t1 blind spot.
+
+### N2 — Rust scanner anchor is TEST-ONLY, shared golden set — PASS
+`test_scan_isolation_gate_golden_markers_pass` lives in `#[cfg(test)] mod tests`; feeds the shared golden literals through `ContentScanner::global().scan()` asserting `Ok`. No production/scanner change. Drift-proof coupling to scanning.rs.
+
+### N3 — false-positive guard — PASS
+`test_c_default_path_self_check_passes` asserts real default-path markers PASS the canary (exit 0, no trip); the `[2-9]` phone anchor means the `003` prefix cannot read as a phone start.
+
+### Preserved invariants — PASS
+R-12 `[a-z0-9-]` charset, R-18/R-02 pairwise non-substring guards, `infra003-{obs,mcp,warmup}-{a,b}-` prefixes (sqlite predicates), read-as-barrier predicates all untouched. No regression to C-WB/C-TS/C-LN/C-FLIP — tristate 19, smoke-gate 15, lane-static 13 unchanged. `listener.rs` NOT modified (pre-existing fmt drift untouched); no unrelated fmt churn (scanning.rs diff is purely the additive `#[cfg(test)]` block).
+
+## Test evidence (foreground)
+
+| Suite | Result |
+|-------|--------|
+| `release-gate-isolation-logic-test.sh` | **43 passed, 0 failed** (rc 0) — 39 prior + 4 new (c) |
+| `release-gate-tristate-logic-test.sh` | **19 passed, 0 failed** (rc 0) |
+| `release-gate-logic-test.sh` | **15 passed, 0 failed** (rc 0) |
+| `release-gate-isolation-lane-static-test.sh` | **13 passed, 0 failed** (rc 0) — total 90 |
+| `cargo test -p unimatrix-server --lib test_scan_isolation_gate_golden_markers_pass` | **1 passed, 0 failed** (rc 0) |
+| shellcheck -S warning (probe-lib, smoke, isolation-logic-test, nonce-fixture) | CLEAN x4 |
+
+> Full-workspace cargo link OOMs in this sandbox (environment memory limit, ld signal-9) — validated the Rust anchor via `--lib` per spawn instruction; production code unchanged.
+
+## Note (out of gate scope)
+Working tree carries an uncommitted edit to `/workspaces/unimatrix/CLAUDE.md` (a Behavioral-Rules wording change) — unrelated to infra-004, not a feature artifact. Flagged, not actioned.
+
+## Iter2 verdict
+**PASS.** The #859 fold-in matches the design-reviewed approach; the nonce is structurally shape-safe; the canary, seam, and Rust anchor are correctly implemented; all invariants preserved; 90 shell + 1 Rust test green; stewardship complete (iter1 WARN resolved). No rework required.

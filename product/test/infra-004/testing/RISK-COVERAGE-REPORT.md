@@ -13,16 +13,18 @@
 
 | Suite | Component(s) | Expected | Passed | Failed | Exit |
 |-------|-------------|----------|--------|--------|------|
-| `release-gate-isolation-logic-test.sh` | C-WB warmup barrier | 39 | 39 | 0 | 0 |
+| `release-gate-isolation-logic-test.sh` | C-WB warmup barrier (+ #859 (c) nonce-PII safety) | 43 | 43 | 0 | 0 |
 | `release-gate-tristate-logic-test.sh` | C-TS `run_smoke_gate_tristate` truth table | 19 | 19 | 0 | 0 |
 | `release-gate-logic-test.sh` | C-TS sibling no-regression (`run_smoke_gate`) | 15 | 15 | 0 | 0 |
 | `release-gate-isolation-lane-static-test.sh` | C-LN / C-FLIP YAML + `needs:`-graph | 13 | 13 | 0 | 0 |
-| **Total** | | **86** | **86** | **0** | |
+| **Total** | | **90** | **90** | **0** | |
 
-All counts match the planned expected totals exactly. Each suite sources the REAL
-shipped bytes (`multi-tenant-isolation-smoke.sh`, `release-gate-lib.sh`) or parses
-the shipped `.github/workflows/release.yml`; RC fidelity proven by execution, never
-by reading YAML (#4873/#5192/#5345 class).
+All counts match the expected totals exactly. The isolation-logic suite grew
+**39 → 43** with four new adversarial **(c) nonce-PII-safety** cases added by the
+#859 fold-in (commit `511ba824`); the other three suites are unchanged. Each suite
+sources the REAL shipped bytes (`multi-tenant-isolation-smoke.sh`,
+`release-gate-lib.sh`) or parses the shipped `.github/workflows/release.yml`; RC
+fidelity proven by execution, never by reading YAML (#4873/#5192/#5345 class).
 
 ### Integration smoke (mandatory no-regression gate)
 
@@ -37,14 +39,28 @@ by reading YAML (#4873/#5192/#5345 class).
   tests planned or needed (per OVERVIEW §4: pure CI/shell logic, no MCP-visible
   effect → shell stub-seam suffices).
 
-### Unit tests (cargo)
+### Unit tests (cargo) — one test-only scanner anchor (#859 fold-in)
 
-Not applicable — no `crates/` change (C-1 / AC-15). `cargo build --release -p
-unimatrix-server` was run only to produce the binary the mandatory smoke gate
-exercises (cached, exit 0). No Rust source changed, so `cargo test --workspace`
-is not a gate for this feature.
+- Command: `cargo test -p unimatrix-server --lib test_scan_isolation_gate_golden_markers_pass`
+- Total: 1
+- Passed: 1
+- Failed: 0
+- The anchor feeds the SHARED golden derived-marker set (incl.
+  `infra003-mcp-a-eaqxthaqu3`, the re-encoding of the exact pid/epoch that INFRA'd
+  the first AC-11 dispatch) through the REAL production `ContentScanner::global().scan()`
+  and asserts `Ok`. It is the only check that cannot drift from the scanner source
+  of truth (`scanning.rs:300-309` PhoneNumber/SSN), pairing with the bash-side
+  charset-reduced ERE canary and the off-Docker (c) battery (which share the same
+  golden list, cross-verified by `test_c_golden_markers_match_rust_anchor`).
 
-## Coverage Summary (all 15 risks)
+**AC-15 amendment:** "no `crates/` **production** change; one **test-only** scanner
+anchor added." The sole `crates/` delta in commit `511ba824` is
+`test_scan_isolation_gate_golden_markers_pass` inside `#[cfg(test)] mod tests` in
+`crates/unimatrix-server/src/infra/scanning.rs` — no production code, no scanner
+pattern change. `cargo build --release -p unimatrix-server` was also run to produce
+the binary the mandatory smoke gate exercises (cached, exit 0).
+
+## Coverage Summary (15 Phase-2 risks + 1 additional #859-traceable class)
 
 | Risk ID | Description (abbrev) | Pri | Test(s) | Result | Coverage |
 |---------|---------------------|-----|---------|--------|----------|
@@ -58,13 +74,16 @@ is not a gate for this feature.
 | R-13 | AC-11 cold-model proof ceremonial (warm cache) | High | AC-11 log must show real first-boot HF download, not warm cache / `:783-smoke` | PENDING-operational | CI-only |
 | R-02 | Warmup-marker collision → false RED | Med | `test_warmup_marker_non_substring_asserted`, `test_warmup_row_inert_to_negatives` | PASS | Full |
 | R-07 | Sibling-lane regression (shared lib) | Med | `release-gate-logic-test.sh` (15/15 byte-identical), `test_run_smoke_gate_sibling_unchanged_exit4`; `git diff` adds new fn only | PASS | Full |
-| R-14 | Verification harness false-green (`set -e` re-enable) | Med | Suites print final summary line (`N passed, 0 failed`) as completeness witness; intentionally-RED rows run without aborting (86/86 + 24 smoke executed) | PASS | Full |
+| R-14 | Verification harness false-green (`set -e` re-enable) | Med | Suites print final summary line (`N passed, 0 failed`) as completeness witness; intentionally-RED rows run without aborting (90/90 + 24 smoke + 1 Rust anchor executed) | PASS | Full |
 | R-04 | Cold HF download variance | Med | `test_warmup_timeout_is_infra_not_pass` (timeout→INFRA exit 2, never RED/GREEN, diagnostic logged) | PASS (timeout→INFRA); residual accepted | Full (residual documented) |
 | R-11 | Stale-image proof (main drift) | Med | branch-point == `main` HEAD recorded at AC-11 run time (SR-06) | PENDING-operational | CI-only |
 | R-12 | Dispatch-from-branch GHCR write strands Step 3 | Med | verify `:latest-amd64` push from branch early; two-step fallback specified | PENDING-operational | CI-only |
 | R-15 | Chronic-INFRA = human-vigilance only | Med | `test_tristate_infra_exit2_canonical_marker_pinned` (stable greppable marker); human ACCEPT-or-escalate of the VARIANCE (OQ-3) gates N3 `proven` | PASS (marker stability); human gate PENDING | Marker proven; residual is a human decision |
+| **R-MPII (#859)** | **Marker-PII / MCP-content-scan collision** — the gate's numeric `RUN=$$-$(date +%s)` nonce could form a phone/SSN-shaped digit run that the production `ContentScanner` rejects on the MCP `context_store` **write** leg (-32006 → INFRA), while the **observe** leg does not scan and accepts the same marker. Latent-flaky on epoch digits → never-GREEN. (Root cause of the first AC-11 INFRA.) | High (incident) | `test_scan_isolation_gate_golden_markers_pass` (Rust — real scanner accepts the golden set incl. the captured-failing re-encoding); four off-Docker **(c)** adversarial cases (RUN unset; epoch/pid battery incl. the captured failing pair) asserting no phone/SSN shape; `assert_marker_pii_safe` charset-reduced ERE canary (in-gate fail-loud); `test_c_golden_markers_match_rust_anchor` (bash↔Rust shared golden list) | PASS | **Full pre-merge.** Fix is shape-safe **by construction** (`_default_nonce = b36(pid)·x·b36(epoch)`, each ≤6 chars + letter separator) — converts a probabilistic CI flake into a **deterministic pre-merge guarantee** |
 
-Critical Gate 3c blockers R-01 and R-05 are both PASS on the pre-merge contract.
+Critical Gate 3c blockers R-01 and R-05 are both PASS on the pre-merge contract and
+remain **unregressed** after the #859 fold-in (isolation-logic 43/43 incl. the 39
+prior R-01 cases; tristate 19/19 R-05 unchanged).
 R-01's cold-path leg (zero warmup-attributable INFRA flap on a real cold model) is
 provable only by the AC-11 dispatch run (carve-out below) — its pre-merge,
 load-bearing (non-ceremonial) construction is fully proven here.
@@ -77,7 +96,9 @@ design (require a real `workflow_dispatch` cold-model run + GHCR push) and are
 carved out below — they are operational evidence the leader gathers before merge,
 not pre-merge unit gaps. R-15's chronic-INFRA residual is a human ACCEPT-or-escalate
 decision (VARIANCE / OQ-3) that gates the N3 `proven` claim (AC-14) — not a tester
-assertion.
+assertion. The additional **R-MPII (#859)** marker-PII class is fully covered
+pre-merge (Rust scanner anchor + off-Docker (c) battery + in-gate canary) and made
+deterministic by construction — no residual gap.
 
 ## CI-Only Carve-Out (NOT unit-testable here — operational evidence)
 
@@ -109,7 +130,7 @@ recorded PENDING-operational for the leader to gather before merge:
 | AC-12 | PASS | `test_lane_in_manifest_needs` (`needs:`-graph: lane ∈ `create-container-manifest.needs`) + forced-RED tri-state cell returns 1 → gates the edge (CRITICAL R-05/R-08) |
 | AC-13 | PASS | `test_tristate_infra_exit2_nonblocking_visible` + `test_tristate_infra_exit2_canonical_marker_pinned` — INFRA returns success (non-blocking) with `::warning::` + pinned canonical marker `[infra004-gate] INFRA — ISOLATION NOT VERIFIED THIS RUN` |
 | AC-14 | PENDING (delivery + human gate) | N3 (#5161) `status: proven` set by delivery post-merge via `context_correct`, gated on the human VARIANCE decision (OQ-3 / R-15). Not a tester assertion |
-| AC-15 | PASS | `git diff --name-only main...HEAD`: 0 `crates/` paths; production diff = exactly `multi-tenant-isolation-smoke.sh`, `release-gate-lib.sh`, `.github/workflows/release.yml` (+ feature docs); smoke-script diff is warmup-barrier-scoped only |
+| AC-15 | PASS (amended) | **Amended:** "no `crates/` **production** change; one **test-only** scanner anchor added." Production diff = `multi-tenant-isolation-smoke.sh`, `release-gate-lib.sh`, `.github/workflows/release.yml`; the sole `crates/` delta (commit `511ba824`) is `test_scan_isolation_gate_golden_markers_pass` inside `#[cfg(test)] mod tests` in `scanning.rs` — no production/scanner change; smoke-script diff is warmup-barrier + #859 nonce-derivation scoped only |
 
 Pre-merge PASS: AC-01, AC-02, AC-03, AC-05, AC-06, AC-07, AC-08, AC-09, AC-10,
 AC-12, AC-13, AC-15 (12). CI-only operational: AC-04, AC-11. Delivery + human
@@ -128,6 +149,12 @@ None. No integration test failed; no pre-existing/unrelated failure surfaced; no
   and risk mapping.
 - Stored: nothing novel — the patterns exercised (release-gate false-green capture,
   ceremonial seam, never-green-on-tag, runtime-marker anchor) are already captured
-  as #5192/#5345/#5267/#4974/#5354; this feature instantiates them. The four-suite
-  cumulative shell stub-seam execution pattern (39+19+15+13) is the established
-  `release-gate-*-logic-test.sh` convention, not a new technique.
+  as #5192/#5345/#5267/#4974/#5354; this feature instantiates them. The #859
+  marker-PII / MCP-write-scan-vs-observe-asymmetry class is already captured as
+  lesson #5355 (and the concrete defect lives on GH #859 per the "bugs are GH issues,
+  not lessons" rule) — no new entry. The cumulative shell stub-seam execution pattern
+  (now 43+19+15+13 = 90) is the established `release-gate-*-logic-test.sh` convention,
+  not a new technique.
+- #859 fold-in note: this regeneration documents the post-fold-in state (Gate 3c
+  iter2). Counts re-confirmed by foreground re-run (isolation-logic 43/43; Rust
+  anchor 1/1); the other suites and smoke 24/24 unchanged from the prior run.

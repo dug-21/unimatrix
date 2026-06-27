@@ -115,3 +115,129 @@ i.e. a reason is supplied after "nothing novel". No WARN.
 ## Rework Required
 
 None.
+
+---
+
+# Gate 3c — iter2 (#859 fold-in)
+
+> Date: 2026-06-27
+> Result: **REWORKABLE FAIL** (narrow — coverage report not regenerated; all execution evidence green)
+> Scope: re-validation after folding the #859 marker-PII fix (commit `511ba824`) into infra-004.
+
+## What #859 was and what the fold-in does
+
+The first AC-11 cold-model dispatch INFRA'd (never GREEN) because the gate's
+numeric `RUN=$$-$(date +%s)` nonce could form a phone-number-shaped substring
+(`530-1782573` inside `...18530-1782573915`); the production `ContentScanner` on
+the MCP `context_store` write leg rejected it (-32006), while the observe leg
+(no scanning) accepted it. Latent-flaky by epoch digits. The fold-in makes the
+PII shapes **structurally unreachable**:
+- `_default_nonce = <b36(pid)>x<b36(epoch)>` — pid/epoch base36-encoded separately,
+  joined by the letter `x`; each component ≤6 chars so a 10-digit phone run cannot
+  form within a component and the letter separator blocks any cross-boundary run.
+- Single `_default_nonce` seam routes BOTH `derive_markers` and `warmup_barrier`
+  (cannot diverge); injectable `PID_OVERRIDE`/`EPOCH_OVERRIDE` for off-Docker drive.
+- `assert_marker_pii_safe` charset-reduced ERE canary (phone+SSN — the only two of
+  six scanner patterns reachable under `[a-z0-9-]`), invoked AFTER the R-12 charset
+  guard from `assert_markers_distinct` (4 cell markers) + `warmup_barrier`.
+- Adversarial off-Docker (c) battery (RUN unset, epoch/pid battery incl. the captured
+  failing pair) + a test-only Rust `ContentScanner` anchor over a SHARED golden set.
+
+## Summary (iter2)
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| 1. Risk mitigation proof (incl. marker-PII #859 class) | WARN | Marker-PII class PROVEN green by execution (Rust anchor + (c) battery + canary), but NOT yet documented in RISK-COVERAGE-REPORT — see Rework |
+| 2. Test coverage completeness | WARN | 90 shell + 1 Rust anchor + 24 smoke all re-run green; report still tabulates 86 and omits the anchor + (c) cases |
+| 3. Specification compliance (AC-15 amend) | PASS | Sole crates/ delta is the `#[cfg(test)]` anchor in `scanning.rs` (inside `mod tests`); no production/scanner change. AC-04/AC-11 remain CI-only; AC-14 deferred human gate |
+| 4. Architecture compliance (invariants preserved) | PASS | R-12 charset, R-18/R-02 non-substring, `infra003-{obs,mcp,warmup}-{a,b}-` prefixes, read-as-barrier predicates all preserved; only RUN derivation changed |
+| 5. Knowledge stewardship | PASS | agent-5-marker-fix + investigator reports each carry `## Knowledge Stewardship` with `Queried:` + `Stored:`/reason |
+
+## Execution evidence (re-run, foreground, shipped bytes)
+
+- `release-gate-isolation-logic-test.sh`: **43 passed, 0 failed** (39 prior + 4 new (c) cases)
+- `release-gate-tristate-logic-test.sh`: **19 passed, 0 failed** (R-05 unregressed)
+- `release-gate-logic-test.sh`: **15 passed, 0 failed** (R-07 sibling unregressed)
+- `release-gate-isolation-lane-static-test.sh`: **13 passed, 0 failed**
+  → **90/90** total (43+19+15+13).
+- Rust anchor `cargo test -p unimatrix-server --lib test_scan_isolation_gate_golden_markers_pass`:
+  **1 passed, rc=0** — the real `ContentScanner::global().scan()` accepts all 12 golden
+  derived markers (incl. the captured-failing pid/epoch re-encoded). Deterministic
+  proof the derived markers never trip the scanner.
+- `pytest -m smoke`: **24 passed, 601 deselected, rc=0 in 207.69s** — no server change →
+  prior 24/24 no-regression confirmed.
+- File sizes: smoke.sh 499, isolation-probe-lib.sh 172, isolation-logic-test 491,
+  fixture 136 — all ≤500. No `suites/*.py` touched; no new `xfail`.
+
+## Detailed findings (iter2)
+
+### Check 1 — Risk mitigation proof (incl. marker-PII class)
+**Status**: WARN
+**Evidence**: The #859 root-cause class is now PROVEN green by direct execution:
+the Rust anchor exercises the real production scanner against the shared golden set
+(including `infra003-mcp-a-eaqxthaqu3`, the re-encoding of the exact pid/epoch that
+INFRA'd), and the off-Docker (c) battery drives the REAL default path (RUN unset)
+through `PID_OVERRIDE`/`EPOCH_OVERRIDE` over an adversarial epoch/pid battery —
+asserting no phone/SSN shape, the in-gate self-check passes (N3 false-positive
+guard), and the canary trips with teeth on a hand-built shaped marker without
+echoing digits (N4). This converts the probabilistic CI flake into a deterministic
+pre-merge guarantee. **The two Critical risks remain covered and unregressed**:
+R-01 (warmup barrier) — the 39 isolation-logic cases all still pass; R-05
+(swallowed-exit-code) — tristate 19/19 unchanged.
+**Issue**: RISK-COVERAGE-REPORT.md does NOT yet document this coverage (see Rework).
+
+### Check 2 — Test coverage completeness
+**Status**: WARN
+**Evidence**: All 15 Phase-2 risks remain covered; the marker-PII class is a NEW,
+additional covered risk traceable to #859 and proven green. The execution is
+complete. **However** the coverage report still tabulates the pre-fold-in totals
+(86, not 90), lists no Rust anchor under "Unit tests (cargo) — Not applicable", and
+has no risk row for the marker-PII / content-scan-collision class.
+
+### Check 3 — Specification compliance (AC-15 amendment)
+**Status**: PASS
+**Evidence**: `git show 511ba824 -- crates/...scanning.rs` shows the only crates/
+delta is `test_scan_isolation_gate_golden_markers_pass`, added inside `mod tests`
+(`#[cfg(test)]`). No production code, no scanner pattern change. AC-15 amends cleanly
+from "no crates/ change" to "no crates/ PRODUCTION change; one test-only scanner
+anchor." AC-04/AC-11 (cold-model GREEN) remain CI-only and PENDING-operational
+(the re-run dispatch is to be gathered after this gate, per spawn). AC-14 (N3
+proven) remains the human's post-delivery call. Confirmed, not failed.
+
+### Check 4 — Architecture compliance / invariant preservation
+**Status**: PASS
+**Evidence**: `derive_markers` diff changes only `RUN` derivation; M_OBS_A/B,
+M_MCP_A/B literals (`infra003-{obs,mcp}-{a,b}-${RUN}`) and the warmup marker
+(`infra003-warmup-${RUN}`) prefixes are byte-unchanged → sqlite `query_for`
+LIKE/equality predicates and read-as-barrier predicates intact. R-12 charset guard
+(`*[!a-z0-9-]*`) retained and runs BEFORE the canary (base36 `0-9a-z` + `x` stays in
+charset). R-18/R-02 pairwise non-substring loop retained. The canary's `[2-9]` phone
+anchor means the `003` in the `infra003` prefix cannot be read as a phone start (N3).
+
+### Check 5 — Knowledge stewardship
+**Status**: PASS
+**Evidence**: `infra-004-agent-5-marker-fix-report.md` and
+`infra-004-mcp-infra-investigator-report.md` each carry a `## Knowledge Stewardship`
+block with a `Queried:` entry (`context_briefing` → #5355/#5354/#85 and
+#5343/#5131 respectively) and a `Stored:` entry (investigator stored lesson #5355;
+agent-5 "nothing novel — reason given, bugs-are-GH-issues rule"). Reasons supplied.
+
+## Rework Required (iter2)
+
+| Issue | Which Agent | What to Fix |
+|-------|-------------|-------------|
+| RISK-COVERAGE-REPORT.md is stale post-#859 fold-in: tabulates 86 (not 90), omits the Rust anchor `test_scan_isolation_gate_golden_markers_pass`, omits the four (c) nonce-safety cases, and has no risk row for the marker-PII / MCP-content-scan-collision class. | uni-tester | Regenerate the report: shell total 86→90 (isolation-logic 39→43); add a "Unit tests (cargo)" entry for the test-only Rust anchor (1 passed) noting the AC-15 amendment; add a marker-PII coverage row traceable to #859 mapping to the (c) battery + canary + Rust anchor; note the class as an ADDITIONAL covered risk (the #859 root cause), deterministic pre-merge guarantee. |
+
+## Verdict rationale
+
+The fix itself is sound and FULLY proven by re-executing the shipped bytes (90 shell
++ 1 Rust anchor + 24 smoke, all green); the two Critical risks are unregressed; all
+load-bearing invariants are preserved; AC-15 amends cleanly to a single test-only
+anchor. The ONLY gap is that the gate's primary mapping artifact —
+RISK-COVERAGE-REPORT.md — was not regenerated to document the new #859 marker-PII
+coverage (wrong counts, missing the anchor and the (c) cases, missing the
+root-cause risk row). Because traceability of the incident's own risk class through
+the coverage report is a Gate-3c standard, this is a **REWORKABLE FAIL** with a
+single narrow, tester-owned documentation update. No code rework, no re-test of the
+fix is required — only the report regeneration. Per spawn, the AC-11 cold-model
+GREEN re-run remains a post-gate operational artifact.
