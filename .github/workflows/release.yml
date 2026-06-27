@@ -611,6 +611,57 @@ jobs:
           export UNIMATRIX_HTTPS_SMOKE="$(pwd)/scripts/cloud-cycle-https-leg.sh"
           python -m pytest suites/test_https_uds_parity.py -v -m parity --timeout=900
 
+  # infra-004 C-LN — standing cross-tenant isolation lane (ADR-003 #5351). Runs the
+  # multi-tenant-isolation-smoke.sh (infra-003 / #855) against the pushed amd64 GHCR
+  # bytes on every tag AND workflow_dispatch, via the ADDITIVE tri-state runner
+  # (run_smoke_gate_tristate, ADR-002 #5350) so a genuine cross-tenant leak (exit 1 /
+  # RED) fails the job while INFRA (exit 2 — warmup/durability/dependency/pull-404)
+  # degrades to non-blocking-visible (::warning:: + canonical marker). It mirrors the
+  # proven smoke-amd64 harness (checkout, setup-node, GHCR login) PLUS one
+  # self-contained `apt-get install -y sqlite3` step (content-read engine; coordinate
+  # #849, no hard dep). NO `if:` guard — the dispatch path is load-bearing for the
+  # AC-11 cold-model GREEN proof before the blocking flip (ADR-004 #5352 / D-2).
+  #
+  # FAIL-CLOSED (ARCHITECTURE §5): every harness/setup-step failure (runner /
+  # checkout / node / sqlite3 / GHCR login) fails the job; ONLY the script's exit-2
+  # maps to non-blocking, handled inside run_smoke_gate_tristate. amd64-only (D-3 /
+  # C-12). Started NON-BLOCKING — intentionally NOT in create-container-manifest's
+  # `needs:` until the cold-model GREEN lands; C-FLIP adds the blocking edge (Wave 3).
+  # The gate spine is sourced from release-gate-lib.sh (same bytes the pre-merge
+  # logic test sources — single source of truth, R-01).
+  multi-tenant-isolation-amd64:
+    needs: [build-container-x64]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Provision pinned Node (write/JSON-shaping + read path)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Provision sqlite3 (content-read engine; self-contained, coordinate #849)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y sqlite3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Multi-tenant cross-tenant isolation gate (tri-state, amd64)
+        run: |
+          set -euo pipefail
+          source product/test/infra-001/scripts/release-gate-lib.sh
+          IMAGE="$(resolve_image "${GITHUB_REPOSITORY_OWNER}" "${GITHUB_EVENT_NAME}" "${GITHUB_REF_NAME}" amd64)"
+          echo "isolation target IMAGE=${IMAGE}"
+          export IMAGE
+          run_smoke_gate_tristate "${IMAGE}" bash product/test/infra-001/scripts/multi-tenant-isolation-smoke.sh
+
   create-container-manifest:
     needs: [smoke-amd64, smoke-arm64, embed-amd64, embed-arm64]
     if: github.event_name != 'workflow_dispatch'
