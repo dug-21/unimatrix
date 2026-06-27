@@ -12,6 +12,71 @@
 # STUB SEAM: both write functions honor SMOKE_WRITE_CMD (argv run as
 # CMD <surface> <slug> <marker>) so the off-Docker gate-logic test neutralizes the
 # real curl/MCP path — the same real-vs-stub split the read seam uses.
+#
+# It ALSO houses the construction-safe nonce + PII-shape canary helpers (#859) so
+# multi-tenant-isolation-smoke.sh stays <=500 lines; they are defined here (sourced
+# before derive_markers/warmup_barrier RUN) and consumed there.
+
+# =====================================================================
+# Construction-safe nonce (B1/B3, #859) — letter-dominant, shape-safe BY DESIGN
+# =====================================================================
+# _b36(n): base36-encode a non-negative integer to lowercase [0-9a-z] (R-12-safe).
+# bash has no printf base36; divide-by-36 into the digit table. base36 is 26:10
+# letter-dense, so a <=6-char component cannot itself form a 10-digit phone run.
+_b36() {
+  local n="${1:-0}" out="" d
+  local tbl="0123456789abcdefghijklmnopqrstuvwxyz"
+  case "$n" in ''|*[!0-9]*) n=0;; esac
+  [ "$n" -eq 0 ] && { printf '0'; return; }
+  while [ "$n" -gt 0 ]; do
+    d=$(( n % 36 )); out="${tbl:d:1}${out}"; n=$(( n / 36 ))
+  done
+  printf '%s' "$out"
+}
+
+# _default_nonce -> <b36(pid)>x<b36(epoch)>: pid and epoch base36-encoded
+# SEPARATELY and joined with the LETTER 'x' (NOT a hyphen, NOT a digit). Each
+# component is <=6 chars (pid <36^5, a 10-digit epoch <36^7 but realistically
+# <=6), so neither the 10-digit phone grouping nor the \d{3}-\d{2}-\d{4} SSN shape
+# can form within a component, and the letter separator blocks any run across the
+# boundary — the PII shapes are structurally unreachable, not merely improbable.
+# Honors PID_OVERRIDE/EPOCH_OVERRIDE (default $$/date) so the off-Docker logic test
+# drives an adversarial epoch/pid battery through the REAL default path (B3); the
+# single seam routes BOTH derive_markers and warmup_barrier so they cannot diverge.
+_default_nonce() {
+  printf '%sx%s' "$(_b36 "${PID_OVERRIDE:-$$}")" "$(_b36 "${EPOCH_OVERRIDE:-$(date +%s)}")"
+}
+
+# assert_marker_pii_safe(marker) — REGRESSION CANARY (B2/N4, #859). Runs AFTER the
+# R-12 [a-z0-9-] charset guard, so its input is charset-reduced. Of the six
+# production ContentScanner patterns (crates/unimatrix-server/src/infra/scanning.rs)
+# only TWO are reachable under [a-z0-9-]; the other four need chars outside it:
+#   EmailAddress  needs '@' and '.'        (out of charset)
+#   ApiKey bearer needs a space            (out of charset)
+#   ApiKey AWS    needs uppercase 'AKIA…'  (out of charset)
+#   ApiKey GitHub needs '_'                (out of charset)
+# Charset-reduced ERE projections (bash [[ =~ ]] has no \d / \s / \b / (?:)):
+#   PhoneNumber  scanning.rs:300-304  (?:\+?1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]?\d{3}[\s.-]?\d{4}
+#     -> \d=>[0-9]; \s,(,),+ unreachable; '-' IS in-charset (a valid separator):
+#        1?[2-9][0-9]{2}-?[0-9]{3}-?[0-9]{4}    (the leading [2-9] anchor means the
+#        '003' in the infra003 prefix cannot be read as a phone start — N3.)
+#   SocialSecurityNumber  scanning.rs:306-309  \b\d{3}-\d{2}-\d{4}\b
+#     -> \d=>[0-9]; \b has no ERE equiv:  [0-9]{3}-[0-9]{2}-[0-9]{4}
+# With the construction-safe nonce these shapes are unreachable, so a match here can
+# ONLY mean a future derivation regression — this is a CANARY, not a faithful
+# regex re-implementation (do NOT chase verbatim faithfulness). Fail loud INFRA and
+# report the shape CATEGORY only, NEVER the offending digits (N4).
+assert_marker_pii_safe() {
+  local m="$1"
+  local phone_shape='1?[2-9][0-9]{2}-?[0-9]{3}-?[0-9]{4}'
+  local ssn_shape='[0-9]{3}-[0-9]{2}-[0-9]{4}'
+  if [[ "$m" =~ $phone_shape ]]; then
+    infra_fail "a derived marker matched the phone-shape guard (REGRESSION CANARY; scanning.rs:300-304) — derivation regression; digits withheld"
+  fi
+  if [[ "$m" =~ $ssn_shape ]]; then
+    infra_fail "a derived marker matched the SSN-shape guard (REGRESSION CANARY; scanning.rs:306-309) — derivation regression; digits withheld"
+  fi
+}
 
 # =====================================================================
 # C3 — Observe write surface, both directions

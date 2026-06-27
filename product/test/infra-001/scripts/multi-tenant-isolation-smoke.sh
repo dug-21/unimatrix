@@ -350,7 +350,10 @@ run_negatives() {
 # Markers (build) + load-bearing non-substring self-check
 # =====================================================================
 derive_markers() {
-  RUN="${RUN:-$$-$(date +%s)}"
+  # Construction-safe nonce (#859): _default_nonce (isolation-probe-lib.sh) base36-
+  # encodes pid+epoch SEPARATELY and joins with a LETTER so the PhoneNumber/SSN
+  # content-scan shapes the MCP context_store write path rejects cannot form.
+  RUN="${RUN:-$(_default_nonce)}"
   case "$RUN" in *[!a-z0-9-]*) infra_fail "RUN nonce '$RUN' not [a-z0-9-]";; esac
   M_OBS_A="infra003-obs-a-${RUN}"   # A observe -> observations.topic_signal
   M_OBS_B="infra003-obs-b-${RUN}"   # B observe -> observations.topic_signal
@@ -365,6 +368,12 @@ assert_markers_distinct() {
   local m i j
   for m in "${markers[@]}"; do
     case "$m" in *[!a-z0-9-]*) infra_fail "marker '$m' contains a non-[a-z0-9-] char (R-12)";; esac
+  done
+  # PII-shape regression canary (#859) — AFTER the R-12 charset guard (its ERE
+  # reduction assumes [a-z0-9-] input). Catches a future nonce-derivation regression
+  # before the MCP context_store content-scan would reject the marker (-32006).
+  for m in "${markers[@]}"; do
+    assert_marker_pii_safe "$m"
   done
   # Pairwise non-substring (load-bearing: the MCP read uses LIKE '%marker%', R-18).
   for i in "${!markers[@]}"; do
@@ -429,12 +438,15 @@ run_isolation_matrix() {
 # (which already routes through the SMOKE_*_CMD stub seam) on a widened deadline.
 warmup_barrier() {
   # 1. Establish RUN deterministically (idempotent; reused by derive_markers).
-  RUN="${RUN:-$$-$(date +%s)}"
+  #    Construction-safe nonce via the SAME _default_nonce seam derive_markers uses
+  #    (#859) so the two RUN defaults cannot diverge.
+  RUN="${RUN:-$(_default_nonce)}"
   case "$RUN" in *[!a-z0-9-]*) infra_fail "RUN nonce '$RUN' not [a-z0-9-]";; esac
 
-  # 2. Build the throwaway warmup marker (charset-guarded).
+  # 2. Build the throwaway warmup marker (charset-guarded + PII-shape canary, #859).
   local warmup_marker="infra003-warmup-${RUN}"
   case "$warmup_marker" in *[!a-z0-9-]*) infra_fail "warmup marker '$warmup_marker' not [a-z0-9-]";; esac
+  assert_marker_pii_safe "$warmup_marker"
 
   # 3. Load-bearing non-substring assertion vs the four cell markers (R-02).
   derive_markers   # idempotent: sets M_OBS_A/M_OBS_B/M_MCP_A/M_MCP_B from the SAME RUN

@@ -483,6 +483,48 @@ mod tests {
         assert_eq!(sr.category, PatternCategory::ApiKey);
     }
 
+    // N2 drift-proof anchor (#859): the infra-003 cross-tenant isolation gate writes
+    // markers through the MCP `context_store` served path, which runs THIS scanner
+    // (SecurityGateway::validate_write -> ContentScanner::global().scan). A numeric
+    // nonce once formed a PhoneNumber-shaped substring and got rejected (-32006),
+    // never reaching GREEN. The gate now derives a construction-safe base36
+    // letter-dominant nonce. This test feeds the GOLDEN set of representative derived
+    // markers through the real scanner and asserts Ok — the only coupling that fails
+    // loudly if the PhoneNumber/SSN patterns ever widen to reject these shapes.
+    //
+    // SHARED GOLDEN SET: these exact literals also drive the off-Docker bash test
+    // (c) in product/test/infra-001/scripts/release-gate-isolation-logic-test.sh
+    // (search ISOLATION_GATE_GOLDEN_MARKERS). Keep the two lists in sync.
+    #[test]
+    fn test_scan_isolation_gate_golden_markers_pass() {
+        let scanner = ContentScanner::global();
+        // marker form: infra003-{obs,mcp,warmup}-{a,b}-<b36(pid)>x<b36(epoch)>
+        let golden = [
+            // captured failing (pid=18530, epoch=1782573915) — all 5 marker variants
+            "infra003-obs-a-eaqxthaqu3",
+            "infra003-obs-b-eaqxthaqu3",
+            "infra003-mcp-a-eaqxthaqu3",
+            "infra003-mcp-b-eaqxthaqu3",
+            "infra003-warmup-eaqxthaqu3",
+            // boundary (pid=1, epoch=0)
+            "infra003-obs-a-1x0",
+            "infra003-mcp-b-1x0",
+            "infra003-warmup-1x0",
+            // max-ish (pid=999999, epoch=9999999999)
+            "infra003-mcp-a-lflrx4ldqpdr",
+            // digit-leading nonces that exercised the old phone/SSN shapes
+            "infra003-obs-b-2xth95sw",
+            "infra003-mcp-a-eaqx2fqkdqp",
+            "infra003-warmup-2hwcgxgjdgxs",
+        ];
+        for m in golden {
+            assert!(
+                scanner.scan(m).is_ok(),
+                "isolation-gate golden marker rejected by scanner: {m}"
+            );
+        }
+    }
+
     #[test]
     fn test_scan_title_injection_detected() {
         let scanner = ContentScanner::global();

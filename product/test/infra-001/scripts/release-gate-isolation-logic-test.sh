@@ -478,6 +478,14 @@ run_matrix test_post_barrier_red_still_drives   1 "ISOLATION BROKEN" -- "STUB_PR
 run_matrix test_post_barrier_infra_still_drives 2 "INFRA" -- \
   "STUB_PRESENT=${DB}::${M_OBS_B} ${DA}::${M_MCP_A} ${DB}::${M_MCP_B}"
 
+echo "== (c) #859 nonce is construction-safe: default path + adversarial battery never form PII shapes =="
+# Cases factored into fixtures/isolation-nonce-logic-cases.sh to keep THIS file <=500
+# lines (workspace rule); they consume pass()/oops() defined above and drive the REAL
+# default derivation path (RUN UNSET) through the PID_OVERRIDE/EPOCH_OVERRIDE seam.
+# shellcheck source=fixtures/isolation-nonce-logic-cases.sh
+. "${SCRIPT_DIR}/fixtures/isolation-nonce-logic-cases.sh"
+run_nonce_safety_cases
+
 echo
 echo "release-gate-isolation-logic-test: ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" -eq 0 ]
