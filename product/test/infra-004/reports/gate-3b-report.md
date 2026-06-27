@@ -135,3 +135,90 @@ Working tree carries an uncommitted edit to `/workspaces/unimatrix/CLAUDE.md` (a
 
 ## Iter2 verdict
 **PASS.** The #859 fold-in matches the design-reviewed approach; the nonce is structurally shape-safe; the canary, seam, and Rust anchor are correctly implemented; all invariants preserved; 90 shell + 1 Rust test green; stewardship complete (iter1 WARN resolved). No rework required.
+
+---
+
+## iter3 — complete marker+warmup fix (commit 543e8d08, #859/#856)
+
+> Re-validation after the COMPLETE marker+warmup fix. Result: **PASS**
+
+### Scope
+TEST-ONLY. Only `crates/` edit is the additive `#[cfg(test)]` golden literals in
+`scanning.rs` (`mod tests` @323; diff hunk @488, +9 net; file 584→593 lines —
+pre-existing >500, not feature-attributable). `listener.rs` untouched. No production
+server/scanner logic change. Working tree clean except an unrelated `M CLAUDE.md`
+(carried from iter2; not an infra-004 artifact; flagged, not actioned).
+
+### Two-filter marker contract — PASS
+New marker `infra003-{obs,mcp,warmup}-{a,b}-1-<b36(pid)>x<b36(epoch)>` threads BOTH
+server filters:
+- **looks_like_feature_id** (listener.rs:289-303): split-on-`-` yields all-digit
+  segment `1` (has_digit) plus alpha segments (`infra003`,leg,ab,b36-nonce) →
+  predicate TRUE → observe `topic_signal` persists (no longer dropped to NULL). The
+  fixed `1` token (`MARKER_FID_TOKEN`) is the minimal all-digit segment.
+- **PII scanner** (scanning.rs phone `(?:\+?1[\s.-]?)?\(?[2-9]\d{2}\)?…`, SSN
+  `\b\d{3}-\d{2}-\d{4}\b`): regex separators are only `[\s.-]`; letters break digit
+  runs. `003` is letter-bounded and leading-0 (fails `[2-9]` anchor, N3); the fixed
+  `1` is a single hyphen-isolated digit; no 3-3-4 / 3-2-4 run can form. Rust anchor
+  empirically confirms all golden literals (incl. digit-leading nonces) pass
+  `ContentScanner::global().scan()==Ok`.
+
+### Symmetric self-checks — PASS
+`assert_marker_pii_safe` + new `assert_marker_feature_id_shaped` both enforced in
+`derive_markers`/`warmup_barrier`; both report shape CATEGORY only, never the value.
+`test_c_feature_id_check_trips_on_non_feature_id` proves the new canary has teeth
+(INFRA exit 2, "feature-id shape" named, value withheld). Off-Docker oracle
+`marker_is_feature_id_shaped` mirrors the predicate across the adversarial pid/epoch
+battery.
+
+### Warmup probe → MCP context_store round trip — PASS
+`warmup_barrier` switched from `write_then_barrier observe` to
+`write_then_barrier mcp` — the only served write exercising the embedding model
+(observe is fire-and-forget SQL, zero embed dependency = wrong proxy). Stub-seam
+compatible (routes through SMOKE_*_CMD / STUB_PRESENT|STUB_INFRA). `WARMUP_DEADLINE_SECS=180`
+kept. Degrades timeout→INFRA (exit 2, never RED/GREEN): proven by
+`test_warmup_timeout_is_infra_not_pass` + `test_warmup_present_requires_durable_read_roundtrip`
++ `test_warmup_result_is_consumed`.
+
+### C5 observe positive controls repaired — PASS
+Markers now feature-id-shaped → observe `topic_signal` persists, restoring the C5
+positive controls AND the (now-retired) observe-barrier path. Off-Docker battery
+asserts every derived marker is feature-id-shaped.
+
+### Preserved invariants — PASS
+R-12 `[a-z0-9-]` charset guards, R-18/R-02 pairwise non-substring (incl. updated
+`test_c7`, `test_warmup_marker_non_substring_asserted`), `infra003-{obs,mcp,warmup}-{a,b}-`
+prefixes, query_for read-as-barrier predicates — all intact. No regression to
+C-TS/C-LN/C-FLIP. No unrelated fmt churn (scanning.rs diff purely additive test block).
+No stubs/unsafe in changed files.
+
+### Rust anchor — PASS
+`test_scan_isolation_gate_golden_markers_pass` TEST-ONLY (`#[cfg(test)]`); golden set
+shared with bash `test_c_golden_markers_match_rust_anchor`; both PII-safe AND
+feature-id-shaped asserted across the battery; N3 false-positive guard
+(`test_c_default_path_self_check_passes`) — real default markers pass both filters.
+
+### Test evidence (foreground)
+| Suite | Result |
+|-------|--------|
+| `release-gate-isolation-logic-test.sh` | **44 passed, 0 failed** (rc 0) — +1 new (c) feature-id canary |
+| `release-gate-tristate-logic-test.sh` | **19 passed, 0 failed** (rc 0) |
+| `release-gate-logic-test.sh` | **15 passed, 0 failed** (rc 0) |
+| `release-gate-isolation-lane-static-test.sh` | **13 passed, 0 failed** (rc 0) — total **91** |
+| `cargo test -p unimatrix-server --lib test_scan_isolation_gate_golden_markers_pass` | **1 passed, 0 failed** (rc 0) |
+| shellcheck -S warning (5 changed scripts) | CLEAN x5 (0 errors, 0 warnings; the 324/3/2/1 info-level notes are SC2034-class, suppressed/info only) |
+
+> Full-workspace cargo link OOMs in this sandbox (ld signal-9); validated the Rust
+> anchor via `--lib` per spawn instruction. Production code unchanged.
+
+### Observation (out of gate scope)
+`scanning.rs` is 593 lines (>500). It was already 584 before this commit; the infra-004
+change is +9 additive test literals inside `#[cfg(test)]`. Pre-existing condition on a
+production file outside infra-004's scope — noted, not gate-blocking for a test-only fix.
+
+### iter3 verdict
+**PASS.** The complete marker+warmup fix threads both server filters correctly, the
+symmetric canaries have teeth, warmup now uses the embedding-exercising MCP round trip
+and still degrades timeout→INFRA, C5 observe controls are repaired, all invariants
+preserved. 91 shell + 1 Rust test green; shellcheck clean; no production logic change.
+No rework required.
