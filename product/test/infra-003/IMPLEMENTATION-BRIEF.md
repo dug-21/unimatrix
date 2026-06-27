@@ -41,8 +41,9 @@ production change.
 ## Component Map
 
 The deliverable is a single standalone shell gate composed of seven logical
-components (C1–C7, ADR-001). Pseudocode and test-plan files are produced in
-Session 2 Stage 3a; paths below are the expected layout.
+components (C1–C7, ADR-001) plus the in-PR #815 invariant update (R-15).
+Pseudocode and test-plan files were produced in Session 2 Stage 3a; actual
+paths below.
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
@@ -53,6 +54,7 @@ Session 2 Stage 3a; paths below are the expected layout.
 | C5 — Per-cell write + **read-as-barrier** positive control (retry-until-present) | pseudocode/c5-read-as-barrier.md | test-plan/c5-read-as-barrier.md |
 | C6 — Cross-store negative read + two-store read primitive (non-substring 2×2) | pseudocode/c6-two-store-read.md | test-plan/c6-two-store-read.md |
 | C7 — Verdict gate (bidirectional 2×2, per-direction positive-gates-negative, tri-state exit) | pseudocode/c7-verdict.md | test-plan/c7-verdict.md |
+| R-15 — #815 new-smoke-script invariant update (in-PR, teeth-retaining) | pseudocode/r15-invariant-update.md | test-plan/OVERVIEW.md (#815 invariant-update plan) |
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
