@@ -625,8 +625,9 @@ jobs:
   # FAIL-CLOSED (ARCHITECTURE §5): every harness/setup-step failure (runner /
   # checkout / node / sqlite3 / GHCR login) fails the job; ONLY the script's exit-2
   # maps to non-blocking, handled inside run_smoke_gate_tristate. amd64-only (D-3 /
-  # C-12). Started NON-BLOCKING — intentionally NOT in create-container-manifest's
-  # `needs:` until the cold-model GREEN lands; C-FLIP adds the blocking edge (Wave 3).
+  # C-12). BLOCKING (C-FLIP, Wave 3): this lane IS in create-container-manifest's
+  # `needs:`, so a RED verdict (exit 1) leaves the edge unmet and blocks the release
+  # manifest; INFRA (exit 2 → non-blocking) does not block.
   # The gate spine is sourced from release-gate-lib.sh (same bytes the pre-merge
   # logic test sources — single source of truth, R-01).
   multi-tenant-isolation-amd64:
