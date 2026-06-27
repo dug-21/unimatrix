@@ -9,9 +9,9 @@
 # self-contained sqlite3 step, sources release-gate-lib.sh, resolves the image via
 # resolve_image (amd64), exports IMAGE, invokes the TRI-STATE runner
 # (run_smoke_gate_tristate, not run_smoke_gate), carries NO ${GITHUB_REF_NAME#v} tag
-# swallow (R-09 / C-4) and NO docker build (AC-07, pushed bytes). Negative control:
-# the lane is NOT YET in create-container-manifest.needs (Wave-2 state; C-FLIP adds
-# the blocking edge in Wave 3). No Docker, no node, no network — pre-merge-provable.
+# swallow (R-09 / C-4) and NO docker build (AC-07, pushed bytes). Blocking edge:
+# the lane IS in create-container-manifest.needs (Wave-3 / C-FLIP state, AC-12) so a
+# RED verdict blocks the manifest. No Docker, no node, no network — pre-merge-provable.
 
 set -uo pipefail
 
@@ -178,17 +178,20 @@ test_lane_not_plain_run_smoke_gate() {
 }
 test_lane_not_plain_run_smoke_gate
 
-echo "== Wave-2 state (negative): lane NOT YET in create-container-manifest.needs (C-FLIP) =="
-test_lane_not_in_manifest_needs() {
+echo "== AC-12 blocking flip: lane IS in create-container-manifest.needs (C-FLIP, Wave 3) =="
+test_lane_in_manifest_needs() {
+  # needs:-graph assertion (AC-12 / R-05 / R-08): the standing-gate → blocking-gate
+  # flip. The isolation lane id MUST be a member of create-container-manifest.needs so
+  # a RED (exit 1) lane leaves the edge unmet and the manifest never assembles (DoD).
   local blk
   blk="$(job_block create-container-manifest)"
   if printf '%s\n' "$blk" | grep -Eq '^[[:space:]]*needs:.*'"${LANE}"; then
-    oops "test_lane_not_in_manifest_needs" "lane is already in create-container-manifest.needs — that is C-FLIP (Wave 3), not Wave 2"
+    pass "test_lane_in_manifest_needs"
   else
-    pass "test_lane_not_in_manifest_needs"
+    oops "test_lane_in_manifest_needs" "lane is NOT in create-container-manifest.needs — C-FLIP blocking edge missing; DoD not realized"
   fi
 }
-test_lane_not_in_manifest_needs
+test_lane_in_manifest_needs
 
 echo
 echo "release-gate-isolation-lane-static-test: ${PASS} passed, ${FAIL} failed"

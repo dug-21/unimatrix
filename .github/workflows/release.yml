@@ -663,7 +663,7 @@ jobs:
           run_smoke_gate_tristate "${IMAGE}" bash product/test/infra-001/scripts/multi-tenant-isolation-smoke.sh
 
   create-container-manifest:
-    needs: [smoke-amd64, smoke-arm64, embed-amd64, embed-arm64]
+    needs: [smoke-amd64, smoke-arm64, embed-amd64, embed-arm64, multi-tenant-isolation-amd64]
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
