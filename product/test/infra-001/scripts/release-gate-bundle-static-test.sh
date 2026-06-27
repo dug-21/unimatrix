@@ -196,6 +196,7 @@ echo "== R-15 no new smoke script; round-trip lives in the extended smoke (stati
 KNOWN_SMOKE_SCRIPTS=(
   docker-http-posture-smoke.sh   # #783 — the HTTP-posture smoke (Gates 1–8)
   docker-embed-readiness-smoke.sh # #767 — first-boot embedding-readiness smoke
+  multi-tenant-isolation-smoke.sh # #853 — infra-003 bidirectional multi-tenant isolation gate
 )
 test_no_new_smoke_script() {
   # Enumerate the *smoke* scripts on disk (excluding the stub fixture), then assert
