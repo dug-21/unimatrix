@@ -488,34 +488,43 @@ mod tests {
     // (SecurityGateway::validate_write -> ContentScanner::global().scan). A numeric
     // nonce once formed a PhoneNumber-shaped substring and got rejected (-32006),
     // never reaching GREEN. The gate now derives a construction-safe base36
-    // letter-dominant nonce. This test feeds the GOLDEN set of representative derived
-    // markers through the real scanner and asserts Ok — the only coupling that fails
-    // loudly if the PhoneNumber/SSN patterns ever widen to reject these shapes.
+    // letter-dominant nonce PLUS a fixed all-digit feature-id token ("-1-", the
+    // MARKER_FID_TOKEN in isolation-probe-lib.sh). The token threads the OTHER server
+    // filter — looks_like_feature_id in uds/listener.rs:289-303 — so the observe
+    // topic_signal persists instead of being dropped to NULL; the two filters pull in
+    // opposite directions on digit runs (PII wants none; looks_like_feature_id wants
+    // one). This test asserts THIS scanner still accepts the token-bearing markers.
+    //
+    // NOTE: looks_like_feature_id is a module-private fn in crate::uds::listener and is
+    // NOT unit-reachable from this module, so it cannot be asserted here. The feature-id
+    // half of the two-filter contract is pinned off-Docker by assert_marker_feature_id_shaped
+    // (a faithful split-on-'-' re-implementation) and its self-check + golden-set tests in
+    // product/test/infra-001/scripts/fixtures/isolation-nonce-logic-cases.sh.
     //
     // SHARED GOLDEN SET: these exact literals also drive the off-Docker bash test
-    // (c) in product/test/infra-001/scripts/release-gate-isolation-logic-test.sh
-    // (search ISOLATION_GATE_GOLDEN_MARKERS). Keep the two lists in sync.
+    // (c) in fixtures/isolation-nonce-logic-cases.sh (test_c_golden_markers_match_rust_anchor).
+    // Keep the two lists in sync.
     #[test]
     fn test_scan_isolation_gate_golden_markers_pass() {
         let scanner = ContentScanner::global();
-        // marker form: infra003-{obs,mcp,warmup}-{a,b}-<b36(pid)>x<b36(epoch)>
+        // marker form: infra003-{obs,mcp,warmup}-{a,b}-1-<b36(pid)>x<b36(epoch)>
         let golden = [
             // captured failing (pid=18530, epoch=1782573915) — all 5 marker variants
-            "infra003-obs-a-eaqxthaqu3",
-            "infra003-obs-b-eaqxthaqu3",
-            "infra003-mcp-a-eaqxthaqu3",
-            "infra003-mcp-b-eaqxthaqu3",
-            "infra003-warmup-eaqxthaqu3",
+            "infra003-obs-a-1-eaqxthaqu3",
+            "infra003-obs-b-1-eaqxthaqu3",
+            "infra003-mcp-a-1-eaqxthaqu3",
+            "infra003-mcp-b-1-eaqxthaqu3",
+            "infra003-warmup-1-eaqxthaqu3",
             // boundary (pid=1, epoch=0)
-            "infra003-obs-a-1x0",
-            "infra003-mcp-b-1x0",
-            "infra003-warmup-1x0",
+            "infra003-obs-a-1-1x0",
+            "infra003-mcp-b-1-1x0",
+            "infra003-warmup-1-1x0",
             // max-ish (pid=999999, epoch=9999999999)
-            "infra003-mcp-a-lflrx4ldqpdr",
+            "infra003-mcp-a-1-lflrx4ldqpdr",
             // digit-leading nonces that exercised the old phone/SSN shapes
-            "infra003-obs-b-2xth95sw",
-            "infra003-mcp-a-eaqx2fqkdqp",
-            "infra003-warmup-2hwcgxgjdgxs",
+            "infra003-obs-b-1-2xth95sw",
+            "infra003-mcp-a-1-eaqx2fqkdqp",
+            "infra003-warmup-1-2hwcgxgjdgxs",
         ];
         for m in golden {
             assert!(

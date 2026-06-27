@@ -23,11 +23,12 @@ GATE="${SCRIPT_DIR}/multi-tenant-isolation-smoke.sh"
 PROBE_LIB="${SCRIPT_DIR}/isolation-probe-lib.sh"   # C3/C4 write probes (sourced by GATE)
 STUB_READ="${SCRIPT_DIR}/fixtures/stub-read-marker.sh"
 
-# Deterministic markers via RUN=t1 (derive_markers honors a pinned RUN).
+# Deterministic markers via RUN=t1 (derive_markers honors a pinned RUN). Markers carry
+# the fixed feature-id token "1" (MARKER_FID_TOKEN, #859) so looks_like_feature_id holds.
 RUN_NONCE="t1"
-M_OBS_A="infra003-obs-a-${RUN_NONCE}"; M_OBS_B="infra003-obs-b-${RUN_NONCE}"
-M_MCP_A="infra003-mcp-a-${RUN_NONCE}"; M_MCP_B="infra003-mcp-b-${RUN_NONCE}"
-WARMUP_M="infra003-warmup-${RUN_NONCE}"   # C-WB throwaway warmup marker (infra-004)
+M_OBS_A="infra003-obs-a-1-${RUN_NONCE}"; M_OBS_B="infra003-obs-b-1-${RUN_NONCE}"
+M_MCP_A="infra003-mcp-a-1-${RUN_NONCE}"; M_MCP_B="infra003-mcp-b-1-${RUN_NONCE}"
+WARMUP_M="infra003-warmup-1-${RUN_NONCE}"   # C-WB throwaway warmup marker (infra-004)
 DA="/data/.unimatrix/arch-research"   # SLUG_DIR_A default
 DB="/data/.unimatrix/isolation-b"     # SLUG_DIR_B default
 
@@ -220,9 +221,9 @@ test_c7_substring_markers_fail_infra() {
     bash -c '
       set -uo pipefail
       source "'"$GATE"'" >/dev/null 2>&1 || true
-      M_OBS_A="infra003-obs-a"
-      M_OBS_B="infra003-obs-a-extra"   # M_OBS_A is a substring of this
-      M_MCP_A="infra003-mcp-a"; M_MCP_B="infra003-mcp-b"
+      M_OBS_A="infra003-obs-a-1"
+      M_OBS_B="infra003-obs-a-1-extra"   # M_OBS_A is a substring of this (both feature-id-shaped)
+      M_MCP_A="infra003-mcp-a-1"; M_MCP_B="infra003-mcp-b-1"
       assert_markers_distinct
     ' 2>&1
   )"
@@ -347,9 +348,9 @@ test_no_overclaim_point_in_time() {
 }
 test_no_overclaim_point_in_time
 
-echo "== C-WB R-01 warmup PRESENT is load-bearing: durable own-store round-trip => proceed =="
-# Warmup marker present in A's store (same observe predicate a real write uses) ->
-# WTB=PRESENT -> warmup_barrier returns 0 and control reaches run_isolation_matrix.
+echo "== C-WB R-01 warmup PRESENT is load-bearing: durable MCP round-trip => proceed =="
+# Warmup marker present in A's store (same MCP entries predicate the real round trip
+# uses) -> WTB=PRESENT -> warmup_barrier returns 0 and control reaches run_isolation_matrix.
 run_warmup test_warmup_present_proceeds_to_matrix 0 "__PROCEED_TO_MATRIX__" -- \
   "WARMUP_DEADLINE_SECS=5" "STUB_PRESENT=${DA}::${WARMUP_M}"
 
@@ -421,9 +422,9 @@ test_warmup_marker_non_substring_asserted() {
       source "'"$GATE"'" >/dev/null 2>&1 || true
       RUN="'"$RUN_NONCE"'"
       derive_markers() {
-        M_OBS_A="infra003-warmup-'"$RUN_NONCE"'-collide"   # warmup marker is a substring of this
-        M_OBS_B="infra003-obs-b-'"$RUN_NONCE"'"
-        M_MCP_A="infra003-mcp-a-'"$RUN_NONCE"'"; M_MCP_B="infra003-mcp-b-'"$RUN_NONCE"'"
+        M_OBS_A="infra003-warmup-1-'"$RUN_NONCE"'-collide"   # warmup marker (incl. fixed token) is a substring of this
+        M_OBS_B="infra003-obs-b-1-'"$RUN_NONCE"'"
+        M_MCP_A="infra003-mcp-a-1-'"$RUN_NONCE"'"; M_MCP_B="infra003-mcp-b-1-'"$RUN_NONCE"'"
         SLUG_DIR_A="'"$DA"'"; SLUG_DIR_B="'"$DB"'"
       }
       warmup_barrier

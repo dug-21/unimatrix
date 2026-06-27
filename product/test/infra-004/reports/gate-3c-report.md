@@ -121,8 +121,22 @@ None.
 # Gate 3c — iter2 (#859 fold-in)
 
 > Date: 2026-06-27
-> Result: **REWORKABLE FAIL** (narrow — coverage report not regenerated; all execution evidence green)
+> Result: **REWORKABLE FAIL** → **PASS** (resolved: RISK-COVERAGE-REPORT regenerated in commit `a497b10a`)
 > Scope: re-validation after folding the #859 marker-PII fix (commit `511ba824`) into infra-004.
+>
+> **Resolution (re-confirm):** The single REWORKABLE item — the stale
+> RISK-COVERAGE-REPORT.md — is fixed and committed (`a497b10a`). Verified against
+> the green evidence already re-executed: shell total **86→90** (isolation-logic
+> **39→43**); a "Unit tests (cargo)" section for the test-only Rust anchor
+> `test_scan_isolation_gate_golden_markers_pass` (1 passed) with the **AC-15
+> amendment** ("no `crates/` **production** change; one test-only scanner anchor");
+> a new **R-MPII (#859)** marker-PII row mapped to the off-Docker (c) adversarial
+> battery + `assert_marker_pii_safe` canary + the Rust scanner anchor (shared golden
+> list, cross-verified by `test_c_golden_markers_match_rust_anchor`); R-14 witness
+> line updated to 90/90 + 1 Rust anchor; AC-15 row amended; smoke 24/24 unchanged.
+> All referenced test names exist in source (grep/execution-verified per lesson
+> #2758). Counts and rows are consistent with the re-executed evidence. **Gate 3c
+> iter2 now reaches PASS** — all five checks PASS (no remaining WARN of consequence).
 
 ## What #859 was and what the fold-in does
 

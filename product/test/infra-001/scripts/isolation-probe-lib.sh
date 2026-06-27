@@ -34,6 +34,20 @@ _b36() {
   printf '%s' "$out"
 }
 
+# Fixed all-digit feature-id token (#859 two-filter root cause). EVERY derived marker
+# (the 4 cell markers + the warmup marker) carries this SHORT, FIXED all-digit hyphen-
+# segment so the server's looks_like_feature_id (uds/listener.rs:289-303, bugfix-832)
+# is TRUE and the observe path PERSISTS topic_signal (instead of dropping it to NULL —
+# the regression that broke the C5 observe positive controls + the warmup-via-observe
+# barrier). It stays PII-safe: one fixed digit, hyphen-separated from the letter-
+# dominant b36 nonce, is structurally incapable of forming the PhoneNumber/SSN digit
+# runs the MCP context_store content scanner rejects. The two server filters pull in
+# OPPOSITE directions on digit runs; this token is what threads BOTH. Defined here (in
+# the sourced lib) so multi-tenant-isolation-smoke.sh stays <=500 lines; consumed by
+# the parent gate's derive_markers/warmup_barrier (cross-file use; SC2034 false positive).
+# shellcheck disable=SC2034
+MARKER_FID_TOKEN="1"
+
 # _default_nonce -> <b36(pid)>x<b36(epoch)>: pid and epoch base36-encoded
 # SEPARATELY and joined with the LETTER 'x' (NOT a hyphen, NOT a digit). Each
 # component is <=6 chars (pid <36^5, a 10-digit epoch <36^7 but realistically
@@ -75,6 +89,33 @@ assert_marker_pii_safe() {
   fi
   if [[ "$m" =~ $ssn_shape ]]; then
     infra_fail "a derived marker matched the SSN-shape guard (REGRESSION CANARY; scanning.rs:306-309) — derivation regression; digits withheld"
+  fi
+}
+
+# assert_marker_feature_id_shaped(marker) — SYMMETRIC CANARY (#859 two-filter root
+# cause). The OBSERVE path persists topic_signal ONLY when the server's
+# looks_like_feature_id (uds/listener.rs:289-303, bugfix-832) is TRUE — it requires
+# >=1 hyphen-segment that is ENTIRELY ascii digits AND >=1 segment carrying an alpha
+# char; a marker failing it is silently dropped to NULL, so the C5 observe read-as-
+# barrier never sees it => deterministic INFRA at ANY deadline (the regression the
+# #859 PII-safe nonce introduced by removing the all-digit segment). This is the
+# MIRROR of assert_marker_pii_safe: the two filters pull in opposite directions on
+# digit runs, so a future nonce change that satisfies one can silently break the
+# other. Faithful split-on-'-' re-implementation of the predicate (charset is
+# [a-z0-9-], so a non-all-digit segment necessarily carries an alpha char). Fail loud
+# INFRA and report the shape CATEGORY only, NEVER the marker value (N4 parity).
+assert_marker_feature_id_shaped() {
+  local m="$1" seg has_digit=0 has_alpha=0
+  local IFS=-
+  for seg in $m; do
+    [ -z "$seg" ] && continue
+    case "$seg" in
+      *[!0-9]*) case "$seg" in *[a-z]*) has_alpha=1;; esac ;;
+      *)        has_digit=1 ;;
+    esac
+  done
+  if [ "$has_digit" -eq 0 ] || [ "$has_alpha" -eq 0 ]; then
+    infra_fail "a derived marker lacks the feature-id shape (no all-digit hyphen-segment + alpha segment; mirrors uds/listener.rs:289-303 looks_like_feature_id) — observe topic_signal would be dropped to NULL and the C5 read-as-barrier would never see it; CATEGORY reported, value withheld"
   fi
 }
 

@@ -32,6 +32,22 @@ marker_is_pii_shaped() {
   return 1
 }
 
+# marker_is_feature_id_shaped <marker> : 0 (true) iff it satisfies the server's
+# looks_like_feature_id (uds/listener.rs:289-303) — >=1 all-digit hyphen-segment AND
+# >=1 alpha segment. Independent off-Docker oracle (mirrors assert_marker_feature_id_shaped);
+# the OTHER server filter the #859 marker must thread (observe topic_signal else NULL).
+marker_is_feature_id_shaped() {
+  local m="$1" seg has_digit=0 has_alpha=0 IFS=-
+  for seg in $m; do
+    [ -z "$seg" ] && continue
+    case "$seg" in
+      *[!0-9]*) case "$seg" in *[a-z]*) has_alpha=1;; esac ;;
+      *)        has_digit=1 ;;
+    esac
+  done
+  [ "$has_digit" -ne 0 ] && [ "$has_alpha" -ne 0 ]
+}
+
 # derive_run_markers <pid> <epoch> : echo the 5 derived markers for a (pid,epoch)
 # pair via the REAL default path (RUN UNSET) through the shipped _default_nonce seam.
 derive_run_markers() {
@@ -39,7 +55,7 @@ derive_run_markers() {
   env -u RUN PID_OVERRIDE="$pid" EPOCH_OVERRIDE="$epoch" \
     bash -c 'set -uo pipefail; source "'"$NONCE_GATE"'" >/dev/null 2>&1 || true
       derive_markers
-      printf "%s\n%s\n%s\n%s\n%s\n" "$M_OBS_A" "$M_OBS_B" "$M_MCP_A" "$M_MCP_B" "infra003-warmup-$RUN"'
+      printf "%s\n%s\n%s\n%s\n%s\n" "$M_OBS_A" "$M_OBS_B" "$M_MCP_A" "$M_MCP_B" "infra003-warmup-${MARKER_FID_TOKEN}-$RUN"'
 }
 
 test_c_nonce_battery_shape_safe() {
@@ -63,9 +79,14 @@ test_c_nonce_battery_shape_safe() {
       if marker_is_pii_shaped "$m"; then
         ok=0; oops "test_c_nonce_battery_shape_safe" "marker matched a PII shape for pid=$pid epoch=$epoch (digits withheld)"
       fi
+      # #859 two-filter: every marker must ALSO be feature-id-shaped (observe topic_signal
+      # else NULL). The two filters pull opposite directions on digit runs; assert BOTH.
+      if ! marker_is_feature_id_shaped "$m"; then
+        ok=0; oops "test_c_nonce_battery_shape_safe" "marker '$m' is NOT feature-id-shaped (pid=$pid epoch=$epoch) — observe would drop it to NULL"
+      fi
     done < <(derive_run_markers "$pid" "$epoch")
   done
-  [ "$ok" -eq 1 ] && pass "test_c_nonce_battery_shape_safe (adversarial epoch/pid battery: no phone/SSN shape; R-12 held)"
+  [ "$ok" -eq 1 ] && pass "test_c_nonce_battery_shape_safe (adversarial epoch/pid battery: PII-safe AND feature-id-shaped; R-12 held)"
 }
 
 test_c_default_path_self_check_passes() {
@@ -76,7 +97,8 @@ test_c_default_path_self_check_passes() {
   out="$(env -u RUN PID_OVERRIDE=18530 EPOCH_OVERRIDE=1782573915 \
     bash -c 'set -uo pipefail; source "'"$NONCE_GATE"'" >/dev/null 2>&1 || true
       derive_markers; assert_markers_distinct
-      assert_marker_pii_safe "infra003-warmup-$RUN"; echo "__SELF_CHECK_OK__"' 2>&1)"
+      wm="infra003-warmup-${MARKER_FID_TOKEN}-$RUN"
+      assert_marker_pii_safe "$wm"; assert_marker_feature_id_shaped "$wm"; echo "__SELF_CHECK_OK__"' 2>&1)"
   rc=$?
   if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -qF "__SELF_CHECK_OK__" \
      && printf '%s' "$out" | grep -qF "pairwise non-substring"; then
@@ -112,25 +134,43 @@ test_c_golden_markers_match_rust_anchor() {
   # drift. If you edit one list, edit the other.
   local ok=1 m
   local golden=(
-    "infra003-obs-a-eaqxthaqu3" "infra003-obs-b-eaqxthaqu3"
-    "infra003-mcp-a-eaqxthaqu3" "infra003-mcp-b-eaqxthaqu3"
-    "infra003-warmup-eaqxthaqu3"
-    "infra003-obs-a-1x0" "infra003-mcp-b-1x0" "infra003-warmup-1x0"
-    "infra003-mcp-a-lflrx4ldqpdr"
-    "infra003-obs-b-2xth95sw" "infra003-mcp-a-eaqx2fqkdqp"
-    "infra003-warmup-2hwcgxgjdgxs"
+    "infra003-obs-a-1-eaqxthaqu3" "infra003-obs-b-1-eaqxthaqu3"
+    "infra003-mcp-a-1-eaqxthaqu3" "infra003-mcp-b-1-eaqxthaqu3"
+    "infra003-warmup-1-eaqxthaqu3"
+    "infra003-obs-a-1-1x0" "infra003-mcp-b-1-1x0" "infra003-warmup-1-1x0"
+    "infra003-mcp-a-1-lflrx4ldqpdr"
+    "infra003-obs-b-1-2xth95sw" "infra003-mcp-a-1-eaqx2fqkdqp"
+    "infra003-warmup-1-2hwcgxgjdgxs"
   )
   for m in "${golden[@]}"; do
     case "$m" in *[!a-z0-9-]*) ok=0; oops "test_c_golden_markers_match_rust_anchor" "golden marker '$m' broke R-12";; esac
     marker_is_pii_shaped "$m" && { ok=0; oops "test_c_golden_markers_match_rust_anchor" "golden marker '$m' is PII-shaped"; }
+    marker_is_feature_id_shaped "$m" || { ok=0; oops "test_c_golden_markers_match_rust_anchor" "golden marker '$m' is NOT feature-id-shaped"; }
   done
-  [ "$ok" -eq 1 ] && pass "test_c_golden_markers_match_rust_anchor (shared golden set is shape-safe; mirrors the Rust scanner anchor)"
+  [ "$ok" -eq 1 ] && pass "test_c_golden_markers_match_rust_anchor (shared golden set is PII-safe AND feature-id-shaped; mirrors the Rust scanner anchor)"
 }
 
-# run_nonce_safety_cases — invoke the four (c) cases (parent supplies pass/oops).
+test_c_feature_id_check_trips_on_non_feature_id() {
+  # Negative control SYMMETRIC to test_c_canary_trips_on_regression: a marker with NO
+  # all-digit hyphen-segment (letter-only nonce) would have its observe topic_signal
+  # dropped to NULL (looks_like_feature_id=false, uds/listener.rs:289-303) — the #859
+  # regression. assert_marker_feature_id_shaped MUST trip INFRA (exit 2) and name the
+  # CATEGORY, never the value. Proves the symmetric self-check has teeth (not a no-op).
+  local out rc bad="infra003-obs-a-thaxt2"
+  out="$(bash -c 'set -uo pipefail; source "'"$NONCE_GATE"'" >/dev/null 2>&1 || true; assert_marker_feature_id_shaped "'"$bad"'"' 2>&1)"; rc=$?
+  if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -qiF "feature-id shape" \
+     && ! printf '%s' "$out" | grep -qF "$bad"; then
+    pass "test_c_feature_id_check_trips_on_non_feature_id (INFRA exit 2; category named, value withheld)"
+  else
+    oops "test_c_feature_id_check_trips_on_non_feature_id" "rc=$rc out=$out (want INFRA exit 2, no value echo)"
+  fi
+}
+
+# run_nonce_safety_cases — invoke the five (c) cases (parent supplies pass/oops).
 run_nonce_safety_cases() {
   test_c_nonce_battery_shape_safe
   test_c_default_path_self_check_passes
   test_c_canary_trips_on_regression
+  test_c_feature_id_check_trips_on_non_feature_id
   test_c_golden_markers_match_rust_anchor
 }
