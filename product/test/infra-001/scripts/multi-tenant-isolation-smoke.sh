@@ -57,6 +57,12 @@ TAG="infra003-smoke"
 INFRA_SENTINEL="INFRA"
 READ_DEADLINE_SECS="${READ_DEADLINE_SECS:-10}"
 READ_POLL_SLEEP="${READ_POLL_SLEEP:-1}"
+# C-WB warmup/readiness barrier deadline (infra-004 / ADR-001 #5349). #767-derived:
+# docker-embed-readiness-smoke.sh READY_TIMEOUT_SECS=180, ~2.5x over the ~70s
+# (10s/20s/40s) embed retry/backoff floor under a real cold HuggingFace download.
+# env-overridable for arm/slow runners. The barrier's only delta over #767 is
+# model-load — per-slug store liveness is pre-established by assert_routes_live.
+WARMUP_DEADLINE_SECS="${WARMUP_DEADLINE_SECS:-180}"
 
 # Per-route MCP session ids — DISTINCT variables; A's session is NEVER used on
 # B's route (R-17/C-13). There is no shared session variable that could be crossed.
@@ -411,6 +417,56 @@ run_isolation_matrix() {
   verdict
 }
 
+# =====================================================================
+# C-WB — bounded warmup / readiness barrier (infra-004 / ADR-001 #5349)
+# =====================================================================
+# Inserted between assert_routes_live (C2 route-liveness) and run_isolation_matrix
+# (C3/C4 load-bearing writes): confirm the embedding model is loaded and an
+# own-store write becomes durable, on the #767-derived WARMUP_DEADLINE_SECS bound.
+# A healthy run — including the cold first-boot HuggingFace download path —
+# proceeds; a genuine not-ready state past the deadline => infra_fail (exit 2),
+# NEVER RED, NEVER GREEN. No new readiness mechanism: it reuses write_then_barrier
+# (which already routes through the SMOKE_*_CMD stub seam) on a widened deadline.
+warmup_barrier() {
+  # 1. Establish RUN deterministically (idempotent; reused by derive_markers).
+  RUN="${RUN:-$$-$(date +%s)}"
+  case "$RUN" in *[!a-z0-9-]*) infra_fail "RUN nonce '$RUN' not [a-z0-9-]";; esac
+
+  # 2. Build the throwaway warmup marker (charset-guarded).
+  local warmup_marker="infra003-warmup-${RUN}"
+  case "$warmup_marker" in *[!a-z0-9-]*) infra_fail "warmup marker '$warmup_marker' not [a-z0-9-]";; esac
+
+  # 3. Load-bearing non-substring assertion vs the four cell markers (R-02).
+  derive_markers   # idempotent: sets M_OBS_A/M_OBS_B/M_MCP_A/M_MCP_B from the SAME RUN
+  local cell
+  for cell in "$M_OBS_A" "$M_OBS_B" "$M_MCP_A" "$M_MCP_B"; do
+    case "$cell" in *"$warmup_marker"*)
+      infra_fail "warmup marker '$warmup_marker' collides (substring) with cell marker '$cell' (R-02) — non-substring invariant broken";; esac
+    case "$warmup_marker" in *"$cell"*)
+      infra_fail "warmup marker '$warmup_marker' collides (substring) with cell marker '$cell' (R-02) — non-substring invariant broken";; esac
+  done
+  log "warmup marker is charset-safe and pairwise non-substring of the four cell markers. PASS"
+
+  # 4. One throwaway durable warmup write on the LONGER #767-derived deadline.
+  #    Reuse write_then_barrier verbatim; widen its poll deadline for this one
+  #    call, then restore the tight bound so the matrix uses READ_DEADLINE_SECS.
+  local saved_read_deadline="$READ_DEADLINE_SECS"
+  READ_DEADLINE_SECS="$WARMUP_DEADLINE_SECS"
+  log "warmup barrier: durable warmup write to $SLUG_A (bound ${WARMUP_DEADLINE_SECS}s, #767-derived) ..."
+  write_then_barrier observe "$SLUG_A" "$SLUG_DIR_A" "$warmup_marker"   # sets WTB in {PRESENT, INFRA}
+  READ_DEADLINE_SECS="$saved_read_deadline"
+
+  # 5. CONSUME the PRESENT signal to gate proceed-to-matrix (R-01 funnel).
+  case "$WTB" in
+    PRESENT)
+      log "warmup PRESENT — embedding path warm + store $SLUG_A write durable; proceed to matrix."
+      ;;
+    *)  # INFRA (deadline timeout). A store-read failure already infra_fail'd inside write_then_barrier.
+      infra_fail "warmup barrier: own-store warmup write not durable within ${WARMUP_DEADLINE_SECS}s => INFRA (model not loaded / store not durable). NOT a RED, NOT a GREEN."
+      ;;
+  esac
+}
+
 # === Sourced-guard (#5192) ====================================================
 # When SOURCED (the gate-logic test sources to drive run_isolation_matrix /
 # component fns against stubs), stop here — do NOT run preflight / boot / verdict.
@@ -427,4 +483,5 @@ preflight                    # C1
 setup_container              # C2 boot
 register_both_and_restart    # C2 registration + single restart
 assert_routes_live           # C2 route-liveness PRECONDITION
+warmup_barrier               # C-WB model-load + durable-write readiness gate (PRESENT|INFRA)
 run_isolation_matrix         # C3/C4 writes -> C5 barrier -> C6 negatives -> C7 verdict (exits)

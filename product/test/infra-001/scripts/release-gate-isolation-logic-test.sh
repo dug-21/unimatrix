@@ -27,6 +27,7 @@ STUB_READ="${SCRIPT_DIR}/fixtures/stub-read-marker.sh"
 RUN_NONCE="t1"
 M_OBS_A="infra003-obs-a-${RUN_NONCE}"; M_OBS_B="infra003-obs-b-${RUN_NONCE}"
 M_MCP_A="infra003-mcp-a-${RUN_NONCE}"; M_MCP_B="infra003-mcp-b-${RUN_NONCE}"
+WARMUP_M="infra003-warmup-${RUN_NONCE}"   # C-WB throwaway warmup marker (infra-004)
 DA="/data/.unimatrix/arch-research"   # SLUG_DIR_A default
 DB="/data/.unimatrix/isolation-b"     # SLUG_DIR_B default
 
@@ -61,6 +62,34 @@ run_matrix() {
         READ_DEADLINE_SECS=0 READ_POLL_SLEEP=1 \
         "$@" \
         bash -c 'set -uo pipefail; source "'"$GATE"'" >/dev/null 2>&1 || true; run_isolation_matrix' 2>&1
+  )"
+  rc=$?
+  LAST_OUT="$out"
+  if [ "$rc" -ne "$want_rc" ]; then
+    oops "$name (rc)" "expected rc=$want_rc got=$rc; out: $out"; return 1
+  fi
+  if [ -n "$want_sub" ] && ! printf '%s' "$out" | grep -qF "$want_sub"; then
+    oops "$name (substr)" "expected '$want_sub' in: $out"; return 1
+  fi
+  pass "$name"; return 0
+}
+
+# --- driver: run warmup_barrier() in an isolated child against the stubs --------
+# run_warmup <name> <want_rc> <want_substr> -- <env assignments...>
+# Sources the shipped gate (sourced-guard suppresses C1/C2/main), then drives the
+# C-WB warmup_barrier against SMOKE_WRITE_CMD/SMOKE_READ_MARKER_CMD. On PRESENT it
+# returns 0 and control reaches the post-marker; on INFRA it exits 2 (infra_fail).
+run_warmup() {
+  local name="$1" want_rc="$2" want_sub="$3"; shift 3
+  [ "${1:-}" = "--" ] && shift
+  local out rc
+  out="$(
+    env RUN="$RUN_NONCE" \
+        SMOKE_WRITE_CMD="true" \
+        SMOKE_READ_MARKER_CMD="bash $STUB_READ" \
+        READ_POLL_SLEEP=1 \
+        "$@" \
+        bash -c 'set -uo pipefail; source "'"$GATE"'" >/dev/null 2>&1 || true; warmup_barrier && echo "__PROCEED_TO_MATRIX__"' 2>&1
   )"
   rc=$?
   LAST_OUT="$out"
@@ -317,6 +346,137 @@ test_no_overclaim_point_in_time() {
   fi
 }
 test_no_overclaim_point_in_time
+
+echo "== C-WB R-01 warmup PRESENT is load-bearing: durable own-store round-trip => proceed =="
+# Warmup marker present in A's store (same observe predicate a real write uses) ->
+# WTB=PRESENT -> warmup_barrier returns 0 and control reaches run_isolation_matrix.
+run_warmup test_warmup_present_proceeds_to_matrix 0 "__PROCEED_TO_MATRIX__" -- \
+  "WARMUP_DEADLINE_SECS=5" "STUB_PRESENT=${DA}::${WARMUP_M}"
+
+echo "== C-WB AC-03/R-04 warmup TIMEOUT => INFRA (exit 2, never RED, never proceed) =="
+test_warmup_timeout_is_infra_not_pass() {
+  # Warmup marker omitted from the present-set + WARMUP_DEADLINE_SECS=0 -> own
+  # marker never appears -> WTB=INFRA -> infra_fail exit 2 (never RED, never pass).
+  run_warmup test_warmup_timeout_is_infra_not_pass 2 "INFRA" -- \
+    "WARMUP_DEADLINE_SECS=0" "STUB_PRESENT=" || return
+  if printf '%s' "$LAST_OUT" | grep -qF "ISOLATION BROKEN"; then
+    oops "test_warmup_timeout_is_infra_not_pass" "warmup timeout wrongly RED: $LAST_OUT"
+  elif printf '%s' "$LAST_OUT" | grep -qF "__PROCEED_TO_MATRIX__"; then
+    oops "test_warmup_timeout_is_infra_not_pass" "warmup timeout vacuously proceeded: $LAST_OUT"
+  elif ! printf '%s' "$LAST_OUT" | grep -qF "timed out"; then
+    oops "test_warmup_timeout_is_infra_not_pass" "no diagnostic last-state logged on timeout (R-04): $LAST_OUT"
+  else
+    pass "test_warmup_timeout_is_infra_not_pass (INFRA exit 2; not RED, not proceed; diagnostic logged)"
+  fi
+}
+test_warmup_timeout_is_infra_not_pass
+
+echo "== C-WB R-01 PRESENT requires a durable read round-trip (read-fail => INFRA, not a shortcut) =="
+test_warmup_present_requires_durable_read_roundtrip() {
+  # The warmup read goes through the SAME SMOKE_READ_MARKER_CMD a real write uses:
+  # force that read to return the INFRA sentinel -> write_then_barrier infra_fail's,
+  # proving PRESENT is not a liveness shortcut (mirrors test_c6_missing_db_is_infra).
+  run_warmup test_warmup_present_requires_durable_read_roundtrip 2 "store read failed" -- \
+    "WARMUP_DEADLINE_SECS=5" "STUB_INFRA=${DA}::${WARMUP_M}" || return
+  if printf '%s' "$LAST_OUT" | grep -qF "__PROCEED_TO_MATRIX__"; then
+    oops "test_warmup_present_requires_durable_read_roundtrip" "PRESENT was a liveness shortcut despite a failed own-store read: $LAST_OUT"
+  else
+    pass "test_warmup_present_requires_durable_read_roundtrip (read-fail => INFRA, durable round-trip enforced)"
+  fi
+}
+test_warmup_present_requires_durable_read_roundtrip
+
+echo "== C-WB R-01 funnel (static): WTB is consumed in a CASE that gates proceed-to-matrix =="
+test_warmup_result_is_consumed() {
+  local body; body="$(awk '/^warmup_barrier\(\)/{f=1} f{print} f&&/^}/{exit}' "$GATE")"
+  if printf '%s' "$body" | grep -qF 'case "$WTB"' && printf '%s' "$body" | grep -qF 'infra_fail'; then
+    pass "test_warmup_result_is_consumed (WTB consumed in a CASE; not computed-and-discarded)"
+  else
+    oops "test_warmup_result_is_consumed" "WTB result not consumed to gate proceed (computed-and-discarded?)"
+  fi
+}
+test_warmup_result_is_consumed
+
+echo "== C-WB AC-02 (static): warmup uses write_then_barrier, NOT a store_size liveness poll =="
+test_warmup_uses_write_then_barrier_not_store_size() {
+  local body; body="$(awk '/^warmup_barrier\(\)/{f=1} f{print} f&&/^}/{exit}' "$GATE")"
+  if printf '%s' "$body" | grep -qF 'write_then_barrier' \
+     && ! printf '%s' "$body" | grep -qE 'store_size|wait_for_http_active'; then
+    pass "test_warmup_uses_write_then_barrier_not_store_size (no new readiness mechanism)"
+  else
+    oops "test_warmup_uses_write_then_barrier_not_store_size" "warmup uses store_size/wait_for_http_active or omits write_then_barrier"
+  fi
+}
+test_warmup_uses_write_then_barrier_not_store_size
+
+echo "== C-WB R-02 warmup marker non-substring vs cell markers asserted (collision => INFRA) =="
+test_warmup_marker_non_substring_asserted() {
+  # Shadow derive_markers to plant a cell marker that the warmup marker
+  # (infra003-warmup-t1) is a substring of -> the in-barrier R-02 guard must trip
+  # (mirrors test_c7_substring_markers_fail_infra; targets derive_markers->assert).
+  local out rc
+  out="$(
+    bash -c '
+      set -uo pipefail
+      source "'"$GATE"'" >/dev/null 2>&1 || true
+      RUN="'"$RUN_NONCE"'"
+      derive_markers() {
+        M_OBS_A="infra003-warmup-'"$RUN_NONCE"'-collide"   # warmup marker is a substring of this
+        M_OBS_B="infra003-obs-b-'"$RUN_NONCE"'"
+        M_MCP_A="infra003-mcp-a-'"$RUN_NONCE"'"; M_MCP_B="infra003-mcp-b-'"$RUN_NONCE"'"
+        SLUG_DIR_A="'"$DA"'"; SLUG_DIR_B="'"$DB"'"
+      }
+      warmup_barrier
+    ' 2>&1
+  )"
+  rc=$?
+  if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -qF "non-substring invariant broken"; then
+    pass "test_warmup_marker_non_substring_asserted"
+  else
+    oops "test_warmup_marker_non_substring_asserted" "rc=$rc out=$out (want INFRA exit 2 on collision)"
+  fi
+}
+test_warmup_marker_non_substring_asserted
+
+echo "== C-WB R-02 warmup row is inert to the matrix negatives (matches no cell predicate) =="
+# Warmup marker present in BOTH stores alongside the four positives; negative cells
+# query specific FOREIGN cell markers, none of which is the warmup marker => GREEN.
+run_matrix test_warmup_row_inert_to_negatives 0 "ALL GATES PASSED" -- \
+  "STUB_PRESENT=$ALL_POS ${DA}::${WARMUP_M} ${DB}::${WARMUP_M}"
+
+echo "== C-WB R-03/AC-01 (static): assert_routes_live < warmup_barrier < run_isolation_matrix =="
+test_assert_routes_live_precedes_barrier() {
+  local lr lw lm
+  lr="$(grep -nE '^assert_routes_live[[:space:]]' "$GATE" | cut -d: -f1 | tail -1)"
+  lw="$(grep -nE '^warmup_barrier[[:space:]]' "$GATE" | cut -d: -f1 | tail -1)"
+  lm="$(grep -nE '^run_isolation_matrix[[:space:]]' "$GATE" | cut -d: -f1 | tail -1)"
+  if [ -n "$lr" ] && [ -n "$lw" ] && [ -n "$lm" ] && [ "$lr" -lt "$lw" ] && [ "$lw" -lt "$lm" ]; then
+    pass "test_assert_routes_live_precedes_barrier (routes<warmup<matrix: $lr<$lw<$lm)"
+  else
+    oops "test_assert_routes_live_precedes_barrier" "call order wrong: routes=$lr warmup=$lw matrix=$lm"
+  fi
+}
+test_assert_routes_live_precedes_barrier
+
+echo "== C-WB R-03/AC-01 (static): WARMUP_DEADLINE_SECS default 180 documented as #767 derivation =="
+test_warmup_bound_default_documented() {
+  if grep -qE 'WARMUP_DEADLINE_SECS="\$\{WARMUP_DEADLINE_SECS:-180\}"' "$GATE" \
+     && grep -qF '#767' "$GATE" && grep -qF 'READY_TIMEOUT_SECS' "$GATE"; then
+    pass "test_warmup_bound_default_documented (default 180; #767 READY_TIMEOUT_SECS derivation cited)"
+  else
+    oops "test_warmup_bound_default_documented" "WARMUP_DEADLINE_SECS default/derivation not documented in the diff"
+  fi
+}
+test_warmup_bound_default_documented
+
+echo "== C-WB AC-05 stub-seam compatibility preserved post-barrier: full verdict truth table still drives =="
+# After adding the barrier, the EXISTING run_isolation_matrix truth table still
+# drives through the seam off-Docker (GREEN 0 / RED 1 / INFRA 2; SKIP 3 via the
+# C1 docker-absent case above) — no regression to the stub seam.
+run_matrix test_post_barrier_green_still_drives 0 "ALL GATES PASSED" -- "STUB_PRESENT=$ALL_POS"
+run_matrix test_post_barrier_red_still_drives   1 "ISOLATION BROKEN" -- "STUB_PRESENT=$ALL_POS ${DA}::${M_MCP_B}"
+run_matrix test_post_barrier_infra_still_drives 2 "INFRA" -- \
+  "STUB_PRESENT=${DB}::${M_OBS_B} ${DA}::${M_MCP_A} ${DB}::${M_MCP_B}"
 
 echo
 echo "release-gate-isolation-logic-test: ${PASS} passed, ${FAIL} failed"
