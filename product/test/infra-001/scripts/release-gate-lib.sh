@@ -60,3 +60,44 @@ run_smoke_gate() {
     || { echo "::error::smoke exited 0 but never printed ALL GATES PASSED — early-exit-0 (SR-01)."; return 1; }
   return 0
 }
+
+# run_smoke_gate_tristate IMAGE SMOKE_CMD...
+#   ADDITIVE tri-state runner for the cross-tenant isolation lane (infra-004, ADR-002 #5350).
+#   DISTINCT from run_smoke_gate (above), which is left byte-unchanged: this variant adds the
+#   missing exit-2 / INFRA branch so the isolation lane can BLOCK on RED (exit 1) WITHOUT
+#   blocking on INFRA (exit 2 — warmup/durability/dependency/pull-404 not established this run).
+#   Only the isolation lane calls this; the four existing blocking lanes keep zero exit-2
+#   exposure (SR-08, R-07).
+#
+#   Capture shape is EXACTLY the proven spine (R-05 PREREQUISITE, #5192/#4873):
+#     NO pipe between the smoke and $?  ·  return, never exit  ·  set -e re-enabled after.
+#   GREEN is credited ONLY via the anchored RUNTIME run-marker grep (rc==0 AND marker).
+#
+#   Truth table (exit code -> return code; only exit 2 maps non-blocking):
+#     0 + marker   -> return 0  (GREEN, passes)
+#     0 , no marker -> ::error:: + return 1  (early-exit-0, blocks)
+#     1            -> ::error:: + return 1  (RED genuine leak, blocks — the DoD)
+#     2            -> ::warning:: + canonical INFRA marker + return 0  (non-blocking, visible)
+#     3            -> ::error:: + return 1  (Docker-present lane mis-provisioned, hard fail)
+#     *            -> ::error:: + return 1  (unexpected, never round a non-GREEN to pass)
+run_smoke_gate_tristate() {
+  local image="$1"; shift
+  local out rc
+  set +e
+  out="$(IMAGE="${image}" "$@" 2>&1)"
+  rc=$?
+  set -e
+  echo "${out}"                          # diagnostic full-log echo on EVERY path (ADR-004 capture-first)
+  case "${rc}" in
+    0) : ;;                              # fall through to the anchored marker check below
+    1) echo "::error::isolation smoke FAILED (exit 1): genuine cross-tenant leak (RED) — blocking the release manifest."; return 1 ;;
+    2) echo "::warning::isolation smoke INFRA (exit 2): isolation could not be verified this run (warmup/durability/dependency/pull). Non-blocking but flagged."
+       echo "[infra004-gate] INFRA — ISOLATION NOT VERIFIED THIS RUN"   # PINNED canonical literal (R-09, WARN #3337)
+       return 0 ;;
+    3) echo "::error::isolation smoke SKIPPED (exit 3): Docker-capable lane mis-provisioned — HARD failure."; return 1 ;;
+    *) echo "::error::isolation smoke exited unexpectedly (exit ${rc})."; return 1 ;;
+  esac
+  echo "${out}" | grep -qxE '\[[a-z0-9-]+-smoke\] ALL GATES PASSED.*' \
+    || { echo "::error::isolation smoke exited 0 but never printed ALL GATES PASSED — early-exit-0 (false-green)."; return 1; }
+  return 0
+}
