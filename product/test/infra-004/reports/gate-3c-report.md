@@ -255,3 +255,77 @@ the coverage report is a Gate-3c standard, this is a **REWORKABLE FAIL** with a
 single narrow, tester-owned documentation update. No code rework, no re-test of the
 fix is required — only the report regeneration. Per spawn, the AC-11 cold-model
 GREEN re-run remains a post-gate operational artifact.
+
+---
+
+# Gate 3c — iter3 (complete marker+warmup fix)
+
+> Date: 2026-06-27
+> Result: **PASS**
+> Scope: re-validation after the COMPLETE #859 two-filter marker fix + warmup-signal
+> change (commit `543e8d08`; coverage refreshed `f153e2c3`). Validated by RE-EXECUTING
+> the shipped bytes — not by reading the report.
+
+## What iter3 fix does (beyond the iter2 PII-only nonce)
+
+The warmup-timing investigation (`agents/infra-004-warmup-timing-investigator-report.md`)
+found the iter2 #859 PII-safe nonce (`<b36(pid)>x<b36(epoch)>`, no all-digit hyphen
+segment) tripped the SECOND server filter: `looks_like_feature_id` (uds/listener.rs:289-303,
+bugfix-832) requires ≥1 all-digit hyphen-segment AND ≥1 alpha segment to persist
+`topic_signal`; the joined-by-`x` nonce had none → observe `topic_signal` silently dropped
+to NULL → the read-as-barrier never found it → deterministic INFRA (warmup AND the C5
+matrix observe positive controls). Two server filters pull in opposite directions on digit
+runs. The complete fix:
+- New marker `infra003-<leg>-<ab>-1-<b36>x<b36>` — a fixed all-digit token `MARKER_FID_TOKEN="1"`
+  (probe-lib:49) makes it feature-id-valid AND too short to form a phone/SSN shape ⇒ BOTH
+  filters pass **by construction** (deterministic, not probabilistic).
+- Warmup probe switched from observe-durability (zero embed dependency — wrong proxy) to
+  the MCP `context_store`→read-back round trip (the only served write that exercises the
+  embedding model). Reuses `write_then_barrier mcp` (no new mechanism); `WARMUP_DEADLINE_SECS=180`
+  unchanged, now measurement-justified (cold-ready ~3-5s; #767 ~70s backoff floor; 180s ≈ 2.5x).
+- Symmetric self-checks with teeth: `assert_marker_pii_safe` (PII half) + `assert_marker_feature_id_shaped`
+  (feature-id half) run on the warmup marker (smoke:449-450) and all four cell markers
+  (smoke:375-376) AFTER the R-12 charset guard. Rust scanner anchor pins the PII half off the
+  scanner source of truth; the bash feature-id oracle pins the (module-private) feature-id half.
+
+## Execution evidence (re-run, foreground/background, shipped bytes)
+
+- `release-gate-isolation-logic-test.sh`: **44 passed, 0 failed** (39 → 43 (c) battery → 44 feature-id canary)
+- `release-gate-tristate-logic-test.sh`: **19 passed, 0 failed** (R-05 unregressed)
+- `release-gate-logic-test.sh`: **15 passed, 0 failed** (R-07 sibling unregressed)
+- `release-gate-isolation-lane-static-test.sh`: **13 passed, 0 failed**
+  → **91/91** total (44+19+15+13). Matches RISK-COVERAGE-REPORT.
+- Rust anchor `cargo test -p unimatrix-server --lib test_scan_isolation_gate_golden_markers_pass`:
+  **1 passed, rc=0** — real `ContentScanner::global().scan()` accepts the shared golden set.
+- `pytest -m smoke`: **24 passed, 601 deselected, rc=0 in 207.74s** — no server change → no regression.
+- File sizes: smoke 499, probe-lib 213, isolation-logic-test 492, tristate 265, lib-test 211,
+  lane-static 198, fixture 176 — all gate scripts ≤500. (`scanning.rs` 593 is a pre-existing
+  PRODUCTION file; the feature added only a `#[cfg(test)]` anchor — a 3b concern, already cleared.)
+- `git diff --name-only main...HEAD`: zero `suites/*.py`; sole `crates/` path is `scanning.rs`
+  (test-only anchor). No integration tests deleted/commented; no new `xfail`.
+- All R-MPII / R-01 / R-05 non-negotiable test names grep-verified present in source (lesson #2758).
+
+## Summary (iter3)
+
+| Check | Status | Notes |
+|-------|--------|-------|
+| 1. Risk mitigation proof (incl. two-filter R-MPII #859) | PASS | 15 risks + R-MPII covered; R-MPII PII half (Rust anchor + canary) + feature-id half (oracle + symmetric canary with teeth) + (c) battery + cross-pin — both filters pass by construction. Critical R-01 (now MCP-round-trip embed-readiness probe, timeout→INFRA) and R-05 (tristate 19/19) covered + unregressed |
+| 2. Test coverage completeness | PASS | 91 shell + 1 Rust + 24 smoke re-run green; report tabulates 91 with the R-MPII row; C5 matrix observe positive controls repaired by the FID-shaped marker |
+| 3. Specification compliance | PASS | 12 ACs PASS pre-merge; AC-15 amended (sole crates/ delta = `#[cfg(test)]` anchor); AC-04/AC-11 CI-only carve-out; AC-14 deferred human gate |
+| 4. Architecture compliance | PASS | routes_live<warmup<matrix ordering (smoke:497-499); R-12 charset, R-18/R-02 non-substring, infra003-* prefixes, read-as-barrier predicates preserved; warmup→MCP probe is in-scope ADR-001 barrier tuning (AC-02: reuses write_then_barrier, no new mechanism) |
+| 5. Knowledge stewardship | PASS | RISK-COVERAGE-REPORT + warmup-timing-investigator report each carry `## Knowledge Stewardship` with `Queried:` + `Stored:`/reason |
+
+## Verdict rationale (iter3)
+
+The complete fix repairs the FULLER #859 two-filter root cause the iter2 PII-only nonce
+missed: the marker now satisfies BOTH the PII content-scanner (MCP write leg) AND
+`looks_like_feature_id` (observe persistence leg) by construction, and warmup now exercises
+the real embed-readiness path. Proven by re-executing the shipped bytes — 91 shell + 1 Rust
+anchor + 24 smoke, all green; both Critical risks unregressed; all load-bearing invariants
+preserved; coverage report consistent with execution. All five checks PASS, no WARN of
+consequence, no rework. The AC-04/AC-11 cold-model GREEN dispatch re-run remains the
+next post-gate operational step; AC-14 (N3 proven) remains the human's call.
+
+## Rework Required (iter3)
+
+None.
