@@ -51,8 +51,8 @@ If the spawn prompt contains summaries, conclusions, or framing from the spawnin
 
 | Gate | Protocol | You review | Lens |
 |------|----------|-----------|------|
-| `scope-review` | design | SCOPE.md | Is this the right problem, now? Roadmap fit, sequencing vs. in-flight work, scope boundary recommendations, recommended answers to open questions. **Capability coverage** — is this scoped to deliver the WHOLE target capability or PART? If part, is it **visibly** partial (scope names what it defers; capability stays `partial`)? A silent partial — scope covers less than the `done_when` without declaring it — is a finding. |
-| `design-review` | design | full design artifact set | Do the design decisions serve the vision? Do they constrain or enable upcoming roadmap items? Recommended answers to open questions and variances. **Capability coverage (ground-truth authorized)** — map each AC to the target's `done_when` clauses; verify against code that the design covers every clause it claims, declares any deferred clause as a NAMED gap, and actually meets the part it defines. A clause neither covered nor explicitly-deferred is the finding. |
+| `scope-review` | design | SCOPE.md | Is this the right problem, now? Roadmap fit, sequencing vs. in-flight work, scope boundary recommendations, recommended answers to open questions. **Capability coverage** — is this scoped to deliver the WHOLE target capability or PART? If part, is it **visibly** partial (scope names what it defers; capability stays `partial`)? A silent partial — scope covers less than the `done_when` without declaring it — is a finding. **Right-size — both directions**: a scope fails by being too big (gold-plating / defensive over-build) OR too small (a mechanism that doesn't yet deliver its outcome). A visibly-declared partial is honest but NOT automatically right — deferring the value-delivering LAST MILE when the incremental effort is small is a finding; a DIFFERENT outcome is a legitimate defer. |
+| `design-review` | design | full design artifact set | Do the design decisions serve the vision? Do they constrain or enable upcoming roadmap items? Recommended answers to open questions and variances. **Capability coverage (ground-truth authorized)** — map each AC to the target's `done_when` clauses; verify against code that the design covers every clause it claims, declares any deferred clause as a NAMED gap, and actually meets the part it defines. A clause neither covered nor explicitly-deferred is the finding. **Right-size — both directions** (same test as scope-review): challenge each deferral with the discriminator (different outcome → defer; last mile of THIS outcome → pull in if it fits), and pressure-test the DoD altitude — does the work deliver the OUTCOME (the property works / is enforced) or just the MECHANISM (the artifact exists)? |
 | `fix-approach` | bugfix | diagnosis + proposed fix (GH issue comments) | Is the fix consistent with product direction? Approach trade-offs the human should weigh before approving |
 | `pr-review` | delivery, bugfix | PR diff, gate reports, security review | Assess the delivery as a whole INCLUDING the security review's findings — recommend actions (merge as-is, address findings first, follow-up issues). Do not re-run the security review. |
 
@@ -83,6 +83,13 @@ done_when clause map:
  - {clause} → covered by {AC/ref} | DEFERRED (named gap) | ⚠️ UNDECLARED GAP
 Verdict: {meets the defined part | the design silently drops <X> vs the capability's done_when}
 Capability-status implication (recommendation only): {e.g. "C6 stays partial — instructions deferred"}
+
+### Right-sizing
+{MANDATORY at scope-review and design-review — fill every line. Guards BOTH directions; honesty about a partial is not automatically the right size:}
+Outcome / DoD altitude: {the vision OUTCOME this must achieve — the property WORKS / is ENFORCED, not "the artifact exists"}
+Size verdict: {right-sized | TOO BIG (gold-plating) — cut: <x> | TOO SMALL (mechanism without outcome) — pull in: <x>}
+Deferrals — for each: {item} → DIFFERENT OUTCOME (legit defer) | LAST MILE of this outcome (pull in; incremental effort <small|large>)
+Follow-up smell: {is any "tracked follow-up" actually the point of this work? if it fits within reasonable incremental effort, recommend pulling it in now}
 
 ### Recommended answers to open questions
 {for each open question in the artifacts: the question, your recommended answer, rationale}
