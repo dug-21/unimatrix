@@ -491,6 +491,43 @@ test_c5_lane_resolves_image_via_shipped_lib() {
 }
 test_c5_lane_resolves_image_via_shipped_lib
 
+test_c5_lane_provisions_uds_leg_binary() {
+  # The parity gate is CROSS-TRANSPORT: the UDS leg spawns a live LOCAL daemon
+  # (daemon_server) that needs a HOST-compatible binary (#851). Assert the lane
+  # provisions it: (a) downloads the unimatrix-linux-x64 artifact, (b) exports
+  # UNIMATRIX_BINARY, (c) has build-linux-x64 in `needs:`, (f1) warms the model
+  # so the daemon binds within the 15s socket deadline. (d) below asserts the
+  # build job actually produces the artifact on dispatch — a `needs:` edge on a
+  # guarded-skipped job would SILENTLY SKIP the parity lane on workflow_dispatch.
+  local blk
+  blk="$(job_block nan-021-https-uds-parity)"
+  if printf '%s\n' "$blk" | grep -q 'download-artifact' \
+     && printf '%s\n' "$blk" | grep -q 'name: unimatrix-linux-x64' \
+     && printf '%s\n' "$blk" | grep -q 'UNIMATRIX_BINARY' \
+     && printf '%s\n' "$blk" | grep -q 'model-download' \
+     && printf '%s\n' "$blk" | grep -qE 'needs:.*build-linux-x64'; then
+    pass "test_c5_lane_provisions_uds_leg_binary (UDS-leg binary downloaded + UNIMATRIX_BINARY exported + model warmed + needs: build-linux-x64)"
+  else
+    oops "test_c5_lane_provisions_uds_leg_binary" "parity lane does not provision the UDS-leg binary (download unimatrix-linux-x64 + export UNIMATRIX_BINARY + model-download + needs: build-linux-x64)"
+  fi
+}
+test_c5_lane_provisions_uds_leg_binary
+
+test_c5_build_linux_x64_runs_on_dispatch() {
+  # (d) The artifact must EXIST on workflow_dispatch, not just tag-push. A job
+  # whose `needs:` dependency is guard-SKIPPED is itself skipped (not failed),
+  # so a dispatch-excluding `if:` on build-linux-x64 would silently dark the
+  # parity gate on dispatch (#851 / F3).
+  local blk
+  blk="$(job_block build-linux-x64)"
+  if printf '%s\n' "$blk" | grep -q "if: github.event_name != 'workflow_dispatch'"; then
+    oops "test_c5_build_linux_x64_runs_on_dispatch" "build-linux-x64 is dispatch-guarded -> parity lane silently skipped on workflow_dispatch"
+  else
+    pass "test_c5_build_linux_x64_runs_on_dispatch (build-linux-x64 produces the artifact on workflow_dispatch too)"
+  fi
+}
+test_c5_build_linux_x64_runs_on_dispatch
+
 echo
 echo "release-gate-cloud-cycle-logic-test: ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" -eq 0 ]

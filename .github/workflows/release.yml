@@ -18,8 +18,12 @@ env:
   ORT_VERSION: "1.20.1"
 
 jobs:
+  # NOTE: runs on BOTH tag-push and workflow_dispatch. The dispatch path is
+  # load-bearing for the nan-021-https-uds-parity gate, whose UDS leg spawns a
+  # live LOCAL daemon and needs this host-built `unimatrix-linux-x64` artifact
+  # (#851). The only other consumer, package-npm, stays dispatch-guarded, so
+  # producing the artifact on dispatch causes no extra publish.
   build-linux-x64:
-    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -571,10 +575,34 @@ jobs:
   # by release-gate-cloud-cycle-logic-test.sh (R-12) so this is not the first
   # place the gate logic runs.
   nan-021-https-uds-parity:
-    needs: [build-container-x64]
+    needs: [build-container-x64, build-linux-x64]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+
+      # The UDS leg spawns a live LOCAL daemon (daemon_server fixture), which
+      # needs a HOST-compatible binary. Use the ubuntu-22.04-built artifact
+      # (glibc-compatible with this runner) — NOT a binary extracted from the
+      # bookworm/distroless image. Download to an absolute, working-directory-
+      # independent path (download-artifact's `path:` is repo-root relative and
+      # ignores the job-level working-directory) (#851, F2).
+      - name: Download host-built UDS-leg binary
+        uses: actions/download-artifact@v4
+        with:
+          name: unimatrix-linux-x64
+          path: ${{ github.workspace }}/bin
+
+      # chmod (upload-artifact drops the exec bit) + export UNIMATRIX_BINARY via
+      # $GITHUB_ENV so the pytest step's daemon_server/binary_version_preflight
+      # resolve it. Warm the embedding model up front (model-download) so the
+      # cold first-boot HF fetch does not blow the 15s daemon socket-bind
+      # deadline; ORT resolves via the co-located lib (RUNPATH $ORIGIN) (#851, F1).
+      - name: Provision UDS-leg binary and warm embedding model
+        run: |
+          set -euo pipefail
+          chmod +x "${{ github.workspace }}/bin/unimatrix"
+          echo "UNIMATRIX_BINARY=${{ github.workspace }}/bin/unimatrix" >> "$GITHUB_ENV"
+          "${{ github.workspace }}/bin/unimatrix" model-download
 
       - name: Provision pinned Node for the shipped mcp-bridge.js leg
         uses: actions/setup-node@v4
