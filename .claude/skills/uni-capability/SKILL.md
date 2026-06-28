@@ -97,6 +97,40 @@ never a single feature's unit test.
 
 ---
 
+## Capability archetypes (threshold | curve)
+
+Orthogonal to functional/nfr, a capability answers one of two question shapes — and they take
+different definitions of "done". Tag curve capabilities `curve`.
+
+- **Threshold** — binary; `proven` is *terminal*. "Does X happen?" Once true it stays true (modulo
+  regression). Most capabilities are this: injection occurs, auth is enforced, isolation holds, deploy
+  works. A single real-artifact observation can prove it (e.g. PD2 "injection occurs" proven on live
+  in-session evidence).
+- **Curve** — asymptotic; `proven` is *never terminal*. "Is X good / getting better?" There is no
+  yes/no — only "clears the current bar, ceiling open". A goal's *helpfulness/quality* promise is this
+  shape (e.g. SL-ROLLUP "measurably smarter the more it is used"). For a curve capability `proven`
+  means **"clears the current bar"**, and it re-opens whenever the bar rises.
+
+**A curve capability is unprovable without a trusted ruler.** The ruler is itself a capability — a
+**keystone** (tag `keystone`, e.g. SL-METRIC "a retrieval-quality measure we trust") — with a
+**maintained** lifecycle: never "done", sharpened over time as the eval harness improves. It is a
+`Prerequisite` of every curve capability it measures; no helpfulness claim is valid beyond the ruler,
+and every curve node's `proven` is only as trustworthy as its ruler is *today*.
+
+**Ceiling-raisers are not new capabilities.** A stronger method aimed at pushing a curve higher (a GNN,
+a richer signal, a better fusion) `Motivates` the curve capability it targets — it does NOT add a
+functional node, and it earns its place ONLY by proving value against the ruler. This keeps the map
+from sprouting a node per research idea.
+
+**Mechanism vs curve — do not conflate.** The *mechanism* that feeds a curve ("votes shift rank",
+"phase favors categories") is usually a **threshold** capability with its own provable floor — that is
+the goal's "can we" layer. Its *quality contribution* is measured only at the curve/rollup, via the
+ruler. Prove the mechanism on mechanism evidence; prove the helpfulness at the rollup against the
+ruler. Do NOT make the ruler a `Prerequisite` of a mechanism whose `done_when` is already provable
+without it.
+
+---
+
 ## The firewall (load-bearing — the one rule that makes this trustworthy)
 
 > **Status advances to `proven` ONLY on attached behavioral, real-artifact evidence.**
