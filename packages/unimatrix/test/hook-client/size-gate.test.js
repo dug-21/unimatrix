@@ -274,7 +274,8 @@ describe("size-gate header", function () {
     // review margin. Reclaim was moot (the #839 ~1.4KB was already banked; the
     // remainder is live availability logic) — this is a reground, not the
     // #4780 round-number trim. Human-approved, recorded on #840. Keep these
-    // meta-assertions in lockstep with check-hook-client-size.js:34/35.
+    // meta-assertions in lockstep with the PRIMARY_LIMIT / BACKSTOP_LIMIT
+    // constants in check-hook-client-size.js.
     assert.strictEqual(PRIMARY_LIMIT, 110000);
     assert.strictEqual(BACKSTOP_LIMIT, 200000);
   });
