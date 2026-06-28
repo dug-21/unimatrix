@@ -166,7 +166,7 @@ describe("size-gate behavior", function () {
     assert.ok(log.some((m) => m.startsWith("OK:")));
   });
 
-  it("test_gate_fails_on_stripped_over_100000", function () {
+  it("test_gate_fails_on_stripped_over_primary_limit", function () {
     // Pure code (a string literal) over the primary limit; raw stays < backstop.
     const big = 'const s = "' + "a".repeat(PRIMARY_LIMIT + 50) + '";\n';
     const dir = makeTree({ "big.js": big });
@@ -178,7 +178,7 @@ describe("size-gate behavior", function () {
     assert.ok(log.some((m) => m.includes("big.js")));
   });
 
-  it("test_gate_fails_on_raw_over_160000", function () {
+  it("test_gate_fails_on_raw_over_backstop_limit", function () {
     // Comment-heavy: raw > backstop but stripped collapses well under primary.
     const heavy = "/*" + "a".repeat(BACKSTOP_LIMIT + 50) + "*/\nconst x = 1;\n";
     const dir = makeTree({ "heavy.js": heavy });
@@ -252,22 +252,31 @@ describe("size-gate behavior", function () {
 describe("size-gate header", function () {
   it("test_header_documents_human_decision_rule", function () {
     const src = fs.readFileSync(path.join(__dirname, "..", "check-hook-client-size.js"), "utf8");
-    assert.ok(src.includes("100,000"), "primary limit documented");
-    assert.ok(src.includes("180,000"), "backstop limit documented");
+    // Drift-hardening (#5312, #840): the header prose literal is DERIVED from
+    // the live constant rather than a hardcoded substring — changing a constant
+    // without updating the prose fails this test. Pin "en-US" so comma-grouping
+    // is deterministic across CI locales (110000 -> "110,000").
+    assert.ok(
+      src.includes(PRIMARY_LIMIT.toLocaleString("en-US")),
+      "primary limit documented (derived from PRIMARY_LIMIT)"
+    );
+    assert.ok(
+      src.includes(BACKSTOP_LIMIT.toLocaleString("en-US")),
+      "backstop limit documented (derived from BACKSTOP_LIMIT)"
+    );
     assert.ok(/HUMAN decision/.test(src), "cap-change is a human decision");
     assert.ok(/GitHub issue/.test(src), "recorded on the feature issue");
   });
 
   it("test_limits_are_decimal", function () {
-    // PRIMARY raised 100000→102000 (TEMP) for the COMPLETE #839 critical
-    // availability fix (transport/connect timeout + silent-eviction self-heal
-    // + F6 mid-stream idle-read deadline + SSE-timeout heal routing).
-    // Human-approved, recorded on #839; reclaim to 100000 tracked in #840.
-    // Keep this meta-assertion in lockstep with check-hook-client-size.js:34.
-    assert.strictEqual(PRIMARY_LIMIT, 102000);
-    // BACKSTOP raised 160000→180000 for the vnc-039 stdio→HTTPS MCP bridge
-    // (~24KB new pure-JS); human-approved, recorded on #775. Keep this
-    // meta-assertion in lockstep with check-hook-client-size.js:35.
-    assert.strictEqual(BACKSTOP_LIMIT, 180000);
+    // Caps regrounded 102000/180000 → 110000/200000 per ass-086 (#840, #861):
+    // baseline (as-measured stripped 101,445 / raw 179,944) + ~two-module
+    // review margin. Reclaim was moot (the #839 ~1.4KB was already banked; the
+    // remainder is live availability logic) — this is a reground, not the
+    // #4780 round-number trim. Human-approved, recorded on #840. Keep these
+    // meta-assertions in lockstep with the PRIMARY_LIMIT / BACKSTOP_LIMIT
+    // constants in check-hook-client-size.js.
+    assert.strictEqual(PRIMARY_LIMIT, 110000);
+    assert.strictEqual(BACKSTOP_LIMIT, 200000);
   });
 });

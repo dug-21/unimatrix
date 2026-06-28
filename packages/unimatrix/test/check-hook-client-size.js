@@ -1,12 +1,13 @@
 "use strict";
 
 // ============================================================================
-// C-04 hook-client size gate (vnc-027, ADR-005). Human decision 2026-06-08.
+// C-04 hook-client size gate (vnc-027, ADR-005). Caps regrounded per ass-086
+// (#840, #861), human decision 2026-06-28 (prior baseline 2026-06-08).
 // ----------------------------------------------------------------------------
 // Two independent limits over lib/hook-client/**/*.js (decimal bytes):
 //
-//   PRIMARY  : comment-stripped total <= 100,000 bytes
-//   BACKSTOP : raw (on-disk) total    <= 180,000 bytes
+//   PRIMARY  : comment-stripped total <= 110,000 bytes
+//   BACKSTOP : raw (on-disk) total    <= 200,000 bytes
 //
 // The PRIMARY limit measures shipped logic only — line and block comments are
 // removed before counting so the oracle-citation comment style this client
@@ -17,9 +18,34 @@
 // Either limit exceeded -> non-zero exit (fails CI). Both totals are always
 // printed so each limit is independently auditable.
 //
+// WHAT THE CAP IS (ass-086): a SOFT maintainability / hand-auditability
+// discipline with NO hard downstream binder. Load/parse latency (~16us/KB),
+// install footprint, and any hard byte limit are all ruled out — the client is
+// always spawned from disk BY PATH; its bytes are never inlined or transmitted.
+// The cap's job is to keep the client small enough to hand-review and to force
+// a human checkpoint when it grows — not to protect a physical ceiling. Framing
+// it as a physical limit is what produced the inherited, ungrounded 100,000 and
+// the reactive ratchet (#4780). This regrounding replaced that vnc-026 raw cap.
+//
+// HEADROOM-BUDGET GROWTH POLICY (ass-086): cap = measured baseline + a fixed
+// review margin of ~two modules (~10 KB stripped / ~20 KB raw). The two-module
+// margin is a deliberate widening of ass-086's one-module illustration: with no
+// hard binder, a slightly larger runway trades a low-stakes byte number for
+// fewer forced human re-touches between logic additions — friction reduction,
+// not silent-growth permission. The margin is review runway, NOT a license to
+// grow. Concretely:
+//   1. A raise is granted ONLY for new shipped LOGIC. NEVER for documentation
+//      (the stripped PRIMARY already absorbs docs) and NEVER for temporary
+//      scaffolding (that gets reclaimed — the #839 pattern).
+//   2. Each approved raise RESETS the baseline to the new measured size and
+//      re-adds one standard margin — the cap tracks real growth plus constant
+//      runway, never ratcheting on round numbers.
+//   3. The cap is reviewed at every release that touches lib/hook-client/.
+//
 // CAP-CHANGE RULE: any change to either limit is a HUMAN decision recorded on
-// the feature's GitHub issue. It is NEVER an agent adjustment — raising a cap
-// to make a failing gate pass is a vacuous pass and is forbidden.
+// the feature's GitHub issue, made BEFORE merge. It is NEVER an agent
+// adjustment — raising a cap to turn a failing gate green is a vacuous pass and
+// is forbidden.
 //
 // The comment stripper below is a dependency-free, string-literal-safe
 // character state machine with an embedded self-test corpus that runs on EVERY
@@ -31,8 +57,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const PRIMARY_LIMIT = 102000; // comment-stripped bytes (decimal) — TEMP raise 100000→102000 for the COMPLETE #839 critical availability fix (transport/connect timeout + silent-eviction self-heal + F6 mid-stream idle-read deadline + SSE-timeout heal routing): stripped 101483 after ~1420B in-bridge reclaim. Reclaim to 100000 tracked in #840. Human-approved, recorded on #839.
-const BACKSTOP_LIMIT = 180000; // raw bytes (decimal) — raised 160000→180000 for the vnc-039 stdio→HTTPS MCP bridge (~24KB new pure-JS); PRIMARY/stripped budget still passes. Human-approved, recorded on #775.
+const PRIMARY_LIMIT = 110000; // comment-stripped bytes (decimal) — regrounded 102000→110000 per ass-086 (#840, #861): baseline (as-measured stripped 101,445; reclaim was moot — the #839 ~1.4KB was already banked, the remainder is live availability logic) + ~two-module review margin. NOT a reclaim-to-100000 (that is the #4780 round-number failure mode). Human-approved, recorded on #840.
+const BACKSTOP_LIMIT = 200000; // raw bytes (decimal) — regrounded 180000→200000 per ass-086 (#840, #861): baseline (as-measured raw 179,944) + ~two-module review margin; clears the prior 56B latent reactive-bump headroom. Human-approved, recorded on #840.
 const ROOT = path.resolve(__dirname, "..", "lib", "hook-client");
 
 // Lexer states.
