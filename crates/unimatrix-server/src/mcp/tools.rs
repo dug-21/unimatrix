@@ -27,9 +27,10 @@ use crate::infra::validation::{
     validated_max_tokens,
 };
 use crate::mcp::response::{
-    format_correct_success, format_deprecate_success, format_duplicate_found, format_edges_carried,
-    format_enroll_success, format_index_table, format_lookup_results, format_quarantine_success,
-    format_redirect_summary, format_restore_success, format_search_results, format_single_entry,
+    ResolutionNote, format_correct_success, format_deprecate_success, format_duplicate_found,
+    format_edges_carried, format_enroll_success, format_index_table, format_lookup_results,
+    format_quarantine_success, format_redirect_summary, format_restore_success,
+    format_search_results, format_single_entry, format_single_entry_with_note,
     format_status_report, format_store_success, format_store_success_with_note,
 };
 use crate::server::UnimatrixServer;
@@ -50,6 +51,12 @@ pub(super) const REDIRECT_CEILING: usize = 50;
 /// Must match the `#[tool(description = "...")]` attribute literal on `context_graph`.
 // rationale: the #[tool] macro requires an inline string literal, so this single-source
 // constant is asserted against only by sibling test modules.
+///
+/// vnc-042: `context_get` documents the default-follow behavior + the `follow_supersessions=false`
+/// escape hatch (C-5, FR-13; a lying description is a known hazard #4303). Same pattern — the
+/// `#[tool]` macro needs a literal, so this const must stay byte-identical to that literal.
+#[allow(dead_code)]
+pub(crate) const CONTEXT_GET_DESCRIPTION: &str = "Get a specific context entry by its ID. Use when you have an entry ID from a previous search or lookup result. By default a deprecated id is resolved to its current (active terminal) version — you receive the up-to-date entry, same shape. Pass follow_supersessions=false to return the entry exactly as stored (audit / lookback / provenance).";
 #[allow(dead_code)]
 pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowledge graph in seven modes:\n\
     - chain: walk the supersession history of an entry (forward toward newer, \
@@ -271,6 +278,19 @@ pub struct GetParams {
     /// by-ID callers pass `Some(false)` to pay zero edge-query cost (OQ-03).
     #[serde(default)]
     pub include_edges: Option<bool>,
+    /// Resolve a requested deprecated id to its active terminal (vnc-042).
+    ///
+    /// - `None` (field omitted) / `Some(true)` ⇒ DEFAULT-ON: follow `superseded_by` to the
+    ///   active terminal and return the current version.
+    /// - `Some(false)` ⇒ escape hatch: return the entry exactly as stored (any status), for
+    ///   audit / lookback / provenance.
+    ///
+    /// The default is HANDLER-OWNED (`None ⇒ follow`); a bare `#[serde(default)] bool` would
+    /// default OFF and silently invert the contract (AC-06, C-2), so this MUST stay
+    /// `Option<bool>` — mirroring `include_edges`. Plain `Option<bool>`, no string coercion
+    /// (NFR-02, #3728).
+    #[serde(default)]
+    pub follow_supersessions: Option<bool>,
 }
 
 /// Parameters for correcting an existing entry.
@@ -468,6 +488,76 @@ pub(crate) fn current_phase_for_session(
     session_id
         .and_then(|sid| registry.get_state(sid))
         .and_then(|s| s.current_phase.clone())
+}
+
+/// Pre-fetch supersession-resolution outcome for `context_get` (vnc-042).
+///
+/// Selects the `effective_id` (the entry actually returned) and carries what happened so the
+/// note can be finalized after the single fetch. The `AsStored` footer depends on the fetched
+/// entry's `status` + `superseded_by`, so it is left as a marker here and completed in
+/// [`finalize_note`]. Clean passthrough carries [`PreNote::Clean`] and routes to the base
+/// `format_single_entry`, preserving the byte-identity invariant (ADR-003, SR-04).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum PreNote {
+    /// Requested id is already the active terminal (or `false` on an active entry) — no note.
+    Clean,
+    /// AC-02 hop: requested `from` (deprecated) resolved to active terminal `to`.
+    Followed { from: u64, to: u64 },
+    /// AC-04 fail-loud: `follow_to_current` returned `None`; the requested id is returned.
+    DeadEnd { requested: u64 },
+    /// Escape hatch (`follow_supersessions=false`): return `requested` as-stored; the deprecated
+    /// footer is decided after fetch from the entry's own status/`superseded_by` (AC-03/AC-08).
+    AsStored { requested: u64 },
+}
+
+/// Resolve the requested id to the effective id to fetch, per `follow_supersessions` (vnc-042).
+///
+/// Reuses the canonical `follow_to_current` (Component 3, Pattern #4436) — no reimplemented
+/// chain-walk (C-1). A store error inside `follow_to_current` collapses to `None` ⇒ the loud
+/// `DeadEnd` path, never silent success (ADR-002). The returned `effective_id` MUST thread to
+/// BOTH `entry_store.get` and `build_edges_view` (R-03, single-fetch invariant).
+pub(crate) async fn resolve_effective_id(
+    store: &unimatrix_core::Store,
+    id: u64,
+    follow_supersessions: Option<bool>,
+) -> (u64, PreNote) {
+    match follow_supersessions {
+        // Escape hatch — return as-stored, no walk (ADR-001). Footer finalized post-fetch.
+        Some(false) => (id, PreNote::AsStored { requested: id }),
+        // DEFAULT-ON — handler owns default (C-2, AC-06).
+        None | Some(true) => match crate::mcp::graph_read::follow_to_current(store, id).await {
+            Some(t) if t == id => (id, PreNote::Clean),
+            Some(t) => (t, PreNote::Followed { from: id, to: t }),
+            None => (id, PreNote::DeadEnd { requested: id }),
+        },
+    }
+}
+
+/// Finalize the `ResolutionNote` once the effective entry is fetched (vnc-042).
+///
+/// Only the `AsStored` marker needs the entry: the footer applies solely to a
+/// `Status::Deprecated` entry (FR-07); an active/proposed/quarantined as-stored entry gets no
+/// footer. `superseded_by` is threaded as `Option<u64>` — `Some(z)` names the successor,
+/// `None` yields the pointerless footer (R-08, no `#{}`/panic). Clean carries no note.
+pub(crate) fn finalize_note(
+    pre: PreNote,
+    entry: &unimatrix_store::EntryRecord,
+) -> Option<ResolutionNote> {
+    match pre {
+        PreNote::Clean => None,
+        PreNote::Followed { from, to } => Some(ResolutionNote::Followed { from, to }),
+        PreNote::DeadEnd { requested } => Some(ResolutionNote::DeadEnd { requested }),
+        PreNote::AsStored { requested } => {
+            if entry.status == Status::Deprecated {
+                Some(ResolutionNote::AsStoredDeprecated {
+                    requested,
+                    superseded_by: entry.superseded_by,
+                })
+            } else {
+                None
+            }
+        }
+    }
 }
 
 #[rmcp::tool_router(vis = "pub(crate)")]
@@ -945,7 +1035,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_get",
-        description = "Get a specific context entry by its ID. Use when you have an entry ID from a previous search or lookup result."
+        description = "Get a specific context entry by its ID. Use when you have an entry ID from a previous search or lookup result. By default a deprecated id is resolved to its current (active terminal) version — you receive the up-to-date entry, same shape. Pass follow_supersessions=false to return the entry exactly as stored (audit / lookback / provenance)."
     )]
     async fn context_get(
         &self,
@@ -973,22 +1063,35 @@ impl UnimatrixServer {
         validate_feature(&params.feature).map_err(rmcp::ErrorData::from)?;
         validate_helpful(&params.helpful).map_err(rmcp::ErrorData::from)?;
 
-        // 3. Get entry
+        // 3. Resolution branch (vnc-042). Select the effective_id BEFORE the fetch: a requested
+        // deprecated id resolves to its active terminal by default (None/Some(true)); Some(false)
+        // returns it as-stored. Reuses the canonical follow_to_current (C-1, no new walk). The
+        // resulting effective_id is threaded to BOTH the fetch AND the edge assembly below — a
+        // partial swap (terminal content + requested-id edges) is the highest-risk defect (R-03).
         let id = validated_id(params.id).map_err(rmcp::ErrorData::from)?;
-        let entry = self.entry_store.get(id).await.map_err(|e| {
+        let (effective_id, pre_note) =
+            resolve_effective_id(&self.store, id, params.follow_supersessions).await;
+
+        // 4. SINGLE fetch on effective_id (no double-read). FAIL-LOUD, unchanged mapping (C-4):
+        // a terminal-fetch race (terminal deleted between walk and fetch) is a mapped error,
+        // NOT a dead-end flag.
+        let entry = self.entry_store.get(effective_id).await.map_err(|e| {
             rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
         })?;
 
-        // 3b. vnc-037 edge assembly. Default-on (None/Some(true)) surfaces the ranked ≤cap
-        // next-hop edges; Some(false) skips ALL edge queries entirely (FR-3, NFR-1 zero cost).
-        // FR-19 FAIL-LOUD (C-13): a post-primary-read edge/count/title failure is mapped with
-        // the SAME mapping as the primary `entry_store.get` above and RETURNED — no degrade,
-        // no silent omit. The opt-out branch never calls build_edges_view, so it cannot reach
-        // this failure.
+        // 4b. Finalize the note now that the entry (status + superseded_by) is known. The escape
+        // hatch footer is deprecated-only (FR-07); Followed/DeadEnd already decided; Clean ⇒ None.
+        let note = finalize_note(pre_note, &entry);
+
+        // 4c. vnc-037 edge assembly on the SAME effective_id (ADR-003 / SR-03 / R-03). Default-on
+        // (None/Some(true)) surfaces the ranked ≤cap next-hop edges; Some(false) skips ALL edge
+        // queries entirely (FR-3, NFR-1 zero cost). FR-19 FAIL-LOUD (C-13): a post-primary-read
+        // edge/count/title failure is mapped with the SAME mapping as the primary get above and
+        // RETURNED — no degrade, no silent omit. Resolution does not soften it (FR-14).
         let edges_view = match params.include_edges {
             Some(false) => None,
             None | Some(true) => Some(
-                crate::mcp::get_edges::build_edges_view(&self.store, id)
+                crate::mcp::get_edges::build_edges_view(&self.store, effective_id)
                     .await
                     .map_err(|e| {
                         rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
@@ -996,13 +1099,24 @@ impl UnimatrixServer {
             ),
         };
 
-        // 4. Format response. None ⇒ edges key/section absent (ADR-003 byte-identity invariant).
-        let result = format_single_entry(&entry, ctx.format, edges_view.as_ref());
+        // 5. Format response (ADR-003 / C-7). Clean passthrough (no note) uses the base formatter
+        // for byte-identity; a note routes to the wrapper. None ⇒ edges key/section absent.
+        let result = match &note {
+            None => format_single_entry(&entry, ctx.format, edges_view.as_ref()),
+            Some(n) => format_single_entry_with_note(&entry, ctx.format, edges_view.as_ref(), n),
+        };
 
-        // 5. Audit (standalone, best-effort)
+        // 6. Audit (standalone, best-effort). vnc-042: account against effective_id — the entry
+        // the caller actually received. detail names the requested id too when they differ so the
+        // resolution is traceable. (Audit-id choice FLAGGED for Gate 3b, per pseudocode.)
         let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
             Some(ct) => serde_json::json!({"client_type": ct}).to_string(),
             None => "{}".to_string(),
+        };
+        let audit_detail = if effective_id == id {
+            format!("retrieved entry #{id}")
+        } else {
+            format!("retrieved entry #{effective_id} (requested #{id})")
         };
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
@@ -1010,9 +1124,9 @@ impl UnimatrixServer {
             session_id: ctx.audit_ctx.session_id.clone().unwrap_or_default(),
             agent_id: ctx.agent_id.clone(),
             operation: "context_get".to_string(),
-            target_ids: vec![id],
+            target_ids: vec![effective_id],
             outcome: Outcome::Success,
-            detail: format!("retrieved entry #{id}"),
+            detail: audit_detail,
             credential_type: "none".to_string(),
             capability_used: Capability::Read.as_audit_str().to_string(),
             agent_attribution: ctx.client_type.clone().unwrap_or_default(),
@@ -1027,8 +1141,9 @@ impl UnimatrixServer {
         //   helpful=false  -> Some(false) (explicit negative honored)
         // UsageDedup enforces one vote per agent-entry pair.
         // col-028 AC-05: access_weight raised to 2 (deliberate full-content retrieval).
+        // vnc-042: account against effective_id — the entry actually returned to the caller.
         self.services.usage.record_access(
-            &[id],
+            &[effective_id],
             AccessSource::McpTool,
             UsageContext {
                 session_id: ctx.audit_ctx.session_id.clone(),
@@ -1044,8 +1159,10 @@ impl UnimatrixServer {
 
         // col-028 FR-08: always record explicit fetch in confirmed_entries (EC-05 contract:
         // only reached after successful entry_store.get, so entry definitely exists).
+        // vnc-042: record effective_id — the entry actually confirmed/returned.
         if let Some(sid) = ctx.audit_ctx.session_id.as_deref() {
-            self.session_registry.record_confirmed_entry(sid, id);
+            self.session_registry
+                .record_confirmed_entry(sid, effective_id);
         }
 
         Ok(result)
@@ -12308,5 +12425,325 @@ mod carry_forward_loop_tests {
         assert_eq!(summary.found, 0);
         assert_eq!(summary.carried, 0);
         assert_eq!(summary.failed, 0);
+    }
+}
+
+/// vnc-042 — `context_get` resolution branch: `GetParams.follow_supersessions` serde three-state,
+/// `resolve_effective_id` effective-id selection (default-on behavioral, dead-end fail-loud,
+/// threading), `finalize_note` footer logic, and tool-description documentation.
+///
+/// These exercise the handler's resolution seams directly (no `RequestContext` construction is
+/// available in unit scope). End-to-end route/format proofs live in the integration suite.
+#[cfg(test)]
+mod get_resolution_tests {
+    use super::{
+        CONTEXT_GET_DESCRIPTION, GetParams, PreNote, ResolutionNote, finalize_note,
+        resolve_effective_id,
+    };
+    use std::sync::Arc;
+    use unimatrix_core::Store;
+    use unimatrix_store::PoolConfig;
+    use unimatrix_store::test_helpers::TestEntry;
+
+    async fn open_store() -> Arc<Store> {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let path = dir.path().join("get_resolution.db");
+        std::mem::forget(dir); // keep the file alive for the test duration
+        Arc::new(
+            Store::open(&path, PoolConfig::default())
+                .await
+                .expect("open test store"),
+        )
+    }
+
+    async fn insert_active(store: &Store, topic: &str) -> u64 {
+        store
+            .insert(TestEntry::new(topic, "decision").build())
+            .await
+            .expect("insert active entry")
+    }
+
+    /// Set `superseded_by` (nullable) and `status` (0=Active,1=Deprecated,3=Quarantined) via SQL —
+    /// mirrors the chain-setup pattern in `graph_queries_tests.rs`.
+    async fn set_super(store: &Store, id: u64, superseded_by: Option<u64>, status: i64) {
+        sqlx::query("UPDATE entries SET superseded_by = ?1, status = ?2 WHERE id = ?3")
+            .bind(superseded_by.map(|v| v as i64))
+            .bind(status)
+            .bind(id as i64)
+            .execute(store.write_pool_server())
+            .await
+            .expect("set superseded_by/status");
+    }
+
+    // --- GetParams serde three-state (R-02 field-value, NFR-02, NFR-06) -------------------
+
+    #[test]
+    fn test_get_params_follow_supersessions_absent_deserializes_none() {
+        let params: GetParams = serde_json::from_str(r#"{"id": 42}"#).expect("deserialize");
+        assert_eq!(params.follow_supersessions, None);
+    }
+
+    #[test]
+    fn test_get_params_follow_supersessions_true_deserializes_some_true() {
+        let params: GetParams =
+            serde_json::from_str(r#"{"id": 42, "follow_supersessions": true}"#).expect("de");
+        assert_eq!(params.follow_supersessions, Some(true));
+    }
+
+    #[test]
+    fn test_get_params_follow_supersessions_false_deserializes_some_false() {
+        let params: GetParams =
+            serde_json::from_str(r#"{"id": 42, "follow_supersessions": false}"#).expect("de");
+        assert_eq!(params.follow_supersessions, Some(false));
+    }
+
+    #[test]
+    fn test_get_params_follow_supersessions_no_quoted_scalar_coercion() {
+        // Plain Option<bool>, no deserialize_*_or_string coercion (#3728): a quoted scalar
+        // MUST error, never silently coerce to Some(true).
+        let result =
+            serde_json::from_str::<GetParams>(r#"{"id": 42, "follow_supersessions": "true"}"#);
+        assert!(result.is_err(), "quoted scalar must not coerce to a bool");
+    }
+
+    #[test]
+    fn test_get_params_no_existing_field_removed_or_retyped() {
+        // NFR-06 / TS-03: the new field is purely additive — existing fields still parse.
+        let params: GetParams = serde_json::from_str(
+            r#"{"id": 7, "agent_id": "a", "format": "json", "include_edges": false}"#,
+        )
+        .expect("de");
+        assert_eq!(params.id, 7);
+        assert_eq!(params.agent_id.as_deref(), Some("a"));
+        assert_eq!(params.format.as_deref(), Some("json"));
+        assert_eq!(params.include_edges, Some(false));
+        assert_eq!(params.follow_supersessions, None);
+    }
+
+    // --- Behavioral default-on — highest-value (R-02, TS-09, AC-06) -----------------------
+
+    #[tokio::test]
+    async fn test_get_handler_field_absent_resolves_to_terminal() {
+        // AUTHORITATIVE behavioral default proof: JSON omits follow_supersessions ⇒ the deserialized
+        // None must drive the FOLLOW path to the active terminal — NOT a mere field round-trip.
+        // A bare `#[serde(default)] bool` (defaults OFF) would fail this even while a value test passes.
+        let store = open_store().await;
+        let b = insert_active(&store, "vnc042-def-b").await; // active terminal
+        let a = insert_active(&store, "vnc042-def-a").await;
+        set_super(&store, a, Some(b), 1).await; // A deprecated, superseded_by B
+
+        let params: GetParams = serde_json::from_str(&format!(r#"{{"id": {a}}}"#)).expect("de");
+        assert_eq!(params.follow_supersessions, None, "absent field ⇒ None");
+
+        let (effective_id, pre) =
+            resolve_effective_id(&store, a, params.follow_supersessions).await;
+        assert_eq!(
+            effective_id, b,
+            "default (absent) must resolve to terminal B"
+        );
+        assert_eq!(pre, PreNote::Followed { from: a, to: b });
+    }
+
+    // --- effective-id selection / route (handler logic) ----------------------------------
+
+    #[tokio::test]
+    async fn test_get_handler_default_deprecated_resolves_to_terminal() {
+        let store = open_store().await;
+        let b = insert_active(&store, "vnc042-hop-b").await;
+        let a = insert_active(&store, "vnc042-hop-a").await;
+        set_super(&store, a, Some(b), 1).await;
+
+        // Some(true) explicit-follow behaves identically to None.
+        let (eff, pre) = resolve_effective_id(&store, a, Some(true)).await;
+        assert_eq!(eff, b);
+        assert_eq!(pre, PreNote::Followed { from: a, to: b });
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_active_terminal_clean_passthrough() {
+        // context_get(B) where B is the active terminal ⇒ Clean (no note ⇒ base formatter route).
+        let store = open_store().await;
+        let b = insert_active(&store, "vnc042-clean-b").await;
+        let (eff, pre) = resolve_effective_id(&store, b, None).await;
+        assert_eq!(eff, b);
+        assert_eq!(pre, PreNote::Clean);
+        assert!(finalize_note(pre, &store.get(b).await.unwrap()).is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_follow_false_returns_as_stored() {
+        // Escape hatch on a deprecated A with successor B ⇒ effective_id == A, no walk,
+        // AsStoredDeprecated{A, Some(B)}.
+        let store = open_store().await;
+        let b = insert_active(&store, "vnc042-esc-b").await;
+        let a = insert_active(&store, "vnc042-esc-a").await;
+        set_super(&store, a, Some(b), 1).await;
+
+        let (eff, pre) = resolve_effective_id(&store, a, Some(false)).await;
+        assert_eq!(eff, a, "false must NOT walk — returns requested id");
+        assert_eq!(pre, PreNote::AsStored { requested: a });
+        // ResolutionNote has no PartialEq (Wave-1 type) — match structurally.
+        match finalize_note(pre, &store.get(a).await.unwrap()) {
+            Some(ResolutionNote::AsStoredDeprecated {
+                requested,
+                superseded_by,
+            }) => {
+                assert_eq!(requested, a);
+                assert_eq!(superseded_by, Some(b));
+            }
+            other => panic!("expected AsStoredDeprecated{{a, Some(b)}}, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_follow_false_active_no_footer() {
+        // Escape hatch on an ACTIVE entry ⇒ no footer (deprecated-only, FR-07).
+        let store = open_store().await;
+        let b = insert_active(&store, "vnc042-escactive").await;
+        let (eff, pre) = resolve_effective_id(&store, b, Some(false)).await;
+        assert_eq!(eff, b);
+        assert_eq!(pre, PreNote::AsStored { requested: b });
+        assert!(finalize_note(pre, &store.get(b).await.unwrap()).is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_follow_false_orphaned_pointerless_footer() {
+        // AC-08 / R-08: escape hatch on an orphaned deprecated (superseded_by IS NULL) ⇒
+        // AsStoredDeprecated{A, None} — pointerless footer, no #{}/panic.
+        let store = open_store().await;
+        let a = insert_active(&store, "vnc042-orphan").await;
+        set_super(&store, a, None, 1).await; // deprecated, no successor
+        let (eff, pre) = resolve_effective_id(&store, a, Some(false)).await;
+        assert_eq!(eff, a);
+        match finalize_note(pre, &store.get(a).await.unwrap()) {
+            Some(ResolutionNote::AsStoredDeprecated {
+                requested,
+                superseded_by,
+            }) => {
+                assert_eq!(requested, a);
+                assert_eq!(
+                    superseded_by, None,
+                    "orphaned ⇒ pointerless footer, no #{{}}"
+                );
+            }
+            other => panic!("expected AsStoredDeprecated{{a, None}}, got {other:?}"),
+        }
+    }
+
+    // --- threading / orthogonality (R-03) ------------------------------------------------
+
+    #[tokio::test]
+    async fn test_get_handler_resolved_edges_keyed_on_terminal() {
+        // R-03: on a hop, the SAME effective_id (== B) is what the handler threads to BOTH
+        // entry_store.get and build_edges_view. resolve_effective_id is the single source of that id.
+        let store = open_store().await;
+        let b = insert_active(&store, "vnc042-thread-b").await;
+        let a = insert_active(&store, "vnc042-thread-a").await;
+        set_super(&store, a, Some(b), 1).await;
+        let (eff, _pre) = resolve_effective_id(&store, a, None).await;
+        assert_eq!(
+            eff, b,
+            "effective_id (fetch + edges key) must be the terminal B"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_effective_id_independent_of_format_and_edges() {
+        // AC-07 orthogonality: resolve_effective_id depends ONLY on (id, follow_supersessions) —
+        // it takes neither format nor include_edges, so the selected id is invariant across them.
+        let store = open_store().await;
+        let b = insert_active(&store, "vnc042-orth-b").await;
+        let a = insert_active(&store, "vnc042-orth-a").await;
+        set_super(&store, a, Some(b), 1).await;
+        let (e1, _) = resolve_effective_id(&store, a, None).await;
+        let (e2, _) = resolve_effective_id(&store, a, Some(true)).await;
+        assert_eq!(e1, b);
+        assert_eq!(e2, b);
+    }
+
+    // --- dead-end fail-loud (R-04, TS-07, AC-04) -----------------------------------------
+
+    #[tokio::test]
+    async fn test_get_handler_deadend_orphaned_terminal_returns_requested_id_flag() {
+        let store = open_store().await;
+        let a = insert_active(&store, "vnc042-de-orphan").await;
+        set_super(&store, a, None, 1).await; // deprecated orphan terminal
+        let (eff, pre) = resolve_effective_id(&store, a, None).await;
+        assert_eq!(
+            eff, a,
+            "dead-end returns the originally-requested id (ADR-002)"
+        );
+        assert_eq!(pre, PreNote::DeadEnd { requested: a });
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_deadend_quarantined_terminal_flag() {
+        let store = open_store().await;
+        let b = insert_active(&store, "vnc042-de-q-b").await;
+        let a = insert_active(&store, "vnc042-de-q-a").await;
+        set_super(&store, a, Some(b), 1).await; // A dep → B
+        set_super(&store, b, None, 3).await; // B quarantined terminal
+        let (eff, pre) = resolve_effective_id(&store, a, None).await;
+        assert_eq!(eff, a);
+        assert_eq!(pre, PreNote::DeadEnd { requested: a });
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_deadend_over_50_hops_flag() {
+        // > 50-hop chain exercised through the resolution seam ⇒ cap trips ⇒ None ⇒ dead-end.
+        let store = open_store().await;
+        let mut ids = Vec::new();
+        for i in 0..52 {
+            ids.push(insert_active(&store, &format!("vnc042-hop50-{i}")).await);
+        }
+        // Link 0→1→…→51, every node deprecated (status 1) so none is an active terminal within cap.
+        for i in 0..51 {
+            set_super(&store, ids[i], Some(ids[i + 1]), 1).await;
+        }
+        set_super(&store, ids[51], None, 1).await; // deep orphaned deprecated terminal
+        let (eff, pre) = resolve_effective_id(&store, ids[0], None).await;
+        assert_eq!(eff, ids[0], "50-hop cap must NOT be weakened (C-3)");
+        assert_eq!(pre, PreNote::DeadEnd { requested: ids[0] });
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_deadend_cycle_self_supersedes_flag() {
+        let store = open_store().await;
+        let a = insert_active(&store, "vnc042-cycle").await;
+        set_super(&store, a, Some(a), 1).await; // self-loop
+        let (eff, pre) = resolve_effective_id(&store, a, None).await;
+        assert_eq!(eff, a, "self-cycle must trip the cap, not loop forever");
+        assert_eq!(pre, PreNote::DeadEnd { requested: a });
+    }
+
+    #[tokio::test]
+    async fn test_get_handler_follow_to_current_store_error_fails_loud() {
+        // #4876: a store error inside follow_to_current (here: non-existent id ⇒ get() errs)
+        // collapses to None ⇒ loud DeadEnd flag, empirically — never silent success.
+        let store = open_store().await;
+        let missing = 9_999_999u64;
+        let (eff, pre) = resolve_effective_id(&store, missing, None).await;
+        assert_eq!(eff, missing);
+        assert_eq!(pre, PreNote::DeadEnd { requested: missing });
+    }
+
+    // --- tool description (R-09 proxy, BLD-04, FR-13) ------------------------------------
+
+    #[test]
+    fn test_get_tool_description_documents_follow_supersessions() {
+        let d = CONTEXT_GET_DESCRIPTION;
+        assert!(d.contains("follow_supersessions"), "must name the param");
+        assert!(
+            d.contains("follow_supersessions=false"),
+            "must document the escape hatch"
+        );
+        assert!(
+            d.contains("default") || d.contains("By default"),
+            "must state the new default"
+        );
+        assert!(
+            d.contains("current") && d.contains("as stored"),
+            "must contrast current-resolution vs as-stored"
+        );
     }
 }
