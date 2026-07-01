@@ -54,6 +54,12 @@ mod graph_read_path;
 #[path = "graph_read_validation.rs"]
 mod graph_read_validation;
 
+// vnc-042: re-export the canonical supersession-resolution helper so the tools.rs
+// handler can bind it at `crate::mcp::graph_read::follow_to_current` (Pattern #4436).
+// Mirrors the submodule-symbol re-export idiom used for `EdgeRecord` in mcp/mod.rs.
+// NOTE: canonical copy is graph_read_neighbors.rs — NOT the graph_read_supersession.rs duplicate.
+pub(crate) use graph_read_neighbors::follow_to_current;
+
 // ---------------------------------------------------------------------------
 // Wire types (ADR-003, ADR-004)
 // ---------------------------------------------------------------------------
