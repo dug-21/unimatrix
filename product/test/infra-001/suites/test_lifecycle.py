@@ -3221,8 +3221,12 @@ def test_correct_leaves_supersedes_edges_unchanged(server):
 
     # Verify Supersedes row S->A exists (graph tick may add it; also written by correction)
     # The Supersedes row may be in graph_edges from the typed graph tick.
-    # We verify via the entries.superseded_by field (guaranteed by context_correct):
-    entry_s = parse_entry(server.context_get(id_s, format="json"))
+    # We verify via the entries.superseded_by field (guaranteed by context_correct).
+    # vnc-042 (#843): context_get default-resolves a deprecated id to its active terminal,
+    # so inspecting S's OWN as-stored provenance requires follow_supersessions=False.
+    entry_s = parse_entry(
+        server.context_get(id_s, format="json", follow_supersessions=False)
+    )
     assert entry_s.get("status") == "deprecated", (
         f"AC-10 precondition: S({id_s}) must be deprecated after correction"
     )
