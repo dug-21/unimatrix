@@ -477,3 +477,50 @@ def test_list_view_tools_no_edges_key(server):
     # markdown list views carry no "### Related" section
     search_md = assert_tool_success(server.context_search("byte identity", format="markdown"))
     assert "### Related" not in (search_md.text or "")
+
+
+# === vnc-042: resolved-get edge keying (GH #843, R-03) =======================
+
+def test_get_resolved_edges_keyed_on_terminal(server):
+    """vnc-042 R-03/AC-07: a resolved get (A deprecated -> B active terminal) surfaces the
+    TERMINAL's edge list (keyed on effective_id=B), NOT the requested id A's edges. This is
+    the end-to-end proof against the highest-probability partial-swap defect (terminal
+    content + requested-id edges)."""
+    # Build A -> B via the real correction path; B is the active terminal.
+    resp_a = server.context_store(
+        "vnc042 edge keying alpha original content distinct words here",
+        "testing", "convention", agent_id="human", format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+    resp_b = server.context_correct(
+        id_a,
+        "vnc042 edge keying beta corrected content other distinct words",
+        reason="vnc-042 edge keying", agent_id="human", format="json",
+    )
+    id_b = extract_entry_id(resp_b)
+
+    # Seed a DISTINCT edge on each id: B->t_b (terminal's own) and A->t_a (requested's).
+    t_b = _TARGET_BASE + 810
+    t_a = _TARGET_BASE + 811
+    _seed_target(server, t_b, confidence=0.8)
+    _seed_target(server, t_a, confidence=0.8)
+    _seed_edges(server, [
+        {"source_id": id_b, "target_id": t_b, "relation_type": "Supports", "source": "agent"},
+        {"source_id": id_a, "target_id": t_a, "relation_type": "Supports", "source": "agent"},
+    ])
+
+    # Default resolved get with edges -> id==B and edges are B's (t_b), never A's (t_a).
+    entry = parse_entry(server.context_get(id_a, format="json", include_edges=True))
+    assert entry["id"] == id_b, "resolved get must return terminal B"
+    resolved_targets = {e["target_id"] for e in entry.get("edges", [])}
+    assert t_b in resolved_targets, "resolved get must surface terminal B's edge list"
+    assert t_a not in resolved_targets, "resolved get must NOT surface requested id A's edges"
+
+    # Control: as-stored get (follow=false) is keyed on A -> shows A's edge, not B's.
+    as_stored = parse_entry(
+        server.context_get(id_a, format="json", include_edges=True, follow_supersessions=False)
+    )
+    assert as_stored["id"] == id_a
+    as_stored_targets = {e["target_id"] for e in as_stored.get("edges", [])}
+    assert t_a in as_stored_targets, "as-stored get is keyed on requested id A"
+    assert t_b not in as_stored_targets

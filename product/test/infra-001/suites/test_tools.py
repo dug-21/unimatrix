@@ -5346,3 +5346,34 @@ def test_cycle_review_auto_close_false_does_not_write_stop(server):
         "AC-15: auto_close=false must NOT write a cycle_stop; the open final phase "
         "surfaces as never-closed (fail-loud, not an error)"
     )
+
+
+# === vnc-042: follow_supersessions orthogonality (GH #843, AC-07) ============
+
+def test_get_follow_supersessions_orthogonal_matrix(server):
+    """vnc-042 AC-07: follow_supersessions (default-on) composes ORTHOGONALLY with `format`
+    and `include_edges` — a deprecated A resolves to terminal B in every cell of the matrix."""
+    resp_a = server.context_store(
+        "vnc042 orthogonal alpha original body about scheduling policy",
+        "testing", "convention", agent_id="human", format="json",
+    )
+    id_a = extract_entry_id(resp_a)
+    resp_b = server.context_correct(
+        id_a,
+        "vnc042 orthogonal beta corrected body about scheduling quota",
+        reason="vnc-042 orthogonality", agent_id="human", format="json",
+    )
+    id_b = extract_entry_id(resp_b)
+
+    for fmt in (None, "markdown", "json"):
+        for include_edges in (None, True, False):
+            resp = server.context_get(id_a, format=fmt, include_edges=include_edges)
+            result = assert_tool_success(resp)
+            cell = f"format={fmt} include_edges={include_edges}"
+            if fmt == "json":
+                entry = result.parsed
+                assert entry["id"] == id_b, f"[{cell}] must resolve to terminal B"
+                assert entry["resolution"]["returned_id"] == id_b, f"[{cell}] resolution.returned_id"
+            else:
+                assert "↻" in result.text, f"[{cell}] must carry the hop notice"
+                assert f"version #{id_b}" in result.text, f"[{cell}] must reference terminal id B"
