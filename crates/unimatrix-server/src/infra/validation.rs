@@ -1027,6 +1027,7 @@ mod tests {
             helpful: None,
             session_id: None,
             include_edges: None,
+            follow_supersessions: None, // vnc-042: additive field (mechanical struct-literal fill)
         };
         assert!(validate_get_params(&params).is_err());
     }
