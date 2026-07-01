@@ -46,7 +46,21 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 # entries on the shared retrieval topic — comfortably above the floor (head-room so HNSW tail
 # churn below the prefix does not starve the prefix). The exact size is the OQ-C/Stage-3a
 # test-design call fixed HERE; the SHAPE (size > STABLE_PREFIX_FLOOR > 1) is ADR-fixed.
-SEED_CORPUS_SIZE: int = 5
+#
+# #844 (ass-085 #852): raised 5 -> 25. At N=k=5 hnsw_rs short-returns (<5 results) in
+# ~14% of builds, starving the stable prefix below the floor -> D1/D4 PARITY_FAIL. ass-085
+# measured N~=25 with a >=0.20 head/tail "moat" cuts the flip ~30x and eliminates the
+# short-return mode. N is the dominant lever; exact-zero is unreachable (~0.2-0.6% intrinsic
+# hnsw_rs build-RNG residual remains, owned by ADR-004 stable-prefix policy + the C0 #5304
+# documented exception). The corpus complements that policy; it does not replace it.
+SEED_CORPUS_SIZE: int = 25
+
+# Requested retrieval breadth (top-k) for the D1 context_search query, DECOUPLED from
+# SEED_CORPUS_SIZE (#844). Must be >= STABLE_PREFIX_FLOOR (3, the asserted stable prefix
+# depth, single-sourced in ranking_tolerance.py) and <= the head size (5). We seed 25 entries
+# for graph stability but query a small stable HEAD: querying k=25 would return the whole
+# corpus and re-introduce the boundary noise the deep corpus exists to suppress (ass-085 Q2).
+RETRIEVAL_QUERY_K: int = 5
 
 # The single shared topic the corpus is seeded under and the query set retrieves over, so the
 # ranking is non-degenerate (>= STABLE_PREFIX_FLOOR hits). Content-only — never an output.
@@ -54,38 +68,86 @@ SEED_TOPIC: str = "nan-022-parity-corpus"
 SEED_CATEGORY: str = "pattern"
 
 
-# Per-entry distinct subjects (Stage-3c first-live-run fix — Stage-3c fix; see product/features/nan-022/testing/RISK-COVERAGE-REPORT.md / R-06 / OQ-3).
-# The corpus MUST survive the server's near-duplicate collapse: the previous boilerplate
-# entries differed only by a 2-digit index and the server deduped ALL of them into a single
-# entry (`similarity: 1.00 | duplicate: true`), so retrieval returned a single hit (< the
-# STABLE_PREFIX_FLOOR of 3) — a degenerate, vacuous ranking (R-06). Each entry now carries a
-# semantically DISTINCT subject so the embeddings differ enough to land as separate entries
-# while all sharing the SEED_TOPIC keyword (so a topic query still returns >= the floor).
+# Per-entry distinct subjects (Stage-3c R-06 fix; expanded for #844 / ass-085 #852).
+#
+# Two invariants this pool must hold (verified once at authoring against the REAL MiniLM
+# model — sentence-transformers/all-MiniLM-L6-v2 — via scripts/docker-embed-readiness-smoke.sh
+# DESIGN-VERIFY mode; ass-085's model was synthetic, so the geometry the fix rests on was
+# unverified until #844 measured it):
+#
+#  1. DISTINCTNESS / no near-duplicate collapse (R-06). The previous boilerplate entries
+#     differed only by a 2-digit index and the server deduped ALL of them
+#     (`similarity: 1.00 | duplicate: true`), collapsing the ranking to one hit (< the
+#     STABLE_PREFIX_FLOOR of 3) — a vacuous parity pass (#5177). Each entry carries a
+#     semantically DISTINCT subject; measured MAX pairwise cosine ~0.74, comfortably below
+#     the server DUPLICATE_THRESHOLD (0.92, store_ops.rs). The pool size is also >=
+#     SEED_CORPUS_SIZE so the `i % len` modulo in `_seed_entry_content` never wraps and
+#     re-collapses distinctness (locked by a unit test).
+#
+#  2. GEOMETRY: a coherent HEAD (the first RETRIEVAL_QUERY_K subjects — all "cross-transport
+#     parity" aspects) ranks above a TAIL (distinct subsystems / off-domain) by a >=0.20
+#     cosine "moat" against the primary retrieval query, with the head internally graded so
+#     the asserted top-3 prefix has no boundary tie. Measured against the primary D1 query:
+#     moat ~0.225, top-3 intra-head gaps ~0.10 / ~0.04, residual projection ~0.3% (within the
+#     ~0.4% envelope the C0 exception is signed for). The retrieval-flavored SECONDARY queries
+#     reorder the (intrinsically clustered) head more tightly — that residual is the intrinsic
+#     hnsw_rs flip the stable-prefix policy + C0 exception own; it cannot be designed to zero
+#     (ass-085 Q2 geometric cap, confirmed on real embeddings in #844).
+#
+# Content geometry note: the stored embed text is f"{title}: {content}" (embed/text.rs,
+# separator ": "). seed_corpus_calls sets title == content == subject so the embed text is
+# SUBJECT-DOMINANT. The MCP default title is f"{topic}: {category}" — a UNIFORM string across
+# all 25 entries — which (measured) compresses the head/tail moat to ~0.03 and destroys the
+# geometry; hence the explicit per-entry title.
+#
 # CONTENT ONLY — never a compared output (no topic_signal / edge / briefing id; R-15).
 _SEED_SUBJECTS: tuple[str, ...] = (
-    "transport-layer socket framing and unix-domain stream handshakes",
-    "embedding-vector similarity scoring and approximate nearest-neighbour recall",
-    "write-ahead-log checkpoint durability and per-slug store isolation",
-    "proactive briefing index ranking and injection-set selection heuristics",
-    "behavioral observation attribution from declared cycle topic signals",
-    "JSON-RPC tool-call envelope routing over the pinned HTTPS bridge surface",
-    "contradiction detection across incompatible stored directive entries",
-    "confidence Wilson-score re-ranking under sparse vote evidence",
+    # HEAD (first RETRIEVAL_QUERY_K) — graded cross-transport-parity ladder, mutually distinct
+    # aspects. Order here is the intended descending relevance to the primary retrieval query.
+    "cross-transport parity of identical ranked results on each transport",
+    "cross-transport parity of byte-identical stored-entry rankings on both legs",
+    "cross-transport parity for ranked search output on both request legs",
+    "cross-transport parity of HTTPS and unix-domain search responses",
+    "cross-transport parity between the HTTPS bridge and the unix-domain socket",
+    # TAIL — distinct subsystems / off-domain subjects, each >=0.20 cosine below the head
+    # against the retrieval query (the "moat"), and pairwise-distinct from each other.
+    "write-ahead-log checkpoint durability and crash recovery",
+    "contradiction detection across incompatible stored directives",
+    "quarterly payroll tax withholding schedules",
+    "per-slug database isolation and multi-tenant project configuration",
+    "dashboard panel layout and time-series visualization widgets",
+    "kitchen pantry inventory and grocery restocking lists",
+    "open-source license compliance and dependency vulnerability auditing",
+    "markdown documentation generation and changelog formatting",
+    "knowledge graph edge traversal and provenance lineage",
+    "agent role orchestration and swarm coordination",
+    "secret management and environment-variable credential handling",
+    "garbage collection of expired ephemeral session records",
+    "JPEG chroma subsampling and color-space conversion",
+    "cron scheduling of recurring background maintenance jobs",
+    "geospatial tile rendering and map projection mathematics",
+    "houseplant watering frequency by season",
+    "thermal sensor calibration drift over temperature cycles",
+    "audio waveform resampling and loudness normalization",
+    "spreadsheet pivot-table aggregation and cell formatting",
+    "container image layer caching and registry digest pinning",
 )
 
 
 def _seed_entry_content(i: int) -> str:
-    """Deterministic, DISTINCT content for corpus entry i. Each entry carries a unique
-    subject (`_SEED_SUBJECTS`) so it survives the server's near-duplicate collapse and the
-    corpus ranks to depth >= STABLE_PREFIX_FLOOR; the shared SEED_TOPIC keyword keeps a topic
-    query returning the whole corpus (related enough to rank together, distinct enough not to
-    dedup). Index `i` is taken modulo the subject pool so any SEED_CORPUS_SIZE stays distinct."""
-    subject = _SEED_SUBJECTS[i % len(_SEED_SUBJECTS)]
-    return (
-        f"{SEED_TOPIC} corpus entry {i:02d}: {subject}. This entry documents {subject} "
-        f"as cross-transport parity reference material number {i:02d} for retrieval and "
-        f"briefing ranking over the HTTPS-vs-UDS canonical workload."
-    )
+    """Deterministic, DISTINCT content for corpus entry i: the bare subject string.
+
+    The content is the SUBJECT alone (no shared boilerplate). #844/ass-085 measured that the
+    previous template's shared "{SEED_TOPIC} ... cross-transport parity ... HTTPS-vs-UDS"
+    filler appeared in EVERY entry and pulled all 25 embeddings toward the query, compressing
+    the head/tail moat to ~0.02 and destroying the geometry the fix depends on. A subject-only
+    content lets the distinct subject dominate, realizing the >=0.20 moat (see _SEED_SUBJECTS).
+
+    Index `i` is taken modulo the subject pool. With len(_SEED_SUBJECTS) >= SEED_CORPUS_SIZE
+    the modulo never wraps, so every seeded entry stays distinct (no R-06 dedup collapse).
+    Topic-scoped recall does NOT rely on a content keyword: context_lookup matches the
+    structured `topic` field, and seed_corpus_calls sets topic=SEED_TOPIC on every write."""
+    return _SEED_SUBJECTS[i % len(_SEED_SUBJECTS)]
 
 
 def seed_corpus_calls() -> list["ToolCall"]:
@@ -96,6 +158,12 @@ def seed_corpus_calls() -> list["ToolCall"]:
     `observe=False`: the seed writes are MCP-bridge store calls, not `/observe`-hooked tool
     uses, so they do NOT inflate `expected_observe_count` (the barrier predicate). They are
     the corpus the QUERY phase ranks over, identical on both legs.
+
+    `title` is set EXPLICITLY per entry (to the subject) — NOT left to the MCP default. The
+    default title is f"{topic}: {category}", a UNIFORM string across all 25 entries; since the
+    stored embed text is f"{title}: {content}" (embed/text.rs), that uniform prefix (measured,
+    #844) compresses the head/tail moat to ~0.03 and destroys the retrieval geometry. With
+    title == content == subject the embed text is subject-dominant and the moat is realized.
     """
     from harness.parity_workload import ToolCall  # local import — avoid circular import
 
@@ -103,6 +171,7 @@ def seed_corpus_calls() -> list["ToolCall"]:
         ToolCall(
             name="context_store",
             args={
+                "title": _seed_entry_content(i),
                 "content": _seed_entry_content(i),
                 "topic": SEED_TOPIC,
                 "category": SEED_CATEGORY,
@@ -125,7 +194,7 @@ def retrieval_query_calls() -> list["ToolCall"]:
     return [
         ToolCall(
             name="context_search",
-            args={"query": f"{SEED_TOPIC} cross-transport parity", "k": SEED_CORPUS_SIZE},
+            args={"query": f"{SEED_TOPIC} cross-transport parity", "k": RETRIEVAL_QUERY_K},
             observe=False,
             response_snippet=f"search {SEED_TOPIC}",
         ),
@@ -137,7 +206,7 @@ def retrieval_query_calls() -> list["ToolCall"]:
         ),
         ToolCall(
             name="context_search",
-            args={"query": f"{SEED_TOPIC} retrieval ranking seed", "k": SEED_CORPUS_SIZE},
+            args={"query": f"{SEED_TOPIC} retrieval ranking seed", "k": RETRIEVAL_QUERY_K},
             observe=False,
             response_snippet=f"search {SEED_TOPIC} ranking",
         ),
