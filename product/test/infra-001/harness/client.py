@@ -502,6 +502,7 @@ class UnimatrixClient:
         feature: str | None = None,
         helpful: bool | None = None,
         include_edges: bool | None = None,
+        follow_supersessions: bool | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {"id": entry_id}
         if agent_id is not None:
@@ -515,6 +516,9 @@ class UnimatrixClient:
         # vnc-037: next-hop edge affordance opt-out. Absent (None) ⇒ default-on.
         if include_edges is not None:
             args["include_edges"] = include_edges
+        # vnc-042: supersession resolution opt-out. Absent (None) ⇒ server default-on.
+        if follow_supersessions is not None:
+            args["follow_supersessions"] = follow_supersessions
         return self.call_tool("context_get", args)
 
     def context_correct(

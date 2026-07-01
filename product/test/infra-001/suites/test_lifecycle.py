@@ -4545,3 +4545,108 @@ def test_cycle_review_command_fragment_topic_signal_not_reviewable_832(server):
         # The empty path surfaces as a tool error ("No observation data found"),
         # never a populated review — the fragment is not a declared/reviewable cycle.
         assert_tool_error(resp, "No observation data found")
+
+
+# === vnc-042: context_get default supersession resolution (GH #843) ==========
+# context_get resolves a requested deprecated id to its active terminal by default
+# (follow_supersessions omitted). The harness client omits the arg when None, so
+# these exercise the SERVER-owned default-on through the real MCP JSON-RPC path.
+# Anchored on context_correct correction chains (A -> B, B active terminal).
+
+
+def _correct_to_terminal(server, original_content, corrected_content):
+    """Store A then correct A->B (B active terminal). Returns (id_a, id_b)."""
+    resp_a = server.context_store(
+        original_content, "testing", "decision", agent_id="human", format="json"
+    )
+    id_a = extract_entry_id(resp_a)
+    resp_b = server.context_correct(
+        id_a,
+        corrected_content,
+        reason="vnc-042 supersession",
+        agent_id="human",
+        format="json",
+    )
+    id_b = extract_entry_id(resp_b)
+    return id_a, id_b
+
+
+@pytest.mark.smoke
+def test_get_default_resolves_deprecated_to_terminal(server):
+    """vnc-042 AC-01/AC-06: context_get(A) with follow_supersessions OMITTED resolves a
+    deprecated id to its active terminal B — id==B, B's content, `followed` notice."""
+    id_a, id_b = _correct_to_terminal(
+        server,
+        "vnc042 default resolve alpha original knowledge about caching layers",
+        "vnc042 default resolve beta corrected knowledge about caching strategy",
+    )
+    entry = parse_entry(server.context_get(id_a, format="json"))
+    assert entry["id"] == id_b, f"default get(A) must resolve to terminal B; got {entry['id']}"
+    assert "caching strategy" in entry["content"], "body must be terminal B's stored content"
+    assert entry["resolution"]["status"] == "followed"
+    assert entry["resolution"]["requested_id"] == id_a
+    assert entry["resolution"]["returned_id"] == id_b
+    # summary text carries the one-line hop notice referencing the returned id
+    text = get_result_text(server.context_get(id_a))
+    assert "↻" in text, "summary must carry the hop notice glyph"
+    assert f"version #{id_b}" in text
+
+
+@pytest.mark.smoke
+def test_get_clean_passthrough_no_resolution_key(server):
+    """vnc-042 AC-02/R-07: context_get on the active terminal is a clean passthrough —
+    no notice and (json) NO `resolution` key, preserving end-to-end byte-identity."""
+    _id_a, id_b = _correct_to_terminal(
+        server,
+        "vnc042 clean passthrough alpha original text about indexing",
+        "vnc042 clean passthrough beta corrected text about indexing tactics",
+    )
+    entry = parse_entry(server.context_get(id_b, format="json"))
+    assert entry["id"] == id_b
+    assert "resolution" not in entry, "clean passthrough json must NOT carry a resolution key"
+    text = get_result_text(server.context_get(id_b))
+    assert "↻" not in text and "⚠" not in text, "clean passthrough carries no notice"
+
+
+def test_get_follow_false_returns_as_stored_with_footer(server):
+    """vnc-042 AC-03: follow_supersessions=False returns the deprecated entry exactly as
+    stored, with a well-formed deprecated footer naming the recorded successor."""
+    id_a, id_b = _correct_to_terminal(
+        server,
+        "vnc042 escape hatch alpha original note on retries",
+        "vnc042 escape hatch beta corrected note on retry budget",
+    )
+    entry = parse_entry(
+        server.context_get(id_a, format="json", follow_supersessions=False)
+    )
+    assert entry["id"] == id_a, "escape hatch must return the requested (deprecated) id as-stored"
+    assert entry["status"] == "deprecated"
+    assert entry["resolution"]["status"] == "as_stored_deprecated"
+    assert entry["resolution"]["requested_id"] == id_a
+    assert entry["resolution"]["superseded_by"] == id_b
+    text = get_result_text(server.context_get(id_a, follow_supersessions=False))
+    assert f"deprecated; superseded by #{id_b}" in text
+
+
+def test_get_deadend_returns_requested_id_loud_flag(admin_server):
+    """vnc-042 AC-04: a chain dead-ending on a NON-active terminal (quarantined B) returns
+    a NON-EMPTY, non-error result keyed on the originally-requested id with a loud
+    no_active_successor flag — never silent, never empty."""
+    server = admin_server
+    id_a, id_b = _correct_to_terminal(
+        server,
+        "vnc042 deadend alpha original memo on throttling",
+        "vnc042 deadend beta corrected memo on throttle windows",
+    )
+    # Quarantine the terminal B -> A's chain now dead-ends on a non-active entry.
+    assert_tool_success(
+        server.context_quarantine(id_b, reason="vnc-042 deadend", agent_id="human")
+    )
+    result = assert_tool_success(server.context_get(id_a, format="json"))  # NOT an MCP error
+    assert result.text, "dead-end result must be non-empty"
+    entry = result.parsed
+    assert entry["id"] == id_a, "dead-end must return the originally-requested id"
+    assert entry["resolution"]["status"] == "no_active_successor"
+    assert entry["resolution"]["requested_id"] == id_a
+    text = get_result_text(server.context_get(id_a))
+    assert "⚠" in text and "no active successor" in text
