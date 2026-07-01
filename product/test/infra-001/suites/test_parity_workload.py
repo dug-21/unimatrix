@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from harness import parity_seed_corpus as psc
 from harness import parity_workload as pw
 from harness.parity_workload import (
     AT_RISK_FIELDS,
@@ -573,6 +574,42 @@ def test_seed_corpus_size_yields_prefix_floor_gt_one():
     assert STABLE_PREFIX_FLOOR > 1
     assert len(wl.seed_calls) >= STABLE_PREFIX_FLOOR
     assert len(wl.seed_calls) > 1
+
+
+def test_seed_corpus_deep_enough_for_844():
+    # #844 (ass-085 #852): N=k=5 sits in the hnsw_rs short-return regime (<5 results ~14% of
+    # builds) that starves the stable prefix -> D1/D4 PARITY_FAIL. The fix raises the corpus
+    # well above the floor so a leg's tail churn can never shorten the asserted prefix. Lock the
+    # corpus deep (>= 8 escapes the short-return band; ass-085 reaches the floor at ~25).
+    wl = default_workload()
+    assert len(wl.seed_calls) >= 25
+    assert psc.SEED_CORPUS_SIZE >= 25
+
+
+def test_seed_subject_pool_distinct_and_no_modulo_collapse():
+    # R-06 / #844 modulo-collapse trap: `_seed_entry_content` indexes `_SEED_SUBJECTS` with
+    # `i % len(_SEED_SUBJECTS)`. If the subject POOL is smaller than SEED_CORPUS_SIZE the modulo
+    # wraps and re-creates near-duplicate entries the server dedups into one (`duplicate: true`),
+    # collapsing the ranking below the floor. Lock the pool >= corpus size AND fully distinct.
+    assert len(set(psc._SEED_SUBJECTS)) == len(psc._SEED_SUBJECTS), "subject pool has duplicates"
+    assert len(set(psc._SEED_SUBJECTS)) >= psc.SEED_CORPUS_SIZE
+    # Therefore every seeded entry's content is distinct (no wrap, no dedup collapse).
+    contents = [psc._seed_entry_content(i) for i in range(psc.SEED_CORPUS_SIZE)]
+    assert len(set(contents)) == psc.SEED_CORPUS_SIZE
+
+
+def test_retrieval_query_k_decoupled_from_corpus_size():
+    # #844: the requested retrieval breadth (top-k) is DECOUPLED from corpus size. Querying
+    # k == N returns the whole corpus and re-introduces boundary noise (ass-085 Q2). k must be a
+    # small stable head: >= STABLE_PREFIX_FLOOR (asserted prefix depth) and < SEED_CORPUS_SIZE.
+    assert psc.RETRIEVAL_QUERY_K >= STABLE_PREFIX_FLOOR
+    assert psc.RETRIEVAL_QUERY_K < psc.SEED_CORPUS_SIZE
+    # The live context_search calls request exactly RETRIEVAL_QUERY_K, never SEED_CORPUS_SIZE.
+    searches = [tc for tc in default_workload().retrieval_calls if tc.name == "context_search"]
+    assert searches
+    for tc in searches:
+        assert tc.args["k"] == psc.RETRIEVAL_QUERY_K
+        assert tc.args["k"] != psc.SEED_CORPUS_SIZE
 
 
 def test_seed_corpus_query_set_non_trivial():

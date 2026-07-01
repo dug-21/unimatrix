@@ -37,6 +37,13 @@
 # Env:     IMAGE   pre-built image tag to test instead of building (optional)
 #          KEEP    set to 1 to keep the container/volumes for inspection
 #          READY_TIMEOUT_SECS  override the embed-readiness deadline (default 180)
+#          DESIGN_VERIFY  set to 1 to ALSO run the #844 parity-corpus GEOMETRY check:
+#                  embed the 25 real seed subjects with the SAME shipped ONNX model and
+#                  print the pairwise-cosine matrix + the head/tail moat + the intra-head
+#                  top-3 gaps. This is a ONE-TIME AUTHORING/SIGN-OFF measurement (ass-085
+#                  #852 / #844), NOT a per-parity-run gate — wiring corpus geometry into
+#                  every parity build would recouple the suite to ONNX/model drift and
+#                  reintroduce the flakiness the corpus fix removes. Default OFF.
 #
 # Exit contract (identical shape to docker-http-posture-smoke.sh so the SAME
 # release-gate-lib.sh run_smoke_gate spine consumes it):
@@ -238,5 +245,73 @@ done
 MODEL_OK="$(shared sh -c 'f=$(find /shared/models -name model.onnx 2>/dev/null | head -1); t=$(find /shared/models -name tokenizer.json 2>/dev/null | head -1); [ -s "$f" ] && [ -s "$t" ] && echo OK || echo MISSING')"
 [ "$MODEL_OK" = "OK" ] || fail "model.onnx and/or tokenizer.json missing or empty under /shared/models after boot"
 log "model.onnx + tokenizer.json present and non-empty under /shared/models. PASS model-file check"
+
+# -- #844 PARITY-CORPUS GEOMETRY CHECK (opt-in, DESIGN_VERIFY=1) --------------
+# One-time AUTHORING/sign-off measurement (NOT a per-parity-run gate). Embeds the 25 real
+# seed subjects with the SAME shipped ONNX model that just landed in /shared, in the exact
+# stored embed form f"{title}: {content}" (the corpus ships title == content == subject), and
+# prints the pairwise-cosine matrix + the head/tail moat + the intra-head top-3 gaps so the
+# human sign-off can confirm the geometry the #844 fix rests on is REAL (ass-085 measured it
+# only on synthetic vectors). A separate python sidecar (the runtime image is distroless) reads
+# /shared:ro and imports the live parity_seed_corpus.py — no second copy of the corpus.
+if [ "${DESIGN_VERIFY:-0}" = "1" ]; then
+  log "DESIGN_VERIFY=1 -> running the #844 parity-corpus geometry measurement (authoring check, not a per-run gate)"
+  HARNESS_DIR="$REPO_ROOT/product/test/infra-001/harness"
+  [ -f "$HARNESS_DIR/parity_seed_corpus.py" ] || fail "parity_seed_corpus.py not found at $HARNESS_DIR"
+  docker run --rm -i \
+    -v "$SVOL:/shared:ro" \
+    -v "$HARNESS_DIR:/harness:ro" \
+    python:3.11-slim bash -s <<'SIDECAR' || fail "DESIGN_VERIFY geometry check FAILED (moat < 0.20 or sidecar error) — do NOT sign off the corpus geometry"
+set -e
+pip install -q onnxruntime tokenizers numpy >/dev/null 2>&1
+python - <<'PY'
+import glob, importlib.util, sys, numpy as np, onnxruntime as ort
+from tokenizers import Tokenizer
+onnx=glob.glob("/shared/models/**/model.onnx", recursive=True)
+toks=glob.glob("/shared/models/**/tokenizer.json", recursive=True)
+assert onnx and toks, "model.onnx / tokenizer.json not found under /shared/models"
+tok=Tokenizer.from_file(toks[0]); tok.enable_truncation(max_length=256)
+sess=ort.InferenceSession(onnx[0], providers=["CPUExecutionProvider"])
+def emb(t):
+    e=tok.encode(t)
+    f={"input_ids":np.array([e.ids],dtype=np.int64),"attention_mask":np.array([e.attention_mask],dtype=np.int64),"token_type_ids":np.array([e.type_ids],dtype=np.int64)}
+    w={i.name for i in sess.get_inputs()}; f={k:v for k,v in f.items() if k in w}
+    h=sess.run(None,f)[0][0]; m=f["attention_mask"][0].astype(np.float32)
+    p=(h*m[:,None]).sum(0)/max(m.sum(),1e-9); return p/(np.linalg.norm(p) or 1e-9)
+spec=importlib.util.spec_from_file_location("psc","/harness/parity_seed_corpus.py")
+psc=importlib.util.module_from_spec(spec); spec.loader.exec_module(psc)
+N=psc.SEED_CORPUS_SIZE; HEAD=psc.RETRIEVAL_QUERY_K; FLOOR=3; T=psc.SEED_TOPIC
+SUBJ=[psc._seed_entry_content(i) for i in range(N)]          # bare subject == content
+EV=np.array([emb(f"{s}: {s}") for s in SUBJ])                # stored embed text "title: content"
+q=emb(f"{T} cross-transport parity")                         # primary D1 retrieval query
+print(f"[844-geom] N={N} head(RETRIEVAL_QUERY_K)={HEAD} distinct={len(set(SUBJ))}")
+print("[844-geom] pairwise cosine matrix (stored embed text 'subject: subject'):")
+print("      "+"".join(f"{j:>5}" for j in range(N)))
+mx=0.0
+for i in range(N):
+    print(f"{i:>4} "+"".join(f"{float(np.dot(EV[i],EV[j])):>5.2f}" for j in range(N)))
+    mx=max(mx, max(float(np.dot(EV[i],EV[j])) for j in range(N) if j!=i))
+sc=sorted(((float(np.dot(EV[i],q)),i) for i in range(N)), reverse=True)
+head, tail = sc[:HEAD], sc[HEAD:]
+moat=head[-1][0]-tail[0][0]
+gaps=[head[r-1][0]-head[r][0] for r in range(1,FLOOR)]
+b23=head[FLOOR-1][0]-head[FLOOR][0]
+worst=min(min(gaps), b23)
+print("[844-geom] primary-query top ranking:")
+for r,(s,i) in enumerate(sc[:HEAD+2]):
+    print(f"   {r:>2} {'HEAD' if r<HEAD else 'tail'} {s:+.4f}  {SUBJ[i][:55]}")
+print(f"[844-geom] MOAT (lowest-head {head[-1][0]:+.4f} - highest-tail {tail[0][0]:+.4f}) = {moat:+.4f}  [need >= 0.20]")
+print(f"[844-geom] intra-head top-3 gaps={['%.4f'%g for g in gaps]} rank2/3-boundary={b23:.4f} worst={worst:.4f} (ass-085 synthetic ref ~0.03)")
+print(f"[844-geom] projected intra-prefix residual ~ {0.4*0.03/worst:.2f}% (C0 envelope ~0.4%)")
+print(f"[844-geom] MAX off-diagonal pairwise={mx:.3f} [DUPLICATE_THRESHOLD=0.92]")
+moat_ok = moat>=0.20; dedup_ok = mx<0.92
+print(f"[844-geom] VERDICT moat={'GREEN' if moat_ok else 'RED'} dedup={'GREEN' if dedup_ok else 'RED'} worst-prefix-gap={'GREEN' if worst>=0.03 else ('AMBER' if worst>=0.02 else 'RED')}")
+if worst < 0.02:
+    print("[844-geom] STOP-WARNING: real top-3 gap materially tighter than the synthetic ~0.03 ref — intra-prefix residual may EXCEED the ~0.4% C0 envelope; re-confirm the exception with the human before sign-off.")
+sys.exit(0 if (moat_ok and dedup_ok) else 1)
+PY
+SIDECAR
+  log "DESIGN_VERIFY geometry check complete (see [844-geom] lines above). This is an authoring/sign-off measurement, not a per-run gate."
+fi
 
 log "ALL GATES PASSED — first boot downloaded the model into /shared and the embed path is live (context_store/context_search round trip succeeded)."
