@@ -120,7 +120,7 @@ async fn test_edge_query_failure_fails_loud() {
         .await
         .expect("drop confidence column");
 
-    let result = build_edges_view(&store as &Store, anchor).await;
+    let result = build_edges_view(&store as &Store, anchor, true).await;
     assert!(
         result.is_err(),
         "a ranked-query failure must surface as Err (fail-loud), not a success with omitted edges"
@@ -152,7 +152,7 @@ async fn test_count_query_failure_fails_loud() {
         "count_neighbors_split must error when its graph_edges source is gone"
     );
 
-    let result = build_edges_view(&store as &Store, anchor).await;
+    let result = build_edges_view(&store as &Store, anchor, true).await;
     assert!(
         result.is_err(),
         "a count-query failure must surface as Err (fail-loud), not a success"
@@ -178,7 +178,7 @@ async fn test_title_join_failure_fails_loud() {
         .await
         .expect("drop title column");
 
-    let result = build_edges_view(&store as &Store, anchor).await;
+    let result = build_edges_view(&store as &Store, anchor, true).await;
     assert!(
         result.is_err(),
         "a title-join failure must surface as Err — never a silent null fill or omitted edges"
@@ -195,7 +195,7 @@ async fn test_zero_edges_is_success_distinct_from_failure() {
 
     let anchor = insert_entry_conf(pool, "lonely", 0.5).await;
 
-    let view = build_edges_view(&store as &Store, anchor)
+    let view = build_edges_view(&store as &Store, anchor, true)
         .await
         .expect("zero-edge entry must succeed (not fail)");
 
@@ -227,7 +227,7 @@ async fn test_projection_outbound_inbound_far_endpoint() {
     // Inbound: anchor is the target.
     insert_edge(pool, in_source, anchor, "Prerequisite", "agent").await;
 
-    let view = build_edges_view(&store as &Store, anchor)
+    let view = build_edges_view(&store as &Store, anchor, true)
         .await
         .expect("build");
 
@@ -267,7 +267,7 @@ async fn test_projection_symmetric_both_no_arrow() {
     insert_edge(pool, anchor, other, "Informs", "co_access").await;
     insert_edge(pool, other, anchor, "Informs", "co_access").await;
 
-    let view = build_edges_view(&store as &Store, anchor)
+    let view = build_edges_view(&store as &Store, anchor, true)
         .await
         .expect("build");
 
@@ -309,7 +309,7 @@ async fn test_totals_projection_three_buckets() {
     let split = unimatrix_store::count_neighbors_split(store.read_pool_server(), anchor)
         .await
         .expect("split");
-    let view = build_edges_view(&store as &Store, anchor)
+    let view = build_edges_view(&store as &Store, anchor, true)
         .await
         .expect("build");
 
@@ -340,7 +340,7 @@ async fn test_authored_total_threaded_from_full_set() {
         insert_edge(pool, anchor, t, "Supports", "agent").await;
     }
 
-    let view = build_edges_view(&store as &Store, anchor)
+    let view = build_edges_view(&store as &Store, anchor, true)
         .await
         .expect("build");
 
@@ -372,7 +372,7 @@ async fn test_dangling_title_null_retained_no_panic() {
     let anchor = insert_entry_conf(pool, "anchor", 0.5).await;
     insert_dangling_edge(pool, anchor, 999_999, "Supports").await;
 
-    let view = build_edges_view(&store as &Store, anchor)
+    let view = build_edges_view(&store as &Store, anchor, true)
         .await
         .expect("dangling target must not error");
 
@@ -397,7 +397,7 @@ async fn test_mixed_resolved_and_dangling() {
     insert_edge(pool, anchor, resolved, "Supports", "agent").await;
     insert_dangling_edge(pool, anchor, 888_888, "Prerequisite").await;
 
-    let view = build_edges_view(&store as &Store, anchor)
+    let view = build_edges_view(&store as &Store, anchor, true)
         .await
         .expect("build");
 
@@ -420,6 +420,87 @@ async fn test_mixed_resolved_and_dangling() {
 }
 
 // ---------------------------------------------------------------------------
+// NG-1 (bugfix-881 / ass-088 F5) — displayed edge-TARGET label resolution
+// ---------------------------------------------------------------------------
+
+/// Deprecate `id`, pointing it at `superseded_by` (its active successor).
+async fn deprecate_toward(pool: &SqlitePool, id: u64, superseded_by: u64) {
+    sqlx::query("UPDATE entries SET status = 1, superseded_by = ?2 WHERE id = ?1")
+        .bind(id as i64)
+        .bind(superseded_by as i64)
+        .execute(pool)
+        .await
+        .expect("deprecate entry");
+}
+
+/// NG-1: a displayed edge whose TARGET is deprecated resolves to the terminal id + title by
+/// default (`resolve_targets = true`). Anchor → X, X superseded by X′ ⇒ the displayed edge
+/// carries X′'s id and title, not X's stale label.
+#[tokio::test]
+async fn test_ng1_deprecated_target_resolves_to_terminal() {
+    let (store, _dir) = open_test_store().await;
+    let pool = store.write_pool_server();
+
+    let anchor = insert_entry_conf(pool, "anchor", 0.5).await;
+    let x = insert_entry_conf(pool, "x-stale", 0.9).await;
+    let x_prime = insert_entry_conf(pool, "x-prime-current", 0.9).await;
+    insert_edge(pool, anchor, x, "Supports", "agent").await;
+    deprecate_toward(pool, x, x_prime).await;
+
+    let view = build_edges_view(&store as &Store, anchor, true)
+        .await
+        .expect("build");
+
+    let edge = view
+        .edges
+        .iter()
+        .find(|e| e.edge_type == "Supports")
+        .expect("Supports edge present");
+    assert_eq!(
+        edge.target_id, x_prime,
+        "deprecated target resolves to its active terminal id"
+    );
+    assert_eq!(
+        edge.target_title.as_deref(),
+        Some("x-prime-current"),
+        "displayed title is the terminal's, not the stale X label"
+    );
+}
+
+/// NG-1 escape hatch: `resolve_targets = false` (follow_supersessions=false) keeps the raw
+/// as-stored target — the audit/lookback surface is preserved.
+#[tokio::test]
+async fn test_ng1_escape_hatch_keeps_raw_target() {
+    let (store, _dir) = open_test_store().await;
+    let pool = store.write_pool_server();
+
+    let anchor = insert_entry_conf(pool, "anchor", 0.5).await;
+    let x = insert_entry_conf(pool, "x-stale", 0.9).await;
+    let x_prime = insert_entry_conf(pool, "x-prime-current", 0.9).await;
+    insert_edge(pool, anchor, x, "Supports", "agent").await;
+    deprecate_toward(pool, x, x_prime).await;
+
+    let view = build_edges_view(&store as &Store, anchor, false)
+        .await
+        .expect("build");
+
+    let edge = view
+        .edges
+        .iter()
+        .find(|e| e.edge_type == "Supports")
+        .expect("Supports edge present");
+    assert_eq!(
+        edge.target_id, x,
+        "escape hatch keeps the raw as-stored deprecated target"
+    );
+    assert_eq!(
+        edge.target_title.as_deref(),
+        Some("x-stale"),
+        "raw target keeps its stored title"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // authored projection (R-05 / FR-17) — carried-forward / context_edge authored
 // ---------------------------------------------------------------------------
 
@@ -437,7 +518,7 @@ async fn test_authored_flag_from_source() {
     insert_edge(pool, anchor, authored_t, "Supports", "agent").await;
     insert_edge(pool, anchor, inferred_t, "Supports", "co_access").await;
 
-    let view = build_edges_view(&store as &Store, anchor)
+    let view = build_edges_view(&store as &Store, anchor, true)
         .await
         .expect("build");
 

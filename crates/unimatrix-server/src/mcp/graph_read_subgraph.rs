@@ -155,7 +155,11 @@ pub(super) async fn handle_subgraph(
         }
     };
 
-    let resolve_supersessions = params.resolve_supersessions.unwrap_or(false);
+    // resolve_supersessions defaults TRUE (bugfix-881, overrides vnc-042 ADR-001 for
+    // context_graph per issue #881): deprecated seeds/neighbors resolve to their active
+    // terminal by default. Explicit `false` remains the raw/audit opt-out. Node-collapse is
+    // expected — multiple deprecated variants resolving to one terminal shrink node/edge counts.
+    let resolve_supersessions = params.resolve_supersessions.unwrap_or(true);
 
     // Step 2: Acquire graph snapshot (lock -> clone -> release) BEFORE any async work.
     // Extract both typed_graph AND use_fallback in the same lock guard (GH #623).
@@ -274,11 +278,19 @@ pub(super) async fn handle_subgraph(
                             neighbor_id
                         };
 
-                        // Dedup edge by canonical stored triple.
+                        // Record the edge with the RESOLVED neighbor endpoint (bugfix-881):
+                        // the neighbor is resolved to its terminal for the node set, so the edge
+                        // must point at the same terminal or the post-BFS dangling filter drops
+                        // it (raw target absent from the resolved node set). Dedup still keys on
+                        // the raw stored triple; when resolve is off, effective_neighbor == raw.
+                        let (rec_src, rec_tgt) = match petgraph_dir {
+                            PetgraphDirection::Outgoing => (edge_src, effective_neighbor),
+                            PetgraphDirection::Incoming => (effective_neighbor, edge_tgt),
+                        };
                         if edge_set.insert(edge_key) {
                             collected_edges.push((
-                                edge_src,
-                                edge_tgt,
+                                rec_src,
+                                rec_tgt,
                                 rel_type_str,
                                 current_depth + 1,
                             ));
@@ -482,9 +494,14 @@ async fn subgraph_via_db(
                         neighbor_id
                     };
 
-                    // Dedup edge by canonical stored triple (R-02).
+                    // Record the edge with the RESOLVED neighbor endpoint (bugfix-881) — see the
+                    // in-memory path for rationale. Dedup still keys on the raw stored triple.
+                    let (rec_src, rec_tgt) = match petgraph_dir {
+                        PetgraphDirection::Outgoing => (edge_src, effective_neighbor),
+                        PetgraphDirection::Incoming => (effective_neighbor, edge_tgt),
+                    };
                     if edge_set.insert(edge_key) {
-                        collected_edges.push((edge_src, edge_tgt, rel_type_str, current_depth + 1));
+                        collected_edges.push((rec_src, rec_tgt, rel_type_str, current_depth + 1));
                     }
 
                     // Enqueue neighbor if not yet visited.

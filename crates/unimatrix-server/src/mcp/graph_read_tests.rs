@@ -394,3 +394,11 @@ mod vnc019;
 
 #[path = "graph_read_tests_vnc020.rs"]
 mod vnc020;
+
+// -----------------------------------------------------------------------
+// bugfix-881: cross-surface supersession-resolution consistency.
+// Declared in a child module to keep this file under 500 lines (500-line rule).
+// -----------------------------------------------------------------------
+
+#[path = "graph_read_cross_surface_tests.rs"]
+mod cross_surface;
