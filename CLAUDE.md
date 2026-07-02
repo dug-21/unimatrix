@@ -53,7 +53,7 @@ Features use `{phase}-{NNN}` naming. Track via **GitHub Issues**; commits refere
 ## Behavioral Rules
 
 - Be concise. Skip preamble, summaries, repetition. Don't narrate tool calls.
-- Don't be verbose. 
+- **No editorializing.** State findings and recommendations directly. Cut praise and evaluative framing ("strong", "excellent", "the best X I've seen", "well-reasoned"). Give rationale only where it changes the decision — one clause, not a paragraph. Don't restate the question or recap what you just did.
 - Do what was asked; nothing more, nothing less.
 - NEVER create files unless necessary. Prefer editing existing files.
 - NEVER proactively create documentation unless explicitly requested.
