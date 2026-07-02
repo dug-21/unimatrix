@@ -2341,6 +2341,21 @@ async fn process_session_close(
         run_retrospective_consumer(store, pending, entry_store, fc_key).await;
     }
     // If session absent (already cleared): no-op (idempotent — AC-03)
+    // #819 (F2): maybe_output.is_none() alone is the complete zero-write predicate
+    // for the closing session — Steps 3/4 (SESSIONS update, SIGNAL_QUEUE write,
+    // consumers) were all skipped. Emit ONE obs-target debug event so this
+    // acked-but-persisted-nothing close is distinguishable from a fully-persisted
+    // one (the #818 blind spot). F1 (ADR #3467 / pattern #4602, GH #381): the
+    // target: "unimatrix_server::obs" is MANDATORY — it keeps this new UDS
+    // observation log point in the operator-togglable obs group. debug! (not
+    // warn!) because this is correct idempotent behavior, not a fault (goal N4).
+    if maybe_output.is_none() {
+        tracing::debug!(
+            target: "unimatrix_server::obs",
+            session_id = %session_id,
+            "UDS: SessionClose acked (204) with zero store writes for the closing session: session absent or already drained"
+        );
+    }
 
     HookResponse::Ack
 }
@@ -3634,6 +3649,90 @@ mod tests {
 
         // col-008: verify session cleared
         assert!(registry.get_state("s1").is_none());
+    }
+
+    /// #819 (a) — negative control: a SessionClose against an EMPTY registry
+    /// (absent/already-drained session) still returns Ack (204 idempotency
+    /// contract unchanged) AND emits the zero-store-writes obs trace so the
+    /// no-op is distinguishable from a fully-persisted close (the #818 blind spot).
+    #[tracing_test::traced_test]
+    #[tokio::test]
+    async fn test_session_close_absent_session_returns_ack_and_emits_zero_write_trace() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        // No register_session — the registry is empty, so drain returns None.
+        let response = dispatch_request(
+            HookRequest::SessionClose {
+                session_id: "absent-819".to_string(),
+                outcome: Some("success".to_string()),
+                duration_secs: 60,
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
+        )
+        .await;
+
+        // Idempotency contract unchanged: still Ack (→ 204).
+        assert!(matches!(response, HookResponse::Ack));
+        // The distinguishing signal: the zero-store-writes obs trace fired.
+        assert!(
+            logs_contain("zero store writes"),
+            "an absent/already-drained SessionClose must emit the zero-store-writes obs trace (#819)"
+        );
+    }
+
+    /// #819 (b) — positive control: a SessionClose for a REAL registered session
+    /// drains and persists, returns Ack, and must NOT emit the zero-store-writes
+    /// trace (maybe_output.is_some()), so the trace does not become noise on
+    /// productive closes.
+    #[tracing_test::traced_test]
+    #[tokio::test]
+    async fn test_session_close_registered_session_returns_ack_without_zero_write_trace() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        // A real, registered session — drain returns Some(output).
+        registry.register_session("real-819", None, None);
+
+        let response = dispatch_request(
+            HookRequest::SessionClose {
+                session_id: "real-819".to_string(),
+                outcome: Some("success".to_string()),
+                duration_secs: 60,
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
+        )
+        .await;
+
+        assert!(matches!(response, HookResponse::Ack));
+        assert!(registry.get_state("real-819").is_none());
+        // A productive close must stay silent on the zero-write obs trace.
+        assert!(
+            !logs_contain("zero store writes"),
+            "a real drained SessionClose must NOT emit the zero-store-writes obs trace (#819)"
+        );
     }
 
     #[tokio::test]
@@ -7257,10 +7356,20 @@ mod tests {
     fn test_looks_like_feature_id_distinguishes_fragments() {
         // Legitimate feature-IDs (the #3382/#198/#588 extractions that MUST survive).
         for id in ["shd-001", "vnc-038", "bugfix-342", "col-024", "ass-007"] {
-            assert!(looks_like_feature_id(id), "{id} should look like a feature-ID");
+            assert!(
+                looks_like_feature_id(id),
+                "{id} should look like a feature-ID"
+            );
         }
         // Command fragments from the field data (must NOT pollute the cycle-join column).
-        for frag in ["apt-get", "ls-files", "syntax-check", "Re-add", "git", "install"] {
+        for frag in [
+            "apt-get",
+            "ls-files",
+            "syntax-check",
+            "Re-add",
+            "git",
+            "install",
+        ] {
             assert!(
                 !looks_like_feature_id(frag),
                 "{frag} must NOT look like a feature-ID"
