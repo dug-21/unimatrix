@@ -22,6 +22,7 @@ from harness.assertions import (
 from harness.generators import make_entries, make_correction_chain
 from harness.client import UnimatrixClient
 from harness.conftest import get_binary_path
+from harness.hook_client import UnimatrixHookClient
 
 
 @pytest.mark.smoke
@@ -4654,3 +4655,137 @@ def test_get_deadend_returns_requested_id_loud_flag(admin_server):
     assert entry["resolution"]["requested_id"] == id_a
     text = get_result_text(server.context_get(id_a))
     assert "⚠" in text and "no active successor" in text
+
+
+# ===========================================================================
+# GH#819 — observe store-row-count delta (the automated blind spot Gate 7 lacked)
+# ===========================================================================
+#
+# #818 hid "for the gate's whole lifetime" because the observe smoke only asserted
+# `status == 204`: a 204/Ack is byte-identical whether an observe PERSISTED its
+# write or silently DROPPED it. This closes that gap by asserting the STORE
+# ROW-COUNT DELTA of the `observations` table across the live hook/observe path
+# (the exact `uds/listener.rs process_session_close` path #818/#819 name):
+#   * a genuine persisting observe MUST increment rows (drop => this FAILS), and
+#   * the idempotent no-op SessionClose for an absent session MUST add ZERO rows
+#     while still Ack'ing (the correct-but-unobservable 204 path).
+#
+# Uses the live `daemon_server` (real UDS + hook sockets) + `UnimatrixHookClient`
+# — the only substrate that exercises the observe path (the stdio `server` fixture
+# opens no hook socket). Store writes are fire-and-forget (spawn_blocking /
+# tokio::spawn), so counts are settle-polled, never read once synchronously.
+
+_OBS_SETTLE_DEADLINE_S = 10.0
+_OBS_SETTLE_POLL_S = 0.25
+_OBS_NOOP_SETTLE_S = 3.0
+
+
+def _observation_row_count(store_dir):
+    """COUNT(*) of the daemon's `observations` table in the per-slug store dir.
+
+    A fresh sqlite3 reader sees WAL-committed rows (unlike a raw db-file size read,
+    which under-counts before checkpoint — #5265), so COUNT(*) is exact for
+    committed writes; the settle-poll below handles WHEN the write commits.
+    """
+    import sqlite3
+    from pathlib import Path
+
+    db = Path(store_dir) / "unimatrix.db"
+    if not db.is_file():
+        return 0
+    conn = sqlite3.connect(str(db))
+    try:
+        return conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _wait_for_row_count(store_dir, target, deadline_s=_OBS_SETTLE_DEADLINE_S):
+    """Poll until the observations row count reaches `target` (fire-and-forget
+    writes settle), or the deadline expires. Returns the final observed count."""
+    start = time.monotonic()
+    count = _observation_row_count(store_dir)
+    while count < target and time.monotonic() - start <= deadline_s:
+        time.sleep(_OBS_SETTLE_POLL_S)
+        count = _observation_row_count(store_dir)
+    return count
+
+
+def _hook_ok(resp, label):
+    """A hook frame the daemon rejected returns type='Error' WITHOUT raising —
+    assert it Ack'd (the 204-equivalent), else the observe recorded nothing."""
+    raw = getattr(resp, "raw", {}) or {}
+    assert raw.get("type") != "Error", (
+        f"{label} rejected by hook daemon (expected Ack/204-equivalent): {raw}"
+    )
+    return resp
+
+
+@pytest.mark.smoke
+@pytest.mark.integration
+def test_observe_row_count_delta_persist_vs_noop_close(daemon_server):
+    """GH#819: assert the observe STORE ROW-COUNT DELTA, not just its 204/Ack.
+
+    This is the assertion Gate 7 lacked (it only checked ``status == 204``). It
+    distinguishes "accepted and persisted" from "accepted and dropped" and FAILS
+    if a future regression makes a persisting observe silently drop its write —
+    i.e. it would have caught #818.
+    """
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+
+    baseline = _observation_row_count(store_dir)
+
+    # --- No-op path: SessionClose for a NEVER-registered session ---------------
+    # Correct idempotent behavior (drain returns None): the daemon Acks — the 204
+    # equivalent — but persists nothing. The #818 blind spot is that this Ack is
+    # byte-identical to a persisting close.
+    ghost_sid = "gh819-ghost-never-registered-session"
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(
+            h.session_close(ghost_sid, outcome="completed", duration_secs=0),
+            "no-op SessionClose(absent session)",
+        )
+    # Give a would-be write the SAME fire-and-forget window a real write gets,
+    # then assert ZERO store delta despite the Ack.
+    time.sleep(_OBS_NOOP_SETTLE_S)
+    after_noop = _observation_row_count(store_dir)
+    assert after_noop == baseline, (
+        f"no-op SessionClose for an absent session added {after_noop - baseline} "
+        f"store row(s); expected ZERO delta (it Ack'd but must persist nothing)"
+    )
+
+    # --- Persisting path: register -> real observe -> close --------------------
+    # A single PostToolUse observe lands exactly one `observations` row (RecordEvent
+    # always attempts insert_observation). SessionRegister/SessionClose touch the
+    # session registry / signal queue, NOT `observations`, so the expected delta is
+    # exactly +1 — deterministic on the isolated per-test daemon.
+    real_sid = "gh819-real-persisting-session"
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(
+            h.session_register(real_sid, agent_role="tester", feature="bugfix-819"),
+            "SessionRegister",
+        )
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(
+            h.record_post_tool_use(
+                real_sid,
+                "Bash",
+                response_size=42,
+                response_snippet="gh819 persisting observe payload",
+            ),
+            "PostToolUse observe",
+        )
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(
+            h.session_close(real_sid, outcome="completed", duration_secs=1),
+            "SessionClose(live session)",
+        )
+
+    # Fire-and-forget write settles; poll for the +1 row rather than assuming sync.
+    final = _wait_for_row_count(store_dir, after_noop + 1)
+    assert final == after_noop + 1, (
+        f"persisting observe produced a store row-count delta of {final - after_noop} "
+        f"(expected +1) — a persisting observe silently dropped its write. This is "
+        f"the #818-class regression a `status == 204` assertion cannot see."
+    )
