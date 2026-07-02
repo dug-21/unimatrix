@@ -44,11 +44,15 @@ use crate::uds::hook::MAX_GOAL_BYTES;
 // pub(super) so the sibling test module can reference it via use super::REDIRECT_CEILING.
 pub(super) const REDIRECT_CEILING: usize = 50;
 
-/// Tool description for context_graph (vnc-018, vnc-019, vnc-020).
+/// Tool description for context_get (vnc-042).
 ///
-/// Exposed as `pub(crate)` so sibling test modules can assert on disclosure text
-/// without re-embedding the string (AC-13, R-11 vnc-019 test plan; AC-19, R-01 vnc-020).
-/// Must match the `#[tool(description = "...")]` attribute literal on `context_graph`.
+/// Exposed as `pub(crate)` so sibling test modules can assert on the description text
+/// without re-embedding the string (FR-13, R-09 proxy).
+/// Must stay byte-identical to the `#[tool(description = "...")]` attribute literal on
+/// `context_get`; that invariant is enforced by the byte-equality guard test
+/// `test_get_tool_attr_description_matches_const` (the #[tool] macro cannot consume a
+/// const in `description =`, so the guard is the only enforced link between the two
+/// literals — the substring test alone cannot detect drift).
 // rationale: the #[tool] macro requires an inline string literal, so this single-source
 // constant is asserted against only by sibling test modules.
 ///
@@ -6037,8 +6041,12 @@ mod tests {
         // handler must contain the exact staleness documentation text mandated by
         // ARCHITECTURE.md and ADR-005.
         //
-        // Uses CONTEXT_GRAPH_DESCRIPTION directly — the single source of truth — so this
-        // test always reflects the live constant rather than a stale inline copy.
+        // Asserts substrings against the CONTEXT_GRAPH_DESCRIPTION mirror const to guard the
+        // SEMANTIC content of the description. NOTE: this const is NOT the single source of
+        // truth — the live client-facing description is a separate `#[tool(description = "...")]`
+        // literal on the handler (rmcp 1.7.0 cannot consume a const there). Byte-equality
+        // between the two literals is enforced by test_graph_tool_attr_description_matches_const;
+        // this substring test alone cannot detect drift in the live literal (#869).
         //
         // vnc-019: Extended to assert AC-13 subgraph disclosure facts.
         // vnc-020: Updated from "four modes" to "seven modes".
@@ -6103,6 +6111,23 @@ mod tests {
         assert!(
             description.contains("seven modes"),
             "description opening must say seven modes (vnc-020 added inverse, filter, path)"
+        );
+    }
+
+    #[test]
+    fn test_graph_tool_attr_description_matches_const() {
+        // #869: identical twin of context_get. The live `#[tool(description = "...")]` literal
+        // on the context_graph handler and the CONTEXT_GRAPH_DESCRIPTION mirror const are two
+        // independent literals; rmcp 1.7.0 cannot single-source the const into the attribute.
+        // This guard makes the byte-equality invariant CI-enforced by comparing the LIVE
+        // macro-generated description (what MCP clients receive) against the mirror const the
+        // substring test asserts on. A single-byte divergence now fails here.
+        assert_eq!(
+            UnimatrixServer::context_graph_tool_attr()
+                .description
+                .as_deref(),
+            Some(CONTEXT_GRAPH_DESCRIPTION),
+            "live context_graph tool-attr description must be byte-identical to CONTEXT_GRAPH_DESCRIPTION"
         );
     }
 
@@ -12437,8 +12462,8 @@ mod carry_forward_loop_tests {
 #[cfg(test)]
 mod get_resolution_tests {
     use super::{
-        CONTEXT_GET_DESCRIPTION, GetParams, PreNote, ResolutionNote, finalize_note,
-        resolve_effective_id,
+        CONTEXT_GET_DESCRIPTION, GetParams, PreNote, ResolutionNote, UnimatrixServer,
+        finalize_note, resolve_effective_id,
     };
     use std::sync::Arc;
     use unimatrix_core::Store;
@@ -12744,6 +12769,23 @@ mod get_resolution_tests {
         assert!(
             d.contains("current") && d.contains("as stored"),
             "must contrast current-resolution vs as-stored"
+        );
+    }
+
+    #[test]
+    fn test_get_tool_attr_description_matches_const() {
+        // #869: The client-facing `context_get` tool description exists as TWO independent
+        // literals — the live `#[tool(description = "...")]` attribute (macro-generated into
+        // `context_get_tool_attr()`) and the `CONTEXT_GET_DESCRIPTION` mirror const. The
+        // rmcp 1.7.0 `#[tool]` macro accepts only a string literal in `description =`, so the
+        // const cannot be single-sourced into the attribute. This guard makes the byte-equality
+        // invariant compiler/CI-enforced: it compares the LIVE macro-generated description
+        // (what MCP clients actually receive) against the mirror const the substring test asserts
+        // on. A single-byte divergence between the two now fails here.
+        assert_eq!(
+            UnimatrixServer::context_get_tool_attr().description.as_deref(),
+            Some(CONTEXT_GET_DESCRIPTION),
+            "live context_get tool-attr description must be byte-identical to CONTEXT_GET_DESCRIPTION"
         );
     }
 }
