@@ -2,6 +2,25 @@
 members = ["crates/*"]
 resolver = "3"
 
+# Build-profile tuning for the full-workspace link (#878).
+# The linker (BFD `ld`) OOM-killed (SIGKILL) at the `cargo test --workspace` link
+# step: cumulative N-parallel-link RSS summed past the memory ceiling. `debug = 2`
+# (the default) produced 350-477 MB test binaries; peak `ld` RSS was ~1,842 MB per
+# heavy server integration link, and up to `-j nproc` such links overlap.
+#
+# Two independent levers reduce per-link `ld` RSS (release profile is UNTOUCHED —
+# the shipped `--release` binary is unchanged):
+#   - debug = "line-tables-only": keeps file:line panic backtraces (what CI/agents
+#     read); drops variable-level DWARF. Cuts debug-info volume.
+#   - split-debuginfo = "unpacked": keeps DWARF in .o/.dwo files instead of relocating
+#     it into the linked image — attacks `ld` RSS most directly, at full fidelity.
+# Set on [profile.dev] (NOT [profile.test]): `cargo test` builds its dependency graph
+# under `dev`, and `test` inherits `dev`, so this one stanza covers the fat dep objects
+# that a [profile.test]-only override would miss.
+[profile.dev]
+debug = "line-tables-only"
+split-debuginfo = "unpacked"
+
 [workspace.package]
 version = "0.8.9"
 edition = "2024"

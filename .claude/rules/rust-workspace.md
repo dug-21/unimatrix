@@ -22,7 +22,29 @@ log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout "${CARGO_TEST_TIMEOUT_
 
 # Clippy: first warnings only
 cargo clippy --workspace -- -D warnings 2>&1 | head -30
+
+# Full-workspace LINK smoke (#878 regression guard) — run for any Rust change / pre-PR gate.
+# Links every workspace test binary (--no-run) at the configured `jobs` cap; NO test run.
+# Exit 0 = link holds; 1 = link failed (an OOM signature = the #878 link-step OOM is BACK —
+# do NOT salvage with `--lib` or `-j1`; re-derive [profile.dev] debug + .cargo jobs cap);
+# 3 = self-skipped (no cargo). `--lib` salvage skips integration links and masked #878 thrice.
+bash product/test/infra-002/check-workspace-link-smoke.sh
 ```
+
+## Build-memory guardrails (#878)
+
+`cargo test --workspace` OOM-killed `ld` at the LINK step: cumulative N-parallel-link RSS
+summed past the memory ceiling (swap exhausted). Two config-only levers keep it off the wall
+(release profile UNTOUCHED — the shipped `--release` binary is unchanged):
+
+- Root `Cargo.toml` `[profile.dev]`: `debug = "line-tables-only"` (keeps file:line panic
+  backtraces, drops variable DWARF) + `split-debuginfo = "unpacked"` (keeps DWARF out of the
+  linker's relocation path). Set on `dev`, not `test` — `cargo test` builds deps under `dev`.
+- `.cargo/config.toml` `[build] jobs`: an empirically-derived cap bounding concurrent-link
+  RSS. Default `-j nproc` still OOMs post-profile (measured); the cap is what delivers safety.
+
+Do NOT restore `debug = 2` on dev, remove `split-debuginfo`, or raise `jobs` toward `nproc`
+without re-measuring peak `ld` RSS. The link smoke above trips if any of these regress.
 
 ## Hardened cargo test convention (canonical — copy byte-identical)
 

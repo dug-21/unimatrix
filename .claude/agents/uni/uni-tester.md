@@ -101,11 +101,12 @@ test-plan/
 ### What You Do
 
 1. Execute unit tests via the hardened convention (see "Cargo Output Truncation" below): `log="$(mktemp -t uni-test.XXXXXX.log)"; setsid -w timeout "${CARGO_TEST_TIMEOUT_SECS:-600}" cargo test --workspace > "$log" 2>&1; rc=$?; tail -30 "$log"; rm -f "$log"; exit $rc`
-2. Execute integration smoke tests (MANDATORY gate): `cd product/test/infra-001 && python -m pytest suites/ -v -m smoke --timeout=60`
-3. Execute relevant integration suites based on what the feature touches (see suite selection table below)
-4. Execute feature-level tests mapped to the Risk Strategy
-5. Verify every identified risk has test coverage
-6. Triage any integration test failures per the failure triage rules below
+2. Execute the full-workspace LINK smoke (#878 regression guard — MANDATORY for any Rust change): `bash product/test/infra-002/check-workspace-link-smoke.sh` — links all workspace test binaries at the configured parallelism, no test execution. Exit 0 = link holds; 1 = link failed (OOM signature reported = the #878 link-OOM is back — do NOT salvage with `--lib`/`-j1`, re-derive the profile/jobs settings); 3 = self-skipped (no cargo). This exists because `--lib` salvage SKIPS integration links and hid #878 three times.
+3. Execute integration smoke tests (MANDATORY gate): `cd product/test/infra-001 && python -m pytest suites/ -v -m smoke --timeout=60`
+4. Execute relevant integration suites based on what the feature touches (see suite selection table below)
+5. Execute feature-level tests mapped to the Risk Strategy
+6. Verify every identified risk has test coverage
+7. Triage any integration test failures per the failure triage rules below
 
 ### What You Produce
 
