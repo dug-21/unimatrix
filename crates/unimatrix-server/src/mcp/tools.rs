@@ -40,9 +40,20 @@ use crate::uds::hook::MAX_GOAL_BYTES;
 
 /// Maximum incoming edges to auto-redirect per context_correct call (SR-01 ceiling).
 /// Entries with more than this many incoming edges emit tracing::warn! and redirect
-/// only the first REDIRECT_CEILING rows. See ADR-004 vnc-017.
+/// only the first REDIRECT_CEILING rows. See ADR-004 vnc-017 (amended for #882).
+///
+/// Sized for personal-cloud fan-in. The original N=50 (ADR-004) was set when the max
+/// observed in-degree was single-digit; the corpus has since grown to an observed max
+/// of 110 (ass-087), so 50 truncated real corrections — and truncated inbound edges are
+/// later hard-deleted by orphaned-edge compaction, causing silent link loss (#882).
+/// 500 restores order-of-magnitude headroom over the observed max while keeping the
+/// ceiling as a bounded write-latency guard on the synchronous correction path
+/// (~1 s worst case per correction, a rare heavyweight op). The fail-loud warn! +
+/// truncation response text below still catch any future over-500 fan-in. Enterprise
+/// scale is deferred to an amortized async convergence tick (#870), not a larger
+/// synchronous knob or a config-backed value — the ceiling stays a plain `const`.
 // pub(super) so the sibling test module can reference it via use super::REDIRECT_CEILING.
-pub(super) const REDIRECT_CEILING: usize = 50;
+pub(super) const REDIRECT_CEILING: usize = 500;
 
 /// Tool description for context_get (vnc-042).
 ///
@@ -11533,16 +11544,21 @@ mod redirect_loop_tests {
         );
     }
 
-    // ---- R-05: Fan-in ceiling (55 edges → truncate at 50) ----
+    // ---- R-05: Fan-in ceiling (REDIRECT_CEILING + 5 edges → truncate at ceiling) ----
 
-    /// R-05: When 55 incoming edges exist, exactly 50 are redirected; 5 remain at original.
+    /// R-05: When `REDIRECT_CEILING + 5` incoming edges exist, exactly `REDIRECT_CEILING`
+    /// are redirected and 5 remain at original. Asserted symbolically against the constant
+    /// so it survives any resize of `REDIRECT_CEILING` without re-pinning to a literal.
     #[tokio::test]
-    async fn test_redirect_loop_ceiling_truncates_at_50_and_warns() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let (store, original_id) = open_store_and_insert_active(&dir, "r05-55").await;
+    async fn test_redirect_loop_ceiling_truncates_and_warns() {
+        const OVERFLOW: u64 = 5;
+        let total: u64 = REDIRECT_CEILING as u64 + OVERFLOW;
 
-        // Insert 55 source entries (all Active) and edges to original.
-        for i in 0u64..55 {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "r05-over").await;
+
+        // Insert `REDIRECT_CEILING + OVERFLOW` source entries (all Active) and edges to original.
+        for i in 0u64..total {
             let src_id = store
                 .insert(
                     unimatrix_store::test_helpers::TestEntry::new(
@@ -11563,15 +11579,21 @@ mod redirect_loop_tests {
             .await
             .expect("expected Some(RedirectSummary)");
         assert_eq!(
-            rs.found, 50,
-            "found must equal REDIRECT_CEILING (50 after cap)"
+            rs.found, REDIRECT_CEILING,
+            "found must equal REDIRECT_CEILING after cap"
         );
-        assert_eq!(rs.redirected, 50, "exactly 50 edges must be redirected");
+        assert_eq!(
+            rs.redirected, REDIRECT_CEILING,
+            "exactly REDIRECT_CEILING edges must be redirected"
+        );
         assert_eq!(rs.failed, 0);
         assert!(rs.truncated, "truncated must be true");
-        assert_eq!(rs.total_raw, 55, "total_raw must be 55 (pre-cap count)");
+        assert_eq!(
+            rs.total_raw, total as usize,
+            "total_raw must be REDIRECT_CEILING + OVERFLOW (pre-cap count)"
+        );
 
-        // Exactly 50 edges at new_id; 5 edges still at original_id.
+        // Exactly REDIRECT_CEILING edges at new_id; OVERFLOW edges still at original_id.
         let redirected_count = sqlx::query_scalar::<_, i64>(
             "SELECT COUNT(*) FROM graph_edges WHERE target_id = ?1 AND relation_type != 'Supersedes'",
         )
@@ -11580,26 +11602,27 @@ mod redirect_loop_tests {
         .await
         .expect("count redirected");
         assert_eq!(
-            redirected_count, 50,
-            "exactly 50 edges must point at new_id"
+            redirected_count, REDIRECT_CEILING as i64,
+            "exactly REDIRECT_CEILING edges must point at new_id"
         );
 
         let remaining_count = count_non_supersedes_incoming(&store, original_id).await;
         assert_eq!(
-            remaining_count, 5,
-            "exactly 5 edges must remain at original_id"
+            remaining_count, OVERFLOW as usize,
+            "exactly OVERFLOW edges must remain at original_id"
         );
     }
 
-    // ---- R-05 variant: Exactly 50 edges — no truncation ----
+    // ---- R-05 variant: Exactly REDIRECT_CEILING edges — no truncation ----
 
-    /// R-05 variant: Exactly 50 incoming edges → all redirected, no truncation warn.
+    /// R-05 variant: Exactly `REDIRECT_CEILING` incoming edges → all redirected, no truncation.
+    /// Asserted symbolically against the constant (no hardcoded boundary literal).
     #[tokio::test]
     async fn test_redirect_loop_exactly_at_ceiling_no_truncation() {
         let dir = tempfile::TempDir::new().expect("tempdir");
-        let (store, original_id) = open_store_and_insert_active(&dir, "r05-50").await;
+        let (store, original_id) = open_store_and_insert_active(&dir, "r05-exact").await;
 
-        for i in 0u64..50 {
+        for i in 0u64..REDIRECT_CEILING as u64 {
             let src_id = store
                 .insert(
                     unimatrix_store::test_helpers::TestEntry::new(
@@ -11619,13 +11642,13 @@ mod redirect_loop_tests {
         let rs = run_redirect_loop(&store, original_id, new_id)
             .await
             .expect("expected Some(RedirectSummary)");
-        assert_eq!(rs.found, 50);
-        assert_eq!(rs.redirected, 50);
+        assert_eq!(rs.found, REDIRECT_CEILING);
+        assert_eq!(rs.redirected, REDIRECT_CEILING);
         assert!(
             !rs.truncated,
-            "truncated must be false for exactly 50 edges"
+            "truncated must be false for exactly REDIRECT_CEILING edges"
         );
-        assert_eq!(rs.total_raw, 50);
+        assert_eq!(rs.total_raw, REDIRECT_CEILING);
 
         let remaining = count_non_supersedes_incoming(&store, original_id).await;
         assert_eq!(remaining, 0, "no edges must remain at original_id");
@@ -11680,12 +11703,75 @@ mod redirect_loop_tests {
 
     // ---- R-01 / AC-03: Structural — new_entry_id is always the direct target ----
 
-    /// R-01 / AC-03: Structural test confirming REDIRECT_CEILING constant value.
+    /// Observed corpus max in-degree (ass-087 snapshot, #882). The ceiling must clear this
+    /// so real corrections redirect completely instead of truncating into silent link loss.
+    const OBSERVED_CORPUS_MAX_IN_DEGREE: usize = 110;
+
+    /// Structural: REDIRECT_CEILING must exceed the observed corpus max in-degree so that
+    /// real-world fan-in does not truncate (which composes with orphaned-edge compaction into
+    /// silent link loss — #882). Asserted as an invariant against the observed max rather than
+    /// a hardcoded ceiling literal, so it neither breaks on a resize nor silently re-pins to 500.
     #[test]
-    fn test_redirect_ceiling_constant_is_50() {
+    fn test_redirect_ceiling_exceeds_observed_corpus_max() {
+        const {
+            assert!(
+                REDIRECT_CEILING > OBSERVED_CORPUS_MAX_IN_DEGREE,
+                "REDIRECT_CEILING must exceed the observed corpus max in-degree so real \
+                 corrections do not truncate (ADR-004 amended, #882)"
+            );
+        }
+    }
+
+    /// #882 regression: correcting a node whose inbound in-degree equals the observed corpus
+    /// max (110) must redirect every referrer with `truncated == false`. This is the case the
+    /// original ceiling (50) truncated — leaving edges 51+ on the Deprecated original for
+    /// orphaned-edge compaction to hard-delete (silent link loss). Guards against re-outgrowing.
+    #[tokio::test]
+    async fn test_redirect_loop_corpus_max_in_degree_no_truncation() {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let (store, original_id) = open_store_and_insert_active(&dir, "corpus-max").await;
+
+        let in_degree = OBSERVED_CORPUS_MAX_IN_DEGREE as u64;
+        for i in 0u64..in_degree {
+            let src_id = store
+                .insert(
+                    unimatrix_store::test_helpers::TestEntry::new(
+                        &format!("corpus-src-{i}"),
+                        "decision",
+                    )
+                    .build(),
+                )
+                .await
+                .expect("insert source");
+            insert_edge_at(&store, src_id, original_id, "Prerequisite", 1000 + i).await;
+        }
+
+        let (_, new_entry) = do_correct_entry(&store, original_id, "corrected").await;
+        let new_id = new_entry.id;
+
+        let rs = run_redirect_loop(&store, original_id, new_id)
+            .await
+            .expect("expected Some(RedirectSummary)");
+        assert!(
+            !rs.truncated,
+            "corpus-max in-degree ({OBSERVED_CORPUS_MAX_IN_DEGREE}) must not truncate"
+        );
         assert_eq!(
-            REDIRECT_CEILING, 50,
-            "REDIRECT_CEILING must equal 50 (ADR-004)"
+            rs.found, OBSERVED_CORPUS_MAX_IN_DEGREE,
+            "all inbound referrers must be found (none capped)"
+        );
+        assert_eq!(
+            rs.redirected, OBSERVED_CORPUS_MAX_IN_DEGREE,
+            "every inbound referrer must be redirected"
+        );
+        assert_eq!(rs.failed, 0);
+        assert_eq!(rs.total_raw, OBSERVED_CORPUS_MAX_IN_DEGREE);
+
+        // No edge may remain on the Deprecated original.
+        let remaining = count_non_supersedes_incoming(&store, original_id).await;
+        assert_eq!(
+            remaining, 0,
+            "no inbound edge may remain on the Deprecated original (#882)"
         );
     }
 
