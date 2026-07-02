@@ -8,6 +8,18 @@
 # Override via environment variables for other setups:
 #   export ORT_LIB_LOCATION=/path/to/ort
 #   export ORT_PREFER_DYNAMIC_LINK=1
+# Bound concurrent-link RSS to keep the full-workspace build off the memory ceiling (#878).
+# The BFD `ld` OOM-killed at the `cargo test --workspace` link step: N-parallel-link RSS
+# summed past available RAM (swap exhausted). After the [profile.dev] debug-info reduction
+# in root Cargo.toml, measured peak `ld` RSS is ~1112 MB per heavy server-integration link
+# (was ~1842 MB). Empirically at default -j=nproc(10) min MemAvailable bottomed at ~1134 MB;
+# at jobs=7 it was ~1652 MB (under the 20% headroom line); at jobs=6 it was ~2463 MB — the
+# highest cap that holds comfortable margin (swap=0). jobs=6 keeps 6-way compile parallelism
+# on a 10-core box; local/agent/devcontainer only (GH CI is JS-client-only). Override for a
+# faster build on a larger box via `cargo --jobs N` or CARGO_BUILD_JOBS.
+[build]
+jobs = 6
+
 [env]
 ORT_LIB_LOCATION = { value = "/usr/local/lib", force = false }
 ORT_PREFER_DYNAMIC_LINK = { value = "1", force = false }

@@ -55,3 +55,57 @@ Exit codes: `0` clean, `1` violation(s) found, `2` usage/self-test failure.
 
 Tier A only. Tier B (hook-based reaping in `unimatrix-observe`) and Tier C (per-crate
 routine testing default) are deferred to follow-up issues — see #122 discussion.
+
+---
+
+# infra-002 full-workspace LINK smoke — regression guard for bug #878 (link-step OOM)
+
+Bug #878: `cargo test --workspace` OOM-killed `ld` at the **link** step — cumulative
+N-parallel-link RSS summed past the memory ceiling (swap exhausted). It was salvaged three
+times without exercising the real thing: `-j1` (#750), then `--lib` (#873/#877, which
+**skips integration-test links entirely**), then the #878 fix. Nothing exercised the
+full-workspace link, so a re-regression stayed invisible until a human ran the full suite.
+
+The #878 fix is config-only: `[profile.dev]` debug-info reduction in root `Cargo.toml`
+(`debug = "line-tables-only"` + `split-debuginfo = "unpacked"`) plus an empirically-derived
+`[build] jobs` cap in `.cargo/config.toml`.
+
+`check-workspace-link-smoke.sh` runs `cargo test --workspace --no-run` (link only, no test
+execution) at the repo's **configured parallelism** and FAILS if the link does not complete,
+distinguishing an OOM (the #878 mode) from an ordinary compile/link error.
+
+It ALSO runs a cheap, environment-independent **profile-presence assertion** first: root
+`Cargo.toml`'s `[profile.dev]` must carry BOTH `debug = "line-tables-only"` AND
+`split-debuginfo = "unpacked"` (section-scoped — the keys in another table such as
+`[profile.release]` do not count; tolerant of whitespace and quote style; no TOML parser).
+This is needed because the link-based removal detection is **memory-ceiling-dependent** — on
+a higher-RAM box, dropping `[profile.dev]` could still link clean and leave the guard falsely
+GREEN. The grep-assert makes stanza detection hold regardless of RAM and reports as a distinct
+`profile-presence` failure, legibly separate from a link OOM.
+
+**Failure modes (all exit 1):** `profile-presence` — required `[profile.dev]` lever(s)
+missing; linker `OOM` — the #878 link-step OOM is back; ordinary compile/link error — a
+non-OOM build break unrelated to #878.
+
+**Why the configured `jobs` cap and not default `-j nproc`:** MEASURED post-fix, peak `ld`
+RSS is ~1112 MB per heavy server link and default `-j nproc(10)` STILL OOMs (≈11 GB demand
+vs ~9.4 GB avail, swap=0). Safety comes from the jobs cap, not from making 10-way links fit,
+so a default-`-j` smoke is guaranteed-RED and un-gateable. It is also **not** `-j1` (a single
+link always fits and would neuter the guard). At the cap it sums the real operational load
+(e.g. 6 × 1112 ≈ 6.7 GB), and still TRIPS when (a) cumulative growth pushes cap × per-link
+past the ceiling, or (b) the `[profile.dev]` levers are removed (per-link reverts to
+~1842 MB → cap × 1842 ≈ 11 GB → OOM). So it also guards the fix's *presence* without a
+separate profile-presence assertion, and gates unsafe `jobs`-cap raises.
+
+## Run
+
+```bash
+# link-only smoke at configured parallelism (pre-PR / Rust protocol test gate)
+bash product/test/infra-002/check-workspace-link-smoke.sh
+
+# prove the OOM-detection logic without provoking a real OOM
+bash product/test/infra-002/check-workspace-link-smoke.sh --self-test
+```
+
+Exit codes: `0` link holds · `1` link failed (OOM or other) · `2` usage/self-test failure ·
+`3` self-skipped (no cargo). Tunable: `LINK_SMOKE_TIMEOUT_SECS` (default 1200).
