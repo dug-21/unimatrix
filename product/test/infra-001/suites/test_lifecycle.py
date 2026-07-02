@@ -4789,3 +4789,163 @@ def test_observe_row_count_delta_persist_vs_noop_close(daemon_server):
         f"(expected +1) — a persisting observe silently dropped its write. This is "
         f"the #818-class regression a `status == 204` assertion cannot see."
     )
+
+
+# ---------------------------------------------------------------------------
+# GH#819 EXACT-PATH coverage: the tables the ghost SessionClose actually skips.
+# ---------------------------------------------------------------------------
+#
+# The observations-delta test above is a valid #819-spirit guard, but it is
+# ADJACENT to #818's exact escape path: #818's dropped write was the
+# `Stop -> SessionClose` drain on a never-registered/ghost session, where
+# `drain_and_signal_session` returns None and the SKIPPED writes are
+# `store.update_session()` on the SESSIONS table (listener.rs:2310, flips
+# ended_at/outcome/status) and `write_signals_to_queue()` on SIGNAL_QUEUE
+# (listener.rs:2334). SessionClose never touches `observations`, so an
+# observations-delta assertion is near-tautological for the ghost half. This
+# sibling measures the tables SessionClose actually writes.
+
+
+def _session_close_fields(store_dir, session_id):
+    """Return (status, ended_at, outcome) for a session row, or None if absent.
+
+    ended_at/outcome are the columns `store.update_session()` flips on a real
+    drain (NULL at register -> set at close); a fresh sqlite3 reader sees the
+    WAL-committed values exactly.
+    """
+    import sqlite3
+    from pathlib import Path
+
+    db = Path(store_dir) / "unimatrix.db"
+    if not db.is_file():
+        return None
+    conn = sqlite3.connect(str(db))
+    try:
+        return conn.execute(
+            "SELECT status, ended_at, outcome FROM sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def _table_row_count(store_dir, table):
+    """COUNT(*) of a store table (WAL-exact via a fresh reader); 0 if db absent."""
+    import sqlite3
+    from pathlib import Path
+
+    db = Path(store_dir) / "unimatrix.db"
+    if not db.is_file():
+        return 0
+    conn = sqlite3.connect(str(db))
+    try:
+        return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _wait_for_session_ended(store_dir, session_id, deadline_s=_OBS_SETTLE_DEADLINE_S):
+    """Poll until the session row's ended_at is set (the drain's SESSIONS flush is
+    fire-and-forget: tokio::spawn at listener.rs:2310). Returns the final row."""
+    start = time.monotonic()
+    row = _session_close_fields(store_dir, session_id)
+    while (row is None or row[1] is None) and time.monotonic() - start <= deadline_s:
+        time.sleep(_OBS_SETTLE_POLL_S)
+        row = _session_close_fields(store_dir, session_id)
+    return row
+
+
+@pytest.mark.smoke
+@pytest.mark.integration
+def test_session_close_drain_persists_sessions_row_but_ghost_close_is_zero_delta(
+    daemon_server,
+):
+    """GH#819 / #818 EXACT PATH: assert the SESSIONS + SIGNAL_QUEUE deltas of a
+    SessionClose drain — the tables #818's silently-dropped `Stop -> SessionClose`
+    write actually touches (NOT observations).
+
+    POSITIVE regression caught: if a future change makes a REGISTERED SessionClose
+    drain flush silently no-op (e.g. `drain_and_signal_session` erroneously returns
+    None, or the `store.update_session()` spawn at listener.rs:2310 is dropped), the
+    session's ended_at/outcome never flip from NULL -> this test goes RED. That is
+    the exact #818 class (an acked-but-persisted-nothing close on a session that
+    SHOULD have drained).
+
+    NEGATIVE regression caught: if a future change makes the ghost/absent-session
+    close spuriously persist (drain returns Some for an unregistered session, or a
+    SIGNAL_QUEUE row is written on the no-op branch), the SESSIONS/SIGNAL_QUEUE
+    row-count delta becomes > 0 -> this test goes RED.
+
+    Non-tautology: the POSITIVE reads ended_at BOTH before the close (asserting it
+    is NULL — proving SessionRegister alone did NOT flip it) and after (asserting it
+    flipped). A structurally always-true read would fail the before-NULL assertion.
+    """
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+
+    sessions_before = _table_row_count(store_dir, "sessions")
+    signals_before = _table_row_count(store_dir, "signal_queue")
+
+    # --- NEGATIVE: SessionClose for a NEVER-registered ghost session -----------
+    # The #818 path: drain returns None -> SESSIONS update + SIGNAL_QUEUE write are
+    # both skipped, yet the daemon Acks (the 204 equivalent).
+    ghost_sid = "gh819-ghost-close-sessions-signalqueue"
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(
+            h.session_close(ghost_sid, outcome="completed", duration_secs=0),
+            "ghost SessionClose (never registered)",
+        )
+    # Give a would-be write the same fire-and-forget settle window a real drain gets.
+    time.sleep(_OBS_NOOP_SETTLE_S)
+    assert _session_close_fields(store_dir, ghost_sid) is None, (
+        "ghost SessionClose created a SESSIONS row for a never-registered session; "
+        "expected ZERO SESSIONS delta on the no-op branch"
+    )
+    assert _table_row_count(store_dir, "sessions") == sessions_before, (
+        f"ghost SessionClose changed the SESSIONS row count "
+        f"({_table_row_count(store_dir, 'sessions')} vs baseline {sessions_before}); "
+        f"the absent-session no-op must persist nothing on SESSIONS"
+    )
+    assert _table_row_count(store_dir, "signal_queue") == signals_before, (
+        f"ghost SessionClose changed the SIGNAL_QUEUE row count "
+        f"({_table_row_count(store_dir, 'signal_queue')} vs baseline {signals_before}); "
+        f"the absent-session no-op must persist nothing on SIGNAL_QUEUE"
+    )
+
+    # --- POSITIVE: a REGISTERED SessionClose drain DOES flush the SESSIONS row --
+    real_sid = "gh819-registered-close-drains-sessions-row"
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(
+            h.session_register(real_sid, agent_role="tester", feature="bugfix-819"),
+            "SessionRegister",
+        )
+    # After register the row exists but is OPEN: ended_at/outcome are NULL. Settle for
+    # the register insert to land, then assert the open-state (proves the close, not
+    # the register, performs the flip — the non-tautology guard).
+    start = time.monotonic()
+    pre = _session_close_fields(store_dir, real_sid)
+    while pre is None and time.monotonic() - start <= _OBS_SETTLE_DEADLINE_S:
+        time.sleep(_OBS_SETTLE_POLL_S)
+        pre = _session_close_fields(store_dir, real_sid)
+    assert pre is not None, "SessionRegister did not persist a SESSIONS row"
+    assert pre[1] is None and pre[2] is None, (
+        f"session row was already closed before SessionClose (ended_at={pre[1]}, "
+        f"outcome={pre[2]}); the before-state must be OPEN for the flip to be load-bearing"
+    )
+
+    # NO PostToolUse in between — a bare register -> close. The drain still flushes
+    # the SESSIONS update (this is the write #818 dropped on the ghost path).
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(
+            h.session_close(real_sid, outcome="completed", duration_secs=1),
+            "registered SessionClose (drains)",
+        )
+
+    post = _wait_for_session_ended(store_dir, real_sid)
+    assert post is not None, "registered session row vanished after close"
+    assert post[1] is not None and post[2] is not None, (
+        f"registered SessionClose drain flushed no SESSIONS write (ended_at={post[1]}, "
+        f"outcome={post[2]}, status={post[0]}) — the drain silently no-op'd while still "
+        f"Ack'ing. This is the exact #818-class regression (a persisting close that "
+        f"drops its SESSIONS write)."
+    )
