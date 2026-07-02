@@ -130,8 +130,10 @@ class HttpSession {
       // Connect/TLS-handshake deadline (F4): armed before connect, cleared in
       // secureConnect (clearCt) — covers the half-open-socket stall the socket
       // `timeout` option does NOT. Idle (post-connect): Node emits "timeout".
+      // REF'd on purpose (not unref'd): #872 recovery runs on an idle/dormant
+      // loop where an unref'd deadline never fires (#847/#848). Every terminal
+      // path routes through settle() -> clearCt(), so it never leaks a handle.
       const ct = setTimeout(() => kill("connect"), this.connectMs);
-      ct.unref();
       const clearCt = () => clearTimeout(ct);
       const settle = (fn, v) => { if (settled) return; settled = true; clearCt(); fn(v); };
       req.on("timeout", () => kill("idle"));
