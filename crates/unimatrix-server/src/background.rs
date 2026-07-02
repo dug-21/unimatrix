@@ -26,7 +26,7 @@ use unimatrix_observe::extraction::{
     quality_gate, run_extraction_rules,
 };
 use unimatrix_observe::types::ObservationRecord;
-use unimatrix_store::{EntryRecord, ShadowEvalRow, Status, counters};
+use unimatrix_store::{EntryRecord, ShadowEvalRow, Status, counters, query_current_terminal};
 
 use unimatrix_adapt::AdaptationService;
 
@@ -38,6 +38,7 @@ use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::nli_handle::NliServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::session::SessionRegistry;
+use crate::mcp::edge_write::{EDGE_SOURCE_AGENT, redirect_graph_edge};
 use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
 use crate::services::co_access_promotion_tick::run_co_access_promotion_tick;
@@ -507,55 +508,15 @@ async fn run_single_tick(
         }
     }
 
-    // crt-021 Step 2: GRAPH_EDGES orphaned-edge compaction.
+    // crt-021 Step 2: GRAPH_EDGES repoint-then-compaction (repoint added bugfix-879).
     //
-    // Deletes edges where either endpoint no longer exists in the entries table.
-    // Runs AFTER maintenance_tick (which includes VECTOR_MAP compaction) and
-    // BEFORE TypedGraphState rebuild, so the rebuild sees the post-compaction state.
-    //
-    // Uses direct write_pool — this is a bounded maintenance write, not an
-    // analytics event (per ADR-001 write-path contract: direct write_pool for
-    // maintenance, analytics queue only for bootstrap-origin writes).
-    //
-    // Non-fatal: if the DELETE fails, we log the error and proceed with rebuild
-    // against the pre-compaction state. Orphaned edges at build time are silently
-    // skipped by build_typed_relation_graph (missing endpoints → missing node_index
-    // entries → edge silently ignored). One more tick cycle will retry compaction.
-    //
-    // Intentionally unbounded in crt-021 (NF-09). A per-tick LIMIT batch is
-    // deferred post-ship; indexes on source_id/target_id make this efficient.
-    {
-        let compaction_result = sqlx::query(
-            "DELETE FROM graph_edges
-             WHERE source_id NOT IN (SELECT id FROM entries WHERE status = ?1)
-                OR target_id NOT IN (SELECT id FROM entries WHERE status = ?1)",
-        )
-        .bind(Status::Active as u8 as i64)
-        .execute(store.write_pool_server())
-        .await;
-
-        match compaction_result {
-            Ok(result) => {
-                let rows_deleted = result.rows_affected();
-                if rows_deleted > 0 {
-                    tracing::info!(
-                        rows_deleted = rows_deleted,
-                        "background tick: GRAPH_EDGES orphaned-edge compaction complete"
-                    );
-                }
-            }
-            Err(e) => {
-                // Non-fatal: log error, proceed with rebuild on pre-compaction state.
-                // Orphaned edges persist for one more tick cycle — not a correctness
-                // issue; build_typed_relation_graph silently skips edges with missing
-                // endpoints (node_index lookup returns None → edge is skipped).
-                tracing::error!(
-                    error = %e,
-                    "background tick: GRAPH_EDGES compaction failed; proceeding with rebuild on pre-compaction state"
-                );
-            }
-        }
-    }
+    // Repoints recoverable inbound edges (target Deprecated-with-successor) onto
+    // the Active terminal, THEN deletes the true residual (endpoints missing,
+    // quarantined, dead-end chains). Runs AFTER maintenance_tick (which includes
+    // VECTOR_MAP compaction) and BEFORE TypedGraphState rebuild, so the rebuild
+    // sees the post-compaction state. Shared helper — do NOT inline a divergent
+    // second copy of the DELETE here (F3).
+    run_orphaned_edge_compaction(store).await;
 
     // ── ORDERING INVARIANT (crt-034, ADR-005) ─────────────────────────────────────
     // co_access promotion MUST run:
@@ -825,11 +786,27 @@ async fn run_single_tick(
 // and still used by the legacy `background_tick_loop`.
 // ---------------------------------------------------------------------------
 
-/// GRAPH_EDGES orphaned-edge compaction (crt-021 Step 2).
+/// GRAPH_EDGES repoint-then-compaction (crt-021 Step 2; repoint added bugfix-879).
 ///
-/// Extracted verbatim from `run_single_tick` (the `513-544` block). Non-fatal:
+/// Two ordered phases in a single pass:
+///   1. Repoint recoverable inbound edges (target Deprecated-with-successor) onto
+///      the target's Active terminal, so a hot-node correction does not silently
+///      drop inbound referrers the synchronous redirect loop did not reach
+///      (ceiling truncation, per-edge failure, races). See
+///      [`repoint_deprecated_target_edges`].
+///   2. Delete the true residual: edges whose source/target is non-Active AND has
+///      no valid terminal (endpoints missing, quarantined, dead-end chains).
+///
+/// The repoint MUST run before the DELETE and inside this block — never as a new
+/// step between compaction and typed-graph rebuild (crt-034 SR-06 ordering, #3827).
+///
+/// Non-fatal throughout: repoint is per-edge warn-and-continue (vnc-017 #4462);
 /// on DELETE error, logs and returns — rebuild proceeds on pre-compaction state.
-pub(crate) async fn run_orphaned_edge_compaction(store: &Arc<Store>) {
+pub(crate) async fn run_orphaned_edge_compaction(store: &Store) {
+    // Phase 1: repoint recoverable inbound edges before the DELETE (bugfix-879).
+    repoint_deprecated_target_edges(store).await;
+
+    // Phase 2: delete the true residual.
     let compaction_result = sqlx::query(
         "DELETE FROM graph_edges
          WHERE source_id NOT IN (SELECT id FROM entries WHERE status = ?1)
@@ -855,6 +832,132 @@ pub(crate) async fn run_orphaned_edge_compaction(store: &Arc<Store>) {
                 "background tick: GRAPH_EDGES compaction failed; proceeding with rebuild on pre-compaction state"
             );
         }
+    }
+}
+
+/// Phase 1 of [`run_orphaned_edge_compaction`] (bugfix-879): repoint agent-declared
+/// inbound edges whose target is Deprecated-with-successor onto the target's Active
+/// terminal, BEFORE the residual DELETE runs.
+///
+/// A node corrected via `correct_entry` becomes Deprecated with `superseded_by`
+/// set — a RECOVERABLE state with a valid Active terminal. Any inbound edge the
+/// synchronous redirect loop did not reach (past REDIRECT_CEILING, per-edge
+/// failure, race) would otherwise be DELETEd by the compaction tick, silently
+/// losing the referrer. Repointing it preserves the link.
+///
+/// Filters (all REQUIRED):
+/// - `source = EDGE_SOURCE_AGENT`: `redirect_graph_edge` re-materializes the row as
+///   `weight=1.0, source='agent'`, so repointing a machine-generated edge
+///   (nli/cosine/co_access) would launder a statistical guess into a trusted agent
+///   fact (F2, col-029 #3591). Filter on the source COLUMN, not a relation_type
+///   blocklist. Machine classes re-materialize on their own next tick.
+/// - source entry Active: an edge with a non-Active source is true residual
+///   regardless of target — the DELETE removes it, so repointing is wasted work.
+/// - target Deprecated with `superseded_by` set: the only non-Active target state
+///   with a recoverable terminal (Proposed/quarantined are out of scope).
+///
+/// Terminal resolution uses the SQL recursive CTE `query_current_terminal` (#4468),
+/// NOT the tick-stale in-memory resolver. `None` (dead-end, cycle, >50-hop) leaves
+/// the edge for the DELETE.
+///
+/// Option A — UNBOUNDED: the repoint set must match the DELETE set exactly, or
+/// overflow edges get deleted before a later tick repoints them (F1). No LIMIT.
+///
+/// Per-edge warn-and-continue (vnc-017 #4462): one bad edge never aborts the pass,
+/// and the residual DELETE always runs afterwards. Self-loop guard (F6): skip when
+/// the resolved terminal equals the edge source.
+async fn repoint_deprecated_target_edges(store: &Store) {
+    use sqlx::Row;
+
+    let pool = store.write_pool_server();
+
+    let candidates = sqlx::query(
+        "SELECT ge.source_id, ge.target_id, ge.relation_type, ge.created_at
+         FROM graph_edges ge
+         JOIN entries te ON te.id = ge.target_id
+         JOIN entries se ON se.id = ge.source_id
+         WHERE ge.source = ?1
+           AND te.status = ?2
+           AND te.superseded_by IS NOT NULL
+           AND se.status = ?3",
+    )
+    .bind(EDGE_SOURCE_AGENT)
+    .bind(Status::Deprecated as u8 as i64)
+    .bind(Status::Active as u8 as i64)
+    .fetch_all(pool)
+    .await;
+
+    let rows = match candidates {
+        Ok(rows) => rows,
+        Err(e) => {
+            // Non-fatal: skip repoint, let the DELETE run (its predicate is
+            // independent of this scan).
+            tracing::error!(
+                error = %e,
+                "background tick: repoint candidate scan failed; proceeding to compaction DELETE"
+            );
+            return;
+        }
+    };
+
+    let mut repointed: u64 = 0;
+    for row in rows {
+        let source_id: i64 = row.get("source_id");
+        let old_target_id: i64 = row.get("target_id");
+        let relation_type: String = row.get("relation_type");
+        let created_at: i64 = row.get("created_at");
+
+        // Resolve the terminal via the SQL CTE (#4468). None → dead-end / cycle /
+        // >50-hop → leave the edge for the DELETE.
+        let terminal = match query_current_terminal(pool, old_target_id as u64).await {
+            Ok(Some(terminal)) => terminal,
+            Ok(None) => continue,
+            Err(e) => {
+                tracing::warn!(
+                    source_id,
+                    old_target_id,
+                    error = %e,
+                    "background tick: terminal resolution failed; leaving edge for compaction"
+                );
+                continue;
+            }
+        };
+
+        // Self-loop guard (F6): B→A where A's terminal is B would become B→B.
+        if terminal.id == source_id as u64 {
+            continue;
+        }
+
+        match redirect_graph_edge(
+            store,
+            source_id as u64,
+            old_target_id as u64,
+            terminal.id,
+            &relation_type,
+            created_at as u64,
+        )
+        .await
+        {
+            Ok(()) => repointed += 1,
+            Err(e) => {
+                // Warn-and-continue: the un-repointed edge falls through to the
+                // DELETE (logged loss), never aborting the pass (vnc-017 #4462).
+                tracing::warn!(
+                    source_id,
+                    old_target_id,
+                    terminal_id = terminal.id,
+                    error = %e,
+                    "background tick: edge repoint failed; leaving edge for compaction"
+                );
+            }
+        }
+    }
+
+    if repointed > 0 {
+        tracing::info!(
+            repointed,
+            "background tick: repointed inbound edges onto Active terminals of Deprecated-with-successor targets"
+        );
     }
 }
 
@@ -3015,6 +3118,51 @@ mod tests {
         .expect("insert graph_edge must succeed");
     }
 
+    /// Insert a graph_edges row with an explicit `source` column value (bugfix-879).
+    ///
+    /// The repoint step filters on `source = 'agent'`; machine sources ('nli',
+    /// 'co_access', 'cosine_supports', 'test') must NOT be repointed.
+    async fn insert_graph_edge_with_source(
+        store: &unimatrix_store::SqlxStore,
+        source_id: i64,
+        target_id: i64,
+        relation_type: &str,
+        source: &str,
+    ) {
+        let pool = store.write_pool_server();
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges
+             (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only)
+             VALUES (?1, ?2, ?3, 1.0, 1000000, ?4, ?4, 0)",
+        )
+        .bind(source_id)
+        .bind(target_id)
+        .bind(relation_type)
+        .bind(source)
+        .execute(pool)
+        .await
+        .expect("insert graph_edge must succeed");
+    }
+
+    /// Mark an existing entry Deprecated with `superseded_by` set (bugfix-879).
+    ///
+    /// Mirrors the post-`correct_entry` state: status=Deprecated(1), a valid
+    /// terminal successor. This is the recoverable state the repoint step must
+    /// follow instead of deleting inbound edges.
+    async fn deprecate_entry_with_successor(
+        store: &unimatrix_store::SqlxStore,
+        id: i64,
+        successor_id: i64,
+    ) {
+        let pool = store.write_pool_server();
+        sqlx::query("UPDATE entries SET status = 1, superseded_by = ?2 WHERE id = ?1")
+            .bind(id)
+            .bind(successor_id)
+            .execute(pool)
+            .await
+            .expect("deprecate entry must succeed");
+    }
+
     /// Insert a minimal entry into the entries table for use as valid graph nodes.
     ///
     /// Uses defaults that satisfy the NOT NULL constraints of the entries schema.
@@ -3054,23 +3202,27 @@ mod tests {
             .get::<i64, _>(0)
     }
 
-    /// Run only the GRAPH_EDGES compaction DELETE — the same SQL used in run_single_tick.
+    /// Total number of rows currently in graph_edges (test helper).
+    async fn total_graph_edges(store: &unimatrix_store::SqlxStore) -> u64 {
+        use sqlx::Row;
+        sqlx::query("SELECT COUNT(*) FROM graph_edges")
+            .fetch_one(store.write_pool_server())
+            .await
+            .expect("count query must succeed")
+            .get::<i64, _>(0) as u64
+    }
+
+    /// Run the PRODUCTION repoint-then-compaction pass (bugfix-879).
     ///
-    /// Extracted to keep tests focused on the compaction step without wiring
-    /// the full tick pipeline.
+    /// Calls `run_orphaned_edge_compaction` directly so tests exercise the real
+    /// repoint + DELETE intent, not a copied SQL string. Returns the net number of
+    /// rows removed from graph_edges (repoint is net-neutral except for
+    /// INSERT-OR-IGNORE dedup; the residual DELETE removes orphaned rows).
     async fn run_graph_edges_compaction(store: &unimatrix_store::SqlxStore) -> u64 {
-        // IMPORTANT: this SQL must remain identical to the production DELETE in
-        // run_single_tick. If you change one, change both.
-        sqlx::query(
-            "DELETE FROM graph_edges
-             WHERE source_id NOT IN (SELECT id FROM entries WHERE status = ?1)
-                OR target_id NOT IN (SELECT id FROM entries WHERE status = ?1)",
-        )
-        .bind(unimatrix_store::Status::Active as u8 as i64)
-        .execute(store.write_pool_server())
-        .await
-        .expect("compaction DELETE must succeed")
-        .rows_affected()
+        let before = total_graph_edges(store).await;
+        run_orphaned_edge_compaction(store).await;
+        let after = total_graph_edges(store).await;
+        before.saturating_sub(after)
     }
 
     /// AC-14, R-11: Orphaned edges (endpoint absent from entries) are deleted; valid
@@ -3168,6 +3320,308 @@ mod tests {
             1,
             "valid edge (1→2) must survive compaction"
         );
+    }
+
+    // ---------------------------------------------------------------------------
+    // bugfix-879: repoint-then-compact — inbound edges to Deprecated-with-successor
+    // targets are repointed onto the Active terminal, not silently deleted.
+    // ---------------------------------------------------------------------------
+
+    /// Catching test: S→A (agent), A Deprecated with successor B → after compaction
+    /// the edge is S→B (repointed), NOT deleted. This is the core regression guard.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_repoints_agent_edge_to_deprecated_target_terminal() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        // S=10 (source), A=20 (corrected original), B=30 (Active terminal).
+        insert_test_entry(&store, 10).await;
+        insert_test_entry(&store, 20).await;
+        insert_test_entry(&store, 30).await;
+
+        // Agent-declared inbound edge S→A.
+        insert_graph_edge_with_source(&store, 10, 20, "DependsOn", "agent").await;
+
+        // Correct A→B: A becomes Deprecated with superseded_by = B.
+        deprecate_entry_with_successor(&store, 20, 30).await;
+
+        run_graph_edges_compaction(&store).await;
+
+        assert_eq!(
+            count_graph_edges(&store, 10, 20).await,
+            0,
+            "stale edge S→A (deprecated target) must be gone after repoint"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 10, 30).await,
+            1,
+            "edge must be repointed to the Active terminal S→B, not deleted"
+        );
+    }
+
+    /// Multi-hop chain A→B→C: an edge targeting A resolves to the terminal C.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_repoints_through_multi_hop_chain_to_terminal() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        insert_test_entry(&store, 10).await; // source S
+        insert_test_entry(&store, 20).await; // A
+        insert_test_entry(&store, 21).await; // B
+        insert_test_entry(&store, 22).await; // C (Active terminal)
+
+        insert_graph_edge_with_source(&store, 10, 20, "DependsOn", "agent").await;
+
+        // A→B→C, both A and B deprecated; C stays Active.
+        deprecate_entry_with_successor(&store, 20, 21).await;
+        deprecate_entry_with_successor(&store, 21, 22).await;
+
+        run_graph_edges_compaction(&store).await;
+
+        assert_eq!(
+            count_graph_edges(&store, 10, 22).await,
+            1,
+            "edge must resolve through the chain to terminal C"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 10, 20).await,
+            0,
+            "original stale edge must not survive"
+        );
+    }
+
+    /// Dead-end chain (Deprecated target, superseded_by NULL) has no valid terminal
+    /// → the edge is still DELETED (vnc-042 dead-end semantics preserved).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_deletes_dead_end_deprecated_edge() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        insert_test_entry(&store, 10).await;
+        insert_test_entry(&store, 20).await;
+
+        insert_graph_edge_with_source(&store, 10, 20, "DependsOn", "agent").await;
+
+        // Deprecated WITHOUT a successor: dead-end, no terminal.
+        let pool = store.write_pool_server();
+        sqlx::query("UPDATE entries SET status = 1, superseded_by = NULL WHERE id = 20")
+            .execute(pool)
+            .await
+            .expect("update must succeed");
+
+        run_graph_edges_compaction(&store).await;
+
+        assert_eq!(
+            count_graph_edges(&store, 10, 20).await,
+            0,
+            "dead-end deprecated edge (no successor) must be deleted"
+        );
+    }
+
+    /// Idempotency / duplicate-terminal dedup: S→B already exists alongside S→A;
+    /// after repoint exactly one S→B row (UNIQUE(source,target,relation) + INSERT OR
+    /// IGNORE), and S→A is gone.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_repoint_dedups_duplicate_terminal_edge() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        insert_test_entry(&store, 10).await; // S
+        insert_test_entry(&store, 20).await; // A
+        insert_test_entry(&store, 30).await; // B terminal
+
+        insert_graph_edge_with_source(&store, 10, 20, "DependsOn", "agent").await;
+        // Pre-existing edge to the terminal, same relation type.
+        insert_graph_edge_with_source(&store, 10, 30, "DependsOn", "agent").await;
+
+        deprecate_entry_with_successor(&store, 20, 30).await;
+
+        run_graph_edges_compaction(&store).await;
+
+        assert_eq!(
+            count_graph_edges(&store, 10, 30).await,
+            1,
+            "duplicate terminal edge must dedup to exactly one row"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 10, 20).await,
+            0,
+            "stale edge S→A must be removed"
+        );
+    }
+
+    /// F2: a machine-source edge (nli/cosine/co_access) to a Deprecated-with-successor
+    /// target is NOT repointed (attribution laundering guard). It is deleted as
+    /// residual and re-materializes on its own next tick — never rewritten to agent.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_does_not_repoint_machine_source_edge() {
+        use sqlx::Row;
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        insert_test_entry(&store, 10).await; // S
+        insert_test_entry(&store, 20).await; // A
+        insert_test_entry(&store, 30).await; // B terminal
+
+        // Machine-inferred edge (source='nli').
+        insert_graph_edge_with_source(&store, 10, 20, "Supports", "nli").await;
+
+        deprecate_entry_with_successor(&store, 20, 30).await;
+
+        run_graph_edges_compaction(&store).await;
+
+        // The nli edge must NOT be laundered into an agent edge at the terminal.
+        assert_eq!(
+            count_graph_edges(&store, 10, 30).await,
+            0,
+            "machine-source edge must not be repointed to the terminal"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 10, 20).await,
+            0,
+            "stale machine-source edge is deleted as residual"
+        );
+
+        // No agent-attributed row was created anywhere for this pair.
+        let laundered: i64 = sqlx::query(
+            "SELECT COUNT(*) FROM graph_edges WHERE source_id = 10 AND source = 'agent'",
+        )
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("count must succeed")
+        .get::<i64, _>(0);
+        assert_eq!(
+            laundered, 0,
+            "no machine edge may be laundered to source='agent'"
+        );
+    }
+
+    /// F6 self-loop guard: edge B→A where A's terminal is B must NOT become B→B.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_repoint_skips_self_loop() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        insert_test_entry(&store, 10).await; // B (source AND terminal)
+        insert_test_entry(&store, 20).await; // A (deprecated, superseded by B)
+
+        // Edge B→A.
+        insert_graph_edge_with_source(&store, 10, 20, "DependsOn", "agent").await;
+        // A superseded by B → resolving A's terminal yields B == source.
+        deprecate_entry_with_successor(&store, 20, 10).await;
+
+        run_graph_edges_compaction(&store).await;
+
+        assert_eq!(
+            count_graph_edges(&store, 10, 10).await,
+            0,
+            "self-loop B→B must not be created by repoint"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 10, 20).await,
+            0,
+            "stale edge B→A is deleted as residual (self-loop skipped)"
+        );
+    }
+
+    /// F6: an edge with a NON-Active source is not repointed (it is true residual —
+    /// the DELETE removes it regardless of target).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_does_not_repoint_non_active_source_edge() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        insert_test_entry(&store, 10).await; // S (will be deprecated)
+        insert_test_entry(&store, 11).await; // S's terminal
+        insert_test_entry(&store, 20).await; // A
+        insert_test_entry(&store, 30).await; // B terminal
+
+        insert_graph_edge_with_source(&store, 10, 20, "DependsOn", "agent").await;
+
+        // Both source and target deprecated-with-successor.
+        deprecate_entry_with_successor(&store, 10, 11).await;
+        deprecate_entry_with_successor(&store, 20, 30).await;
+
+        run_graph_edges_compaction(&store).await;
+
+        // Non-Active source → no repoint; the edge is deleted as residual.
+        assert_eq!(
+            count_graph_edges(&store, 11, 30).await,
+            0,
+            "edge with non-Active source must not be repointed"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 10, 30).await,
+            0,
+            "no partial repoint from a dead source"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 10, 20).await,
+            0,
+            "stale edge with non-Active source is deleted"
+        );
+    }
+
+    /// End-to-end >REDIRECT_CEILING scenario: more than 50 inbound agent edges to a
+    /// Deprecated-with-successor target are ALL repointed by one compaction pass
+    /// (unbounded repoint, F1 — no overflow lost).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_repoints_all_edges_above_redirect_ceiling() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        // A=1000 corrected → B=1001 terminal.
+        insert_test_entry(&store, 1000).await;
+        insert_test_entry(&store, 1001).await;
+
+        // 60 distinct sources (> REDIRECT_CEILING = 50), each with an agent edge →A.
+        let n = 60_i64;
+        for s in 1..=n {
+            insert_test_entry(&store, s).await;
+            insert_graph_edge_with_source(&store, s, 1000, "DependsOn", "agent").await;
+        }
+
+        deprecate_entry_with_successor(&store, 1000, 1001).await;
+
+        run_graph_edges_compaction(&store).await;
+
+        // Every inbound edge repointed to the terminal; none lost.
+        for s in 1..=n {
+            assert_eq!(
+                count_graph_edges(&store, s, 1001).await,
+                1,
+                "edge from source {s} must be repointed to terminal 1001"
+            );
+            assert_eq!(
+                count_graph_edges(&store, s, 1000).await,
+                0,
+                "stale edge from source {s} to deprecated 1000 must be gone"
+            );
+        }
     }
 
     /// R-11 (performance guard): compaction of 1000 rows (500 orphaned) completes
