@@ -41,7 +41,23 @@ use super::response::edges::{
 ///
 /// Returns `Result<EdgesView, StoreError>` so the handler maps the whole assembly once
 /// with the identical primary-read mapping (FR-19). No `.unwrap()`/`.expect()`.
-pub(crate) async fn build_edges_view(store: &Store, id: u64) -> Result<EdgesView, StoreError> {
+///
+/// NG-1 (bugfix-881 / ass-088 F5): when `resolve_targets` is true (the default — mirrors
+/// `follow_supersessions`, so the `follow_supersessions=false` escape hatch keeps raw
+/// targets), each of the ≤`GET_EDGE_DISPLAY_LIMIT` displayed edge TARGETS is resolved to its
+/// active terminal via `follow_to_current`. Substitution happens ONLY when a target is
+/// actually deprecated (`terminal != raw`); an all-active response is therefore byte-identical
+/// to the pre-resolution shape, preserving the `test_none_json_byte_identical_to_base_object`
+/// canary. Dead-end / cycle / 50-hop-cap targets keep their raw id (same `None -> raw`
+/// fallback as context_get and the BFS handlers). N5: `totals`/`authored_total` stay computed
+/// from the uncapped STORED edge set (unresolved) — they may exceed the distinct displayed
+/// targets after resolve+dedup; this is the intended honest-stored-totals design (vnc-037),
+/// NOT a counting bug.
+pub(crate) async fn build_edges_view(
+    store: &Store,
+    id: u64,
+    resolve_targets: bool,
+) -> Result<EdgesView, StoreError> {
     let pool = store.read_pool_server();
 
     // 1. ranked ≤cap displayed rows (canonicalized, LEFT JOIN confidence, LIMIT cap).
@@ -50,11 +66,30 @@ pub(crate) async fn build_edges_view(store: &Store, id: u64) -> Result<EdgesView
     // 2. honest uncapped split totals — three buckets + digest-only `authored`.
     let split: EdgeCountSplit = count_neighbors_split(pool, id).await?;
 
-    // 3. batched title join over the ≤cap displayed targets ONLY (never the uncapped set).
+    // 3. NG-1 resolve the ≤cap displayed edge-target labels to their active terminal. Bounded
+    //    to the ≤GET_EDGE_DISPLAY_LIMIT displayed targets (≤3 chain walks — N1 fine as-is).
+    //    resolution maps raw_target -> effective_target; entries only differ when a target is
+    //    actually deprecated (terminal != raw), so all-active responses stay byte-identical.
+    let mut resolution: HashMap<u64, u64> = HashMap::new();
+    if resolve_targets {
+        for edge in &rows {
+            let raw = edge.row.target_id;
+            if let std::collections::hash_map::Entry::Vacant(slot) = resolution.entry(raw) {
+                let terminal = crate::mcp::graph_read::follow_to_current(store, raw)
+                    .await
+                    .unwrap_or(raw);
+                slot.insert(terminal);
+            }
+        }
+    }
+    let effective = |raw: u64| resolution.get(&raw).copied().unwrap_or(raw);
+
+    // 4. batched title join over the ≤cap displayed (effective) targets ONLY.
     let mut target_ids: Vec<u64> = Vec::with_capacity(rows.len());
     for edge in &rows {
-        if !target_ids.contains(&edge.row.target_id) {
-            target_ids.push(edge.row.target_id);
+        let t = effective(edge.row.target_id);
+        if !target_ids.contains(&t) {
+            target_ids.push(t);
         }
     }
     let title_map = if target_ids.is_empty() {
@@ -63,13 +98,13 @@ pub(crate) async fn build_edges_view(store: &Store, id: u64) -> Result<EdgesView
         fetch_titles_batch(pool, &target_ids).await?
     };
 
-    // 4. project ranked rows → GetEdge.
+    // 5. project ranked rows → GetEdge (target_id substituted to the effective terminal).
     let edges: Vec<GetEdge> = rows
         .iter()
-        .map(|edge| project_edge(edge, &title_map))
+        .map(|edge| project_edge(edge, effective(edge.row.target_id), &title_map))
         .collect();
 
-    // 5. assemble (edges already ≤cap from SQL; totals uncapped, three buckets;
+    // 6. assemble (edges already ≤cap from SQL; totals uncapped, three buckets;
     //    authored_total threaded for the digest from the FULL uncapped set).
     Ok(EdgesView {
         edges,
@@ -84,13 +119,13 @@ pub(crate) async fn build_edges_view(store: &Store, id: u64) -> Result<EdgesView
 
 /// Project one ranked row into the discovery-list [`GetEdge`].
 ///
-/// `target_id` is the OTHER endpoint (`RankedEdge.row.target_id`); `target_title` is the
-/// title-map lookup (`None` ⇒ dangling, retained — DNB-1); `authored` is derived in
-/// [`GetEdge::new`] from the raw `source` string (`== "agent"`). The SQL-computed
+/// `target_id` is the effective OTHER endpoint (the resolved terminal when the stored target
+/// is deprecated — NG-1; otherwise the raw `RankedEdge.row.target_id`); `target_title` is the
+/// title-map lookup for that effective id (`None` ⇒ dangling, retained — DNB-1); `authored` is
+/// derived in [`GetEdge::new`] from the raw `source` string (`== "agent"`). The SQL-computed
 /// direction string is mapped to the canonical `&'static str` constant — a `↔` row is
 /// never re-derived as `→`/`←` in Rust.
-fn project_edge(edge: &RankedEdge, title_map: &HashMap<u64, String>) -> GetEdge {
-    let target_id = edge.row.target_id;
+fn project_edge(edge: &RankedEdge, target_id: u64, title_map: &HashMap<u64, String>) -> GetEdge {
     GetEdge::new(
         edge.row.relation_type.clone(),
         map_direction(&edge.direction),

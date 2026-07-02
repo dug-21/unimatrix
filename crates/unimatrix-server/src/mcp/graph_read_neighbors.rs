@@ -7,7 +7,7 @@
 //!
 //! Declared as a sub-module of `graph_read.rs` via `#[path]`.
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
 use petgraph::stable_graph::NodeIndex;
@@ -52,6 +52,25 @@ pub(crate) async fn follow_to_current(store: &Store, id: u64) -> Option<u64> {
         }
     }
     None
+}
+
+/// Resolve `raw_id` to its terminal Active successor, memoizing the result per request.
+///
+/// N1 (bugfix-881): the memo (raw_id -> terminal) resolves each DISTINCT endpoint at most once
+/// per request — `neighbors_sql` has no fan-out cap (hot nodes reach in-degree ~110), so this
+/// avoids an unbounded per-row `store.get`. `None -> raw` fallback matches context_get / the
+/// depth>1 BFS handlers (vnc-042): dead-end/cycle/50-hop-cap endpoints stay as-stored.
+pub(crate) async fn resolve_memoized(
+    store: &Store,
+    memo: &mut HashMap<u64, u64>,
+    raw_id: u64,
+) -> u64 {
+    if let Some(&terminal) = memo.get(&raw_id) {
+        return terminal;
+    }
+    let terminal = follow_to_current(store, raw_id).await.unwrap_or(raw_id);
+    memo.insert(raw_id, terminal);
+    terminal
 }
 
 // ---------------------------------------------------------------------------
@@ -158,10 +177,14 @@ pub(super) async fn handle_neighbors(
     };
 
     // Step 4: Dispatch to SQL (depth=1) or BFS (depth>1) per ADR-005.
+    // resolve_supersessions defaults TRUE (bugfix-881, overrides vnc-042 ADR-001 for
+    // context_graph per issue #881) — aligns with context_get; `false` = raw/audit opt-out.
+    // G1 (bugfix-881): the depth-1 arm now honors the flag — previously neighbors_sql ignored
+    // it entirely, so even an explicit `true` was a no-op on the default-depth neighbors call.
+    let resolve = params.resolve_supersessions.unwrap_or(true);
     let edges = if depth == 1 {
-        neighbors_sql(store, id, &requested_types, direction).await?
+        neighbors_sql(store, id, &requested_types, direction, resolve).await?
     } else {
-        let resolve = params.resolve_supersessions.unwrap_or(false);
         neighbors_bfs(
             store,
             typed_graph_state,
@@ -184,11 +207,17 @@ pub(super) async fn handle_neighbors(
 // ---------------------------------------------------------------------------
 
 /// depth=1 live SQL path (ADR-005).
+///
+/// When `resolve` is true (the default — bugfix-881 G1) each row's NEIGHBOR endpoint (the
+/// non-anchor side) is resolved to its active terminal via the per-request memo; the anchor
+/// `id` is left as-stored, matching the depth>1 BFS handler. Per-row on the stored edge set
+/// (no dedup) — one displayed row per stored edge, endpoint pointed at current truth.
 async fn neighbors_sql(
     store: &Store,
     id: u64,
     types: &[RelationType],
     direction: NeighborDirection,
+    resolve: bool,
 ) -> Result<Vec<EdgeRecord>, ErrorData> {
     let type_strs: Vec<&str> = types.iter().map(|t| t.as_str()).collect();
 
@@ -199,24 +228,27 @@ async fn neighbors_sql(
             ErrorData::new(ERROR_INTERNAL, format!("graph query failed: {e}"), None)
         })?;
 
-    let edges = raw_rows
-        .into_iter()
-        .map(|row| {
-            let dir_str = if row.source_id == id {
-                "outgoing"
+    let mut memo: HashMap<u64, u64> = HashMap::new(); // per-request resolution memo (N1)
+    let mut edges = Vec::with_capacity(raw_rows.len());
+    for row in raw_rows {
+        let outgoing = row.source_id == id;
+        let (mut source_id, mut target_id) = (row.source_id, row.target_id);
+        if resolve {
+            if outgoing {
+                target_id = resolve_memoized(store, &mut memo, target_id).await;
             } else {
-                "incoming"
-            };
-            EdgeRecord {
-                source_id: row.source_id,
-                target_id: row.target_id,
-                relation_type: row.relation_type,
-                direction: dir_str.to_string(),
-                depth: 1,
-                metadata: None, // always None in vnc-018 (ADR-004, R-15)
+                source_id = resolve_memoized(store, &mut memo, source_id).await;
             }
-        })
-        .collect();
+        }
+        edges.push(EdgeRecord {
+            source_id,
+            target_id,
+            relation_type: row.relation_type,
+            direction: if outgoing { "outgoing" } else { "incoming" }.to_string(),
+            depth: 1,
+            metadata: None, // always None in vnc-018 (ADR-004, R-15)
+        });
+    }
 
     Ok(edges)
 }

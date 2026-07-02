@@ -85,8 +85,9 @@ pub struct GraphParams {
     pub edge_types: Option<Vec<String>>,
     /// neighbors only: hop depth 1..=10 (default 1).
     pub depth: Option<u8>,
-    /// neighbors only: resolve deprecated endpoints to active terminal (default false).
-    /// Rejected on chain mode (ADR-003).
+    /// neighbors / subgraph / path: resolve deprecated endpoints to their active terminal.
+    /// Default TRUE (bugfix-881, aligning with context_get) — pass `false` for raw as-stored
+    /// topology (audit). Rejected on chain/current/inverse/filter modes (ADR-003, #616A).
     pub resolve_supersessions: Option<bool>,
     // -- Forward-compat fields — error on misuse in incompatible modes (ADR-003) --
     /// subgraph mode: one or more entry IDs to use as BFS seeds.

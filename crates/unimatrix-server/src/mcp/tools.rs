@@ -69,7 +69,7 @@ pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowl
     - current: resolve any entry to its terminal active successor, following \
       superseded_by links until an Active entry is found.\n\
     - neighbors: retrieve entries connected by typed graph edges. \
-      Accepts edge_types filter, direction (incoming/outgoing/both), and depth (1..=10). \
+      Accepts edge_types filter, direction (incoming/outgoing/both), and depth (1..=10), and resolve_supersessions (resolve deprecated endpoints to their active terminal — default true; false for raw as-stored). \
       depth=1 queries the live database and reflects all committed writes immediately. \
       depth>1 queries the in-memory graph cache, which may lag recent writes by up to \
       one tick interval (typically 30-60 seconds). This asymmetry is intentional: \
@@ -86,7 +86,7 @@ pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowl
       at depth>1. The depth_reached field reports the actual maximum BFS depth traversed; \
       truncated: true indicates the max_nodes cap was reached before BFS completed. \
       Seed IDs not present in the graph return an empty result — not an error. \
-      max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
+      Deprecated seeds and neighbors resolve to their active terminal by default (resolve_supersessions, default true; false for raw as-stored). max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
     - inverse: Return entries of a given category that have no incoming edges of ALL \
       the specified missing_edge_types (AND semantics — entries missing ALL listed types). \
       Example: missing_edge_types=[\"Cites\",\"Supports\"] returns entries that have \
@@ -104,7 +104,7 @@ pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowl
       express a range. Queries the live database — no staleness.\n\
     - path: Find the shortest outgoing-edge path from from_id to to_id using BFS. \
       Required: from_id, to_id. Optional: edge_types (absent = all non-Supersedes \
-      types), depth (default 5, range [1,10]), resolve_supersessions (default false — \
+      types), depth (default 5, range [1,10]), resolve_supersessions (default true — \
       when true, deprecated endpoints are resolved to their terminal active successors \
       before BFS begins and deprecated intermediate nodes are resolved per-hop). \
       path mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt \
@@ -112,7 +112,7 @@ pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowl
       interval may not appear in the result. This is the same staleness contract as \
       neighbors mode at depth>1 and subgraph mode. If from_id or to_id is not present \
       in the current graph snapshot, the result is { found: false } — not an error. \
-      Use resolve_supersessions=true to have deprecated endpoints resolved to their \
+      resolve_supersessions defaults true across neighbors, subgraph, and path; pass resolve_supersessions=false to traverse the raw as-stored topology (audit). Deprecated endpoints otherwise resolve to their \
       active successors before BFS begins.\n\
     Requires Read capability. All modes are read-only.";
 
@@ -1095,11 +1095,18 @@ impl UnimatrixServer {
         let edges_view = match params.include_edges {
             Some(false) => None,
             None | Some(true) => Some(
-                crate::mcp::get_edges::build_edges_view(&self.store, effective_id)
-                    .await
-                    .map_err(|e| {
-                        rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
-                    })?,
+                // NG-1: resolve displayed edge-TARGET labels to their active terminal unless
+                // the caller took the as-stored escape hatch (follow_supersessions=false),
+                // in which case targets stay raw to match the as-stored anchor.
+                crate::mcp::get_edges::build_edges_view(
+                    &self.store,
+                    effective_id,
+                    params.follow_supersessions != Some(false),
+                )
+                .await
+                .map_err(|e| {
+                    rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+                })?,
             ),
         };
 
@@ -3845,7 +3852,7 @@ impl UnimatrixServer {
             - current: resolve any entry to its terminal active successor, following \
               superseded_by links until an Active entry is found.\n\
             - neighbors: retrieve entries connected by typed graph edges. \
-              Accepts edge_types filter, direction (incoming/outgoing/both), and depth (1..=10). \
+              Accepts edge_types filter, direction (incoming/outgoing/both), and depth (1..=10), and resolve_supersessions (resolve deprecated endpoints to their active terminal — default true; false for raw as-stored). \
               depth=1 queries the live database and reflects all committed writes immediately. \
               depth>1 queries the in-memory graph cache, which may lag recent writes by up to \
               one tick interval (typically 30-60 seconds). This asymmetry is intentional: \
@@ -3862,7 +3869,7 @@ impl UnimatrixServer {
               at depth>1. The depth_reached field reports the actual maximum BFS depth traversed; \
               truncated: true indicates the max_nodes cap was reached before BFS completed. \
               Seed IDs not present in the graph return an empty result — not an error. \
-              max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
+              Deprecated seeds and neighbors resolve to their active terminal by default (resolve_supersessions, default true; false for raw as-stored). max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
             - inverse: Return entries of a given category that have no incoming edges of ALL \
               the specified missing_edge_types (AND semantics — entries missing ALL listed types). \
               Example: missing_edge_types=[\"Cites\",\"Supports\"] returns entries that have \
@@ -3880,7 +3887,7 @@ impl UnimatrixServer {
               express a range. Queries the live database — no staleness.\n\
             - path: Find the shortest outgoing-edge path from from_id to to_id using BFS. \
               Required: from_id, to_id. Optional: edge_types (absent = all non-Supersedes \
-              types), depth (default 5, range [1,10]), resolve_supersessions (default false — \
+              types), depth (default 5, range [1,10]), resolve_supersessions (default true — \
               when true, deprecated endpoints are resolved to their terminal active successors \
               before BFS begins and deprecated intermediate nodes are resolved per-hop). \
               path mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt \
@@ -3888,7 +3895,7 @@ impl UnimatrixServer {
               interval may not appear in the result. This is the same staleness contract as \
               neighbors mode at depth>1 and subgraph mode. If from_id or to_id is not present \
               in the current graph snapshot, the result is { found: false } — not an error. \
-              Use resolve_supersessions=true to have deprecated endpoints resolved to their \
+              resolve_supersessions defaults true across neighbors, subgraph, and path; pass resolve_supersessions=false to traverse the raw as-stored topology (audit). Deprecated endpoints otherwise resolve to their \
               active successors before BFS begins.\n\
             Requires Read capability. All modes are read-only."
     )]
@@ -12783,7 +12790,9 @@ mod get_resolution_tests {
         // (what MCP clients actually receive) against the mirror const the substring test asserts
         // on. A single-byte divergence between the two now fails here.
         assert_eq!(
-            UnimatrixServer::context_get_tool_attr().description.as_deref(),
+            UnimatrixServer::context_get_tool_attr()
+                .description
+                .as_deref(),
             Some(CONTEXT_GET_DESCRIPTION),
             "live context_get tool-attr description must be byte-identical to CONTEXT_GET_DESCRIPTION"
         );

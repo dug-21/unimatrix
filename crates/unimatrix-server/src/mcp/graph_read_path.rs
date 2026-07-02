@@ -132,7 +132,10 @@ pub(super) async fn handle_path(
 
     // Step 6: Resolve supersession endpoints BEFORE acquiring the graph lock
     // (lock discipline: all Store async calls happen before lock is held — ADR-006).
-    let resolve_supersessions = params.resolve_supersessions.unwrap_or(false);
+    // resolve_supersessions defaults TRUE (bugfix-881, overrides vnc-042 ADR-001 for
+    // context_graph per issue #881): deprecated endpoints resolve to their active terminal
+    // by default, aligning with context_get. Explicit `false` remains the raw/audit opt-out.
+    let resolve_supersessions = params.resolve_supersessions.unwrap_or(true);
 
     let effective_from: u64 = if resolve_supersessions {
         // follow_to_current returns None when chain exceeds 50 hops or entry is
