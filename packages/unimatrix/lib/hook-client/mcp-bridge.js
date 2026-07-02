@@ -61,7 +61,9 @@ function run(session, deps) {
   const exit = (deps && deps.exit) || ((c) => process.exit(c));
 
   const framer = new StdioFramer(stdin, stdout);
-  const lifecycle = new Lifecycle(session);
+  // Forward deps so the lifecycle's errOut floor + injectable clock are wired
+  // (N3: run() previously built Lifecycle with no deps → stderr-only, untestable).
+  const lifecycle = new Lifecycle(session, deps);
 
   framer.onMessage(async (msg) => {
     let response = null;

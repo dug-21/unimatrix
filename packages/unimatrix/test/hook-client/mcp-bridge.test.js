@@ -542,7 +542,7 @@ describe("transport timeout self-heal (#839)", () => {
       const s = HttpSession.create({
         mcpUrl: "https://127.0.0.1:" + silent.port + "/v1/slug",
         token: "TKN", pinnedFp: "sha256:" + "a".repeat(64),
-        connectMs: 80, idleMs: 5000,
+        connectMs: 80, idleMs: 5000, errOut: () => {},
       });
       // Real socket to the silent listener; secureConnect never fires.
       s.requester = (opts) => http.request({ host: "127.0.0.1", port: silent.port, method: opts.method });
@@ -770,6 +770,188 @@ describe("transport timeout self-heal (#839)", () => {
       "readBounded's ref'd idle deadline must reject, not hang the idle loop"
     );
     assert.ok(Date.now() - t0 < 4000, "settled at the ~30ms idle deadline, not forever");
+  });
+
+  // ── #872: proactive dormancy reconnect + session-id restore + observability ──
+  function jsonRes872(obj) {
+    return { status: 200, contentType: "application/json", res: bodyStream(Buffer.from(JSON.stringify(obj))) };
+  }
+  function sessionNotFoundRes872(id) {
+    return { status: 404, contentType: "application/json",
+      res: bodyStream(Buffer.from(JSON.stringify({ id, error: "Session not found" }))) };
+  }
+
+  // (1) Dormancy → a proactive re-init fires BEFORE any slow-failure deadline is
+  // paid. The tools/call responder returns success (no 404/timeout signal), yet
+  // initCount goes 1→2 — only possible via the proactive dormancy path.
+  it("test_dormancy_proactiveReconnectFiresBeforeAnyTimeout (#872 Gap1)", async () => {
+    const t = { v: 1000 };
+    const now = () => t.v;
+    const sess = {
+      sent: [], sessionId: null, protocolVersion: null, initCount: 0, idCounter: 0,
+      request(body, opts) {
+        sess.sent.push({ opts, sessionAtSend: sess.sessionId });
+        if (opts && opts.isInitialize) {
+          sess.initCount += 1; sess.sessionId = "SID-" + ++sess.idCounter;
+          return Promise.resolve(jsonRes872({ jsonrpc: "2.0", id: body.id, result: { protocolVersion: "2025-06-18" } }));
+        }
+        return Promise.resolve(jsonRes872({ jsonrpc: "2.0", id: body.id, result: { ok: true } }));
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {}, now, staleMs: 100000 });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    assert.strictEqual(sess.initCount, 1);
+    const initId = sess.sessionId;
+    t.v += 100001; // long dormancy: advance the injected clock past STALE_MS
+    const out = await lc.handle({ jsonrpc: "2.0", id: 9, method: "tools/call", params: {} });
+    assert.deepStrictEqual(out.result, { ok: true }, "call succeeded on the fresh session");
+    assert.strictEqual(sess.initCount, 2, "a proactive re-init fired before dispatch");
+    assert.notStrictEqual(sess.sessionId, initId, "dispatched under a fresh session id");
+  });
+
+  // Healthy short gaps must NOT trigger a proactive re-init (F1: no spurious churn).
+  it("test_dormancy_freshSessionNoProactiveReinit (#872 Gap1/F1)", async () => {
+    const t = { v: 1000 };
+    const now = () => t.v;
+    const sess = {
+      sent: [], sessionId: null, protocolVersion: null, initCount: 0, idCounter: 0,
+      request(body, opts) {
+        if (opts && opts.isInitialize) {
+          sess.initCount += 1; sess.sessionId = "SID-" + ++sess.idCounter;
+          return Promise.resolve(jsonRes872({ jsonrpc: "2.0", id: body.id, result: {} }));
+        }
+        return Promise.resolve(jsonRes872({ jsonrpc: "2.0", id: body.id, result: { ok: true } }));
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {}, now, staleMs: 100000 });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    t.v += 10; // small gap, well under STALE_MS
+    await lc.handle({ jsonrpc: "2.0", id: 9, method: "tools/call", params: {} });
+    assert.strictEqual(sess.initCount, 1, "no spurious proactive re-init on a healthy gap");
+  });
+
+  // (2) Heal-exhaustion preserves sessionId: a failed re-init restores the evicted
+  // id — the bridge is never left dispatching session-less (→ server 422 wedge).
+  it("test_healExhaustion_preservesSessionId_notWedgedSessionless (#872 Gap2)", async () => {
+    let initCount = 0;
+    const sess = {
+      sent: [], sessionId: "OLD", protocolVersion: null,
+      request(body, opts) {
+        sess.sent.push({ opts, sessionAtSend: sess.sessionId });
+        if (opts && opts.isInitialize) {
+          initCount += 1;
+          if (initCount === 1) { sess.sessionId = "SID-1"; return Promise.resolve(jsonRes872({ jsonrpc: "2.0", id: body.id, result: {} })); }
+          return Promise.reject(Object.assign(new Error("stall"), { code: "ETIMEDOUT" })); // re-init stalls
+        }
+        return Promise.reject(Object.assign(new Error("stall"), { code: "ETIMEDOUT" })); // call stalls
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: () => {} });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    assert.strictEqual(sess.sessionId, "SID-1");
+    const out = await lc.handle({ jsonrpc: "2.0", id: 13, method: "tools/call", params: {} });
+    assert.ok(out.error, "bounded error surfaced");
+    assert.strictEqual(sess.sessionId, "SID-1", "session id restored, not left null/session-less");
+    // The next dispatch still carries the (evicted) id → server 404 → #830 heal.
+    const lastSend = sess.sent[sess.sent.length - 1];
+    assert.ok(lastSend, "a request was dispatched");
+  });
+
+  // (3) Recovery is bounded to the SHORT connect budget, never the idle budget.
+  // Real socket to a silent listener: connect never completes; proactive re-init
+  // + reactive heal each settle at the 80ms connect deadline (not the 5000ms idle
+  // budget) → total worst case stays well inside human/harness tolerance.
+  it("test_proactiveReconnect_boundedToConnectBudget (#872 Gap3)", async () => {
+    const silent = await startSilentTcpServer();
+    try {
+      const s = HttpSession.create({
+        mcpUrl: "https://127.0.0.1:" + silent.port + "/v1/slug",
+        token: "TKN", pinnedFp: "sha256:" + "a".repeat(64),
+        connectMs: 80, idleMs: 5000, errOut: () => {},
+      });
+      s.requester = (opts) => http.request({ host: "127.0.0.1", port: silent.port, method: opts.method });
+      s.sessionId = "OLD"; // an initialized-but-stale session
+      const t = { v: 1000 };
+      const lc = new Lifecycle(s, { errOut: () => {}, now: () => t.v, staleMs: 100 });
+      lc.initMessage = { jsonrpc: "2.0", id: 0, method: "initialize", params: { clientInfo: { name: "claude-code" } } };
+      t.v += 1000; // past STALE_MS → proactive path engages on the next call
+      const t0 = Date.now();
+      const out = await lc.handle({ jsonrpc: "2.0", id: 9, method: "tools/call", params: {} });
+      assert.ok(Date.now() - t0 < 4000, "settled on connect budgets, not the 5000ms idle budget");
+      assert.ok(out.error, "bounded error surfaced against a still-dead socket");
+      assert.strictEqual(s.sessionId, "OLD", "Gap 2 holds: evicted id restored, not null");
+    } finally {
+      await silent.close();
+    }
+  });
+
+  // (4) B1: a throwing errOut on the heal path must be a TRUE no-op — the heal
+  // still completes. Without the try/catch wrap the logging throw is swallowed by
+  // handle():_reinit and silently ABORTS the heal (regression guard for #869).
+  it("test_b1_errOutThrows_healStillCompletes (#872 B1)", async () => {
+    let firstCall = true, initCount = 0;
+    const sess = {
+      sent: [], sessionId: "OLD", protocolVersion: null,
+      request(body, opts) {
+        if (opts && opts.isInitialize) { initCount += 1; sess.sessionId = "SID-" + initCount; return Promise.resolve(jsonRes872({ jsonrpc: "2.0", id: body.id, result: {} })); }
+        if (firstCall) { firstCall = false; return Promise.resolve(sessionNotFoundRes872(body.id)); } // evicted
+        return Promise.resolve(jsonRes872({ jsonrpc: "2.0", id: body.id, result: { ok: true } })); // retry on new id
+      },
+    };
+    const throwingErrOut = () => { throw new Error("stderr is closed"); };
+    const lc = new Lifecycle(sess, { errOut: throwingErrOut });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    const out = await lc.handle({ jsonrpc: "2.0", id: 9, method: "tools/call", params: {} });
+    assert.deepStrictEqual(out.result, { ok: true }, "heal completed despite a throwing errOut");
+    assert.strictEqual(initCount, 2, "exactly one re-init; the logging throw did not abort the heal");
+  });
+
+  // (5a) transport_timeout carries idle_ms and leaks no token / no full session id.
+  it("test_observability_transportTimeout_hasIdleMs_noSecrets (#872 obs)", async () => {
+    const errs = [];
+    const s = HttpSession.create({
+      mcpUrl: "https://h.example/v1/slug", token: "TKN-SECRET",
+      pinnedFp: "sha256:" + "a".repeat(64), connectMs: 20, idleMs: 5000,
+      errOut: (x) => errs.push(x),
+    });
+    s.sessionId = "SESSIONID-abcdef123456";
+    s.lastActivityMs = Date.now() - 500;
+    s.requester = () => {
+      const req = makeFakeReq();
+      req.destroy = (e) => { req.destroyed = e || true; process.nextTick(() => req.emit("error", e || new Error("x"))); };
+      return req; // never connects → the connect deadline fires
+    };
+    await assert.rejects(s.request({ method: "tools/call", id: 1 }, {}), (e) => e && e.code === "ETIMEDOUT");
+    const line = errs.join("");
+    assert.match(line, /mcp-bridge: transport_timeout /);
+    assert.match(line, /phase=connect/);
+    assert.match(line, /elapsed_ms=\d+/);
+    assert.match(line, /idle_ms=\d+/);
+    assert.ok(!line.includes("TKN-SECRET"), "bearer token never emitted");
+    assert.ok(!line.includes("SESSIONID-abcdef123456"), "full session id never emitted");
+  });
+
+  // (5b) reinit_fail emits session=restored and leaks no raw id / token.
+  it("test_observability_reinitFail_sessionRestored_noSecrets (#872 obs)", async () => {
+    const errs = [];
+    let initCount = 0;
+    const sess = {
+      sent: [], sessionId: "SID-SECRET-9999", protocolVersion: null,
+      request(body, opts) {
+        if (opts && opts.isInitialize) {
+          initCount += 1;
+          if (initCount === 1) return Promise.resolve(jsonRes872({ jsonrpc: "2.0", id: body.id, result: {} }));
+          return Promise.reject(Object.assign(new Error("stall"), { code: "ETIMEDOUT" }));
+        }
+        return Promise.reject(Object.assign(new Error("stall"), { code: "ETIMEDOUT" }));
+      },
+    };
+    const lc = new Lifecycle(sess, { errOut: (x) => errs.push(x) });
+    await lc.handle({ jsonrpc: "2.0", id: 0, method: "initialize" });
+    await lc.handle({ jsonrpc: "2.0", id: 13, method: "tools/call", params: {} });
+    const line = errs.join("");
+    assert.match(line, /mcp-bridge: reinit_fail session=restored/);
+    assert.ok(!line.includes("SID-SECRET-9999"), "raw session id never emitted");
   });
 });
 

@@ -37,6 +37,10 @@ class HttpSession {
     this.requester = (o) => https.request(o); // injectable for tests
     this.connectMs = connectMs || 15000;
     this.idleMs = idleMs || 120000;
+    // Last successful round-trip wall-clock; mirrored by the lifecycle so a
+    // transport timeout can report idle_ms (dormancy vs server-down). Seeded to
+    // now so an early failure reports a small, sane idle span (#872).
+    this.lastActivityMs = Date.now();
   }
 
   _headers(body, opts) {
@@ -104,16 +108,33 @@ class HttpSession {
       const req = this.requester(this._options("POST", this._headers(body, opts)));
       let flushed = false;
       let settled = false; // single settle-guard (F3, vnc-039 C2 double-settle)
+      let killed = false; // one-shot: emit the timeout event + destroy at most once
+      const startMs = Date.now();
+      // Errors-only observability (#872, ALWAYS-ON, stderr seam only). connect vs
+      // idle is ONLY distinguishable here. idle_ms distinguishes dormancy timeout
+      // from server-down. NO token, NO session id (redaction). B1: try/catch no-op.
+      const emitTimeout = (phase) => {
+        try {
+          this.errOut("mcp-bridge: transport_timeout phase=" + phase +
+            " elapsed_ms=" + (Date.now() - startMs) +
+            " idle_ms=" + (Date.now() - this.lastActivityMs) + "\n");
+        } catch (_e) {}
+      };
       // ETIMEDOUT-coded so lifecycle.js maps it to "MCP endpoint timed out".
-      const kill = () => { try { req.destroy(Object.assign(new Error("timed out"), { code: "ETIMEDOUT" })); } catch (_e) {} };
+      const kill = (phase) => {
+        if (killed) return;
+        killed = true;
+        emitTimeout(phase);
+        try { req.destroy(Object.assign(new Error("timed out"), { code: "ETIMEDOUT" })); } catch (_e) {}
+      };
       // Connect/TLS-handshake deadline (F4): armed before connect, cleared in
       // secureConnect (clearCt) — covers the half-open-socket stall the socket
       // `timeout` option does NOT. Idle (post-connect): Node emits "timeout".
-      const ct = setTimeout(kill, this.connectMs);
+      const ct = setTimeout(() => kill("connect"), this.connectMs);
       ct.unref();
       const clearCt = () => clearTimeout(ct);
       const settle = (fn, v) => { if (settled) return; settled = true; clearCt(); fn(v); };
-      req.on("timeout", kill);
+      req.on("timeout", () => kill("idle"));
       this._pinThenFlush(
         req,
         () => { flushed = true; req.end(body); }, // pin OK — flush Bearer body
