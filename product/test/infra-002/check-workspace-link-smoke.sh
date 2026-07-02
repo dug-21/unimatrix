@@ -24,10 +24,16 @@
 #   - cumulative growth: when per-link RSS grows enough that cap x per-link crosses the
 #     ceiling (the exact recurrence this cycle-breaks), AND
 #   - profile-stanza removal: without [profile.dev]'s levers per-link reverts to ~1842 MB,
-#     so cap x 1842 (e.g. 6 x 1842 ~= 11 GB) OOMs -> RED. The guard therefore also covers
-#     the fix's *presence* without a separate profile-presence assertion.
+#     so cap x 1842 (e.g. 6 x 1842 ~= 11 GB) OOMs -> RED — ON THIS BOX.
 # If the cap is later raised in config, this guard runs at the raised value and goes RED if
 # that raise is unsafe — correctly gating cap changes too.
+#
+# The link run's profile-removal detection is MEMORY-CEILING-DEPENDENT: on a higher-RAM box
+# dropping [profile.dev] could still link clean and leave the guard falsely GREEN. So this
+# script ALSO runs a cheap, environment-independent grep-assert (assert_profile_present) that
+# fails if root Cargo.toml's [profile.dev] does not carry BOTH debug = "line-tables-only" AND
+# split-debuginfo = "unpacked". That makes stanza-presence detection hold regardless of RAM,
+# and reports as a distinct "profile-presence" failure (legibly separate from a link OOM).
 #
 # Why a standalone shell guard (not a `cargo test` target): the invariant it protects is
 # "the workspace still LINKS under its real build parallelism". This trips on the actual
@@ -39,8 +45,8 @@
 #   bash product/test/infra-002/check-workspace-link-smoke.sh --self-test
 #
 # Exit codes:
-#   0 = full-workspace link completed (invariant holds)
-#   1 = link failed — OOM (SIGKILL/signal 9) or any other link/compile error
+#   0 = full-workspace link completed (invariant holds) AND [profile.dev] levers present
+#   1 = FAIL — link failed (OOM/other) OR required [profile.dev] levers missing (profile-presence)
 #   2 = usage / self-test failure
 #   3 = self-skipped (cargo unavailable) — non-blocking in environments without a toolchain
 #
@@ -54,6 +60,50 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # Signatures of a linker OOM (the #878 failure mode). Any of these in the build output
 # means the linker was killed by the OOM killer rather than exiting on a normal error.
 OOM_REGEX='signal:? 9|SIGKILL|terminated with signal 9|\[Killed\]|Killed\b|out of memory|Cannot allocate memory'
+
+# _extract_profile_dev_block FILE
+#   Prints the body lines of the [profile.dev] table only (from the `[profile.dev]` header
+#   to the next `[...]` table header). Section-scoped so a `debug`/`split-debuginfo` in any
+#   OTHER table (e.g. [profile.release]) cannot satisfy the assertion. awk reads the file as
+#   a data arg — no eval, injection-safe.
+_extract_profile_dev_block() {
+  awk '
+    /^[[:space:]]*\[profile\.dev\][[:space:]]*$/ { inblk=1; next }
+    /^[[:space:]]*\[/                            { inblk=0 }
+    inblk                                        { print }
+  ' "$1"
+}
+
+# assert_profile_present CARGO_TOML
+#   Environment-independent presence check for the #878 fix: [profile.dev] must carry BOTH
+#   debug = "line-tables-only" AND split-debuginfo = "unpacked". Tolerant of surrounding
+#   whitespace and single/double quotes; NOT a TOML parser. Emits a distinct "profile-presence"
+#   verdict. Returns: 0 = both levers present, 1 = stanza/lever missing.
+assert_profile_present() {
+  local cargo="$1" body missing=""
+  if [ ! -f "${cargo}" ]; then
+    echo "FAIL: profile-presence — root Cargo.toml not found at ${cargo} (#878)."
+    return 1
+  fi
+  body="$(_extract_profile_dev_block "${cargo}")"
+  if [ -z "${body}" ]; then
+    echo "FAIL: profile-presence — [profile.dev] stanza missing from root Cargo.toml (#878)."
+    echo "      Restore it with debug = \"line-tables-only\" and split-debuginfo = \"unpacked\"."
+    return 1
+  fi
+  printf '%s\n' "${body}" | grep -Eq "^[[:space:]]*debug[[:space:]]*=[[:space:]]*[\"']line-tables-only[\"']" \
+    || missing="${missing} debug=\"line-tables-only\""
+  printf '%s\n' "${body}" | grep -Eq "^[[:space:]]*split-debuginfo[[:space:]]*=[[:space:]]*[\"']unpacked[\"']" \
+    || missing="${missing} split-debuginfo=\"unpacked\""
+  if [ -n "${missing}" ]; then
+    echo "FAIL: profile-presence — [profile.dev] is missing required #878 lever(s):${missing}."
+    echo "      On a higher-RAM box the link smoke can stay GREEN without these levers; this"
+    echo "      grep-assert keeps stanza detection environment-independent. Restore both keys."
+    return 1
+  fi
+  echo "OK: profile-presence — [profile.dev] carries debug=\"line-tables-only\" + split-debuginfo=\"unpacked\" (#878)."
+  return 0
+}
 
 # classify_link_output RC LOGFILE
 #   Emits a human verdict and returns: 0 = passed, 1 = failed. On failure, distinguishes
@@ -114,7 +164,41 @@ _classify_capture() {
 }
 
 self_test() {
-  local tmp fails=0
+  local tmp fails=0 out rc
+  echo "[self-test] assert_profile_present detection"
+
+  tmp="$(mktemp)"
+  printf '%s\n' '[profile.dev]' 'debug = "line-tables-only"' 'split-debuginfo = "unpacked"' \
+    '' '[workspace.package]' 'version = "0.1.0"' > "${tmp}"
+  out="$(assert_profile_present "${tmp}")"; rc=$?
+  if [ "${rc}" -eq 0 ]; then
+    echo "  ok: complete [profile.dev] (both levers) -> PASS"
+  else
+    echo "  FAIL: a complete [profile.dev] stanza was rejected"; fails=1
+  fi
+  rm -f "${tmp}"
+
+  tmp="$(mktemp)"
+  printf '%s\n' '[profile.dev]' 'debug = "line-tables-only"' '' '[profile.release]' 'lto = true' > "${tmp}"
+  out="$(assert_profile_present "${tmp}")"; rc=$?
+  if [ "${rc}" -ne 0 ] && printf '%s' "${out}" | grep -q 'profile-presence'; then
+    echo "  ok: incomplete stanza (split-debuginfo missing) -> FAIL + profile-presence classification"
+  else
+    echo "  FAIL: an incomplete [profile.dev] was not flagged as a profile-presence failure"; fails=1
+  fi
+  rm -f "${tmp}"
+
+  tmp="$(mktemp)"
+  printf '%s\n' '[profile.release]' 'debug = "line-tables-only"' 'split-debuginfo = "unpacked"' \
+    '' '[profile.dev]' 'opt-level = 0' > "${tmp}"
+  out="$(assert_profile_present "${tmp}")"; rc=$?
+  if [ "${rc}" -ne 0 ]; then
+    echo "  ok: levers present only OUTSIDE [profile.dev] do NOT satisfy -> FAIL (section-scoped)"
+  else
+    echo "  FAIL: levers in [profile.release] wrongly satisfied the [profile.dev] assertion"; fails=1
+  fi
+  rm -f "${tmp}"
+
   echo "[self-test] classify_link_output OOM detection"
 
   tmp="$(mktemp)"
@@ -162,6 +246,11 @@ main() {
     *) echo "usage: $0 [--self-test]" >&2; exit 2 ;;
   esac
   cd "${REPO_ROOT}" || { echo "cannot cd to repo root ${REPO_ROOT}" >&2; exit 2; }
+  # Environment-independent presence check FIRST — cheap, RAM-independent, and legible on its
+  # own before the heavy link run. Reuses the FAIL path (exit 1).
+  if ! assert_profile_present "${REPO_ROOT}/Cargo.toml"; then
+    exit 1
+  fi
   run_link_smoke
   exit $?
 }

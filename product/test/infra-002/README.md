@@ -74,6 +74,19 @@ The #878 fix is config-only: `[profile.dev]` debug-info reduction in root `Cargo
 execution) at the repo's **configured parallelism** and FAILS if the link does not complete,
 distinguishing an OOM (the #878 mode) from an ordinary compile/link error.
 
+It ALSO runs a cheap, environment-independent **profile-presence assertion** first: root
+`Cargo.toml`'s `[profile.dev]` must carry BOTH `debug = "line-tables-only"` AND
+`split-debuginfo = "unpacked"` (section-scoped — the keys in another table such as
+`[profile.release]` do not count; tolerant of whitespace and quote style; no TOML parser).
+This is needed because the link-based removal detection is **memory-ceiling-dependent** — on
+a higher-RAM box, dropping `[profile.dev]` could still link clean and leave the guard falsely
+GREEN. The grep-assert makes stanza detection hold regardless of RAM and reports as a distinct
+`profile-presence` failure, legibly separate from a link OOM.
+
+**Failure modes (all exit 1):** `profile-presence` — required `[profile.dev]` lever(s)
+missing; linker `OOM` — the #878 link-step OOM is back; ordinary compile/link error — a
+non-OOM build break unrelated to #878.
+
 **Why the configured `jobs` cap and not default `-j nproc`:** MEASURED post-fix, peak `ld`
 RSS is ~1112 MB per heavy server link and default `-j nproc(10)` STILL OOMs (≈11 GB demand
 vs ~9.4 GB avail, swap=0). Safety comes from the jobs cap, not from making 10-way links fit,
