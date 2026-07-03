@@ -3,6 +3,20 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.9.0] - 2026-07-03
+
+### Fixes
+- repoint recoverable inbound edges before orphaned-edge compaction (#879)
+- default-resolve context_graph supersessions across read surfaces (#881) (#885)
+- raise REDIRECT_CEILING 50->500 to stop redirect truncation (#882) (#884)
+- cap concurrent-link RSS to stop workspace test-link OOM (#878) (#880)
+- observe SessionClose 204-no-op is observable (#819) (#877)
+- client-side dormancy reconnect + session-id restore + errors-only observability (#872) (#875)
+- fix D1/D4 parity flip via corpus under-population (#844) (#866)
+- provision sqlite3 on parity lane for D2 host-side read (#849) (#863)
+- reground hook-client caps to 110000/200000 (#840) (#862)
+- remove D6 isolation from nan-022 parity matrix — isolation is not a parity property (#845) (#854)
+
 ## [0.8.9] - 2026-06-26
 
 ### Fixes

@@ -33,7 +33,7 @@ spawn validator (Gate 3) ──────────────────�
 on PASS: open PR
 spawn security-reviewer ────────────────────────────► review PR diff (fresh context)
 ◄────────────────────────────────────────────────────
-spawn uni-zero-reviewer (pr-review) ────────────────► advisory product review → GH comment
+spawn uni-zero-reviewer (pr-review) ────────────────► advisory product review → PR comment
 ◄────────────────────────────────────────────────────
 ◄──────────────────────────────  present PR + security assessment
 human reviews and merges
@@ -582,7 +582,7 @@ BUGFIX LEADER (you):
                        → commit + push + PR
               ...FAIL → rework or stop...
   Phase 4:    /uni-review-pr — security review + merge readiness → GH Issue comment
-              Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → GH comment
+              Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → PR comment
               ...wait...
               ...no blocking findings →
                 mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
