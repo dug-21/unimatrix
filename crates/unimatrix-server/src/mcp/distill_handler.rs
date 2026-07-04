@@ -1299,4 +1299,151 @@ mod tests {
             "AC-06: the persisted RetrospectiveReport must have NO candidate slot"
         );
     }
+
+    // ── crt-057 Gate-3c carry-forward: AC-19 ownership boundary (negative) ───
+
+    /// crt-057 CARRY-FORWARD (Gate 3b → 3c): **AC-19 / NG-5** — the ownership
+    /// boundary as a NEGATIVE requirement. `context_cycle_review`'s crt-057
+    /// response surface (the scoped Plane-B slice + honesty projections) carries
+    /// NO synthesized cross-source field: no GH `## Knowledge Stewardship` join,
+    /// no applied-entry attribution, no rework-count↔cause join, no
+    /// human-intervention ledger. Standalone schema-shape + code-path assertion —
+    /// NOT leaned on R-18 (report-body invariance is a DIFFERENT negative).
+    #[test]
+    fn test_ac19_ownership_boundary_no_cross_source_synthesis() {
+        use unimatrix_observe::{BoundsKind, ResolvedBounds, SessionSearchStatus};
+
+        // (1) SCHEMA-SHAPE — populate every crt-057 response type, serialize, and
+        //     assert (a) an allow-list of known content-free fields (an ADDED
+        //     synthesis field is caught) and (b) NO key anywhere carries a
+        //     cross-source-synthesis concept token.
+        fn collect_keys(v: &serde_json::Value, out: &mut Vec<String>) {
+            match v {
+                serde_json::Value::Object(m) => {
+                    for (k, val) in m {
+                        out.push(k.clone());
+                        collect_keys(val, out);
+                    }
+                }
+                serde_json::Value::Array(a) => a.iter().for_each(|e| collect_keys(e, out)),
+                _ => {}
+            }
+        }
+
+        let section = TranscriptCandidatesSection {
+            candidates: vec![cand("s", 0, Some("2026-06-08T10:00:00Z"), "decided")],
+            loss: vec![SessionLossInfo {
+                session_id: "s".to_string(),
+                elided_bytes: 3,
+                has_holes: true,
+                provenance: CandidateProvenance::Reconstructed,
+                dropped_candidates: 1,
+            }],
+        };
+        let status = SessionSearchStatus {
+            session_id: "s".to_string(),
+            matched: Some(false),
+            search_complete: false,
+            elided_bytes: 3,
+            provenance: CandidateProvenance::Primary,
+        };
+        let bounds = ResolvedBounds {
+            kind: BoundsKind::Anchor,
+            lo_epoch_ms: 1,
+            hi_epoch_ms: 2,
+        };
+        // The exact payload attach_search_status emits at assembly level.
+        let search_payload = serde_json::json!({ "search": [status], "resolved_bounds": bounds });
+
+        let mut keys = Vec::new();
+        collect_keys(&serde_json::to_value(&section).unwrap(), &mut keys);
+        collect_keys(&search_payload, &mut keys);
+
+        const ALLOWED: &[&str] = &[
+            "candidates",
+            "loss",
+            "session_id",
+            "byte_offset",
+            "ts",
+            "family_hints",
+            "text",
+            "elided_bytes",
+            "has_holes",
+            "provenance",
+            "dropped_candidates",
+            "search",
+            "matched",
+            "search_complete",
+            "resolved_bounds",
+            "kind",
+            "lo_epoch_ms",
+            "hi_epoch_ms",
+        ];
+        for k in &keys {
+            assert!(
+                ALLOWED.contains(&k.as_str()),
+                "AC-19: unexpected response field '{k}' — crt-057 must add no \
+                 attribution/join/ledger field to the review response surface"
+            );
+        }
+
+        const FORBIDDEN: &[&str] = &[
+            "attribution",
+            "applied",
+            "ledger",
+            "stewardship",
+            "rework",
+            "cause",
+            "human",
+            "intervention",
+            "github",
+            "gh_",
+            "join",
+            "synthes",
+        ];
+        for k in &keys {
+            let lk = k.to_lowercase();
+            for bad in FORBIDDEN {
+                assert!(
+                    !lk.contains(bad),
+                    "AC-19: response field '{k}' implies cross-source synthesis ('{bad}')"
+                );
+            }
+        }
+
+        // (2) CODE-PATH — the crt-057 production modules synthesize nothing across
+        //     GH stewardship blocks / applied entries / human ledger. The boundary
+        //     is enforced by the ABSENCE of any such symbol in the shipping source
+        //     (comments stripped so prose cannot trip the guard).
+        for full in [
+            include_str!("distill_handler.rs"),
+            include_str!("distill_scope.rs"),
+        ] {
+            let cut = full.find("#[cfg(test)]").unwrap_or(full.len());
+            let code: String = full[..cut]
+                .lines()
+                .map(|l| match l.find("//") {
+                    Some(i) => &l[..i],
+                    None => l,
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+                .to_lowercase();
+            for bad in [
+                "knowledge stewardship",
+                "stewardship",
+                "applied_entry",
+                "attribution",
+                "human_intervention",
+                "rework",
+                "ledger",
+                "cross_source",
+            ] {
+                assert!(
+                    !code.contains(bad),
+                    "AC-19: crt-057 production code must not synthesize across sources ('{bad}')"
+                );
+            }
+        }
+    }
 }

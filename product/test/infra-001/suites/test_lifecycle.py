@@ -3673,6 +3673,119 @@ def test_cycle_review_rereview_no_persisted_candidates(tmp_path):
     client2.shutdown()
 
 
+# === crt-057 non-destructive review + close-then-retrieve (test-plan §6c) ==
+#
+# crt-057 removed the eager purge: the review is fully non-destructive on every
+# path/param and reclamation is backstops-only. The transcript BUFFER is fed via
+# the UDS hook path (inactive here), so buffer-survival + candidate identity are
+# proven by Rust unit tests (test-plan §6d). These MCP tests pin the
+# server-observable halves: a repeat transcript retrieval never errors/leaks, a
+# post-`stop` retrieval still works (R-08), and the content-opaque fold does not
+# accumulate across repeated non-purging reviews (R-14 structural guard).
+
+
+def test_cycle_review_non_destructive_repeat(server):
+    """crt-057 AC-03: a second identical `transcript:{}` review returns a valid,
+    leak-free response — the review is fully non-destructive and repeatable (no
+    purge verb). Buffer-survival + identical-candidate proof is unit-level
+    (test-plan §6d); this pins the MCP-observable repeatability."""
+    topic = "crt057-nondestructive-repeat"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    _seed_observation_sql_lifecycle(db_path, [topic])
+    r1 = server.context_cycle_review(
+        topic, agent_id="human", format="json", transcript={}, timeout=30.0
+    )
+    assert_tool_success(r1), "crt-057 AC-03: first transcript review must succeed"
+    r2 = server.context_cycle_review(
+        topic, agent_id="human", format="json", transcript={}, timeout=30.0
+    )
+    assert_tool_success(r2), (
+        "crt-057 AC-03: repeat transcript review must succeed (non-destructive)"
+    )
+    for r in (r1, r2):
+        assert "transcript_candidates" not in get_result_text(r), (
+            "crt-057: no live buffer → no candidate leak on either review"
+        )
+
+
+def test_cycle_close_then_transcript_retrieval_returns_response(server):
+    """crt-057 R-08 / AC-17 (server-observable half): `context_cycle(stop)` is
+    non-purging — a post-close `transcript:{}` retrieval still succeeds. The
+    two-protocol lifecycle merge->close->retro composes ONLY because close is
+    inert; this pins that stop does not break subsequent retrieval. Candidate
+    presence post-close is unit-covered (test-plan §6d)."""
+    topic = "crt057-close-then-retrieve"
+    # Declare + close the cycle at the MCP level.
+    assert_tool_success(
+        server.context_cycle("start", topic, next_phase="scope", agent_id="human")
+    )
+    assert_tool_success(
+        server.context_cycle("stop", topic, phase="scope", agent_id="human")
+    )
+    # Seed observations so the post-close review reaches its success path.
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    _seed_observation_sql_lifecycle(db_path, [topic])
+    # Post-close scoped retrieval still works (close touched no buffer).
+    resp = server.context_cycle_review(
+        topic, agent_id="human", format="json", transcript={}, timeout=30.0
+    )
+    assert_tool_success(resp), (
+        "crt-057 R-08: post-close transcript retrieval must still succeed "
+        "(stop is non-purging)"
+    )
+
+
+def test_cycle_review_fold_idempotent_across_repeats(server):
+    """crt-057 R-14: the content-opaque fold does not accumulate across repeated
+    non-purging reviews. Reviews of the same cycle leave a SINGLE
+    cycle_review_index row whose fold columns are stable (no double-count). The
+    buffer-populated double-count case is unit-covered (test-plan §6d)."""
+    import sqlite3 as _sqlite3
+    topic = "crt057-fold-idempotent"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    _seed_observation_sql_lifecycle(db_path, [topic])
+
+    fold_cols = (
+        "transcript_bytes_total, transcript_delta_count, transcript_error_count, "
+        "transcript_refusal_count, compaction_count, compaction_reread_count"
+    )
+
+    def read_fold():
+        conn = _sqlite3.connect(db_path)
+        try:
+            return conn.execute(
+                f"SELECT {fold_cols} FROM cycle_review_index WHERE feature_cycle = ?",
+                (topic,),
+            ).fetchall()
+        finally:
+            conn.close()
+
+    # Three non-destructive reviews of the same cycle.
+    for _ in range(3):
+        assert_tool_success(
+            server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+        )
+    rows = read_fold()
+    assert len(rows) == 1, (
+        f"crt-057 R-14: repeated reviews must not create duplicate "
+        f"cycle_review_index rows (got {len(rows)})"
+    )
+    first = rows[0]
+
+    # More reviews must not grow the counters — the fold is a stable snapshot,
+    # never a running sum across repeated non-purging reads.
+    for _ in range(2):
+        assert_tool_success(
+            server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+        )
+    again = read_fold()
+    assert len(again) == 1
+    assert again[0] == first, (
+        "crt-057 R-14: fold columns must be stable across repeated non-purging "
+        f"reviews (no accumulation); first={first}, after-repeats={again[0]}"
+    )
+
+
 # === vnc-035: outgoing-edge carry-forward, end-to-end through MCP =========
 #
 # Multi-step flow: store A with an outgoing edge to X, correct A -> B with

@@ -1877,6 +1877,106 @@ def test_cycle_review_force_param_accepted(server):
     )
 
 
+# === crt-057 scoped transcript retrieval — MCP contract (test-plan §6c) ====
+#
+# The transcript BUFFER (Plane B) is fed via the UDS transcript_delta hook path,
+# inactive in this stdio harness — so candidate PRESENCE is proven by Rust unit
+# tests (distill_handler/distill_scope), per test-plan/OVERVIEW §6d. These MCP
+# tests pin the protocol-visible contract crt-057 changed: the lean default
+# carries no candidate section (AC-01), the new `transcript` param deserializes
+# and never leaks or errors, `format:"summary"` is a BREAKING rejection (AC-11),
+# and an invalid `match` regex is rejected up front without a panic (R-09).
+
+
+def test_cycle_review_default_no_candidates(server):
+    """crt-057 AC-01: the lean default (no `transcript`, markdown) response
+    carries NO candidate section. Seeded observations drive the review onto its
+    success path; the response renders normally with no transcript_candidates
+    marker."""
+    topic = "crt057-default-no-cands"
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, [topic])
+    resp = server.context_cycle_review(topic, agent_id="human", format="markdown", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+    assert "transcript_candidates" not in text, (
+        "crt-057 AC-01: default review must carry no candidate section"
+    )
+
+
+def test_cycle_review_transcript_empty_accepted_no_leak(server):
+    """crt-057 AC-02/AC-05: the new `transcript:{}` axis deserializes and is a
+    read-only, non-erroring retrieval. In the stdio harness there is no live
+    buffer, so the candidate section is ABSENT (not null, not an error) and no
+    candidate bytes leak. Candidate PRESENCE under a populated buffer is proven
+    by the Rust unit tests (test-plan §6d)."""
+    topic = "crt057-transcript-empty"
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, [topic])
+    resp = server.context_cycle_review(
+        topic, agent_id="human", format="json", transcript={}, timeout=30.0
+    )
+    assert_tool_success(resp), (
+        "crt-057: transcript:{} must be accepted (read-only axis), not a param error"
+    )
+    text = get_result_text(resp)
+    # Absent section (no live buffer) — the response is well-formed and leak-free.
+    assert "transcript_candidates" not in text, (
+        "crt-057: with no live buffer the candidate section is absent, no leak"
+    )
+    # `transcript:{match:".*"}` is the documented equivalent; also accepted.
+    resp2 = server.context_cycle_review(
+        topic, agent_id="human", format="json", transcript={"match": ".*"}, timeout=30.0
+    )
+    assert_tool_success(resp2)
+
+
+def test_cycle_review_format_summary_invalid_params(server):
+    """crt-057 AC-11 / R-12: `format:"summary"` is DROPPED — a breaking change.
+    Once the review reaches its render dispatch (observations seeded) the summary
+    alias must return ERROR_INVALID_PARAMS (-32602) with the exact valid-values
+    message."""
+    topic = "crt057-summary-drop"
+    db_path = _compute_db_path(server.project_dir)
+    _seed_observation_sql(db_path, [topic])
+    resp = server.context_cycle_review(topic, agent_id="human", format="summary", timeout=30.0)
+    assert resp.error is not None, (
+        "crt-057 AC-11: format:'summary' must be rejected (alias dropped)"
+    )
+    assert resp.error.get("code") == -32602, (
+        f"crt-057 AC-11: summary must map to ERROR_INVALID_PARAMS (-32602); "
+        f"got code={resp.error.get('code')}, msg={resp.error.get('message', '')[:200]}"
+    )
+    assert resp.error.get("message", "") == (
+        "Unknown format 'summary'. Valid values: \"markdown\", \"json\"."
+    ), (
+        f"crt-057 AC-11: exact valid-values message required; "
+        f"got {resp.error.get('message', '')!r}"
+    )
+
+
+def test_cycle_review_invalid_match_regex_invalid_params(server):
+    """crt-057 R-09 / security: a malformed `match` regex is rejected UP FRONT
+    with ERROR_INVALID_PARAMS (-32602) before any retrieval work — no panic, no
+    server death. Validated ahead of the observation load, so no seeding needed."""
+    topic = "crt057-bad-regex"
+    resp = server.context_cycle_review(
+        topic, agent_id="human", format="json", transcript={"match": "("}, timeout=30.0
+    )
+    assert resp.error is not None, (
+        "crt-057 R-09: an invalid match regex must be rejected"
+    )
+    assert resp.error.get("code") == -32602, (
+        f"crt-057 R-09: invalid regex must map to ERROR_INVALID_PARAMS (-32602); "
+        f"got code={resp.error.get('code')}, msg={resp.error.get('message', '')[:200]}"
+    )
+    # Server still responsive — the bad regex did not panic the handler.
+    status = server.context_status(agent_id="human", format="json")
+    assert_tool_success(status), (
+        "crt-057 R-09: server must remain responsive after an invalid-regex review"
+    )
+
+
 # === context_status crt-033 pending_cycle_reviews field =================
 
 
