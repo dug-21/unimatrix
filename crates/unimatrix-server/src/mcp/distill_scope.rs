@@ -24,8 +24,8 @@ use std::collections::BTreeSet;
 
 use regex::{Regex, RegexBuilder};
 use unimatrix_observe::{
-    CandidateProvenance, ResolvedBounds, SessionSearchStatus, TranscriptCandidate,
-    TranscriptCandidatesSection, TranscriptScope, Window,
+    BoundsKind, CandidateProvenance, HotspotFinding, ResolvedBounds, SessionSearchStatus,
+    TranscriptCandidate, TranscriptCandidatesSection, TranscriptScope, Window,
 };
 
 /// Compiled-program size ceiling for a caller `match` regex (R-09 / security).
@@ -86,6 +86,49 @@ pub(crate) struct ScopeCtx {
     pub phase_bounds: Option<(u64, u64)>,
     /// Window radii source; ignored by `phase`.
     pub window: Option<Window>,
+}
+
+/// Resolve an `anchor` finding id (e.g. `"F-03"`) to its evidence-ts span
+/// `[min, max]` in Plane-A epoch-millis, as `ResolvedBounds { kind: Anchor }`.
+///
+/// The id follows the report's 1-based finding-label convention (`format!("F-{:02}",
+/// i+1)`), so `F-03` selects `hotspots[2]`. Accepts `"F-03"`, `"F-3"`, or a bare
+/// `"3"`. Returns `None` (⇒ unknown id ⇒ absent section, FR-7) when the id does
+/// not parse, is out of range, or the selected finding carries no evidence.
+///
+/// NOTE (flagged): the markdown formatter assigns `F-NN` over its COLLAPSED
+/// findings view; this positional resolution over `report.hotspots` is exact when
+/// detection rules are distinct (the common case) and is the interface the JSON
+/// path exposes. Same-rule collapse is a documented edge.
+pub(crate) fn resolve_anchor_bounds(
+    anchor_id: &str,
+    hotspots: &[HotspotFinding],
+) -> Option<ResolvedBounds> {
+    let n = parse_finding_index(anchor_id)?; // 1-based
+    let finding = hotspots.get(n.checked_sub(1)?)?;
+    let mut lo = u64::MAX;
+    let mut hi = 0u64;
+    for ev in &finding.evidence {
+        lo = lo.min(ev.ts);
+        hi = hi.max(ev.ts);
+    }
+    if finding.evidence.is_empty() || lo > hi {
+        return None; // no evidence ⇒ unresolvable
+    }
+    Some(ResolvedBounds {
+        kind: BoundsKind::Anchor,
+        lo_epoch_ms: lo,
+        hi_epoch_ms: hi,
+    })
+}
+
+/// Parse a finding label to its 1-based index: `"F-03"`/`"F-3"`/`"f3"`/`"3"` → 3.
+fn parse_finding_index(id: &str) -> Option<usize> {
+    let trimmed = id.trim();
+    let digits = trimmed
+        .trim_start_matches(['F', 'f'])
+        .trim_start_matches(['-', ' ']);
+    digits.parse::<usize>().ok().filter(|n| *n > 0)
 }
 
 /// Named boundary conversion (R-05, #3385/#3372): Plane-B ISO-8601 candidate
