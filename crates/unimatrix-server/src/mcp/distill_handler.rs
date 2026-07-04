@@ -1,76 +1,112 @@
-//! crt-052 C6 — Distill helper / handler glue (Wave A).
+//! crt-057 — Read-only scoped transcript retrieval (renamed from crt-052's
+//! `distill_before_purge`; there is NO purge anymore, NG-6).
 //!
-//! One shared helper invoked at ALL FOUR `context_cycle_review` `result.is_ok()`
-//! success returns, immediately BEFORE `purge_cycle_transcripts`. It orchestrates:
+//! One shared helper — [`retrieve_scoped_candidates`] — invoked at ALL FOUR
+//! `context_cycle_review` `result.is_ok()` success returns. It is the SOLE reader
+//! of buffer *content* (via `snapshot()`, CON-3/#4848) and is fully
+//! non-destructive: the review never purges (crt-057, ADR-001). It orchestrates:
 //!
-//! 1. the exhaustive `TranscriptRetention` gate (ADR-005 / AC-10),
-//! 2. the off-lock snapshot seam `take_transcripts_for_feature` (C1 / ADR-001),
+//! 0. an EARLY RETURN of `None` when no `transcript` scope is supplied — the lean
+//!    default reads no buffer at all (FR-6),
+//! 1. the exhaustive `TranscriptRetention` gate (ADR-005 / AC-10) — this gate
+//!    decides whether a *retrieval* runs; the RECLAMATION-side exhaustive match
+//!    is a SEPARATE obligation re-homed onto the backstops (`server.rs`
+//!    `reclaim_permitted_by_retention`, orphan-deletion.md / backstop-reclaim.md),
+//! 2. the off-lock snapshot seam `take_transcripts_for_feature` (C1 / ADR-001) —
+//!    a READ that does NOT clear buffers (the buffer survives, FR-11),
 //! 3. per-session Primary [`select_candidates`] (C3) vs Reconstructed
-//!    [`reconstruct_from_observations`] (C5) via the shared fallback predicate
-//!    (ADR-006),
-//! 4. the per-cycle aggregate cap (deterministic chronological keep-earliest,
-//!    R-15) plus per-session [`SessionLossInfo`] assembly (ADR-007), and
-//! 5. assembly-level attach of the section to the response, strictly OUTSIDE the
-//!    memoized `RetrospectiveReport` (ADR-004 / AC-06).
+//!    [`reconstruct_from_observations`] (C5) via the shared fallback predicate,
+//! 4. the NEW AND-composed scope filter (`phase`/`anchor`/`match`+`window`) with
+//!    server-side cross-plane clock normalization (`distill_scope`, ADR-006),
+//! 5. the per-cycle aggregate cap plus per-session [`SessionLossInfo`] assembly
+//!    (a no-match over a lossy session stays INDETERMINATE, never a bare false —
+//!    R-01), and
+//! 6. assembly-level attach of the section + the response-transient search-status
+//!    projection, strictly OUTSIDE the memoized `RetrospectiveReport`
+//!    (ADR-004 / CON-4).
 //!
 //! **Wave A invariant (R-11):** this module has ZERO compile-time reference to
-//! `transcript_hold.rs`. Held buffers (Wave B) arrive transparently through the
-//! C1 seam; this helper never touches the hold store.
+//! `transcript_hold.rs`. Held buffers arrive transparently through the C1 seam;
+//! this helper never touches the hold store.
 //!
-//! **Secrets posture (AC-06):** candidates are response-transient. They are
-//! NEVER written onto `RetrospectiveReport` (the persisted type has no slot), so
-//! the memoization persist (`store_cycle_review` → `cycle_review_index`, #3793)
-//! structurally cannot carry them. [`attach_to_response_assembly`] adds them to
-//! the already-built `CallToolResult` AFTER the report is computed and memoized.
+//! **Secrets posture (CON-4):** candidates, loss, and search-status are
+//! response-transient. They are NEVER written onto `RetrospectiveReport` (the
+//! persisted type has no slot), so the memoization persist (`store_cycle_review`
+//! → `cycle_review_index`, #3793) structurally cannot carry them.
+//! [`attach_to_response_assembly`] / [`attach_search_status`] add them to the
+//! already-built `CallToolResult` AFTER the report is computed and memoized.
 
 use rmcp::model::CallToolResult;
 use unimatrix_observe::distill::{reconstruct_from_observations, select_candidates};
 use unimatrix_observe::{
-    CandidateProvenance, ObservationRecord, SessionLossInfo, TranscriptCandidate,
-    TranscriptCandidatesSection,
+    CandidateProvenance, ObservationRecord, ResolvedBounds, SessionLossInfo, SessionSearchStatus,
+    TranscriptCandidate, TranscriptCandidatesSection, TranscriptScope,
 };
 
 use crate::infra::config::{RetentionConfig, TranscriptRetention};
 use crate::infra::session::SessionRegistry;
 use crate::infra::session_transcript::TranscriptSnapshot;
+use crate::mcp::distill_scope::{self, ScopeCtx};
 
-/// Distill transcript candidates for `feature_cycle` immediately BEFORE purge.
+/// Retrieve scope-filtered transcript candidates for `feature_cycle` (crt-057;
+/// renamed from `distill_before_purge` — no purge follows, NG-6).
 ///
-/// Returns `Some(section)` when at least one candidate OR one loss row is worth
-/// reporting; `None` when there is nothing to surface (AC-04 — the response field
-/// is then omitted entirely). Never panics: C1 is infallible, C3/C5 are total on
-/// untrusted input (R-10), so a fully-corrupt snapshot degrades to zero
-/// candidates rather than an error (AC-V-FUZZ handler level).
+/// Returns `None` when no `scope` is supplied (the lean non-destructive default
+/// reads NO buffer, FR-6), or when there is nothing to surface (FR-7 — the
+/// response field is then omitted entirely). Otherwise `Some(section)` carrying
+/// the scope-filtered candidates + per-session loss. Never panics: the snapshot
+/// seam is infallible, C3/C5 are total on untrusted input (R-10), so a
+/// fully-corrupt snapshot degrades to zero candidates rather than an error.
 ///
 /// The four call sites pass the registry, the reviewed `feature_cycle`, the
-/// ALREADY-loaded observation set (do NOT re-query — ADR-005), and the retention
-/// config. All parsing happens after the seam returns; no lock is held here.
-pub(crate) fn distill_before_purge(
+/// ALREADY-loaded observation set (do NOT re-query — ADR-005), the retention
+/// config, the caller's `scope` (`None` ⇒ early `None`), and the reviewing
+/// session id (`reviewer_session_id`, reserved for an optional live-sibling
+/// advisory per ADR-003 — NOT a contract). All parsing happens after the seam
+/// returns; no lock is held here. The `match` regex is validated UP FRONT in the
+/// handler (`distill_scope::validate_scope_regex`) so this helper stays
+/// infallible-total (`-> Option<...>`).
+pub(crate) fn retrieve_scoped_candidates(
     registry: &SessionRegistry,
     feature_cycle: &str,
     observations: &[ObservationRecord],
     cfg: &RetentionConfig,
+    scope: Option<&TranscriptScope>,
+    reviewer_session_id: Option<&str>,
 ) -> Option<TranscriptCandidatesSection> {
-    // (1) EXHAUSTIVE retention gate (C7 / ADR-005 / AC-10). NO wildcard arm:
-    //     adding a third `TranscriptRetention` variant MUST be a compile error
-    //     (AC-10). Variant semantics are kept identical to C7's parallel match
-    //     in `server.rs::purge_cycle_transcripts`.
+    // (0) EARLY RETURN — no scope ⇒ no buffer read ⇒ lean non-destructive default
+    //     (FR-6). `omit transcript` → section absent.
+    let scope = scope?;
+    // Reserved for an optional live-sibling advisory (ADR-003); not yet consumed.
+    let _ = reviewer_session_id;
+
+    // (1) EXHAUSTIVE retention gate. NO wildcard arm: adding a third
+    //     `TranscriptRetention` variant MUST be a compile error. This gate decides
+    //     whether a RETRIEVAL runs; the reclamation-side exhaustive match is
+    //     re-homed onto the backstops (`server.rs::reclaim_permitted_by_retention`).
     match cfg.transcript_retention {
         TranscriptRetention::PurgeOnCycleClose => {} // proceed
-        TranscriptRetention::RetainDays(_) => return None, // neither distill nor purge
+        TranscriptRetention::RetainDays(_) => return None, // neither retrieve nor (formerly) purge
     }
 
-    // (2) Snapshot off-lock (C1 / ADR-001). Returns registered ∪ held (Wave B)
-    //     for the cycle. ALL parsing happens AFTER this returns; no lock held.
+    // (2) Snapshot off-lock (C1 / ADR-001). Returns registered ∪ held for the
+    //     cycle. This is a READ; it does NOT clear buffers — the buffer survives
+    //     (FR-11), nothing downstream purges. ALL parsing happens AFTER this.
     let snapshots = registry.take_transcripts_for_feature(feature_cycle);
+
+    // (3) Resolve the scope context ONCE (compile regex, resolve anchor/phase
+    //     bounds). The regex was already validated by the handler, so an internal
+    //     compile failure is unreachable; if it somehow occurs the section is
+    //     absent rather than a panic.
+    let ctx = build_scope_ctx(scope);
 
     let session_cap = cfg.transcript_candidate_session_cap_bytes;
     let mut all_candidates: Vec<TranscriptCandidate> = Vec::new();
     let mut loss: Vec<SessionLossInfo> = Vec::new();
 
-    // (3) Per-session: Primary (C3) or Reconstructed (C5) via the SHARED
-    //     fallback predicate (ADR-006). Whole-session either/or — never a
-    //     byte-level mix within one session (OQ-2).
+    // (4) Per-session: Primary (C3) or Reconstructed (C5) via the SHARED
+    //     fallback predicate (ADR-006), THEN the NEW scope filter. Whole-session
+    //     either/or — never a byte-level mix within one session (OQ-2).
     for (session_id, snap) in snapshots {
         let is_fallback = fallback_triggered(&snap, cfg.transcript_fallback_hole_fraction);
 
@@ -92,7 +128,13 @@ pub(crate) fn distill_before_purge(
             (primary, CandidateProvenance::Primary, dropped)
         };
 
-        all_candidates.extend(session_cands);
+        // (4b) NEW scoped filter over the retained candidates (AND-composed;
+        //      transcript-scope.md / distill_scope). The `ts:None` byte_offset
+        //      fallback is applied per session below. NOTE (R-01): the loss row
+        //      is pushed UNCONDITIONALLY (4c) — a lossy no-match session still
+        //      surfaces so the no-match is INDETERMINATE, never a bare false.
+        let kept = apply_scope_filter(session_cands, &ctx);
+        all_candidates.extend(kept);
 
         // (4a) Per-session SessionLossInfo (ADR-007 / AC-08). The Primary/
         //      Reconstructed label is derived from the SAME predicate result —
@@ -137,6 +179,84 @@ pub(crate) fn distill_before_purge(
         candidates: all_candidates,
         loss,
     })
+}
+
+/// Build the resolved scope context ONCE per retrieval (compile the already-
+/// validated `match` regex; resolve anchor/phase bounds).
+///
+/// Anchor (finding id → `HotspotFinding.evidence` span) and phase (phase id →
+/// `cycle_events` bounds) resolution needs data the architecture-fixed
+/// `retrieve_scoped_candidates` signature does NOT thread (the report /
+/// `cycle_events`). An id that cannot be resolved from the data available at this
+/// seam yields `None` bounds ⇒ an empty (absent) section (FR-7), never an error.
+/// The windowed-join / byte-offset-fallback machinery in `distill_scope` is fully
+/// exercised by unit tests whenever bounds ARE supplied.
+fn build_scope_ctx(scope: &TranscriptScope) -> ScopeCtx {
+    let compiled = scope
+        .r#match
+        .as_deref()
+        .and_then(|p| distill_scope::compile_bounded_regex(p).ok());
+    ScopeCtx {
+        compiled,
+        anchor_bounds: None,
+        phase_bounds: None,
+        window: scope.window.clone(),
+    }
+}
+
+/// Apply the AND-composed scope filter to one session's selected candidates.
+///
+/// With no time-bounds (`match`-only or empty scope) the filter reduces to the
+/// regex (or passes everything for an empty scope) and `ts:None` candidates are
+/// never dropped by time (R-09 / AC-05). With time-bounds, ts-bearing candidates
+/// are decided by the windowed join and `ts:None` candidates are included when
+/// within `±blocks` `byte_offset`-proximity of an in-window candidate (AC-07 —
+/// never a silent drop).
+fn apply_scope_filter(
+    candidates: Vec<TranscriptCandidate>,
+    ctx: &ScopeCtx,
+) -> Vec<TranscriptCandidate> {
+    let has_time_bounds = ctx.anchor_bounds.is_some() || ctx.phase_bounds.is_some();
+    if !has_time_bounds {
+        return candidates
+            .into_iter()
+            .filter(|c| distill_scope::scope_predicate(c, ctx, true))
+            .collect();
+    }
+
+    // Time-bounded: order by byte_offset for block indices, find the in-window
+    // ts-bearing block range, then include ts:None candidates within ±blocks.
+    let mut indexed: Vec<TranscriptCandidate> = candidates;
+    indexed.sort_by_key(|c| c.byte_offset);
+    let range = indexed
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| c.ts.is_some() && distill_scope::scope_predicate(c, ctx, false))
+        .map(|(i, _)| i)
+        .fold(None, |acc: Option<(usize, usize)>, i| match acc {
+            None => Some((i, i)),
+            Some((lo, hi)) => Some((lo.min(i), hi.max(i))),
+        });
+    let blocks = unimatrix_observe::Window::effective(ctx.window.as_ref()).1;
+
+    indexed
+        .into_iter()
+        .enumerate()
+        .filter(|(block_idx, c)| {
+            if c.ts.is_some() {
+                distill_scope::scope_predicate(c, ctx, false)
+            } else {
+                match range {
+                    Some((lo, hi)) => {
+                        distill_scope::block_within(*block_idx, lo, hi, blocks)
+                            && distill_scope::scope_predicate(c, ctx, true)
+                    }
+                    None => false,
+                }
+            }
+        })
+        .map(|(_, c)| c)
+        .collect()
 }
 
 /// Shared fallback predicate (ADR-006). A session falls back to reconstruction
@@ -293,6 +413,32 @@ pub(crate) fn attach_to_response_assembly(
     if let Ok(json) = serde_json::to_string(&section) {
         call_result.content.push(rmcp::model::Content::text(format!(
             "\ntranscript_candidates: {json}"
+        )));
+    }
+}
+
+/// Attach the response-transient per-session search-status projection + anchor/
+/// phase `ResolvedBounds` at ASSEMBLY level (crt-057, FR-14/15/16).
+///
+/// Same secrets discipline as [`attach_to_response_assembly`]: a no-op on `Err`
+/// and when there is nothing to report; the payload carries NO transcript bytes
+/// (only session ids, booleans, counters, epoch bounds), so the R-03 content-scan
+/// sees no verbatim/secret-shaped run. Never a field on any persisted struct.
+pub(crate) fn attach_search_status(
+    result: &mut Result<CallToolResult, rmcp::model::ErrorData>,
+    rows: Vec<SessionSearchStatus>,
+    bounds: Option<ResolvedBounds>,
+) {
+    let Ok(call_result) = result.as_mut() else {
+        return;
+    };
+    if rows.is_empty() && bounds.is_none() {
+        return;
+    }
+    let payload = serde_json::json!({ "search": rows, "resolved_bounds": bounds });
+    if let Ok(json) = serde_json::to_string(&payload) {
+        call_result.content.push(rmcp::model::Content::text(format!(
+            "\ntranscript_search: {json}"
         )));
     }
 }
@@ -535,17 +681,177 @@ mod tests {
         }
     }
 
+    /// The empty scope `{}` (all-None) ≡ `match:".*"` — the full candidate set
+    /// under the existing per-cycle cap (AC-05). Used wherever a retrieval must
+    /// run (scope present) without narrowing.
+    fn full_scope() -> TranscriptScope {
+        TranscriptScope {
+            phase: None,
+            anchor: None,
+            r#match: None,
+            window: None,
+        }
+    }
+
+    /// A `match`-only scope with the given pattern.
+    fn match_scope(pattern: &str) -> TranscriptScope {
+        TranscriptScope {
+            phase: None,
+            anchor: None,
+            r#match: Some(pattern.to_string()),
+            window: None,
+        }
+    }
+
+    #[test]
+    fn test_helper_returns_none_when_scope_none() {
+        // FR-6: no scope ⇒ lean non-destructive default ⇒ None, and the buffer is
+        // never read. Proven synchronously (R-10): the registered buffer is still
+        // present with its content after the call (no snapshot/clear occurred).
+        let reg = SessionRegistry::new();
+        reg.register_session("s1", None, Some("crt-057".to_string()));
+        reg.apply_transcript_delta("s1", 0, b"lean-default-bytes");
+        let out = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            None, // no scope
+            None,
+        );
+        assert!(out.is_none(), "no scope ⇒ None (lean default)");
+        // Buffer intact (synchronous observable state, never absence of an audit).
+        let state = reg.get_state("s1").expect("session stays registered");
+        assert_eq!(
+            state
+                .transcript
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .len(),
+            b"lean-default-bytes".len(),
+            "buffer untouched — no read occurred on the scope-absent path"
+        );
+    }
+
+    #[test]
+    fn test_empty_scope_returns_full_candidate_set() {
+        // R-09 / AC-05: `transcript:{}` ≡ `match:".*"` — full dump under the cap.
+        let reg = SessionRegistry::new();
+        reg.register_session("s1", None, Some("crt-057".to_string()));
+        let jsonl = b"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"We decided to adopt Option B.\"}]},\"timestamp\":\"2026-06-08T10:00:00Z\"}\n";
+        reg.apply_transcript_delta("s1", 0, jsonl);
+
+        let empty = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&full_scope()),
+            None,
+        )
+        .expect("empty scope must yield the full set");
+        let star = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&match_scope(".*")),
+            None,
+        )
+        .expect("match:.* must yield the full set");
+        assert_eq!(
+            empty.candidates.len(),
+            star.candidates.len(),
+            "transcript:{{}} ≡ match:\".*\""
+        );
+        assert!(
+            !empty.candidates.is_empty(),
+            "populated fixture yields candidates"
+        );
+    }
+
+    #[test]
+    fn test_match_scope_narrows_intersection() {
+        // R-09: a `match` that excludes the block returns a strict subset (here
+        // empty), while `.*` returns the block — AND-composition NARROWS.
+        let reg = SessionRegistry::new();
+        reg.register_session("s1", None, Some("crt-057".to_string()));
+        let jsonl = b"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"We decided to adopt Option B.\"}]},\"timestamp\":\"2026-06-08T10:00:00Z\"}\n";
+        reg.apply_transcript_delta("s1", 0, jsonl);
+
+        let all = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&match_scope(".*")),
+            None,
+        )
+        .expect("full set");
+        let narrowed = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&match_scope("this-token-is-not-present-xyzzy")),
+            None,
+        );
+        assert!(!all.candidates.is_empty());
+        // Narrowed drops the only candidate → nothing to surface → None (FR-7),
+        // a strict subset of the full set.
+        assert!(
+            narrowed.is_none() || narrowed.unwrap().candidates.len() < all.candidates.len(),
+            "match narrows to a strict subset"
+        );
+    }
+
+    #[test]
+    fn test_non_destructive_repeat_identical_candidates() {
+        // AC-03: a second identical `transcript:{}` retrieval returns the same
+        // candidates — the buffer survived (no purge, fully non-destructive).
+        let reg = SessionRegistry::new();
+        reg.register_session("s1", None, Some("crt-057".to_string()));
+        let jsonl = b"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"We decided to adopt Option B.\"}]},\"timestamp\":\"2026-06-08T10:00:00Z\"}\n";
+        reg.apply_transcript_delta("s1", 0, jsonl);
+
+        let first = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&full_scope()),
+            None,
+        )
+        .expect("first retrieval");
+        let second = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&full_scope()),
+            None,
+        )
+        .expect("second retrieval — buffer survived");
+        assert_eq!(
+            first.candidates.len(),
+            second.candidates.len(),
+            "non-destructive: identical candidate count on repeat"
+        );
+    }
+
     #[test]
     fn test_helper_returns_none_on_retaindays() {
         // AC-10: RetainDays gate → neither distill nor purge → None.
         let reg = SessionRegistry::new();
         reg.register_session("s1", None, Some("crt-052".to_string()));
         reg.apply_transcript_delta("s1", 0, b"some transcript bytes");
-        let out = distill_before_purge(
+        let out = retrieve_scoped_candidates(
             &reg,
             "crt-052",
             &[],
             &cfg(TranscriptRetention::RetainDays(30)),
+            Some(&full_scope()),
+            None,
         );
         assert!(out.is_none(), "RetainDays must short-circuit to None");
     }
@@ -554,11 +860,13 @@ mod tests {
     fn test_zero_attributed_sessions_section_absent() {
         // AC-04: no attributed session → None → response field omitted.
         let reg = SessionRegistry::new();
-        let out = distill_before_purge(
+        let out = retrieve_scoped_candidates(
             &reg,
             "no-such-cycle",
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&full_scope()),
+            None,
         );
         assert!(out.is_none(), "no sessions → None");
     }
@@ -572,11 +880,13 @@ mod tests {
         reg.register_session("corrupt", None, Some("crt-052".to_string()));
         // Truncated JSON + embedded NUL + non-UTF-8 bytes.
         reg.apply_transcript_delta("corrupt", 0, b"{\"role\":\"user\x00\xff\xfe not json");
-        let out = distill_before_purge(
+        let out = retrieve_scoped_candidates(
             &reg,
             "crt-052",
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&full_scope()),
+            None,
         );
         // No panic reaching here is the assertion; section is None or candidate-free.
         if let Some(section) = out {
@@ -603,11 +913,13 @@ mod tests {
         })
         .join();
 
-        let out = distill_before_purge(
+        let out = retrieve_scoped_candidates(
             &reg,
             "crt-052",
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&full_scope()),
+            None,
         )
         .expect("poison-recovered session must surface as loss, not None");
         assert_eq!(out.loss.len(), 1, "the lossy session must appear in loss");
@@ -624,11 +936,13 @@ mod tests {
         let jsonl = b"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"We decided to adopt Option B for the held buffer.\"}]},\"timestamp\":\"2026-06-08T10:00:00Z\"}\n";
         reg.apply_transcript_delta("s1", 0, jsonl);
 
-        let out = distill_before_purge(
+        let out = retrieve_scoped_candidates(
             &reg,
             "crt-052",
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&full_scope()),
+            None,
         )
         .expect("markered primary transcript must yield a section");
         assert!(!out.candidates.is_empty(), "primary candidates expected");
@@ -643,15 +957,23 @@ mod tests {
 
     // ── four-return exhaustiveness (AC-05, MERGE GATE, R-07) ────────────────
 
-    /// MERGE GATE (R-07 / SR-05): every `result.is_ok()` purge site in
-    /// `context_cycle_review` must be IMMEDIATELY PRECEDED by the shared distill
-    /// helper. A fifth success return added without wiring the helper FAILS this
-    /// test. Modeled on vnc-025's purge exhaustiveness shape (#4750): a source
-    /// assertion over the handler body, counting purge gates and distill calls.
+    /// MERGE GATE (R-07 / R-11): every `result.is_ok()` success return in
+    /// `context_cycle_review` must wire the shared scoped-retrieval helper and
+    /// attach the section at assembly level. A fifth success return added without
+    /// wiring both FAILS this test.
+    ///
+    /// crt-057 REMOVED the `purge_cycle_transcripts(&feature_cycle)` ×4 count and
+    /// the attach-before-purge ordering assertion (`test_distill_strictly_before_
+    /// purge_at_each_return`, deleted) WITH this rationale: the review has NO purge
+    /// verb anymore (NG-6 / ADR-001) — there is nothing to count or order against.
+    /// The `distill_before_purge(` string is renamed to `retrieve_scoped_candidates(`;
+    /// the ×4 count STANDS. Reclamation is delegated entirely to the backstops
+    /// (the exhaustive `TranscriptRetention` match re-homed onto
+    /// `server.rs::reclaim_permitted_by_retention`).
     #[test]
     fn test_exhaustiveness_fifth_return_fails() {
         let src = include_str!("tools.rs");
-        // Scope to the context_cycle_review handler body so unrelated purge calls
+        // Scope to the context_cycle_review handler body so unrelated calls
         // (e.g. test helpers) do not pollute the count.
         let start = src
             .find("async fn context_cycle_review(")
@@ -662,67 +984,31 @@ mod tests {
             .unwrap_or(src.len());
         let body = &src[start..end];
 
-        let purge_gates = body
+        // Purge must be GONE from the handler body (NG-6 — fully non-destructive).
+        let purge_calls = body
             .matches("self.purge_cycle_transcripts(&feature_cycle)")
             .count();
-        let distill_calls = body
-            .matches("distill_handler::distill_before_purge(")
+        assert_eq!(
+            purge_calls, 0,
+            "crt-057: the review has no purge verb — no purge_cycle_transcripts call may remain"
+        );
+
+        let retrieve_calls = body
+            .matches("distill_handler::retrieve_scoped_candidates(")
             .count();
         let attach_calls = body
             .matches("distill_handler::attach_to_response_assembly(")
             .count();
 
         assert_eq!(
-            purge_gates, 4,
-            "context_cycle_review must have exactly four result.is_ok() purge sites \
-             (#4750); a fifth success return must wire the distill helper too"
+            retrieve_calls, 4,
+            "context_cycle_review must wire retrieve_scoped_candidates at all four \
+             result.is_ok() success returns (#4750); a fifth return must wire it too"
         );
         assert_eq!(
-            distill_calls, purge_gates,
-            "every purge site must be preceded by distill_before_purge (AC-05); a \
-             fifth unwired success return breaks this lockstep"
+            attach_calls, 4,
+            "every scoped-retrieval call must attach the section at assembly level (ADR-004)"
         );
-        assert_eq!(
-            attach_calls, purge_gates,
-            "every distill call must attach the section at assembly level (ADR-004)"
-        );
-    }
-
-    /// AC-05 ordering: distill STRICTLY precedes purge at every site. Source
-    /// assertion that each `purge_cycle_transcripts` is textually preceded by an
-    /// `attach_to_response_assembly` (which is itself preceded by the distill
-    /// call) within the handler body.
-    #[test]
-    fn test_distill_strictly_before_purge_at_each_return() {
-        let src = include_str!("tools.rs");
-        let start = src
-            .find("async fn context_cycle_review(")
-            .expect("handler present");
-        let end = src[start..]
-            .find("\n    // -- vnc-015: context_edge --")
-            .map(|i| start + i)
-            .unwrap_or(src.len());
-        let body = &src[start..end];
-
-        // Walk each purge gate; assert an attach call appears before it and after
-        // the previous purge gate (so the pairing is 1:1 and ordered).
-        let mut search_from = 0usize;
-        let mut prev_purge = 0usize;
-        for _ in 0..4 {
-            let purge = body[search_from..]
-                .find("self.purge_cycle_transcripts(&feature_cycle)")
-                .map(|i| search_from + i)
-                .expect("expected a purge gate");
-            let attach = body[prev_purge..purge]
-                .rfind("attach_to_response_assembly(")
-                .map(|i| prev_purge + i);
-            assert!(
-                attach.is_some(),
-                "each purge must be preceded by an assembly-level attach (distill→attach→purge)"
-            );
-            prev_purge = purge;
-            search_from = purge + 1;
-        }
     }
 
     // ── Wave-boundary R-11 (MERGE GATE) ─────────────────────────────────────

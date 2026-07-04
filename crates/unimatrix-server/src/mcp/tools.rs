@@ -441,10 +441,15 @@ pub struct RetrospectiveParams {
     )]
     #[schemars(with = "Option<u64>")]
     pub evidence_limit: Option<usize>,
-    /// Output format: "markdown" (default) or "json". (vnc-011)
+    /// Render axis (crt-057): output format, exactly "markdown" (default) or
+    /// "json". "summary" is NOT a valid value — it yields ERROR_INVALID_PARAMS.
+    /// This axis is render-only and orthogonal to `force` (recompute) and
+    /// `transcript` (scoped retrieval); it never retrieves candidates or reclaims
+    /// buffers. (vnc-011)
     pub format: Option<String>,
-    /// Force recomputation even if a stored review exists. (crt-033)
-    /// Absent or None is equivalent to false.
+    /// Recompute axis (crt-033): force recomputation even if a stored review
+    /// exists. Absent or None is equivalent to false. Recompute-only and
+    /// orthogonal to `format`/`transcript`; it never reclaims buffers.
     pub force: Option<bool>,
     /// crt-055 (#593, ADR-010): close the cycle as part of the review.
     ///
@@ -457,6 +462,20 @@ pub struct RetrospectiveParams {
     /// not an error). Informs/closes a record only — never controls execution (RQ-8).
     #[serde(default)]
     pub auto_close: bool,
+
+    /// Retrieval axis (crt-057, ADR-002): read-only, AND-composed scoped
+    /// transcript retrieval `{ phase?, anchor?, match?, window? }`. Omit for the
+    /// lean default (no candidate section, buffer untouched). When present it
+    /// returns selected `TranscriptCandidate`s plus per-session `SessionLossInfo`
+    /// / search-status; it NEVER purges — the review has no destructive verb
+    /// (NG-6). Non-destructive and repeatable. See `TranscriptScope`.
+    ///
+    /// Schema note: `#[schemars(with = ...)]` exposes this as a free-form object
+    /// because the underlying `TranscriptScope`/`Window` (unimatrix-observe) are
+    /// serde-only (Wave 1); serde still deserializes to the strong type.
+    #[serde(default)]
+    #[schemars(with = "Option<serde_json::Value>")]
+    pub transcript: Option<unimatrix_observe::TranscriptScope>,
 }
 
 /// Parameters for the context_cycle tool.
@@ -2120,7 +2139,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_cycle_review",
-        description = "Analyze observation data for a work cycle. First call computes and caches the report; subsequent calls return the cached result. Use force=true to recompute fresh telemetry."
+        description = "Analyze observation data for a work cycle. Three orthogonal, non-destructive axes: (1) format = render the report as \"markdown\" (default) or \"json\" (render-only); (2) force = recompute fresh telemetry instead of returning the cached report (recompute-only); (3) transcript = a read-only, AND-composed scoped retrieval { phase?, anchor?, match?, window? } that returns selected transcript candidates plus per-session loss/search-status. Omit transcript for the lean default. The tool has NO purge verb — it never destroys transcript buffers; in-memory reclamation is delegated entirely to the TTL/cap/session-close backstops."
     )]
     async fn context_cycle_review(
         &self,
@@ -2145,6 +2164,12 @@ impl UnimatrixServer {
         // 2. Validation
         crate::infra::validation::validate_retrospective_params(&params)
             .map_err(rmcp::ErrorData::from)?;
+
+        // 2b. crt-057 (R-09 / security): validate the scoped-retrieval `match`
+        //     regex UP FRONT so `retrieve_scoped_candidates` stays infallible
+        //     (`-> Option<...>`) and no retrieval runs on the error path. An
+        //     invalid/oversized pattern → ERROR_INVALID_PARAMS before any work.
+        crate::mcp::distill_scope::validate_scope_regex(params.transcript.as_ref())?;
 
         // 3. Load observations from SQL via ObservationSource (col-024)
         //    Three-path lookup: primary cycle_events-based → legacy sessions.feature_cycle → content-scan.
@@ -2360,24 +2385,32 @@ impl UnimatrixServer {
                                 params.evidence_limit,
                                 Some(note),
                             );
-                            // crt-052 (C6, ADR-005/AC-05): distill STRICTLY
-                            // BEFORE purge, attach at assembly level (ADR-004),
-                            // then purge — same order at all four returns.
-                            let section = crate::mcp::distill_handler::distill_before_purge(
+                            // crt-057 (ADR-001/ADR-002): read-only scoped
+                            // retrieval + response-transient honesty projection,
+                            // attached at assembly level (ADR-004). NO purge —
+                            // fully non-destructive (NG-6); the buffer survives.
+                            let section = crate::mcp::distill_handler::retrieve_scoped_candidates(
                                 &self.session_registry,
                                 &feature_cycle,
                                 &attributed,
                                 &self.retention_config,
+                                params.transcript.as_ref(),
+                                ctx.audit_ctx.session_id.as_deref(),
                             );
+                            let (status_rows, resolved_bounds) =
+                                crate::mcp::distill_scope::derive_search_status(
+                                    section.as_ref(),
+                                    params.transcript.as_ref(),
+                                );
                             crate::mcp::distill_handler::attach_to_response_assembly(
                                 &mut result,
                                 section,
                             );
-                            // vnc-025 (#670, FR-15/FR-16): purge AFTER the success
-                            // response is built; error paths keep transcripts.
-                            if result.is_ok() {
-                                self.purge_cycle_transcripts(&feature_cycle);
-                            }
+                            crate::mcp::distill_handler::attach_search_status(
+                                &mut result,
+                                status_rows,
+                                resolved_bounds,
+                            );
                             return result;
                         }
                         Err(e) => {
@@ -2529,7 +2562,7 @@ impl UnimatrixServer {
                         // Cached path also respects format (vnc-011)
                         let format = params.format.as_deref().unwrap_or("markdown");
                         let mut result = match format {
-                            "markdown" | "summary" => Ok(format_retrospective_markdown(&report)),
+                            "markdown" => Ok(format_retrospective_markdown(&report)),
                             "json" => Ok(format_retrospective_report(&report)),
                             _ => Err(rmcp::model::ErrorData::new(
                                 ERROR_INVALID_PARAMS,
@@ -2540,23 +2573,31 @@ impl UnimatrixServer {
                                 None,
                             )),
                         };
-                        // crt-052 (C6, ADR-005/AC-05): distill BEFORE purge,
-                        // attach at assembly level (ADR-004), then purge.
-                        let section = crate::mcp::distill_handler::distill_before_purge(
+                        // crt-057 (ADR-001/ADR-002): read-only scoped retrieval +
+                        // honesty projection, attached at assembly level (ADR-004).
+                        // NO purge — fully non-destructive (NG-6).
+                        let section = crate::mcp::distill_handler::retrieve_scoped_candidates(
                             &self.session_registry,
                             &feature_cycle,
                             &attributed,
                             &self.retention_config,
+                            params.transcript.as_ref(),
+                            ctx.audit_ctx.session_id.as_deref(),
                         );
+                        let (status_rows, resolved_bounds) =
+                            crate::mcp::distill_scope::derive_search_status(
+                                section.as_ref(),
+                                params.transcript.as_ref(),
+                            );
                         crate::mcp::distill_handler::attach_to_response_assembly(
                             &mut result,
                             section,
                         );
-                        // vnc-025 (#670, FR-15/FR-16): purge AFTER the success
-                        // response is built; error paths keep transcripts.
-                        if result.is_ok() {
-                            self.purge_cycle_transcripts(&feature_cycle);
-                        }
+                        crate::mcp::distill_handler::attach_search_status(
+                            &mut result,
+                            status_rows,
+                            resolved_bounds,
+                        );
                         return result;
                     }
                     None => {
@@ -3298,23 +3339,29 @@ impl UnimatrixServer {
                 advisory,
                 parse_failure_count,
             );
-            // crt-052 (C6, ADR-005/AC-05, OQ-4): on a memoization HIT candidates
-            // are distilled FRESH from call-time buffer content and attached to
-            // the RESPONSE — the cached report (memo_report) is unchanged and may
-            // diverge (documented). Distill strictly before purge.
-            let section = crate::mcp::distill_handler::distill_before_purge(
+            // crt-057 (ADR-002, memo-hit parity — CON-3/AC-12): on a memoization
+            // HIT the scoped retrieval still reads the LIVE buffer via snapshot()
+            // (the cached memo_report is unchanged and may diverge — documented).
+            // Threaded identically to the full-pipeline return. NO purge — fully
+            // non-destructive (NG-6); the buffer survives every re-review.
+            let section = crate::mcp::distill_handler::retrieve_scoped_candidates(
                 &self.session_registry,
                 &feature_cycle,
                 &attributed,
                 &self.retention_config,
+                params.transcript.as_ref(),
+                ctx.audit_ctx.session_id.as_deref(),
+            );
+            let (status_rows, resolved_bounds) = crate::mcp::distill_scope::derive_search_status(
+                section.as_ref(),
+                params.transcript.as_ref(),
             );
             crate::mcp::distill_handler::attach_to_response_assembly(&mut result, section);
-            // vnc-025 (#670, FR-15/FR-16): the cached re-review also purges —
-            // idempotent (second call finds empty buffers → no audit rows).
-            // Error paths keep transcripts.
-            if result.is_ok() {
-                self.purge_cycle_transcripts(&feature_cycle);
-            }
+            crate::mcp::distill_handler::attach_search_status(
+                &mut result,
+                status_rows,
+                resolved_bounds,
+            );
             return result;
         }
 
@@ -3344,7 +3391,7 @@ impl UnimatrixServer {
             .expect("full_report must be Some when memo_hit is None — logic invariant violated");
         let format = params.format.as_deref().unwrap_or("markdown");
         let result = match format {
-            "markdown" | "summary" => {
+            "markdown" => {
                 // Markdown path: formatter controls its own evidence selection (k=3 by timestamp).
                 // evidence_limit is irrelevant here.
                 // Append parse_failure_count as a trailing note when non-zero (or always for AC-13).
@@ -3419,25 +3466,29 @@ impl UnimatrixServer {
                 .content
                 .push(rmcp::model::Content::text(format!("\n{block}")));
         }
-        // crt-052 (C6, ADR-005/AC-05): distill STRICTLY before purge, attach the
-        // section at assembly level (ADR-004) — outside the memoized report — then
-        // purge. Same shared helper + ordering as the other three returns.
-        let section = crate::mcp::distill_handler::distill_before_purge(
+        // crt-057 (ADR-001/ADR-002): read-only scoped retrieval + honesty
+        // projection, attached at assembly level (ADR-004) — outside the memoized
+        // report. Same shared helper as the other three returns. NO purge — the
+        // review is fully non-destructive (NG-6); reclamation is delegated
+        // entirely to the TTL/cap/session-close backstops.
+        let section = crate::mcp::distill_handler::retrieve_scoped_candidates(
             &self.session_registry,
             &feature_cycle,
             &attributed,
             &self.retention_config,
+            params.transcript.as_ref(),
+            ctx.audit_ctx.session_id.as_deref(),
+        );
+        let (status_rows, resolved_bounds) = crate::mcp::distill_scope::derive_search_status(
+            section.as_ref(),
+            params.transcript.as_ref(),
         );
         crate::mcp::distill_handler::attach_to_response_assembly(&mut result, section);
-        // vnc-025 (#670, FR-15/FR-16): purge transcript buffers for the reviewed
-        // cycle AFTER the success response is built (the last step before
-        // returning Ok). Error paths keep transcripts for the retry (Gate 3a
-        // disposition 2). The retention gate + audit emission live in
-        // `purge_cycle_transcripts` (server.rs) — exhaustive TranscriptRetention
-        // match, ADR-004 pinned audit shape, trigger=cycle_review.
-        if result.is_ok() {
-            self.purge_cycle_transcripts(&feature_cycle);
-        }
+        crate::mcp::distill_handler::attach_search_status(
+            &mut result,
+            status_rows,
+            resolved_bounds,
+        );
         result
     }
 
@@ -4253,7 +4304,7 @@ fn dispatch_review_with_advisory(
     use crate::mcp::response::format_retrospective_report;
 
     match format {
-        "markdown" | "summary" => {
+        "markdown" => {
             let mut result = format_retrospective_markdown(&report);
             if let Some(note) = advisory {
                 // Append advisory as additional text content item.
@@ -4309,7 +4360,7 @@ fn dispatch_review_with_advisory_and_parse_failures(
     use crate::mcp::response::format_retrospective_markdown;
 
     match format {
-        "markdown" | "summary" => {
+        "markdown" => {
             let mut result = format_retrospective_markdown(&report);
             if let Some(note) = advisory {
                 result
@@ -6589,91 +6640,21 @@ mod tests {
         );
     }
 
-    /// AC-09 (cycle-review-purge §4): the transcript purge is a pure side
-    /// effect — running `purge_cycle_transcripts` between report construction
-    /// and render (the same point the handler invokes it, relative to the
-    /// response) leaves the rendered response byte-identical to the committed
-    /// pre-vnc-025 Wave 0 baselines. Sessions stay registered with empty
-    /// buffers; no new fields, no count changes across the detection rules.
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_cycle_review_output_unchanged_by_purge() {
-        let server = crate::server::tests::make_server().await;
-        // Sessions attributed to the reviewed cycle, with non-empty buffers.
-        for sid in ["vnc025-base-s1", "vnc025-base-s2"] {
-            server.session_registry.register_session(
-                sid,
-                None,
-                Some("vnc025-baseline".to_string()),
-            );
-            server
-                .session_registry
-                .apply_transcript_delta(sid, 0, b"transcript bytes to purge");
-        }
+    // crt-057: `test_cycle_review_output_unchanged_by_purge` was DELETED with
+    // rationale — the review has no purge verb anymore (NG-6 / ADR-001). Its
+    // premise ("purge is a pure side effect that leaves render byte-identical")
+    // no longer exists; render byte-identity is still covered by
+    // `test_cycle_review_render_baseline_byte_identical`, and buffer survival is
+    // now the DEFAULT proven by `test_cycle_review_error_path_keeps_transcripts`
+    // below and the distill_handler non-destructive-repeat tests.
 
-        // Identical render-path replay to test_cycle_review_render_baseline_byte_identical.
-        let corpus = vnc025_cycle_review_baseline_corpus();
-        let rules = unimatrix_observe::default_rules(None);
-        assert_eq!(
-            rules.len(),
-            22,
-            "AC-09 pins the detection rules (bugfix-891 #891 retired dependency_on_deprecated: 23 -> 22)"
-        );
-        let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
-        const PINNED_NOW: u64 = 2_000_000_000;
-        let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
-        let mut report = unimatrix_observe::build_report(
-            "vnc025-baseline",
-            &corpus,
-            metrics,
-            hotspots,
-            None,
-            None,
-        );
-        report.recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
-        report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
-
-        // The purge side effect fires for the reviewed cycle.
-        server.purge_cycle_transcripts("vnc025-baseline");
-
-        // Sessions stay registered; buffers empty afterward.
-        for sid in ["vnc025-base-s1", "vnc025-base-s2"] {
-            let state = server
-                .session_registry
-                .get_state(sid)
-                .expect("session must stay registered after purge");
-            assert_eq!(
-                state
-                    .transcript
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner())
-                    .len(),
-                0,
-                "{sid} buffer must be empty after purge"
-            );
-        }
-
-        // Render AFTER the purge: byte-identical to the committed baselines.
-        let markdown = dispatch_review_with_advisory(report.clone(), "markdown", None, None)
-            .expect("markdown render must succeed");
-        let json = dispatch_review_with_advisory(report, "json", Some(3), None)
-            .expect("json render must succeed");
-        crate::test_support::assert_matches_committed_baseline(
-            "cycle_review_render.markdown.json",
-            &serde_json::to_string_pretty(&markdown).expect("serialize CallToolResult"),
-        );
-        crate::test_support::assert_matches_committed_baseline(
-            "cycle_review_render.format_json.json",
-            &serde_json::to_string_pretty(&json).expect("serialize CallToolResult"),
-        );
-    }
-
-    /// Gate 3b W1 (cycle-review-purge plan scenario 7): a FAILED review keeps
-    /// transcripts. Every `purge_cycle_transcripts` call in the handler is
-    /// gated on `result.is_ok()` (tools.rs four success-return sites); this
-    /// test replays the full-pipeline gate with the same `result` value the
-    /// handler computes: an unknown format makes the format dispatch return
-    /// `Err(ERROR_INVALID_PARAMS)`, the gate skips the purge, and the
-    /// attributed session's buffer survives intact for the retry.
+    /// crt-057: a review is fully non-destructive — a FAILED (or any) review
+    /// leaves the attributed session's transcript buffer intact. Formerly the
+    /// error-path purge-gate test; the purge call is removed (NG-6). The buffer
+    /// survives because nothing in the handler ever clears it.
+    /// An unknown format makes the format dispatch return
+    /// `Err(ERROR_INVALID_PARAMS)`; the attributed session's buffer survives
+    /// intact regardless (there is no purge to skip — non-destructive by design).
     #[tokio::test(flavor = "multi_thread")]
     async fn test_cycle_review_error_path_keeps_transcripts() {
         let server = crate::server::tests::make_server().await;
@@ -6699,13 +6680,11 @@ mod tests {
         let result = dispatch_review_with_advisory(report, "xml", None, None);
         assert!(
             result.is_err(),
-            "unknown format must yield Err — the precondition of the purge gate"
+            "unknown format must yield Err (ERROR_INVALID_PARAMS)"
         );
 
-        // Replay the handler's gate verbatim: Err → purge never fires.
-        if result.is_ok() {
-            server.purge_cycle_transcripts(CYCLE);
-        }
+        // crt-057: there is no purge to fire — the review is fully non-destructive
+        // (NG-6). The buffer survives on every path, error or success.
 
         // The failed review left the transcript intact: session still
         // registered, buffer non-empty with the exact streamed bytes.

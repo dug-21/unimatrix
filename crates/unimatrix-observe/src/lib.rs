@@ -50,12 +50,13 @@ pub use source::ObservationSource;
 pub use synthesis::synthesize_narratives;
 pub use types::{
     AttributionMetadata, BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
-    CandidateProvenance, CurationBaselineComparison, CurationHealthBlock, CurationHealthSummary,
-    CurationSnapshot, CycleEventRecord, EntryAnalysis, EntryRef, EvidenceCluster, EvidenceRecord,
-    FamilyHint, FeatureKnowledgeReuse, GateResult, HotspotCategory, HotspotFinding,
-    HotspotNarrative, MetricVector, ObservationRecord, ObservationStats, ParsedSession,
-    PhaseCategoryComparison, PhaseCategoryDist, PhaseMetrics, PhaseNarrative, PhaseStats,
-    Recommendation, RetrospectiveReport, SessionLossInfo, SessionSummary, Severity,
-    ToolDistribution, TranscriptCandidate, TranscriptCandidatesSection, TrendDirection,
-    UniversalMetrics,
+    BoundsKind, CandidateProvenance, CurationBaselineComparison, CurationHealthBlock,
+    CurationHealthSummary, CurationSnapshot, CycleEventRecord, DEFAULT_WINDOW_BLOCKS,
+    DEFAULT_WINDOW_MILLIS, EntryAnalysis, EntryRef, EvidenceCluster, EvidenceRecord, FamilyHint,
+    FeatureKnowledgeReuse, GateResult, HotspotCategory, HotspotFinding, HotspotNarrative,
+    MetricVector, ObservationRecord, ObservationStats, ParsedSession, PhaseCategoryComparison,
+    PhaseCategoryDist, PhaseMetrics, PhaseNarrative, PhaseStats, Recommendation, ResolvedBounds,
+    RetrospectiveReport, SessionLossInfo, SessionSearchStatus, SessionSummary, Severity,
+    ToolDistribution, TranscriptCandidate, TranscriptCandidatesSection, TranscriptScope,
+    TrendDirection, UniversalMetrics, Window,
 };

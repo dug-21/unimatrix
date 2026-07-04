@@ -259,13 +259,15 @@ fn test_hold_memory_bounded_no_review() {
 // -- R-03 / R-16: audit exactly-once per held session --------------------------
 
 #[test]
-fn test_audit_once_at_review() {
+fn test_audit_once_terminal_via_sweep() {
+    // crt-057: the review-purge is gone; the TTL sweep is the surviving terminal
+    // reclamation. sweep_expired(ZERO) reclaims every held buffer at once.
     let (hold, sink) = hold_with(8);
     hold.hold_on_drain("S", buf_with(b"content"), "cycle-X");
-    let records = hold.purge_held_for_feature("cycle-X");
-    assert_eq!(records.len(), 1, "review purge yields one record");
+    let records = hold.sweep_expired(Duration::ZERO);
+    assert_eq!(records.len(), 1, "terminal sweep yields one record");
     assert_eq!(records[0].session_id, "S");
-    // The cap-evict/mismatch sink fired NOTHING (review records go to the caller).
+    // The cap-evict/mismatch sink fired NOTHING (sweep records go to the caller).
     assert!(sink.rows().is_empty(), "no extra per-turn audit emission");
     assert!(!hold.is_held("S"));
 }
@@ -300,7 +302,7 @@ fn test_audit_once_across_multi_readopt() {
     assert!(sink.rows().is_empty(), "re-adopt is not a purge");
     // round 2 drain → hold the same Arc again
     hold.hold_on_drain("S", arc, "cycle-X");
-    let review = hold.purge_held_for_feature("cycle-X");
+    let review = hold.sweep_expired(Duration::ZERO); // crt-057: sweep is the terminal path
     assert_eq!(review.len(), 1, "exactly one terminal purge across rounds");
     assert!(
         sink.rows().is_empty(),
@@ -313,7 +315,7 @@ fn test_audit_detail_content_free() {
     // The record's bytes_purged is a count; the session_id never carries content.
     let (hold, _sink) = hold_with(8);
     hold.hold_on_drain("S", buf_with(b"SENTINEL-detail"), "cycle-X");
-    let records = hold.purge_held_for_feature("cycle-X");
+    let records = hold.sweep_expired(Duration::ZERO); // crt-057: sweep is the terminal path
     assert_eq!(records[0].bytes_purged, b"SENTINEL-detail".len() as u64);
     assert!(!records[0].session_id.contains("SENTINEL"));
 }
@@ -327,29 +329,20 @@ fn test_empty_held_buffer_purge_emits_nothing() {
         Arc::new(crate::infra::transcript_activity::SignatureScanner::empty()),
     )));
     hold.hold_on_drain("S", empty, "cycle-X");
-    let records = hold.purge_held_for_feature("cycle-X");
+    let records = hold.sweep_expired(Duration::ZERO); // crt-057: sweep is the terminal path
     assert!(records.is_empty(), "empty buffer emits no purge record");
 }
 
-// -- R-13: purge-for-feature scoping ------------------------------------------
+// crt-057: `test_purge_held_for_feature_clears_held` (feature-scoped review purge)
+// was DELETED — the review has no purge verb anymore (NG-6). Feature-scoped
+// reclamation is gone; the surviving reclamation is TTL/cap-based and covered by
+// the sweep/eviction tests above.
 
 #[test]
-fn test_purge_held_for_feature_clears_held() {
-    let (hold, _sink) = hold_with(8);
-    hold.hold_on_drain("S1", buf_with(b"x"), "cycle-X");
-    hold.hold_on_drain("S2", buf_with(b"y"), "cycle-X");
-    hold.hold_on_drain("S3", buf_with(b"z"), "cycle-Y"); // different cycle
-    let records = hold.purge_held_for_feature("cycle-X");
-    assert_eq!(records.len(), 2, "only cycle-X held buffers purged");
-    assert!(!hold.is_held("S1") && !hold.is_held("S2"));
-    assert!(hold.is_held("S3"), "other-cycle buffer untouched");
-}
-
-#[test]
-fn test_no_held_survives_post_review() {
+fn test_no_held_survives_post_sweep() {
     let (hold, _sink) = hold_with(8);
     hold.hold_on_drain("S", buf_with(b"x"), "cycle-X");
-    hold.purge_held_for_feature("cycle-X");
+    hold.sweep_expired(Duration::ZERO); // crt-057: the surviving terminal path
     assert!(hold.held_arcs_for_feature("cycle-X").is_empty());
 }
 

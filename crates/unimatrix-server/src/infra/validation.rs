@@ -1624,6 +1624,7 @@ mod tests {
             format: None,
             force: None,
             auto_close: false,
+            transcript: None,
         };
         assert!(validate_retrospective_params(&params).is_ok());
     }
@@ -1637,6 +1638,7 @@ mod tests {
             format: None,
             force: None,
             auto_close: false,
+            transcript: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }
@@ -1650,6 +1652,7 @@ mod tests {
             format: None,
             force: None,
             auto_close: false,
+            transcript: None,
         };
         assert!(validate_retrospective_params(&params).is_err());
     }
