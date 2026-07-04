@@ -164,15 +164,24 @@ struct TranscriptScope {
     window: Option<Window>,   // ±N events / ±T millis; default ±120_000 ms / ±3 blocks
 }
 
-// retrieve_scoped_candidates (distill_handler.rs:48) — RENAMED from distill_before_purge; read-only, no purge follows
+// retrieve_scoped_candidates (distill_handler.rs) — RENAMED from distill_before_purge; read-only, no purge follows
 fn retrieve_scoped_candidates(
     registry: &SessionRegistry,
     feature_cycle: &str,
     observations: &[ObservationRecord],
     cfg: &RetentionConfig,
-    scope: Option<&TranscriptScope>,      // NEW — returns None early when None
-    reviewer_session_id: Option<&str>,    // NEW
+    scope: Option<&TranscriptScope>,        // NEW — returns None early when None
+    reviewer_session_id: Option<&str>,      // NEW
+    resolved_bounds: Option<ResolvedBounds>, // NEW 7th — anchor/phase bounds resolved by the handler (ADR-006 as-built)
 ) -> Option<TranscriptCandidatesSection>
+
+// resolve_transcript_scope_bounds (tools.rs) — companion helper; expressed once, invoked at all four success returns
+fn resolve_transcript_scope_bounds(
+    scope: Option<&TranscriptScope>,
+    hotspots: &[HotspotFinding],        // anchor F-NN (POSITIONAL over report.hotspots) → evidence[].ts span [min,max]
+    cycle_events: &[CycleEventRecord],  // phase → compute_phase_stats window (sec→ms; self-bounding)
+) -> Option<ResolvedBounds>            // None ⇒ absent section (FR-7), never an error; anchor/phase resolve only on
+                                       // full-pipeline + force returns (hotspots/cycle_events in scope)
 
 // attach_to_response_assembly (distill_handler.rs:281) — UNCHANGED; no-ops on None/Err
 // snapshot() (session_transcript.rs:296)  — UNCHANGED &self; SOLE content reader, no new reader (#4848)
