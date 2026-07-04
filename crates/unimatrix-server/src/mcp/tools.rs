@@ -2379,6 +2379,15 @@ impl UnimatrixServer {
                                 metadata: metadata_json,
                             });
                             let fmt = params.format.as_deref().unwrap_or("markdown");
+                            // crt-057: resolve anchor/phase bounds BEFORE `report`
+                            // is moved into render. Purged-signals path has no
+                            // cycle_events in scope → phase resolves absent; anchor
+                            // resolves from the stored report's hotspots if present.
+                            let resolved_bounds = resolve_transcript_scope_bounds(
+                                params.transcript.as_ref(),
+                                &report.hotspots,
+                                &[],
+                            );
                             let mut result = dispatch_review_with_advisory(
                                 report,
                                 fmt,
@@ -2396,8 +2405,9 @@ impl UnimatrixServer {
                                 &self.retention_config,
                                 params.transcript.as_ref(),
                                 ctx.audit_ctx.session_id.as_deref(),
+                                resolved_bounds,
                             );
-                            let (status_rows, resolved_bounds) =
+                            let (status_rows, _derived) =
                                 crate::mcp::distill_scope::derive_search_status(
                                     section.as_ref(),
                                     params.transcript.as_ref(),
@@ -2476,6 +2486,11 @@ impl UnimatrixServer {
         // `full_report` holds the freshly computed RetrospectiveReport on the full
         // pipeline path. None on the memo_hit path (cached report is in memo_hit).
         let mut full_report: Option<unimatrix_observe::RetrospectiveReport> = None;
+        // crt-057: anchor/phase bounds resolved INSIDE the full-pipeline block
+        // (where `cycle_events_vec` is live) and carried out to the full-pipeline
+        // success return (site 4). `cycle_events_vec` is local to that block, so
+        // phase resolution must happen there.
+        let mut full_pipeline_resolved_bounds: Option<unimatrix_observe::ResolvedBounds> = None;
         // Component 9 (crt-055) STEP 5: the rendered per-metric fail-loud block
         // (availability + coarse/directional signals), produced inside the
         // full-pipeline block and appended to the full-pipeline response. None on
@@ -2575,7 +2590,14 @@ impl UnimatrixServer {
                         };
                         // crt-057 (ADR-001/ADR-002): read-only scoped retrieval +
                         // honesty projection, attached at assembly level (ADR-004).
-                        // NO purge — fully non-destructive (NG-6).
+                        // NO purge — fully non-destructive (NG-6). Cached-MetricVector
+                        // path has empty hotspots + no cycle_events, so anchor/phase
+                        // resolve to an absent section (honest degenerate path).
+                        let resolved_bounds = resolve_transcript_scope_bounds(
+                            params.transcript.as_ref(),
+                            &report.hotspots,
+                            &[],
+                        );
                         let section = crate::mcp::distill_handler::retrieve_scoped_candidates(
                             &self.session_registry,
                             &feature_cycle,
@@ -2583,8 +2605,9 @@ impl UnimatrixServer {
                             &self.retention_config,
                             params.transcript.as_ref(),
                             ctx.audit_ctx.session_id.as_deref(),
+                            resolved_bounds,
                         );
-                        let (status_rows, resolved_bounds) =
+                        let (status_rows, _derived) =
                             crate::mcp::distill_scope::derive_search_status(
                                 section.as_ref(),
                                 params.transcript.as_ref(),
@@ -3289,6 +3312,13 @@ impl UnimatrixServer {
             let crt055_avail = review_agg.availability();
             crt055_fail_loud_block = Some(review_agg.render_block(&crt055_avail));
 
+            // crt-057: resolve anchor/phase bounds while `cycle_events_vec` + the
+            // report are both live; carried to site 4 (the full-pipeline return).
+            full_pipeline_resolved_bounds = resolve_transcript_scope_bounds(
+                params.transcript.as_ref(),
+                &report.hotspots,
+                cycle_events_vec.as_deref().unwrap_or(&[]),
+            );
             full_report = Some(report);
         } // end of full pipeline block (memo_hit.is_none())
 
@@ -3332,6 +3362,15 @@ impl UnimatrixServer {
                 metadata: metadata_json,
             });
             let fmt = params.format.as_deref().unwrap_or("markdown");
+            // crt-057: resolve anchor bounds from the cached report's hotspots
+            // BEFORE `memo_report` is moved into render. cycle_events are not read
+            // on the memo-hit path, so `phase` resolves to an absent section here
+            // (honest); `anchor` resolves when the cached report carries hotspots.
+            let resolved_bounds = resolve_transcript_scope_bounds(
+                params.transcript.as_ref(),
+                &memo_report.hotspots,
+                &[],
+            );
             let mut result = dispatch_review_with_advisory_and_parse_failures(
                 memo_report,
                 fmt,
@@ -3351,8 +3390,9 @@ impl UnimatrixServer {
                 &self.retention_config,
                 params.transcript.as_ref(),
                 ctx.audit_ctx.session_id.as_deref(),
+                resolved_bounds,
             );
-            let (status_rows, resolved_bounds) = crate::mcp::distill_scope::derive_search_status(
+            let (status_rows, _derived) = crate::mcp::distill_scope::derive_search_status(
                 section.as_ref(),
                 params.transcript.as_ref(),
             );
@@ -3389,6 +3429,11 @@ impl UnimatrixServer {
         // parse_failure_count is injected at the top level of the JSON response (Resolution 1).
         let report = full_report
             .expect("full_report must be Some when memo_hit is None — logic invariant violated");
+        // crt-057 (ADR-006): anchor/phase bounds resolved inside the full-pipeline
+        // block (where cycle_events_vec was live). This is the primary retrieval
+        // path (also the `force` path — force recomputes here); both `anchor` and
+        // `phase` filter end-to-end.
+        let resolved_bounds = full_pipeline_resolved_bounds;
         let format = params.format.as_deref().unwrap_or("markdown");
         let result = match format {
             "markdown" => {
@@ -3478,8 +3523,9 @@ impl UnimatrixServer {
             &self.retention_config,
             params.transcript.as_ref(),
             ctx.audit_ctx.session_id.as_deref(),
+            resolved_bounds,
         );
-        let (status_rows, resolved_bounds) = crate::mcp::distill_scope::derive_search_status(
+        let (status_rows, _derived) = crate::mcp::distill_scope::derive_search_status(
             section.as_ref(),
             params.transcript.as_ref(),
         );
@@ -4957,6 +5003,48 @@ fn infer_cycle_type(goal: Option<&str>) -> String {
     }
 
     "Unknown".to_string()
+}
+
+/// crt-057 (ADR-006): resolve the caller's `anchor`/`phase` scope to a Plane-A
+/// `ResolvedBounds` span, using the report `hotspots` (for `anchor`) and
+/// `cycle_events` (for `phase`) available at the call site.
+///
+/// `anchor` takes precedence (the primary retrieval path) — a finding id `F-NN`
+/// resolves to the finding's evidence-ts span. `phase` reuses the tested
+/// `compute_phase_stats` window builder (which converts `cycle_events` seconds →
+/// epoch-millis via `cycle_ts_to_obs_millis`) and is self-bounding.
+///
+/// Returns `None` when the scope has no `anchor`/`phase`, or the id does not
+/// resolve (unknown finding/phase id, or a degenerate path with empty
+/// `hotspots`/`cycle_events`). The caller (`retrieve_scoped_candidates`) then
+/// yields an ABSENT section (FR-7), never an error. Infallible; expressed once,
+/// invoked at each success return with that return's available report data.
+fn resolve_transcript_scope_bounds(
+    scope: Option<&unimatrix_observe::TranscriptScope>,
+    hotspots: &[unimatrix_observe::HotspotFinding],
+    cycle_events: &[unimatrix_observe::CycleEventRecord],
+) -> Option<unimatrix_observe::ResolvedBounds> {
+    let scope = scope?;
+    // anchor first — the primary retrieval path (windowed).
+    if let Some(anchor_id) = scope.anchor.as_deref() {
+        return crate::mcp::distill_scope::resolve_anchor_bounds(anchor_id, hotspots);
+    }
+    // phase — self-bounding window from cycle_events (first matching window).
+    if let Some(phase_id) = scope.phase.as_deref() {
+        let windows = compute_phase_stats(cycle_events, &[]);
+        let w = windows.iter().find(|s| s.phase == *phase_id)?;
+        let lo = u64::try_from(w.start_ms).ok()?;
+        let hi = u64::try_from(w.end_ms?).ok()?;
+        if lo > hi {
+            return None;
+        }
+        return Some(unimatrix_observe::ResolvedBounds {
+            kind: unimatrix_observe::BoundsKind::Phase,
+            lo_epoch_ms: lo,
+            hi_epoch_ms: hi,
+        });
+    }
+    None
 }
 
 /// Extract agent name from a SubagentStart observation.
@@ -8233,6 +8321,96 @@ mod phase_stats_tests {
             next_phase: next_phase.map(|s| s.to_string()),
             timestamp,
         }
+    }
+
+    /// crt-057: `resolve_transcript_scope_bounds` end-to-end — `anchor` F-NN →
+    /// the finding's evidence-ts span from `hotspots`; `phase` → the `cycle_events`
+    /// window (seconds → epoch-millis via `cycle_ts_to_obs_millis`, self-bounding);
+    /// unknown ids → `None` (⇒ absent section, never an error).
+    #[test]
+    fn test_resolve_transcript_scope_bounds_anchor_and_phase() {
+        use unimatrix_observe::{
+            BoundsKind, EvidenceRecord, HotspotCategory, HotspotFinding, Severity, TranscriptScope,
+        };
+
+        let hotspots = vec![HotspotFinding {
+            category: HotspotCategory::Friction,
+            severity: Severity::Warning,
+            rule_name: "r".to_string(),
+            claim: "c".to_string(),
+            measured: 1.0,
+            threshold: 0.5,
+            evidence: vec![
+                EvidenceRecord {
+                    description: "e1".to_string(),
+                    ts: 5_000,
+                    tool: None,
+                    detail: "d".to_string(),
+                },
+                EvidenceRecord {
+                    description: "e2".to_string(),
+                    ts: 9_000,
+                    tool: None,
+                    detail: "d".to_string(),
+                },
+            ],
+        }];
+        // cycle_events are in SECONDS; the resolver converts to epoch-millis.
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, Some("design"), 1_000),
+            make_cycle_event(
+                "cycle_phase_end",
+                Some("design"),
+                Some("PASS"),
+                Some("implementation"),
+                2_000,
+            ),
+        ];
+
+        let anchor = TranscriptScope {
+            phase: None,
+            anchor: Some("F-01".to_string()),
+            r#match: None,
+            window: None,
+        };
+        let rb = resolve_transcript_scope_bounds(Some(&anchor), &hotspots, &events)
+            .expect("anchor resolves");
+        assert_eq!(rb.kind, BoundsKind::Anchor);
+        assert_eq!((rb.lo_epoch_ms, rb.hi_epoch_ms), (5_000, 9_000));
+
+        let phase = TranscriptScope {
+            phase: Some("design".to_string()),
+            anchor: None,
+            r#match: None,
+            window: None,
+        };
+        let pb = resolve_transcript_scope_bounds(Some(&phase), &hotspots, &events)
+            .expect("phase resolves");
+        assert_eq!(pb.kind, BoundsKind::Phase);
+        // seconds → millis: [1_000, 2_000] → [1_000_000, 2_000_000].
+        assert_eq!((pb.lo_epoch_ms, pb.hi_epoch_ms), (1_000_000, 2_000_000));
+
+        // Unknown ids → None (absent section, never an error).
+        let bad_anchor = TranscriptScope {
+            anchor: Some("F-9".to_string()),
+            ..anchor.clone()
+        };
+        assert!(resolve_transcript_scope_bounds(Some(&bad_anchor), &hotspots, &events).is_none());
+        let bad_phase = TranscriptScope {
+            phase: Some("nonexistent".to_string()),
+            anchor: None,
+            r#match: None,
+            window: None,
+        };
+        assert!(resolve_transcript_scope_bounds(Some(&bad_phase), &hotspots, &events).is_none());
+        // No anchor/phase → None (match-only / empty scope has no bounds).
+        let empty = TranscriptScope {
+            phase: None,
+            anchor: None,
+            r#match: Some(".*".to_string()),
+            window: None,
+        };
+        assert!(resolve_transcript_scope_bounds(Some(&empty), &hotspots, &events).is_none());
     }
 
     /// Helper to build a PostToolUse ObservationRecord at a given ts (millis).

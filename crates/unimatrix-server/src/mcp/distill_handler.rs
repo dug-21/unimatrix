@@ -39,8 +39,8 @@
 use rmcp::model::CallToolResult;
 use unimatrix_observe::distill::{reconstruct_from_observations, select_candidates};
 use unimatrix_observe::{
-    CandidateProvenance, ObservationRecord, ResolvedBounds, SessionLossInfo, SessionSearchStatus,
-    TranscriptCandidate, TranscriptCandidatesSection, TranscriptScope,
+    BoundsKind, CandidateProvenance, ObservationRecord, ResolvedBounds, SessionLossInfo,
+    SessionSearchStatus, TranscriptCandidate, TranscriptCandidatesSection, TranscriptScope,
 };
 
 use crate::infra::config::{RetentionConfig, TranscriptRetention};
@@ -73,12 +73,24 @@ pub(crate) fn retrieve_scoped_candidates(
     cfg: &RetentionConfig,
     scope: Option<&TranscriptScope>,
     reviewer_session_id: Option<&str>,
+    resolved_bounds: Option<ResolvedBounds>,
 ) -> Option<TranscriptCandidatesSection> {
     // (0) EARLY RETURN — no scope ⇒ no buffer read ⇒ lean non-destructive default
     //     (FR-6). `omit transcript` → section absent.
     let scope = scope?;
     // Reserved for an optional live-sibling advisory (ADR-003); not yet consumed.
     let _ = reviewer_session_id;
+
+    // (0b) UNRESOLVED time scope ⇒ absent section (FR-7), never an error. A scope
+    //      that requests `anchor`/`phase` whose id did not resolve to bounds
+    //      (unknown finding/phase id, or a degenerate path with no hotspots/
+    //      cycle_events) yields nothing — NOT a full dump. Resolved bounds are
+    //      computed by the handler (`resolve_transcript_scope_bounds`) where the
+    //      report `hotspots` + `cycle_events` are in scope.
+    let wants_time_scope = scope.anchor.is_some() || scope.phase.is_some();
+    if wants_time_scope && resolved_bounds.is_none() {
+        return None;
+    }
 
     // (1) EXHAUSTIVE retention gate. NO wildcard arm: adding a third
     //     `TranscriptRetention` variant MUST be a compile error. This gate decides
@@ -94,11 +106,11 @@ pub(crate) fn retrieve_scoped_candidates(
     //     (FR-11), nothing downstream purges. ALL parsing happens AFTER this.
     let snapshots = registry.take_transcripts_for_feature(feature_cycle);
 
-    // (3) Resolve the scope context ONCE (compile regex, resolve anchor/phase
-    //     bounds). The regex was already validated by the handler, so an internal
-    //     compile failure is unreachable; if it somehow occurs the section is
-    //     absent rather than a panic.
-    let ctx = build_scope_ctx(scope);
+    // (3) Resolve the scope context ONCE (compile regex; wire the handler-resolved
+    //     anchor/phase bounds). The regex was already validated by the handler, so
+    //     an internal compile failure is unreachable; if it somehow occurs the
+    //     section is absent rather than a panic.
+    let ctx = build_scope_ctx(scope, resolved_bounds);
 
     let session_cap = cfg.transcript_candidate_session_cap_bytes;
     let mut all_candidates: Vec<TranscriptCandidate> = Vec::new();
@@ -182,24 +194,29 @@ pub(crate) fn retrieve_scoped_candidates(
 }
 
 /// Build the resolved scope context ONCE per retrieval (compile the already-
-/// validated `match` regex; resolve anchor/phase bounds).
+/// validated `match` regex; wire the handler-resolved anchor/phase bounds).
 ///
-/// Anchor (finding id → `HotspotFinding.evidence` span) and phase (phase id →
-/// `cycle_events` bounds) resolution needs data the architecture-fixed
-/// `retrieve_scoped_candidates` signature does NOT thread (the report /
-/// `cycle_events`). An id that cannot be resolved from the data available at this
-/// seam yields `None` bounds ⇒ an empty (absent) section (FR-7), never an error.
-/// The windowed-join / byte-offset-fallback machinery in `distill_scope` is fully
-/// exercised by unit tests whenever bounds ARE supplied.
-fn build_scope_ctx(scope: &TranscriptScope) -> ScopeCtx {
+/// `resolved_bounds` is computed by the handler (`resolve_transcript_scope_bounds`)
+/// where the report `hotspots` (for `anchor`) and `cycle_events` (for `phase`) are
+/// in scope. `Anchor` bounds honor `window` (windowed join); `Phase` bounds are
+/// self-bounding (window IGNORED). Absent bounds ⇒ no time filter (a `match`-only
+/// or empty scope).
+fn build_scope_ctx(scope: &TranscriptScope, resolved_bounds: Option<ResolvedBounds>) -> ScopeCtx {
     let compiled = scope
         .r#match
         .as_deref()
         .and_then(|p| distill_scope::compile_bounded_regex(p).ok());
+    let (anchor_bounds, phase_bounds) = match resolved_bounds {
+        Some(rb) => match rb.kind {
+            BoundsKind::Anchor => (Some((rb.lo_epoch_ms, rb.hi_epoch_ms)), None),
+            BoundsKind::Phase => (None, Some((rb.lo_epoch_ms, rb.hi_epoch_ms))),
+        },
+        None => (None, None),
+    };
     ScopeCtx {
         compiled,
-        anchor_bounds: None,
-        phase_bounds: None,
+        anchor_bounds,
+        phase_bounds,
         window: scope.window.clone(),
     }
 }
@@ -447,7 +464,7 @@ pub(crate) fn attach_search_status(
 mod tests {
     use super::*;
     use crate::infra::session_transcript::HoleInfo;
-    use unimatrix_observe::FamilyHint;
+    use unimatrix_observe::{FamilyHint, Window};
 
     fn snap(
         bytes: &[u8],
@@ -718,6 +735,7 @@ mod tests {
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             None, // no scope
             None,
+            None,
         );
         assert!(out.is_none(), "no scope ⇒ None (lean default)");
         // Buffer intact (synchronous observable state, never absence of an audit).
@@ -748,6 +766,7 @@ mod tests {
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&full_scope()),
             None,
+            None,
         )
         .expect("empty scope must yield the full set");
         let star = retrieve_scoped_candidates(
@@ -756,6 +775,7 @@ mod tests {
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&match_scope(".*")),
+            None,
             None,
         )
         .expect("match:.* must yield the full set");
@@ -786,6 +806,7 @@ mod tests {
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&match_scope(".*")),
             None,
+            None,
         )
         .expect("full set");
         let narrowed = retrieve_scoped_candidates(
@@ -794,6 +815,7 @@ mod tests {
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&match_scope("this-token-is-not-present-xyzzy")),
+            None,
             None,
         );
         assert!(!all.candidates.is_empty());
@@ -821,6 +843,7 @@ mod tests {
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&full_scope()),
             None,
+            None,
         )
         .expect("first retrieval");
         let second = retrieve_scoped_candidates(
@@ -830,12 +853,194 @@ mod tests {
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&full_scope()),
             None,
+            None,
         )
         .expect("second retrieval — buffer survived");
         assert_eq!(
             first.candidates.len(),
             second.candidates.len(),
             "non-destructive: identical candidate count on repeat"
+        );
+    }
+
+    /// Anchor id "F-NN"; resolved bounds are supplied directly here (the handler
+    /// resolves them from `report.hotspots` via `resolve_transcript_scope_bounds`).
+    fn anchor_scope(id: &str, window: Option<Window>) -> TranscriptScope {
+        TranscriptScope {
+            phase: None,
+            anchor: Some(id.to_string()),
+            r#match: None,
+            window,
+        }
+    }
+
+    // 2026-06-08T10:00:00Z in epoch-millis (fixed offset, never now_ts()).
+    const ANCHOR_T: u64 = 1_780_912_800_000;
+
+    fn two_decision_blocks(reg: &SessionRegistry) {
+        // INSIDE  = anchor + 60s (within ±120s default window)
+        // OUTSIDE = anchor + 300s (outside the window)
+        let inside = b"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"We decided to adopt INSIDE.\"}]},\"timestamp\":\"2026-06-08T10:01:00Z\"}\n";
+        let outside = b"{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"We decided to adopt OUTSIDE.\"}]},\"timestamp\":\"2026-06-08T10:05:00Z\"}\n";
+        reg.register_session("s1", None, Some("crt-057".to_string()));
+        reg.apply_transcript_delta("s1", 0, inside);
+        reg.apply_transcript_delta("s1", inside.len() as u64, outside);
+    }
+
+    fn anchor_bounds() -> ResolvedBounds {
+        ResolvedBounds {
+            kind: BoundsKind::Anchor,
+            lo_epoch_ms: ANCHOR_T,
+            hi_epoch_ms: ANCHOR_T,
+        }
+    }
+
+    #[test]
+    fn test_anchor_bounds_filters_candidates_within_window() {
+        // End-to-end: anchor span [T,T] + default ±120s window keeps the +60s
+        // block, drops the +300s block. Proves the windowed join over RESOLVED
+        // anchor bounds (the handler resolves F-NN → this span from hotspots).
+        let reg = SessionRegistry::new();
+        two_decision_blocks(&reg);
+        let out = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&anchor_scope("F-01", None)),
+            None,
+            Some(anchor_bounds()),
+        )
+        .expect("in-window candidate present");
+        assert_eq!(out.candidates.len(), 1, "only the in-window block survives");
+        assert!(
+            out.candidates[0].text.contains("INSIDE"),
+            "the +60s block is the one kept"
+        );
+    }
+
+    #[test]
+    fn test_anchor_and_match_and_compose() {
+        // R-09: anchor (keeps INSIDE, drops OUTSIDE) ∧ match narrows further.
+        let reg = SessionRegistry::new();
+        two_decision_blocks(&reg);
+        // anchor ∧ match:"INSIDE" → the single in-window block.
+        let mut scope = anchor_scope("F-01", None);
+        scope.r#match = Some("INSIDE".to_string());
+        let kept = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&scope),
+            None,
+            Some(anchor_bounds()),
+        )
+        .expect("intersection non-empty");
+        assert_eq!(kept.candidates.len(), 1);
+        assert!(kept.candidates[0].text.contains("INSIDE"));
+
+        // anchor ∧ match:"OUTSIDE" → anchor drops OUTSIDE (out of window), match
+        // drops INSIDE → empty intersection → absent section (FR-7).
+        let mut scope2 = anchor_scope("F-01", None);
+        scope2.r#match = Some("OUTSIDE".to_string());
+        let empty = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&scope2),
+            None,
+            Some(anchor_bounds()),
+        );
+        assert!(
+            empty.is_none(),
+            "AND-composition intersects to nothing → absent"
+        );
+    }
+
+    #[test]
+    fn test_unknown_anchor_id_yields_absent_section() {
+        // A scope that requests `anchor` whose id did NOT resolve (bounds None) →
+        // absent section (FR-7), NOT a full dump and NOT an error.
+        let reg = SessionRegistry::new();
+        two_decision_blocks(&reg);
+        let out = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&anchor_scope("F-99", None)),
+            None,
+            None, // unresolved
+        );
+        assert!(
+            out.is_none(),
+            "unresolved anchor id → absent, never a full dump"
+        );
+    }
+
+    #[test]
+    fn test_phase_bounds_are_self_bounding_ignore_window() {
+        // Phase span [T, T+120s]; a candidate at T+300s is OUTSIDE the phase and
+        // is dropped even though a huge supplied window would have included it —
+        // phase is self-bounding (window IGNORED). The +60s block is kept.
+        let reg = SessionRegistry::new();
+        two_decision_blocks(&reg);
+        let phase_scope = TranscriptScope {
+            phase: Some("implementation".to_string()),
+            anchor: None,
+            r#match: None,
+            // A 10-minute window that WOULD include the +300s block if honored.
+            window: Some(Window {
+                millis: Some(600_000),
+                blocks: None,
+            }),
+        };
+        let phase_bounds = ResolvedBounds {
+            kind: BoundsKind::Phase,
+            lo_epoch_ms: ANCHOR_T,
+            hi_epoch_ms: ANCHOR_T + 120_000,
+        };
+        let out = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&phase_scope),
+            None,
+            Some(phase_bounds),
+        )
+        .expect("in-phase candidate present");
+        assert_eq!(
+            out.candidates.len(),
+            1,
+            "self-bounding phase ignores the window; only the in-phase block survives"
+        );
+        assert!(out.candidates[0].text.contains("INSIDE"));
+    }
+
+    #[test]
+    fn test_anchor_scope_loss_honesty_preserved() {
+        // R-01 attached to the anchor path: a clean in-window primary hit returns
+        // a candidate with NO loss row (trustworthy), proving the anchor path runs
+        // the same loss-honesty assembly as the match path (never a bare result).
+        let reg = SessionRegistry::new();
+        two_decision_blocks(&reg);
+        let out = retrieve_scoped_candidates(
+            &reg,
+            "crt-057",
+            &[],
+            &cfg(TranscriptRetention::PurgeOnCycleClose),
+            Some(&anchor_scope("F-01", None)),
+            None,
+            Some(anchor_bounds()),
+        )
+        .expect("anchor path returns a section");
+        assert_eq!(out.candidates.len(), 1);
+        assert!(
+            out.loss.is_empty(),
+            "clean primary anchor hit → no loss row (trustworthy negative)"
         );
     }
 
@@ -852,6 +1057,7 @@ mod tests {
             &cfg(TranscriptRetention::RetainDays(30)),
             Some(&full_scope()),
             None,
+            None,
         );
         assert!(out.is_none(), "RetainDays must short-circuit to None");
     }
@@ -866,6 +1072,7 @@ mod tests {
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&full_scope()),
+            None,
             None,
         );
         assert!(out.is_none(), "no sessions → None");
@@ -886,6 +1093,7 @@ mod tests {
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&full_scope()),
+            None,
             None,
         );
         // No panic reaching here is the assertion; section is None or candidate-free.
@@ -920,6 +1128,7 @@ mod tests {
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&full_scope()),
             None,
+            None,
         )
         .expect("poison-recovered session must surface as loss, not None");
         assert_eq!(out.loss.len(), 1, "the lossy session must appear in loss");
@@ -942,6 +1151,7 @@ mod tests {
             &[],
             &cfg(TranscriptRetention::PurgeOnCycleClose),
             Some(&full_scope()),
+            None,
             None,
         )
         .expect("markered primary transcript must yield a section");

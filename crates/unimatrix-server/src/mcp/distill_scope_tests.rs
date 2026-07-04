@@ -2,7 +2,9 @@
 //! `_tests.rs` convention to keep the production module under the 500-line limit.
 
 use super::*;
-use unimatrix_observe::{FamilyHint, SessionLossInfo};
+use unimatrix_observe::{
+    EvidenceRecord, FamilyHint, HotspotCategory, HotspotFinding, SessionLossInfo, Severity,
+};
 
 fn cand(session: &str, offset: u64, ts: Option<&str>, text: &str) -> TranscriptCandidate {
     TranscriptCandidate {
@@ -12,6 +14,77 @@ fn cand(session: &str, offset: u64, ts: Option<&str>, text: &str) -> TranscriptC
         family_hints: vec![FamilyHint::Decision],
         text: text.to_string(),
     }
+}
+
+fn finding_with_evidence_ts(ts_values: &[u64]) -> HotspotFinding {
+    HotspotFinding {
+        category: HotspotCategory::Friction,
+        severity: Severity::Warning,
+        rule_name: "test_rule".to_string(),
+        claim: "test claim".to_string(),
+        measured: 1.0,
+        threshold: 0.5,
+        evidence: ts_values
+            .iter()
+            .map(|&ts| EvidenceRecord {
+                description: "ev".to_string(),
+                ts,
+                tool: None,
+                detail: "d".to_string(),
+            })
+            .collect(),
+    }
+}
+
+// ── anchor resolution (R-09: finding id → evidence-ts span) ──────────────
+
+#[test]
+fn test_resolve_anchor_bounds_spans_evidence_ts() {
+    // F-02 selects hotspots[1]; its evidence ts span is [min, max].
+    let hotspots = vec![
+        finding_with_evidence_ts(&[1000]),
+        finding_with_evidence_ts(&[5000, 9000, 7000]),
+    ];
+    let rb = resolve_anchor_bounds("F-02", &hotspots).expect("F-02 resolves");
+    assert_eq!(rb.kind, BoundsKind::Anchor);
+    assert_eq!(rb.lo_epoch_ms, 5000);
+    assert_eq!(rb.hi_epoch_ms, 9000);
+    // Accepts bare/short forms too.
+    assert_eq!(
+        resolve_anchor_bounds("2", &hotspots).unwrap().lo_epoch_ms,
+        5000
+    );
+    assert_eq!(
+        resolve_anchor_bounds("F-2", &hotspots).unwrap().hi_epoch_ms,
+        9000
+    );
+}
+
+#[test]
+fn test_resolve_anchor_bounds_unknown_or_empty_is_none() {
+    let hotspots = vec![finding_with_evidence_ts(&[1000])];
+    assert!(
+        resolve_anchor_bounds("F-99", &hotspots).is_none(),
+        "out of range → None"
+    );
+    assert!(
+        resolve_anchor_bounds("F-00", &hotspots).is_none(),
+        "F-00 invalid (1-based) → None"
+    );
+    assert!(
+        resolve_anchor_bounds("not-an-id", &hotspots).is_none(),
+        "unparseable → None"
+    );
+    // Finding with no evidence → unresolvable.
+    let no_ev = vec![finding_with_evidence_ts(&[])];
+    assert!(
+        resolve_anchor_bounds("F-01", &no_ev).is_none(),
+        "no evidence → None"
+    );
+    assert!(
+        resolve_anchor_bounds("F-01", &[]).is_none(),
+        "empty hotspots → None"
+    );
 }
 
 // ── clock normalization (R-05, explicit fixed offsets, never now_ts()) ──
