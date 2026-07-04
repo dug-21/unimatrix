@@ -153,26 +153,21 @@ fn continuity_simulated_lifecycle() {
         "(d) TTL sweep reclaims independent of review"
     );
 
-    // (e) audit EXACTLY ONCE per held session at the terminal purge — across the
-    //     three drains above S was never cap-evicted or mismatched, so the
-    //     cap/mismatch sink recorded NOTHING for S. S is now re-adopted back into
-    //     the registry, so its single terminal purge fires via the registered
-    //     buffer clear at cycle review (the held set is empty for S).
+    // (e) crt-057: the review has NO purge verb (NG-6), so there is no review-time
+    //     terminal purge to count. Across the three drains S was never cap-evicted
+    //     or mismatched, so the cap/mismatch sink recorded NOTHING for S. S was
+    //     re-adopted back into the REGISTRY (not held), so the surviving hold
+    //     sweep reclaims nothing for S — its registered buffer is reclaimed via
+    //     session-close / TTL, never by review.
     assert_eq!(
         sink.count_for(sid),
         0,
         "(e) no per-turn audit across 3 drains"
     );
-    let held_terminal = hold.purge_held_for_feature(cycle);
+    let held_terminal = hold.sweep_expired(Duration::ZERO);
     assert!(
         !held_terminal.iter().any(|r| r.session_id == sid),
-        "(e) S re-adopted → not purged from the hold"
-    );
-    let reg_records = registry.clear_transcripts_for_feature(cycle);
-    let s_terminal = reg_records.iter().filter(|r| r.session_id == sid).count();
-    assert_eq!(
-        s_terminal, 1,
-        "(e) exactly one terminal purge for S at review"
+        "(e) S re-adopted → not in the hold, so the sweep does not reclaim it"
     );
 }
 

@@ -324,27 +324,11 @@ impl TranscriptHold {
         records
     }
 
-    /// Purge held buffers for a reviewed cycle, post-distill (R-03 / R-13).
-    /// Returns the purge records; the caller emits with `trigger=cycle_review`
-    /// (exactly-once). Called from `purge_cycle_transcripts` (C7) alongside the
-    /// registered-buffer `clear_transcripts_for_feature`.
-    pub fn purge_held_for_feature(&self, feature_cycle: &str) -> Vec<TranscriptPurgeRecord> {
-        let mut guard = self.lock_held();
-        let matching: Vec<String> = guard
-            .iter()
-            .filter(|(_, h)| h.feature_cycle == feature_cycle)
-            .map(|(sid, _)| sid.clone())
-            .collect();
-        let records: Vec<TranscriptPurgeRecord> = matching
-            .into_iter()
-            .filter_map(|sid| {
-                guard
-                    .remove(&sid)
-                    .and_then(|held| purge_record(&sid, &held))
-            })
-            .collect();
-        records
-    }
+    // crt-057: `purge_held_for_feature` was DELETED (real delete, not #[allow]).
+    // Its sole caller was the removed `purge_cycle_transcripts`; the review is now
+    // fully non-destructive (NG-6). Held-buffer reclamation is delegated entirely
+    // to the SOLE surviving backstop paths — `sweep_expired` (TTL) and
+    // `enforce_cap` (cap eviction) — which emit the same content-free audits.
 
     /// Cap-hit eviction (R-02 / R-16): evict oldest `last_activity_at` first
     /// until the count is within `max_sessions`. Returns evicted records so the

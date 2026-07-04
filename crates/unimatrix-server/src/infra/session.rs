@@ -434,46 +434,17 @@ impl SessionRegistry {
         buf.apply_delta(offset, bytes);
     }
 
-    /// Clear transcript buffers for every session attributed to `feature_cycle`
-    /// (vnc-025, FR-12 — the named crt-052 seam, ADR-004).
-    ///
-    /// Sessions stay registered; buffers are cleared in place. Counts-only today,
-    /// deliberately (crt-052 makes it take-shaped). Arcs are cloned under the
-    /// registry lock and cleared after release — no deadlock with concurrent
-    /// delta streams (R-06.3). Zero-byte purges produce no record (ADR-004).
-    /// The caller (cycle-review-purge) emits audit — never this method.
-    pub fn clear_transcripts_for_feature(&self, feature_cycle: &str) -> Vec<TranscriptPurgeRecord> {
-        // Phase 1 — registry lock: linear scan (no feature→session index; fine at OSS scale).
-        let handles: Vec<(String, Arc<Mutex<TranscriptBuffer>>)> = {
-            let sessions = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
-            sessions
-                .values()
-                .filter(|s| s.feature.as_deref() == Some(feature_cycle)) // None never matches (R-10.1)
-                .map(|s| (s.session_id.clone(), Arc::clone(&s.transcript)))
-                .collect()
-        }; // registry lock RELEASED
-
-        // Phase 2 — per-buffer clear.
-        let mut records = Vec::new();
-        for (sid, arc) in handles {
-            let purged = {
-                let mut buf = lock_buffer(&arc);
-                buf.clear()
-            };
-            if purged > 0 {
-                records.push(TranscriptPurgeRecord {
-                    session_id: session_key("default", "", &sid),
-                    bytes_purged: purged,
-                });
-            }
-        }
-        records
-    }
+    // crt-057: `clear_transcripts_for_feature` was DELETED (real delete, not
+    // #[allow]). Its sole caller was the removed `purge_cycle_transcripts`; the
+    // review is now fully non-destructive (NG-6). Registered-buffer reclamation
+    // is delegated entirely to the backstops (session-close drain + TTL / cap).
+    // The READ seam `take_transcripts_for_feature` (below) STAYS — it snapshots,
+    // it does not clear.
 
     /// Snapshot transcript buffer CONTENT for every session attributed to
     /// `feature_cycle`, returning owned raw `TranscriptSnapshot`s (crt-052 C1,
-    /// ADR-001). Sibling to [`clear_transcripts_for_feature`]: snapshot reads,
-    /// purge clears — they do not merge (Constraint 5/13, vnc-030 ADR-007 §2
+    /// ADR-001). The READ seam (snapshot only); the crt-057 review never clears
+    /// buffers — reclamation is delegated to the backstops (Constraint 5/13, vnc-030 ADR-007 §2
     /// #4819 — cited, not reworked). The buffers are NOT cleared here.
     ///
     /// Two-phase lock discipline (Constraint 1 / NFR-1 / AC-01 / R-08, pattern
@@ -2996,86 +2967,11 @@ mod tests {
         assert_eq!(purges[0].bytes_purged, 3);
     }
 
-    #[test]
-    fn test_clear_transcripts_for_feature_under_concurrent_stream() {
-        let reg = Arc::new(make_registry());
-        reg.register_session("hot", None, Some("vnc-025".to_string()));
-
-        let mut handles = Vec::new();
-        for t in 0..4u64 {
-            let reg = Arc::clone(&reg);
-            handles.push(std::thread::spawn(move || {
-                for i in 0..100u64 {
-                    let offset = (t * 100 + i) * 4;
-                    reg.apply_transcript_delta("hot", offset, b"wxyz");
-                }
-            }));
-        }
-        // Clear while delta threads run: Arcs cloned under registry lock,
-        // cleared after release — no deadlock (R-06.3).
-        for _ in 0..10 {
-            let _ = reg.clear_transcripts_for_feature("vnc-025");
-        }
-        for h in handles {
-            h.join().expect("no deadlock under clear + stream");
-        }
-
-        // Post-clear merges still apply: stream past high_water (1600 sent).
-        reg.apply_transcript_delta("hot", 1600, b"post-clear");
-        let state = reg.get_state("hot").unwrap();
-        assert!(reg.get_state("hot").is_some(), "session stays registered");
-        let tail = state
-            .transcript
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .contiguous_tail(10);
-        assert_eq!(tail.as_deref(), Some(b"post-clear".as_slice()));
-    }
-
-    /// R-10.1 matrix: Some(cycle) / Some(other) / None — only the first clears;
-    /// all stay registered; counts match.
-    #[test]
-    fn test_clear_transcripts_for_feature_matrix() {
-        let reg = make_registry();
-        reg.register_session("match", None, Some("vnc-025".to_string()));
-        reg.register_session("other", None, Some("col-099".to_string()));
-        reg.register_session("none", None, None);
-        reg.apply_transcript_delta("match", 0, b"match-bytes"); // 11
-        reg.apply_transcript_delta("other", 0, b"other-bytes");
-        reg.apply_transcript_delta("none", 0, b"none-bytes");
-
-        let records = reg.clear_transcripts_for_feature("vnc-025");
-        assert_eq!(records.len(), 1);
-        assert_eq!(records[0].session_id, "match");
-        assert_eq!(records[0].bytes_purged, 11);
-
-        // All stay registered (the crt-052 seam: clear in place).
-        assert_eq!(reg.session_count(), 3);
-        // Matched buffer is empty; others retain content.
-        let matched = reg.get_state("match").unwrap();
-        assert_eq!(
-            matched
-                .transcript
-                .lock()
-                .unwrap_or_else(|p| p.into_inner())
-                .len(),
-            0
-        );
-        for sid in ["other", "none"] {
-            let state = reg.get_state(sid).unwrap();
-            assert!(
-                !state
-                    .transcript
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner())
-                    .is_empty(),
-                "{sid} buffer must be untouched"
-            );
-        }
-
-        // Second clear of the same cycle: nothing left to purge.
-        assert!(reg.clear_transcripts_for_feature("vnc-025").is_empty());
-    }
+    // crt-057: `test_clear_transcripts_for_feature_under_concurrent_stream` and
+    // `test_clear_transcripts_for_feature_matrix` were DELETED with rationale —
+    // `clear_transcripts_for_feature` is gone (the review has no purge verb, NG-6).
+    // Registered-buffer reclamation is delegated to session-close/TTL backstops,
+    // covered by the `sweep_stale_sessions` tests above.
 
     /// R-06.4: delta racing drain key removal lands in the orphaned buffer,
     /// freed on drop; re-registered same-id session gets a fresh buffer.
@@ -3113,24 +3009,11 @@ mod tests {
         );
     }
 
-    /// Edge case (pseudocode #11): sweep × cycle-review race — at most one
-    /// non-zero purge record total per buffer content (clear-then-report).
-    #[test]
-    fn test_sweep_after_cycle_review_clear_yields_no_second_record() {
-        let reg = make_registry();
-        reg.register_session("s1", None, Some("vnc-025".to_string()));
-        reg.apply_transcript_delta("s1", 0, b"contents");
-
-        let first = reg.clear_transcripts_for_feature("vnc-025");
-        assert_eq!(first.len(), 1);
-
-        backdate_session(&reg, "s1");
-        let (_results, purges) = reg.sweep_stale_sessions();
-        assert!(
-            purges.is_empty(),
-            "already-cleared buffer must not produce a second non-zero record"
-        );
-    }
+    // crt-057: `test_sweep_after_cycle_review_clear_yields_no_second_record` was
+    // DELETED with rationale — it guarded a sweep × review-clear race that no
+    // longer exists (the review has no purge/clear verb, NG-6). The session-close
+    // sweep is now the sole registered-buffer reclamation and is covered by the
+    // `sweep_stale_sessions` tests above.
 
     // §4 Clone cost — AC-10, NFR-02
 

@@ -1613,12 +1613,20 @@ impl StatusService {
         // TTL here too, so a never-reviewed / never-re-registered held buffer is
         // reclaimed INDEPENDENTLY of cycle review. Same `stale_sweep` trigger,
         // emitted exactly once per held session at its terminal purge (ADR-009).
-        let held_purges = session_registry.sweep_held_buffers(std::time::Duration::from_secs(
-            retention_config.transcript_hold_ttl_secs,
-        ));
-        if !held_purges.is_empty() {
-            let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(&self.store)));
-            crate::uds::listener::emit_purge_audits(&audit, held_purges, "stale_sweep");
+        //
+        // crt-057 (R-06 / C-5): with the review-purge removed, this TTL sweep is
+        // the SOLE reclamation driver, so the exhaustive `TranscriptRetention`
+        // gate re-homed from the deleted `purge_cycle_transcripts` is consulted
+        // HERE. Under OSS `RetainDays` is startup-rejected, so this is always-true
+        // → behavior byte-unchanged (NG-2); the gate exists as the compile-gate.
+        if crate::server::reclaim_permitted_by_retention(&retention_config.transcript_retention) {
+            let held_purges = session_registry.sweep_held_buffers(std::time::Duration::from_secs(
+                retention_config.transcript_hold_ttl_secs,
+            ));
+            if !held_purges.is_empty() {
+                let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(&self.store)));
+                crate::uds::listener::emit_purge_audits(&audit, held_purges, "stale_sweep");
+            }
         }
         if !stale_outputs.is_empty() {
             let store_for_sweep = Arc::clone(&self.store);

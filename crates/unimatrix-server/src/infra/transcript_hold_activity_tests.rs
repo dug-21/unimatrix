@@ -216,12 +216,13 @@ fn test_read_before_purge_ordering() {
         "AC-07: the review read returns non-zero counters BEFORE purge"
     );
 
-    // PURGE second — `purge_cycle_transcripts` calls these for the held set
-    // (server.rs:561). Dropping the held Arc removes the session from the seam.
-    let purged = hold.purge_held_for_feature(cycle);
+    // PURGE second — crt-057: the review has no purge verb; the surviving
+    // reclamation is the TTL sweep. sweep_expired(ZERO) reclaims the held buffer,
+    // dropping the held Arc and removing the session from the seam.
+    let purged = hold.sweep_expired(std::time::Duration::ZERO);
     assert!(
         purged.iter().any(|r| r.session_id == sid),
-        "the held session was purged"
+        "the held session was reclaimed by the sweep"
     );
     assert!(!hold.is_held(sid), "held buffer dropped after the read");
 

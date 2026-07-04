@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 
 use unimatrix_server::error::ServerError;
 use unimatrix_server::http::ProjectSlug;
-use unimatrix_server::infra::config::{validate_config, UnimatrixConfig};
+use unimatrix_server::infra::config::{UnimatrixConfig, validate_config};
 
 use super::resolve_slug_config;
 
