@@ -38,16 +38,28 @@ Not every feature needs a full retro:
 
 Gather all evidence about the shipped feature:
 
-1. **Run retrospective analysis** (if observation data exists):
+1. **Run retrospective analysis** (if observation data exists). The candidate-bearing harvest call MUST
+   opt in to verbatim candidates via the read-only scoped `transcript: {}` block — a bare call returns
+   the summary report with NO candidates:
    ```
-   mcp__unimatrix__context_cycle_review({"feature_cycle": "{feature-id}", "format": "markdown"})
+   mcp__unimatrix__context_cycle_review({"feature_cycle": "{feature-id}", "format": "markdown", "transcript": {}})
    ```
-   This returns structured data: metrics, hotspots, baseline comparisons, narratives, and recommendations.
+   This returns structured data: metrics, hotspots, baseline comparisons, narratives, and recommendations,
+   PLUS the scoped `transcript_candidates` section (candidates + per-session `SessionLossInfo`).
 
-   **If the response carries a `transcript_candidates` section** (added by crt-052), read
-   [Consuming `transcript_candidates`](#consuming-transcript_candidates) below before analyzing it.
-   When the section is ABSENT (no transcripts / nothing to harvest), proceed normally — the cycle
-   review still produces its standard report.
+   `transcript: {}` (present, all fields omitted) is the degenerate full-candidate case ≡ `match: ".*"` —
+   the full retained candidate set under the per-cycle cap. Retrieval is **read-only, non-destructive, and
+   repeatable**: the call purges NOTHING, and you may re-call it as often as needed in any scope
+   (`{"match": "..."}`, `{"anchor": "F-03", "window": {"millis": 120000}}`, `{"phase": "design"}`). There
+   is no one-shot extraction to sequence around and no purge to avoid re-triggering.
+
+   **Ownership boundary (NG-5): retro synthesis is AGENT-owned.** The tool returns honest planes only —
+   the Plane-A summary report plus the scoped Plane-B candidates + `SessionLossInfo`. It performs no
+   attribution, no cross-source join, and no causal claim. All synthesis below (rework-why joins, the
+   human-intervention ledger, phase narration) is YOUR work over those returned planes, not a tool
+   capability. Read [Consuming `transcript_candidates`](#consuming-transcript_candidates) before analyzing.
+   When the section is ABSENT (no transcripts / nothing to harvest), proceed normally — the cycle review
+   still produces its standard report.
 
 2. **Analyze the retrospective data** — extract actionable findings:
 
@@ -159,6 +171,19 @@ These candidates feed the same Q8-class narratives this skill already builds in 
 `SessionLossInfo.dropped_candidates > 0` means the per-session or per-cycle volume caps truncated
 candidates for that session. Note in the resulting narrative that it may be incomplete for that session —
 the drop is reported, never silent.
+
+### Scoped-match honesty — a no-match is INDETERMINATE, never a negative (ADR-003)
+
+When you pass a scoped `{"match": "..."}` (or `anchor` / `window` / `phase`) block, each session carries a
+per-session search result — `matched`, `search_complete`, `elided_bytes`, `provenance`, and
+`resolved_bounds`. Read `search_complete` before you interpret any absence:
+
+- A `match` that returns **no hit with `search_complete: false`** is **INDETERMINATE**, NOT "it didn't
+  happen." The buffer was lossy for that session — the target may be past the elided tail, inside a hole,
+  or in a `0.81` `Reconstructed` rebuild. Never treat a bare no-match as a negative signal.
+- Only a no-hit with `search_complete: true` over a `Primary`, hole-free window is a trustworthy absence.
+- `resolved_bounds` reports the window actually searched — use it to see how much of the buffer the scope
+  could even reach before you draw any conclusion.
 
 ### Call-time vs cached (OQ-4 / AC-05) — IMPORTANT
 
