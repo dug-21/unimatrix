@@ -2594,22 +2594,10 @@ impl UnimatrixServer {
             } else {
                 Some(history.as_slice())
             };
-            // vnc-015: pre-query stale Prerequisite edges for the current cycle's entries
-            // and inject them into DependencyOnDeprecatedRule via default_rules() (ADR-004).
-            let stale_edge_pairs = self
-                .store
-                .query_stale_prerequisite_edges_for_cycle(&feature_cycle)
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        feature_cycle = %feature_cycle,
-                        error = %e,
-                        "context_cycle_review: query_stale_prerequisite_edges_for_cycle failed — \
-                         proceeding with empty stale edge list"
-                    );
-                    vec![]
-                });
-            let rules = unimatrix_observe::default_rules(history_slice, stale_edge_pairs);
+            // bugfix-891 (#891): the dependency_on_deprecated rule was retired (structurally
+            // starved — its Prerequisite-to-Deprecated input is deleted by the EveryTick
+            // orphaned-edge compaction before this on-demand read runs). Follow-up signal: #895.
+            let rules = unimatrix_observe::default_rules(history_slice);
             let hotspots = unimatrix_observe::detect_hotspots(&attributed, &rules);
 
             let now = std::time::SystemTime::now()
@@ -6549,7 +6537,7 @@ mod tests {
     ///
     /// After Stage 3b inserts the transcript purge into this handler, the purge
     /// must be a pure side effect: same corpus → same bytes (no new fields, no
-    /// count changes across the 23 detection rules). The Stage 3b/3c test
+    /// count changes across the detection rules). The Stage 3b/3c test
     /// `test_cycle_review_output_unchanged_by_purge` consumes these same
     /// committed fixtures.
     #[test]
@@ -6557,8 +6545,12 @@ mod tests {
         let corpus = vnc025_cycle_review_baseline_corpus();
 
         // Step 7c equivalent: no history, no stale prerequisite edges.
-        let rules = unimatrix_observe::default_rules(None, vec![]);
-        assert_eq!(rules.len(), 23, "AC-09 pins the 23 detection rules");
+        let rules = unimatrix_observe::default_rules(None);
+        assert_eq!(
+            rules.len(),
+            22,
+            "AC-09 pins the detection rules (bugfix-891 #891 retired dependency_on_deprecated: 23 -> 22)"
+        );
         let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
         assert!(
             !hotspots.is_empty(),
@@ -6602,7 +6594,7 @@ mod tests {
     /// and render (the same point the handler invokes it, relative to the
     /// response) leaves the rendered response byte-identical to the committed
     /// pre-vnc-025 Wave 0 baselines. Sessions stay registered with empty
-    /// buffers; no new fields, no count changes across the 23 detection rules.
+    /// buffers; no new fields, no count changes across the detection rules.
     #[tokio::test(flavor = "multi_thread")]
     async fn test_cycle_review_output_unchanged_by_purge() {
         let server = crate::server::tests::make_server().await;
@@ -6620,8 +6612,12 @@ mod tests {
 
         // Identical render-path replay to test_cycle_review_render_baseline_byte_identical.
         let corpus = vnc025_cycle_review_baseline_corpus();
-        let rules = unimatrix_observe::default_rules(None, vec![]);
-        assert_eq!(rules.len(), 23, "AC-09 pins the 23 detection rules");
+        let rules = unimatrix_observe::default_rules(None);
+        assert_eq!(
+            rules.len(),
+            22,
+            "AC-09 pins the detection rules (bugfix-891 #891 retired dependency_on_deprecated: 23 -> 22)"
+        );
         let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
         const PINNED_NOW: u64 = 2_000_000_000;
         let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
@@ -6694,7 +6690,7 @@ mod tests {
         // Same report-construction replay as the AC-09 purge test, but the
         // render is asked for an unknown format — the handler's `result` is Err.
         let corpus = vnc025_cycle_review_baseline_corpus();
-        let rules = unimatrix_observe::default_rules(None, vec![]);
+        let rules = unimatrix_observe::default_rules(None);
         let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
         const PINNED_NOW: u64 = 2_000_000_000;
         let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);

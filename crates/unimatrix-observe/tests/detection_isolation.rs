@@ -64,7 +64,7 @@ fn run_rule(
     rule_name: &str,
     records: &[ObservationRecord],
 ) -> Vec<unimatrix_observe::HotspotFinding> {
-    let rules = default_rules(None, vec![]);
+    let rules = default_rules(None);
     let rule = rules
         .into_iter()
         .find(|r| r.name() == rule_name)
@@ -633,7 +633,7 @@ fn test_retrospective_report_backward_compat_claude_code_fixture() {
     let fixture = build_representative_claude_code_fixture();
 
     // Run full detection pipeline
-    let rules = default_rules(None, vec![]);
+    let rules = default_rules(None);
     let findings = detect_hotspots(&fixture, &rules);
 
     // No panic: pipeline completes (assertion above via reaching this line)

@@ -593,7 +593,6 @@ impl StatusService {
             category_lifecycle: Vec::new(), // populated after Phase 8 via category_allowlist
             pending_cycle_reviews: Vec::new(), // populated by Phase 7b (crt-033)
             curation_health: None,          // populated by Phase 7c (crt-047)
-            stale_dependency_edges: 0, // populated in Phase 5 via compute_graph_cohesion_metrics (vnc-015, AC-11)
         };
 
         // Phase 2: Contradiction scan — read from cache populated by background tick.
@@ -724,8 +723,7 @@ impl StatusService {
                 report.supports_edge_count = gcm.supports_edge_count;
                 report.mean_entry_degree = gcm.mean_entry_degree;
                 report.inferred_edge_count = gcm.inferred_edge_count;
-                // vnc-015, AC-11: Prerequisite edges with deprecated source
-                report.stale_dependency_edges = gcm.stale_dependency_edges;
+                // bugfix-891 (#891): stale_dependency_edges metric retired. Follow-up: #895.
             }
             Err(e) => tracing::warn!("graph cohesion metrics failed: {e}"),
         }
