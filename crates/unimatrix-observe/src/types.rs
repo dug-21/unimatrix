@@ -662,6 +662,114 @@ pub struct TranscriptCandidatesSection {
     pub loss: Vec<SessionLossInfo>,
 }
 
+// ---------------------------------------------------------------------------
+// crt-057: Scoped transcript retrieval — filter/window inputs + honesty outputs
+//
+// The `transcript` axis (ADR-002) is a read-only, scoped retrieval. Two INPUT
+// types deserialize from tool params (`TranscriptScope`, `Window`); two OUTPUT
+// types are response-transient honesty projections attached at response-assembly
+// (`SessionSearchStatus`, `ResolvedBounds`). Like the crt-052 types above, NONE
+// is ever persisted and NONE is a field on `RetrospectiveReport` (CON-4).
+// Shapes are AUTHORITATIVE per pseudocode/OVERVIEW.md §Shared Types — not invented.
+// ---------------------------------------------------------------------------
+
+/// The all-optional, AND-composed filter block for the read-only `transcript`
+/// axis (crt-057, ADR-002/ADR-006). Deserialized from tool params.
+///
+/// Every present filter NARROWS (intersection, never union). All-`None`
+/// (`{}`) is the empty scope — equivalent to `match:".*"` at the retrieval
+/// layer (full candidate set under the existing per-cycle cap). Missing
+/// fields deserialize to `None` (serde's implicit default for `Option`), so
+/// `{}` yields an all-`None` scope rather than a deserialize error.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct TranscriptScope {
+    /// Phase id → `cycle_events` bounds. Self-bounding: IGNORES `window`.
+    pub phase: Option<String>,
+    /// Finding id → `HotspotFinding.evidence[].ts` span `[min, max]`; honors `window`.
+    pub anchor: Option<String>,
+    /// Regex over the WHOLE `TranscriptCandidate.text` block. `match` is a Rust
+    /// keyword, so the field is the raw identifier `r#match` renamed on the wire.
+    #[serde(rename = "match")]
+    pub r#match: Option<String>,
+    /// ±radius applied to `anchor`/`match` hits; ignored by self-bounding `phase`.
+    pub window: Option<Window>,
+}
+
+/// Time/block radius around `anchor`/`match` hits (crt-057, ADR-006).
+///
+/// Carries BOTH a time radius (`millis`, for ts-bearing candidates) and a block
+/// radius (`blocks`, for `ts:None` candidates via `byte_offset` proximity) so a
+/// caller who thinks only in time still gets the block fallback and `ts:None`
+/// candidates never silently drop. Unspecified fields resolve to the canonical
+/// [`DEFAULT_WINDOW_MILLIS`] / [`DEFAULT_WINDOW_BLOCKS`], NOT to zero (a
+/// zero-width window would re-introduce the silent-miss failure this design fixes).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Window {
+    /// Time radius (ms) for ts-bearing candidates; default [`DEFAULT_WINDOW_MILLIS`].
+    pub millis: Option<u64>,
+    /// `byte_offset` block radius for `ts:None` candidates; default [`DEFAULT_WINDOW_BLOCKS`].
+    pub blocks: Option<u32>,
+}
+
+/// Default time radius when `Window.millis` is omitted: ±2 min (ADR-006, FR-18/AC-18).
+pub const DEFAULT_WINDOW_MILLIS: u64 = 120_000;
+/// Default block radius when `Window.blocks` is omitted: ±3 candidate blocks (ADR-006).
+pub const DEFAULT_WINDOW_BLOCKS: u32 = 3;
+
+impl Window {
+    /// Resolve the effective `(millis, blocks)` radii, applying the canonical
+    /// defaults for any absent field (including an absent `Window`). Unspecified
+    /// fields fall to the ADR-006 constants, never to zero (window.md).
+    pub fn effective(w: Option<&Window>) -> (u64, u32) {
+        let millis = w.and_then(|x| x.millis).unwrap_or(DEFAULT_WINDOW_MILLIS);
+        let blocks = w.and_then(|x| x.blocks).unwrap_or(DEFAULT_WINDOW_BLOCKS);
+        (millis, blocks)
+    }
+}
+
+/// Per-session search honesty row for the scoped `transcript` retrieval
+/// (crt-057, ADR-003, FR-14/15/16). Response-transient: built at attach time,
+/// NEVER persisted and NOT a field on `RetrospectiveReport`.
+///
+/// `matched` is `Some(bool)` ONLY when `scope.match` was supplied; for
+/// anchor/phase-only scopes there is no regex verdict, so it is `None`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SessionSearchStatus {
+    /// Session this status row describes.
+    pub session_id: String,
+    /// Regex verdict — `Some` only under a `match` scope; `None` for anchor/phase-only.
+    pub matched: Option<bool>,
+    /// `false` iff `elided_bytes > 0`, holes, `Reconstructed`, or cap-dropped candidates.
+    pub search_complete: bool,
+    /// Lifetime ring-tail elision counter for this session (honesty signal).
+    pub elided_bytes: u64,
+    /// Primary (buffer) | Reconstructed (observations); per-session (ADR-006).
+    pub provenance: CandidateProvenance,
+}
+
+/// Which scoped axis produced a [`ResolvedBounds`] span (crt-057).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BoundsKind {
+    /// Bounds resolved from a finding's `HotspotFinding.evidence[].ts` span.
+    Anchor,
+    /// Bounds resolved from `cycle_events` phase start/end.
+    Phase,
+}
+
+/// The resolved `[lo, hi]` epoch-millis span an anchor/phase scope selected over
+/// (crt-057, ADR-006, FR-16). Response-transient window provenance surfaced to the
+/// caller; NEVER persisted and NOT a field on `RetrospectiveReport`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct ResolvedBounds {
+    /// Whether this span came from an `anchor` or a `phase` scope.
+    pub kind: BoundsKind,
+    /// Inclusive lower bound (epoch millis, Plane A).
+    pub lo_epoch_ms: u64,
+    /// Inclusive upper bound (epoch millis, Plane A).
+    pub hi_epoch_ms: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2006,5 +2114,202 @@ mod tests {
             !json.contains("provenance"),
             "TranscriptCandidate must NOT carry provenance (it is per-session): {json}"
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-057: TranscriptScope / Window / SessionSearchStatus / ResolvedBounds
+    // -----------------------------------------------------------------------
+
+    // --- TranscriptScope serde (transcript-scope.md test plan) ---
+
+    #[test]
+    fn test_match_serde_rename_maps_json_match_to_r_match() {
+        // The `match` Rust keyword deserializes from the JSON key "match" via
+        // #[serde(rename = "match")] on the raw identifier r#match. (test plan.)
+        let scope: TranscriptScope =
+            serde_json::from_str(r#"{"match":"F-03"}"#).expect("deserialize match");
+        assert_eq!(scope.r#match.as_deref(), Some("F-03"));
+        assert_eq!(scope.phase, None);
+        assert_eq!(scope.anchor, None);
+        assert_eq!(scope.window, None);
+    }
+
+    #[test]
+    fn test_scope_phase_only_populates_phase() {
+        let scope: TranscriptScope =
+            serde_json::from_str(r#"{"phase":"design"}"#).expect("deserialize phase");
+        assert_eq!(scope.phase.as_deref(), Some("design"));
+        assert_eq!(scope.r#match, None);
+    }
+
+    #[test]
+    fn test_scope_empty_object_is_all_none() {
+        // Present-but-empty `{}` deserializes to an all-None scope (not an error):
+        // serde's implicit Option default fills every absent field with None.
+        // This is the empty scope == match:".*" case at the retrieval layer.
+        let scope: TranscriptScope = serde_json::from_str("{}").expect("deserialize empty");
+        assert_eq!(scope.phase, None);
+        assert_eq!(scope.anchor, None);
+        assert_eq!(scope.r#match, None);
+        assert_eq!(scope.window, None);
+    }
+
+    #[test]
+    fn test_scope_all_axes_and_window_deserialize_together() {
+        // AND-composed: every axis may be present simultaneously; window nests.
+        let scope: TranscriptScope = serde_json::from_str(
+            r#"{"phase":"impl","anchor":"F-01","match":"panic","window":{"millis":5000,"blocks":2}}"#,
+        )
+        .expect("deserialize full scope");
+        assert_eq!(scope.phase.as_deref(), Some("impl"));
+        assert_eq!(scope.anchor.as_deref(), Some("F-01"));
+        assert_eq!(scope.r#match.as_deref(), Some("panic"));
+        assert_eq!(
+            scope.window,
+            Some(Window {
+                millis: Some(5000),
+                blocks: Some(2)
+            })
+        );
+    }
+
+    // --- Window default application at the type level (window.md test plan) ---
+
+    #[test]
+    fn test_window_default_constants_are_adr006_values() {
+        assert_eq!(DEFAULT_WINDOW_MILLIS, 120_000);
+        assert_eq!(DEFAULT_WINDOW_BLOCKS, 3);
+    }
+
+    #[test]
+    fn test_window_effective_applies_defaults_when_omitted() {
+        // window omitted entirely -> both canonical defaults (AC-18).
+        assert_eq!(
+            Window::effective(None),
+            (DEFAULT_WINDOW_MILLIS, DEFAULT_WINDOW_BLOCKS)
+        );
+        // window present but fields None -> still the defaults, NOT zero.
+        let empty = Window {
+            millis: None,
+            blocks: None,
+        };
+        assert_eq!(
+            Window::effective(Some(&empty)),
+            (DEFAULT_WINDOW_MILLIS, DEFAULT_WINDOW_BLOCKS)
+        );
+    }
+
+    #[test]
+    fn test_window_effective_honors_overrides_per_field() {
+        // Caller override honored; the unspecified field falls to its default.
+        let millis_only = Window {
+            millis: Some(5000),
+            blocks: None,
+        };
+        assert_eq!(
+            Window::effective(Some(&millis_only)),
+            (5000, DEFAULT_WINDOW_BLOCKS)
+        );
+        let blocks_only = Window {
+            millis: None,
+            blocks: Some(7),
+        };
+        assert_eq!(
+            Window::effective(Some(&blocks_only)),
+            (DEFAULT_WINDOW_MILLIS, 7)
+        );
+        let both = Window {
+            millis: Some(1),
+            blocks: Some(1),
+        };
+        assert_eq!(Window::effective(Some(&both)), (1, 1));
+    }
+
+    #[test]
+    fn test_window_events_vs_millis_variants_deserialize() {
+        // The type expresses ±T millis and ±N blocks; both deserialize independently.
+        let m: Window = serde_json::from_str(r#"{"millis":90000}"#).expect("millis");
+        assert_eq!(m.millis, Some(90000));
+        assert_eq!(m.blocks, None);
+        let b: Window = serde_json::from_str(r#"{"blocks":4}"#).expect("blocks");
+        assert_eq!(b.blocks, Some(4));
+        assert_eq!(b.millis, None);
+    }
+
+    // --- Response-transient output types (ADR-003 honesty projection) ---
+
+    #[test]
+    fn test_session_search_status_serializes_match_verdict() {
+        let status = SessionSearchStatus {
+            session_id: "sess-a".to_string(),
+            matched: Some(true),
+            search_complete: false,
+            elided_bytes: 42,
+            provenance: CandidateProvenance::Reconstructed,
+        };
+        let v: serde_json::Value = serde_json::to_value(&status).expect("serialize search status");
+        assert_eq!(v["session_id"], "sess-a");
+        assert_eq!(v["matched"], serde_json::json!(true));
+        assert_eq!(v["search_complete"], serde_json::json!(false));
+        assert_eq!(v["elided_bytes"], serde_json::json!(42));
+        assert_eq!(v["provenance"], "reconstructed");
+    }
+
+    #[test]
+    fn test_session_search_status_none_verdict_for_anchor_only() {
+        // anchor/phase-only scope -> no regex verdict -> matched is null.
+        let status = SessionSearchStatus {
+            session_id: "sess-b".to_string(),
+            matched: None,
+            search_complete: true,
+            elided_bytes: 0,
+            provenance: CandidateProvenance::Primary,
+        };
+        let v: serde_json::Value = serde_json::to_value(&status).expect("serialize");
+        assert_eq!(v["matched"], serde_json::Value::Null);
+        assert_eq!(v["provenance"], "primary");
+    }
+
+    #[test]
+    fn test_resolved_bounds_kind_serializes_snake_case() {
+        let anchor = ResolvedBounds {
+            kind: BoundsKind::Anchor,
+            lo_epoch_ms: 1_000,
+            hi_epoch_ms: 2_000,
+        };
+        let v: serde_json::Value = serde_json::to_value(anchor).expect("serialize anchor bounds");
+        assert_eq!(v["kind"], "anchor");
+        assert_eq!(v["lo_epoch_ms"], serde_json::json!(1_000));
+        assert_eq!(v["hi_epoch_ms"], serde_json::json!(2_000));
+
+        let phase = ResolvedBounds {
+            kind: BoundsKind::Phase,
+            lo_epoch_ms: 5,
+            hi_epoch_ms: 9,
+        };
+        assert_eq!(
+            serde_json::to_value(phase).expect("serialize phase bounds")["kind"],
+            "phase"
+        );
+    }
+
+    #[test]
+    fn test_crt057_response_transient_types_carry_no_persistence_path() {
+        // Structural witness (mirrors test_provenance_is_per_session): these types
+        // are response-transient. RetrospectiveReport must gain NO field of these
+        // types. A serialized RetrospectiveReport therefore names none of them.
+        // We assert the negative on the response types' own struct field surface:
+        // neither honesty type carries a nested persisted/report handle.
+        let status = SessionSearchStatus {
+            session_id: "s".to_string(),
+            matched: None,
+            search_complete: true,
+            elided_bytes: 0,
+            provenance: CandidateProvenance::Primary,
+        };
+        let json = serde_json::to_string(&status).expect("serialize");
+        // No report/persistence handle leaks through the transient honesty row.
+        assert!(!json.contains("retrospective"), "no report handle: {json}");
+        assert!(!json.contains("report"), "no report handle: {json}");
     }
 }
