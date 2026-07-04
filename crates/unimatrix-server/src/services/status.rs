@@ -1614,19 +1614,19 @@ impl StatusService {
         // reclaimed INDEPENDENTLY of cycle review. Same `stale_sweep` trigger,
         // emitted exactly once per held session at its terminal purge (ADR-009).
         //
-        // crt-057 (R-06 / C-5): with the review-purge removed, this TTL sweep is
-        // the SOLE reclamation driver, so the exhaustive `TranscriptRetention`
-        // gate re-homed from the deleted `purge_cycle_transcripts` is consulted
-        // HERE. Under OSS `RetainDays` is startup-rejected, so this is always-true
-        // → behavior byte-unchanged (NG-2); the gate exists as the compile-gate.
-        if crate::server::reclaim_permitted_by_retention(&retention_config.transcript_retention) {
-            let held_purges = session_registry.sweep_held_buffers(std::time::Duration::from_secs(
-                retention_config.transcript_hold_ttl_secs,
-            ));
-            if !held_purges.is_empty() {
-                let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(&self.store)));
-                crate::uds::listener::emit_purge_audits(&audit, held_purges, "stale_sweep");
-            }
+        // crt-057 (R-06 / C-5): the held-buffer TTL sweep runs UNCONDITIONALLY every
+        // tick — symmetric with the registered-buffer sweep above — so bounded secret
+        // residency holds regardless of `TranscriptRetention`. The `TranscriptRetention`
+        // exhaustive-match compile-gate lives on in `server::reclaim_permitted_by_retention`
+        // (kept for C-5), but is intentionally NOT wired into this sweep: gating it would
+        // disable reclamation under enterprise `RetainDays` (longer secret residency) and
+        // diverge from the design intent that the sweep behave exactly as before.
+        let held_purges = session_registry.sweep_held_buffers(std::time::Duration::from_secs(
+            retention_config.transcript_hold_ttl_secs,
+        ));
+        if !held_purges.is_empty() {
+            let audit = Arc::new(crate::infra::audit::AuditLog::new(Arc::clone(&self.store)));
+            crate::uds::listener::emit_purge_audits(&audit, held_purges, "stale_sweep");
         }
         if !stale_outputs.is_empty() {
             let store_for_sweep = Arc::clone(&self.store);

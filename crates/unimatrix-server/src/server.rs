@@ -297,6 +297,12 @@ pub struct UnimatrixServer {
 /// error here (the C-5 compile-gate the deletion must not lose). Under OSS,
 /// `RetainDays` is startup-rejected (#4721), so this is always `true` and runtime
 /// behavior is BYTE-UNCHANGED (NG-2) — the value is the preserved compile-gate.
+///
+/// Not wired into runtime control flow (the held-buffer TTL sweep runs
+/// unconditionally, `services/status.rs`); its sole purpose is the C-5 exhaustive-
+/// match compile-gate, exercised by `test_retention_match_no_wildcard`. `#[allow(dead_code)]`
+/// keeps the gate alive in non-test builds where only the test references it.
+#[allow(dead_code)]
 pub(crate) fn reclaim_permitted_by_retention(r: &TranscriptRetention) -> bool {
     match r {
         TranscriptRetention::PurgeOnCycleClose => true, // OSS default — reclaim as today
