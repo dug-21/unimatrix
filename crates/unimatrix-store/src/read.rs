@@ -1129,26 +1129,10 @@ impl SqlxStore {
         // (defensive; the UNION approach ensures connected <= active).
         let isolated = (active as u64).saturating_sub(connected as u64);
 
-        // --- Query 3: stale dependency edges (vnc-015) ---
-        // Counts Prerequisite edges where the source entry is Deprecated (status=1).
-        // Hardcoded string literals — no format-string interpolation (SQL injection guard).
-        let stale_row = sqlx::query(
-            "SELECT COUNT(*) \
-             FROM graph_edges ge \
-             JOIN entries e ON e.id = ge.source_id \
-             WHERE ge.relation_type = 'Prerequisite' \
-               AND e.status = 1",
-        )
-        .fetch_one(self.read_pool())
-        .await
-        .map_err(|e| StoreError::Database(e.into()))?;
-
-        let stale_count: i64 = stale_row
-            .try_get::<i64, _>(0)
-            .map_err(|e| StoreError::Database(e.into()))?;
-        // COUNT(*) is non-negative; max(0) cast is defensive against any unexpected negative.
-        let stale_dependency_edges: u64 = stale_count.max(0) as u64;
-
+        // bugfix-891 (#891): the `stale_dependency_edges` cohesion metric (vnc-015 Query 3) was
+        // retired — it counted Prerequisite edges whose source is Deprecated, but that input is
+        // deleted by the EveryTick orphaned-edge compaction, so the count was near-permanently 0
+        // (same starvation + wrong direction as the retired dependency_on_deprecated rule). #895.
         Ok(GraphCohesionMetrics {
             connectivity_rate,
             isolated_entry_count: isolated,
@@ -1156,7 +1140,6 @@ impl SqlxStore {
             supports_edge_count: supports_count as u64,
             mean_entry_degree,
             inferred_edge_count: inferred_count as u64,
-            stale_dependency_edges,
         })
     }
 
@@ -1594,46 +1577,11 @@ impl SqlxStore {
             .collect::<Result<Vec<_>>>()
     }
 
-    /// Query stale Prerequisite edge pairs for a given feature cycle (vnc-015).
-    ///
-    /// Returns `(source_id, target_id)` pairs for GRAPH_EDGES rows where:
-    /// - `relation_type = 'Prerequisite'`
-    /// - The source entry is Deprecated (`status = 1`)
-    /// - The source entry belongs to the given `feature_cycle`
-    ///
-    /// Used by `context_cycle_review` to build the injection vector for
-    /// `DependencyOnDeprecatedRule::new()`. This is a scoped variant of the global
-    /// `stale_dependency_edges` count in `compute_graph_cohesion_metrics()`.
-    pub async fn query_stale_prerequisite_edges_for_cycle(
-        &self,
-        feature_cycle: &str,
-    ) -> Result<Vec<(u64, u64)>> {
-        let rows = sqlx::query(
-            "SELECT ge.source_id, ge.target_id \
-             FROM graph_edges ge \
-             JOIN entries e ON e.id = ge.source_id \
-             JOIN feature_entries fe ON fe.entry_id = ge.source_id \
-             WHERE ge.relation_type = 'Prerequisite' \
-               AND e.status = 1 \
-               AND fe.feature_id = ?1",
-        )
-        .bind(feature_cycle)
-        .fetch_all(self.read_pool())
-        .await
-        .map_err(|e| StoreError::Database(e.into()))?;
-
-        rows.into_iter()
-            .map(|row| {
-                let source_id =
-                    row.try_get::<i64, _>(0)
-                        .map_err(|e| StoreError::Database(e.into()))? as u64;
-                let target_id =
-                    row.try_get::<i64, _>(1)
-                        .map_err(|e| StoreError::Database(e.into()))? as u64;
-                Ok((source_id, target_id))
-            })
-            .collect::<Result<Vec<_>>>()
-    }
+    // bugfix-891 (#891): `query_stale_prerequisite_edges_for_cycle` (vnc-016) was deleted along
+    // with its only caller, the retired dependency_on_deprecated rule injection in
+    // context_cycle_review. It read live Prerequisite-to-Deprecated edges the EveryTick compaction
+    // had already deleted, and keyed on Deprecated *source* while the finding claimed a Deprecated
+    // *target* — both defects made it structurally dead. Follow-up signal: #895.
 
     /// Load entry metadata for effectiveness classification (crt-018).
     pub async fn load_entry_classification_meta(&self) -> Result<Vec<EntryClassificationMeta>> {
@@ -1702,7 +1650,7 @@ impl SqlxStore {
                -- They are rebuilt by the graph tick automatically on the next cycle. ADR-002 vnc-017.",
         )
         // SQLite stores IDs as i64 (BIGINT); cast u64 → i64 for binding, matching the
-        // pattern used throughout read.rs (query_graph_edges, query_stale_prerequisite_edges_for_cycle).
+        // pattern used throughout read.rs (e.g. query_graph_edges).
         .bind(target_id as i64)
         // read_pool() and write_pool_server() currently alias the same underlying pool (db.rs:294).
         // Use canonical accessor name per C-07 vnc-017.
@@ -1927,10 +1875,6 @@ pub struct GraphCohesionMetrics {
     ///
     /// Returns `0` when no non-bootstrap non-co_access edges exist.
     pub inferred_edge_count: u64,
-    /// Count of GRAPH_EDGES rows where `relation_type = 'Prerequisite'` and the source
-    /// entry has `status = 1` (Deprecated). Signals declared dependencies that may need
-    /// review. Zero when no stale dependency edges exist (vnc-015).
-    pub stale_dependency_edges: u64,
 }
 
 /// Raw effectiveness data aggregated by SQL (crt-018: ADR-001).
@@ -3097,171 +3041,9 @@ mod tests {
         );
     }
 
-    // ---------------------------------------------------------------------------
-    // stale_dependency_edges tests (vnc-015, Component 5)
-    // AC-11, R-14: Prerequisite edges with deprecated source counted correctly.
-    // ---------------------------------------------------------------------------
-
-    /// R-14: zero stale edges when no GRAPH_EDGES rows exist.
-    #[tokio::test]
-    async fn test_stale_dependency_edges_zero_when_no_edges() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        insert_test_entry(&store.write_pool, 1, "decision", 0).await;
-        insert_test_entry(&store.write_pool, 2, "pattern", 0).await;
-
-        let m = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("metrics");
-
-        assert_eq!(
-            m.stale_dependency_edges, 0,
-            "no edges → stale_dependency_edges must be 0"
-        );
-    }
-
-    /// R-14 correctness: Prerequisite edge with ACTIVE source (status=0) must NOT be counted.
-    /// This is the critical filter-direction check — status=1 only, not status=0.
-    #[tokio::test]
-    async fn test_stale_dependency_edges_zero_when_no_deprecated_sources() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        insert_test_entry(&store.write_pool, 1, "decision", 0).await; // Active (status=0)
-        insert_test_entry(&store.write_pool, 2, "pattern", 0).await; // Active
-        insert_test_edge(&store.write_pool, 1, 2, "Prerequisite", "agent", 0).await;
-
-        let m = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("metrics");
-
-        assert_eq!(
-            m.stale_dependency_edges, 0,
-            "active source must not be counted — status filter must be 1 (Deprecated), not 0"
-        );
-    }
-
-    /// R-14: Prerequisite edge with deprecated source (status=1) must be counted as 1.
-    #[tokio::test]
-    async fn test_stale_dependency_edges_counts_deprecated_source() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        insert_test_entry(&store.write_pool, 1, "decision", 1).await; // Deprecated (status=1)
-        insert_test_entry(&store.write_pool, 2, "pattern", 0).await; // Active target
-        insert_test_edge(&store.write_pool, 1, 2, "Prerequisite", "agent", 0).await;
-
-        let m = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("metrics");
-
-        assert_eq!(
-            m.stale_dependency_edges, 1,
-            "deprecated source Prerequisite edge must count as 1"
-        );
-    }
-
-    /// R-14: three Prerequisite edges all with deprecated sources → count is 3.
-    #[tokio::test]
-    async fn test_stale_dependency_edges_counts_multiple() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        // 3 deprecated sources + 3 active targets
-        for i in 1u64..=3 {
-            insert_test_entry(&store.write_pool, i, "decision", 1).await; // Deprecated
-        }
-        for i in 4u64..=6 {
-            insert_test_entry(&store.write_pool, i, "pattern", 0).await; // Active
-        }
-        insert_test_edge(&store.write_pool, 1, 4, "Prerequisite", "agent", 0).await;
-        insert_test_edge(&store.write_pool, 2, 5, "Prerequisite", "agent", 0).await;
-        insert_test_edge(&store.write_pool, 3, 6, "Prerequisite", "agent", 0).await;
-
-        let m = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("metrics");
-
-        assert_eq!(
-            m.stale_dependency_edges, 3,
-            "three deprecated-source Prerequisite edges must count as 3"
-        );
-    }
-
-    /// R-14: only Prerequisite relation type counts — Supports and Advances with deprecated
-    /// sources must be excluded.
-    #[tokio::test]
-    async fn test_stale_dependency_edges_prerequisite_only_not_other_types() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        // 3 deprecated sources
-        insert_test_entry(&store.write_pool, 1, "decision", 1).await; // A: deprecated
-        insert_test_entry(&store.write_pool, 2, "decision", 1).await; // C: deprecated
-        insert_test_entry(&store.write_pool, 3, "decision", 1).await; // E: deprecated
-        // 3 active targets
-        insert_test_entry(&store.write_pool, 4, "pattern", 0).await; // B
-        insert_test_entry(&store.write_pool, 5, "pattern", 0).await; // D
-        insert_test_entry(&store.write_pool, 6, "pattern", 0).await; // F
-        // Only the Prerequisite edge should count
-        insert_test_edge(&store.write_pool, 1, 4, "Prerequisite", "agent", 0).await;
-        // Advances and Supports with deprecated sources — must NOT be counted
-        insert_test_edge(&store.write_pool, 2, 5, "Advances", "agent", 0).await;
-        insert_test_edge(&store.write_pool, 3, 6, "Supports", "nli", 0).await;
-
-        let m = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("metrics");
-
-        assert_eq!(
-            m.stale_dependency_edges, 1,
-            "only the Prerequisite edge must count; Advances and Supports must be excluded"
-        );
-    }
-
-    /// Quarantined source (status=2) must NOT be counted — only Deprecated (status=1).
-    #[tokio::test]
-    async fn test_stale_dependency_edges_quarantined_source_not_counted() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        insert_test_entry(&store.write_pool, 1, "decision", 2).await; // Quarantined (status=2)
-        insert_test_entry(&store.write_pool, 2, "pattern", 0).await; // Active target
-        insert_test_edge(&store.write_pool, 1, 2, "Prerequisite", "agent", 0).await;
-
-        let m = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("metrics");
-
-        assert_eq!(
-            m.stale_dependency_edges, 0,
-            "quarantined source (status=2) must not count — only Deprecated (status=1)"
-        );
-    }
-
-    /// Mixed active + deprecated sources: only the deprecated-source Prerequisite edge counts.
-    #[tokio::test]
-    async fn test_stale_dependency_edges_active_deprecated_mix() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        insert_test_entry(&store.write_pool, 1, "decision", 0).await; // A: Active
-        insert_test_entry(&store.write_pool, 2, "decision", 1).await; // C: Deprecated
-        insert_test_entry(&store.write_pool, 3, "pattern", 0).await; // B: Active target
-        insert_test_entry(&store.write_pool, 4, "pattern", 0).await; // D: Active target
-        insert_test_edge(&store.write_pool, 1, 3, "Prerequisite", "agent", 0).await; // Active→B: not counted
-        insert_test_edge(&store.write_pool, 2, 4, "Prerequisite", "agent", 0).await; // Deprecated→D: counted
-
-        let m = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("metrics");
-
-        assert_eq!(
-            m.stale_dependency_edges, 1,
-            "only the deprecated-source edge must count; active-source edge must not"
-        );
-    }
+    // bugfix-891 (#891): the `stale_dependency_edges` cohesion metric tests (vnc-015 Component 5)
+    // were removed with the metric itself. See the retirement note in
+    // compute_graph_cohesion_metrics(). Follow-up signal: #895.
 
     // ---------------------------------------------------------------------------
     // query_contradicts_edges_for_entry bidirectional fix tests (vnc-015, Component 7)
@@ -3414,149 +3196,9 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
-    // query_stale_prerequisite_edges_for_cycle tests (vnc-016 AC-09)
-    // -----------------------------------------------------------------------
-
-    /// Positive path: a Deprecated source entry registered to the cycle with a
-    /// Prerequisite edge to an Active target must be returned as a (source, target) pair.
-    #[tokio::test]
-    async fn test_query_stale_prerequisite_edges_for_cycle_returns_pair() {
-        // -- Setup -----------------------------------------------------------
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        let cycle = "vnc016-test-cycle";
-
-        // Seed entry A: Deprecated (status = 1). Capture auto-assigned id via RETURNING.
-        let id_a: i64 = sqlx::query_scalar(
-            "INSERT INTO entries \
-                 (title, content, topic, category, source, status, created_at, updated_at) \
-             VALUES ('entry-a', 'content-a', 'test', 'pattern', '', 1, 0, 0) \
-             RETURNING id",
-        )
-        .fetch_one(&store.write_pool)
-        .await
-        .expect("insert entry A");
-
-        // Seed entry B: Active (status = 0) — target of the Prerequisite edge.
-        let id_b: i64 = sqlx::query_scalar(
-            "INSERT INTO entries \
-                 (title, content, topic, category, source, status, created_at, updated_at) \
-             VALUES ('entry-b', 'content-b', 'test', 'pattern', '', 0, 0, 0) \
-             RETURNING id",
-        )
-        .fetch_one(&store.write_pool)
-        .await
-        .expect("insert entry B");
-
-        // Seed feature_entries: associate entry A with the test cycle.
-        // Column is 'feature_id' (not 'feature_cycle') — this is the fix target.
-        sqlx::query(
-            "INSERT INTO feature_entries (feature_id, entry_id, phase) VALUES (?1, ?2, NULL)",
-        )
-        .bind(cycle)
-        .bind(id_a)
-        .execute(&store.write_pool)
-        .await
-        .expect("insert feature_entries row");
-
-        // Seed graph_edges: Prerequisite edge from A (source) to B (target).
-        sqlx::query(
-            "INSERT INTO graph_edges \
-                 (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) \
-             VALUES (?1, ?2, 'Prerequisite', 1.0, 0, 'test', 'test', 0)",
-        )
-        .bind(id_a)
-        .bind(id_b)
-        .execute(&store.write_pool)
-        .await
-        .expect("insert graph_edges row");
-
-        // -- Exercise --------------------------------------------------------
-        let result = store.query_stale_prerequisite_edges_for_cycle(cycle).await;
-
-        // -- Assert ----------------------------------------------------------
-        // (a) Must not be an error — if this fails, the SQL column name is wrong.
-        assert!(result.is_ok(), "expected Ok, got: {:?}", result.err());
-
-        let pairs = result.unwrap();
-
-        // (b) Must contain exactly one pair.
-        assert_eq!(
-            pairs.len(),
-            1,
-            "expected exactly 1 stale edge pair, got: {:?}",
-            pairs
-        );
-
-        // (c) Must contain the exact (A, B) pair in source/target order.
-        assert_eq!(
-            pairs[0],
-            (id_a as u64, id_b as u64),
-            "expected pair ({id_a}, {id_b}), got: {:?}",
-            pairs[0]
-        );
-    }
-
-    /// Negative companion: when no feature_entries row exists for the cycle, the JOIN
-    /// must produce an empty result — even if matching graph_edges rows exist globally.
-    #[tokio::test]
-    async fn test_query_stale_prerequisite_edges_for_cycle_empty_without_feature_entry() {
-        // -- Setup -----------------------------------------------------------
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let store = open_test_store(&dir).await;
-        let cycle = "vnc016-absent-cycle";
-
-        // Seed entry A: Deprecated (status = 1).
-        let id_a: i64 = sqlx::query_scalar(
-            "INSERT INTO entries \
-                 (title, content, topic, category, source, status, created_at, updated_at) \
-             VALUES ('entry-a-neg', 'content', 'test', 'pattern', '', 1, 0, 0) \
-             RETURNING id",
-        )
-        .fetch_one(&store.write_pool)
-        .await
-        .expect("insert entry A neg");
-
-        // Seed entry B: Active (status = 0).
-        let id_b: i64 = sqlx::query_scalar(
-            "INSERT INTO entries \
-                 (title, content, topic, category, source, status, created_at, updated_at) \
-             VALUES ('entry-b-neg', 'content', 'test', 'pattern', '', 0, 0, 0) \
-             RETURNING id",
-        )
-        .fetch_one(&store.write_pool)
-        .await
-        .expect("insert entry B neg");
-
-        // Seed graph_edges: Prerequisite edge A -> B — intentionally present.
-        // NO feature_entries row is inserted for any cycle. This validates the JOIN
-        // on feature_entries as the scoping mechanism.
-        sqlx::query(
-            "INSERT INTO graph_edges \
-                 (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) \
-             VALUES (?1, ?2, 'Prerequisite', 1.0, 0, 'test', 'test', 0)",
-        )
-        .bind(id_a)
-        .bind(id_b)
-        .execute(&store.write_pool)
-        .await
-        .expect("insert graph_edges row neg");
-
-        // -- Exercise --------------------------------------------------------
-        let result = store.query_stale_prerequisite_edges_for_cycle(cycle).await;
-
-        // -- Assert ----------------------------------------------------------
-        // Must return Ok — verifies the query runs without error when no rows match.
-        assert!(result.is_ok(), "expected Ok, got: {:?}", result.err());
-
-        // Must return empty — the JOIN on feature_entries filters out all edges
-        // whose source is not registered to this cycle.
-        assert!(
-            result.unwrap().is_empty(),
-            "expected empty result when no feature_entries row exists for cycle"
-        );
-    }
+    // bugfix-891 (#891): the query_stale_prerequisite_edges_for_cycle tests (vnc-016 AC-09) were
+    // removed with the query, which was deleted along with its only caller (the retired
+    // dependency_on_deprecated rule injection). Follow-up signal: #895.
 
     // -----------------------------------------------------------------------
     // query_incoming_edges tests (vnc-017 AC-05, R-02, R-03, R-07)

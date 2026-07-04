@@ -38,7 +38,7 @@ pub fn compute_friction_recommendations(observations: &[ObservationRecord]) -> V
     }
 
     // Run detection rules per session
-    let detection_rules = detection::default_rules(None, vec![]);
+    let detection_rules = detection::default_rules(None);
     let mut rule_sessions: HashMap<String, HashSet<String>> = HashMap::new();
 
     for (session_id, records) in &session_records {
@@ -171,11 +171,8 @@ pub(crate) fn remediation_for_rule(rule_name: &str) -> &'static str {
             "Investigate phases that take significantly longer than historical baselines — \
              outlier durations indicate scope creep, blockers, or rework not visible in tool counts."
         }
-        "dependency_on_deprecated" => {
-            "Update or remove Prerequisite edges that point to Deprecated entries — \
-             redirect dependencies to the successor entry or remove stale graph edges \
-             to prevent misleading knowledge graph traversal."
-        }
+        // bugfix-891 (#891): the "dependency_on_deprecated" remediation arm was removed with the
+        // retired rule; the rule no longer appears in default_rules() output. Follow-up: #895.
         _ => {
             "Review the recurring detection rule and consider adding it to the \
              settings.json allowlist or adjusting detection thresholds."

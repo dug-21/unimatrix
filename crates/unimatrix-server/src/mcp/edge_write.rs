@@ -123,7 +123,8 @@ impl Display for EdgeRedirectError {
 /// Check that `target_id` refers to an existing, non-quarantined entry.
 ///
 /// - `Active` → allowed
-/// - `Deprecated` → allowed (DependencyOnDeprecated rule surfaces these)
+/// - `Deprecated` → allowed (the #879 repoint pass redirects recoverable edges off Deprecated
+///   targets; the dependency_on_deprecated rule that once surfaced the rest was retired in #891)
 /// - `Quarantined` → `Err(TargetQuarantined)`
 /// - Not found / store error → `Err(TargetNotFound)`
 pub(crate) async fn validate_target(
