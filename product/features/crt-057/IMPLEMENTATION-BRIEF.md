@@ -60,6 +60,13 @@ Pseudocode / test-plan paths are populated in Stage 3a. `[NEW]`/`[REMOVE]`/`[UNC
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
+### Stage 3a Resolutions (Delivery Leader, 2026-07-04)
+
+- **Rename (OQ-4, human directive):** `distill_before_purge` → **`retrieve_scoped_candidates`** (read-only scoped retrieval; no purge follows). Source-assertion tests count `retrieve_scoped_candidates(`; the ×4 purge-count / attach-before-purge assertions are removed with an in-source rationale; the content-opaque fold-read ×4 assertion is preserved. (Resolves tester OQ-A; the `distill-before-purge.md` file paths are kept only to preserve the Stage-3a 1:1 mapping.)
+- **Add-only param:** the boolean `include_transcript_candidates` is NOT present in this worktree's `RetrospectiveParams` — only the `transcript: Option<TranscriptScope>` ADD applies; the brief's "remove" line is a no-op.
+- **Accepted pseudocode recommendations (Stage 3b implements to these):** `matched`/`search_complete` are response-transient post-derivations (`derive_search_status` → `SessionSearchStatus`; `TranscriptCandidatesSection` stays UNCHANGED); the handler compiles/validates `match` so `retrieve_scoped_candidates` stays infallible `-> Option<...>`, bounding ReDoS via `RegexBuilder` size limits; unknown `anchor`/`phase` id → empty (absent) section, `ERROR_INVALID_PARAMS` reserved for malformed input; the re-homed exhaustive `TranscriptRetention` match lands at the `sweep_expired` driver (`reclaim_permitted_by_retention`, OSS behavior byte-unchanged, no `_` arm).
+- **Paths verified:** Component Map pseudocode/test-plan files and the two OVERVIEW artifacts exist at the listed paths (1:1).
+
 ---
 
 ## Goal
@@ -157,8 +164,8 @@ struct TranscriptScope {
     window: Option<Window>,   // ±N events / ±T millis; default ±120_000 ms / ±3 blocks
 }
 
-// distill_before_purge (distill_handler.rs:48) — NEW signature; name vestigial (no purge follows)
-fn distill_before_purge(
+// retrieve_scoped_candidates (distill_handler.rs:48) — RENAMED from distill_before_purge; read-only, no purge follows
+fn retrieve_scoped_candidates(
     registry: &SessionRegistry,
     feature_cycle: &str,
     observations: &[ObservationRecord],
@@ -174,7 +181,7 @@ fn distill_before_purge(
 //   clear_transcripts_for_feature (session.rs), purge_held_for_feature (transcript_hold.rs:331)
 ```
 
-**Source-assertion invariant (distill_handler.rs:651-726):** the `distill_before_purge(` /
+**Source-assertion invariant (distill_handler.rs:651-726):** the `retrieve_scoped_candidates(` /
 `attach_to_response_assembly(` ×4 counts STAND; the **`self.purge_cycle_transcripts(&feature_cycle)` ×4 assertion is
 REMOVED** with an in-source rationale comment (purge gone). The content-opaque fold-read ×4 assertion is PRESERVED.
 
