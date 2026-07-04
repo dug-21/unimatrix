@@ -573,3 +573,66 @@ def test_cycle_review_no_candidate_content_in_query_surface(server):
                 "crt-052 AC-06: persisted summary_json must contain no "
                 "transcript_candidates field (structural absence from the memoized report)"
             )
+
+
+@pytest.mark.security
+def test_cycle_review_transcript_no_new_persistence(server):
+    """crt-057 R-03 / AC-14: the new `transcript:{}` scoped-retrieval path creates
+    NO new persistence. After a transcript retrieval no candidate/search marker
+    reaches the persisted cycle_review_index (ANY column) and no read tool nor the
+    server log surfaces candidate content. With no live buffer there is no verbatim
+    to leak; the buffer-populated sink content-scan is the Rust `#[traced_test]`
+    unit guard (#5089, test-plan §6d/OQ-C)."""
+    import sqlite3 as _sqlite3
+
+    topic = "crt057-transcript-no-persist"
+    db_path = _crt052_sec_db_path(server.project_dir)
+    _crt052_sec_seed_observations(db_path, topic)
+
+    markers = ("transcript_candidates", "transcript_search", "byte_offset", "family_hints")
+
+    review = server.context_cycle_review(
+        topic, agent_id="human", format="json", transcript={}, timeout=30.0
+    )
+    assert_tool_success(review), (
+        "crt-057: transcript:{} review must succeed on the seeded success path"
+    )
+
+    # (1) No persisted cycle_review_index column carries a candidate/search marker.
+    if os.path.isfile(db_path):
+        conn = _sqlite3.connect(db_path)
+        try:
+            rows = conn.execute(
+                "SELECT * FROM cycle_review_index WHERE feature_cycle = ?", (topic,)
+            ).fetchall()
+        finally:
+            conn.close()
+        for row in rows:
+            blob = " ".join("" if v is None else str(v) for v in row)
+            for m in markers:
+                assert m not in blob, (
+                    f"crt-057 R-03/AC-14: persisted cycle_review_index must not "
+                    f"contain the candidate/search marker '{m}'"
+                )
+
+    # (2) No read tool surfaces candidate content after the transcript retrieval.
+    search = server.context_search(
+        "transcript_candidates byte_offset family_hints", format="json", agent_id="human"
+    )
+    assert_tool_success(search)
+    search_text = get_result_text(search)
+    for m in ("transcript_candidates", "transcript_search"):
+        assert m not in search_text, (
+            f"crt-057 R-03/AC-14: context_search must not surface '{m}'"
+        )
+
+    # (3) Best-effort log scan: captured server stderr carries no candidate/search
+    #     marker (content-free audits + no candidate byte leak, R-03).
+    try:
+        stderr = server.get_stderr() or ""
+    except Exception:
+        stderr = ""
+    for m in ("transcript_candidates", "transcript_search"):
+        assert m not in stderr, (
+            f"crt-057 R-03: server stderr must not carry the marker '{m}'"
+        )

@@ -667,6 +667,7 @@ class UnimatrixClient:
         format: str | None = None,
         force: bool | None = None,
         auto_close: bool | None = None,
+        transcript: dict[str, Any] | None = None,
         timeout: float | None = None,
     ) -> MCPResponse:
         args: dict[str, Any] = {"feature_cycle": feature_cycle}
@@ -678,6 +679,10 @@ class UnimatrixClient:
             args["force"] = force
         if auto_close is not None:
             args["auto_close"] = auto_close
+        # crt-057: read-only scoped transcript retrieval axis. `{}` = full dump
+        # under the per-cycle cap; omitted = lean non-destructive default.
+        if transcript is not None:
+            args["transcript"] = transcript
         return self.call_tool("context_cycle_review", args, timeout=timeout)
 
     def context_cycle(

@@ -6793,6 +6793,174 @@ mod tests {
         );
     }
 
+    // ── crt-057 Gate-3c carry-forward: AC-10 token reduction + R-12/AC-11 ────
+
+    /// crt-057 CARRY-FORWARD (Gate 3b → 3c): **R-12 / AC-11** — dropping the
+    /// `"summary"` alias is BREAKING (CON-5). The render dispatch must reject
+    /// `format:"summary"` (and any unknown format) with `ERROR_INVALID_PARAMS`
+    /// and the EXACT valid-values message, at the handler render-dispatch level.
+    /// Gate 3b flagged that only serde-deserialization tests existed; this is the
+    /// missing BEHAVIORAL rejection + exact-message assertion, plus a four-loci
+    /// source assertion that no third render path survives.
+    #[test]
+    fn test_cycle_review_format_summary_rejected_with_exact_message() {
+        let corpus = vnc025_cycle_review_baseline_corpus();
+        let rules = unimatrix_observe::default_rules(None);
+        let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
+        const PINNED_NOW: u64 = 2_000_000_000;
+        let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
+        let report = unimatrix_observe::build_report(
+            "crt-057-summary-drop",
+            &corpus,
+            metrics,
+            hotspots,
+            None,
+            None,
+        );
+
+        // "summary" is DROPPED — an error, NOT a third render path (CON-5, NG).
+        let err = dispatch_review_with_advisory(report.clone(), "summary", None, None)
+            .expect_err("format:\"summary\" must be rejected (alias dropped)");
+        assert_eq!(
+            err.code,
+            crate::error::ERROR_INVALID_PARAMS,
+            "summary must map to ERROR_INVALID_PARAMS"
+        );
+        assert_eq!(
+            err.message.as_ref(),
+            "Unknown format 'summary'. Valid values: \"markdown\", \"json\".",
+            "R-12/AC-11: exact valid-values message required"
+        );
+
+        // Any other unknown format takes the identical rejection path.
+        let err2 = dispatch_review_with_advisory(report, "yaml", None, None)
+            .expect_err("unknown format rejected");
+        assert_eq!(err2.code, crate::error::ERROR_INVALID_PARAMS);
+
+        // Four-loci source assertion: no third render path survives anywhere in
+        // the tool. The exact error message is emitted at all four render loci
+        // (tools.rs:2585/3507/4397/4478) and NOWHERE renders "summary".
+        let src = include_str!("tools.rs");
+        // Build the needle from fragments so THIS assertion's own literal is not
+        // counted as a fifth locus (the concatenated form appears only at the
+        // real render loci, never contiguously here).
+        let needle = ["Unknown format '{}'.", " Valid values:"].concat();
+        let loci = src.matches(needle.as_str()).count();
+        assert_eq!(
+            loci, 4,
+            "the invalid-format error must be emitted at all four render loci; \
+             a surviving/added render path fails this gate (R-12)"
+        );
+    }
+
+    /// crt-057 CARRY-FORWARD (Gate 3b → 3c): **AC-10 / R-13** — the lean default
+    /// (no `transcript`, `markdown`) response must be ≤ 20% of the full
+    /// candidate-bearing (`transcript:{}`, `json`) response in token proxy, on a
+    /// POPULATED candidate fixture. The vacuity guard (#3548) asserts the
+    /// candidate section is materially large FIRST, so the ratio cannot be
+    /// trivially satisfied by an empty/tiny buffer.
+    #[test]
+    fn test_cycle_review_token_reduction_ratio_populated_fixture() {
+        use crate::infra::config::{RetentionConfig, TranscriptRetention};
+        use crate::infra::session::SessionRegistry;
+        use crate::mcp::response::{format_retrospective_markdown, format_retrospective_report};
+
+        // Realistic report body so the DEFAULT side is not trivially tiny.
+        let corpus = vnc025_cycle_review_baseline_corpus();
+        let rules = unimatrix_observe::default_rules(None);
+        let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
+        const PINNED_NOW: u64 = 2_000_000_000;
+        let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
+        let mut report = unimatrix_observe::build_report(
+            "crt-057-ac10",
+            &corpus,
+            metrics,
+            hotspots,
+            None,
+            None,
+        );
+        report.recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
+        report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
+
+        // Populate a candidate-heavy transcript buffer (~many decision blocks).
+        let reg = SessionRegistry::new();
+        reg.register_session("s1", None, Some("crt-057-ac10".to_string()));
+        let mut off: u64 = 0;
+        for i in 0..120u32 {
+            let block = format!(
+                "{{\"type\":\"assistant\",\"message\":{{\"role\":\"assistant\",\
+                 \"content\":[{{\"type\":\"text\",\"text\":\"We decided to adopt Option B \
+                 for subsystem {i}: the measured tail latency regressed and the rollback \
+                 plan is cheaper than the forward fix; recording verbatim so the retro can \
+                 attribute the cause.\"}}]}},\"timestamp\":\"2026-06-08T10:00:00Z\"}}\n"
+            );
+            let bytes = block.into_bytes();
+            reg.apply_transcript_delta("s1", off, &bytes);
+            off += bytes.len() as u64;
+        }
+
+        let cfg = RetentionConfig {
+            transcript_retention: TranscriptRetention::PurgeOnCycleClose,
+            ..RetentionConfig::default()
+        };
+        let full_scope = unimatrix_observe::TranscriptScope {
+            phase: None,
+            anchor: None,
+            r#match: None,
+            window: None,
+        };
+        let section = crate::mcp::distill_handler::retrieve_scoped_candidates(
+            &reg,
+            "crt-057-ac10",
+            &[],
+            &cfg,
+            Some(&full_scope),
+            None,
+            None,
+        )
+        .expect("populated fixture must yield a candidate section");
+
+        // VACUITY GUARD (#3548): the candidate side must be materially large —
+        // assert this BEFORE the ratio so an empty/tiny buffer fails loudly.
+        let section_bytes = serde_json::to_string(&section).expect("serialize").len();
+        assert!(
+            section.candidates.len() >= 20 && section_bytes > 8_000,
+            "vacuity guard: fixture must produce a candidate-heavy section \
+             (got {} candidates, {} bytes); an empty buffer makes AC-10 vacuous",
+            section.candidates.len(),
+            section_bytes
+        );
+
+        // Token proxy = total chars across all response content text items.
+        let chars = |r: &rmcp::model::CallToolResult| -> usize {
+            r.content
+                .iter()
+                .filter_map(|c| c.as_text().map(|t| t.text.chars().count()))
+                .sum()
+        };
+
+        // Default: markdown render, NO transcript attached.
+        let default_resp = format_retrospective_markdown(&report);
+        // Full dump: json render WITH the candidate section attached (transcript:{}).
+        let mut full_resp: Result<rmcp::model::CallToolResult, rmcp::model::ErrorData> =
+            Ok(format_retrospective_report(&report));
+        crate::mcp::distill_handler::attach_to_response_assembly(&mut full_resp, Some(section));
+        let full_resp = full_resp.expect("full-dump response builds");
+
+        let default_tokens = chars(&default_resp);
+        let full_tokens = chars(&full_resp);
+        assert!(
+            full_tokens > default_tokens,
+            "full candidate-bearing response must exceed the lean default"
+        );
+        assert!(
+            (default_tokens as f64) <= 0.20 * (full_tokens as f64),
+            "AC-10: default ({default_tokens}) must be ≤ 0.20 × full-dump ({full_tokens}); \
+             ratio {:.3}",
+            default_tokens as f64 / full_tokens as f64
+        );
+    }
+
     // -- crt-033: check_stored_review helper tests (TH-U-03 through TH-U-06) --
 
     /// Helper: build a minimal CycleReviewRecord with a valid serialized
