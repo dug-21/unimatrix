@@ -26,8 +26,35 @@
 - **Retention match re-homed:** `server::reclaim_permitted_by_retention` (no `_` arm) consulted at `services/status.rs` TTL-sweep driver; OSS behavior byte-unchanged.
 - **`"summary"` dropped ×4:** 0 `"markdown" | "summary"` arms remain; all four loci route to `ERROR_INVALID_PARAMS` with the exact `Valid values: "markdown", "json".` message.
 
+## Rework (coordinator follow-up) — anchor/phase wired end-to-end (commit 38b646c7)
+
+**New signature** (widened by one param — the architecture's 6-param shape was under-specified for its own anchor/phase semantics; docs OVERVIEW / ADR-006 / brief Key-Signatures should reconcile to this):
+```
+fn retrieve_scoped_candidates(
+    registry: &SessionRegistry,
+    feature_cycle: &str,
+    observations: &[ObservationRecord],
+    cfg: &RetentionConfig,
+    scope: Option<&TranscriptScope>,
+    reviewer_session_id: Option<&str>,
+    resolved_bounds: Option<ResolvedBounds>,   // NEW — handler-resolved anchor/phase span
+) -> Option<TranscriptCandidatesSection>
+```
+Companion handler resolver (tools.rs, expressed once, invoked at all four success returns):
+```
+fn resolve_transcript_scope_bounds(
+    scope: Option<&TranscriptScope>,
+    hotspots: &[HotspotFinding],       // anchor F-NN → evidence[].ts span
+    cycle_events: &[CycleEventRecord], // phase → compute_phase_stats window (sec→ms), self-bounding
+) -> Option<ResolvedBounds>            // None ⇒ absent section (FR-7), never an error
+```
+Anchor-first. `retrieve_scoped_candidates` guards: a scope that requests anchor/phase whose id did not resolve (`resolved_bounds == None`) ⇒ absent section, NOT a full dump. Full-pipeline + force resolve both filters end-to-end; cached-MetricVector/memo/purged degenerate paths (no hotspots/cycle_events in scope) resolve to absent (documented in-code). `resolved_bounds` is also surfaced to the caller via `attach_search_status` (FR-16).
+
+New tests: `resolve_anchor_bounds` unit matrix (distill_scope_tests); `test_resolve_transcript_scope_bounds_anchor_and_phase` (tools.rs — anchor→hotspots span, phase→cycle_events sec→ms window, unknown→None); end-to-end filtering (distill_handler): `test_anchor_bounds_filters_candidates_within_window`, `test_anchor_and_match_and_compose`, `test_unknown_anchor_id_yields_absent_section`, `test_phase_bounds_are_self_bounding_ignore_window`, `test_anchor_scope_loss_honesty_preserved`.
+
 ## Flags / deviations (for the leader)
-- **Anchor/phase end-to-end resolution is bound-limited by the architecture-fixed signature.** `retrieve_scoped_candidates` receives only `observations` (not the report `hotspots` or `cycle_events`), so a finding-`anchor`/phase-id resolves to `None` bounds ⇒ absent section (FR-7), never an error. The full windowed-join / byte-offset-fallback / self-bounding-phase machinery is implemented and unit-tested against explicit bounds; only the id→bounds *lookup* is dormant end-to-end. `match`, `window`, empty-scope, clock-normalization, loss/honesty are fully reachable. If end-to-end anchor/phase is required, the fixed signature must widen (pseudocode flagged this).
+- **Anchor label `F-NN` is positional over `report.hotspots`** (1-based, matching the markdown `format!("F-{:02}", i+1)` convention and the JSON path's raw ordering). The markdown formatter assigns labels over its *collapsed* findings view; positional resolution is exact when detection rules are distinct (the common case) — same-rule collapse is a documented edge.
+- **Degenerate-path honesty:** on cached-MetricVector (empty hotspots), memo-hit, and purged-signals returns, `cycle_events` are not in scope, so `phase` resolves to an absent section there; `anchor` resolves at memo/purged when the served report carries hotspots. Full anchor+phase resolution is on the full-pipeline (and `force`) return. This is the coordinator-accepted degenerate behavior, documented in-code at each site.
 - **`land_activity_fold` is present once (full-pipeline), not literally ×4.** The "fold gated ×4" in activity-fold.md is a design abstraction; the real code folds once before report build. Left UNCHANGED (not touched). The surviving ×4 source invariants are `retrieve_scoped_candidates` and `attach_to_response_assembly`; no fabricated fold-×4 assertion was added (it would not compile-match).
 - **500-line limit:** `distill_scope.rs` split to 352 lines (tests in sibling). `distill_handler.rs` is 1092 lines — it was already 806 (over-limit) pre-crt-057; the task directed extending it inline (cumulative fixtures), so its inline test module was kept. Production-only line counts are well under 500 for both.
 - Out of scope per instructions: `.claude/skills/**` + `.claude/protocols/**` (Wave 3), integration tests (Stage 3c).
