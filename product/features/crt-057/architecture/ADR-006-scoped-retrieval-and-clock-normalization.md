@@ -72,6 +72,40 @@ omitted. Caller-overridable; bounded by the existing per-cycle cap. Rationale:
    magnitude, so ±120 s / ±3 blocks is a conservative-safe starting point, caller-overridable and
    delivery-tunable — not a precision-critical constant.
 
+**As-built signature (corrected in delivery).** The design pinned a 6-param `retrieve_scoped_candidates`,
+but that shape was under-specified for `anchor`/`phase`: resolving a `F-NN` finding id to its ts-span and
+a phase id to its bounds needs the report's `hotspots` / `cycle_events`, which the 6-param shape never
+threaded. An authorized delivery rework widened it to 7 params and expressed bound resolution once in a
+companion handler helper:
+
+```
+fn retrieve_scoped_candidates(
+    registry: &SessionRegistry,
+    feature_cycle: &str,
+    observations: &[ObservationRecord],
+    cfg: &RetentionConfig,
+    scope: Option<&TranscriptScope>,
+    reviewer_session_id: Option<&str>,
+    resolved_bounds: Option<ResolvedBounds>,   // NEW 7th param — anchor/phase bounds, resolved by the handler
+) -> Option<TranscriptCandidatesSection>
+
+// companion handler helper — expressed once, invoked at all four success returns
+fn resolve_transcript_scope_bounds(
+    scope: Option<&TranscriptScope>,
+    hotspots: &[HotspotFinding],        // anchor F-NN → evidence[].ts span [min,max]
+    cycle_events: &[CycleEventRecord],  // phase → compute_phase_stats window (sec→ms; self-bounding)
+) -> Option<ResolvedBounds>             // None ⇒ absent section (FR-7), never an error
+```
+
+Behavioral notes:
+- **`anchor` id is POSITIONAL over `report.hotspots` as `F-NN`** — exact when detection rules are
+  distinct; same-rule markdown-collapse is a documented edge.
+- **`anchor`/`phase` resolve end-to-end only where `hotspots`/`cycle_events` are in scope** — the
+  full-pipeline and `force` returns. The cached-`MetricVector`, memo-hit, and purged degenerate returns
+  have no `hotspots`/`cycle_events` in scope, so `anchor`/`phase` resolve to an ABSENT section there
+  (documented in-code, honest, never an error). `match`/`window`/clock-norm/loss-honesty stay fully
+  reachable on all paths.
+
 ### Consequences
 
 Easier: scoped retrieval reuses the existing pipeline and the one existing reader (no #4848

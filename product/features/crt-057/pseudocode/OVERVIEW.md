@@ -87,10 +87,23 @@ fn retrieve_scoped_candidates(
     feature_cycle: &str,
     observations: &[ObservationRecord],
     cfg: &RetentionConfig,
-    scope: Option<&TranscriptScope>,      // NEW — returns None early when None
-    reviewer_session_id: Option<&str>,    // NEW — reserved for optional live-sibling advisory (ADR-003; not a contract)
+    scope: Option<&TranscriptScope>,       // NEW — returns None early when None
+    reviewer_session_id: Option<&str>,     // NEW — reserved for optional live-sibling advisory (ADR-003; not a contract)
+    resolved_bounds: Option<ResolvedBounds>, // NEW 7th — anchor/phase bounds resolved by the handler (ADR-006 as-built)
 ) -> Option<TranscriptCandidatesSection>
+
+// companion handler helper (ADR-006) — expressed once, invoked at all four success returns
+fn resolve_transcript_scope_bounds(
+    scope: Option<&TranscriptScope>,
+    hotspots: &[HotspotFinding],        // anchor F-NN (POSITIONAL over report.hotspots) → evidence[].ts span [min,max]
+    cycle_events: &[CycleEventRecord],  // phase → compute_phase_stats window (sec→ms; self-bounding)
+) -> Option<ResolvedBounds>            // None ⇒ absent section (FR-7), never an error
 ```
+
+`anchor`/`phase` resolve end-to-end only on the full-pipeline and `force` returns (where `hotspots`/
+`cycle_events` are in scope); the cached-`MetricVector` / memo-hit / purged degenerate returns resolve
+`anchor`/`phase` to an ABSENT section (in-code, honest, never an error). `match`/`window`/clock-norm/
+loss-honesty stay reachable on all paths.
 
 ## Data Flow (one of four success returns)
 
@@ -100,7 +113,10 @@ context_cycle_review(params)
   ├─ force?        → report path selection over durable observations   (unchanged)
   ├─ build report  → build_report(records)  [NO transcript arg — buffer-independent, ARCH §5]
   ├─ FOLD READ     → activity_snapshots_for_feature (gated at all 4 returns; SOLE side-effect)  (activity-fold.md)
-  ├─ section = retrieve_scoped_candidates(reg, cycle, obs, cfg, scope, reviewer_sid)  (distill-before-purge.md)
+  ├─ bounds = resolve_transcript_scope_bounds(scope, report.hotspots, cycle_events)  (ADR-006 as-built)
+  │     anchor F-NN → hotspot evidence[].ts span; phase → compute_phase_stats window
+  │     out-of-scope returns (cached/memo/purged) have no hotspots/cycle_events → None → absent section
+  ├─ section = retrieve_scoped_candidates(reg, cycle, obs, cfg, scope, reviewer_sid, bounds)  (distill-before-purge.md)
   │     scope None  → None (no buffer read — lean default)
   │     scope Some  → snapshot() → scoped filter (phase/anchor/match+window) → clock-normalize
   │                   → candidates + per-session SessionLossInfo
