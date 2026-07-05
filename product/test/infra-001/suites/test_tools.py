@@ -5431,6 +5431,26 @@ _SUMMARY_NODE_KEYS = {
 }
 _SUMMARY_EDGE_KEYS = {"source_id", "target_id", "relation_type", "depth"}
 
+# Fields the server's background adaptation mutates between two sequential live reads
+# (GH#405 dynamic confidence scoring; access tracking). vnc-044 equivalence assertions prove
+# SHAPE/field-set equivalence, NOT byte-identity while scoring runs — normalize these to a
+# constant (keys retained, so field-set coverage is unweakened) before structural comparison.
+_V44_MUTABLE_FIELDS = {"confidence", "access_count", "last_accessed_at"}
+
+
+def _v44_norm(obj):
+    """Recursively neutralize background-mutable field VALUES while retaining their keys."""
+    if isinstance(obj, dict):
+        return {k: (None if k in _V44_MUTABLE_FIELDS else _v44_norm(v)) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_v44_norm(x) for x in obj]
+    return obj
+
+
+def _v44_struct_equal(text_a, text_b):
+    """Structural equality of two JSON payloads, immune to background-mutable field drift."""
+    return _v44_norm(_json_v44.loads(text_a)) == _v44_norm(_json_v44.loads(text_b))
+
 
 def _v44_chain_of_five(server):
     """Build a deterministic 5-entry supersession chain (SQL-live) with >256B content on each.
@@ -5492,7 +5512,12 @@ def test_graph_default_is_summary(server):
     summary_text = assert_tool_success(resp_summary).text
     full_text = assert_tool_success(resp_full).text
 
-    assert default_text == summary_text, "default output must equal explicit detail=summary"
+    # Structural equality (confidence/access are background-mutable between sequential reads).
+    assert _v44_struct_equal(default_text, summary_text), (
+        "default output must be structurally equal to explicit detail=summary"
+    )
+    # summary vs full always differ in field set (summary lacks content), so byte-inequality
+    # is robust regardless of scoring drift.
     assert default_text != full_text, "default (summary) must differ from detail=full"
 
 
@@ -5581,9 +5606,20 @@ def test_graph_legacy_summary_alias_equivalent(server):
     anchor, _ = _v44_chain_of_five(server)
     resp_alias = server.context_graph("chain", anchor, agent_id="human", format="summary")
     resp_detail = server.context_graph("chain", anchor, agent_id="human", format="json", detail="summary")
-    alias_text = assert_tool_success(resp_alias).text
-    detail_text = assert_tool_success(resp_detail).text
-    assert alias_text == detail_text, "legacy format=summary must equal detail=summary output"
+    alias_data = _json_v44.loads(assert_tool_success(resp_alias).text)
+    detail_data = _json_v44.loads(assert_tool_success(resp_detail).text)
+
+    # Field-set coverage is NOT weakened: both payloads must carry the exact 8-field summary node.
+    for node in alias_data["entries"] + detail_data["entries"]:
+        assert set(node.keys()) == _SUMMARY_NODE_KEYS, (
+            f"alias/detail node must be the lean 8-field summary, got: {sorted(node.keys())}"
+        )
+    # Equivalence is SHAPE/field-set, not byte-identity: confidence is background-mutable
+    # (GH#405) and drifts between the two sequential reads. Compare structurally with the
+    # mutable fields normalized (keys retained).
+    assert _v44_norm(alias_data) == _v44_norm(detail_data), (
+        "legacy format=summary must be structurally equivalent to detail=summary output"
+    )
 
 
 def test_graph_legacy_summary_conflict_rejected(server):
@@ -5608,7 +5644,11 @@ def test_graph_neighbors_detail_ignored(server):
     t_absent = assert_tool_success(server.context_graph("neighbors", id_x, **common)).text
     t_summary = assert_tool_success(server.context_graph("neighbors", id_x, detail="summary", **common)).text
     t_full = assert_tool_success(server.context_graph("neighbors", id_x, detail="full", **common)).text
-    assert t_absent == t_summary == t_full, "neighbors output must be identical across detail values"
+    # Edge-only payload carries no scored field, but compare structurally to stay immune to any
+    # future background-mutable field (accept-and-ignore is about EFFECT parity, not byte-identity).
+    assert _v44_struct_equal(t_absent, t_summary) and _v44_struct_equal(t_summary, t_full), (
+        "neighbors output must be structurally identical across detail values"
+    )
 
 
 def test_graph_path_detail_ignored(server):
@@ -5619,7 +5659,9 @@ def test_graph_path_detail_ignored(server):
     t_absent = assert_tool_success(server.context_graph("path", **common)).text
     t_summary = assert_tool_success(server.context_graph("path", detail="summary", **common)).text
     t_full = assert_tool_success(server.context_graph("path", detail="full", **common)).text
-    assert t_absent == t_summary == t_full, "path output must be identical across detail values"
+    assert _v44_struct_equal(t_absent, t_summary) and _v44_struct_equal(t_summary, t_full), (
+        "path output must be structurally identical across detail values"
+    )
 
 
 def test_graph_detail_bogus_rejected_on_edge_modes(server):

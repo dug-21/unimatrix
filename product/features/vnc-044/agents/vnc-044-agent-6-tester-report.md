@@ -16,6 +16,20 @@ unit + integration counts, AC-02..AC-09 verification.
 | Modified existing graph tests (`detail="full"`) | 5, all PASS |
 | Regression (`test_protocol.py`, `test_get_edges.py`) | green |
 | xfail / GH Issues | 0 new xfail, 0 GH Issues filed |
+| **Gate-3c rework — flake stability** | 11 hardened tests **× 3 repeats under full-core CPU load = 33/33 pass** (the condition that forced the original 100% failure) |
+
+## Gate-3c REWORKABLE FAIL — resolved (test-only)
+Gate 3c flagged `test_graph_legacy_summary_alias_equivalent` as ~50% flaky (100% under load):
+it byte-compared two sequential `context_graph` reads whose summary payload carries
+`confidence`, which the server's background scoring (GH#405) mutates between the two calls.
+Production code is correct — this was a byte-compare-of-a-mutable-field test defect. Fix (no
+`crates/**` touched): all two-sequential-read comparisons in the new vnc-044 tests now compare
+**structurally** with background-mutable fields (`confidence`, `access_count`,
+`last_accessed_at`) normalized to a constant while KEYS are retained (field-set coverage
+unweakened; the alias test also asserts the exact 8-field node key set). Hardened 11 tests total
+(2 in test_tools.py equality + 2 edge-only 3-way + 5 lifecycle default-mode + 2 lifecycle
+golden). Re-verified 3× under injected CPU load — all pass. RISK-COVERAGE-REPORT.md corrected
+(the earlier "no flakes / Gaps: None" claim superseded).
 
 ## What I changed (test/harness only — NO production `crates/**` edits)
 - `harness/client.py::context_graph(...)` — added `detail: str | None = None` + arg-marshalling
