@@ -19,11 +19,17 @@ pub fn format_status_change(
     status_key: &str,
     status_display: &str,
     reason: Option<&str>,
+    edges_removed: Option<u64>,
     format: ResponseFormat,
 ) -> CallToolResult {
     match format {
         ResponseFormat::Summary => {
-            let text = format!("{action} #{} | {}", entry.id, entry.title);
+            let mut text = format!("{action} #{} | {}", entry.id, entry.title);
+            // Some(n) renders the advisory (incl. Some(0)); None leaves the line
+            // byte-identical to pre-feature output (ADR-004).
+            if let Some(n) = edges_removed {
+                text.push_str(&format!(" | {n} edges removed"));
+            }
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Markdown => {
@@ -35,14 +41,23 @@ pub fn format_status_change(
             if let Some(r) = reason {
                 text.push_str(&format!("**Reason:** {r}\n"));
             }
+            if let Some(n) = edges_removed {
+                text.push_str(&format!("**Edges removed:** {n}\n"));
+            }
             CallToolResult::success(vec![Content::text(text)])
         }
         ResponseFormat::Json => {
-            let obj = serde_json::json!({
+            // Build the base object, then insert the field only for Some so the key
+            // is ABSENT for None (not null) — serializing the Option directly would
+            // emit `null`, a rendered advisory rather than omission (ADR-004, NFR-04).
+            let mut obj = serde_json::json!({
                 status_key: true,
                 "entry": entry_to_json(entry),
                 "reason": reason,
             });
+            if let Some(n) = edges_removed {
+                obj["edges_removed"] = serde_json::json!(n);
+            }
             CallToolResult::success(vec![Content::text(
                 serde_json::to_string_pretty(&obj).unwrap_or_default(),
             )])
@@ -54,6 +69,7 @@ pub fn format_status_change(
 pub fn format_deprecate_success(
     entry: &EntryRecord,
     reason: Option<&str>,
+    edges_removed: Option<u64>,
     format: ResponseFormat,
 ) -> CallToolResult {
     format_status_change(
@@ -62,6 +78,7 @@ pub fn format_deprecate_success(
         "deprecated",
         "deprecated",
         reason,
+        edges_removed,
         format,
     )
 }
@@ -78,6 +95,7 @@ pub fn format_quarantine_success(
         "quarantined",
         "quarantined",
         reason,
+        None,
         format,
     )
 }
@@ -88,7 +106,9 @@ pub fn format_restore_success(
     reason: Option<&str>,
     format: ResponseFormat,
 ) -> CallToolResult {
-    format_status_change(entry, "Restored", "restored", "active", reason, format)
+    format_status_change(
+        entry, "Restored", "restored", "active", reason, None, format,
+    )
 }
 
 pub(crate) fn trust_level_str(tl: TrustLevel) -> &'static str {

@@ -699,7 +699,7 @@ mod tests {
     #[test]
     fn test_format_deprecate_success_summary() {
         let entry = make_entry(42, "Deprecated Entry", "content");
-        let result = format_deprecate_success(&entry, None, ResponseFormat::Summary);
+        let result = format_deprecate_success(&entry, None, None, ResponseFormat::Summary);
         let text = result_text(&result);
         assert!(text.contains("Deprecated #42"));
         assert!(text.contains("Deprecated Entry"));
@@ -708,7 +708,8 @@ mod tests {
     #[test]
     fn test_format_deprecate_success_markdown_with_reason() {
         let entry = make_entry(42, "Entry", "content");
-        let result = format_deprecate_success(&entry, Some("outdated"), ResponseFormat::Markdown);
+        let result =
+            format_deprecate_success(&entry, Some("outdated"), None, ResponseFormat::Markdown);
         let text = result_text(&result);
         assert!(text.contains("Entry Deprecated"));
         assert!(text.contains("Reason:"));
@@ -718,7 +719,7 @@ mod tests {
     #[test]
     fn test_format_deprecate_success_markdown_no_reason() {
         let entry = make_entry(42, "Entry", "content");
-        let result = format_deprecate_success(&entry, None, ResponseFormat::Markdown);
+        let result = format_deprecate_success(&entry, None, None, ResponseFormat::Markdown);
         let text = result_text(&result);
         assert!(text.contains("Entry Deprecated"));
         assert!(!text.contains("Reason:"));
@@ -727,7 +728,7 @@ mod tests {
     #[test]
     fn test_format_deprecate_success_json() {
         let entry = make_entry(42, "Entry", "content");
-        let result = format_deprecate_success(&entry, None, ResponseFormat::Json);
+        let result = format_deprecate_success(&entry, None, None, ResponseFormat::Json);
         let text = result_text(&result);
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
         assert_eq!(parsed["deprecated"], true);
@@ -737,7 +738,7 @@ mod tests {
     #[test]
     fn test_format_deprecate_success_json_with_reason() {
         let entry = make_entry(42, "Entry", "content");
-        let result = format_deprecate_success(&entry, Some("obsolete"), ResponseFormat::Json);
+        let result = format_deprecate_success(&entry, Some("obsolete"), None, ResponseFormat::Json);
         let text = result_text(&result);
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
         assert_eq!(parsed["reason"], "obsolete");
@@ -746,10 +747,196 @@ mod tests {
     #[test]
     fn test_format_deprecate_success_json_no_reason() {
         let entry = make_entry(42, "Entry", "content");
-        let result = format_deprecate_success(&entry, None, ResponseFormat::Json);
+        let result = format_deprecate_success(&entry, None, None, ResponseFormat::Json);
         let text = result_text(&result);
         let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
         assert!(parsed["reason"].is_null());
+    }
+
+    // -- crt-058: edges_removed advisory (ADR-004) --
+
+    // AC-04(b)/AC-02/FR-03 — Some(n), n>0 per-format count matrix (R-05).
+    #[test]
+    fn test_format_deprecate_some_n_summary_renders_count_value() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, Some(3), ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert_eq!(text, "Deprecated #42 | Entry | 3 edges removed");
+    }
+
+    #[test]
+    fn test_format_deprecate_some_n_markdown_renders_count_line() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, Some(3), ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(
+            text.contains("**Edges removed:** 3\n"),
+            "markdown must render the count value 3, got: {text}"
+        );
+    }
+
+    #[test]
+    fn test_format_deprecate_some_n_json_field_parses_integer_3() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, Some(3), ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        // Parse the integer field — NOT a substring match (SR-04, #5427).
+        assert_eq!(parsed["edges_removed"], 3);
+        assert!(parsed["edges_removed"].is_u64());
+    }
+
+    // AC-05/NFR-04 — Some(0) renders literal 0 in all three formats (R-04 resolved).
+    #[test]
+    fn test_format_deprecate_some_zero_summary_renders_literal_0() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, Some(0), ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert_eq!(text, "Deprecated #42 | Entry | 0 edges removed");
+    }
+
+    #[test]
+    fn test_format_deprecate_some_zero_markdown_renders_literal_0() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, Some(0), ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(
+            text.contains("**Edges removed:** 0\n"),
+            "Some(0) must render literal 0, got: {text}"
+        );
+    }
+
+    #[test]
+    fn test_format_deprecate_some_zero_json_field_is_integer_0() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, Some(0), ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["edges_removed"], 0);
+        assert!(parsed["edges_removed"].is_u64());
+        // Other deprecation-success fields unchanged.
+        assert_eq!(parsed["deprecated"], true);
+        assert_eq!(parsed["entry"]["id"], 42);
+    }
+
+    // AC-06 (formatter half) — None omits the advisory in all three formats.
+    #[test]
+    fn test_format_deprecate_none_summary_line_unchanged() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, None, ResponseFormat::Summary);
+        let text = result_text(&result);
+        assert_eq!(text, "Deprecated #42 | Entry");
+        assert!(!text.contains("edges removed"));
+    }
+
+    #[test]
+    fn test_format_deprecate_none_markdown_no_edges_line() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, None, ResponseFormat::Markdown);
+        let text = result_text(&result);
+        assert!(!text.contains("**Edges removed:**"));
+    }
+
+    #[test]
+    fn test_format_deprecate_none_json_field_absent() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_deprecate_success(&entry, None, None, ResponseFormat::Json);
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        // Key ABSENT, not null.
+        assert!(parsed.get("edges_removed").is_none());
+    }
+
+    // Cross-check: Some(0) and None are behaviorally distinct in every format
+    // (the AC-05 vs AC-06 discriminator — R-04).
+    #[test]
+    fn test_format_deprecate_some_zero_distinct_from_none_all_formats() {
+        let entry = make_entry(42, "Entry", "content");
+        for fmt in [
+            ResponseFormat::Summary,
+            ResponseFormat::Markdown,
+            ResponseFormat::Json,
+        ] {
+            let some_zero = result_text(&format_deprecate_success(&entry, None, Some(0), fmt));
+            let none = result_text(&format_deprecate_success(&entry, None, None, fmt));
+            assert_ne!(some_zero, none, "Some(0) must differ from None for {fmt:?}");
+        }
+    }
+
+    // Quarantine/restore backward-compat — pass None, output byte-identical (R-05).
+    #[test]
+    fn test_format_quarantine_success_output_byte_identical_after_signature_change() {
+        let entry = make_entry(42, "Q Entry", "content");
+        // Summary
+        let s = result_text(&format_quarantine_success(
+            &entry,
+            None,
+            ResponseFormat::Summary,
+        ));
+        assert_eq!(s, "Quarantined #42 | Q Entry");
+        // Markdown (no reason)
+        let m = result_text(&format_quarantine_success(
+            &entry,
+            None,
+            ResponseFormat::Markdown,
+        ));
+        assert_eq!(
+            m,
+            "## Entry Quarantined\n\n**Entry:** #42 - Q Entry\n**Status:** quarantined\n"
+        );
+        // Json — no advisory key
+        let j = result_text(&format_quarantine_success(
+            &entry,
+            None,
+            ResponseFormat::Json,
+        ));
+        let parsed: serde_json::Value = serde_json::from_str(&j).unwrap();
+        assert_eq!(parsed["quarantined"], true);
+        assert!(parsed.get("edges_removed").is_none());
+    }
+
+    #[test]
+    fn test_format_restore_success_output_byte_identical_after_signature_change() {
+        let entry = make_entry(42, "R Entry", "content");
+        let s = result_text(&format_restore_success(
+            &entry,
+            None,
+            ResponseFormat::Summary,
+        ));
+        assert_eq!(s, "Restored #42 | R Entry");
+        let m = result_text(&format_restore_success(
+            &entry,
+            None,
+            ResponseFormat::Markdown,
+        ));
+        assert_eq!(
+            m,
+            "## Entry Restored\n\n**Entry:** #42 - R Entry\n**Status:** active\n"
+        );
+        let j = result_text(&format_restore_success(&entry, None, ResponseFormat::Json));
+        let parsed: serde_json::Value = serde_json::from_str(&j).unwrap();
+        assert_eq!(parsed["restored"], true);
+        assert!(parsed.get("edges_removed").is_none());
+    }
+
+    // Structural — edges_removed sits immediately before `format` (ADR-004).
+    // An Option placed after `format` would compile but mis-thread; this call binds
+    // Some(7) to the edges_removed slot and asserts it renders, pinning the position.
+    #[test]
+    fn test_edges_removed_param_position_before_format() {
+        let entry = make_entry(42, "Entry", "content");
+        let result = format_status_change(
+            &entry,
+            "Deprecated",
+            "deprecated",
+            "deprecated",
+            None,
+            Some(7),
+            ResponseFormat::Json,
+        );
+        let text = result_text(&result);
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(parsed["edges_removed"], 7);
     }
 
     // -- vnc-003: format_status_report --
@@ -955,9 +1142,10 @@ mod tests {
             "deprecated",
             "deprecated",
             Some("reason"),
+            None,
             ResponseFormat::Json,
         );
-        let specific = format_deprecate_success(&entry, Some("reason"), ResponseFormat::Json);
+        let specific = format_deprecate_success(&entry, Some("reason"), None, ResponseFormat::Json);
         assert_eq!(result_text(&generic), result_text(&specific));
     }
 
@@ -969,6 +1157,7 @@ mod tests {
             "Quarantined",
             "quarantined",
             "quarantined",
+            None,
             None,
             ResponseFormat::Json,
         );
@@ -985,6 +1174,7 @@ mod tests {
             "restored",
             "active",
             Some("test"),
+            None,
             ResponseFormat::Json,
         );
         let specific = format_restore_success(&entry, Some("test"), ResponseFormat::Json);

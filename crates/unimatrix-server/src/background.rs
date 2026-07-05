@@ -1907,6 +1907,39 @@ async fn extraction_tick(
     Ok((ctx.stats.clone(), friction_recs, dead_knowledge_recs))
 }
 
+/// Insert a `graph_edges` row with an explicit `source` column value (bugfix-879).
+///
+/// Test-only, crate-visible so `graph_edges` seeding is done through ONE shared
+/// helper across the background-tick tests and the crt-058 `edge_write` /
+/// eager ⊆ tick subset tests (fixture identity — a copy would drift and defeat
+/// the subset assertion). The repoint step filters on `source = 'agent'`; machine
+/// sources ('nli', 'co_access', 'cosine_supports', 'test') must NOT be repointed.
+///
+/// `source_id` / `target_id` may reference non-existent entries — that is exactly
+/// the orphaned/agent-authored state the compaction and eager cleanup act on.
+#[cfg(test)]
+pub(crate) async fn insert_graph_edge_with_source(
+    store: &unimatrix_store::SqlxStore,
+    source_id: i64,
+    target_id: i64,
+    relation_type: &str,
+    source: &str,
+) {
+    let pool = store.write_pool_server();
+    sqlx::query(
+        "INSERT OR IGNORE INTO graph_edges
+         (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only)
+         VALUES (?1, ?2, ?3, 1.0, 1000000, ?4, ?4, 0)",
+    )
+    .bind(source_id)
+    .bind(target_id)
+    .bind(relation_type)
+    .bind(source)
+    .execute(pool)
+    .await
+    .expect("insert graph_edge must succeed");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3113,32 +3146,6 @@ mod tests {
         .bind(source_id)
         .bind(target_id)
         .bind(relation_type)
-        .execute(pool)
-        .await
-        .expect("insert graph_edge must succeed");
-    }
-
-    /// Insert a graph_edges row with an explicit `source` column value (bugfix-879).
-    ///
-    /// The repoint step filters on `source = 'agent'`; machine sources ('nli',
-    /// 'co_access', 'cosine_supports', 'test') must NOT be repointed.
-    async fn insert_graph_edge_with_source(
-        store: &unimatrix_store::SqlxStore,
-        source_id: i64,
-        target_id: i64,
-        relation_type: &str,
-        source: &str,
-    ) {
-        let pool = store.write_pool_server();
-        sqlx::query(
-            "INSERT OR IGNORE INTO graph_edges
-             (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only)
-             VALUES (?1, ?2, ?3, 1.0, 1000000, ?4, ?4, 0)",
-        )
-        .bind(source_id)
-        .bind(target_id)
-        .bind(relation_type)
-        .bind(source)
         .execute(pool)
         .await
         .expect("insert graph_edge must succeed");
