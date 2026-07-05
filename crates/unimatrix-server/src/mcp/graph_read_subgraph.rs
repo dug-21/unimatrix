@@ -161,6 +161,26 @@ pub(super) async fn handle_subgraph(
     // expected — multiple deprecated variants resolving to one terminal shrink node/edge counts.
     let resolve_supersessions = params.resolve_supersessions.unwrap_or(true);
 
+    // Depth-1 live dispatch (ADR-001 vnc-043, GH #903).
+    // Exact `== 1` (never `<= 1`/range): max_depth is already validated to 1..=10, so
+    // depth>1 always falls through to the unchanged lock/BFS/use_fallback path (AC-02).
+    // Placed BEFORE the lock block so the depth-1 path takes NO TypedGraphState lock
+    // (A3/NFR-2/AC-10). Reads live via subgraph_via_db so a write committed immediately
+    // before the call is visible with no tick lag (AC-01/AC-07/AC-11). petgraph_dirs,
+    // edge_types, seed_ids, max_nodes, resolve_supersessions are all fully resolved above.
+    if max_depth == 1 {
+        return subgraph_via_db(
+            store,
+            &seed_ids,
+            max_depth,
+            max_nodes,
+            &petgraph_dirs,
+            &edge_types,
+            resolve_supersessions,
+        )
+        .await;
+    }
+
     // Step 2: Acquire graph snapshot (lock -> clone -> release) BEFORE any async work.
     // Extract both typed_graph AND use_fallback in the same lock guard (GH #623).
     // When use_fallback=true (cold-start or cycle-detected), typed_graph is empty —
@@ -324,7 +344,7 @@ pub(super) async fn handle_subgraph(
     collected_edges.retain(|(src, tgt, _, _)| node_set.contains(src) && node_set.contains(tgt));
 
     // Step 7: Batch node hydration (single IN-clause query).
-    let nodes: Vec<EntryRecord> = if collected_node_ids.is_empty() {
+    let mut nodes: Vec<EntryRecord> = if collected_node_ids.is_empty() {
         Vec::new()
     } else {
         fetch_nodes_batch(store, &collected_node_ids).await?
@@ -350,7 +370,7 @@ pub(super) async fn handle_subgraph(
 
     // Step 10: Build EdgeRecord list.
     // direction is always "outgoing" -- canonical stored direction (FR-12, R-02, ADR-004).
-    let edges: Vec<EdgeRecord> = collected_edges
+    let mut edges: Vec<EdgeRecord> = collected_edges
         .iter()
         .map(|(src, tgt, rel_type, depth)| {
             let meta_key = (*src, *tgt, rel_type.clone());
@@ -365,6 +385,10 @@ pub(super) async fn handle_subgraph(
             }
         })
         .collect();
+
+    // Step 11: Uniform presentation-only ordering (ADR-003 vnc-043, FR-9).
+    // Set-preserving; runs after the R-05 dangling filter; truncated/depth_reached unchanged.
+    sort_subgraph_output(&mut nodes, &mut edges);
 
     Ok(SubgraphResponse {
         nodes,
@@ -524,7 +548,7 @@ async fn subgraph_via_db(
     collected_edges.retain(|(src, tgt, _, _)| node_set.contains(src) && node_set.contains(tgt));
 
     // Batch node hydration.
-    let nodes: Vec<EntryRecord> = if collected_node_ids.is_empty() {
+    let mut nodes: Vec<EntryRecord> = if collected_node_ids.is_empty() {
         Vec::new()
     } else {
         fetch_nodes_batch(store, &collected_node_ids).await?
@@ -548,7 +572,7 @@ async fn subgraph_via_db(
 
     let depth_reached: u8 = collected_edges.iter().map(|e| e.3).max().unwrap_or(0);
 
-    let edges: Vec<EdgeRecord> = collected_edges
+    let mut edges: Vec<EdgeRecord> = collected_edges
         .iter()
         .map(|(src, tgt, rel_type, depth)| {
             let meta_key = (*src, *tgt, rel_type.clone());
@@ -564,6 +588,10 @@ async fn subgraph_via_db(
         })
         .collect();
 
+    // Uniform presentation-only ordering (ADR-003 vnc-043, FR-9). Same helper as the
+    // warm-BFS path so depth-1 live and depth>1 warm cannot drift into two contracts.
+    sort_subgraph_output(&mut nodes, &mut edges);
+
     Ok(SubgraphResponse {
         nodes,
         edges,
@@ -571,6 +599,32 @@ async fn subgraph_via_db(
         seed_ids: seed_ids.to_vec(),
         depth_reached,
     })
+}
+
+// ---------------------------------------------------------------------------
+// Uniform presentation-only ordering (ADR-003 vnc-043, FR-9)
+// ---------------------------------------------------------------------------
+
+/// Imposes a stable, presentation-only ordering on subgraph output.
+///
+/// - `nodes` ascending by `EntryRecord.id` (ids are unique -> total order).
+/// - `edges` by the canonical triple `(source_id, target_id, relation_type)` ascending,
+///   via a **stable** sort so any duplicate triple keeps insertion order (no run-to-run flake).
+///
+/// Set-preserving: adds/removes nothing. Called as the final assembly step in BOTH
+/// `handle_subgraph`'s warm-BFS path and `subgraph_via_db`, so the two paths cannot drift
+/// into two ordering contracts (SR-03). Runs AFTER the R-05 dangling-edge filter and BEFORE
+/// `SubgraphResponse` construction; `truncated` and `depth_reached` are order-independent and
+/// unaffected, and per-edge `EdgeRecord.depth` is preserved (whole records are reordered).
+fn sort_subgraph_output(nodes: &mut [EntryRecord], edges: &mut [EdgeRecord]) {
+    nodes.sort_by_key(|n| n.id);
+    edges.sort_by(|a, b| {
+        (a.source_id, a.target_id, &a.relation_type).cmp(&(
+            b.source_id,
+            b.target_id,
+            &b.relation_type,
+        ))
+    });
 }
 
 // ---------------------------------------------------------------------------
