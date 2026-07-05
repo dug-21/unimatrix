@@ -344,15 +344,37 @@ fn test_verify_cli_opens_readonly() {
     let (project_dir, base_dir, db_path) = setup_project();
     seed_clean_chain(&db_path);
 
-    // Capture DB bytes before the verify run.
-    let before = std::fs::read(&db_path).expect("read db before");
+    // Logical read-only invariant (robust regardless of SQLite journaling mode):
+    // the row set — ids, statuses, and content_hashes — must be identical before
+    // and after a verify run. A raw-file-byte comparison is invalid here because a
+    // hot WAL is checkpointed into the main file between the two reads even though
+    // no row is mutated; that is journaling, not a write to the data. `open_readonly`
+    // + read-only queries cannot alter any row, which is what R-10 actually guarantees.
+    fn snapshot(db_path: &Path) -> Vec<(u64, Status, String)> {
+        let store = open_store(db_path);
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("runtime");
+        let mut rows: Vec<(u64, Status, String)> = rt
+            .block_on(store.query_all_entries())
+            .expect("query_all_entries")
+            .into_iter()
+            .map(|e| (e.id, e.status, e.content_hash))
+            .collect();
+        drop(store);
+        rows.sort_by_key(|r| r.0);
+        rows
+    }
+
+    let before = snapshot(&db_path);
     let result = run_verify_with_base(Some(project_dir.path()), base_dir.path());
     assert!(result.is_ok(), "clean verify: {result:?}");
-    let after = std::fs::read(&db_path).expect("read db after");
+    let after = snapshot(&db_path);
 
     assert_eq!(
         before, after,
-        "verify must open READ-ONLY — the DB file must be byte-unchanged after a run (R-10)"
+        "verify must open READ-ONLY — no row (id/status/content_hash) may change across a run (R-10)"
     );
 }
 

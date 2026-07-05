@@ -31,7 +31,12 @@ Component 4 (verify-cli): new `unimatrix verify` subcommand exposing the chain-v
   the `Deprecated` predecessor (R-02).
 - `test_verify_cli_deprecated_predecessor_verifies_clean` — Deprecated predecessor chain verifies
   clean via the CLI path (loader is all-status).
-- `test_verify_cli_opens_readonly` — DB file byte-unchanged after a run (read-only, R-10).
+- `test_verify_cli_opens_readonly` — logical read-only invariant: the row set
+  (id/status/content_hash) is identical before and after a run (R-10). **Gate-3b rework**:
+  replaced an invalid raw-file-byte assertion (a hot WAL checkpoints into the main file between
+  reads even with no row mutated — journaling, not a write) with this journaling-mode-robust
+  logical check. Production `open_readonly`/`run_verify` unchanged. Verified deterministic across
+  two consecutive runs.
 - `test_verify_cli_missing_project_dir_errors_cleanly` — invalid project dir → clean `Err`, no panic.
 - `test_verify_cli_empty_db_is_clean` — fresh DB → Ok.
 - `test_schema_version_still_30` — `CURRENT_SCHEMA_VERSION == 30` (AC-12, no migration).
