@@ -481,6 +481,21 @@ impl SqlxStore {
             });
         }
 
+        // FR-04 / A-1: a correction must chain onto a real predecessor hash. An empty
+        // original.content_hash would otherwise silently produce an empty previous_hash that the
+        // verify core tolerates as "legacy", laundering a real bad-state into an unverifiable skip
+        // (R-08). Reject it loud and early, naming original_id. This runs BEFORE the Deprecate
+        // UPDATE below, so nothing is persisted on rejection (the txn has only read so far).
+        if original.content_hash.is_empty() {
+            return Err(StoreError::InvalidInput {
+                field: "original_id".to_string(),
+                reason: format!(
+                    "cannot correct entry {original_id}: predecessor has empty content_hash \
+                     (chain link would be malformed)"
+                ),
+            });
+        }
+
         // 2. Allocate new entry ID
         let new_id = crate::counters::next_entry_id(&mut txn).await?;
 
@@ -536,8 +551,10 @@ impl SqlxStore {
             created_by: correction.created_by.clone(),
             modified_by: correction.created_by.clone(),
             content_hash: content_hash.clone(),
-            previous_hash: String::new(),
-            version: 1,
+            // FR-01: link to superseded predecessor's content hash (weak-mode chain, ADR-002/003).
+            previous_hash: original.content_hash.clone(),
+            // FR-01/FR-03: monotonic per-chain version counter.
+            version: original.version + 1,
             feature_cycle: correction.feature_cycle.clone(),
             trust_source: correction.trust_source.clone(),
             helpful_count: 0,
@@ -579,8 +596,10 @@ impl SqlxStore {
         .bind(&new_rec.created_by)
         .bind(&new_rec.modified_by)
         .bind(&content_hash)
-        .bind("")
-        .bind(1_i64)
+        // FR-02: persist the SAME chain values the struct holds — bind from the record, never
+        // inline literals. Binding "" / 1 here would silently override Change 2 at write time (C-03).
+        .bind(&new_rec.previous_hash)
+        .bind(new_rec.version as i64)
         .bind(&new_rec.feature_cycle)
         .bind(&new_rec.trust_source)
         .bind(0_i64)
@@ -855,6 +874,309 @@ mod tests {
                 "entry {entry_id} must have phase='implementation'"
             );
         }
+
+        store.close().await.unwrap();
+    }
+
+    // -----------------------------------------------------------------------
+    // nxs-014 correction-write-path: cross-version hash-chain population.
+    //
+    // Load-bearing rule (C-04 / R-01 / SR-06): every assertion on previous_hash /
+    // version reads the value BACK FROM THE DB via a fresh SELECT on the new id —
+    // NEVER from the returned in-memory EntryRecord. A struct-only half-fix (Change 2
+    // without Change 3) leaves the INSERT binding ""/1, so an in-memory assertion is
+    // false-green; the DB read-back is what has teeth.
+    // -----------------------------------------------------------------------
+
+    /// Read a single column back from the persisted `entries` row (fresh query).
+    async fn select_previous_hash(store: &SqlxStore, id: u64) -> String {
+        let row = sqlx::query("SELECT previous_hash FROM entries WHERE id = ?1")
+            .bind(id as i64)
+            .fetch_one(&store.write_pool)
+            .await
+            .expect("entries row must exist");
+        row.try_get::<String, _>(0).unwrap()
+    }
+
+    async fn select_version(store: &SqlxStore, id: u64) -> i64 {
+        let row = sqlx::query("SELECT version FROM entries WHERE id = ?1")
+            .bind(id as i64)
+            .fetch_one(&store.write_pool)
+            .await
+            .expect("entries row must exist");
+        row.try_get::<i64, _>(0).unwrap()
+    }
+
+    /// AC-01 — the persisted `previous_hash` equals the superseded original's
+    /// `content_hash`, read back from the DB (the false-green killer, R-01).
+    ///
+    /// This test FAILS on a struct-only fix: the struct literal can set
+    /// `previous_hash` correctly while the INSERT bind still binds `""`. Because it
+    /// reads the persisted column, a struct-only fix yields `""` and this fails.
+    #[tokio::test]
+    async fn test_correct_persists_previous_hash_from_db() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        let original_id = store
+            .insert(TestEntry::new("nxs-014", "decision").build())
+            .await
+            .unwrap();
+        let original = store.get(original_id).await.unwrap();
+        assert!(
+            !original.content_hash.is_empty(),
+            "precondition: original must have a populated content_hash"
+        );
+
+        let correction = TestEntry::new("nxs-014", "decision")
+            .with_content("corrected content")
+            .build();
+        let (_dep, new_rec) = store
+            .correct_entry(original_id, correction, 0, 0)
+            .await
+            .expect("correct_entry must succeed");
+
+        let persisted = select_previous_hash(&store, new_rec.id).await;
+        assert_eq!(
+            persisted, original.content_hash,
+            "persisted previous_hash must equal the superseded predecessor's content_hash \
+             (fails on a struct-only half-fix that leaves the INSERT bind as \"\")"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    /// AC-02 — the persisted `version` is `original.version + 1` (genesis 1 -> 2),
+    /// read back from the DB. Fails on the `.bind(1_i64)` half-fix.
+    #[tokio::test]
+    async fn test_correct_persists_version_increment_from_db() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        let original_id = store
+            .insert(TestEntry::new("nxs-014", "decision").build())
+            .await
+            .unwrap();
+        let original = store.get(original_id).await.unwrap();
+        assert_eq!(original.version, 1, "genesis entry version is 1");
+
+        let correction = TestEntry::new("nxs-014", "decision")
+            .with_content("corrected")
+            .build();
+        let (_dep, new_rec) = store
+            .correct_entry(original_id, correction, 0, 0)
+            .await
+            .expect("correct_entry must succeed");
+
+        let persisted = select_version(&store, new_rec.id).await;
+        assert_eq!(
+            persisted, 2,
+            "persisted version must be original.version + 1 (fails on the .bind(1_i64) half-fix)"
+        );
+
+        store.close().await.unwrap();
+    }
+
+    /// AC-02 / FR-03 — N=3 chain, every hop read back from the DB. Each successor's
+    /// persisted `previous_hash` equals its predecessor's `content_hash`, and versions
+    /// are monotonic `1, 2, 3` in supersession order.
+    #[tokio::test]
+    async fn test_correct_multi_hop_chain_db_readback() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        // A (genesis, version 1)
+        let a_id = store
+            .insert(TestEntry::new("nxs-014", "chain").build())
+            .await
+            .unwrap();
+        let a = store.get(a_id).await.unwrap();
+        assert_eq!(a.version, 1);
+
+        // A -> B
+        let (_dep_a, b) = store
+            .correct_entry(
+                a_id,
+                TestEntry::new("nxs-014", "chain")
+                    .with_content("B content")
+                    .build(),
+                0,
+                0,
+            )
+            .await
+            .expect("hop A->B");
+
+        // B -> C
+        let (_dep_b, c) = store
+            .correct_entry(
+                b.id,
+                TestEntry::new("nxs-014", "chain")
+                    .with_content("C content")
+                    .build(),
+                0,
+                0,
+            )
+            .await
+            .expect("hop B->C");
+
+        // Predecessor content hashes, read back from the DB.
+        let a_hash = {
+            let row = sqlx::query("SELECT content_hash FROM entries WHERE id = ?1")
+                .bind(a_id as i64)
+                .fetch_one(&store.write_pool)
+                .await
+                .unwrap();
+            row.try_get::<String, _>(0).unwrap()
+        };
+        let b_hash = {
+            let row = sqlx::query("SELECT content_hash FROM entries WHERE id = ?1")
+                .bind(b.id as i64)
+                .fetch_one(&store.write_pool)
+                .await
+                .unwrap();
+            row.try_get::<String, _>(0).unwrap()
+        };
+
+        // Hop links (persisted).
+        assert_eq!(
+            select_previous_hash(&store, b.id).await,
+            a_hash,
+            "B.previous_hash must chain to A.content_hash"
+        );
+        assert_eq!(
+            select_previous_hash(&store, c.id).await,
+            b_hash,
+            "C.previous_hash must chain to B.content_hash"
+        );
+
+        // Monotonic versions 1, 2, 3 in supersession order (persisted).
+        assert_eq!(select_version(&store, a_id).await, 1);
+        assert_eq!(select_version(&store, b.id).await, 2);
+        assert_eq!(select_version(&store, c.id).await, 3);
+
+        // Supersession edges intact.
+        let b_row = store.get(b.id).await.unwrap();
+        let c_row = store.get(c.id).await.unwrap();
+        assert_eq!(b_row.supersedes, Some(a_id));
+        assert_eq!(c_row.supersedes, Some(b.id));
+
+        store.close().await.unwrap();
+    }
+
+    /// R-01 negative control — the returned in-memory record agrees with the DB on a
+    /// full fix, so a divergence (half-fix) is caught by the DB read. The in-memory
+    /// value is NOT the sole authority.
+    #[tokio::test]
+    async fn test_correct_returned_record_agrees_with_db() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        let original_id = store
+            .insert(TestEntry::new("nxs-014", "decision").build())
+            .await
+            .unwrap();
+        let original = store.get(original_id).await.unwrap();
+
+        let (_dep, new_rec) = store
+            .correct_entry(
+                original_id,
+                TestEntry::new("nxs-014", "decision")
+                    .with_content("corrected")
+                    .build(),
+                0,
+                0,
+            )
+            .await
+            .expect("correct_entry must succeed");
+
+        // DB read-back is the authority; assert the in-memory record matches it.
+        let db_prev = select_previous_hash(&store, new_rec.id).await;
+        let db_ver = select_version(&store, new_rec.id).await;
+        assert_eq!(
+            new_rec.previous_hash, db_prev,
+            "returned record's previous_hash must agree with the persisted column"
+        );
+        assert_eq!(
+            new_rec.version as i64, db_ver,
+            "returned record's version must agree with the persisted column"
+        );
+        assert_eq!(db_prev, original.content_hash);
+
+        store.close().await.unwrap();
+    }
+
+    /// R-08 / AC-08 — a correction whose predecessor has an empty `content_hash` is
+    /// rejected at correction time, naming `original_id`, with NO partial mutation:
+    /// no successor row is persisted and the original stays Active (not deprecated).
+    #[tokio::test]
+    async fn test_correct_empty_predecessor_content_hash_rejected_names_id() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+
+        let original_id = store
+            .insert(TestEntry::new("nxs-014", "decision").build())
+            .await
+            .unwrap();
+
+        // Force a real bad-state: an Active entry with an empty content_hash.
+        sqlx::query("UPDATE entries SET content_hash = '' WHERE id = ?1")
+            .bind(original_id as i64)
+            .execute(&store.write_pool)
+            .await
+            .unwrap();
+
+        let rows_before: i64 = sqlx::query("SELECT COUNT(*) FROM entries")
+            .fetch_one(&store.write_pool)
+            .await
+            .unwrap()
+            .try_get(0)
+            .unwrap();
+
+        let err = store
+            .correct_entry(
+                original_id,
+                TestEntry::new("nxs-014", "decision")
+                    .with_content("corrected")
+                    .build(),
+                0,
+                0,
+            )
+            .await
+            .expect_err("correction on an empty-content_hash predecessor must be rejected");
+
+        match err {
+            StoreError::InvalidInput { field, reason } => {
+                assert_eq!(field, "original_id");
+                assert!(
+                    reason.contains(&original_id.to_string()),
+                    "error must name original_id ({original_id}); got: {reason}"
+                );
+            }
+            other => panic!("expected StoreError::InvalidInput, got {other:?}"),
+        }
+
+        // No partial mutation: no new row, original still Active, not superseded.
+        let rows_after: i64 = sqlx::query("SELECT COUNT(*) FROM entries")
+            .fetch_one(&store.write_pool)
+            .await
+            .unwrap()
+            .try_get(0)
+            .unwrap();
+        assert_eq!(
+            rows_after, rows_before,
+            "no successor row may be persisted on a rejected correction"
+        );
+
+        let original = store.get(original_id).await.unwrap();
+        assert_eq!(
+            original.status,
+            crate::schema::Status::Active,
+            "original must remain Active — the Deprecate UPDATE must not have run"
+        );
+        assert_eq!(
+            original.superseded_by, None,
+            "original must not be superseded on a rejected correction"
+        );
 
         store.close().await.unwrap();
     }

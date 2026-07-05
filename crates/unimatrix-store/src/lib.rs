@@ -7,6 +7,7 @@ mod hash;
 pub mod pool_config;
 mod schema;
 
+pub mod chain_verify;
 pub mod counters;
 mod db;
 pub mod graph_queries;

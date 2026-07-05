@@ -232,7 +232,7 @@ Provider identity (`"claude-code"`, `"gemini-cli"`, `"codex-cli"`) is derived fr
 
 ### Correction Chains with Audit Trails
 
-`context_correct` creates a new entry and deprecates the original, linking them with SHA-256 content hashes (`previous_hash` chain). The append-only audit log records every operation — store, correct, deprecate, quarantine, enroll — with agent identity, session context, and operation outcome. Correction chains are tamper-evident: any break in the hash chain is detectable.
+`context_correct` creates a new entry and deprecates the original, linking them with SHA-256 content hashes (`previous_hash` chain). The append-only audit log records every operation — store, correct, deprecate, quarantine, enroll — with agent identity, session context, and operation outcome. Correction chains are tamper-**recorded**: every correction links to its predecessor by SHA-256 `content_hash` (the `previous_hash` chain), and `unimatrix verify` (and import-time validation) detect accidental corruption or single-point tampering — a content edit not perfectly mirrored across an entry's `content_hash` and its successor's `previous_hash` fails verification, naming the offending entry. This is correction-history integrity, not tamper-evidence against an adversary with raw database write access (who holds all secrets — out of tier); cryptographic tamper-evidence against that adversary is a future hardening step.
 
 ### Coherence Gate (Lambda Health Metric)
 
@@ -721,7 +721,7 @@ Append-only audit log records every operation with agent identity (who performed
 
 ### Hash-Chained Corrections
 
-SHA-256 content hashes with `previous_hash` links create tamper-evident correction chains. Any break in the chain is detectable.
+Each correction links to the entry it supersedes via SHA-256 `content_hash` (the `previous_hash` chain), so the correction history is tamper-**recorded**: `unimatrix verify` and import-time validation recompute every entry's content hash and check each chain link, failing loud and naming any entry whose content or link is inconsistent. This detects accidental corruption and single-point API-surface tampering; it does not defend against a coordinated raw-database-write adversary (out of tier — that requires a cryptographic cascade and external anchor, tracked separately).
 
 ### Observation Ingest Constraints
 
