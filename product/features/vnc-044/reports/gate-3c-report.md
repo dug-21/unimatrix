@@ -2,10 +2,63 @@
 
 > Gate: 3c (Final Risk-Based Validation)
 > Date: 2026-07-05
-> Result: REWORKABLE FAIL
-> Validator: vnc-044-gate-3c
+> Result: **PASS** (re-validation, iteration 1 — supersedes prior REWORKABLE FAIL)
+> Validator: vnc-044-gate-3c-rev2 (rev1: vnc-044-gate-3c)
 
-## Summary
+## Re-Validation Outcome (iteration 1) — PASS
+
+The single REWORKABLE FAIL (Check 2, AC-07 flaky byte-compare) is resolved. Rework was
+test-only — commit `406e4d04` touches only `test_tools.py`, `test_lifecycle.py`,
+`RISK-COVERAGE-REPORT.md`, and reports; **zero `crates/**` files changed** (last crates change
+`80d59d12` 20:46, release binary rebuilt 20:54 — binary current). Every prior PASS check
+(ADR-001/002 compliance, AC-02..AC-09, no deleted/commented integration tests, xfails reference
+real GH Issues) is unaffected because the implementation is byte-identical.
+
+**Re-check of the 5 rework targets:**
+
+1. **AC-07 flake resolved, coverage NOT weakened** — `test_graph_legacy_summary_alias_equivalent`
+   now parses both payloads and (a) asserts `set(node.keys()) == _SUMMARY_NODE_KEYS` (exact
+   8-field summary node) on **every** node of BOTH the alias and detail responses — field-set
+   coverage is retained and made explicit — then (b) compares `_v44_norm(alias) == _v44_norm(detail)`
+   with only the background-mutable VALUES (`confidence`/`access_count`/`last_accessed_at`)
+   neutralized to `None` while KEYS are retained. If either path dropped or added a key the
+   structural compare still fails. The value-equivalence it dropped was a false coupling (both
+   paths share the same projection and same live read window; a value can only differ via GH#405
+   background scoring, never via path divergence — and the deterministic unit resolver
+   `test_resolve_legacy_summary_alias`/`_conflict` remains the primary R-08 pin). Proven invariant
+   = `format=summary` ≡ `detail=summary` in shape/field-set.
+
+2. **Other 10 hardened two-read comparisons correct, no coverage lost** — all five
+   `test_graph_{subgraph,chain,current,inverse,filter}_default_is_summary_*` (lifecycle), both
+   `test_graph_full_golden_{chain,subgraph}_complete_and_stable` (lifecycle), and
+   `test_graph_default_is_summary` / `_neighbors_detail_ignored` / `_path_detail_ignored` (tools)
+   convert the raw `==` byte-compare to `_v44(lc)_struct_equal`, which normalizes the same
+   mutable-value set with keys retained. Each test still parses and asserts its own envelope
+   metadata (`truncated`/`seed_ids`/`depth_reached`; `Truncated`; `total_returned`; single-node
+   `entry`) separately. The one remaining raw byte-compare `default_text != full_text` is robust
+   by construction (summary vs full differ in key set, cannot accidentally match).
+
+3. **RISK-COVERAGE-REPORT.md corrected** — the "no flakes / Gaps: None" overclaim is gone; the
+   Gaps section now carries an explicit "Correction (supersedes the initial 'no flakes / Gaps: None'
+   claim)" paragraph plus a new "Gate-3c rework — flaky-test fix" section, and the R-08/AC-04/AC-05/
+   AC-07 rows note the structural assertions and name the deterministic unit resolver as the primary
+   R-08 guarantee. No lingering overclaim.
+
+4. **No production drift** — confirmed above (test-only diff; binary current).
+
+**Validator-run gates (re-executed, foreground, this iteration):**
+- Smoke (`pytest -m smoke`): **30 passed / 0 failed**, rc=0 (248s).
+- vnc-044 graph integration (`-k graph`, test_tools + test_lifecycle): **64 passed / 0 failed**,
+  rc=0 (530s) — the previously-flaky alias test now passes; no `xfail` for vnc-044.
+- Stress: alias + `default_is_summary` + `neighbors_detail_ignored` run **3×9 under injected
+  full-core CPU load** (the gate's forced-failure condition) → **9/9 pass, 0 flakes** (was 100%
+  fail under this exact condition pre-rework).
+
+Result: **PASS**. No further rework required.
+
+---
+
+## Summary (original — rev1 REWORKABLE FAIL, retained for provenance)
 
 | Check | Status | Notes |
 |-------|--------|-------|
