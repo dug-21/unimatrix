@@ -1440,14 +1440,23 @@ impl UnimatrixServer {
             rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
         })?;
 
-        // 5. Idempotency: if already deprecated, return success immediately
+        // 5. Idempotency: if already deprecated, return success immediately.
+        //    No eager cleanup ran on this call, so the advisory is omitted (None).
         if entry.status == Status::Deprecated {
             return Ok(format_deprecate_success(
                 &entry,
                 params.reason.as_deref(),
+                None,
                 ctx.format,
             ));
         }
+
+        // Capture identity clones for the step-6.5 edge_cleanup audit BEFORE the
+        // flip's AuditEvent construction below MOVES `ctx.agent_id` (ordering
+        // hazard — the cleanup audit reuses the same identity).
+        let agent_id_for_cleanup = ctx.agent_id.clone();
+        let session_id_for_cleanup = ctx.audit_ctx.session_id.clone().unwrap_or_default();
+        let attribution_for_cleanup = ctx.client_type.clone().unwrap_or_default();
 
         // 6. Deprecate with audit
         let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
@@ -1473,6 +1482,40 @@ impl UnimatrixServer {
             .await
             .map_err(rmcp::ErrorData::from)?;
 
+        // 6.5. Eager agent-authored edge cleanup (crt-058 / ADR-001). NON-FATAL
+        //      (C-01): a helper error never propagates into the deprecation result
+        //      — the `EveryTick` orphaned-edge compaction remains the backstop
+        //      (C-11 / SR-05). The DELETE is awaited inline (C-04) so the edges are
+        //      gone before the response is formatted; only the audit WRITE is
+        //      fire-and-forget. Runs AFTER the step-6 flip (C-03) so the entry is
+        //      non-Active, keeping the removed set a strict subset of the tick's
+        //      (eager ⊆ tick — ADR-003).
+        let edges_removed: Option<u64> =
+            match crate::mcp::edge_write::delete_agent_edges_for_entry(&self.store, entry_id).await
+            {
+                Ok(tuples) => {
+                    if !tuples.is_empty() {
+                        self.emit_edge_cleanup_audit(
+                            entry_id,
+                            &tuples,
+                            session_id_for_cleanup,
+                            agent_id_for_cleanup,
+                            attribution_for_cleanup,
+                        );
+                    }
+                    // Count is `tuples.len()` (single source of truth), never
+                    // `rows_affected()`; includes `Some(0)` on a zero-edge entry.
+                    Some(tuples.len() as u64)
+                }
+                Err(e) => {
+                    // NFR-05: warn, NOT debug (#3448) — a swallowed failure is a
+                    // real signal, not an expected-suppressed error. Advisory
+                    // omitted (None); the tick sweeps the residual within ≤900s.
+                    tracing::warn!(entry = entry_id, error = %e, "eager edge cleanup failed");
+                    None
+                }
+            };
+
         // 7. Recompute confidence for deprecated entry (fire-and-forget, via ConfidenceService)
         self.services.confidence.recompute(&[deprecated.id]);
 
@@ -1480,6 +1523,7 @@ impl UnimatrixServer {
         Ok(format_deprecate_success(
             &deprecated,
             params.reason.as_deref(),
+            edges_removed,
             ctx.format,
         ))
     }

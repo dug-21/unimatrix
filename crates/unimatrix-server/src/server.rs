@@ -656,6 +656,73 @@ impl UnimatrixServer {
         });
     }
 
+    /// Emit the one `context_deprecate.edge_cleanup` audit event (crt-058 / ADR-002).
+    ///
+    /// This is a SECOND, DISTINCT audit record from the flip's own
+    /// `"context_deprecate"` event (R-08) — it captures the removed-edge tuples as
+    /// JSON metadata so an irreversible eager delete stays reconstructable (SR-01).
+    /// Called from `context_deprecate` step 6.5 ONLY on `Ok(tuples)` with a
+    /// non-empty result.
+    ///
+    /// The tuples are serialized via `serde_json` — NEVER string interpolation:
+    /// `relation_type` strings are encoder-escaped, and a (near-impossible)
+    /// serialization error SKIPS the event rather than emitting the `"{}"` empty
+    /// sentinel alongside a non-empty removal (which would defeat reconstructability).
+    pub(crate) fn emit_edge_cleanup_audit(
+        &self,
+        entry_id: u64,
+        removed: &[crate::mcp::edge_write::RemovedEdge],
+        session_id: String,
+        agent_id: String,
+        agent_attribution: String,
+    ) {
+        // Caller guards `!removed.is_empty()`; guard defensively here too so a
+        // future caller cannot emit a zero-tuple cleanup record.
+        if removed.is_empty() {
+            return;
+        }
+
+        let count = removed.len();
+
+        // metadata: JSON ARRAY of tuples via the encoder — never interpolation,
+        // and must NOT fall through to the audit-layer "{}" sentinel on a
+        // non-empty removal (`audit.rs` substitutes "{}" only for EMPTY metadata).
+        let metadata = match serde_json::to_string(removed) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!(
+                    entry = entry_id,
+                    error = %e,
+                    "edge_cleanup audit metadata serialization failed"
+                );
+                return;
+            }
+        };
+
+        let detail = format!(
+            "eager edge cleanup: removed {count} agent-authored edge(s) for deprecated entry #{entry_id}"
+        );
+
+        let event = AuditEvent {
+            event_id: 0,
+            timestamp: 0,
+            session_id,
+            agent_id,
+            operation: "context_deprecate.edge_cleanup".to_string(),
+            target_ids: vec![entry_id],
+            outcome: crate::infra::audit::Outcome::Success,
+            detail,
+            credential_type: "none".to_string(),
+            capability_used: crate::infra::registry::Capability::Write
+                .as_audit_str()
+                .to_string(),
+            agent_attribution,
+            metadata,
+        };
+
+        self.audit_fire_and_forget(event);
+    }
+
     /// crt-055 (ADR-008): the enabled `[transcript_signals]` class names in
     /// config order, supplied to the activity-fold landing so
     /// `signal_class_counts_json` is built by index. Empty (e.g. in tests) yields
@@ -4360,3 +4427,10 @@ mod gh582_regression_tests {
         );
     }
 }
+
+// crt-058 audit-emit tests — `emit_edge_cleanup_audit` + the
+// `context_deprecate.edge_cleanup` AuditEvent. Kept in a separate file to hold
+// server.rs focused (cumulative test infra; reuses `tests::make_server`).
+#[cfg(test)]
+#[path = "server_edge_cleanup_audit_tests.rs"]
+mod edge_cleanup_audit_tests;

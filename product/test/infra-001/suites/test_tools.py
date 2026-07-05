@@ -491,6 +491,88 @@ def test_deprecated_visible_in_search_with_lower_confidence(server):
     assert conf_deprecated <= conf_active
 
 
+# === crt-058: context_deprecate eager agent-edge cleanup (wire-level) ==
+#
+# These exercise the `edges_removed` advisory through the MCP Json wire — the
+# integer is PARSED from the structured field (not substring-matched, SR-04 /
+# #5427). Agent edges are seeded directly via SQL (cumulative pattern from
+# test_get_edges._seed_edges): the eager helper keys on `source='agent'`.
+
+def _c58_db_path(project_dir):
+    """Server SQLite DB path from the project dir (mirrors compute_project_hash)."""
+    import hashlib
+    import os
+    canonical = os.path.realpath(project_dir)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return os.path.join(os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+
+def _c58_seed_edges(server, rows):
+    """Insert graph_edges rows directly; checkpoint WAL so the server sees them.
+    Each row: dict(source_id, target_id, relation_type, source, [weight])."""
+    import sqlite3
+    import time
+    conn = sqlite3.connect(_c58_db_path(server.project_dir), timeout=30)
+    now = int(time.time())
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")
+        for r in rows:
+            conn.execute(
+                "INSERT OR IGNORE INTO graph_edges "
+                "(source_id, target_id, relation_type, weight, created_at, "
+                " created_by, source) VALUES (?, ?, ?, ?, ?, 'test', ?)",
+                (r["source_id"], r["target_id"], r["relation_type"],
+                 r.get("weight", 1.0), now, r["source"]),
+            )
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+
+def test_deprecate_reports_edges_removed_count(server):
+    """AC-02/AC-04 (wire): deprecating an entry with N agent edges reports the
+    count as a PARSED Json integer (inbound + outbound both removed)."""
+    a = extract_entry_id(server.context_store(
+        "crt058 edge count neighbor alpha distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    e = extract_entry_id(server.context_store(
+        "crt058 edge count subject bravo distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    # one inbound (a->e) + one outbound (e->a), both agent-authored
+    _c58_seed_edges(server, [
+        {"source_id": a, "target_id": e, "relation_type": "Supports", "source": "agent"},
+        {"source_id": e, "target_id": a, "relation_type": "Supports", "source": "agent"},
+    ])
+    result = assert_tool_success(
+        server.context_deprecate(e, reason="outdated", agent_id="human", format="json"))
+    assert isinstance(result.parsed, dict), f"expected json object, got {result.text[:200]}"
+    assert result.parsed.get("edges_removed") == 2, (
+        f"expected edges_removed integer 2, got {result.parsed.get('edges_removed')!r}")
+    assert result.parsed["edges_removed"] is not True  # true is not 2, guard int not bool
+
+
+def test_deprecate_zero_agent_edges_renders_literal_0(server):
+    """AC-05 (wire): an entry with only MACHINE edges reports edges_removed == 0
+    (literal 0, PRESENT — not omitted); the machine edge survives."""
+    e = extract_entry_id(server.context_store(
+        "crt058 zero agent edge subject charlie distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    f = extract_entry_id(server.context_store(
+        "crt058 zero agent edge neighbor delta distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    _c58_seed_edges(server, [
+        {"source_id": e, "target_id": f, "relation_type": "Supports", "source": "co_access"},
+    ])
+    result = assert_tool_success(
+        server.context_deprecate(e, agent_id="human", format="json"))
+    assert isinstance(result.parsed, dict)
+    assert "edges_removed" in result.parsed, "AC-05: Some(0) must render the key, not omit it"
+    assert result.parsed["edges_removed"] == 0, (
+        f"expected literal 0, got {result.parsed['edges_removed']!r}")
+
+
 # === context_status (8 tests) =========================================
 
 @pytest.mark.smoke

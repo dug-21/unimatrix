@@ -1907,6 +1907,39 @@ async fn extraction_tick(
     Ok((ctx.stats.clone(), friction_recs, dead_knowledge_recs))
 }
 
+/// Insert a `graph_edges` row with an explicit `source` column value (bugfix-879).
+///
+/// Test-only, crate-visible so `graph_edges` seeding is done through ONE shared
+/// helper across the background-tick tests and the crt-058 `edge_write` /
+/// eager ⊆ tick subset tests (fixture identity — a copy would drift and defeat
+/// the subset assertion). The repoint step filters on `source = 'agent'`; machine
+/// sources ('nli', 'co_access', 'cosine_supports', 'test') must NOT be repointed.
+///
+/// `source_id` / `target_id` may reference non-existent entries — that is exactly
+/// the orphaned/agent-authored state the compaction and eager cleanup act on.
+#[cfg(test)]
+pub(crate) async fn insert_graph_edge_with_source(
+    store: &unimatrix_store::SqlxStore,
+    source_id: i64,
+    target_id: i64,
+    relation_type: &str,
+    source: &str,
+) {
+    let pool = store.write_pool_server();
+    sqlx::query(
+        "INSERT OR IGNORE INTO graph_edges
+         (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only)
+         VALUES (?1, ?2, ?3, 1.0, 1000000, ?4, ?4, 0)",
+    )
+    .bind(source_id)
+    .bind(target_id)
+    .bind(relation_type)
+    .bind(source)
+    .execute(pool)
+    .await
+    .expect("insert graph_edge must succeed");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3113,32 +3146,6 @@ mod tests {
         .bind(source_id)
         .bind(target_id)
         .bind(relation_type)
-        .execute(pool)
-        .await
-        .expect("insert graph_edge must succeed");
-    }
-
-    /// Insert a graph_edges row with an explicit `source` column value (bugfix-879).
-    ///
-    /// The repoint step filters on `source = 'agent'`; machine sources ('nli',
-    /// 'co_access', 'cosine_supports', 'test') must NOT be repointed.
-    async fn insert_graph_edge_with_source(
-        store: &unimatrix_store::SqlxStore,
-        source_id: i64,
-        target_id: i64,
-        relation_type: &str,
-        source: &str,
-    ) {
-        let pool = store.write_pool_server();
-        sqlx::query(
-            "INSERT OR IGNORE INTO graph_edges
-             (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only)
-             VALUES (?1, ?2, ?3, 1.0, 1000000, ?4, ?4, 0)",
-        )
-        .bind(source_id)
-        .bind(target_id)
-        .bind(relation_type)
-        .bind(source)
         .execute(pool)
         .await
         .expect("insert graph_edge must succeed");
@@ -4783,5 +4790,286 @@ mod tests {
 
         // Type check: Arc::clone works (required by spawn_background_tick's inner loop).
         let _cloned = Arc::clone(&allowlist);
+    }
+
+    // -------------------------------------------------------------------------
+    // crt-058: eager agent-authored edge cleanup at context_deprecate.
+    //
+    // These exercise the REAL `delete_agent_edges_for_entry` helper
+    // (`mcp/edge_write.rs`) and the REAL `run_orphaned_edge_compaction` backstop
+    // over parallel fixtures — reusing the existing graph fixtures in this module
+    // (cumulative test infra). The full `context_deprecate` #[tool] handler is not
+    // constructible in unit scope (no `RequestContext`); its end-to-end route
+    // proof lives in the Stage-3c Python integration suite.
+    // -------------------------------------------------------------------------
+
+    /// Bare deprecation: status = Deprecated, `superseded_by` stays NULL
+    /// (successor-less). This is the ONLY shape `context_deprecate` produces and
+    /// the only shape the eager helper ever sees — distinct from
+    /// `deprecate_entry_with_successor`, which sets a successor.
+    async fn bare_deprecate(store: &unimatrix_store::SqlxStore, id: i64) {
+        sqlx::query("UPDATE entries SET status = 1, superseded_by = NULL WHERE id = ?1")
+            .bind(id)
+            .execute(store.write_pool_server())
+            .await
+            .expect("bare deprecate must succeed");
+    }
+
+    /// Snapshot the full `(source_id, target_id, relation_type)` set of graph_edges.
+    async fn edge_tuple_set(
+        store: &unimatrix_store::SqlxStore,
+    ) -> std::collections::HashSet<(i64, i64, String)> {
+        use sqlx::Row;
+        sqlx::query("SELECT source_id, target_id, relation_type FROM graph_edges")
+            .fetch_all(store.write_pool_server())
+            .await
+            .expect("edge snapshot must succeed")
+            .into_iter()
+            .map(|r| {
+                (
+                    r.get::<i64, _>("source_id"),
+                    r.get::<i64, _>("target_id"),
+                    r.get::<String, _>("relation_type"),
+                )
+            })
+            .collect()
+    }
+
+    /// The 7 graph-edge provenance sources: one agent source + six machine sources.
+    const CRT058_SOURCES: [&str; 7] = [
+        "agent",
+        "nli",
+        "co_access",
+        "cosine_supports",
+        "S1",
+        "S2",
+        "S8",
+    ];
+
+    /// Seed entry E (id 10) with one inbound + one outbound edge per provenance
+    /// source (14 edges). Inbound neighbor for source i = 100+i, outbound = 200+i,
+    /// all Active. Distinct endpoint pairs keep every edge unique under the schema
+    /// `UNIQUE(source_id, target_id, relation_type)`.
+    async fn seed_all_source_edges(store: &unimatrix_store::SqlxStore) {
+        insert_test_entry(store, 10).await;
+        for (i, src) in CRT058_SOURCES.iter().enumerate() {
+            let inbound = 100 + i as i64;
+            let outbound = 200 + i as i64;
+            insert_test_entry(store, inbound).await;
+            insert_test_entry(store, outbound).await;
+            insert_graph_edge_with_source(store, inbound, 10, "DependsOn", src).await;
+            insert_graph_edge_with_source(store, 10, outbound, "DependsOn", src).await;
+        }
+    }
+
+    /// Seed a successor-bearing correction fixture: referrer S=30 → A=10 (agent),
+    /// A corrected to Active terminal B=20 (Deprecated WITH `superseded_by`).
+    async fn seed_successor_fixture(store: &unimatrix_store::SqlxStore) {
+        insert_test_entry(store, 10).await; // A (corrected original)
+        insert_test_entry(store, 20).await; // B (Active terminal)
+        insert_test_entry(store, 30).await; // S (referrer)
+        insert_graph_edge_with_source(store, 30, 10, "DependsOn", "agent").await;
+        deprecate_entry_with_successor(store, 10, 20).await;
+    }
+
+    /// AC-10 / R-01 / R-02 keystone: the eager delete removes EXACTLY the two agent
+    /// edges, and that set is a strict subset of what the tick removes for the same
+    /// bare-deprecated entry (eager ⊆ tick, ADR-003) — asserted over BOTH real
+    /// functions. Widening the eager SQL to a machine source breaks the exact-set
+    /// assertion; narrowing the tick so it keeps agent edges breaks `R ⊆ T`. If the
+    /// tick predicate ever changes, RE-DERIVE this test — never delete it (C-07).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_deprecate_eager_subset_of_tick_and_exactly_agent_edges() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        // Parallel fixtures A and B seeded identically from ONE helper.
+        let tmp_a = TempDir::new().expect("tempdir");
+        let store_a = open_test_store(&tmp_a).await;
+        seed_all_source_edges(&store_a).await;
+
+        let tmp_b = TempDir::new().expect("tempdir");
+        let store_b = open_test_store(&tmp_b).await;
+        seed_all_source_edges(&store_b).await;
+
+        // R-02 fixture-identity: pre-deprecation edge sets are IDENTICAL.
+        assert_eq!(
+            edge_tuple_set(&store_a).await,
+            edge_tuple_set(&store_b).await,
+            "parallel fixtures must be identical before divergence"
+        );
+        assert_eq!(edge_tuple_set(&store_a).await.len(), 14);
+
+        // Fixture A: bare-deprecate E, run the REAL eager helper → R.
+        bare_deprecate(&store_a, 10).await;
+        let removed = crate::mcp::edge_write::delete_agent_edges_for_entry(&store_a, 10)
+            .await
+            .expect("eager delete must succeed");
+        let r: std::collections::HashSet<(i64, i64, String)> = removed
+            .iter()
+            .map(|e| {
+                (
+                    e.source_id as i64,
+                    e.target_id as i64,
+                    e.relation_type.clone(),
+                )
+            })
+            .collect();
+
+        // Fixture B: bare-deprecate E, run the REAL tick → T (before − after).
+        bare_deprecate(&store_b, 10).await;
+        let before_b = edge_tuple_set(&store_b).await;
+        run_orphaned_edge_compaction(&store_b).await;
+        let after_b = edge_tuple_set(&store_b).await;
+        let t: std::collections::HashSet<(i64, i64, String)> =
+            before_b.difference(&after_b).cloned().collect();
+
+        // R == exactly the two agent edges (inbound 100→10, outbound 10→200).
+        let agent_edges: std::collections::HashSet<(i64, i64, String)> = [
+            (100i64, 10i64, "DependsOn".to_string()),
+            (10i64, 200i64, "DependsOn".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(
+            r, agent_edges,
+            "eager delete must remove exactly the two agent edges (per-source discrimination)"
+        );
+
+        // R ⊆ T (eager ⊆ tick).
+        assert!(
+            r.is_subset(&t),
+            "eager removed set must be a subset of the tick removed set"
+        );
+        // The tick blanket-deletes every edge touching the non-Active entry (all
+        // sources), so T is the full 14-edge set.
+        assert_eq!(
+            t.len(),
+            14,
+            "tick blanket-deletes all edges on the non-Active entry"
+        );
+    }
+
+    /// AC-10 chokepoint-exclusion (R-01 closure) + negative-mutation (R-06): a
+    /// successor-bearing entry's inbound agent edge is REPOINTED (survives) by the
+    /// tick's Phase 1, but the unguarded eager helper — if ever pointed at such an
+    /// entry — WOULD destroy it. Proves safety rests on the chokepoint
+    /// (`context_deprecate` never sets `superseded_by`), not on the helper. The
+    /// "no `edge_cleanup` audit on the correct path" half requires the
+    /// `context_correct` handler and is covered by the Python integration suite.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_successor_bearing_edge_repointed_by_tick_but_eager_would_destroy() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp_tick = TempDir::new().expect("tempdir");
+        let store_tick = open_test_store(&tmp_tick).await;
+        seed_successor_fixture(&store_tick).await;
+
+        let tmp_eager = TempDir::new().expect("tempdir");
+        let store_eager = open_test_store(&tmp_eager).await;
+        seed_successor_fixture(&store_eager).await;
+
+        // Tick path: Phase 1 repoints S→A onto the terminal S→B — the inbound
+        // agent edge SURVIVES (repointed, not deleted).
+        run_orphaned_edge_compaction(&store_tick).await;
+        assert_eq!(
+            count_graph_edges(&store_tick, 30, 10).await,
+            0,
+            "stale S→A must be repointed away"
+        );
+        assert_eq!(
+            count_graph_edges(&store_tick, 30, 20).await,
+            1,
+            "inbound agent edge survives as S→B (Phase 1 repoint)"
+        );
+
+        // Eager path (negative mutation): the unguarded helper WOULD delete the
+        // repointable inbound edge and perform NO repoint.
+        let removed = crate::mcp::edge_write::delete_agent_edges_for_entry(&store_eager, 10)
+            .await
+            .expect("eager delete must succeed");
+        assert!(
+            removed
+                .iter()
+                .any(|e| e.source_id == 30 && e.target_id == 10),
+            "eager helper would destroy the repointable inbound agent edge"
+        );
+        assert_eq!(
+            count_graph_edges(&store_eager, 30, 20).await,
+            0,
+            "eager path performs no repoint — exactly why the chokepoint is the guarantor"
+        );
+    }
+
+    /// AC-01 / AC-09 / R-11: after the flip the eager delete removes both inbound
+    /// and outbound agent edges SYNCHRONOUSLY — absent immediately on return, with
+    /// no tick and no sleep.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_deprecate_removes_agent_edges_synchronously() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+        insert_test_entry(&store, 10).await;
+        insert_test_entry(&store, 30).await;
+        insert_test_entry(&store, 40).await;
+        insert_graph_edge_with_source(&store, 30, 10, "DependsOn", "agent").await; // inbound
+        insert_graph_edge_with_source(&store, 10, 40, "DependsOn", "agent").await; // outbound
+
+        bare_deprecate(&store, 10).await;
+        let removed = crate::mcp::edge_write::delete_agent_edges_for_entry(&store, 10)
+            .await
+            .expect("eager delete must succeed");
+
+        // Immediately — no tick, no sleep.
+        assert_eq!(
+            removed.len(),
+            2,
+            "both directions removed → edges_removed = Some(2)"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 30, 10).await,
+            0,
+            "inbound agent edge gone synchronously"
+        );
+        assert_eq!(
+            count_graph_edges(&store, 10, 40).await,
+            0,
+            "outbound agent edge gone synchronously"
+        );
+    }
+
+    /// Edge case: two entries share one agent edge, deprecated in sequence. The
+    /// first removal claims the shared edge (count attributes to it); the second's
+    /// RETURNING omits it (count 0). State stays consistent.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_two_entries_sharing_edge_deprecated_in_sequence() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+        insert_test_entry(&store, 10).await;
+        insert_test_entry(&store, 20).await;
+        insert_graph_edge_with_source(&store, 10, 20, "DependsOn", "agent").await; // shared
+
+        bare_deprecate(&store, 10).await;
+        let first = crate::mcp::edge_write::delete_agent_edges_for_entry(&store, 10)
+            .await
+            .expect("eager delete must succeed");
+        assert_eq!(first.len(), 1, "first deprecation removes the shared edge");
+
+        bare_deprecate(&store, 20).await;
+        let second = crate::mcp::edge_write::delete_agent_edges_for_entry(&store, 20)
+            .await
+            .expect("eager delete must succeed");
+        assert_eq!(second.len(), 0, "second deprecation finds no residual edge");
+        assert_eq!(
+            total_graph_edges(&store).await,
+            0,
+            "state consistent — no edges remain"
+        );
     }
 }

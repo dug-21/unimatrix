@@ -349,3 +349,19 @@ def test_store_with_source_roundtrip(server):
     entry = parse_entry(get_resp)
     # Source is accepted as a parameter but may not be exposed in the JSON response
     assert entry.get("content") == "source roundtrip content"
+
+
+def test_deprecate_entry_with_no_edges_succeeds(server):
+    """crt-058 AC-05 edge case: deprecating an entry with NO edges at all still
+    reports edges_removed == 0 (literal 0, present — not omitted) and succeeds.
+    The zero-row eager DELETE returns Ok(vec![]) -> Some(0), never an error."""
+    e = extract_entry_id(server.context_store(
+        "crt058 no-edge deprecation subject quebec distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    result = assert_tool_success(
+        server.context_deprecate(e, reason="outdated", agent_id="human", format="json"))
+    assert isinstance(result.parsed, dict)
+    assert result.parsed.get("deprecated") is True
+    assert "edges_removed" in result.parsed, "AC-05: Some(0) renders the key"
+    assert result.parsed["edges_removed"] == 0, (
+        f"expected literal 0, got {result.parsed['edges_removed']!r}")

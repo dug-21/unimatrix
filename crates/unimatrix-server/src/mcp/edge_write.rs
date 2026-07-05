@@ -282,6 +282,108 @@ pub(crate) async fn delete_graph_edge(
 }
 
 // ---------------------------------------------------------------------------
+// delete_agent_edges_for_entry (crt-058 — eager agent-authored edge cleanup)
+// ---------------------------------------------------------------------------
+
+/// A graph edge removed by the eager cleanup ([`delete_agent_edges_for_entry`]).
+///
+/// The `serde::Serialize` field names ARE the audit-metadata JSON keys — this
+/// struct is the single source of truth for the `edge_cleanup` audit shape
+/// (ADR-002 / AC-11). Do not rename fields without updating the audit contract.
+#[derive(Debug, serde::Serialize)]
+pub(crate) struct RemovedEdge {
+    pub source_id: u64,
+    pub target_id: u64,
+    pub relation_type: String,
+}
+
+/// Eagerly delete every agent-authored (`source = 'agent'`) `graph_edges` row
+/// touching `entry_id` in **both** directions, returning the removed tuples.
+///
+/// This pulls the `EveryTick` orphaned-edge compaction's blanket delete forward
+/// for the single entry being deprecated (crt-058 / ADR-001). It is the strict
+/// `agent`-source subset of what [`run_orphaned_edge_compaction`] removes for the
+/// same now-non-Active entry (eager ⊆ tick — ADR-003). The tick
+/// (`background.rs::run_orphaned_edge_compaction`) remains the UNCHANGED backstop:
+/// if this helper errors, the caller treats it as non-fatal and the tick sweeps
+/// the residual over all sources (C-11 / SR-05).
+///
+/// # Single-caller contract (C-10 / R-06)
+/// The only production caller is `context_deprecate` step 6.5. The helper is
+/// UNGUARDED by design — no status or successor check — so safety rests entirely
+/// on that single chokepoint. Any second caller is a conscious design change, not
+/// a silent merge.
+///
+/// # Atomicity (R-03)
+/// The delete and the tuple capture are ONE statement: `DELETE … RETURNING` run
+/// through a single `fetch_all`. There is no delete-then-separate-SELECT window,
+/// so there is never a "rows gone with no audit record" gap. The reported count is
+/// `returned.len()` — the same tuples that feed the audit — never `rows_affected()`.
+///
+/// # Predicate (LOCKED)
+/// `WHERE (source_id = ?1 OR target_id = ?1) AND source = ?2` with `?1 = entry_id`,
+/// `?2 = EDGE_SOURCE_AGENT`. Never widen by `relation_type`; never add a runtime
+/// `superseded_by` clause — the eager ⊆ tick invariant is enforced by an executable
+/// test over both real functions, not by any clause here (ADR-003). Served by
+/// `idx_graph_edges_source_id` + `idx_graph_edges_target_id`. A self-loop
+/// (`source_id == target_id == entry_id`) matches the `OR` exactly once → one row
+/// → counted once (R-10).
+///
+/// Runs on `write_pool_server()` only (C-05 / NFR-02). Zero matches returns
+/// `Ok(vec![])` (not an error) — e.g. a concurrent tick already swept (R-07).
+pub(crate) async fn delete_agent_edges_for_entry(
+    store: &Store,
+    entry_id: u64,
+) -> Result<Vec<RemovedEdge>, EdgeDeleteError> {
+    use sqlx::Row;
+
+    let pool = store.write_pool_server();
+
+    // R-03: ONE atomic statement — DELETE … RETURNING deletes and returns the
+    // removed rows in a single fetch_all. No separate SELECT, so there is no
+    // window where rows are gone but tuples are lost. The count derives from
+    // exactly these tuples.
+    let rows = sqlx::query(
+        "DELETE FROM graph_edges \
+         WHERE (source_id = ?1 OR target_id = ?1) AND source = ?2 \
+         RETURNING source_id, target_id, relation_type",
+    )
+    .bind(entry_id as i64) // ?1
+    .bind(EDGE_SOURCE_AGENT) // ?2 = "agent" constant, NOT user input
+    .fetch_all(pool)
+    .await
+    .map_err(|e| EdgeDeleteError::StoreError(StoreError::Database(e.into())))?;
+
+    // In-memory marshal of the RETURNING rows (the only loop; no per-edge DB
+    // round-trip). ids are stored as i64; cast back to u64.
+    //
+    // Fallible `try_get` (not panicking `get`): this function's contract is
+    // non-fatal — the caller maps an `Err` to `edges_removed = None` + `warn!`
+    // and never panics. A future schema change making a RETURNING column
+    // nullable must therefore route through `Err`, not a post-commit panic.
+    // A marshal fault reuses the same query-error mapping (StoreError::Database).
+    let mut removed = Vec::with_capacity(rows.len());
+    for row in rows {
+        let source_id: i64 = row
+            .try_get("source_id")
+            .map_err(|e| EdgeDeleteError::StoreError(StoreError::Database(e.into())))?;
+        let target_id: i64 = row
+            .try_get("target_id")
+            .map_err(|e| EdgeDeleteError::StoreError(StoreError::Database(e.into())))?;
+        let relation_type: String = row
+            .try_get("relation_type")
+            .map_err(|e| EdgeDeleteError::StoreError(StoreError::Database(e.into())))?;
+        removed.push(RemovedEdge {
+            source_id: source_id as u64,
+            target_id: target_id as u64,
+            relation_type,
+        });
+    }
+
+    Ok(removed)
+}
+
+// ---------------------------------------------------------------------------
 // redirect_graph_edge
 // ---------------------------------------------------------------------------
 
@@ -411,6 +513,15 @@ pub(crate) async fn redirect_graph_edge(
 
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// DB-integration tests for delete_agent_edges_for_entry (crt-058)
+// Kept in a separate file to hold edge_write.rs under the 500-line rule.
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+#[path = "edge_write_delete_agent_tests.rs"]
+mod delete_agent_tests;
 
 // ---------------------------------------------------------------------------
 // Unit tests
