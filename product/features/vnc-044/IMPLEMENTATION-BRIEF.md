@@ -20,14 +20,14 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| Shared verbosity primitives (`response/verbosity.rs`) | pseudocode/verbosity.md | test-plan/verbosity.md |
-| Graph projection (`graph_read_projection.rs`) | pseudocode/graph_read_projection.md | test-plan/graph_read_projection.md |
-| Output resolver + seam threading (`graph_read.rs`) | pseudocode/graph_read.md | test-plan/graph_read.md |
-| Tool description (`tools.rs`) | pseudocode/tools.md | test-plan/tools.md |
+| Shared verbosity primitives (`response/verbosity.rs`) | pseudocode/verbosity.md ✓ | test-plan/verbosity.md ✓ |
+| Graph projection (`graph_read_projection.rs`) | pseudocode/graph_read_projection.md ✓ | test-plan/graph_read_projection.md ✓ |
+| Output resolver + seam threading (`graph_read.rs`) | pseudocode/graph_read.md ✓ | test-plan/graph_read.md ✓ |
+| Tool description (`tools.rs`) | pseudocode/tools.md ✓ | test-plan/tools.md ✓ |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. Actual file paths are filled during delivery.
+Stage 3a complete (✓ = file written). All four component pseudocode + test-plan files exist; OVERVIEW files below.
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (Stage 3a — written)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
