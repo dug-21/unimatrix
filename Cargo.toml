@@ -36,6 +36,7 @@ all = "warn"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bincode = { version = "2", features = ["serde"] }
+schemars = "1"
 
 # Patch anndists 0.1.4: fix cfg_if + #[cfg] block compilation with edition 2024.
 # Upstream declares edition = "2024" but has code incompatible with it.

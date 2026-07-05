@@ -3,6 +3,7 @@
 //! Core observation types (HookType, ObservationRecord, ParsedSession, ObservationStats)
 //! are defined in unimatrix-core and re-exported here for backward compatibility (col-013 ADR-002).
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -673,41 +674,30 @@ pub struct TranscriptCandidatesSection {
 // Shapes are AUTHORITATIVE per pseudocode/OVERVIEW.md §Shared Types — not invented.
 // ---------------------------------------------------------------------------
 
-/// The all-optional, AND-composed filter block for the read-only `transcript`
-/// axis (crt-057, ADR-002/ADR-006). Deserialized from tool params.
-///
-/// Every present filter NARROWS (intersection, never union). All-`None`
-/// (`{}`) is the empty scope — equivalent to `match:".*"` at the retrieval
-/// layer (full candidate set under the existing per-cycle cap). Missing
-/// fields deserialize to `None` (serde's implicit default for `Option`), so
-/// `{}` yields an all-`None` scope rather than a deserialize error.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+/// Optional, AND-composed filter block for scoped `transcript` retrieval on
+/// `context_cycle_review`. Every present filter narrows the result
+/// (intersection, never union); an empty object `{}` selects the full
+/// candidate set. All fields are optional.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
 pub struct TranscriptScope {
-    /// Phase id → `cycle_events` bounds. Self-bounding: IGNORES `window`.
+    /// Restrict retrieval to transcript spanned by the given phase id.
     pub phase: Option<String>,
-    /// Finding id → `HotspotFinding.evidence[].ts` span `[min, max]`; honors `window`.
+    /// Restrict retrieval to transcript around the given finding id (honors `window`).
     pub anchor: Option<String>,
-    /// Regex over the WHOLE `TranscriptCandidate.text` block. `match` is a Rust
-    /// keyword, so the field is the raw identifier `r#match` renamed on the wire.
+    /// Regular expression matched against each transcript candidate's text.
     #[serde(rename = "match")]
     pub r#match: Option<String>,
-    /// ±radius applied to `anchor`/`match` hits; ignored by self-bounding `phase`.
+    /// Radius applied around `anchor`/`match` hits (ignored by `phase`).
     pub window: Option<Window>,
 }
 
-/// Time/block radius around `anchor`/`match` hits (crt-057, ADR-006).
-///
-/// Carries BOTH a time radius (`millis`, for ts-bearing candidates) and a block
-/// radius (`blocks`, for `ts:None` candidates via `byte_offset` proximity) so a
-/// caller who thinks only in time still gets the block fallback and `ts:None`
-/// candidates never silently drop. Unspecified fields resolve to the canonical
-/// [`DEFAULT_WINDOW_MILLIS`] / [`DEFAULT_WINDOW_BLOCKS`], NOT to zero (a
-/// zero-width window would re-introduce the silent-miss failure this design fixes).
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+/// Time/block radius applied around `anchor`/`match` hits. Both radii are
+/// optional; omitted fields fall back to server defaults rather than zero.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
 pub struct Window {
-    /// Time radius (ms) for ts-bearing candidates; default [`DEFAULT_WINDOW_MILLIS`].
+    /// Time radius in milliseconds for timestamped candidates.
     pub millis: Option<u64>,
-    /// `byte_offset` block radius for `ts:None` candidates; default [`DEFAULT_WINDOW_BLOCKS`].
+    /// Block radius for candidates without a timestamp.
     pub blocks: Option<u32>,
 }
 

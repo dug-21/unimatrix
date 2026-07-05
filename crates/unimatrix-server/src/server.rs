@@ -3651,6 +3651,192 @@ pub(crate) mod tests {
         }
     }
 
+    // -- bugfix-901: transcript axis JsonSchema — schema snapshot + live boundary --
+    //
+    // #901: `RetrospectiveParams.transcript` (Option<TranscriptScope>) previously
+    // carried `#[schemars(with = "Option<serde_json::Value>")]`, so `tools/list`
+    // advertised it as a free-form any-value — no shape. A schema-driven client
+    // sent it as a string and rmcp strict extraction rejected the call with -32602
+    // before the handler ran. Deriving JsonSchema on the source types
+    // (TranscriptScope/Window in unimatrix-observe) makes tools/list advertise the
+    // real object shape. Both tests below guard that fix.
+
+    /// Extend of vnc-012 AC-10: `context_cycle_review`'s `transcript` property now
+    /// advertises the four sub-fields (`phase`/`anchor`/`match`/`window`) and the
+    /// nested `window` object (`millis`/`blocks`), NOT the empty/free-form fallback.
+    ///
+    /// Shape asserted against what rmcp 1.7 + schemars 1.2 actually emit: an
+    /// `Option<T>` field emits a nullable `anyOf: [{$ref}, {"type":"null"}]` and
+    /// the referenced struct lives in `$defs` (JSON Schema 2020-12; GH#684). The
+    /// wire key MUST be literally `match` (serde `rename = "match"`), not `r#match`.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_schema_transcript_advertises_object_shape() {
+        let server = make_server().await;
+        let tools = server.tool_router.list_all();
+        let review = tools
+            .into_iter()
+            .find(|t| t.name == "context_cycle_review")
+            .expect("AC-10/901: context_cycle_review tool must exist");
+        let schema = serde_json::Value::Object(review.input_schema.as_ref().clone());
+
+        // `transcript` is optional → NOT in the top-level required array.
+        if let Some(required) = schema.get("required").and_then(|r| r.as_array()) {
+            assert!(
+                !required.iter().any(|v| v == "transcript"),
+                "901: transcript is optional and must not be in `required`"
+            );
+        }
+
+        // `transcript` property is the nullable union anyOf[$ref TranscriptScope, null]
+        // — NOT the empty `{}`/free-form object the bug advertised.
+        let transcript = &schema["properties"]["transcript"];
+        let any_of = transcript["anyOf"]
+            .as_array()
+            .expect("901: transcript must emit an `anyOf` nullable union, not free-form");
+        let scope_ref = any_of
+            .iter()
+            .find_map(|v| v.get("$ref").and_then(|r| r.as_str()))
+            .expect("901: transcript anyOf must reference the TranscriptScope $def");
+        assert_eq!(
+            scope_ref, "#/$defs/TranscriptScope",
+            "901: transcript must $ref the TranscriptScope definition"
+        );
+        assert!(
+            any_of.iter().any(|v| v["type"] == "null"),
+            "901: transcript must remain nullable (optional field)"
+        );
+
+        // Resolve the referenced definition and assert the four sub-fields.
+        let defs = schema
+            .get("$defs")
+            .expect("901: schema must carry a `$defs` block for the nested types");
+        let scope = &defs["TranscriptScope"];
+        assert_eq!(
+            scope["type"], "object",
+            "901: TranscriptScope must be an object schema"
+        );
+        let scope_props = scope["properties"]
+            .as_object()
+            .expect("901: TranscriptScope must advertise properties");
+        for field in ["phase", "anchor", "match", "window"] {
+            assert!(
+                scope_props.contains_key(field),
+                "901: TranscriptScope must advertise sub-field `{field}`; \
+                 the wire key for the regex axis MUST be `match` (serde rename), \
+                 not `r#match`/`match_`. Got keys: {:?}",
+                scope_props.keys().collect::<Vec<_>>()
+            );
+        }
+        // No sub-field is required (all-optional / AND-composition semantics).
+        if let Some(required) = scope.get("required").and_then(|r| r.as_array()) {
+            assert!(
+                required.is_empty(),
+                "901: no TranscriptScope sub-field may be required (all-optional)"
+            );
+        }
+
+        // Nested `window` resolves to the Window $def with millis/blocks.
+        let window_ref = scope_props["window"]["anyOf"]
+            .as_array()
+            .and_then(|a| {
+                a.iter()
+                    .find_map(|v| v.get("$ref").and_then(|r| r.as_str()))
+            })
+            .expect("901: window must $ref the Window definition (nested type)");
+        assert_eq!(window_ref, "#/$defs/Window");
+        let window = &defs["Window"];
+        let window_props = window["properties"]
+            .as_object()
+            .expect("901: Window must advertise properties");
+        for field in ["millis", "blocks"] {
+            assert!(
+                window_props.contains_key(field),
+                "901: Window must advertise sub-field `{field}`"
+            );
+        }
+    }
+
+    /// Live MCP-boundary `tools/call`: drive `context_cycle_review` with a real
+    /// `transcript` object (including a nested `window`) through the duplex
+    /// transport and assert extraction does NOT fail with -32602.
+    ///
+    /// This is the test class that was missing and let #901 ship through all three
+    /// crt-057 gates — every prior test drove the Rust types directly rather than
+    /// the MCP boundary. The nested `window` object forces the client to resolve
+    /// the emitted `$defs`/`$ref` (MCP `input_schema` must be self-contained).
+    ///
+    /// For a feature with no observations the handler returns the application error
+    /// `ERROR_NO_OBSERVATION_DATA` (-32010) — that is expected and PROVES the
+    /// transcript object deserialized past strict param extraction (the -32602 the
+    /// bug produced happened before the handler ever ran).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_cycle_review_transcript_object_passes_mcp_boundary() {
+        use rmcp::ServiceError;
+        use rmcp::model::{
+            CallToolRequestParams, ClientCapabilities, Implementation, ProtocolVersion,
+        };
+        use rmcp::service::ServiceExt;
+        use tokio::io::duplex;
+
+        let server = make_server().await;
+        let (server_transport, client_transport) = duplex(4096);
+
+        let client_info = rmcp::model::ClientInfo::new(
+            ClientCapabilities::default(),
+            Implementation::new("bugfix-901-client", "0.0.1"),
+        )
+        .with_protocol_version(ProtocolVersion::LATEST);
+
+        // Keep the server's RunningService alive by awaiting its event loop
+        // (`waiting()`); simply awaiting `serve()` yields the service then drops it,
+        // which closes the transport before any `tools/call` can be answered.
+        let server_task = tokio::spawn(async move {
+            if let Ok(running) = server.serve(server_transport).await {
+                let _ = running.waiting().await;
+            }
+        });
+
+        let client = rmcp::serve_client(client_info, client_transport)
+            .await
+            .expect("901: client initialize handshake must succeed");
+
+        // Real transcript object WITH a nested window — exercises the $ref/$defs
+        // resolution and the `match` wire key end-to-end.
+        let args = serde_json::json!({
+            "feature_cycle": "bugfix-901-ghost",
+            "transcript": {
+                "match": "context_cycle_review",
+                "window": { "millis": 1000, "blocks": 2 }
+            }
+        });
+        let args_obj = args
+            .as_object()
+            .expect("test setup: args is a JSON object")
+            .clone();
+
+        let result = client
+            .call_tool(CallToolRequestParams::new("context_cycle_review").with_arguments(args_obj))
+            .await;
+
+        client.cancel().await.ok();
+        server_task.abort();
+
+        match result {
+            Ok(_) => { /* extraction + handler both succeeded */ }
+            Err(ServiceError::McpError(err)) => {
+                assert_ne!(
+                    err.code,
+                    crate::error::ERROR_INVALID_PARAMS,
+                    "901: a real transcript object (with nested window) must pass \
+                     strict param extraction at the MCP boundary; got -32602 \
+                     (invalid_params) — the bug is not fixed. message: {}",
+                    err.message
+                );
+            }
+            Err(other) => panic!("901: unexpected transport/service error: {other:?}"),
+        }
+    }
+
     // -- vnc-014: client_type_map and initialize override tests --
 
     /// Helper: run MCP initialize handshake over in-memory duplex transport.
