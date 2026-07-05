@@ -1,8 +1,8 @@
 # Gate 3b Report: vnc-043
 
 > Gate: 3b (Code Review)
-> Date: 2026-07-05
-> Result: REWORKABLE FAIL
+> Date: 2026-07-05 (rework iteration 1 re-validated)
+> Result: PASS
 
 ## Summary
 
@@ -14,7 +14,9 @@
 | 4. Test case alignment | PASS | Every risk-driven scenario in the test plan has a corresponding test; R-06 depth>1 sweep + R-10 wire = 3c |
 | 5. Code quality | PASS* | Compiles clean; no stubs/todo/unsafe; no `.unwrap()` in non-test. *Pre-existing >500-line files (see WARN) |
 | 6. Security | PASS | Doc-only + read-path; no secrets, no new input surface, no path/command injection, no deser change |
-| 7. Knowledge stewardship | FAIL | Wave-1 implementer (dispatch + ordering + tests, dbee4c7e) left NO agent report → missing stewardship block |
+| 7. Knowledge stewardship | PASS | Rework f0983673: wave-1 report now present with `## Knowledge Stewardship` (Queried context_briefing/context_get → ADR-001/003, lessons #4562/#4479; Stored #5456) |
+
+**Rework iteration 1 (commit f0983673) — re-validated 2026-07-05:** all three narrowed items confirmed. (1) `agents/vnc-043-agent-3-subgraph-depth1-dispatch-report.md` now exists with a proper stewardship block (Queried evidence + Stored #5456). (2) crt-057 `build_report` reflow reverted — tools.rs feature diff vs merge-base is exactly 3 intended hunks (description const @91, impl attr @3959, test assertions @6248); no `build_report` in the diff. (3) No code drift — `cargo test -p unimatrix-server --lib` = 4373 passed / 0 failed / 1 ignored (incl. #869 byte-equality guard). Gate result flips REWORKABLE FAIL → PASS.
 
 Build: `cargo build -p unimatrix-server` clean. Tests: `cargo test -p unimatrix-server --lib` = 4373 passed, 0 failed, 1 ignored. Clippy: `-p unimatrix-server --all-targets` no warnings. #869 byte-equality guard GREEN.
 
@@ -59,19 +61,22 @@ Risk-to-test mapping verified against `test-plan/subgraph-depth1-dispatch.md` an
 ### 6. Security — PASS
 Change is doc text + a read-path early-return + a pure sort. No secrets, no new external input surface (validation runs before dispatch, unchanged), no file/path/command handling, no serialization change. `subgraph_via_db` was already the cold-start path — promoting it to the default read path introduces no new sink.
 
-### 7. Knowledge stewardship — FAIL (REWORKABLE)
+### 7. Knowledge stewardship — PASS (was REWORKABLE FAIL; fixed in f0983673)
+**Rework resolved.** `agents/vnc-043-agent-3-subgraph-depth1-dispatch-report.md` now exists with a `## Knowledge Stewardship` block: `Queried:` `context_briefing` + `context_get` surfacing ADR-001 vnc-043 (#5448), ADR-003 vnc-043 (#5450), lesson #4562 (`use_fallback` lock guard), ADR-005 vnc-018 (#4479); `Stored:` entry #5456 (pattern — cached-read→live-SQL dispatch breaks in-memory graph fixtures). Deviations: none declared. Original finding below retained for provenance.
+
+**Original finding (superseded):**
 `product/features/vnc-043/agents/` contains only two reports:
 - `vnc-043-agent-1-architect-report.md` (design phase) — has a stewardship-equivalent decisions/edges block.
 - `vnc-043-agent-4-doc-surfaces-report.md` (wave-2 rust-dev) — has a proper `## Knowledge Stewardship` block (Queried #5449/#4479; Stored #5457).
 
 **Missing:** the wave-1 implementer that produced commit `dbee4c7e` (subgraph depth-1 dispatch + uniform ordering + 517 lines of BFS tests) left **no agent report at all**, hence no `## Knowledge Stewardship` block. Per the Gate 3b check-7 rule, a missing stewardship block is a REWORKABLE FAIL. The code itself is production-ready; this is a glass-box/process gap, not a code defect.
 
-## Rework Required
+## Rework Required — RESOLVED
 
-| Issue | Which Agent | What to Fix |
-|-------|-------------|-------------|
-| Wave-1 dispatch implementer left no agent report → no stewardship block | wave-1 uni-rust-dev | Write `product/features/vnc-043/agents/vnc-043-agent-{n}-report.md` with a `## Knowledge Stewardship` block: `Queried:` (evidence of /uni-query-patterns before implementing the dispatch/ordering) and `Stored:` or `nothing novel to store -- {reason}`. |
+| Issue | Which Agent | What to Fix | Status |
+|-------|-------------|-------------|--------|
+| Wave-1 dispatch implementer left no agent report → no stewardship block | wave-1 uni-rust-dev | Write agent report with `## Knowledge Stewardship` block (Queried + Stored/nothing-novel). | DONE (f0983673) — report present, Queried evidence + Stored #5456 |
 
 ## Notes (non-blocking)
-- Out-of-scope fmt churn rode into commit `6584e75a`: an unrelated crt-057 `build_report(...)` call in `tools.rs` (~:6892) was reflowed by `rustfmt --edition 2024`. Harmless (tests green) but should have been reverted before the wave commit per the fmt-churn discipline. Not a rework blocker.
+- Out-of-scope fmt churn (crt-057 `build_report(...)` reflow in `tools.rs`) — REVERTED in f0983673. Confirmed: tools.rs feature diff vs merge-base is now exactly 3 intended hunks (description const, impl attr, test assertions); no `build_report` in the diff.
 - Pre-existing 500-line violations (subgraph.rs 742, bfs_tests.rs 1271, tools.rs 13222) — track a module/test-module split in the planned follow-up GH issue.
