@@ -79,9 +79,10 @@ pub struct GraphParams {
     /// Anchor entry ID — required for all three modes.
     #[schemars(with = "Option<u64>")]
     pub id: Option<u64>,
-    /// chain: "forward"|"backward"|"both"; neighbors: "incoming"|"outgoing"|"both".
+    /// direction applies to chain, neighbors, and subgraph. chain: "forward"|"backward"|"both";
+    /// neighbors and subgraph: "incoming"|"outgoing"|"both".
     pub direction: Option<String>,
-    /// neighbors only: edge types to traverse (absent/[] = all except Supersedes).
+    /// neighbors, subgraph, and path: edge types to traverse (absent/[] = all except Supersedes).
     pub edge_types: Option<Vec<String>>,
     /// neighbors only: hop depth 1..=10 (default 1).
     pub depth: Option<u8>,

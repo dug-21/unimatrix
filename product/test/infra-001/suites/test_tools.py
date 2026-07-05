@@ -4281,6 +4281,64 @@ def test_graph_subgraph_mode_listed_in_unrecognized_error(server):
     assert_tool_error(resp, "subgraph")
 
 
+def test_graph_subgraph_depth1_ordering_deterministic(server):
+    """vnc-043 AC-14 (wire): depth-1 output is returned in a stable documented order —
+    nodes ascending by id, edges by the canonical (source_id, target_id, relation_type)
+    triple — and the DoD one-shot is byte-order-identical across two runs.
+
+    depth-1 reads live (ADR-001 vnc-043), so no tick wait: the fan-out is visible
+    immediately after context_edge. Edges are wired out of canonical order to prove the
+    result reflects the uniform sort (FR-9), not discovery/insertion order.
+
+    Fixture content strings are semantically distinct across domains so no pair trips the
+    server's 0.92-cosine near-duplicate collapse (which would return a shared id and make
+    context_edge self-referential).
+    """
+    seed = _store_subgraph_entry(server, "Volcanic ash dispersal over North Atlantic flight corridors")
+    b = _store_subgraph_entry(server, "Baroque counterpoint voice-leading rules in fugal composition")
+    c = _store_subgraph_entry(server, "Coral reef bleaching thresholds in the Pacific warm pool")
+    d = _store_subgraph_entry(server, "Cryptographic key rotation policy for payment gateway clusters")
+    # Wire A->{D,C,B} out of id/canonical order; two relation types on A->B.
+    server.context_edge("add", seed, "Supports", d, agent_id="human")
+    server.context_edge("add", seed, "Supports", c, agent_id="human")
+    server.context_edge("add", seed, "Informs", b, agent_id="human")
+    server.context_edge("add", seed, "Supports", b, agent_id="human")
+
+    def _run():
+        resp = server.context_graph(
+            "subgraph",
+            seed_ids=[seed],
+            max_depth=1,
+            direction="outgoing",
+            agent_id="human",
+            format="json",
+        )
+        result = assert_tool_success(resp)
+        return _json_subgraph.loads(result.text)
+
+    d1 = _run()
+    d2 = _run()
+
+    node_ids = [n["id"] for n in d1["nodes"]]
+    edge_triples = [
+        (e["source_id"], e["target_id"], e["relation_type"]) for e in d1["edges"]
+    ]
+    assert len(node_ids) >= 3 and len(edge_triples) >= 3, (
+        f"non-trivial fixture expected, got nodes={node_ids} edges={edge_triples}"
+    )
+    # Nodes strictly ascending by id.
+    assert node_ids == sorted(node_ids), f"nodes must be ascending by id, got: {node_ids}"
+    # Edges ascending by canonical triple.
+    assert edge_triples == sorted(edge_triples), (
+        f"edges must be ascending by (source_id, target_id, relation_type), got: {edge_triples}"
+    )
+    # Determinism: two runs are order-identical (NFR-4, no flake).
+    assert node_ids == [n["id"] for n in d2["nodes"]], "node order must be deterministic across runs"
+    assert edge_triples == [
+        (e["source_id"], e["target_id"], e["relation_type"]) for e in d2["edges"]
+    ], "edge order must be deterministic across runs"
+
+
 # === vnc-020: context_graph inverse/filter/path modes ===========================
 #
 # AC-27: inverse single type (R-10 deprecated exclusion guard)

@@ -91,10 +91,12 @@ pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowl
       (source_id → target_id). A direction=\"both\" traversal includes edges pointing TO \
       your seeds, but those edges are still labeled outgoing (i.e., they exist as A→seed \
       in storage). Use source_id / target_id to determine actual graph direction. \
-      subgraph mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt \
-      each tick (typically 30-60 seconds). Edges written within the current tick interval \
-      may not appear in the result. This is the same staleness contract as neighbors mode \
-      at depth>1. The depth_reached field reports the actual maximum BFS depth traversed; \
+      subgraph honors an edge_types filter and a direction (incoming/outgoing/both) filter \
+      during BFS traversal. \
+      subgraph max_depth=1 queries the live database and reflects all committed writes \
+      immediately. subgraph max_depth>1 queries the in-memory graph cache, which may lag \
+      recent writes by up to one tick interval (typically 30-60 seconds). \
+      The depth_reached field reports the actual maximum BFS depth traversed; \
       truncated: true indicates the max_nodes cap was reached before BFS completed. \
       Seed IDs not present in the graph return an empty result — not an error. \
       Deprecated seeds and neighbors resolve to their active terminal by default (resolve_supersessions, default true; false for raw as-stored). max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
@@ -3954,10 +3956,12 @@ impl UnimatrixServer {
               (source_id → target_id). A direction=\"both\" traversal includes edges pointing TO \
               your seeds, but those edges are still labeled outgoing (i.e., they exist as A→seed \
               in storage). Use source_id / target_id to determine actual graph direction. \
-              subgraph mode uses the in-memory graph cache for BFS traversal. The cache is rebuilt \
-              each tick (typically 30-60 seconds). Edges written within the current tick interval \
-              may not appear in the result. This is the same staleness contract as neighbors mode \
-              at depth>1. The depth_reached field reports the actual maximum BFS depth traversed; \
+              subgraph honors an edge_types filter and a direction (incoming/outgoing/both) filter \
+              during BFS traversal. \
+              subgraph max_depth=1 queries the live database and reflects all committed writes \
+              immediately. subgraph max_depth>1 queries the in-memory graph cache, which may lag \
+              recent writes by up to one tick interval (typically 30-60 seconds). \
+              The depth_reached field reports the actual maximum BFS depth traversed; \
               truncated: true indicates the max_nodes cap was reached before BFS completed. \
               Seed IDs not present in the graph return an empty result — not an error. \
               Deprecated seeds and neighbors resolve to their active terminal by default (resolve_supersessions, default true; false for raw as-stored). max_nodes must be in range 1..=200; values above 200 are rejected with a validation error.\n\
@@ -6242,6 +6246,23 @@ mod tests {
         assert!(
             description.contains("values above 200 are rejected"),
             "description must state that max_nodes > 200 is rejected with a validation error"
+        );
+        // vnc-043 (#903): filter availability on subgraph (FR-3 / AC-13). The discoverable
+        // contract must state edge_types/direction ARE honored on subgraph (they ship since
+        // vnc-019; the docs previously mis-stated them as "neighbors only").
+        assert!(
+            description.contains("subgraph honors an edge_types filter and a direction"),
+            "AC-13: description must state edge_types/direction filters are honored on subgraph"
+        );
+        // vnc-043 (#903): depth-1-live / depth>1-cache staleness carve-out for subgraph
+        // (FR-4 / AC-09), parallel to the neighbors wording.
+        assert!(
+            description.contains("subgraph max_depth=1 queries the live database"),
+            "AC-09: description must state subgraph max_depth=1 reads live DB (all committed writes visible)"
+        );
+        assert!(
+            description.contains("subgraph max_depth>1 queries the in-memory graph cache"),
+            "AC-09: description must state subgraph max_depth>1 reads the tick-cache (lags recent writes)"
         );
         assert!(
             !description.contains("graph_rebuilt_at"),

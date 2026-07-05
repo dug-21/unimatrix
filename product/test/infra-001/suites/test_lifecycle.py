@@ -3435,6 +3435,141 @@ def test_graph_subgraph_truncation_depth_reached(server):
 
 
 # ───────────────────────────────────────────────────────────────────────────
+# vnc-043 (#903): subgraph depth-1 live read — write-then-read visibility with NO
+# tick wait, and realistic-fan-in truncation. Unlike the depth>1 tests above (which
+# tolerate tick-cache staleness), depth-1 routes through the live DB (ADR-001 vnc-043),
+# so a just-committed edge MUST be visible immediately.
+#
+# Fixture content strings are drawn from a pool of semantically distinct cross-domain
+# sentences so no pair trips the server's 0.92-cosine near-duplicate collapse (which would
+# return a shared id and make the cap→goal edge self-referential — see store_ops.rs
+# DUPLICATE_THRESHOLD). Near-identical strings collapse to one entry.
+# ───────────────────────────────────────────────────────────────────────────
+
+_SG_DISTINCT_SUBJECTS = [
+    "Volcanic ash dispersal patterns over North Atlantic flight corridors",
+    "Medieval manuscript illumination techniques using gold leaf and lapis",
+    "Quarterly amortization schedules for commercial real estate leases",
+    "Coral reef bleaching thresholds in the Pacific warm pool",
+    "Assembly-line torque calibration for electric vehicle drivetrains",
+    "Baroque counterpoint voice-leading rules in fugal composition",
+    "Sourdough fermentation kinetics at high-altitude bakeries",
+    "Neutrino oscillation measurements from deep-ice detectors",
+    "Municipal stormwater drainage capacity during monsoon season",
+    "Heirloom tomato grafting for disease-resistant rootstock",
+    "Submarine fiber-optic cable repair logistics in the Coral Sea",
+    "Renaissance fresco pigment degradation under ultraviolet light",
+    "Cryptographic key rotation policy for payment gateway clusters",
+    "Alpine glacier retreat surveys using terrestrial lidar",
+    "Championship chess endgame theory for rook-and-pawn positions",
+    "Antibiotic resistance gene transfer in wastewater biofilms",
+    "Vineyard frost mitigation with wind machines and sprinklers",
+    "Orbital debris tracking for low-earth satellite constellations",
+    "Jazz improvisation modal interchange over altered dominants",
+    "Tax treaty withholding rates for cross-border royalty income",
+    "Peregrine falcon nesting site selection on urban skyscrapers",
+    "Hydraulic fracturing proppant selection for shale formations",
+    "Byzantine mosaic tessellation geometry in domed apses",
+    "Container ship ballast water treatment for invasive species",
+    "Prosthetic limb myoelectric signal decoding algorithms",
+    "Rainforest canopy carbon flux measured by eddy covariance",
+    "Vintage locomotive boiler pressure certification standards",
+    "Ceramic glaze crystallization during slow kiln cooling",
+    "Desalination membrane fouling in Persian Gulf intake plants",
+    "Competitive freediving lung-packing physiology and safety",
+    "Terracotta army excavation preservation of lacquer coatings",
+    "Wind turbine blade ice-accretion aerodynamic penalties",
+    "Saffron harvest labor economics in highland Kashmir valleys",
+    "Quantum dot photoluminescence tuning by nanoparticle size",
+    "Antarctic subglacial lake microbial sampling protocols",
+]
+
+
+def test_graph_subgraph_depth1_write_then_read_visible(server):
+    """vnc-043 AC-07/AC-01/AC-11 (forward): store two entries, add an Advances edge, then
+    IMMEDIATELY read subgraph at max_depth=1 — the just-written edge and the source node
+    MUST be present with NO tick wait (depth-1 reads live per ADR-001 vnc-043). This is the
+    DoD one-shot capability-board read; existing subgraph wire tests do not write-then-read
+    at depth-1 and tolerate staleness, so this asserts the freshness the feature delivers.
+    """
+    goal = _store_lc_entry(server, _SG_DISTINCT_SUBJECTS[0])
+    cap = _store_lc_entry(server, _SG_DISTINCT_SUBJECTS[1])
+    # cap --Advances--> goal ; read incoming Advances on the goal seed.
+    server.context_edge("add", cap, "Advances", goal, agent_id="human")
+
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[goal],
+        max_depth=1,
+        direction="incoming",
+        edge_types=["Advances"],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_subgraph_lc.loads(result.text)
+
+    node_ids = {n["id"] for n in data.get("nodes", [])}
+    assert goal in node_ids, f"seed goal must be present, got: {node_ids}"
+    assert cap in node_ids, (
+        f"AC-01/AC-11: cap node written immediately before the call MUST be visible at "
+        f"depth-1 with no tick wait, got nodes: {node_ids}"
+    )
+    triples = [(e["source_id"], e["target_id"], e["relation_type"]) for e in data["edges"]]
+    assert (cap, goal, "Advances") in triples, (
+        f"AC-07: just-written cap--Advances-->goal edge MUST be visible live at depth-1, got: {triples}"
+    )
+    # All edge records keep canonical direction label.
+    for edge in data["edges"]:
+        assert edge.get("direction") == "outgoing", (
+            f"AC-06: canonical direction label must be 'outgoing', got: {edge.get('direction')}"
+        )
+
+
+def test_graph_subgraph_depth1_truncated_false_at_realistic_fanin(server):
+    """vnc-043 AC-15 (wire): a goal with >=30 incoming Advances capabilities — all present
+    at depth-1 and truncated == false (realistic fan-in fits under the default 200-node cap).
+    depth-1 reads live, so no tick wait masks the result.
+    """
+    goal = _store_lc_entry(server, _SG_DISTINCT_SUBJECTS[0])
+    fan_in = 30
+    assert len(_SG_DISTINCT_SUBJECTS) >= fan_in + 1, "need a distinct subject per fixture entry"
+    cap_ids = []
+    for i in range(fan_in):
+        # Subjects [1..=30] are cross-domain distinct → each clears the 0.92 dedup cutoff.
+        cap = _store_lc_entry(server, _SG_DISTINCT_SUBJECTS[i + 1])
+        cap_ids.append(cap)
+        server.context_edge("add", cap, "Advances", goal, agent_id="human")
+
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[goal],
+        max_depth=1,
+        direction="incoming",
+        edge_types=["Advances"],
+        agent_id="human",
+        format="json",
+    )
+    result = assert_tool_success(resp)
+    data = _json_subgraph_lc.loads(result.text)
+
+    assert data.get("truncated") is False, (
+        f"AC-15: {fan_in} incoming Advances fits under the 200-node cap; "
+        f"truncated must be False, got: {data.get('truncated')}"
+    )
+    edge_targets = [
+        (e["source_id"], e["target_id"]) for e in data["edges"] if e["relation_type"] == "Advances"
+    ]
+    assert len(edge_targets) == fan_in, (
+        f"AC-15: all {fan_in} Advances edges must be present at depth-1, got {len(edge_targets)}"
+    )
+    present_caps = {src for (src, tgt) in edge_targets if tgt == goal}
+    assert present_caps == set(cap_ids), (
+        f"AC-15: every capability must be present, missing: {set(cap_ids) - present_caps}"
+    )
+
+
+# ───────────────────────────────────────────────────────────────────────────
 # vnc-030 (#699): contractual cycle attribution — MCP-visible integration.
 #
 # The cycle_stamp wire field and the 3-site apply_stamp_to_row read are emitted

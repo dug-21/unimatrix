@@ -380,6 +380,47 @@ fn test_validate_inverse_resolve_supersessions_false_also_rejected() {
 }
 
 // -----------------------------------------------------------------------
+// vnc-043 (#903): schemars field-doc presence check. The `direction` and `edge_types`
+// GraphParams field docs are single-source (schemars derive, no mirror) and are NOT
+// covered by the tools.rs byte-equality guard, so verify them explicitly against the
+// generated JSON schema — the surface an agent actually reads (R-07 / AC-13).
+// -----------------------------------------------------------------------
+
+#[test]
+fn test_graphparams_schemars_docs_state_subgraph_applies() {
+    let schema = schemars::schema_for!(GraphParams);
+    let json = serde_json::to_value(&schema).expect("GraphParams schema serializes to JSON");
+    let props = json
+        .get("properties")
+        .and_then(|p| p.as_object())
+        .expect("GraphParams schema has a properties object");
+
+    let direction_desc = props
+        .get("direction")
+        .and_then(|f| f.get("description"))
+        .and_then(|d| d.as_str())
+        .expect("direction field has a schema description");
+    assert!(
+        direction_desc.contains("subgraph"),
+        "AC-13: direction schemars doc must state it applies to subgraph; got: {direction_desc}"
+    );
+
+    let edge_types_desc = props
+        .get("edge_types")
+        .and_then(|f| f.get("description"))
+        .and_then(|d| d.as_str())
+        .expect("edge_types field has a schema description");
+    assert!(
+        edge_types_desc.contains("subgraph"),
+        "AC-13: edge_types schemars doc must state it applies to subgraph; got: {edge_types_desc}"
+    );
+    assert!(
+        !edge_types_desc.contains("neighbors only"),
+        "AC-13: edge_types schemars doc must no longer read 'neighbors only'; got: {edge_types_desc}"
+    );
+}
+
+// -----------------------------------------------------------------------
 // vnc-019 tests (graph_read.rs changes: subgraph mode, max_depth, SubgraphResponse)
 // Declared in a child module to keep this file under 500 lines (500-line rule).
 // -----------------------------------------------------------------------
