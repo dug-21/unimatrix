@@ -11,16 +11,14 @@
 
 mod inserters;
 
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
 
-use sqlx::Row;
 use sqlx::SqlitePool;
 use sqlx::sqlite::SqliteConnection;
-use unimatrix_store::{AuditEvent, Outcome, SqlxStore, compute_content_hash};
+use unimatrix_store::{AuditEvent, Outcome, SqlxStore};
 
 use crate::format::{ExportHeader, ExportRow};
 use crate::project;
@@ -391,51 +389,39 @@ async fn ingest_rows(
 
 /// Validate content hashes and chain integrity for all imported entries.
 ///
-/// Content hash: recompute via `compute_content_hash()` and compare.
-/// Chain integrity: verify `previous_hash` references an existing entry's hash.
+/// Thin adapter over the single integrity oracle
+/// [`unimatrix_store::chain_verify::verify_entries`] (ADR-001 — one oracle, no
+/// second/divergent implementation). Loads ALL entries from the **in-flight**
+/// `BEGIN IMMEDIATE` transaction connection so the just-inserted, uncommitted
+/// rows are visible; a pooled/committed read would see zero rows mid-import.
+///
+/// No status filter and the full `ENTRY_COLUMNS` set: `entry_from_row` needs
+/// `supersedes`/`version`/`status` to reconstruct each `EntryRecord`, and
+/// Deprecated predecessors (superseded originals) must load so a chained
+/// successor's `supersedes` target is present in the corpus (R-02).
+///
+/// The core recomputes each `content_hash` AND checks every populated chain link
+/// against its `supersedes` predecessor — a strictly stronger check than the old
+/// "previous_hash references *some* known hash" existence test (R-04). Empty
+/// `previous_hash` is skipped as unverifiable-legacy (preserved from the prior
+/// behavior). On a non-clean report we return `Err`; the caller ROLLBACKs before
+/// COMMIT, so a tampered corpus is never committed.
 async fn validate_hashes(conn: &mut SqliteConnection) -> Result<(), Box<dyn std::error::Error>> {
-    let mut errors: Vec<String> = Vec::new();
+    let sql = format!(
+        "SELECT {} FROM entries ORDER BY id",
+        unimatrix_store::read::ENTRY_COLUMNS
+    );
+    let rows = sqlx::query(&sql).fetch_all(&mut *conn).await?;
 
-    let rows = sqlx::query(
-        "SELECT id, title, content, content_hash, previous_hash FROM entries ORDER BY id",
-    )
-    .fetch_all(&mut *conn)
-    .await?;
+    let entries = rows
+        .iter()
+        .map(unimatrix_store::read::entry_from_row)
+        .collect::<Result<Vec<_>, _>>()?;
 
-    let mut known_hashes: HashSet<String> = HashSet::new();
-    let mut entries_to_check: Vec<(i64, String, String, String, String)> = Vec::new();
+    let report = unimatrix_store::chain_verify::verify_entries(&entries);
 
-    for row in rows {
-        let id: i64 = row.get::<i64, _>(0);
-        let title: String = row.get::<String, _>(1);
-        let content: String = row.get::<String, _>(2);
-        let content_hash: String = row.get::<String, _>(3);
-        let previous_hash: String = row.get::<String, _>(4);
-
-        known_hashes.insert(content_hash.clone());
-        entries_to_check.push((id, title, content, content_hash, previous_hash));
-    }
-
-    for (id, title, content, stored_hash, previous_hash) in &entries_to_check {
-        // Content hash validation
-        let computed = compute_content_hash(title, content);
-        if computed != *stored_hash {
-            errors.push(format!(
-                "content hash mismatch for entry {id}: computed={computed}, stored={stored_hash}"
-            ));
-        }
-
-        // Chain integrity validation
-        if !previous_hash.is_empty() && !known_hashes.contains(previous_hash) {
-            errors.push(format!(
-                "broken hash chain for entry {id}: previous_hash '{previous_hash}' not found in imported entries"
-            ));
-        }
-    }
-
-    if !errors.is_empty() {
-        let msg = format!("hash validation failed:\n{}", errors.join("\n"));
-        return Err(msg.into());
+    if !report.is_clean() {
+        return Err(report.describe().into());
     }
 
     Ok(())
@@ -512,6 +498,7 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::TempDir;
+    use unimatrix_store::compute_content_hash;
     // --- Helpers ---
 
     /// Current schema version constant — must match CURRENT_SCHEMA_VERSION in
@@ -554,8 +541,27 @@ mod tests {
         .to_string()
     }
 
-    /// Build a minimal valid entry JSON line with correct content_hash.
+    /// Build a minimal valid entry JSON line with correct content_hash, no
+    /// supersedes edge (genesis / standalone). `version` = 1.
     fn make_entry_line(id: i64, title: &str, content: &str, previous_hash: &str) -> String {
+        make_entry_line_full(id, title, content, previous_hash, None, 1, 0)
+    }
+
+    /// Build an entry JSON line with full control over the chaining fields.
+    ///
+    /// `supersedes`/`version`/`status` let tests model real correction chains
+    /// (a populated `previous_hash` is always co-produced with a `supersedes`
+    /// edge on the production write path — nxs-014). `content_hash` is always
+    /// computed correctly unless a caller mutates the emitted JSON afterward.
+    fn make_entry_line_full(
+        id: i64,
+        title: &str,
+        content: &str,
+        previous_hash: &str,
+        supersedes: Option<i64>,
+        version: i64,
+        status: i64,
+    ) -> String {
         let hash = compute_content_hash(title, content);
         serde_json::json!({
             "_table": "entries",
@@ -565,13 +571,13 @@ mod tests {
             "topic": "testing",
             "category": "pattern",
             "source": "test",
-            "status": 0,
+            "status": status,
             "confidence": 0.5,
             "created_at": 1700000000i64,
             "updated_at": 1700000001i64,
             "last_accessed_at": 0,
             "access_count": 0,
-            "supersedes": null,
+            "supersedes": supersedes,
             "superseded_by": null,
             "correction_count": 0,
             "embedding_dim": 384,
@@ -579,7 +585,7 @@ mod tests {
             "modified_by": "agent",
             "content_hash": hash,
             "previous_hash": previous_hash,
-            "version": 1,
+            "version": version,
             "feature_cycle": "",
             "trust_source": "direct",
             "helpful_count": 0,
@@ -702,6 +708,9 @@ mod tests {
         let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
+        // R-04: a populated previous_hash requires a supersedes edge (the write
+        // path co-populates both). Entry 2 supersedes entry 1 with
+        // previous_hash = entry 1's content_hash → clean chain.
         let hash_a = compute_content_hash("Entry A", "Content A");
         let output_dir = TempDir::new().unwrap();
         let lines = vec![
@@ -709,7 +718,7 @@ mod tests {
             make_counter_line("schema_version", sv),
             make_counter_line("next_entry_id", 3),
             make_entry_line(1, "Entry A", "Content A", ""),
-            make_entry_line(2, "Entry B", "Content B", &hash_a),
+            make_entry_line_full(2, "Entry B", "Content B", &hash_a, Some(1), 2, 0),
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
@@ -728,12 +737,18 @@ mod tests {
         let (project_dir, base_dir) = make_project_dir();
         let sv = CURRENT_SCHEMA_VERSION;
 
+        // R-04: entry 2 carries a real supersedes edge to entry 1 but its
+        // previous_hash does NOT match entry 1's content_hash → ChainLinkMismatch
+        // on the authoritative edge (the old existence check would have flagged
+        // this only as "unknown hash"; the stronger edge-keyed check names the
+        // predecessor and the mismatched value).
         let output_dir = TempDir::new().unwrap();
         let lines = vec![
-            make_header(sv, 1, 1),
+            make_header(sv, 1, 2),
             make_counter_line("schema_version", sv),
-            make_counter_line("next_entry_id", 2),
-            make_entry_line(1, "Entry A", "Content A", "nonexistent_hash"),
+            make_counter_line("next_entry_id", 3),
+            make_entry_line(1, "Entry A", "Content A", ""),
+            make_entry_line_full(2, "Entry B", "Content B", "nonexistent_hash", Some(1), 2, 0),
         ];
         let input_path = write_jsonl(&output_dir, &lines);
 
@@ -746,7 +761,7 @@ mod tests {
         );
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
-        assert!(err.contains("1"), "should mention entry ID: {err}");
+        assert!(err.contains("entry 2"), "should mention entry ID: {err}");
         assert!(
             err.contains("nonexistent_hash"),
             "should mention broken hash: {err}"
@@ -1466,7 +1481,10 @@ mod tests {
                 .unwrap()
                 .db_path;
 
-        let hash_a = compute_content_hash("Entry A", "Content A");
+        // Both entries are genesis (previous_hash = ""): this test asserts a
+        // derived graph_edges count, so it must not introduce a supersedes edge
+        // (which the store materializes as a Supersedes graph_edge). Chain
+        // verification of populated links is covered by the dedicated chain tests.
         let output_dir = TempDir::new().unwrap();
         let lines = vec![
             make_header(sv, 2, 2),
@@ -1474,7 +1492,7 @@ mod tests {
             make_counter_line("next_entry_id", 3),
             make_counter_line("next_audit_id", 2),
             make_entry_line(1, "Entry A", "Content A", ""),
-            make_entry_line(2, "Entry B", "Content B", &hash_a),
+            make_entry_line(2, "Entry B", "Content B", ""),
             serde_json::json!({"_table": "entry_tags", "entry_id": 1, "tag": "test"}).to_string(),
             serde_json::json!({"_table": "co_access", "entry_id_a": 1, "entry_id_b": 2, "count": 1, "last_updated": 1700000000i64}).to_string(),
             serde_json::json!({"_table": "feature_entries", "feature_id": "nxs-012", "entry_id": 1}).to_string(),
@@ -1700,6 +1718,417 @@ mod tests {
         assert!(
             detail.contains("1 cycle_events"),
             "provenance should mention 1 cycle_events: {detail}"
+        );
+    }
+
+    // --- nxs-014: single-oracle chain verification via the import path ---
+    //
+    // `validate_hashes` is now a thin adapter over
+    // `unimatrix_store::chain_verify::verify_entries` (ADR-001). The tests below
+    // prove BOTH oracle halves run on the import path (content-hash AND the
+    // supersedes-keyed chain link), that the load reads ALL statuses from the
+    // in-flight transaction (R-02), atomic ROLLBACK on tamper (R-05), and
+    // lossless round-trip of `previous_hash`/`version` (R-07).
+
+    /// AND-half 1 (AC-04, R-04): every content_hash is correct, but one
+    /// successor's `previous_hash` does not match its `supersedes` predecessor's
+    /// `content_hash`. The old existence check ("references *some* known hash")
+    /// would have accepted a value that happened to collide with any known hash;
+    /// the stronger edge-keyed check rejects it. Import must fail.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_import_rejects_broken_link_with_good_content_hash() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+
+        let hash_a = compute_content_hash("Entry A", "Content A");
+        // A THIRD entry's hash — a "known hash" in the corpus that is NOT entry
+        // 2's true predecessor. The old check would pass entry 2 pointing here.
+        let hash_c = compute_content_hash("Entry C", "Content C");
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 3),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 4),
+            make_entry_line(1, "Entry A", "Content A", ""),
+            // entry 2 supersedes entry 1 but links to entry 3's hash (wrong edge).
+            make_entry_line_full(2, "Entry B", "Content B", &hash_c, Some(1), 2, 0),
+            make_entry_line(3, "Entry C", "Content C", ""),
+        ];
+        // Content hashes are all internally correct — only the link is wrong.
+        let _ = hash_a;
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(
+            result.is_err(),
+            "broken supersedes link must fail even with a colliding known hash: {result:?}"
+        );
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("entry 2"), "should name entry 2: {err}");
+        assert!(
+            err.contains("chain link mismatch"),
+            "should be a chain-link violation: {err}"
+        );
+    }
+
+    /// AND-half 2 (AC-04): chain links are internally consistent, but one
+    /// entry's `content` was mutated so its stored `content_hash` is stale.
+    /// Import must fail (content-hash recompute half runs). Together with the
+    /// test above this proves the single oracle runs BOTH halves on import.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_import_rejects_mutated_content_with_good_link() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+
+        // Entry 1 has a valid content_hash for its title/content, then we mutate
+        // ONLY the content field so the stored hash is stale.
+        let mut entry_json: serde_json::Value =
+            serde_json::from_str(&make_entry_line(1, "Title", "Content", "")).unwrap();
+        entry_json["content"] = serde_json::Value::String("mutated content".to_string());
+
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 1),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            entry_json.to_string(),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_err(), "mutated content must fail import");
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("entry 1"), "should name entry 1: {err}");
+        assert!(
+            err.contains("content hash mismatch"),
+            "should be a content-hash violation: {err}"
+        );
+    }
+
+    /// R-02 (import half): predecessors are `Deprecated` (superseded); the
+    /// successor is `Active` with a populated `previous_hash`. Import must
+    /// SUCCEED — proving the import loader reads ALL statuses from the in-flight
+    /// `BEGIN IMMEDIATE` connection. If it filtered to `Active`, entry 1 would be
+    /// absent from the corpus and entry 2 would raise `MissingPredecessor`.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_import_deprecated_predecessor_verifies_clean() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let hash_a = compute_content_hash("Entry A", "Content A");
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 2),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 3),
+            // Predecessor is Deprecated (status = 1), genesis link.
+            make_entry_line_full(1, "Entry A", "Content A", "", None, 1, 1),
+            // Active successor supersedes the Deprecated predecessor.
+            make_entry_line_full(2, "Entry B", "Content B", &hash_a, Some(1), 2, 0),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(
+            result.is_ok(),
+            "Deprecated predecessor must load and verify clean: {result:?}"
+        );
+
+        // Sanity: both rows are present with the predecessor still Deprecated.
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+        let status_1: i64 = sqlx::query_scalar::<_, i64>("SELECT status FROM entries WHERE id = 1")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(status_1, 1, "predecessor must remain Deprecated");
+    }
+
+    /// R-05: a tampered corpus must ROLLBACK, proven by DB state — the
+    /// post-failure row count equals the pre-import count (fresh DB → 0), so NO
+    /// rows from the failed import remain. `ingest_rows` inserts the rows inside
+    /// the transaction BEFORE `validate_hashes` runs, so a non-empty count would
+    /// mean the ROLLBACK branch was skipped.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_import_tampered_corpus_rollback_no_rows() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        // Broken link: entry 2 supersedes entry 1 but previous_hash is wrong.
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 2),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 3),
+            make_entry_line(1, "Entry A", "Content A", ""),
+            make_entry_line_full(2, "Entry B", "Content B", "tampered_hash", Some(1), 2, 0),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_err(), "tampered corpus must fail import");
+
+        // ROLLBACK proven by post-failure DB state.
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+        let count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM entries")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            count, 0,
+            "no rows from the failed import may remain after ROLLBACK"
+        );
+    }
+
+    /// R-05 positive control: a clean corrected corpus COMMITs, and the rows are
+    /// present with intact `previous_hash`/`version` (read back from the DB).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_import_clean_corrected_corpus_commits() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let hash_a = compute_content_hash("Entry A", "Content A");
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 2),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 3),
+            make_entry_line_full(1, "Entry A", "Content A", "", None, 1, 1),
+            make_entry_line_full(2, "Entry B", "Content B", &hash_a, Some(1), 2, 0),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(
+            result.is_ok(),
+            "clean corrected corpus must commit: {result:?}"
+        );
+
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+        let (prev, version): (String, i64) = sqlx::query_as::<_, (String, i64)>(
+            "SELECT previous_hash, version FROM entries WHERE id = 2",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        assert_eq!(prev, hash_a, "previous_hash must persist intact");
+        assert_eq!(version, 2, "version must persist intact");
+    }
+
+    /// R-07 (AC-05): a corpus mixing a legacy entry (`previous_hash == ""`) and a
+    /// multi-hop corrected chain round-trips losslessly. Every `previous_hash`
+    /// and `version` is byte-identical after import (empty stays empty, populated
+    /// stays populated, version not reset), and import-time chain-verify PASSES.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_roundtrip_multihop_including_legacy_byte_identical() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let hash_1 = compute_content_hash("Entry 1", "Content 1");
+        let hash_2 = compute_content_hash("Entry 2", "Content 2");
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 4),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 5),
+            // Legacy genesis (empty previous_hash).
+            make_entry_line(10, "Legacy", "Legacy content", ""),
+            // Multi-hop chain 1 -> 2 -> 3.
+            make_entry_line_full(1, "Entry 1", "Content 1", "", None, 1, 1),
+            make_entry_line_full(2, "Entry 2", "Content 2", &hash_1, Some(1), 2, 1),
+            make_entry_line_full(3, "Entry 3", "Content 3", &hash_2, Some(2), 3, 0),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(
+            result.is_ok(),
+            "mixed legacy + multi-hop chain must verify clean: {result:?}"
+        );
+
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+        let read_prev_ver = |id: i64| {
+            let pool = pool.clone();
+            async move {
+                sqlx::query_as::<_, (String, i64)>(
+                    "SELECT previous_hash, version FROM entries WHERE id = ?",
+                )
+                .bind(id)
+                .fetch_one(&pool)
+                .await
+                .unwrap()
+            }
+        };
+
+        // Legacy: empty stays empty, version stays 1 (not coerced to NULL).
+        let (p10, v10) = read_prev_ver(10).await;
+        assert_eq!(p10, "", "legacy previous_hash must stay empty");
+        assert_eq!(v10, 1);
+        // Chain: populated stays byte-identical, versions preserved.
+        let (p1, v1) = read_prev_ver(1).await;
+        assert_eq!(p1, "");
+        assert_eq!(v1, 1);
+        let (p2, v2) = read_prev_ver(2).await;
+        assert_eq!(p2, hash_1, "hop-2 previous_hash must be byte-identical");
+        assert_eq!(v2, 2);
+        let (p3, v3) = read_prev_ver(3).await;
+        assert_eq!(p3, hash_2, "hop-3 previous_hash must be byte-identical");
+        assert_eq!(v3, 3);
+    }
+
+    /// R-07 boundary: a large `version` (near the `u32` range) survives the
+    /// `u32` <-> `i64` bind round-trip without truncation.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_roundtrip_version_large_value_survives_u32_i64_bind() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let big_version = u32::MAX as i64; // 4_294_967_295
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 1),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            make_entry_line_full(1, "Big", "Big version content", "", None, big_version, 0),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(
+            result.is_ok(),
+            "large version import must succeed: {result:?}"
+        );
+
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+        let version: i64 = sqlx::query_scalar::<_, i64>("SELECT version FROM entries WHERE id = 1")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            version, big_version,
+            "large version must survive round-trip"
+        );
+    }
+
+    /// R-07 paired negative (AC-05): after a clean round-trip, mutate a
+    /// *superseded* (Deprecated) predecessor's content and re-run the import
+    /// oracle directly on the committed DB. Verify must be non-clean AND name the
+    /// offending `entry_id` — proving the legacy skip is scoped to empty links,
+    /// not a blanket pass, and that the Deprecated predecessor IS checked.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_roundtrip_then_mutation_fails_loud() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let hash_a = compute_content_hash("Entry A", "Content A");
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 2),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 3),
+            make_entry_line_full(1, "Entry A", "Content A", "", None, 1, 1),
+            make_entry_line_full(2, "Entry B", "Content B", &hash_a, Some(1), 2, 0),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+        run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            false,
+            false,
+            base_dir.path(),
+        )
+        .expect("clean round-trip must import");
+
+        // Mutate the superseded predecessor's content (stored content_hash now stale).
+        let store = open_test_store_at(&db_path).await;
+        let pool = store.write_pool_server();
+        sqlx::query("UPDATE entries SET content = 'tampered' WHERE id = 1")
+            .execute(pool)
+            .await
+            .unwrap();
+
+        // Re-run the SAME oracle the import path uses, on the committed DB.
+        let mut conn = pool.acquire().await.unwrap();
+        let verify = validate_hashes(&mut conn).await;
+        assert!(verify.is_err(), "content mutation must be caught");
+        let err = verify.unwrap_err().to_string();
+        assert!(
+            err.contains("entry 1"),
+            "must name the mutated predecessor entry 1: {err}"
+        );
+        assert!(
+            err.contains("content hash mismatch"),
+            "must report a content-hash violation: {err}"
         );
     }
 }

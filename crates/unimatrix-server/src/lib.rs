@@ -36,6 +36,7 @@ pub mod server;
 pub mod services;
 pub mod snapshot;
 pub mod uds;
+pub mod verify;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod model_guard;
