@@ -356,12 +356,27 @@ pub(crate) async fn delete_agent_edges_for_entry(
 
     // In-memory marshal of the RETURNING rows (the only loop; no per-edge DB
     // round-trip). ids are stored as i64; cast back to u64.
+    //
+    // Fallible `try_get` (not panicking `get`): this function's contract is
+    // non-fatal — the caller maps an `Err` to `edges_removed = None` + `warn!`
+    // and never panics. A future schema change making a RETURNING column
+    // nullable must therefore route through `Err`, not a post-commit panic.
+    // A marshal fault reuses the same query-error mapping (StoreError::Database).
     let mut removed = Vec::with_capacity(rows.len());
     for row in rows {
+        let source_id: i64 = row
+            .try_get("source_id")
+            .map_err(|e| EdgeDeleteError::StoreError(StoreError::Database(e.into())))?;
+        let target_id: i64 = row
+            .try_get("target_id")
+            .map_err(|e| EdgeDeleteError::StoreError(StoreError::Database(e.into())))?;
+        let relation_type: String = row
+            .try_get("relation_type")
+            .map_err(|e| EdgeDeleteError::StoreError(StoreError::Database(e.into())))?;
         removed.push(RemovedEdge {
-            source_id: row.get::<i64, _>("source_id") as u64,
-            target_id: row.get::<i64, _>("target_id") as u64,
-            relation_type: row.get::<String, _>("relation_type"),
+            source_id: source_id as u64,
+            target_id: target_id as u64,
+            relation_type,
         });
     }
 
