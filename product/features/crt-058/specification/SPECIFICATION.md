@@ -23,7 +23,7 @@ Definitions of ubiquitous terms used throughout this specification and downstrea
 - **Eager delete** — the new synchronous statement added by this feature at `context_deprecate`.
 - **Tick / EveryTick compaction** — `run_orphaned_edge_compaction` (`background.rs:805`), Phase 2 blanket delete `DELETE FROM graph_edges WHERE source_id NOT IN (Active) OR target_id NOT IN (Active)`. Runs ~every 900s over all sources. The backstop.
 - **eager ⊆ tick** — the load-bearing invariant: the set of edges the eager delete removes for a deprecated entry is a strict subset of the set the tick would remove for that same (now non-Active) entry. The eager path can only ever do a subset of the backstop's work, earlier.
-- **`edges_removed`** — an `Option<u64>` count of rows deleted by the eager statement (`rows_affected()`), threaded to the caller and audit record. The `Option` encodes ran-vs-failed: `None` = the delete failed or did not run (advisory omitted/suppressed); `Some(n)` = the delete ran and removed `n` edges, including `Some(0)` when it ran and found nothing (advisory renders a literal `0`).
+- **`edges_removed`** — an `Option<u64>` count of rows deleted by the eager statement (`tuples.len()`, the length of the `Vec<RemovedEdge>` returned by the single `DELETE … RETURNING`; the same tuples are reused for the audit record per ADR-002), threaded to the caller and audit record. The `Option` encodes ran-vs-failed: `None` = the delete failed or did not run (advisory omitted/suppressed); `Some(n)` = the delete ran and removed `n` edges, including `Some(0)` when it ran and found nothing (advisory renders a literal `0`).
 
 ## Functional Requirements
 
