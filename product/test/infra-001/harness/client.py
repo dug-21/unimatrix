@@ -769,9 +769,14 @@ class UnimatrixClient:
         max_edge_count: int | None = None,
         agent_id: str | None = None,
         format: str | None = None,
+        # vnc-044: verbosity axis (summary|full); default summary
+        detail: str | None = None,
         timeout: float | None = None,
     ) -> MCPResponse:
-        """vnc-018/vnc-019/vnc-020: 14th MCP tool — graph read modes (chain, current, neighbors, subgraph, inverse, filter, path)."""
+        """vnc-018/vnc-019/vnc-020: 14th MCP tool — graph read modes (chain, current, neighbors, subgraph, inverse, filter, path).
+
+        vnc-044: `format` = serialization axis (json|markdown); `detail` = verbosity axis (summary|full).
+        """
         args: dict[str, Any] = {"mode": mode}
         if id is not None:
             args["id"] = id
@@ -813,4 +818,6 @@ class UnimatrixClient:
             args["agent_id"] = agent_id
         if format is not None:
             args["format"] = format
+        if detail is not None:
+            args["detail"] = detail
         return self.call_tool("context_graph", args, timeout=timeout)

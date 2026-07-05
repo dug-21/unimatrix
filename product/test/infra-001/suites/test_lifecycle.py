@@ -3331,6 +3331,8 @@ def test_graph_subgraph_topology_traversal(server):
         max_depth=2,
         agent_id="human",
         format="json",
+        # vnc-044: default flipped to summary; this test asserts full-EdgeRecord direction labels.
+        detail="full",
     )
     result = assert_tool_success(resp)
     data = _json_subgraph_lc.loads(result.text)
@@ -3505,6 +3507,8 @@ def test_graph_subgraph_depth1_write_then_read_visible(server):
         edge_types=["Advances"],
         agent_id="human",
         format="json",
+        # vnc-044: default flipped to summary; this test asserts full-EdgeRecord direction labels.
+        detail="full",
     )
     result = assert_tool_success(resp)
     data = _json_subgraph_lc.loads(result.text)
@@ -5355,3 +5359,211 @@ def test_deprecate_eager_failure_is_non_fatal(server):
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         finally:
             conn.close()
+
+
+# === vnc-044: per-mode summary projection + full golden + #913 size win ==================
+#
+# The Critical through-wire proofs (R-03 five node-bearing modes, R-04 full byte-equality,
+# AC-06 #913 size win). subgraph/current/chain/inverse/filter each project nodes to the
+# lean 8-field summary while preserving their own envelope metadata. detail=full stays
+# byte-stable and complete. Ref ACCEPTANCE-MAP AC-04/AC-05/AC-06.
+
+import json as _json_v44lc
+
+_V44_NODE_KEYS = {
+    "id", "title", "category", "tags", "status",
+    "confidence", "content_preview", "content_truncated",
+}
+
+
+def _v44_big(tag):
+    """>256B body so content_truncated is exercised through the wire."""
+    return f"{tag} " + ("payload body segment distinct " * 15)
+
+
+def _assert_summary_nodes(nodes):
+    for node in nodes:
+        assert set(node.keys()) == _V44_NODE_KEYS, (
+            f"node must be the lean 8-field summary, got: {sorted(node.keys())}"
+        )
+        assert "content" not in node, "summary node must not carry full content"
+
+
+# --- AC-05 / R-03: default-summary + explicit-summary per node-bearing mode ---------------
+
+def test_graph_subgraph_default_is_summary_preserves_metadata(server):
+    """R-03: subgraph default == detail=summary; nodes lean; truncated/seed_ids/depth_reached
+    preserved through the summary projection (depth-1 live read)."""
+    src = _store_lc_entry(server, _v44_big("v44-sg-src alpha"))
+    dst = _store_lc_entry(server, _v44_big("v44-sg-dst beta"))
+    server.context_edge("add", src, "Supports", dst, agent_id="human")
+
+    kw = dict(seed_ids=[src], max_depth=1, direction="outgoing", edge_types=["Supports"],
+              agent_id="human", format="json")
+    default_text = assert_tool_success(server.context_graph("subgraph", **kw)).text
+    summary_text = assert_tool_success(server.context_graph("subgraph", detail="summary", **kw)).text
+    assert default_text == summary_text, "subgraph default must equal detail=summary"
+
+    data = _json_v44lc.loads(default_text)
+    assert src in {n["id"] for n in data["nodes"]}, "seed node must be present at depth-1 live"
+    _assert_summary_nodes(data["nodes"])
+    for meta in ("truncated", "seed_ids", "depth_reached"):
+        assert meta in data, f"subgraph summary must preserve envelope metadata '{meta}'"
+    assert data["seed_ids"] == [src]
+
+
+def test_graph_chain_default_is_summary_preserves_metadata(server):
+    """R-03: chain default == detail=summary; entries lean; truncated struct preserved."""
+    big = _v44_big("v44-chain-node")
+    id_a = _store_lc_entry(server, f"{big} chain-alpha")
+    resp_b = server.context_correct(id_a, f"{big} chain-beta", agent_id="human", format="json")
+    id_b = extract_entry_id(resp_b)
+    resp_c = server.context_correct(id_b, f"{big} chain-gamma", agent_id="human", format="json")
+    id_c = extract_entry_id(resp_c)
+
+    default_text = assert_tool_success(server.context_graph("chain", id_b, agent_id="human", format="json")).text
+    summary_text = assert_tool_success(server.context_graph("chain", id_b, agent_id="human", format="json", detail="summary")).text
+    assert default_text == summary_text, "chain default must equal detail=summary"
+
+    data = _json_v44lc.loads(default_text)
+    _assert_summary_nodes(data["entries"])
+    assert "truncated" in data, "chain summary must preserve the truncated struct"
+    assert len(data["entries"]) == 3
+
+
+def test_graph_current_default_is_summary_single_node(server):
+    """R-03: current default == detail=summary; the envelope is a SINGLE projected node
+    object (not an array) — the shape trap."""
+    big = _v44_big("v44-current")
+    id_a = _store_lc_entry(server, f"{big} current-alpha-deprecated")
+    resp_b = server.context_correct(id_a, f"{big} current-beta-terminal", agent_id="human", format="json")
+    id_b = extract_entry_id(resp_b)
+
+    default_text = assert_tool_success(server.context_graph("current", id_a, agent_id="human", format="json")).text
+    summary_text = assert_tool_success(server.context_graph("current", id_a, agent_id="human", format="json", detail="summary")).text
+    assert default_text == summary_text, "current default must equal detail=summary"
+
+    data = _json_v44lc.loads(default_text)
+    assert isinstance(data["entry"], dict), "current summary 'entry' must be a single object, not an array"
+    assert set(data["entry"].keys()) == _V44_NODE_KEYS
+    assert data["entry"]["id"] == id_b, "current must resolve to the terminal active entry"
+
+
+def test_graph_inverse_default_is_summary_preserves_total(server):
+    """R-03: inverse default == detail=summary; entries lean; total_returned preserved."""
+    id_no_edge = _store_lc_entry(
+        server, "Volcanic ash dispersal over North Atlantic flight corridors " + _v44_big("inv1"),
+        topic="v44-inv", category="convention")
+    default_text = assert_tool_success(
+        server.context_graph("inverse", category="convention", missing_edge_types=["Cites"],
+                             agent_id="human", format="json")).text
+    summary_text = assert_tool_success(
+        server.context_graph("inverse", category="convention", missing_edge_types=["Cites"],
+                             agent_id="human", format="json", detail="summary")).text
+    assert default_text == summary_text, "inverse default must equal detail=summary"
+
+    data = _json_v44lc.loads(default_text)
+    assert "total_returned" in data, "inverse summary must preserve total_returned"
+    assert data["total_returned"] == len(data["entries"])
+    _assert_summary_nodes(data["entries"])
+    assert id_no_edge in {e["id"] for e in data["entries"]}
+
+
+def test_graph_filter_default_is_summary_preserves_total(server):
+    """R-03: filter default == detail=summary; entries lean; total_returned preserved."""
+    id_0 = _store_lc_entry(
+        server, "Event sourcing persists domain events as source of truth " + _v44_big("flt1"),
+        topic="v44-flt", category="decision")
+    kw = dict(category="decision", max_edge_count=0, edge_types=["Advances"],
+              agent_id="human", format="json")
+    default_text = assert_tool_success(server.context_graph("filter", **kw)).text
+    summary_text = assert_tool_success(server.context_graph("filter", detail="summary", **kw)).text
+    assert default_text == summary_text, "filter default must equal detail=summary"
+
+    data = _json_v44lc.loads(default_text)
+    assert "total_returned" in data, "filter summary must preserve total_returned"
+    _assert_summary_nodes(data["entries"])
+    assert id_0 in {e["id"] for e in data["entries"]}
+
+
+# --- AC-04 / R-04: detail=full byte-for-byte no-regression (golden) -----------------------
+#
+# A pre-vnc-044 binary capture is impractical inside the harness, so the documented fallback
+# (RISK-TEST-STRATEGY R-04 / test-plan graph_read.md) is used: assert the full arm parses to
+# the COMPLETE EntryRecord key set (content + hashes + timestamps present) and is byte-stable
+# across two identical runs. Method: complete-record + byte-stability, not pre-change golden.
+
+def test_graph_full_golden_chain_complete_and_stable(server):
+    """AC-04 / R-04: chain detail=full carries the complete EntryRecord and is byte-stable."""
+    big = _v44_big("v44-golden-chain")
+    id_a = _store_lc_entry(server, f"{big} golden-alpha")
+    resp_b = server.context_correct(id_a, f"{big} golden-beta", agent_id="human", format="json")
+    id_b = extract_entry_id(resp_b)
+
+    run1 = assert_tool_success(server.context_graph("chain", id_a, agent_id="human", format="json", detail="full")).text
+    run2 = assert_tool_success(server.context_graph("chain", id_a, agent_id="human", format="json", detail="full")).text
+    assert run1 == run2, "detail=full output must be byte-stable across identical runs"
+
+    data = _json_v44lc.loads(run1)
+    node = data["entries"][0]
+    for full_key in ("content", "content_hash", "created_at", "updated_at", "topic", "version"):
+        assert full_key in node, f"detail=full must carry the complete EntryRecord field '{full_key}'"
+
+
+def test_graph_full_golden_subgraph_complete_and_stable(server):
+    """AC-04 / R-04: subgraph detail=full carries the complete EntryRecord + EdgeRecord
+    (direction/metadata present) and is byte-stable across identical runs."""
+    # Seed on the target with direction=incoming (vnc-043 live depth-1) to guarantee the edge.
+    # Content must be cross-domain DISTINCT or the server's >0.9 dedup collapses src and dst.
+    src = _store_lc_entry(server, _SG_DISTINCT_SUBJECTS[2] + " golden-sg-src " + _v44_big("s"))
+    dst = _store_lc_entry(server, _SG_DISTINCT_SUBJECTS[7] + " golden-sg-dst " + _v44_big("d"))
+    server.context_edge("add", src, "Supports", dst, agent_id="human")
+    kw = dict(seed_ids=[dst], max_depth=1, direction="incoming", edge_types=["Supports"],
+              agent_id="human", format="json", detail="full")
+
+    run1 = assert_tool_success(server.context_graph("subgraph", **kw)).text
+    run2 = assert_tool_success(server.context_graph("subgraph", **kw)).text
+    assert run1 == run2, "detail=full subgraph output must be byte-stable"
+
+    data = _json_v44lc.loads(run1)
+    node = next(n for n in data["nodes"] if n["id"] == dst)
+    assert "content" in node and "content_hash" in node, "full node must carry content + hash"
+    edges = data["edges"]
+    assert edges, "depth-1 live incoming read must surface the Supports edge"
+    for edge in edges:
+        assert "direction" in edge and "metadata" in edge, "full edge must carry direction + metadata"
+
+
+# --- AC-06: #913 reproduction size win (lifecycle status only) -----------------------------
+
+def test_graph_summary_shrinks_payload_913(server):
+    """AC-06: a capability-style subgraph (goal with many incoming Advances, each node
+    carrying a substantial body) is far smaller under default summary than detail=full for
+    the SAME query, and stays valid parseable JSON. Asserts the size RATIO (fixture-relative),
+    not an absolute KB. Every node's status is the LIFECYCLE string 'active' — this is the
+    honestly-carried #913 gap (R-11), demonstrated here, NOT treated as a defect."""
+    goal = _store_lc_entry(server, _SG_DISTINCT_SUBJECTS[0] + " " + _v44_big("goal"))
+    fan_in = 12
+    for i in range(fan_in):
+        cap = _store_lc_entry(server, _SG_DISTINCT_SUBJECTS[i + 1] + " " + _v44_big(f"cap{i}"))
+        server.context_edge("add", cap, "Advances", goal, agent_id="human")
+
+    kw = dict(seed_ids=[goal], max_depth=1, direction="incoming", edge_types=["Advances"],
+              agent_id="human", format="json")
+    summary_text = assert_tool_success(server.context_graph("subgraph", detail="summary", **kw)).text
+    full_text = assert_tool_success(server.context_graph("subgraph", detail="full", **kw)).text
+
+    summary_data = _json_v44lc.loads(summary_text)  # valid parseable JSON (AC-06)
+    assert len(summary_data["nodes"]) >= fan_in, "all capabilities must be present at depth-1 live"
+
+    assert len(summary_text) < 0.6 * len(full_text), (
+        f"AC-06: summary payload ({len(summary_text)}B) must be well under full "
+        f"({len(full_text)}B) for the same query"
+    )
+
+    # R-11 illustration (NOT a defect): projected status is lifecycle, 'active' for every node.
+    for node in summary_data["nodes"]:
+        assert node["status"] == "active", (
+            "projected status is lifecycle EntryRecord.status (active) — NOT capability "
+            "delivery status; #913 delivery-status tally is a named follow-up, not delivered here"
+        )
