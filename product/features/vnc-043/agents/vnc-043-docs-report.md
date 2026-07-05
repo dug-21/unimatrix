@@ -39,12 +39,15 @@ staleness/tick-cache found only unrelated matter — research architecture notes
 `subgraph` diagram blocks in workflow docs. No `docs/` file documents `context_graph` subgraph
 behavior at this granularity. No `_Verified on vX_` executable-claim surfaces touched.
 
-## Out-of-scope observation (flagged, not edited)
+## resolve_supersessions default correction (follow-up, coordinator-directed)
 
-The same README row states `resolve_supersessions` (neighbors, subgraph, path) defaults **false**,
-while the shipped tool description (tools.rs) and AC-08 state it defaults **true**. This is a
-pre-existing discrepancy, NOT introduced or made stale by vnc-043, so it is outside this feature's
-blast radius and was left untouched. Worth a follow-up doc-correctness pass.
+Initially flagged as out-of-scope. Two reviewers (security + this agent) confirmed the pre-existing
+README error, and the coordinator directed an in-scope fix since this PR already rewrote the row.
+Corrected in a second commit: the same `context_graph` row said `resolve_supersessions` (neighbors,
+subgraph, path) defaults **false**; verified against `tools.rs` `CONTEXT_GRAPH_DESCRIPTION`
+("resolve_supersessions defaults true across neighbors, subgraph, and path") and the `graph_read.rs`
+doc — the real default is **true** (`false` for raw as-stored). README now reads "default true …
+pass `false` for the raw as-stored topology". Matches AC-08 and bugfix-881.
 
 ## Process note
 
