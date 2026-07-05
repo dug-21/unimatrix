@@ -4909,3 +4909,314 @@ def test_session_close_drain_persists_sessions_row_but_ghost_close_is_zero_delta
         f"Ack'ing. This is the exact #818-class regression (a persisting close that "
         f"drops its SESSIONS write)."
     )
+
+
+# === crt-058: eager agent-edge cleanup at context_deprecate ============
+#
+# Full store->deprecate->edge-removal->audit chain through the MCP wire, plus
+# the two handler-only halves Gate 3b deferred to Stage 3c because the #[tool]
+# methods are not unit-constructible (no RequestContext):
+#   * chokepoint-exclusion via the REAL context_correct (successor path must NOT
+#     invoke the eager helper — no edge_cleanup audit, inbound agent edge survives)
+#   * idempotency via the REAL re-deprecation (no second cleanup audit, no delete)
+# Agent edges are seeded directly via SQL (cumulative pattern, test_get_edges).
+
+def _c58l_db_path(project_dir):
+    import hashlib
+    import os
+    canonical = os.path.realpath(project_dir)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return os.path.join(os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+
+def _c58l_conn(server):
+    import sqlite3
+    conn = sqlite3.connect(_c58l_db_path(server.project_dir), timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    return conn
+
+
+def _c58l_seed_edges(server, rows):
+    import time
+    conn = _c58l_conn(server)
+    now = int(time.time())
+    try:
+        for r in rows:
+            conn.execute(
+                "INSERT OR IGNORE INTO graph_edges "
+                "(source_id, target_id, relation_type, weight, created_at, "
+                " created_by, source) VALUES (?, ?, ?, ?, ?, 'test', ?)",
+                (r["source_id"], r["target_id"], r["relation_type"],
+                 r.get("weight", 1.0), now, r["source"]),
+            )
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+
+def _c58l_agent_edges_touching(server, entry_id):
+    """Return the set of (source_id, target_id, relation_type) agent edges
+    touching entry_id (either direction)."""
+    conn = _c58l_conn(server)
+    try:
+        rows = conn.execute(
+            "SELECT source_id, target_id, relation_type FROM graph_edges "
+            "WHERE (source_id = ? OR target_id = ?) AND source = 'agent'",
+            (entry_id, entry_id),
+        ).fetchall()
+    finally:
+        conn.close()
+    return {(r[0], r[1], r[2]) for r in rows}
+
+
+def _c58l_edge_exists(server, source_id, target_id, source="agent"):
+    conn = _c58l_conn(server)
+    try:
+        n = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges "
+            "WHERE source_id = ? AND target_id = ? AND source = ?",
+            (source_id, target_id, source),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    return n > 0
+
+
+def _c58l_agent_edges_from(server, source_id):
+    """Count agent edges originating at source_id (any target)."""
+    conn = _c58l_conn(server)
+    try:
+        n = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges "
+            "WHERE source_id = ? AND source = 'agent'",
+            (source_id,),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    return n
+
+
+def _c58l_cleanup_audits_for(server, entry_id):
+    """All context_deprecate.edge_cleanup audit rows whose target_ids include
+    entry_id. Returns list of (target_ids_list, detail, metadata_list)."""
+    import json
+    conn = _c58l_conn(server)
+    try:
+        rows = conn.execute(
+            "SELECT target_ids, detail, metadata FROM audit_log "
+            "WHERE operation = 'context_deprecate.edge_cleanup'",
+        ).fetchall()
+    finally:
+        conn.close()
+    out = []
+    for target_ids_json, detail, metadata_json in rows:
+        try:
+            tids = json.loads(target_ids_json)
+        except (json.JSONDecodeError, TypeError):
+            tids = []
+        if entry_id in tids:
+            try:
+                meta = json.loads(metadata_json)
+            except (json.JSONDecodeError, TypeError):
+                meta = None
+            out.append((tids, detail, meta))
+    return out
+
+
+def _c58l_settle_audit():
+    """Let the fire-and-forget edge_cleanup audit write land (server.rs uses a
+    50ms settle convention; give the cross-process WAL a little more)."""
+    time.sleep(0.5)
+
+
+def test_deprecate_removes_agent_edges_and_audits(server):
+    """AC-01/AC-03/AC-09/AC-11 (full wire chain): deprecating E removes both
+    directions of its agent edges synchronously, leaves machine edges, and writes
+    exactly one edge_cleanup audit carrying the removed tuples in metadata."""
+    e = extract_entry_id(server.context_store(
+        "crt058 lifecycle deprecate subject echo distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    a = extract_entry_id(server.context_store(
+        "crt058 lifecycle deprecate neighbor foxtrot distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    b = extract_entry_id(server.context_store(
+        "crt058 lifecycle deprecate neighbor golf distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    c = extract_entry_id(server.context_store(
+        "crt058 lifecycle deprecate neighbor hotel distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    # inbound agent (a->e), outbound agent (e->b), machine (e->c, must survive)
+    _c58l_seed_edges(server, [
+        {"source_id": a, "target_id": e, "relation_type": "Supports", "source": "agent"},
+        {"source_id": e, "target_id": b, "relation_type": "DependsOn", "source": "agent"},
+        {"source_id": e, "target_id": c, "relation_type": "Supports", "source": "co_access"},
+    ])
+    assert len(_c58l_agent_edges_touching(server, e)) == 2
+
+    result = assert_tool_success(
+        server.context_deprecate(e, reason="outdated", agent_id="human", format="json"))
+    assert result.parsed.get("edges_removed") == 2
+
+    # AC-01/AC-09: synchronous — agent edges gone immediately on return.
+    assert _c58l_agent_edges_touching(server, e) == set(), (
+        "agent edges must be absent synchronously on deprecate return")
+    # machine edge survives (only source='agent' is eagerly removed).
+    assert _c58l_edge_exists(server, e, c, source="co_access"), (
+        "machine edge must NOT be eagerly removed")
+
+    # AC-03/AC-11: exactly one edge_cleanup audit with the removed tuples.
+    _c58l_settle_audit()
+    audits = _c58l_cleanup_audits_for(server, e)
+    assert len(audits) == 1, f"expected exactly 1 edge_cleanup audit, got {len(audits)}"
+    _tids, detail, meta = audits[0]
+    assert "2" in detail and f"#{e}" in detail, f"detail missing count/id: {detail!r}"
+    assert isinstance(meta, list) and len(meta) == 2, f"metadata tuples: {meta!r}"
+    tuple_set = {(m["source_id"], m["target_id"], m["relation_type"]) for m in meta}
+    assert tuple_set == {(a, e, "Supports"), (e, b, "DependsOn")}, (
+        f"metadata tuple set mismatch: {tuple_set!r}")
+
+
+def test_correct_successor_never_invokes_eager_cleanup(server):
+    """AC-10 chokepoint-exclusion (R-01 closure), via the REAL context_correct
+    handler: the successor-bearing deprecation the correction performs must NOT
+    reach the eager helper — no edge_cleanup audit for the original, and the
+    inbound agent edge SURVIVES (repointed to the successor by the vnc-017
+    auto-redirect, NOT eagerly destroyed)."""
+    e = extract_entry_id(server.context_store(
+        "crt058 chokepoint original subject india distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    a = extract_entry_id(server.context_store(
+        "crt058 chokepoint inbound neighbor juliet distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    # inbound agent edge Phase 1 would repoint on correction (a->e).
+    _c58l_seed_edges(server, [
+        {"source_id": a, "target_id": e, "relation_type": "Supports", "source": "agent"},
+    ])
+    assert _c58l_edge_exists(server, a, e), "seed precondition"
+
+    correct_resp = server.context_correct(
+        e, "crt058 chokepoint corrected successor content kilo distinct words",
+        reason="superseded", agent_id="human", format="json")
+    assert_tool_success(correct_resp)
+
+    _c58l_settle_audit()
+    # The correction path deprecates-with-successor; it must NOT invoke the eager
+    # chokepoint at context_deprecate step 6.5.
+    audits = _c58l_cleanup_audits_for(server, e)
+    assert audits == [], (
+        f"correction path must NOT emit an edge_cleanup audit for #{e}; got {audits!r}")
+    # The inbound agent edge SURVIVES — the eager helper never destroyed it.
+    # (The vnc-017 auto-redirect repoints it from the original to the successor;
+    # its exact target is vnc-017's concern. crt-058's guarantee is only that the
+    # edge is NOT eagerly deleted — exactly ONE agent edge from `a` persists.)
+    assert _c58l_agent_edges_from(server, a) == 1, (
+        "inbound agent edge must SURVIVE the correction (eager helper never ran)")
+
+
+def test_redeprecate_idempotent_no_second_cleanup_audit(server):
+    """AC-07 idempotency (R-11), via the REAL re-deprecation: a second deprecate
+    on an already-Deprecated entry early-returns (advisory omitted, distinct from
+    Some(0)), performs no delete, and writes no second edge_cleanup audit."""
+    e = extract_entry_id(server.context_store(
+        "crt058 idempotent subject lima distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    a = extract_entry_id(server.context_store(
+        "crt058 idempotent neighbor mike distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    b = extract_entry_id(server.context_store(
+        "crt058 idempotent neighbor november distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    _c58l_seed_edges(server, [
+        {"source_id": a, "target_id": e, "relation_type": "Supports", "source": "agent"},
+    ])
+    first = assert_tool_success(
+        server.context_deprecate(e, agent_id="human", format="json"))
+    assert first.parsed.get("edges_removed") == 1
+    _c58l_settle_audit()
+    assert len(_c58l_cleanup_audits_for(server, e)) == 1
+
+    # Seed a FRESH agent edge AFTER the first deprecation.
+    _c58l_seed_edges(server, [
+        {"source_id": b, "target_id": e, "relation_type": "DependsOn", "source": "agent"},
+    ])
+    second = assert_tool_success(
+        server.context_deprecate(e, agent_id="human", format="json"))
+    # None (early-return) omits the advisory entirely — NOT Some(0).
+    assert "edges_removed" not in second.parsed, (
+        f"idempotent re-deprecation must OMIT the advisory (None), got "
+        f"{second.parsed.get('edges_removed')!r}")
+
+    _c58l_settle_audit()
+    # The fresh edge is untouched and no second cleanup audit was written.
+    assert _c58l_edge_exists(server, b, e), "fresh agent edge must survive re-deprecation"
+    assert len(_c58l_cleanup_audits_for(server, e)) == 1, (
+        "re-deprecation must NOT write a second edge_cleanup audit")
+
+
+def test_deprecate_eager_failure_is_non_fatal(server):
+    """AC-06 non-fatal (via the REAL handler, injected failure): a BEFORE DELETE
+    trigger forces the eager agent-edge delete to Err. context_deprecate still
+    returns SUCCESS, the entry is Deprecated, a `warn` carrying the entry id is
+    logged (NOT debug — #3448), the advisory is OMITTED (None — distinct from the
+    AC-05 Some(0) literal 0), no edge_cleanup audit is written, and the agent
+    edges REMAIN present for the tick backstop to sweep. (That the tick's
+    run_orphaned_edge_compaction removes exactly these agent edges — the backstop
+    tail — is proven by the Rust background::tests eager-subset-of-tick invariant.)
+    """
+    e = extract_entry_id(server.context_store(
+        "crt058 nonfatal subject oscar distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    a = extract_entry_id(server.context_store(
+        "crt058 nonfatal neighbor papa distinct words",
+        "testing", "convention", agent_id="human", format="json"))
+    _c58l_seed_edges(server, [
+        {"source_id": a, "target_id": e, "relation_type": "Supports", "source": "agent"},
+        {"source_id": e, "target_id": a, "relation_type": "DependsOn", "source": "agent"},
+    ])
+
+    # Inject the failure: abort ANY agent-edge delete at the DB layer, so the
+    # server's eager DELETE ... RETURNING fails and the helper returns Err.
+    conn = _c58l_conn(server)
+    try:
+        conn.execute(
+            "CREATE TRIGGER c58_block_agent_delete BEFORE DELETE ON graph_edges "
+            "WHEN OLD.source = 'agent' "
+            "BEGIN SELECT RAISE(ABORT, 'crt058 injected eager-delete failure'); END"
+        )
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+    try:
+        result = assert_tool_success(
+            server.context_deprecate(e, reason="outdated", agent_id="human", format="json"))
+        # Non-fatal: success shape preserved and the entry IS deprecated.
+        assert result.parsed.get("deprecated") is True, f"unexpected: {result.text[:200]}"
+        # Advisory OMITTED (None) — the key must be ABSENT, not 0.
+        assert "edges_removed" not in result.parsed, (
+            f"injected-failure path must omit the advisory (None), got "
+            f"{result.parsed.get('edges_removed')!r}")
+        # warn (visible at default RUST_LOG=info) carrying the entry id.
+        time.sleep(0.4)
+        stderr = server.get_stderr()
+        assert "eager edge cleanup failed" in stderr, (
+            f"expected a warn for the swallowed failure; stderr tail:\n{stderr[-800:]}")
+        assert str(e) in stderr, "warn must carry the entry id (#3448 visibility)"
+        # Delete aborted -> agent edges REMAIN for the tick backstop.
+        assert len(_c58l_agent_edges_touching(server, e)) == 2, (
+            "aborted eager delete must leave the agent edges present")
+        # Err path emits NO edge_cleanup audit.
+        _c58l_settle_audit()
+        assert _c58l_cleanup_audits_for(server, e) == [], (
+            "the failed eager delete must not write an edge_cleanup audit")
+    finally:
+        conn = _c58l_conn(server)
+        try:
+            conn.execute("DROP TRIGGER IF EXISTS c58_block_agent_delete")
+            conn.commit()
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        finally:
+            conn.close()
