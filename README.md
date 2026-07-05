@@ -232,7 +232,7 @@ Provider identity (`"claude-code"`, `"gemini-cli"`, `"codex-cli"`) is derived fr
 
 ### Correction Chains with Audit Trails
 
-`context_correct` creates a new entry and deprecates the original, linking them with SHA-256 content hashes (`previous_hash` chain). The append-only audit log records every operation — store, correct, deprecate, quarantine, enroll — with agent identity, session context, and operation outcome. Correction chains are tamper-evident: any break in the hash chain is detectable.
+`context_correct` creates a new entry and deprecates the original, linking them with SHA-256 content hashes (`previous_hash` chain). The append-only audit log records every operation — store, correct, deprecate, quarantine, enroll — with agent identity, session context, and operation outcome. Correction chains are tamper-**recorded**: every correction links to its predecessor by SHA-256 `content_hash` (the `previous_hash` chain), and `unimatrix verify` (and import-time validation) detect accidental corruption or single-point tampering — a content edit not perfectly mirrored across an entry's `content_hash` and its successor's `previous_hash` fails verification, naming the offending entry. This is correction-history integrity, not tamper-evidence against an adversary with raw database write access (who holds all secrets — out of tier); cryptographic tamper-evidence against that adversary is a future hardening step.
 
 ### Coherence Gate (Lambda Health Metric)
 
@@ -591,6 +591,7 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `project delete <slug>` | De-register a slug: removes it from `[[projects]]` routing while **preserving** its on-disk data (DB, vector index, hash chain, analytics). Re-registering the same slug re-attaches to the preserved store. To destroy the data as well, pass `--purge`, which requires re-typing the slug via `--confirm <slug>` — the only operation that destroys a hash chain, and it is deliberately loud. | `<slug>` (positional), `--purge`, `--confirm <slug>` |
 | `export` | Export the knowledge base to JSONL format (format_version 2, 11 tables). No running server required. | `--output <PATH>` (defaults to stdout), `--skip-quarantined` (omit quarantined entries and their dependents from the export — requires `--confirm`), `--confirm` (acknowledge non-exact snapshot when `--skip-quarantined` is active) |
 | `import` | Import a knowledge base from a JSONL export file (accepts format_version 1 and 2). Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data including graph_edges, observations, cycle_events, and derived metric tables) |
+| `verify` | Run the correction-chain integrity check against the live project database (direct read-only DB scan, no running server required — same access pattern as `export`/`import`). Walks all supersedes chains, recomputing each entry's `content_hash` and asserting every non-empty `previous_hash` equals its predecessor's `content_hash`; empty (genesis / forward-only-legacy) links are treated as unverifiable, not broken. Exit 0 with a concise summary (entries/chains checked) when the corpus verifies clean; non-zero exit naming the offending entry id(s) and the break type (content-hash vs chain-link mismatch) on any detected break. | None (uses the `--project-dir` global flag) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
 | `model-download` | Download the ONNX embedding model to cache. Used by npm postinstall; safe to run manually to pre-warm the model cache. | None |
 | `snapshot` | Create a self-contained SQLite copy of the active database using `VACUUM INTO`. Includes all tables (entries, query_log, graph_edges, co_access, sessions, and all analytics tables). Refuses with a non-zero exit code if `--out` resolves to the same path as the live database. | `--out <PATH>` (required), `--project-dir <PATH>` |
@@ -721,7 +722,7 @@ Append-only audit log records every operation with agent identity (who performed
 
 ### Hash-Chained Corrections
 
-SHA-256 content hashes with `previous_hash` links create tamper-evident correction chains. Any break in the chain is detectable.
+Each correction links to the entry it supersedes via SHA-256 `content_hash` (the `previous_hash` chain), so the correction history is tamper-**recorded**: `unimatrix verify` and import-time validation recompute every entry's content hash and check each chain link, failing loud and naming any entry whose content or link is inconsistent. This detects accidental corruption and single-point API-surface tampering; it does not defend against a coordinated raw-database-write adversary (out of tier — that requires a cryptographic cascade and external anchor, tracked separately).
 
 ### Observation Ingest Constraints
 

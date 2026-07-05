@@ -272,6 +272,15 @@ enum Command {
         foreground: bool,
     },
 
+    /// Verify cross-version hash chain integrity of the project database.
+    ///
+    /// Opens the database READ-ONLY (no running server required), recomputes each
+    /// entry's content hash, and verifies every populated correction-chain link
+    /// against its `supersedes` predecessor. Prints a report naming any offending
+    /// entry id. Exit 0 = clean, non-zero = break found. Synchronous path, no
+    /// tokio runtime at the call site (the handler owns its runtime). (nxs-014)
+    Verify {},
+
     /// Check daemon liveness via UDS socket connect.
     ///
     /// Resolves ProjectPaths and attempts to connect to the MCP UDS socket.
@@ -420,6 +429,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 skip_hash_validation,
                 force,
             )
+        }
+        Some(Command::Verify {}) => {
+            // Sync path: NO tokio at the call site, like Hook/Export/Import. The
+            // handler owns its runtime internally. run_verify returns Err on a
+            // non-clean report; main()'s Result→exit mapping prints it and exits
+            // non-zero. Exit 0 on Ok (clean corpus). (nxs-014, AC-09)
+            unimatrix_server::verify::run_verify(cli.project_dir.as_deref())
         }
         Some(Command::Version { force }) => {
             // Sync path: NO tokio
