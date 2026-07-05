@@ -27,6 +27,7 @@ mod mutations;
 #[cfg(feature = "mcp-briefing")]
 mod retrospective;
 pub mod status;
+pub mod verbosity;
 
 // Re-export entry formatting
 pub use entries::{
