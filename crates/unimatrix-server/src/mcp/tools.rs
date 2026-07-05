@@ -469,12 +469,7 @@ pub struct RetrospectiveParams {
     /// returns selected `TranscriptCandidate`s plus per-session `SessionLossInfo`
     /// / search-status; it NEVER purges — the review has no destructive verb
     /// (NG-6). Non-destructive and repeatable. See `TranscriptScope`.
-    ///
-    /// Schema note: `#[schemars(with = ...)]` exposes this as a free-form object
-    /// because the underlying `TranscriptScope`/`Window` (unimatrix-observe) are
-    /// serde-only (Wave 1); serde still deserializes to the strong type.
     #[serde(default)]
-    #[schemars(with = "Option<serde_json::Value>")]
     pub transcript: Option<unimatrix_observe::TranscriptScope>,
 }
 
@@ -6871,14 +6866,8 @@ mod tests {
         let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
         const PINNED_NOW: u64 = 2_000_000_000;
         let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
-        let mut report = unimatrix_observe::build_report(
-            "crt-057-ac10",
-            &corpus,
-            metrics,
-            hotspots,
-            None,
-            None,
-        );
+        let mut report =
+            unimatrix_observe::build_report("crt-057-ac10", &corpus, metrics, hotspots, None, None);
         report.recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
         report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
 

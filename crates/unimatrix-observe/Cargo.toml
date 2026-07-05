@@ -16,6 +16,7 @@ tokio = { version = "1", features = ["rt"] }
 regex = "1"
 unimatrix-learn = { path = "../unimatrix-learn" }
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
+schemars = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
