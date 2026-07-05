@@ -6892,8 +6892,14 @@ mod tests {
         let hotspots = unimatrix_observe::detect_hotspots(&corpus, &rules);
         const PINNED_NOW: u64 = 2_000_000_000;
         let metrics = unimatrix_observe::compute_metric_vector(&corpus, &hotspots, PINNED_NOW);
-        let mut report =
-            unimatrix_observe::build_report("crt-057-ac10", &corpus, metrics, hotspots, None, None);
+        let mut report = unimatrix_observe::build_report(
+            "crt-057-ac10",
+            &corpus,
+            metrics,
+            hotspots,
+            None,
+            None,
+        );
         report.recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
         report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
 
