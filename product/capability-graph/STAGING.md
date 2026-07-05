@@ -14,11 +14,47 @@
 | 🔵 | **proven-candidate** | delivered + a named behavioral test cited, **pending firewall verification** (miner nominated; not yet flipped) |
 | 🟡 | partial | partly delivered, or evidence is structural not behavioral |
 | 🔴 | missing | goal implies it; no feature delivers it |
-| ⚪ | claimed | asserted in a goal/doc, no behavioral test exists |
+| ⚪ | **asserted** | claimed in a goal/doc, no behavioral test exists — an honest-unknown to retire. **NOT** the marketing sense of "claim" (opposite valence — see the status model) |
 
 🔵 is the staging-only tier. The firewall says a merge is not proof — so a miner citing an acceptance test
 it also read is a *nomination*, not a flip. Every 🔵 needs an independent verify pass (confirm the cited
 test clears the `done_when` as worded) before it becomes 🟢.
+
+---
+
+## Claim-floor vs North-star — the status model (Option 2, human 2026-07-05)
+
+Goals are **north stars** — never "done"; there is always headroom. So status is accounted at two altitudes:
+
+- **Claim-floor** — the minimum set of **threshold** capabilities (binary, terminal) that must be `proven` to
+  honestly say *"we have this."* Floor met = **claimable** — the marketing/DevX-truth line (ass-089's input).
+- **North-star** — the **curve** capabilities (asymptotic, never terminal). A curve at 🟡 means *"advancing,
+  ceiling open,"* **not** *"deficient."* Curve nodes never reach a terminal 🟢; they clear the current bar and re-open.
+
+**Terminology:** "claim / claimable" = floor met (a **good** state). Status glyph **⚪ `asserted`** = doc-claimed
+with no evidence (a **warning** state). Do not conflate — they're opposite in valence.
+
+**Firewall unchanged:** `proven` = behavioral evidence at the *claim-floor* (not at perfection). A floor
+capability at 🔵 is *nominated*, not yet claimable — so the **🔵→🟢 verify pass is what validates which claims we
+can actually make.** ass-089 copy may only assert a floor that is actually 🟢.
+
+**Payoff — this inverts the map's read:** most goals are **claimable at floor today**; the north stars are where
+the excellence story and ongoing work live.
+
+| Goal | Claim-floor — "we have this" | North-star — "where we excel / aspire" |
+|---|---|---|
+| **Personal Cloud** | release · deploy local+cloud · multi-project slugs (C3/C6/C13) · easy+secure client setup (C9/C7/C12/C15) | full fidelity == local (C0) · multi-LLM (C14) |
+| **Knowledge Integrity** | attributed · tamper-evident · serves-current · input-clean (KI-CHAIN/AUDIT/CURRENCY, N2) | perfect consistency under correction · provable poison-resistance · contradiction-free (KI-CORRECTION/CLEAN/CONTRADICT) |
+| **Proactive-delivery** | injected without asking · survives compaction (PD1/PD2/PD4) | optimally goal+phase-conditioned · never worse than search (PD3/PDN1) |
+| **Self-learning** | *it learns from usage* — confidence evolves, co-access + graph self-enrich (SL1/2/4/6, SL-ENRICH) | *measurably smarter over time* (SL-ROLLUP/SL-METRIC/SL-COLDSTART) |
+| **Domain-agnostic** | same engine serves a different domain by config, not code (DA2/3/4/6/7) | a real different domain runs end-to-end + self-tunes (DA9/DA1) |
+
+**Self-learning is now claimable** at the floor — "the system learns from how you work" (mechanisms proven) —
+even though "measurably better" (the north star) stays unmeasurable (finding 1). That distinction unblocks the claim.
+
+**Goal-entry refinement (deferred to Unimatrix writes):** goal entries currently bundle north-star into their
+success criteria (e.g. #4946 states multi-LLM + full-fidelity as core criteria → the goal reads as perpetually
+incomplete). When we touch Unimatrix, each goal entry separates claim-floor criteria from north-star criteria.
 
 ---
 
@@ -38,6 +74,21 @@ This is *the* strategic gap. Every ranking mechanism we've built advances a curv
 README even asserts a concrete "+0.0122 MRR improvement" from PPR — **that number is not reproduced by a
 CI eval gate**; treat it as a point-in-time claim to re-verify, not standing proof. **Nothing in the
 self-learning goal flips to 🟢 at the rollup until SL-METRIC is trusted on the live corpus.** (vnc-034 lesson, again.)
+
+**8. NEW GOAL — Knowledge Integrity (splits self-learning) (human, 2026-07-05).** Self-learning was fusing
+two distinct promises: *"the right knowledge surfaces, and improves"* (relevance/the curve — finding 1, hard
+to impossible to prove) and *"what surfaces is trustworthy and accurate"* (hash chains, correction chains,
+currency, contradiction management, audit trail — mostly **delivered and proven**). Splitting them makes both
+honest: **self-learning becomes the frontier/aspirational goal; Knowledge Integrity becomes the delivered one.**
+Rationale: (a) it separates the provable from the unprovable, so integrity's real achievement stops masking the
+curve's unprovability and vice-versa; (b) it matches the vision's own stated differentiator — README's
+"**Trust + Lifecycle + Integrity**" and "auditable knowledge lifecycle" are co-equal-or-greater to learning,
+mis-filed as an nfr; (c) it's the corrective loop that *does* work without a negative signal (the deferred
+problem) — human corrects → hash-chained supersession → currency serves only the correction. **Tag `integrity`.**
+Intent: *"Unimatrix serves the most accurate data possible — every entry attributed and tamper-evident,
+corrections propagate so only current knowledge surfaces, and contradictory or corrupted data never reaches an
+agent."* Nodes re-homed from self-learning: SL7, SLN3, SL-CONTRADICT, SLN1. See the Knowledge Integrity section.
+This takes the four-goal model to **five**. (SLN1/poisoning placed here as *input integrity* — flag to flip if wrong.)
 
 **2. Domain-agnostic: mechanics delivered, capstone now in early flight.** The map showed 1 node (DA1 🔴) —
 misleadingly "barely started." Reality: the config machinery (taxonomy config+validate, domain-neutral
@@ -96,7 +147,7 @@ edges more heavily, it doesn't define new ones). The live want is **discovery**,
 
 **5. Vision-doc drift (normalization):**
 - `ALPHA_UNIMATRIX_COMPLETED_VISION.md` is the **pre-goal milestone roadmap** (M1–M9, Proposal A→C). It's
-  archival — superseded by the four-goal framing. Its mtx dashboard milestone survives only as ass-083
+  archival — superseded by the (now **five**-)goal framing. Its mtx dashboard milestone survives only as ass-083
   (#829) research; recommend a header marking it historical so it isn't read as current strategy.
 - `README.md` "Core Capabilities" ≈ the marketed proven surface — maps ~1:1 to the graph below and is the
   best claim-vs-proof cross-check. It still documents the `DependencyOnDeprecated` rule + `stale_dependency_edges`
@@ -108,7 +159,12 @@ edges more heavily, it doesn't define new ones). The live want is **discovery**,
 
 Prerequisite direction: **substrate → functional → rollup**. `Advances` → goal (all). `About` = nfr governs functional.
 
-### Self-learning (#5219)   🟢2 · 🔵12 · 🟡7 · 🔴0 · ⚪1
+### Self-learning (#5219) — *the curve: does the right knowledge surface, and improve?*   🟢0 · 🔵9 · 🟡3 · 🔴1 · ⚪1
+
+> **Re-homed to Knowledge Integrity (finding 8):** SL7, SLN3, SL-CONTRADICT, SLN1 — see that section below.
+>
+> **Claim-floor (claimable = "it learns from usage"):** SL1, SL2, SL4, SL6, SL-ENRICH — all 🔵, so claimable once verified.
+> **North-star (curve — headroom, not gap):** SL5, SL-METRIC ★keystone, SL-ROLLUP ★, SL-COLDSTART. These never reach terminal 🟢.
 
 ```
         SUBSTRATE (prereq)              FUNCTIONAL                         ROLLUP
@@ -117,13 +173,11 @@ Prerequisite direction: **substrate → functional → rollup**. `Advances` → 
   NX-SQLNATIVE┤          │          SL3 phase-favors 🔵     │
   NX-TELEMETRY┘          ▼          SL4 co-access 🔵         ├─prereq→ SL-ROLLUP ⚪ ★
                     SL5 fusion 🟡 ◄──SL6 learns-from-activity 🔵
-                         │          SL7 read-currency 🟢     │  (blocked on ↓)
-                    SL8 edges-visible-at-read 🔵             │
+                         │          SL8 edges-visible-at-read 🔵  (blocked on ↓)
    keystone: SL-METRIC 🟡 ─prereq(ruler)→ every curve ──────┘
                                     SL-COLDSTART 🔴 (frontier)
-  nfr: SLN1 poison-resist 🟡 · SLN3 graph-integrity-under-correction 🟡 ·
-       LAMBDA-HONEST metric-integrity 🔵 · RETAIN utility-bounded-storage 🔵
-  managed: SL-CONTRADICT detect+suppress 🔵 · SL-RETRAIN models-improve-safely 🟡 · SL-REUSE reuse-measured 🔵
+  nfr: LAMBDA-HONEST metric-integrity 🔵 (× integrity) · RETAIN utility-bounded-storage 🔵
+  mechanism: SL-RETRAIN models-improve-safely 🟡 · SL-REUSE reuse-measured 🔵
 ```
 
 | Code | Outcome | Status | Disposition | Key evidence |
@@ -134,21 +188,48 @@ Prerequisite direction: **substrate → functional → rollup**. `Advances` → 
 | SL4 | Knowledge used together surfaces together | 🔵 | CONFIRM #5223 | crt-035 reverse-edge PPR; **full live loop untested** |
 | SL5 | Retrieval fuses meaning+graph+confidence+phase | 🟡 | CONFIRM #5224 | crt-030 AC-17 reach-outside-k20; **corpus lift unproven** |
 | SL6 | System learns from observed agent activity | 🔵 | CONFIRM/SHARPEN #5225 | crt-049/050 + col-013; reads+phase+transcript legs |
-| SL7 | context_get returns current version by default | 🟢 | CONFIRM #5418 | vnc-042 field-absent-resolves-terminal |
 | SL8 | Typed edges visible at read (depth-1, default) | 🔵 | **NEW** (vnc-037) | test_get_edges 17✓; the one unmapped delivered cap |
 | SL-ENRICH | Graph self-enriches typed edges (NLI-independent) | 🔵 | **NEW** | crt-041 S1/S8, crt-040 cosine-Supports no-NLI |
 | SL-REUSE | Cross-session knowledge reuse is measured | 🔵 | **NEW** | col-020/020b non-zero reuse on real data |
-| SL-CONTRADICT | Conflicts detected, flagged, never served together | 🔴 | **REGRESSED** (see finding 7) | NLI detection was operational, found nothing in SDLC → **removed**; quarantine/suppress plumbing (crt-003/col-030) now has no input |
 | SL-RETRAIN | Models improve from feedback without regressing | 🟡 | **NEW** (under SL-ROLLUP) | crt-008 promotion-guard; guards *accuracy* not *ranking* |
 | SL-METRIC ★ | A retrieval-quality measure we trust for this corpus | 🟡 | CONFIRM/SHARPEN #5373 | nan-018 + crt-045 real-graph eval; **live trust open #803** |
 | SL-ROLLUP ★ | Every deployment measurably smarter with use | ⚪ | hold #5369 | blocked on SL-METRIC; no corpus lift proven |
 | SL-COLDSTART | New domain reaches good retrieval on its own | 🔴 | hold #5370 | crt-006 ships adapter; specialization never demonstrated |
-| SLN1 | Learning pipeline resists poisoning | 🟡 | CONFIRM #5229 | removal mechs exist; **no adversarial-bound test** |
-| SLN3 | Typed graph integrity-consistent under correction | 🟡 | CONFIRM/SHARPEN #5419 | vnc-035 carry-forward proven; outbound-orphan sweep #745 open |
-| LAMBDA-HONEST | Health/curation/review metrics measure reality, fail-loud on empty | 🔵 | **NEW** (nfr) | crt-051 real contradiction count, crt-055 fail-loud |
+| LAMBDA-HONEST | Health/curation/review metrics measure reality, fail-loud on empty | 🔵 | **NEW** (nfr, × integrity) | crt-051 real contradiction count, crt-055 fail-loud |
 | RETAIN | Storage bounded by learning utility, not wall-clock | 🔵 | **NEW** (nfr) | crt-036 cycle-based prune; un-reviewed never pruned |
 
+### Knowledge Integrity (#NEW — `goal:integrity`) — *is what surfaces trustworthy, accurate, current?*   🟢1 · 🔵2 · 🟡2 · 🔴1
+
+> The **delivered** goal, split from self-learning (finding 8). Mostly real evidence; the curve's unprovability
+> lives next door, not here. `KI-*` codes are new handles; existing #ids re-home via an added `Advances→integrity` edge.
+>
+> **Claim-floor (claimable = "your knowledge is attributed, tamper-evident, and current"):** KI-CHAIN, KI-AUDIT, KI-CURRENCY, + N2 content-scan. This is the map's **strongest-claimable** floor.
+> **North-star (curve — never terminal):** KI-CORRECTION (perfect consistency under correction), KI-CLEAN (provable poison-resistance), KI-CONTRADICT (contradiction-free), KI-ROLLUP ★.
+
+```
+   KI-CHAIN hash-chain 🔵 ┐
+   KI-AUDIT audit+attribution 🔵 ├─prereq→ KI-ROLLUP ★ "everything served is trustworthy & current"
+   KI-CURRENCY serve-current 🟢 ┤
+   KI-CORRECTION graph-consistent-under-correction 🟡 ┘
+   KI-CONTRADICT no-conflicting-pair-served 🔴 (regressed, ass-092)
+   KI-CLEAN input-integrity / poison-resist 🟡
+   × cross-goal: N3 writes-never-misrouted (personal-cloud) · NX-INTEGRITY≡KI-CHAIN · N2 content-scan (personal-cloud)
+```
+
+| Code | Outcome | Status | Disposition | Key evidence |
+|---|---|---|---|---|
+| KI-CHAIN | Per-entry hash-chain tamper-evidence (≡ NX-INTEGRITY) | 🔵 | **NEW** (× personal-cloud) | nxs-004 known-value SHA + chain tests |
+| KI-AUDIT | Every mutation attributed + append-only audit-logged | 🔵 | **NEW** | vnc-001/003 AUDIT_LOG (Principle 2, DDL-trigger enforced) — needs cite verify |
+| KI-CURRENCY | context_get returns the current version by default | 🟢 | **re-home** SL7 #5418 | vnc-042 field-absent-resolves-terminal |
+| KI-CORRECTION | Typed graph stays integrity-consistent under correction | 🟡 | **re-home** SLN3 #5419 | vnc-035 carry-forward; outbound-orphan sweep #745 open |
+| KI-CONTRADICT | No self-contradicting pair is served (detect + suppress) | 🔴 | **re-home** SL-CONTRADICT (regressed, finding 7) | removed; restore via ass-092 (#899) |
+| KI-CLEAN | Ingested/learned data resists poisoning (input integrity) | 🟡 | **re-home** SLN1 #5229 | removal mechs exist; no adversarial-bound test *(flag: keep here vs self-learning?)* |
+| KI-ROLLUP ★ | Everything Unimatrix serves is trustworthy, current, uncorrupted | 🟡 | **NEW** (marquee) | rollup of the above; goes 🟢 only when KI-CORRECTION + KI-CONTRADICT + KI-CLEAN close |
+
 ### Proactive-delivery (#4673)   🟢2 · 🔵2 · 🟡2 · 🔴0 · ⚪0
+
+> **Claim-floor (claimable = "knowledge arrives without asking, survives compaction"):** PD1, PD2 🟢, PD4 🟢.
+> **North-star (curve):** PD3 (optimal goal+phase conditioning — the AND), PDN1 (never worse than search), PD-ROLLUP ★.
 
 | Code | Outcome | Status | Disposition | Key evidence |
 |---|---|---|---|---|
@@ -160,6 +241,9 @@ Prerequisite direction: **substrate → functional → rollup**. `Advances` → 
 | PDN1 | Proactive delivery never worse than plain search | 🟡 | hold #5367 | no eval parity assertion (same crux as SL-METRIC) |
 
 ### Personal-cloud (#4946)   🟢~16 · 🔵/🟡 rest · flags below
+
+> **Claim-floor (claimable = "one-command deploy, local or your own cloud, multi-project, secure client setup"):** release · C1 deploy (local+cloud) · C3/C6/C13 slugs · C9/C7/C12/C15 client setup.
+> **North-star (curve):** C0 ★ full-fidelity-over-HTTPS==local, C14 multi-LLM parity. (C0 at 🟡 is *headroom, not a blocker on the claim.*)
 
 The C0–C17 / N1–N7 graph is **accurate — no new nodes**. Work here was citation-sharpening + two flags:
 
@@ -180,6 +264,9 @@ The C0–C17 / N1–N7 graph is **accurate — no new nodes**. Work here was cit
 | **BACKUP-RESTORE** lossless hash-validated backup/restore | 🔵 | **NEW** (reconciled) | nxs-012 all-tables + nan-001/002 round-trip; **no release-gate round-trip** |
 
 ### Domain-agnostic (#4678)   🟢0 · 🔵5 · 🟡1 · 🔴1 · ⚪0 · (DA8 = open design question)
+
+> **Claim-floor (claimable = "the same engine serves a different domain by config, not code"):** DA2, DA3, DA4, DA6, DA7 — all 🔵, so claimable once verified.
+> **North-star (curve):** DA9 (a real different domain, end-to-end, self-tuning), DA1/DA1c (runtime discovery), SL-COLDSTART. The live research domain is early evidence *toward* the north star.
 
 | Code | Outcome | Status | Disposition | Key evidence |
 |---|---|---|---|---|
@@ -208,7 +295,10 @@ The C0–C17 / N1–N7 graph is **accurate — no new nodes**. Work here was cit
 ## Cross-goal nodes (store ONCE, multiple `Advances` edges)
 
 - **C5 (#5190)** per-slug analytics maintained — personal-cloud + self-learning (🟢, crt-056 N=2 isolation). Exists.
-- **DA5** multi-domain side-by-side — domain-agnostic + personal-cloud (rides the per-slug overlay).
+- **KI-CHAIN / NX-INTEGRITY** — **knowledge-integrity** (primary) + personal-cloud (hash chain underpins secure store).
+- **N3 (#5356)** writes never mis-routed — personal-cloud (primary) + **knowledge-integrity** (a mis-routed write corrupts the wrong chain).
+- **N2** content-scanning / injection reject — personal-cloud/security + **knowledge-integrity** (input integrity).
+- **LAMBDA-HONEST** — self-learning (primary) + **knowledge-integrity** (honest, fail-loud reporting = response integrity).
 - **BACKUP-RESTORE** — personal-cloud (durability) + self-learning (preserves graph_edges/observations).
 - **NX-STORE** — domain-agnostic substrate underlying all goals.
 
@@ -226,9 +316,15 @@ The C0–C17 / N1–N7 graph is **accurate — no new nodes**. Work here was cit
 
 ## Planned Unimatrix operations (on ratification)
 
-**A. `context_store` — new nodes** (~24): DA2–DA9, SL8, SL-ENRICH, SL-REUSE, SL-CONTRADICT, SL-RETRAIN,
-LAMBDA-HONEST, RETAIN, NX-STORE, NX-VECTOR, NX-SQLNATIVE, NX-TELEMETRY, NX-INTEGRITY, NX-DURABILITY,
-BACKUP-RESTORE, SL-OBSERVE. Each with `Advances`→goal, `Prerequisite` edges per the DAG, `About` for nfrs.
+**0. NEW GOAL — `context_store` the `integrity` goal** (thin entry, `Advances`→vision-root, tag `["goal","integrity"]`),
+create `goal:integrity` GH label, add the row to `PRODUCT-VISION.md`. Then **re-home** SL7/SLN3/SL-CONTRADICT/SLN1
+via `context_edge` add `Advances→{integrity}` (source = each node's Active id) — keep or drop their self-learning
+`Advances` per whether they're genuinely cross-goal (SL7/SLN3/SL-CONTRADICT → integrity-only; SLN1/LAMBDA-HONEST → cross).
+
+**A. `context_store` — new nodes** (~26): DA1c, DA2–DA9, SL8, SL-ENRICH, SL-REUSE, SL-RETRAIN, LAMBDA-HONEST,
+RETAIN, NX-STORE, NX-VECTOR, NX-SQLNATIVE, NX-TELEMETRY, NX-DURABILITY, BACKUP-RESTORE, SL-OBSERVE, plus the
+integrity nodes **KI-CHAIN (≡NX-INTEGRITY), KI-AUDIT, KI-CONTRADICT (≡SL-CONTRADICT), KI-ROLLUP**. Each with
+`Advances`→goal, `Prerequisite` edges per the DAG, `About` for nfrs.
 
 **B. `context_correct` — sharpen existing** (citations/delivered_by, no status change): SL1, SL3, SL4, SL6,
 SLN3, SL-METRIC, PD1, PD3, PD4, C3, C7, C8, N1. Plus **fix PD-ROLLUP body** (stale "PD2 missing").
@@ -237,22 +333,31 @@ SLN3, SL-METRIC, PD1, PD3, PD4, C3, C7, C8, N1. Plus **fix PD-ROLLUP body** (sta
 the `done_when`): all 🔵 above. **Do not batch-flip on miner nomination.** Recommend a verify pass (one
 skeptic per node confirming test-clears-outcome) before any flip — the firewall is the whole point.
 
-**D. No flips for**: SL-ROLLUP (⚪), SL-METRIC/PDN1/SL5/SLN1/SLN3 (🟡 — the corpus-lift crux), DA1/DA8/DA9 (🔴).
+**D. Curve / north-star nodes — never flip to terminal 🟢** (they clear the current bar and re-open; track as
+*headroom*, not gaps): SL-ROLLUP ★, SL-METRIC ★, SL-COLDSTART, SL5, PD3, PDN1, PD-ROLLUP, C0 ★, DA9, KI-CORRECTION,
+KI-CLEAN, KI-CONTRADICT, KI-ROLLUP ★. Also no flips for ⚪ asserted / 🔴 missing without new evidence.
+
+**E. Goal entries (deferred) — separate claim-floor from north-star criteria** in each of the 5 goal entries
+(e.g. #4946 moves multi-LLM + full-fidelity from success-criteria to north-star), so goals stop reading as
+perpetually incomplete.
 
 ---
 
-## Resolved (human, 2026-07-04)
+## Resolved (human, 2026-07-04/05)
 
-- **Alcove / RBAC** → deliberate **non-goal for OSS**, postponed to enterprise. No fifth goal.
+- **Alcove / RBAC** → deliberate **non-goal for OSS**, postponed to enterprise. Not a goal.
+- **NEW GOAL: Knowledge Integrity** (`integrity`, name confirmed) → splits self-learning (finding 8). The delivered goal; **owns the security / poison-prevention cluster** (KI-CLEAN + N2 + defensive features).
+- **Status model = Option 2** — claim-floor (threshold, claimable) vs north-star (curve, never terminal). ⚪ renamed **asserted**; "claim/claimable" reserved for floor-met.
 - **DA5 (side-by-side domains)** → **retired non-goal.** One instance = one domain; multi-project = personal-cloud.
 - **DA9** → 🔴→🟡: a **live research-domain project** exists (early). Domain-agnostic is being exercised for real.
 - **Gemini** → on-hold (moving to Antigravity). C14 re-scoped to Claude + Codex.
-- **Poisoning (SLN1)** → confirmed a valid open gap.
+- **Poisoning (SLN1)** → valid open gap; re-homed to Knowledge Integrity as KI-CLEAN (north-star curve).
 
 ## Open decisions for the human
 
 1. **Substrate tier** — store NX-* as first-class prerequisite nodes, or keep them implicit?
-2. **DA8 edge-vocabulary boundary** — does relation vocabulary belong in Unimatrix config, or stay in agent controls? (Blocks whether DA8 is a capability at all — finding 6.)
-3. **DA9 evidence** — how to capture the research-domain project as behavioral evidence? It's a separate project/repo this session can't see. Attach as a `proven_by` pointer, or scope a light validation to formalize the DA9 proof gate?
-4. **Verification rigor** — run the 🔵→🟢 verify pass before storing, or store all 🔵 as-is and gate flips later?
+2. **DA8 edge-vocabulary boundary** — relation vocabulary in Unimatrix config, or stay in agent controls? (finding 6.)
+3. **DA9 evidence** — attach the research-domain project as a `proven_by` pointer, or scope a light validation to formalize the DA9 proof gate?
+4. **Verification rigor** — run the 🔵→🟢 verify pass before storing? *(Now higher-stakes: it validates which claim-floors are actually claimable.)*
 5. **ALPHA vision doc** — mark it archival/superseded, or leave as-is?
+6. **When ready to write Unimatrix** — create `integrity` goal + GH label + PRODUCT-VISION row, then the store/correct/re-home ops (section 0/A/B) + goal-entry floor/north-star split (E).
