@@ -4140,6 +4140,8 @@ def test_graph_subgraph_node_shape_matches_entry_record(server):
         seed_ids=[id_a],
         agent_id="human",
         format="json",
+        # vnc-044: default flipped to summary; this test asserts the full EntryRecord shape.
+        detail="full",
     )
     result = assert_tool_success(resp)
     data = _json_subgraph.loads(result.text)
@@ -4168,6 +4170,8 @@ def test_graph_subgraph_edge_record_fields(server):
         direction="outgoing",
         agent_id="human",
         format="json",
+        # vnc-044: default flipped to summary; this test asserts the full EdgeRecord shape.
+        detail="full",
     )
     result = assert_tool_success(resp)
     data = _json_subgraph.loads(result.text)
@@ -4292,6 +4296,8 @@ def test_graph_subgraph_direction_outgoing_on_all_edge_records(server):
         max_depth=2,
         agent_id="human",
         format="json",
+        # vnc-044: default flipped to summary; direction lives only on the full EdgeRecord.
+        detail="full",
     )
     result = assert_tool_success(resp)
     data = _json_subgraph.loads(result.text)
@@ -5399,3 +5405,292 @@ def test_get_follow_supersessions_orthogonal_matrix(server):
             else:
                 assert "↻" in result.text, f"[{cell}] must carry the hop notice"
                 assert f"version #{id_b}" in result.text, f"[{cell}] must reference terminal id B"
+
+
+# === vnc-044: context_graph two-axis split (format serialization + detail verbosity) =====
+#
+# Through-wire proof that `detail` (summary|full) and `format` (json|markdown) are threaded
+# past the graph_read.rs:251 parse-and-drop seam and honored end-to-end. Rooted in
+# RISK-TEST-STRATEGY R-03/R-04/R-05/R-07/R-08/R-09 and ACCEPTANCE-MAP AC-02/AC-04/AC-07/AC-08.
+#
+# Fixture note: chain/current/inverse/filter modes read live via SQL (deterministic,
+# no tick wait). subgraph depth-1 reads live per vnc-043 (seed node always present).
+# All error-copy assertions use substrings only (R-13), never verbatim sentences.
+
+import json as _json_v44
+
+_SUMMARY_NODE_KEYS = {
+    "id",
+    "title",
+    "category",
+    "tags",
+    "status",
+    "confidence",
+    "content_preview",
+    "content_truncated",
+}
+_SUMMARY_EDGE_KEYS = {"source_id", "target_id", "relation_type", "depth"}
+
+# Fields the server's background adaptation mutates between two sequential live reads
+# (GH#405 dynamic confidence scoring; access tracking). vnc-044 equivalence assertions prove
+# SHAPE/field-set equivalence, NOT byte-identity while scoring runs — normalize these to a
+# constant (keys retained, so field-set coverage is unweakened) before structural comparison.
+_V44_MUTABLE_FIELDS = {"confidence", "access_count", "last_accessed_at"}
+
+
+def _v44_norm(obj):
+    """Recursively neutralize background-mutable field VALUES while retaining their keys."""
+    if isinstance(obj, dict):
+        return {k: (None if k in _V44_MUTABLE_FIELDS else _v44_norm(v)) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_v44_norm(x) for x in obj]
+    return obj
+
+
+def _v44_struct_equal(text_a, text_b):
+    """Structural equality of two JSON payloads, immune to background-mutable field drift."""
+    return _v44_norm(_json_v44.loads(text_a)) == _v44_norm(_json_v44.loads(text_b))
+
+
+def _v44_chain_of_five(server):
+    """Build a deterministic 5-entry supersession chain (SQL-live) with >256B content on each.
+
+    Returns (anchor_id, all_ids). chain mode on the anchor returns all five entries.
+    """
+    big = "supersession chain node body " * 20  # ~580 bytes → content_truncated True
+    id_a = _store_entry(server, f"v44-chain-A {big} alpha-unique")
+    resp_b = server.context_correct(id_a, f"v44-chain-B {big} beta-unique", agent_id="human", format="json")
+    id_b = extract_entry_id(resp_b)
+    resp_c = server.context_correct(id_b, f"v44-chain-C {big} gamma-unique", agent_id="human", format="json")
+    id_c = extract_entry_id(resp_c)
+    resp_d = server.context_correct(id_c, f"v44-chain-D {big} delta-unique", agent_id="human", format="json")
+    id_d = extract_entry_id(resp_d)
+    resp_e = server.context_correct(id_d, f"v44-chain-E {big} epsilon-unique", agent_id="human", format="json")
+    id_e = extract_entry_id(resp_e)
+    return id_c, [id_a, id_b, id_c, id_d, id_e]
+
+
+# --- AC-02 / R-03: axis threading (proves :251 is fixed) --------------------------------
+
+@pytest.mark.smoke
+def test_graph_detail_axis_threaded(server):
+    """AC-02 / R-03: same chain query at detail=summary vs detail=full yields structurally
+    different payloads — summary nodes carry content_preview and NOT content; full nodes
+    carry content. Proves the resolved verbosity reaches the serializer past graph_read.rs:251.
+    """
+    anchor, _ = _v44_chain_of_five(server)
+
+    resp_sum = server.context_graph("chain", anchor, agent_id="human", format="json", detail="summary")
+    resp_full = server.context_graph("chain", anchor, agent_id="human", format="json", detail="full")
+    sum_data = _json_v44.loads(assert_tool_success(resp_sum).text)
+    full_data = _json_v44.loads(assert_tool_success(resp_full).text)
+
+    sum_node = sum_data["entries"][0]
+    full_node = full_data["entries"][0]
+
+    assert "content_preview" in sum_node, f"summary node must carry content_preview: {list(sum_node.keys())}"
+    assert "content" not in sum_node, f"summary node must NOT carry content: {list(sum_node.keys())}"
+    assert "content" in full_node, f"full node must carry content: {list(full_node.keys())}"
+    assert set(sum_node.keys()) == _SUMMARY_NODE_KEYS, (
+        f"summary node key set must be exactly the 8-field set, got: {sorted(sum_node.keys())}"
+    )
+
+
+# --- AC-05 / R-03: default verbosity is summary --------------------------------------------
+
+@pytest.mark.smoke
+def test_graph_default_is_summary(server):
+    """AC-05 / R-03: a chain call with NO detail axis returns the lean summary projection
+    (equals detail=summary) and differs from detail=full (accepted default-flip behavior)."""
+    anchor, _ = _v44_chain_of_five(server)
+
+    resp_default = server.context_graph("chain", anchor, agent_id="human", format="json")
+    resp_summary = server.context_graph("chain", anchor, agent_id="human", format="json", detail="summary")
+    resp_full = server.context_graph("chain", anchor, agent_id="human", format="json", detail="full")
+
+    default_text = assert_tool_success(resp_default).text
+    summary_text = assert_tool_success(resp_summary).text
+    full_text = assert_tool_success(resp_full).text
+
+    # Structural equality (confidence/access are background-mutable between sequential reads).
+    assert _v44_struct_equal(default_text, summary_text), (
+        "default output must be structurally equal to explicit detail=summary"
+    )
+    # summary vs full always differ in field set (summary lacks content), so byte-inequality
+    # is robust regardless of scoring drift.
+    assert default_text != full_text, "default (summary) must differ from detail=full"
+
+
+# --- AC-03 / R-07: exact node + edge field set through the wire ----------------------------
+
+def test_graph_summary_node_field_set(server):
+    """AC-03 / R-07: a detail=summary node serializes to EXACTLY the 8-field set through the
+    wire — present AND absent keys asserted on the parsed dict."""
+    anchor, _ = _v44_chain_of_five(server)
+    resp = server.context_graph("chain", anchor, agent_id="human", format="json", detail="summary")
+    data = _json_v44.loads(assert_tool_success(resp).text)
+
+    for node in data["entries"]:
+        assert set(node.keys()) == _SUMMARY_NODE_KEYS, (
+            f"node key set must be exactly the 8-field set, got: {sorted(node.keys())}"
+        )
+        for absent in ("content", "content_hash", "previous_hash", "created_at", "updated_at",
+                       "access_count", "created_by", "modified_by", "embedding_dim", "topic"):
+            assert absent not in node, f"summary node leaked '{absent}': {sorted(node.keys())}"
+        assert isinstance(node["content_truncated"], bool)
+        assert node["status"] in ("active", "deprecated", "proposed", "quarantined"), (
+            f"status must be a lifecycle string, got: {node['status']}"
+        )
+
+
+def test_graph_summary_edge_field_set(server):
+    """AC-03 / R-07: a detail=summary subgraph edge serializes to EXACTLY
+    {source_id, target_id, relation_type, depth} — direction and metadata absent."""
+    # Seed on the TARGET with direction=incoming: vnc-043's live depth-1 read (capability-board
+    # pattern) surfaces the just-written edge with no tick wait. Content must be semantically
+    # DISTINCT (cross-domain) or the server's >0.9 dedup collapses the two nodes into one.
+    id_a = _store_subgraph_entry(server, "Volcanic ash dispersal over North Atlantic flight corridors v44efs")
+    id_b = _store_subgraph_entry(server, "Byzantine mosaic tessellation geometry in domed apses v44efs")
+    server.context_edge("add", id_a, "Supports", id_b, agent_id="human")
+
+    resp = server.context_graph(
+        "subgraph",
+        seed_ids=[id_b],
+        edge_types=["Supports"],
+        direction="incoming",
+        max_depth=1,
+        agent_id="human",
+        format="json",
+        detail="summary",
+    )
+    data = _json_v44.loads(assert_tool_success(resp).text)
+    edges = data.get("edges", [])
+    assert edges, "depth-1 live read must surface the just-written Supports edge"
+    for edge in edges:
+        assert set(edge.keys()) == _SUMMARY_EDGE_KEYS, (
+            f"edge key set must be exactly the 4-field set, got: {sorted(edge.keys())}"
+        )
+        assert "direction" not in edge, "summary edge must NOT carry direction"
+        assert "metadata" not in edge, "summary edge must NOT carry metadata"
+
+
+# --- AC-08 / R-05: format=markdown rejected on ALL SEVEN modes (pre-dispatch resolution) ---
+
+@pytest.mark.parametrize(
+    "mode,kwargs",
+    [
+        ("subgraph", {"seed_ids": [1]}),
+        ("chain", {"id": 1}),
+        ("current", {"id": 1}),
+        ("neighbors", {"id": 1}),
+        ("inverse", {"category": "convention"}),
+        ("filter", {"category": "decision"}),
+        ("path", {"from_id": 1, "to_id": 2}),
+    ],
+)
+def test_graph_markdown_rejected_all_modes(server, mode, kwargs):
+    """AC-08 / R-05: format=markdown on every one of the seven modes → ERROR_INVALID_PARAMS,
+    reason substring ('markdown' + 'format=json'), no JSON body. Proves resolution is
+    pre-dispatch (neighbors/path never touch the projection yet must still reject)."""
+    resp = server.context_graph(mode, agent_id="human", format="markdown", **kwargs)
+    result = assert_tool_error(resp, "markdown")
+    assert "format=json" in result.text.lower(), (
+        f"[{mode}] markdown rejection must point to format=json, got: {result.text[:200]}"
+    )
+
+
+# --- AC-07 / R-08: legacy format=summary alias + conflict ---------------------------------
+
+def test_graph_legacy_summary_alias_equivalent(server):
+    """AC-07 / R-08: format=summary (no detail) is byte-identical to detail=summary output."""
+    anchor, _ = _v44_chain_of_five(server)
+    resp_alias = server.context_graph("chain", anchor, agent_id="human", format="summary")
+    resp_detail = server.context_graph("chain", anchor, agent_id="human", format="json", detail="summary")
+    alias_data = _json_v44.loads(assert_tool_success(resp_alias).text)
+    detail_data = _json_v44.loads(assert_tool_success(resp_detail).text)
+
+    # Field-set coverage is NOT weakened: both payloads must carry the exact 8-field summary node.
+    for node in alias_data["entries"] + detail_data["entries"]:
+        assert set(node.keys()) == _SUMMARY_NODE_KEYS, (
+            f"alias/detail node must be the lean 8-field summary, got: {sorted(node.keys())}"
+        )
+    # Equivalence is SHAPE/field-set, not byte-identity: confidence is background-mutable
+    # (GH#405) and drifts between the two sequential reads. Compare structurally with the
+    # mutable fields normalized (keys retained).
+    assert _v44_norm(alias_data) == _v44_norm(detail_data), (
+        "legacy format=summary must be structurally equivalent to detail=summary output"
+    )
+
+
+def test_graph_legacy_summary_conflict_rejected(server):
+    """AC-07 / R-08: format=summary combined with an explicit detail is a conflict
+    (ERROR_INVALID_PARAMS). Pins the resolver order — even detail=summary is a conflict."""
+    anchor, _ = _v44_chain_of_five(server)
+    for detail_val in ("full", "summary"):
+        resp = server.context_graph("chain", anchor, agent_id="human", format="summary", detail=detail_val)
+        assert_tool_error(resp, "detail")
+
+
+# --- AC-08 / R-09: detail accept-and-ignore on neighbors/path -----------------------------
+
+def test_graph_neighbors_detail_ignored(server):
+    """AC-08 / R-09: neighbors with detail=summary, detail=full, and detail absent all
+    produce identical, non-erroring output (edge-only mode — detail accepted and ignored)."""
+    id_x = _store_entry(server, "v44-neighbors-detail-X unique-v44nd")
+    id_y = _store_entry(server, "v44-neighbors-detail-Y unique-v44nd")
+    server.context_edge("add", id_x, "Prerequisite", id_y, agent_id="human")
+
+    common = dict(direction="outgoing", depth=1, agent_id="human", format="json")
+    t_absent = assert_tool_success(server.context_graph("neighbors", id_x, **common)).text
+    t_summary = assert_tool_success(server.context_graph("neighbors", id_x, detail="summary", **common)).text
+    t_full = assert_tool_success(server.context_graph("neighbors", id_x, detail="full", **common)).text
+    # Edge-only payload carries no scored field, but compare structurally to stay immune to any
+    # future background-mutable field (accept-and-ignore is about EFFECT parity, not byte-identity).
+    assert _v44_struct_equal(t_absent, t_summary) and _v44_struct_equal(t_summary, t_full), (
+        "neighbors output must be structurally identical across detail values"
+    )
+
+
+def test_graph_path_detail_ignored(server):
+    """AC-08 / R-09: path with detail=summary/full/absent produces identical output."""
+    id_a = _store_vnc020_entry(server, "v44 path detail alpha domain distinct one", topic="v44p1")
+    id_b = _store_vnc020_entry(server, "v44 path detail beta domain distinct two", topic="v44p2")
+    common = dict(from_id=id_a, to_id=id_b, agent_id="human", format="json")
+    t_absent = assert_tool_success(server.context_graph("path", **common)).text
+    t_summary = assert_tool_success(server.context_graph("path", detail="summary", **common)).text
+    t_full = assert_tool_success(server.context_graph("path", detail="full", **common)).text
+    assert _v44_struct_equal(t_absent, t_summary) and _v44_struct_equal(t_summary, t_full), (
+        "path output must be structurally identical across detail values"
+    )
+
+
+def test_graph_detail_bogus_rejected_on_edge_modes(server):
+    """AC-08 / R-09: detail=bogus is still rejected by the universal parser on edge-only
+    modes — accept-and-ignore is about EFFECT, not validity."""
+    id_x = _store_entry(server, "v44-bogus-detail-X unique-v44bd")
+    for mode, kwargs in (("neighbors", {"id": id_x, "depth": 1}), ("path", {"from_id": id_x, "to_id": id_x})):
+        resp = server.context_graph(mode, agent_id="human", format="json", detail="bogus", **kwargs)
+        assert_tool_error(resp, "detail")
+
+
+def test_graph_detail_bogus_rejected_on_node_modes(server):
+    """R-09: detail=bogus rejected (ERROR_INVALID_PARAMS) on a node-bearing mode too."""
+    anchor, _ = _v44_chain_of_five(server)
+    resp = server.context_graph("chain", anchor, agent_id="human", format="json", detail="bogus")
+    assert_tool_error(resp, "detail")
+
+
+# --- AC-09: tool description advertises the detail axis (through the wire) ------------------
+
+def test_graph_tool_description_advertises_detail(server):
+    """AC-09: the live tools/list description for context_graph mentions the detail axis and
+    the lifecycle-status caveat — confirms the live attribute (not just a mirror const)
+    carries the vnc-044 contract."""
+    resp = server.list_tools()
+    tools = resp.result.get("tools", [])
+    graph = next((t for t in tools if t["name"] == "context_graph"), None)
+    assert graph is not None, "context_graph must be discoverable"
+    desc = graph.get("description", "").lower()
+    assert "detail" in desc, "description must advertise the detail axis"
+    assert "summary" in desc and "full" in desc, "description must name summary and full"
+    assert "lifecycle" in desc, "description must state the lifecycle-status caveat"

@@ -31,10 +31,16 @@ use unimatrix_core::{EntryRecord, Store};
 
 use crate::error::{ERROR_INTERNAL, ERROR_INVALID_PARAMS};
 use crate::mcp::context::ToolContext;
+use crate::mcp::response::verbosity::{Detail, parse_detail};
 use crate::services::typed_graph::TypedGraphState;
 
 #[path = "graph_read_supersession.rs"]
 mod graph_read_supersession;
+
+#[path = "graph_read_projection.rs"]
+mod graph_read_projection;
+
+use graph_read_projection::GraphSummaryProjection;
 
 #[path = "graph_read_neighbors.rs"]
 mod graph_read_neighbors;
@@ -74,7 +80,9 @@ pub struct GraphParams {
     pub mode: String,
     /// Agent making the request.
     pub agent_id: Option<String>,
-    /// Response format: summary, markdown, or json.
+    /// Serialization axis: "json" (default) or "markdown".
+    /// NOTE: context_graph currently rejects "markdown" (no graph-markdown renderer);
+    /// legacy "summary" is a deprecated alias for detail=summary. Does NOT select verbosity.
     pub format: Option<String>,
     /// Anchor entry ID — required for all three modes.
     #[schemars(with = "Option<u64>")]
@@ -133,6 +141,10 @@ pub struct GraphParams {
     /// Requires edge_types to be present and non-empty.
     #[serde(default)]
     pub max_edge_count: Option<u32>,
+    /// Verbosity axis: "summary" (default, lean projection) or "full" (complete records).
+    /// Universal across all seven modes; accepted-and-ignored on neighbors/path (no node bodies).
+    #[serde(default)]
+    pub detail: Option<String>,
 }
 
 /// A single typed edge from a neighbors traversal (ADR-004, vnc-018).
@@ -235,22 +247,104 @@ pub struct PathResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Output resolution (vnc-044, ADR-002 §2)
+// ---------------------------------------------------------------------------
+
+/// Graph serialization axis. Single variant today — `markdown` is rejected in
+/// `resolve_graph_output` before this value is ever produced (C-5, ADR-002 §2).
+#[derive(Debug)]
+enum GraphSerialization {
+    Json,
+}
+
+/// Resolve `(format, detail)` into `(Detail, GraphSerialization)` once, before mode dispatch,
+/// so markdown / legacy-conflict / bad-value rejections are uniform across all seven modes
+/// (ADR-002 §2, R-05). Resolution order: legacy alias FIRST, then serialization, then verbosity.
+fn resolve_graph_output(params: &GraphParams) -> Result<(Detail, GraphSerialization), ErrorData> {
+    // 1. Legacy alias: format == "summary" (case-insensitive) is a deprecated alias for
+    //    detail=summary + json serialization. Combining it with an explicit detail is a
+    //    conflict (FR-9, R-08) — this branch fires BEFORE the verbosity parse, so
+    //    format=summary + detail=summary is a conflict, not a silent agreement (ADR-002 §2).
+    let format_lower = params.format.as_deref().map(|s| s.to_lowercase());
+    if format_lower.as_deref() == Some("summary") {
+        if params.detail.is_some() {
+            return Err(ErrorData::new(
+                ERROR_INVALID_PARAMS,
+                "format=summary is a deprecated alias for detail=summary; \
+                 do not combine it with an explicit detail",
+                None,
+            ));
+        }
+        return Ok((Detail::Summary, GraphSerialization::Json));
+    }
+
+    // 2. Serialization from the remaining format value.
+    let serialization = match format_lower.as_deref() {
+        None | Some("json") => GraphSerialization::Json,
+        Some("markdown") => {
+            return Err(ErrorData::new(
+                ERROR_INVALID_PARAMS,
+                "format=markdown is not supported for context_graph — \
+                 no graph-markdown renderer exists yet; use format=json",
+                None,
+            ));
+        }
+        Some(_) => {
+            return Err(ErrorData::new(
+                ERROR_INVALID_PARAMS,
+                "format must be json (markdown not yet supported for graph)",
+                None,
+            ));
+        }
+    };
+
+    // 3. Verbosity via the shared parser (None → Summary default; bad value → INVALID_PARAMS).
+    let detail = parse_detail(&params.detail).map_err(ErrorData::from)?;
+
+    Ok((detail, serialization))
+}
+
+/// Serialize a node-bearing envelope at the resolved verbosity (vnc-044, the `:251` fix).
+///
+/// - `Detail::Full` serializes the ORIGINAL typed envelope — byte-identical to pre-vnc-044
+///   output (AC-04/FR-10). It MUST NOT route through the projection.
+/// - `Detail::Summary` serializes the lean `to_summary_json()` projection.
+fn serialize_detail<T>(detail: Detail, result: &T) -> Result<String, ErrorData>
+where
+    T: Serialize + GraphSummaryProjection,
+{
+    match detail {
+        Detail::Full => serde_json::to_string(result),
+        Detail::Summary => serde_json::to_string(&result.to_summary_json()),
+    }
+    .map_err(|e| ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None))
+}
+
+// ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
 /// Main handler for `context_graph`. Called from `tools.rs` after capability check.
 ///
-/// Execution order (per ARCHITECTURE.md §Component Interactions):
-/// 1. `validate_no_unsupported_params` (centralized, before mode dispatch).
-/// 2. Require anchor `id` for all three modes.
-/// 3. Mode dispatch.
+/// Execution order (per ARCHITECTURE.md §Component Interactions, vnc-044 ADR-002 §2):
+/// 0. `resolve_graph_output` — resolve (format, detail) axes; reject markdown / legacy-conflict /
+///    bad values for ALL SEVEN modes BEFORE any dispatch.
+/// 1. `validate_no_unsupported_params` (centralized, before mode dispatch). `detail` is a
+///    universal field — no per-mode rejection arm.
+/// 2. Require anchor `id` for all three point-lookup modes.
+/// 3. Mode dispatch; node-bearing arms serialize via the detail seam.
 pub(crate) async fn handle_graph(
     store: &Store,
     typed_graph_state: &Arc<RwLock<TypedGraphState>>,
     params: GraphParams,
     _ctx: &ToolContext,
 ) -> Result<CallToolResult, rmcp::ErrorData> {
-    // Step 1: Centralized parameter validation (ADR-003).
+    // Step 0 (vnc-044): resolve output axes — rejects markdown / legacy-conflict / bad values
+    // for ALL SEVEN modes before any dispatch. `GraphSerialization` has one variant (Json);
+    // bind it as `_serialization` until a graph-markdown renderer ships.
+    let (detail, _serialization) = resolve_graph_output(&params)?;
+
+    // Step 1: Centralized parameter validation (ADR-003). `detail` is universal — no new arm.
     // Capability check (require_cap) already ran in tools.rs before this is called.
     if let Err(msg) = validate_no_unsupported_params(&params) {
         return Err(ErrorData::new(ERROR_INVALID_PARAMS, msg, None));
@@ -276,22 +370,14 @@ pub(crate) async fn handle_graph(
             match params.mode.as_str() {
                 "chain" => {
                     let result = graph_read_supersession::handle_chain(store, &params, id).await?;
-                    let json = serde_json::to_string(&result).map_err(|e| {
-                        ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
-                    })?;
+                    let json = serialize_detail(detail, &result)?;
                     Ok(CallToolResult::success(vec![rmcp::model::Content::text(
                         json,
                     )]))
                 }
                 "current" => match graph_read_supersession::handle_current(store, id).await {
                     Ok(resp) => {
-                        let json = serde_json::to_string(&resp).map_err(|e| {
-                            ErrorData::new(
-                                ERROR_INTERNAL,
-                                format!("serialization error: {e}"),
-                                None,
-                            )
-                        })?;
+                        let json = serialize_detail(detail, &resp)?;
                         Ok(CallToolResult::success(vec![rmcp::model::Content::text(
                             json,
                         )]))
@@ -322,9 +408,7 @@ pub(crate) async fn handle_graph(
             // subgraph mode uses seed_ids, not id. No anchor ID required.
             let result =
                 graph_read_subgraph::handle_subgraph(store, typed_graph_state, &params).await?;
-            let json = serde_json::to_string(&result).map_err(|e| {
-                ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
-            })?;
+            let json = serialize_detail(detail, &result)?;
             Ok(CallToolResult::success(vec![rmcp::model::Content::text(
                 json,
             )]))
@@ -332,9 +416,7 @@ pub(crate) async fn handle_graph(
         "inverse" => {
             // Pure SQL antijoin — no graph state needed.
             let result = graph_read_inverse::handle_inverse(store, &params).await?;
-            let json = serde_json::to_string(&result).map_err(|e| {
-                ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
-            })?;
+            let json = serialize_detail(detail, &result)?;
             Ok(CallToolResult::success(vec![rmcp::model::Content::text(
                 json,
             )]))
@@ -342,9 +424,7 @@ pub(crate) async fn handle_graph(
         "filter" => {
             // Pure SQL correlated subquery — no graph state needed.
             let result = graph_read_filter::handle_filter(store, &params).await?;
-            let json = serde_json::to_string(&result).map_err(|e| {
-                ErrorData::new(ERROR_INTERNAL, format!("serialization error: {e}"), None)
-            })?;
+            let json = serialize_detail(detail, &result)?;
             Ok(CallToolResult::success(vec![rmcp::model::Content::text(
                 json,
             )]))

@@ -127,6 +127,23 @@ pub(crate) const CONTEXT_GRAPH_DESCRIPTION: &str = "Traverse the Unimatrix knowl
       in the current graph snapshot, the result is { found: false } — not an error. \
       resolve_supersessions defaults true across neighbors, subgraph, and path; pass resolve_supersessions=false to traverse the raw as-stored topology (audit). Deprecated endpoints otherwise resolve to their \
       active successors before BFS begins.\n\
+    Output axes (two orthogonal parameters):\n\
+    - format: serialization only — \"json\" (default) or \"markdown\". context_graph currently \
+      accepts only json; \"markdown\" is rejected with an invalid-params error (no graph-markdown \
+      renderer exists yet — use format=json). Legacy format=\"summary\" is a deprecated alias for \
+      detail=summary (json); combining it with an explicit detail is rejected.\n\
+    - detail: verbosity — \"summary\" (default) or \"full\". Default is summary for context_graph, a \
+      lean projection (this differs from tools not yet migrated to the two-axis model). summary \
+      nodes carry {id, title, category, tags, status, confidence, content_preview, \
+      content_truncated}; summary edges carry {source_id, target_id, relation_type, depth}. \
+      content_preview is the first 256 bytes of content (UTF-8 boundary floored, no ellipsis); \
+      content_truncated flags that the full content was elided — fetch it with context_get. \
+      detail=full returns the complete records unchanged. On neighbors and path (edge-only modes) \
+      detail is accepted and ignored.\n\
+      NOTE: summary status is the entry LIFECYCLE status (active/deprecated/proposed/quarantined), \
+      NOT capability delivery status (missing/partial/proven/claimed, which lives inside the entry \
+      content). A subgraph of capability entries shows status \"active\" for every node; use \
+      context_get for a node's delivery state.\n\
     Requires Read capability. All modes are read-only.";
 
 /// Parameters for semantic search.
@@ -4036,6 +4053,23 @@ impl UnimatrixServer {
               in the current graph snapshot, the result is { found: false } — not an error. \
               resolve_supersessions defaults true across neighbors, subgraph, and path; pass resolve_supersessions=false to traverse the raw as-stored topology (audit). Deprecated endpoints otherwise resolve to their \
               active successors before BFS begins.\n\
+            Output axes (two orthogonal parameters):\n\
+            - format: serialization only — \"json\" (default) or \"markdown\". context_graph currently \
+              accepts only json; \"markdown\" is rejected with an invalid-params error (no graph-markdown \
+              renderer exists yet — use format=json). Legacy format=\"summary\" is a deprecated alias for \
+              detail=summary (json); combining it with an explicit detail is rejected.\n\
+            - detail: verbosity — \"summary\" (default) or \"full\". Default is summary for context_graph, a \
+              lean projection (this differs from tools not yet migrated to the two-axis model). summary \
+              nodes carry {id, title, category, tags, status, confidence, content_preview, \
+              content_truncated}; summary edges carry {source_id, target_id, relation_type, depth}. \
+              content_preview is the first 256 bytes of content (UTF-8 boundary floored, no ellipsis); \
+              content_truncated flags that the full content was elided — fetch it with context_get. \
+              detail=full returns the complete records unchanged. On neighbors and path (edge-only modes) \
+              detail is accepted and ignored.\n\
+              NOTE: summary status is the entry LIFECYCLE status (active/deprecated/proposed/quarantined), \
+              NOT capability delivery status (missing/partial/proven/claimed, which lives inside the entry \
+              content). A subgraph of capability entries shows status \"active\" for every node; use \
+              context_get for a node's delivery state.\n\
             Requires Read capability. All modes are read-only."
     )]
     async fn context_graph(
@@ -6316,6 +6350,80 @@ mod tests {
         assert!(
             description.contains("seven modes"),
             "description opening must say seven modes (vnc-020 added inverse, filter, path)"
+        );
+    }
+
+    #[test]
+    fn test_graph_description_documents_detail_axis() {
+        // vnc-044 FR-12 / AC-09 / R-13: the description must document the two-axis output
+        // contract — format (serialization) and the new detail (verbosity) axis, with values
+        // and the summary default. Substring assertions only (R-13): match the running phrase,
+        // not spec wording. Guarded against the live literal by
+        // test_graph_tool_attr_description_matches_const.
+        let description = crate::mcp::tools::CONTEXT_GRAPH_DESCRIPTION;
+        assert!(
+            description.contains("Output axes"),
+            "description must document the two output axes"
+        );
+        assert!(
+            description.contains("- detail: verbosity"),
+            "description must document the detail (verbosity) axis"
+        );
+        assert!(
+            description.contains("- format: serialization only"),
+            "description must frame format as serialization only"
+        );
+        assert!(
+            description.contains("\"summary\"") && description.contains("\"full\""),
+            "detail axis must document summary and full values"
+        );
+        assert!(
+            description.contains("Default is summary for context_graph"),
+            "description must state summary is the default for context_graph"
+        );
+        assert!(
+            description.contains("differs from tools not yet migrated"),
+            "SR-04: description must disclose the per-tool default divergence during migration"
+        );
+    }
+
+    #[test]
+    fn test_graph_description_states_markdown_rejection() {
+        // vnc-044 SR-05 / AC-08 / R-13: the description must state format=markdown is rejected
+        // for context_graph and point callers at format=json. Substring assertions only.
+        let description = crate::mcp::tools::CONTEXT_GRAPH_DESCRIPTION;
+        assert!(
+            description.contains("\"markdown\" is rejected"),
+            "description must state markdown is rejected for context_graph"
+        );
+        assert!(
+            description.contains("use format=json"),
+            "description must point callers at format=json"
+        );
+    }
+
+    #[test]
+    fn test_graph_description_states_lifecycle_status_caveat() {
+        // vnc-044 SR-09 / R-11 / AC-09: the single most load-bearing sentence — projected
+        // summary `status` is the entry LIFECYCLE status, NOT capability delivery status, and a
+        // capability subgraph shows "active" for every node. This is a documentation/expectation
+        // gate: it asserts the caveat is PRESENT, never that delivery status is absent (R-11).
+        let description = crate::mcp::tools::CONTEXT_GRAPH_DESCRIPTION;
+        assert!(
+            description.contains("LIFECYCLE status"),
+            "SR-09: description must state summary status is the lifecycle status"
+        );
+        assert!(
+            description.contains("NOT capability delivery status"),
+            "SR-09: description must state status is NOT capability delivery status"
+        );
+        assert!(
+            description.contains("shows status \"active\" for every node"),
+            "SR-09: description must carry the 'active for every capability node' caveat"
+        );
+        assert!(
+            description.contains("context_get for a node's delivery state"),
+            "SR-09: description must point delivery-status needs at context_get"
         );
     }
 

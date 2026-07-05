@@ -443,3 +443,11 @@ mod vnc020;
 
 #[path = "graph_read_cross_surface_tests.rs"]
 mod cross_surface;
+
+// -----------------------------------------------------------------------
+// vnc-044 tests (resolve_graph_output decision table, detail serialization
+// seam, additive GraphParams.detail field).
+// -----------------------------------------------------------------------
+
+#[path = "graph_read_tests_vnc044.rs"]
+mod vnc044;
