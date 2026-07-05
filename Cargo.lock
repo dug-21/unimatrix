@@ -3875,6 +3875,7 @@ dependencies = [
  "rcgen",
  "regex",
  "rmcp",
+ "rmcp-macros",
  "rustls-pemfile",
  "schemars",
  "serde",
