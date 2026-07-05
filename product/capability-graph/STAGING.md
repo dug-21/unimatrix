@@ -38,8 +38,9 @@ with no evidence (a **warning** state). Do not conflate — they're opposite in 
 capability at 🔵 is *nominated*, not yet claimable — so the **🔵→🟢 verify pass is what validates which claims we
 can actually make.** ass-089 copy may only assert a floor that is actually 🟢.
 
-**Payoff — this inverts the map's read:** most goals are **claimable at floor today**; the north stars are where
-the excellence story and ongoing work live.
+**Payoff — this inverts the map's read:** the north stars are where the excellence story and ongoing work live, and
+the floors are close. **BUT** the adversarial verification pass (next section) found **every floor has 1–2 named gaps**
+before it's honestly claimable — mostly a missing end-to-end test or an over-scoped outcome. Built ≠ claimable-as-worded.
 
 | Goal | Claim-floor — "we have this" | North-star — "where we excel / aspire" |
 |---|---|---|
@@ -55,6 +56,62 @@ even though "measurably better" (the north star) stays unmeasurable (finding 1).
 **Goal-entry refinement (deferred to Unimatrix writes):** goal entries currently bundle north-star into their
 success criteria (e.g. #4946 states multi-LLM + full-fidelity as core criteria → the goal reads as perpetually
 incomplete). When we touch Unimatrix, each goal entry separates claim-floor criteria from north-star criteria.
+
+---
+
+## Verification pass — results (adversarial, 2026-07-05) — THIS GOVERNS
+
+Five refute-by-default verifiers read the **actual test assertions** behind every claim-floor + 🔵 node (stale
+"PENDING" acceptance-map columns ignored). **Bottom line: no goal's claim-floor is 100% claimable exactly as first
+worded — each has 1–2 named, closeable gaps** (a missing end-to-end test, or an over-scoped outcome). The mechanisms
+are built and largely proven; the gaps are small and specific. **`ass-089` copy may not assert a floor until its gap closes.**
+
+**Confirmed 🔵→🟢** (evidence clears the outcome as worded): SL1, SL8, SL-ENRICH, RETAIN · **KI-AUDIT** (+ KI-CURRENCY
+holds 🟢) · PD1 · C3, C6, C7, C9, C12/N2, BACKUP-RESTORE · DA2, DA4, DA6, DA7 · NX-VECTOR, NX-SQLNATIVE.
+
+**Downgraded** (cited test doesn't clear the worded outcome):
+- **SL3 → 🟡** — proves the phase-freq statistic, not retrieval-favoring; `phase_category_weights()` has no prod consumer.
+- **KI-CHAIN → split, one leg 🟢, one leg 🔴 (confirmed in code 2026-07-05).** Both prior readings were half-right:
+  the **supersession chain IS wired** (`entries.supersedes`/`superseded_by`, authoritative, SQL-CTE, terminal-active —
+  vnc-017 ADR-001), and each entry has its own `content_hash` → **KI-CHAIN 🟢**. But the **cross-version cryptographic
+  chain is NOT wired** → **KI-CHAIN-XV 🔴**: `write_ext.rs:539` writes `previous_hash: String::new()` and `version: 1`
+  on every correction, so a superseded entry's hash is never carried forward — tampering is undetectable. This
+  **violates Architectural Principle 1** and makes README's "tamper-evident hash chain" an **unbacked claim**, not mere
+  drift. Tracked **#912** (wire `previous_hash = predecessor.content_hash` + version increment + chain-verify).
+- **PD2, PD4 → 🟡** — implementations work (dogfood-observed) but cited tests are a tautology (PD2 never invokes the
+  writer/routing) / producer-only substrate + a WARN-flagged restore (PD4). No automated guard for the worded behavior.
+- **C1 → 🟡** — local/STDIO deploy proven; **container-cloud HTTPS deploy has NO green smoke** (deferred to the release gate, same as N5).
+- **C15 → 🟡** — client-works verification is docs-only (`curl /health` ≠ "a client actually works").
+- **DA3 → 🟡** — provider event-name normalization proven; a foreign `source_domain` flowing through *ingestion+storage* is not tested.
+- **NX-STORE → 🟡** — "no orphaned index rows" (dead helper, 0 callers) + "backend-swappable" (SQLite-only; nxs-005's
+  dual-backend parity claim does not match shipped code) unproven.
+- **NX-TELEMETRY → 🟡** — "for every search" firing is code-review-only (test bypasses the search path).
+- **NX-DURABILITY → 🟡 (stays; PENDING is accurate)** — saturation/shed/never-drop tests absent; runtime-unproven.
+
+**Held 🔵** (real but component/formula/synthetic-level, end-to-end untested): SL2, SL4, SL6, SL-REUSE, LAMBDA-HONEST.
+
+**Typing fix — SL6 → curve/north-star.** "The system learns" is asymptotic; move it off the claim-floor. (SL3 likewise:
+its outcome is retrieval-quality-flavored — mechanism ≠ outcome.)
+
+**Citation tightenings** (cap holds, cite is wrong — fix before store): DA2 (cite crt-031/vnc-040, not dsn-001 AC-02),
+DA7 (cite vnc-040, not the col-023 smoke), KI-AUDIT ("every mutation" universal — only deprecate+import have dedicated row tests).
+
+### Per-goal claim-floor verdict
+
+| Goal | Floor claimable? | Clears | Blocks → fix |
+|---|---|---|---|
+| **Knowledge Integrity** | **YES** (reworded) | KI-AUDIT ✓, KI-CURRENCY ✓, KI-CHAIN ✓ (content_hash + authoritative supersession chain) | README "previous_hash chain" drift to fix; cross-version crypto chain is a north-star |
+| **Domain-agnostic** | **4 of 5** | DA2, DA4, DA6, DA7 ✓ | DA3 → add a foreign-`source_domain` ingestion+storage test |
+| **Personal Cloud** | **partial** | local deploy + slugs + secure client setup ✓ | C1 cloud-deploy smoke · C15 client-works test |
+| **Self-learning** | **narrowed claim** | SL-ENRICH ✓ + SL1 ✓ → *"the graph learns structure from how you work"* | SL2/SL4/SL6 mechanism-only — **not** "retrieval improves from usage" |
+| **Proactive-delivery** | **1 of 3** | PD1 ✓ | PD2 (writer+routing test) · PD4 (end-to-end run() restore test) |
+
+**Knowledge Integrity is the first cleanly-claimable floor** (once KI-CHAIN is reworded — a correction, not a
+narrowing). **None of the others is a hard failure** — every gap is a missing test or a wording fix over built
+behavior. Pre-Unimatrix state:
+store the CONFIRMED 🟢 as claimable, store the rest at verified (mostly 🟡) status, reword KI-CHAIN, and file the
+named gaps as the work that turns each floor claimable. **The per-goal tables below are the PRE-verification snapshot —
+this section governs verified status.**
 
 ---
 
@@ -218,7 +275,8 @@ Prerequisite direction: **substrate → functional → rollup**. `Advances` → 
 
 | Code | Outcome | Status | Disposition | Key evidence |
 |---|---|---|---|---|
-| KI-CHAIN | Per-entry hash-chain tamper-evidence (≡ NX-INTEGRITY) | 🔵 | **NEW** (× personal-cloud) | nxs-004 known-value SHA + chain tests |
+| KI-CHAIN | Per-entry engine-computed **content_hash** (tamper-evidence) + **authoritative supersession chain on the EntryRecord** (corrections link old→new via `supersedes`/`superseded_by`, terminal-active resolvable via SQL CTE) | 🟢 | **NEW** (× personal-cloud); **reworded to real architecture** | nxs-004 content_hash known-value (insert-side, engine-computed); supersession = `entries` fields, NOT graph/GRAPH_EDGES (vnc-017 ADR-001, SQL-CTE); terminal-active proven via KI-CURRENCY |
+| KI-CHAIN-XV | **Cross-version cryptographic chain** — successor commits to predecessor's hash; tampering a superseded entry is detectable | 🔴 | **NEW — UNWIRED** (#912) | `write_ext.rs:539` writes `previous_hash: String::new()`, `version: 1` hardcoded → **violates Architectural Principle 1** ("`previous_hash` on every entry, never skipped"); README "tamper-evident hash chain" is an **unbacked claim** (confirmed in code 2026-07-05) |
 | KI-AUDIT | Every mutation attributed + append-only audit-logged | 🔵 | **NEW** | vnc-001/003 AUDIT_LOG (Principle 2, DDL-trigger enforced) — needs cite verify |
 | KI-CURRENCY | context_get returns the current version by default | 🟢 | **re-home** SL7 #5418 | vnc-042 field-absent-resolves-terminal |
 | KI-CORRECTION | Typed graph stays integrity-consistent under correction | 🟡 | **re-home** SLN3 #5419 | vnc-035 carry-forward; outbound-orphan sweep #745 open |
@@ -323,15 +381,21 @@ via `context_edge` add `Advances→{integrity}` (source = each node's Active id)
 
 **A. `context_store` — new nodes** (~26): DA1c, DA2–DA9, SL8, SL-ENRICH, SL-REUSE, SL-RETRAIN, LAMBDA-HONEST,
 RETAIN, NX-STORE, NX-VECTOR, NX-SQLNATIVE, NX-TELEMETRY, NX-DURABILITY, BACKUP-RESTORE, SL-OBSERVE, plus the
-integrity nodes **KI-CHAIN (≡NX-INTEGRITY), KI-AUDIT, KI-CONTRADICT (≡SL-CONTRADICT), KI-ROLLUP**. Each with
-`Advances`→goal, `Prerequisite` edges per the DAG, `About` for nfrs.
+integrity nodes **KI-CHAIN (≡NX-INTEGRITY), KI-AUDIT, KI-CONTRADICT (≡SL-CONTRADICT), KI-ROLLUP**. Store each at its
+**verified status** (Verification Pass), NOT the miner's nomination. **Reword KI-CHAIN's outcome** before store
+(insert-side content_hash + supersession versioning). Each with `Advances`→goal, `Prerequisite` edges, `About` for nfrs.
 
-**B. `context_correct` — sharpen existing** (citations/delivered_by, no status change): SL1, SL3, SL4, SL6,
-SLN3, SL-METRIC, PD1, PD3, PD4, C3, C7, C8, N1. Plus **fix PD-ROLLUP body** (stale "PD2 missing").
+**B. `context_correct` — sharpen existing** (citations/delivered_by, no status change): SL1, SL4, SLN3, SL-METRIC,
+PD1, C3, C7, C8, N1. Apply the **citation tightenings** (DA2→crt-031/vnc-040, DA7→vnc-040). Plus **fix PD-ROLLUP body**
+(stale "PD2 missing"). **Re-type SL6 as curve** (off the claim-floor).
 
-**C. Status flips — GATED behind verification** (🔵→🟢 only after independent confirm the cited test clears
-the `done_when`): all 🔵 above. **Do not batch-flip on miner nomination.** Recommend a verify pass (one
-skeptic per node confirming test-clears-outcome) before any flip — the firewall is the whole point.
+**C. Status = the VERIFIED result** (Verification Pass section governs). Flip to 🟢 ONLY the Confirmed set
+(SL1/SL8/SL-ENRICH/RETAIN, KI-AUDIT, PD1, C3/C6/C7/C9/C12-N2/BACKUP-RESTORE, DA2/DA4/DA6/DA7, NX-VECTOR/NX-SQLNATIVE).
+Store the Downgraded set at 🟡 and the Held set at 🔵. **SL3 → 🟡.** Do not store any floor as "claimable" until its
+named gap closes.
+
+**F. File the floor gaps as work** (GH issues): C1 cloud-deploy smoke · C15 client-works test · DA3 foreign-ingestion
+test · PD2 writer/routing test · PD4 end-to-end restore test · KI-CHAIN reword. These are what turn each floor claimable.
 
 **D. Curve / north-star nodes — never flip to terminal 🟢** (they clear the current bar and re-open; track as
 *headroom*, not gaps): SL-ROLLUP ★, SL-METRIC ★, SL-COLDSTART, SL5, PD3, PDN1, PD-ROLLUP, C0 ★, DA9, KI-CORRECTION,
@@ -352,6 +416,8 @@ perpetually incomplete.
 - **DA9** → 🔴→🟡: a **live research-domain project** exists (early). Domain-agnostic is being exercised for real.
 - **Gemini** → on-hold (moving to Antigravity). C14 re-scoped to Claude + Codex.
 - **Poisoning (SLN1)** → valid open gap; re-homed to Knowledge Integrity as KI-CLEAN (north-star curve).
+- **Verification pass done (2026-07-05)** → adversarial, per-node. No floor cleanly claimable as first worded; each
+  has 1–2 closeable gaps. Confirmed set flips 🟢; downgrades → 🟡; SL6 re-typed curve; KI-CHAIN needs reword. See Verification Pass.
 
 ## Open decisions for the human
 

@@ -28,11 +28,12 @@ The intelligence pipeline is the core. It is a session-conditioned, self-improvi
 
 ## Strategic Goals
 
-Four strategic goals drive all roadmap decisions. Each is maintained as an enriched entry in Unimatrix — query `context_lookup(category="goal")` for current content.
+Five strategic goals drive all roadmap decisions. Each is maintained as an enriched entry in Unimatrix — query `context_lookup(category="goal")` for current content.
 
 | Goal | Tag | Summary |
 |------|-----|---------|
 | Self-learning intelligence | `self-learning` | Every deployment improves retrieval quality from actual usage — no manual tuning |
+| Knowledge integrity | `integrity` | Every entry attributed, tamper-evident, and current — accurate data, never stale, corrupted, or contradictory |
 | Proactive knowledge delivery | `proactive-delivery` | Knowledge arrives before agents search for it — phase-conditioned, session-aware |
 | Developer-friendly deployment | `personal-cloud` | One container, one bearer token, one command — full pipeline fidelity over HTTPS |
 | Domain-agnostic platform | `domain-agnostic` | Any domain, configured not rebuilt — validated on SDLC and research workflows |
@@ -41,6 +42,7 @@ Query current goal content: `context_lookup(category="goal", tags=["goal", "{tag
 
 Feature delivery is tracked via GitHub Issues with `goal:*` labels:
 - `goal:self-learning` — intelligence pipeline, GNN, learning signals
+- `goal:integrity` — hash chain, append-only audit, read-currency, contradiction management, poison-prevention
 - `goal:proactive-delivery` — injection, briefing, session context
 - `goal:personal-cloud` — container, HTTPS, auth, multi-LLM
 - `goal:domain-agnostic` — config externalization, domain packs, multi-retrieval
