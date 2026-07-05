@@ -868,7 +868,7 @@ integration test environment, not in offline CI.
 | `eval report` exits 0 on gate failures | Do not use the exit code as a CI gate. Zero-Regression and Distribution Gate failures appear in the report body only. `eval report` exits non-zero only for I/O errors and corrupt `profile-meta.json`. |
 | UDS ≠ hook socket | `UnimatrixUdsClient` and `UnimatrixHookClient` use different framing and different sockets. Connecting to the wrong one produces framing errors, not a clean error message. |
 | Weight sum = 0.92 | All six `[confidence.weights]` fields must sum to exactly 0.92 ± 1e-9. |
-| `cargo install` for production binary | `cargo build --release` writes to `target/release/` and does NOT update the running daemon. Use `cargo install --path crates/unimatrix-server` to replace the installed binary. Run before deploying a new build; kill the running daemon first. |
+| `cargo install` for production binary | `cargo build --release` writes to `target/release/` and does NOT update the running daemon. Use `cargo install --locked --path crates/unimatrix-server` to replace the installed binary. Run before deploying a new build; kill the running daemon first. |
 
 ---
 
@@ -881,7 +881,7 @@ integration test environment, not in offline CI.
 #   cargo build --release -p unimatrix-server   -- writes to target/release/, does NOT update the running daemon
 #
 # To update the installed/running MCP server binary:
-#   cargo install --path crates/unimatrix-server -- replaces the binary in $CARGO_HOME/bin/
+#   cargo install --locked --path crates/unimatrix-server -- replaces the binary in $CARGO_HOME/bin/
 #   Kill the running daemon before installing; it will not auto-restart.
 #
 cargo build --release --workspace
