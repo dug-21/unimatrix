@@ -3,6 +3,19 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.10.0] - 2026-07-06
+
+### Features
+- **context_graph**: split the overloaded `format` parameter into orthogonal serialization (`format`: `json`/`markdown`) and verbosity (`detail`: `summary`/`full`) axes, with a lean summary node projection; default verbosity is now `summary` (vnc-044, #920)
+- **context_graph**: subgraph filter discoverability + live depth-1 read (vnc-043, #903)
+- **context_correct**: cross-version hash chain wired in weak mode + on-demand verify CLI (nxs-014, #914)
+- **context_cycle_review**: non-destructive scoped transcript retrieval — phase/anchor/match/window (crt-057, #894)
+- **context_deprecate**: eager agent-authored edge cleanup at deprecation (crt-058, #911)
+
+### Fixes
+- pin rmcp-macros to =1.7.0 so a default `cargo install` compiles (#905)
+- retire tick-starved DependencyOnDeprecatedRule and stale_dependency_edges metric (#897)
+
 ## [0.9.0] - 2026-07-03
 
 ### Fixes

@@ -513,12 +513,20 @@ GH Issue: {URL} (updated)
 Human action required: {Approve and merge | Address blocking items}.
 ```
 
-After returning to the human, close the pr-review phase and stop the cycle:
+After returning to the human, **KEEP the pr-review phase OPEN. Do NOT stop the cycle yet.** The human
+merge gate is unchanged — the merge/rework activity must be attributed to the still-open cycle.
+
+**ONCE THE HUMAN MERGES** (strict order — **merge → close → retro**):
 
 ```
-context_cycle(type: "phase-end", phase: "pr-review", agent_id: "{feature-id}-delivery-leader")
-context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 2 complete. All gates passed. PR: {url}", agent_id: "{feature-id}-delivery-leader")
+1. context_cycle(type: "phase-end", phase: "pr-review", agent_id: "{feature-id}-delivery-leader")
+2. context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 2 complete. Merged. PR: {url}", agent_id: "{feature-id}-delivery-leader")
+3. /uni-retro   # post-close verbatim-candidate harvest; retrieval is repeatable + non-destructive
 ```
+
+`context_cycle(stop)` is non-purging — it drains only the retrospective queue and writes an audit row
+(ADR-005), and the review never purges, so the post-close `/uni-retro` reads an intact buffer and may
+retrieve repeatedly. A close before merge, or a retro before close, is a defect.
 
 ### Post-Delivery Review (Optional)
 
@@ -611,9 +619,12 @@ DELIVERY LEADER (you):
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /uni-review-pr — security review + merge readiness
               Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → PR comment
-              Combined return — SESSION 2 ENDS
-              context_cycle(type: "phase-end", phase: "pr-review", ...)
-              context_cycle(type: "stop", topic: "{feature-id}", outcome: "...", agent_id: "{feature-id}-delivery-leader")
+              Combined return — pr-review phase stays OPEN through the human merge decision
+              ★ HUMAN MERGE GATE (unchanged) ★
+              ...ONCE HUMAN MERGES (strict order — merge → close → retro):
+                context_cycle(type: "phase-end", phase: "pr-review", ...)
+                context_cycle(type: "stop", topic: "{feature-id}", outcome: "...Merged...", agent_id: "{feature-id}-delivery-leader")
+                /uni-retro — post-close verbatim-candidate harvest (repeatable, non-destructive)
 ```
 
 ---
@@ -633,19 +644,25 @@ The uni-tester agent has full integration harness knowledge (suite selection, tr
 
 ## Outcome Recording
 
-After Phase 4, close the feature cycle:
+The pr-review phase stays OPEN through the human merge decision. **Once the human merges** — and only
+then — close the feature cycle, then run the retro. Strict order: **merge → close → retro**.
 
 ```
-context_cycle(
-  type: "phase-end",
-  phase: "pr-review",
-  agent_id: "{feature-id}-delivery-leader"
-)
+1. context_cycle(
+     type: "phase-end",
+     phase: "pr-review",
+     agent_id: "{feature-id}-delivery-leader"
+   )
 
-context_cycle(
-  type: "stop",
-  topic: "{feature-id}",
-  outcome: "Session 2 complete. All gates passed. PR: {url}",
-  agent_id: "{feature-id}-delivery-leader"
-)
+2. context_cycle(
+     type: "stop",
+     topic: "{feature-id}",
+     outcome: "Session 2 complete. Merged. PR: {url}",
+     agent_id: "{feature-id}-delivery-leader"
+   )
+
+3. /uni-retro   # post-close verbatim-candidate harvest; buffer intact, retrieval repeatable + non-destructive
 ```
+
+`context_cycle(stop)` is non-purging (ADR-005) and the review never purges, so the post-close retro reads
+an intact buffer. A close before merge, or a retro before close, is a defect.

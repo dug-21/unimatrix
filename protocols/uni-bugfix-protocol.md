@@ -415,26 +415,35 @@ Task(subagent_type: "uni-zero-reviewer",
 
 Product Review Rules apply (see Phase 1c). The reviewer posts an advisory comment with recommended actions; reviewer failure → note "product review failed" and proceed.
 
-When the security review returns with no blocking findings:
+When the security review returns with no blocking findings, **KEEP the bug-review phase OPEN and proceed
+to Phase 5 (Human Review & Merge). Do NOT stop the cycle yet** — the merge/rework activity must be
+attributed to the still-open cycle. If the review returns blocking findings, resolve them before
+proceeding to merge.
+
+**ONCE THE HUMAN MERGES** (strict order — **merge → close → retro**):
 
 ```
-mcp__unimatrix__context_cycle({
-  "type": "phase-end",
-  "topic": "bugfix-{issue-number}",
-  "phase": "bug-review",
-  "outcome": {1-2 sentence brief summary of phase result},
-  "agent_id": "{issue-number}-bugfix-leader"
-})
+1. mcp__unimatrix__context_cycle({
+     "type": "phase-end",
+     "topic": "bugfix-{issue-number}",
+     "phase": "bug-review",
+     "outcome": {1-2 sentence brief summary of phase result},
+     "agent_id": "{issue-number}-bugfix-leader"
+   })
 
-mcp__unimatrix__context_cycle({
-  "type": "stop",
-  "topic": "bugfix-{issue-number}",
-  "outcome": "Bugfix complete. Root cause: {summary}. PR: {url}",
-  "agent_id": "{issue-number}-bugfix-leader"
-})
+2. mcp__unimatrix__context_cycle({
+     "type": "stop",
+     "topic": "bugfix-{issue-number}",
+     "outcome": "Bugfix complete. Merged. Root cause: {summary}. PR: {url}",
+     "agent_id": "{issue-number}-bugfix-leader"
+   })
+
+3. /uni-retro   # post-close verbatim-candidate harvest; retrieval is repeatable + non-destructive
 ```
 
-If the review returns blocking findings, resolve them before stopping the cycle.
+`context_cycle(stop)` is non-purging — it drains only the retrospective queue and writes an audit row
+(ADR-005), and the review never purges, so the post-close `/uni-retro` reads an intact buffer and may
+retrieve repeatedly. A close before merge, or a retro before close, is a defect.
 
 ---
 
@@ -584,20 +593,27 @@ BUGFIX LEADER (you):
   Phase 4:    /uni-review-pr — security review + merge readiness → GH Issue comment
               Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → PR comment
               ...wait...
-              ...no blocking findings →
+              ...no blocking findings → bug-review phase stays OPEN; proceed to Phase 5. Do NOT stop yet.
+  Phase 5:    Present PR + security assessment to human
+              ★ HUMAN MERGE GATE (unchanged) ★
+              ...ONCE HUMAN MERGES (strict order — merge → close → retro):
                 mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
                   "phase": "bug-review", "agent_id": "{issue-number}-bugfix-leader" })
                 mcp__unimatrix__context_cycle({ "type": "stop", "topic": "bugfix-{issue-number}",
-                  "outcome": "Bugfix complete. Root cause: {summary}. PR: {url}", "agent_id": "..." })
+                  "outcome": "Bugfix complete. Merged. Root cause: {summary}. PR: {url}", "agent_id": "..." })
+                /uni-retro — post-close verbatim-candidate harvest (repeatable, non-destructive)
                 /uni-store-lesson (if generalizable)
-  Phase 5:    Present PR + security assessment to human — SESSION ENDS
+              SESSION ENDS
 ```
 
 ---
 
 ## Outcome Recording
 
-After the security review returns with no blocking findings (Phase 4), close the bug-review phase and stop the cycle. See Phase 4 for the full call syntax.
+The bug-review phase stays OPEN through the human merge decision. **Once the human merges** (Phase 5) —
+and only then — close the bug-review phase, stop the cycle, then run `/uni-retro`. Strict order:
+**merge → close → retro**. See Phase 4 for the full call syntax. `context_cycle(stop)` is non-purging
+(ADR-005) and the review never purges, so the post-close retro reads an intact buffer.
 
 Then use Unimatrix skills as applicable:
 
