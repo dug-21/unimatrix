@@ -78,6 +78,10 @@ holds 🟢) · PD1 · C3, C6, C7, C9, C12/N2, BACKUP-RESTORE · DA2, DA4, DA6, D
   on every correction, so a superseded entry's hash is never carried forward — tampering is undetectable. This
   **violates Architectural Principle 1** and makes README's "tamper-evident hash chain" an **unbacked claim**, not mere
   drift. Tracked **#912** (wire `previous_hash = predecessor.content_hash` + version increment + chain-verify).
+  **RESOLVED — nxs-014 #914 MERGED 2026-07-05:** weak-mode chain now wired + verify core/CLI + README corrected (#912 closed).
+  **KI-CHAIN-XV reworded to tamper-RECORDED 🟢** (proven on #914); the tamper-EVIDENT guarantee (strong cascade + external
+  anchor vs a raw-DB-write adversary) split to **KI-CHAIN-XV-STRONG 🔴** — proven attaches only to what weak mode delivers,
+  never asserting tamper-evidence the product doesn't have (Unimatrix: #5513 recorded 🟢 → prereq → #5514 strong 🔴).
 - **PD2, PD4 → 🟡** — implementations work (dogfood-observed) but cited tests are a tautology (PD2 never invokes the
   writer/routing) / producer-only substrate + a WARN-flagged restore (PD4). No automated guard for the worded behavior.
 - **C1 → 🟡** — local/STDIO deploy proven; **container-cloud HTTPS deploy has NO green smoke** (deferred to the release gate, same as N5).
@@ -276,7 +280,8 @@ Prerequisite direction: **substrate → functional → rollup**. `Advances` → 
 | Code | Outcome | Status | Disposition | Key evidence |
 |---|---|---|---|---|
 | KI-CHAIN | Per-entry engine-computed **content_hash** (tamper-evidence) + **authoritative supersession chain on the EntryRecord** (corrections link old→new via `supersedes`/`superseded_by`, terminal-active resolvable via SQL CTE) | 🟢 | **NEW** (× personal-cloud); **reworded to real architecture** | nxs-004 content_hash known-value (insert-side, engine-computed); supersession = `entries` fields, NOT graph/GRAPH_EDGES (vnc-017 ADR-001, SQL-CTE); terminal-active proven via KI-CURRENCY |
-| KI-CHAIN-XV | **Cross-version cryptographic chain** — successor commits to predecessor's hash; tampering a superseded entry is detectable | 🔴 | **NEW — UNWIRED** (#912) | `write_ext.rs:539` writes `previous_hash: String::new()`, `version: 1` hardcoded → **violates Architectural Principle 1** ("`previous_hash` on every entry, never skipped"); README "tamper-evident hash chain" is an **unbacked claim** (confirmed in code 2026-07-05) |
+| KI-CHAIN-XV | **Cross-version chain tamper-RECORDED** — correction persists previous_hash = predecessor.content_hash + version increment; verify core + CLI | 🟢 | **nxs-014 #914 MERGED** (2026-07-05); reworded from tamper-evident | previous_hash/version populated + DB-read-back tested; chain_verify fail-loud names offending id; weak mode = tamper-RECORDED, NOT evident (ADR-002); README corrected; #912 closed |
+| KI-CHAIN-XV-STRONG | **Cross-version chain tamper-EVIDENT** vs a raw-DB-write adversary — cryptographic cascade + external head anchor | 🔴 | **NEW** (north-star) | out of scope of #914 by design (ADR-002); the tamper-EVIDENCE guarantee a raw-DB writer can't forge. Prereq: KI-CHAIN-XV |
 | KI-AUDIT | Every mutation attributed + append-only audit-logged | 🔵 | **NEW** | vnc-001/003 AUDIT_LOG (Principle 2, DDL-trigger enforced) — needs cite verify |
 | KI-CURRENCY | context_get returns the current version by default | 🟢 | **re-home** SL7 #5418 | vnc-042 field-absent-resolves-terminal |
 | KI-CORRECTION | Typed graph stays integrity-consistent under correction | 🟡 | **re-home** SLN3 #5419 | vnc-035 carry-forward; outbound-orphan sweep #745 open |
