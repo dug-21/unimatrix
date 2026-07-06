@@ -78,11 +78,17 @@ Same review body either way:
 
 ### Capability coverage
 {MANDATORY at scope-review and design-review — fill every line, same shape every run:}
-Target: {Cn #id — name}   Coverage: {whole | partial}
+Target: {Cn #id — name}   Archetype: {threshold | curve}   (from the corpus tags — see uni-capability)
+Coverage: {threshold → whole | partial  ·  curve → clears-the-current-bar | advances-toward | not-yet}
+  NOTE: a **curve** capability is NEVER "whole" (asymptotic). Do NOT fault a curve for being incomplete —
+  fault it only if it fails to clear/advance the bar, or if a *mechanism* test is being passed off as the
+  *outcome*/quality proof. A **threshold** capability's floor gates a goal *claim*, so a silent partial there
+  is a claim-blocking finding (uni-capability "Claim-floor vs North-star").
 done_when clause map:
  - {clause} → covered by {AC/ref} | DEFERRED (named gap) | ⚠️ UNDECLARED GAP
 Verdict: {meets the defined part | the design silently drops <X> vs the capability's done_when}
-Capability-status implication (recommendation only): {e.g. "C6 stays partial — instructions deferred"}
+Capability-status implication (recommendation only): {e.g. "C6 stays partial — instructions deferred"; a curve
+  stays a curve — "advances SL-ROLLUP", never "completes" it; use ⚪ `asserted` (not "claimed") for evidence-free}
 
 ### Right-sizing
 {MANDATORY at scope-review and design-review — fill every line. Guards BOTH directions; honesty about a partial is not automatically the right size:}

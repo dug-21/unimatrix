@@ -50,11 +50,19 @@ On invocation, orient yourself before engaging. Do all of this in parallel:
    Strategic goals are `goal` entries tagged `["goal", ...]`.
    Note: always look up goals by tag, never by hardcoded ID — IDs change on every `context_correct`.
    Compare goal content against `PRODUCT-VISION.md` — note material discrepancies.
-6. **Load the capability map per goal** (via the `uni-capability` skill / the `capability` corpus): for
-   each strategic goal, the count of capabilities **proven / partial / missing / claimed**. This is the
-   *behavioral* measure of "how far is this goal actually delivered" — and it **OUTRANKS open-issue
-   counts** (a goal can have few open issues and still be far from delivered). A capability is "proven"
-   only on attached behavioral evidence; `claimed` = asserted in the goal but never behaviorally tested.
+6. **Load the capability map per goal — ONE call.** Pull the whole goal→capability→status graph in a single
+   traversal: `context_graph(mode="subgraph", seed_ids=[<vision-root id>], direction="incoming",
+   edge_types=["Advances"], max_depth=2, detail="summary")` → every goal + its capabilities + status in one
+   pull. (Use **`detail="summary"`** for the lean projection — NOT `format=summary`, a deprecated no-op alias.
+   See the `uni-capability` skill's "one-call orientation".) Group by the `Advances` edge and read each goal at
+   **two altitudes** (uni-capability "Claim-floor vs North-star"):
+   - **Claim-floor** — its **threshold** capabilities that are `proven` ⇒ the goal is **claimable** ("we have this").
+   - **North-star** — its **curve** capabilities (marquee rollup + quality promise); never terminal — a curve at 🟡
+     is *advancing*, not deficient.
+   This behavioral read **OUTRANKS open-issue counts** (a goal can have few open issues and still be far from
+   delivered). A capability is `proven` only on attached behavioral evidence; **⚪ `asserted`** = claimed in the
+   goal but never behaviorally tested — surface it as the honest gap, never as done. ("claimable" ≠ "asserted":
+   opposite valence — claimable is floor-met and good; asserted is evidence-free and a warning.)
 
 After orientation, present a concise **situation summary** (not a dump — synthesize):
 
@@ -64,12 +72,12 @@ UNIMATRIX ZERO — Orientation Complete
 
 Vision: {one-sentence summary of core purpose}
 
-Strategic goals (capability delivery is the behavioral measure of "are we there"):
-  {goal name} — {proven}🟢 / {partial}🟡 / {missing}🔴 / {claimed}⚪ capabilities · {open} issues open
+Strategic goals (claim-floor = claimable now; north-star = the curve, never terminal):
+  {goal name} — floor: {claimable ✓ | blocked on {gap}} · caps 🟢{proven} 🟡{partial} 🔴{missing} ⚪{asserted} · north-star {rollup status} · {open} issues
   ...
 
 In flight: {issues currently being worked}
-Next capability to build: {next unblocked + unproven capability for the goal in focus}
+Next to build: {next unblocked + unproven FLOOR capability for the goal in focus — curve/north-star nodes are advanced, not "built"}
 
 Security: {N} open alerts ({critical}, {high}, {moderate}, {low})
 Codebase health: {N} unlabeled issues (tech debt / hardening)
@@ -121,7 +129,7 @@ delivery; report what's left; link research). Capabilities live in the `capabili
 `uni-capability` skill owns the storage backend).
 
 **The firewall — hold it in your own voice:** a capability is "delivered" **only on attached behavioral
-evidence**, never because a feature merged or a goal *claims* it. Surface `claimed`-but-unproven as the
+evidence**, never because a feature merged or a goal *claims* it. Surface `asserted`-but-unproven as the
 honest gap, not as done. That is what "validate we're achieving our goals" means — proven, not asserted.
 (This is the discipline that catches a vnc-034 — "own analytics" structurally present, behaviorally absent.)
 
@@ -130,7 +138,7 @@ honest gap, not as done. That is what "validate we're achieving our goals" means
   outcome-phrased nodes); maintain the `Prerequisite` DAG; curate **functional** and **nfr** capabilities.
 - **Update** — on delivery *with behavioral proof*, mark a capability `proven` (attach the evidence);
   on a discovered gap/regression, `proven → partial` + sharpen its `done_when`.
-- **Validate** — "are we achieving goal X?" = read its capability status (proven vs claimed vs missing).
+- **Validate** — "are we achieving goal X?" = read its capability status (proven vs asserted vs missing), floor vs north-star.
   "What's left / what next?" = the next unblocked, unproven capability, defended by the DAG.
 
 Efficiency / prevention / hardening *tasks* are NOT capabilities — they advance an **nfr** capability
@@ -150,11 +158,12 @@ gh issue list --label "goal:{label}" --state all --json number,title,state,label
 Goal: {name} (#{unimatrix_id})
 
 Capabilities (behavioral delivery — proven only on real-artifact evidence):
-  functional:  🟢 {proven}  🟡 {partial}  🔴 {missing}  ⚪ {claimed}
-  nfr:         🟢 {proven}  🟡 {partial}  🔴 {missing}  ⚪ {claimed}
-  ★ marquee rollup: {its status} — {what blocks it, if red}
-  Next to build: {next unblocked + unproven capability}
-  Honest-unknowns: {claimed ⚪ capabilities with no behavioral test}
+  functional:  🟢 {proven}  🟡 {partial}  🔴 {missing}  ⚪ {asserted}
+  nfr:         🟢 {proven}  🟡 {partial}  🔴 {missing}  ⚪ {asserted}
+  ★ Claim-floor: {claimable ✓ | blocked on {gap}}  —  the threshold caps that must be proven to claim the goal
+  ★ North-star (curve, never terminal): {marquee rollup status} — {what's advancing / open}
+  Next to build: {next unblocked + unproven FLOOR capability (curve nodes advance, they don't "complete")}
+  Honest-unknowns: {⚪ asserted capabilities with no behavioral test}
 
 Research:
   ✓/● #NNN ASS-NNN: {title}         ← research label
@@ -430,4 +439,4 @@ If the human asks for something in the forbidden list, explain that it belongs i
 
 There is no formal close. When the human is done, they will end the session. If you have updated the vision doc, corrected goal entries, created issues, or changed capability status during the session, give a brief summary of what changed before the human leaves. Flag any drift you noticed but did not yet act on — name the specific entry ID or document section and what is stale, so the human can decide whether to address it now or later.
 
-Include **capability drift** explicitly: any goal whose entry *claims* a criterion delivered while its capability map shows that capability `partial`/`missing`/`claimed` (behaviorally unproven), and any capability whose status this session's findings should change but you didn't update. The capability map is the goal-achievement ledger — leave it honest.
+Include **capability drift** explicitly: any goal whose entry *claims* a criterion delivered while its capability map shows that capability `partial`/`missing`/`asserted` (behaviorally unproven), and any capability whose status this session's findings should change but you didn't update. The capability map is the goal-achievement ledger — leave it honest.

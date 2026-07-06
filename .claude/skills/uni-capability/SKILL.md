@@ -49,7 +49,8 @@ Edges (RelationType — validated against unimatrix-engine/src/graph.rs):
 Corrections (lifecycle):
   context_correct   sharpen done_when / reword / record a regression — preserves provenance.
 
-Status legend:  missing 🔴 | partial 🟡 | proven 🟢 | claimed ⚪ (asserted, no behavioral test exists)
+Status legend:  missing 🔴 | partial 🟡 | proven 🟢 | asserted ⚪ (claimed in a goal/doc, NO behavioral
+                test — a warning to retire; NOT the "claimable" marketing sense — see Claim-floor vs North-star)
 ```
 
 **Edge-choice rationale (do not change without re-validating):**
@@ -128,6 +129,43 @@ the goal's "can we" layer. Its *quality contribution* is measured only at the cu
 ruler. Prove the mechanism on mechanism evidence; prove the helpfulness at the rollup against the
 ruler. Do NOT make the ruler a `Prerequisite` of a mechanism whose `done_when` is already provable
 without it.
+
+---
+
+## Claim-floor vs North-star (the goal-delivery accounting)
+
+Goals are **north stars** — never "done"; there is always headroom. So a goal's delivery is read at two
+altitudes, built directly on threshold/curve:
+
+- **Claim-floor** — the named subset of **threshold** capabilities that must be `proven` for the goal to be
+  honestly *claimed* ("we have this"). Floor met ⇒ **claimable** — the marketing / DevX truth line. A goal is
+  claimable *well before* its north-star: you do NOT wait on the curve to claim the goal.
+- **North-star** — the goal's **curve** capabilities (and its marquee rollup). Never terminal; a curve at 🟡
+  means *advancing, ceiling open* — **not** deficient. These carry the excellence story, not the claim.
+
+Decompose every goal into both: the floor thresholds (claimable) and the north-star curves (aspirational).
+Most functional caps are floor thresholds; the rollup + quality promise are the curves. Record the split in
+the **goal entry** (a `Claim-floor` and a `North-star` clause), not just in the capability statuses.
+
+**Terminology (opposite valence — never conflate):**
+- **claim / claimable** = floor met, a **good** state (what marketing / enablement may assert).
+- status **⚪ `asserted`** = claimed in a goal/doc with **no** behavioral test — a **warning** state, an
+  honest-unknown to retire. A goal that *asserts* a criterion delivered with no `proven` capability behind it
+  is the vnc-034 drift this skill exists to catch.
+
+**Verify before you claim (the firewall, operationalized).** "Built" ≠ "claimable-as-worded." A merge, or a
+delivering agent's nomination, moves *structure*, never *status* — the cited test must be **independently
+verified to clear the `done_when` as worded** before a threshold flips `proven` and its goal's floor counts
+as met. The failure modes this catches: an over-scoped `done_when` (the cited test proves a *narrower* thing —
+e.g. "tamper-evident" claimed, only "tamper-recorded" tested), or a mechanism test standing in for an outcome
+test. **Only a 🟢 floor may back a claim; a nominated-but-unverified floor may not.**
+
+**One-call orientation (the goal-status query).** The whole map renders in a single traversal —
+`context_graph(mode=subgraph, seed_ids=[<vision-root>], direction=incoming, edge_types=["Advances"],
+max_depth=2, detail=summary)` → every goal + its capabilities + status in one pull. Group by the `Advances`
+edge; read floor (threshold, `proven` ⇒ claimable) vs north-star (curve). This replaces any multi-step
+lookup-then-read-each-status choreography. Use **`detail=summary`** for the lean projection — NOT
+`format=summary` (a deprecated no-op alias that returns full content).
 
 ---
 
