@@ -1201,6 +1201,27 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 let slug_boosted_categories: HashSet<String> =
                     r.knowledge.boosted_categories.iter().cloned().collect();
 
+                // vnc-046 Wave 2 (ADR-002 P3 + P1 scanner): derive the config-snapshot
+                // params from THIS slug's resolved `r`, sourcing the SAME expressions the
+                // daemon uses (main.rs:982/985/989) but from `r` instead of the global config.
+                let slug_store_config = Arc::new(r.store.clone());
+                let slug_retention_config = Arc::new(r.retention.clone());
+                let slug_signal_class_names = Arc::new(r.transcript_signals.enabled_class_names());
+                // Per-slug signature scanner compiled from THIS slug's resolved signals
+                // (ADR-002 OQ-2). Compiled HERE (where `r` lives) and threaded in —
+                // `build_project_server` takes resolved config as explicit params, not `r`
+                // (WARN-1). `r.transcript_signals` is already the validated output of
+                // `resolve_slug_config` (vnc-040), so compile ONLY — NO re-validate (that is
+                // the daemon's file-anchored startup validate; per-slug re-validation is the
+                // wrong level). Fallible compile maps to `ServerError::Config` and aborts THIS
+                // slug's provision loudly (mirror build_signature_scanner main.rs:70-73, R-10).
+                let slug_signature_scanner = Arc::new(
+                    unimatrix_server::infra::transcript_activity::SignatureScanner::compile(
+                        &r.transcript_signals.enabled_patterns(),
+                    )
+                    .map_err(|e| ServerError::Config(e.to_string()))?,
+                );
+
                 let input = http_provision::build_project_server(
                     base_dir,
                     slug,
@@ -1216,6 +1237,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     &slug_categories,
                     &slug_observation_registry,
                     &slug_boosted_categories,
+                    &slug_store_config,       // vnc-046 P3 — new param-at-end
+                    &slug_retention_config,   // vnc-046 P3 — new param-at-end
+                    &slug_signal_class_names, // vnc-046 P3 — new param-at-end
+                    &slug_signature_scanner,  // vnc-046 P1 — per-slug scanner (OQ-2)
                 )
                 .await?;
                 slug_servers.push(input);
