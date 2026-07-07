@@ -421,6 +421,18 @@ test_compose_teardown_from_trap() {
 }
 test_compose_teardown_from_trap
 
+test_cleanup_container_removal_reaps_anon_volumes() {
+  # #915/#916 leak fix: the cleanup() container removal must carry -v so the runtime image's
+  # unmounted VOLUME (/shared, anonymous each run) is reaped on removal — WITHOUT -v it orphans
+  # one anonymous volume per run (unbounded disk growth). Static grep over the shipped smoke.
+  if grep -qE 'docker rm -f -v "\$CNAME"' "$SMOKE"; then
+    pass "test_cleanup_container_removal_reaps_anon_volumes (docker rm -f -v \$CNAME reaps the anon /shared volume)"
+  else
+    oops "test_cleanup_container_removal_reaps_anon_volumes" "cleanup() docker rm is missing -v => orphans the anonymous /shared volume each run (#915/#916 leak)"
+  fi
+}
+test_cleanup_container_removal_reaps_anon_volumes
+
 echo
 echo "release-gate-claim-floor-logic-test: ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" -eq 0 ]

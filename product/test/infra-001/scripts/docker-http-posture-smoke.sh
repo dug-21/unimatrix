@@ -34,7 +34,7 @@ fail() { printf '[783-smoke] FAIL: %s\n' "$*" >&2; exit 1; }
 
 cleanup() {
   if [ "${KEEP:-0}" != "1" ]; then
-    docker rm -f "$CNAME" >/dev/null 2>&1 || true
+    docker rm -f -v "$CNAME" >/dev/null 2>&1 || true  # -v reaps the container's anonymous volumes (image VOLUME /shared is unmounted => anon; #915/#916 leak fix)
     docker volume rm "$VOL" >/dev/null 2>&1 || true
     [ "${COMPOSE_UP:-0}" = "1" ] && compose_teardown  # #915 Gate 10: compose down -v from trap
   fi
