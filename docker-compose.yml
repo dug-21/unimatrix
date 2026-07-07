@@ -39,7 +39,12 @@ services:
     ports:
       # TLS port ONLY — pinned-TLS HTTPS (ADR-007, FR-A8, AC-W1-S2, R-12).
       # There is NO plaintext port: OSS posture has no plaintext-to-client mode.
-      - "8443:8443"
+      # The ${UNIMATRIX_HOST_BIND:-} prefix is back-compat and GATE-SCOPED: unset (the
+      # operator-facing default) => "8443:8443" (0.0.0.0, unchanged). The release smoke's
+      # compose-boot gate (#915) sets UNIMATRIX_HOST_BIND=127.0.0.1: so the GATE publishes
+      # on loopback only (no external exposure / parallel-run host-port collision) — it does
+      # NOT change this operator default; an operator may legitimately want 0.0.0.0.
+      - "${UNIMATRIX_HOST_BIND:-}8443:8443"
     volumes:
       - unimatrix-data:/data
       # /shared is READ-WRITE by default (ADR-003 nan-015 #4652). The image bakes

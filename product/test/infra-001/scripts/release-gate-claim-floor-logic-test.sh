@@ -150,6 +150,49 @@ test_gate9_node_absent_hard_fails() {
 }
 test_gate9_node_absent_hard_fails
 
+# S4: on a Gate-9 timeout the bounded drive must leave NO orphaned process. The stub spawns
+# a background child (its PID recorded OUTSIDE $SANDBOX so the smoke's cleanup() rm -rf can't
+# race it), then hangs past the deadline. `setsid -w timeout -k` group-kills the stub AND its
+# child; we assert rc=1 + the bounded-timeout message (rc=124->fail() intact) AND that the
+# recorded child PID is gone (no orphan).
+test_gate9_timeout_no_orphan() {
+  local sb pidf stub out rc child
+  sb="$(mktemp -d)"
+  pidf="$(mktemp -u)"   # outside $sb: cleanup() rm -rf "$SANDBOX" must not delete it
+  mkdir -p "$sb/home/.unimatrix/deadbeefcafe1234"
+  printf '{"observe_url":"https://localhost:18443/v1/arch-research/observe","token":"t","fingerprint":"sha256:x"}\n' \
+    > "$sb/home/.unimatrix/deadbeefcafe1234/remote.json"
+  stub="$sb/orphan-stub.sh"
+  cat > "$stub" <<'STUBEOF'
+#!/usr/bin/env bash
+# a would-be orphan: a background child that outlives the direct child on a naive kill.
+sleep 30 &
+echo $! > "$PIDF"
+sleep 30
+STUBEOF
+  chmod +x "$stub"
+  out="$(
+    env SANDBOX="$sb" PIDF="$pidf" SMOKE_CLIENT_CALL_CMD="bash $stub" \
+        CLIENT_CALL_DEADLINE_S=1 CLIENT_CALL_KILL_GRACE_S=2 \
+      bash -c 'set -uo pipefail; source "'"$SMOKE"'" >/dev/null 2>&1 || true; compose_teardown(){ :; }; client_works_gate' 2>&1
+  )"
+  rc=$?
+  sleep 1   # let the group TERM settle
+  child="$(cat "$pidf" 2>/dev/null)"
+  if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -qF "timed out after 1s (bounded"; then
+    if [ -n "$child" ] && kill -0 "$child" 2>/dev/null; then
+      kill -9 "$child" 2>/dev/null || true
+      oops "test_gate9_timeout_no_orphan" "background child $child SURVIVED the Gate-9 timeout (orphan)"
+    else
+      pass "test_gate9_timeout_no_orphan (process-group kill left no orphaned child; rc=124->fail intact)"
+    fi
+  else
+    oops "test_gate9_timeout_no_orphan" "expected rc=1 + bounded-timeout message; rc=$rc out=$out"
+  fi
+  rm -rf "$sb"; rm -f "$pidf"
+}
+test_gate9_timeout_no_orphan
+
 # =============================================================================
 # Part B — Gate 10 (compose boot) control flow, live-only helpers OVERRIDDEN in-harness.
 # =============================================================================
@@ -236,20 +279,81 @@ run_gate10_case test_gate10_cert_absent_red 1 \
 run_gate10_case test_gate10_health_non200_red 1 \
   "pinned TLS /health on the shipped defaults" -- OV_HEALTH=503
 
+# S1: teardown must FIRE on a partial/failed `up`. With COMPOSE_UP armed BEFORE compose_do_up,
+# a nonzero up still leaves the trap flag set, so the smoke's cleanup() runs compose_teardown
+# (`down -v`) — no orphaned containers/volumes. The teardown marker lives OUTSIDE $sb so the
+# cleanup() rm -rf "$SANDBOX" can't race it. Fails on the pre-fix ordering (flag armed AFTER up
+# => trap skips teardown on a failed up).
+test_gate10_teardown_fires_on_failed_up() {
+  local sb marker out rc
+  sb="$(mktemp -d)"
+  marker="$(mktemp -u)"   # outside $sb: survives cleanup() rm -rf "$SANDBOX"
+  out="$(
+    env IMAGE="unimatrix:claim-floor-test" TMP="$sb" SANDBOX="$sb" \
+        OV_UP_RC=1 TEARDOWN_MARKER="$marker" \
+      bash -c '
+        set -uo pipefail
+        source "'"$SMOKE"'" >/dev/null 2>&1 || true
+        compose_plugin_present() { return 0; }
+        compose_do_up()          { return "${OV_UP_RC:-1}"; }
+        compose_teardown()       { printf fired > "$TEARDOWN_MARKER"; }
+        compose_boot_gate
+      ' 2>&1
+  )"
+  rc=$?
+  if [ "$rc" -eq 1 ] && printf '%s' "$out" | grep -qF "docker compose up failed" && [ -f "$marker" ]; then
+    pass "test_gate10_teardown_fires_on_failed_up (COMPOSE_UP armed before up => trap tears down on a failed up)"
+  else
+    oops "test_gate10_teardown_fires_on_failed_up" \
+      "rc=$rc marker=$( [ -f "$marker" ] && echo present || echo ABSENT ) out=$out"
+  fi
+  rm -rf "$sb"; rm -f "$marker"
+}
+test_gate10_teardown_fires_on_failed_up
+
 # =============================================================================
 # Part C — static (source/YAML grep) assertions binding the four blocking constraints.
 # =============================================================================
 echo "== Part C: four blocking constraints present in the shipped bytes (static) =="
 
 test_c1_bridge_drive_bounded_by_timeout() {
-  # Constraint 1: the single-call bridge drive is wrapped in `timeout $CLIENT_CALL_DEADLINE_S`.
-  if grep -q 'timeout "\$CLIENT_CALL_DEADLINE_S"' "$CLAIM_LIB"; then
+  # Constraint 1 (intact after S4): the single-call bridge drive is still bounded by the
+  # deadline `timeout ... "$CLIENT_CALL_DEADLINE_S"` — now hardened to a process-group form.
+  if grep -q 'timeout -k "\$CLIENT_CALL_KILL_GRACE_S" "\$CLIENT_CALL_DEADLINE_S"' "$CLAIM_LIB"; then
     pass "test_c1_bridge_drive_bounded_by_timeout"
   else
-    oops "test_c1_bridge_drive_bounded_by_timeout" "bridge drive not wrapped in timeout \$CLIENT_CALL_DEADLINE_S"
+    oops "test_c1_bridge_drive_bounded_by_timeout" "bridge drive not bounded by timeout \$CLIENT_CALL_DEADLINE_S"
   fi
 }
 test_c1_bridge_drive_bounded_by_timeout
+
+test_s4_drive_process_group_kill() {
+  # S4: the bounded drive runs in its OWN process group (`setsid -w timeout -k <grace>`) so
+  # a Gate-9 timeout TERMs/KILLs the driver AND the spawned bridge child — no orphan. Both
+  # drive branches (stub + real) must use the process-group form.
+  local n
+  n="$(grep -c 'setsid -w timeout -k "\$CLIENT_CALL_KILL_GRACE_S" "\$CLIENT_CALL_DEADLINE_S"' "$CLAIM_LIB")"
+  if [ "$n" -eq 2 ]; then
+    pass "test_s4_drive_process_group_kill (both drive branches use setsid process-group kill + kill-after)"
+  else
+    oops "test_s4_drive_process_group_kill" "expected 2 setsid -w timeout -k drive sites, found $n"
+  fi
+}
+test_s4_drive_process_group_kill
+
+test_s2_gate_publishes_loopback_only() {
+  # S2: the GATE binds its published port to loopback (compose_do_up sets
+  # UNIMATRIX_HOST_BIND=127.0.0.1:) AND the shipped compose exposes that as an interpolation
+  # whose EMPTY default preserves the operator-facing 0.0.0.0 default (gate-scoped, no
+  # operator-default change).
+  if grep -q 'UNIMATRIX_HOST_BIND="127.0.0.1:" docker compose' "$CLAIM_LIB" \
+     && grep -qF '${UNIMATRIX_HOST_BIND:-}8443:8443' "$COMPOSE_YML"; then
+    pass "test_s2_gate_publishes_loopback_only"
+  else
+    oops "test_s2_gate_publishes_loopback_only" "gate does not loopback-bind via UNIMATRIX_HOST_BIND, or compose lost the empty-default interpolation"
+  fi
+}
+test_s2_gate_publishes_loopback_only
 
 test_c2_compose_plugin_absent_fails_never_skips() {
   # Constraint 2: plugin-absence calls fail() ("never self-skip") — NOT exit 3 / a skip.
@@ -278,7 +382,7 @@ test_c3_health_pins_shipped_san_via_resolve
 test_c4_compose_binds_image_under_test_pull_never() {
   # Constraint 4: compose up binds UNIMATRIX_IMAGE=$IMAGE + --pull never, and asserts the
   # booted digest == $IMAGE's digest; the compose file keeps a back-compat interpolation.
-  if grep -q 'UNIMATRIX_IMAGE="\$IMAGE" docker compose' "$CLAIM_LIB" \
+  if grep -q 'UNIMATRIX_IMAGE="\$IMAGE" .*docker compose' "$CLAIM_LIB" \
      && grep -q -- '--pull never' "$CLAIM_LIB" \
      && grep -q 'want_digest="\$(compose_expected_digest' "$CLAIM_LIB" \
      && grep -q 'docker inspect "\$1" --format' "$CLAIM_LIB" \

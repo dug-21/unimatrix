@@ -36,6 +36,11 @@ SINGLE_DRIVER_JS="$SCRIPTS_DIR/bridge-single-call-driver.js"
 # (constraint 1) caps a bridge hang so it cannot eat the blocking lane's job timeout.
 CLIENT_CALL_TOOL="${CLIENT_CALL_TOOL:-context_status}"
 CLIENT_CALL_DEADLINE_S="${CLIENT_CALL_DEADLINE_S:-60}"
+# S4: SIGKILL escalation grace for the bounded drive. `setsid -w timeout -k <grace>` runs
+# the drive in its OWN session/process group and, on deadline, TERMs the WHOLE group (the
+# driver AND the spawned bridge child), then KILLs after <grace> if any member ignores TERM
+# — so a Gate-9 timeout can never leave an orphaned node/bridge process on the runner.
+CLIENT_CALL_KILL_GRACE_S="${CLIENT_CALL_KILL_GRACE_S:-5}"
 
 # Gate 10 shipped defaults (verified against docker-compose.yml: image service
 # `unimatrix`, SAN cloud.example, TLS port 8443). Project-scoped so a mid-gate failure
@@ -69,9 +74,10 @@ drive_client_call() {
   local project_hash="$1" out="$2" err="$3"
   if [ -n "${SMOKE_CLIENT_CALL_CMD:-}" ]; then
     # Stub seam (mirrors SMOKE_*_CMD): drive control flow without node/Docker. Bounded by
-    # `timeout` exactly as the real path is (a stub hang is a real-path hang here too).
+    # the SAME process-group `setsid -w timeout -k` as the real path (a stub hang — and any
+    # child it spawns — is torn down exactly as a real-path hang is; S4).
     # shellcheck disable=SC2086
-    HOME="$SANDBOX/home" timeout "$CLIENT_CALL_DEADLINE_S" \
+    HOME="$SANDBOX/home" setsid -w timeout -k "$CLIENT_CALL_KILL_GRACE_S" "$CLIENT_CALL_DEADLINE_S" \
       $SMOKE_CLIENT_CALL_CMD "$project_hash" "$CLIENT_CALL_TOOL" >"$out" 2>"$err"
   else
     command -v node >/dev/null 2>&1 \
@@ -80,9 +86,10 @@ drive_client_call() {
       || fail "client-works: shipped bridge $BRIDGE_JS not found (reuse-as-is)"
     [ -f "$SINGLE_DRIVER_JS" ] \
       || fail "client-works: single-call driver $SINGLE_DRIVER_JS not found"
-    # HOME=$SANDBOX/home so credstore.read finds THIS run's remote.json. `timeout` bounds
-    # a bridge hang so it cannot eat the blocking lane's job timeout (constraint 1).
-    HOME="$SANDBOX/home" timeout "$CLIENT_CALL_DEADLINE_S" \
+    # HOME=$SANDBOX/home so credstore.read finds THIS run's remote.json. `setsid -w timeout
+    # -k` bounds the drive in its OWN process group (constraint 1) so the deadline TERM/KILL
+    # reaps the driver AND the spawned bridge child — no orphaned process on timeout (S4).
+    HOME="$SANDBOX/home" setsid -w timeout -k "$CLIENT_CALL_KILL_GRACE_S" "$CLIENT_CALL_DEADLINE_S" \
       node "$SINGLE_DRIVER_JS" "$project_hash" "$CLIENT_CALL_TOOL" --bridge "$BRIDGE_JS" \
         >"$out" 2>"$err"
   fi
@@ -126,7 +133,13 @@ client_works_gate() {
 # docker/curl commands.
 
 compose_plugin_present()   { docker compose version >/dev/null 2>&1; }
-compose_do_up()            { UNIMATRIX_IMAGE="$IMAGE" docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d --pull never >/dev/null 2>&1; }
+# S2: bind the GATE's published port to loopback ONLY (127.0.0.1:8443:8443) via the
+# UNIMATRIX_HOST_BIND interpolation the shipped compose exposes with an EMPTY default. This
+# is GATE-SCOPED — it never mutates the operator-facing default (unset => 0.0.0.0:8443:8443,
+# an operator may legitimately want 0.0.0.0). Consistent with the gate's pinned
+# `--resolve cloud.example:8443:127.0.0.1`, and avoids external exposure / parallel-run
+# host-port collision during the gate.
+compose_do_up()            { UNIMATRIX_IMAGE="$IMAGE" UNIMATRIX_HOST_BIND="127.0.0.1:" docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" up -d --pull never >/dev/null 2>&1; }
 compose_service_cid()      { docker compose -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE" ps -q unimatrix 2>/dev/null; }
 compose_expected_digest()  { docker image inspect "$IMAGE" --format '{{.Id}}' 2>/dev/null; }
 compose_container_digest() { docker inspect "$1" --format '{{.Image}}' 2>/dev/null; }
@@ -153,12 +166,18 @@ compose_boot_gate() {
   [ -n "${IMAGE:-}" ] \
     || fail "compose boot: IMAGE unset — the gate needs the version-under-test image"
 
+  # S1: ARM the cleanup-trap teardown BEFORE `compose up` (the project name is already
+  # captured in $COMPOSE_PROJECT at source time). ANY outcome of the up — partial start
+  # then nonzero, a timeout, or any later mid-gate fail() — now still runs the project-
+  # scoped `docker compose -p <proj> down -v` in the smoke's cleanup() trap, so no
+  # containers/volumes are orphaned on a failed/partial up. `down -v` on a no-op stack is
+  # harmless (compose_teardown swallows its rc).
+  # shellcheck disable=SC2034  # read cross-file by the smoke's cleanup() trap
+  COMPOSE_UP=1
   # Constraint 4: bind UNIMATRIX_IMAGE=$IMAGE + --pull never so compose boots the VERSION
   # UNDER TEST (locally the freshly-built tag, in CI the resolve_image digest), never the
   # ghcr :latest release image.
   compose_do_up || fail "compose boot: docker compose up failed (image under test: $IMAGE)"
-  # shellcheck disable=SC2034  # read cross-file by the smoke's cleanup() trap
-  COMPOSE_UP=1   # arm the cleanup-trap teardown (docker compose down -v)
 
   local cid
   cid="$(compose_service_cid)"
