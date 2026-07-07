@@ -78,7 +78,7 @@ infra_fail() { printf '[%s] INFRA: %s\n' "$TAG" "$*" >&2; exit 2; }   # INFRA (d
 
 cleanup() {
   if [ "${KEEP:-0}" != "1" ]; then
-    docker rm -f "$CNAME" >/dev/null 2>&1 || true
+    docker rm -f -v "$CNAME" >/dev/null 2>&1 || true
     docker volume rm "$VOL" >/dev/null 2>&1 || true
   fi
   [ -n "${TMP:-}" ] && rm -rf "$TMP"

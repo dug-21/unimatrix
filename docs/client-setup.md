@@ -90,6 +90,8 @@ When TLS is terminated by a reverse proxy (nginx, Caddy, cloud load balancer), s
 
 ## Verifying the connection
 
+### 1. Liveness (server is up)
+
 The `/health` endpoint requires no authentication:
 
 ```bash
@@ -102,7 +104,27 @@ Returns:
 {"version": "x.y.z", "schema_version": 27}
 ```
 
-Use this for Docker HEALTHCHECK or external monitoring.
+Use this for Docker HEALTHCHECK or external monitoring. Note: `/health` proves only
+that the server is *up* — not that *your client works*. For that, do step 2.
+
+### 2. Client works (a real authenticated `context_*` op over the pinned-TLS bundle)
+
+After `unimatrix init --bundle …` writes `.mcp.json`, confirm the attached client can
+perform a real operation over the pinned-TLS bundle path — not just reach `/health`. This
+reads the bridge command your `init --bundle` wrote into `.mcp.json` and drives one
+stateless `context_status` call through it (requires `jq`):
+
+```bash
+printf '%s\n%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"verify","version":"1.0.0"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"context_status","arguments":{}}}' \
+  | node "$(jq -r '.mcpServers.unimatrix.args[0]' .mcp.json)" \
+         "$(jq -r '.mcpServers.unimatrix.args[1]' .mcp.json)"
+```
+
+A non-error JSON-RPC result (no `"error"` field, no `"isError": true`) confirms the client
+performs real `context_*` operations over the pinned-TLS bundle. This is the same check the
+release smoke's client-works gate runs (`docker-http-posture-smoke.sh`, Gate 9).
 
 ---
 
