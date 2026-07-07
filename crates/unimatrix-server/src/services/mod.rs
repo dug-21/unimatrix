@@ -40,6 +40,7 @@ pub(crate) mod search;
 pub(crate) mod status;
 pub(crate) mod store_correct;
 pub(crate) mod store_ops;
+pub(crate) mod store_tag;
 pub(crate) mod typed_graph;
 pub(crate) mod usage;
 
@@ -58,6 +59,7 @@ pub use search::FusionWeights;
 pub(crate) use search::{RetrievalMode, SearchService, ServiceSearchParams};
 pub(crate) use status::StatusService;
 pub(crate) use store_ops::StoreService;
+pub(crate) use store_tag::StoreTagService;
 pub use typed_graph::{TypedGraphState, TypedGraphStateHandle};
 pub(crate) use usage::UsageService;
 
@@ -241,6 +243,13 @@ impl From<ServiceError> for rmcp::ErrorData {
 pub struct ServiceLayer {
     pub(crate) search: SearchService,
     pub(crate) store_ops: StoreService,
+    /// vnc-045: `context_tag` orchestration seam (check_write_rate → store primitive →
+    /// fire-and-forget audit). Reuses the same `Arc`s already built for `store_ops`.
+    // rationale: consumed by the `context_tag` #[tool] handler landing in vnc-045 Wave 3
+    // (mcp/tools.rs); wired now so the service seam is testable and the handler is a thin
+    // delegate. Remove this allow when the handler read lands.
+    #[allow(dead_code)]
+    pub(crate) store_tag: StoreTagService,
     pub(crate) confidence: ConfidenceService,
     pub(crate) briefing: IndexBriefingService, // crt-027: replaces BriefingService
     pub(crate) status: StatusService,
@@ -527,6 +536,10 @@ impl ServiceLayer {
             Arc::clone(&nli_handle),
         );
 
+        // vnc-045: reuse the same store/gateway/audit Arcs as store_ops.
+        let store_tag =
+            StoreTagService::new(Arc::clone(&store), Arc::clone(&gateway), Arc::clone(&audit));
+
         // crt-027: UNIMATRIX_BRIEFING_K deprecated — IndexBriefingService uses k=20 hardcoded.
         // parse_semantic_k() removed. See ADR-003 crt-027.
         let briefing = IndexBriefingService::new(
@@ -559,6 +572,7 @@ impl ServiceLayer {
         ServiceLayer {
             search,
             store_ops,
+            store_tag, // vnc-045: context_tag orchestration seam
             confidence,
             briefing,
             status,
