@@ -1293,12 +1293,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         let observe_ctx = ObserveContext {
             resolver: Arc::clone(&resolver),
             embed_service: Arc::clone(&embed_handle),
-            vector_store: Arc::clone(&async_vector_store),
-            adapt_service: Arc::clone(&adapt_service),
             server_version: env!("CARGO_PKG_VERSION").to_string(),
-            session_registry: Arc::clone(&session_registry),
-            pending_entries_analysis: Arc::clone(&pending_entries_analysis),
-            services: services.clone(),
         };
 
         // vnc-034 (ADR-003 + Wave 2): `SlugRouter` is the per-request MCP edge.

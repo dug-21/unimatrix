@@ -2772,12 +2772,7 @@ fn observe_ctx_over(resolver: Arc<dyn StoreResolver>, deps: &UnimatrixServer) ->
     ObserveContext {
         resolver,
         embed_service: Arc::clone(&deps.embed_service),
-        vector_store: Arc::clone(&deps.vector_store),
-        adapt_service: Arc::clone(&deps.adapt_service),
         server_version: "test".to_string(),
-        session_registry: Arc::clone(&deps.session_registry),
-        pending_entries_analysis: Arc::clone(&deps.pending_entries_analysis),
-        services: deps.services.clone(),
     }
 }
 
@@ -2954,6 +2949,36 @@ async fn test_observe_empty_resolver_first_boot_is_loud_404() {
         "with no registered projects, observe must fail loud (404), never a default store"
     );
     assert!(body.contains("unknown project"), "loud body; got {body}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_post_store_star_for_err_maps_to_500_not_404() {
+    // R-14 (Critical mapping): a `*_for` that Errs AFTER `resolve_store` already
+    // succeeded is a boot-wiring contradiction (foreclosed by ADR-003's boot
+    // assertion), NOT an unregistered slug. `route_observe` MUST map it to 500,
+    // never 404, and never panic. `StubProjectRouter` models exactly this — it
+    // resolves the STORE funnel for its known slug but fails the per-slug observe
+    // handles closed (`registry_for`/`pending_for`/`services_for` -> Err).
+    let deps = make_server().await;
+    let backing = make_server().await;
+    let resolver: Arc<dyn StoreResolver> = Arc::new(StubProjectRouter {
+        store: Arc::clone(&backing.store),
+        known_slug: ProjectSlug::try_from("known").expect("valid"),
+    });
+    let ctx = observe_ctx_over(resolver, &deps);
+
+    // `known` resolves a store (Ok) but `registry_for` then Errs -> 500 branch.
+    let (status, _body) = drive_observe(&ctx, "known").await;
+    assert_eq!(
+        status,
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "store resolvable but a post-store `*_for` Err must map to 500 (R-14)"
+    );
+    assert_ne!(
+        status,
+        StatusCode::NOT_FOUND,
+        "a boot-wiring contradiction must NOT be masked as a 404 routing miss (R-14)"
+    );
 }
 
 // ===========================================================================

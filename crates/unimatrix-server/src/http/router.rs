@@ -15,7 +15,7 @@
 use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -27,15 +27,11 @@ use http_body_util::{BodyExt, Full, Limited};
 use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
 use rmcp::transport::{StreamableHttpServerConfig, StreamableHttpService};
 use tower::Service;
-use unimatrix_adapt::AdaptationService;
-use unimatrix_core::async_wrappers::AsyncVectorStore;
-use unimatrix_core::{Store, VectorAdapter};
+use unimatrix_core::Store;
 
 use crate::http::health::health_response;
 use crate::infra::embed_handle::EmbedServiceHandle;
-use crate::infra::session::SessionRegistry;
-use crate::server::{PendingEntriesAnalysis, UnimatrixServer};
-use crate::services::ServiceLayer;
+use crate::server::UnimatrixServer;
 
 /// Maximum request body size default (1 MB). Used when no config override.
 const DEFAULT_MAX_BODY_BYTES: usize = 1_048_576;
@@ -80,25 +76,19 @@ const SESSION_KEEP_ALIVE: Duration = Duration::from_secs(4 * 60 * 60);
 #[derive(Clone)]
 pub struct ObserveContext {
     /// The store-resolution funnel — the SAME `Arc<dyn StoreResolver>` the
-    /// `SlugRouter` holds (one funnel, two entry handlers). The per-request store
-    /// is resolved from it on each observe call (ADR-003 #5082); both
-    /// `dispatch_request` `store` and `entry_store` params get that one resolved
-    /// handle (the boot pairing preserved per-request).
+    /// `SlugRouter` holds (one funnel, two entry handlers). Per request, the
+    /// observe handler resolves the store AND the per-slug `session_registry` /
+    /// `pending_entries_analysis` / `services` from this ONE funnel via
+    /// `resolve_store` / `registry_for` / `pending_for` / `services_for`
+    /// (vnc-046 ADR-001). No flat per-slug handles live on this struct — a flat
+    /// global handle here is exactly the #930 split-brain / P2 read-leak source
+    /// (R-09). Both `dispatch_request` `store` and `entry_store` params get the
+    /// one resolved store handle (the boot pairing preserved per-request).
     pub resolver: Arc<dyn StoreResolver>,
-    /// Embedding service handle (dispatch_request param 3: `embed_service`).
+    /// Embedding service handle — correctly-global (one ONNX model, NFR-5).
     pub embed_service: Arc<EmbedServiceHandle>,
-    /// Async vector store (dispatch_request param 4: `vector_store`).
-    pub vector_store: Arc<AsyncVectorStore<VectorAdapter>>,
-    /// Adaptation service (dispatch_request param 6: `adapt_service`).
-    pub adapt_service: Arc<AdaptationService>,
-    /// Server version string (dispatch_request param 7: `server_version`).
+    /// Server version string (dispatch_request `server_version` param).
     pub server_version: String,
-    /// Session lifecycle registry (dispatch_request param 8: `session_registry`).
-    pub session_registry: Arc<SessionRegistry>,
-    /// Pending entries analysis state (dispatch_request param 9).
-    pub pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
-    /// Shared service layer (dispatch_request param 10: `services`).
-    pub services: ServiceLayer,
 }
 
 // ---------------------------------------------------------------------------

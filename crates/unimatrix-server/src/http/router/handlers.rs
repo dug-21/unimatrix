@@ -79,6 +79,25 @@ where
         }
     };
 
+    // Step 0b: Resolve the per-slug observe state from the SAME funnel + SAME
+    // `key` the store resolved from (vnc-046 ADR-001, FR-5/FR-6). registry and
+    // pending are the #930 split-brain fix; services is the P2 read-leak fix
+    // (R-09). A post-`resolve_store` `Err` here is a boot-wiring contradiction
+    // (foreclosed by ADR-003's boot assertion) → 500, NEVER 404, never panic
+    // (R-14). The genuine unregistered-slug 404 already fired at `resolve_store`.
+    let registry = match observe_ctx.resolver.registry_for(&key) {
+        Ok(r) => r,
+        Err(_) => return Ok(internal_error_response()),
+    };
+    let pending = match observe_ctx.resolver.pending_for(&key) {
+        Ok(p) => p,
+        Err(_) => return Ok(internal_error_response()),
+    };
+    let services = match observe_ctx.resolver.services_for(&key) {
+        Ok(s) => s,
+        Err(_) => return Ok(internal_error_response()),
+    };
+
     // Step 1: Extract ResolvedIdentity from request extensions.
     let identity = match request.extensions().get::<ResolvedIdentity>() {
         Some(id) => id.clone(),
@@ -146,18 +165,17 @@ where
 
     // Step 6: Call dispatch_request with HTTP capabilities. The per-request
     // `store` serves BOTH the `store` and `entry_store` params (the boot pairing
-    // preserved per-request, ADR-003).
+    // preserved per-request, ADR-003). registry/pending/services are the per-slug
+    // handles resolved at Step 0b (vnc-046) — NOT global `ObserveContext` fields.
     let response = dispatch_request(
         hook_request,
         &store,
         &observe_ctx.embed_service,
-        &observe_ctx.vector_store,
         &store,
-        &observe_ctx.adapt_service,
         &observe_ctx.server_version,
-        &observe_ctx.session_registry,
-        &observe_ctx.pending_entries_analysis,
-        &observe_ctx.services,
+        &registry,
+        &pending,
+        &services,
         &identity.capabilities,
     )
     .await;
