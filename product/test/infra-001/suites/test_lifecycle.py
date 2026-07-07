@@ -5600,3 +5600,79 @@ def test_graph_summary_shrinks_payload_913(server):
             "projected status is lifecycle EntryRecord.status (active) — NOT capability "
             "delivery status; #913 delivery-status tally is a named follow-up, not delivered here"
         )
+
+
+# === context_tag lifecycle flows (vnc-045) ============================
+# Read-freshness (add→present / remove→absent, NFR-04, live SQL — ADR-002),
+# deprecated-allow (SD-12), and restart persistence of a tag mutation.
+
+def _lifecycle_taggable(server, suffix):
+    resp = server.context_store(
+        f"context_tag lifecycle entry {suffix}",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    return extract_entry_id(resp)
+
+
+def test_context_tag_add_then_search_reflects(server):
+    """L-TAG01: after add, a tag-filtered lookup immediately reflects the new tag
+    (read-freshness, no stale window, no invalidation step — ADR-002, NFR-04)."""
+    entry_id = _lifecycle_taggable(server, "add-reflects-uniq")
+    server.context_tag(entry_id, "add", "phase:review-uniq", agent_id="human")
+    lookup = server.context_lookup(tags=["phase:review-uniq"], agent_id="human", format="json")
+    assert_search_contains(lookup, entry_id)
+
+
+def test_context_tag_remove_then_search_absent(server):
+    """L-TAG02: after remove, the entry is immediately absent from a lookup filtered
+    on the removed tag (read-freshness for removal, NFR-04)."""
+    entry_id = _lifecycle_taggable(server, "remove-absent-uniq")
+    server.context_tag(entry_id, "add", "phase:gone-uniq", agent_id="human")
+    # Present first.
+    present = server.context_lookup(tags=["phase:gone-uniq"], agent_id="human", format="json")
+    assert_search_contains(present, entry_id)
+    # Remove and confirm absence.
+    server.context_tag(entry_id, "remove", "phase:gone-uniq", agent_id="human")
+    absent = server.context_lookup(tags=["phase:gone-uniq"], agent_id="human", format="json")
+    assert_search_not_contains(absent, entry_id)
+
+
+def test_context_tag_deprecated_entry_allowed(server):
+    """L-TAG03: tagging a DEPRECATED entry is allowed and written (no protected-tag
+    rule ships — over-restriction would fail here; SD-12, FR-11)."""
+    entry_id = _lifecycle_taggable(server, "deprecated-allowed-uniq")
+    server.context_deprecate(entry_id, agent_id="human")
+    resp = server.context_tag(entry_id, "add", "note:freeform-uniq", agent_id="human")
+    assert_tool_success(resp)
+
+
+def test_context_tag_persists_across_restart(tmp_path):
+    """L-TAG04: a tag added via context_tag survives a server restart (durable
+    entry_tags write, no schema change)."""
+    binary = get_binary_path()
+
+    client1 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client1.initialize()
+    client1.wait_until_ready()
+    store_resp = client1.context_store(
+        "context_tag restart persistence entry uniq",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    client1.context_tag(entry_id, "add", "persist:across-restart-uniq", agent_id="human")
+    client1.shutdown()
+
+    client2 = UnimatrixClient(binary, project_dir=str(tmp_path))
+    client2.initialize()
+    client2.wait_until_ready()
+    lookup = client2.context_lookup(
+        tags=["persist:across-restart-uniq"], agent_id="human", format="json"
+    )
+    assert_search_contains(lookup, entry_id)
+    client2.shutdown()

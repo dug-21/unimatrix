@@ -263,4 +263,165 @@ impl SqlxStore {
             .map_err(|e| StoreError::Database(e.into()))?;
         Ok(())
     }
+
+    /// Add a single tag to an entry's `entry_tags` lane (vnc-045, ADR-001).
+    ///
+    /// Writes `entry_tags` DIRECTLY via a single-row INSERT — never touches any
+    /// `entries` column, never re-hashes, never calls `update()` (which rewrites the
+    /// content hash) or `context_correct`. The entry's learning vector, hash chain,
+    /// edge set, and `id` are all invariant (R-01).
+    ///
+    /// Idempotent: re-adding an existing `(entry_id, tag)` is a no-op via
+    /// `ON CONFLICT DO NOTHING`, not a primary-key error. `tag` is bound as a
+    /// parameter and stored literally — no string interpolation (R-08).
+    ///
+    /// If `entry_id` was cascade-deleted between the caller's read and this call,
+    /// the INSERT fails the `entry_tags` FK constraint and surfaces as
+    /// `StoreError::Database` — a clean error with no partial write.
+    pub async fn add_tag(&self, entry_id: u64, tag: &str) -> Result<()> {
+        let mut txn = self
+            .write_pool
+            .begin()
+            .await
+            .map_err(|e| map_pool_timeout(e, PoolKind::Write))?;
+
+        sqlx::query(
+            "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)
+             ON CONFLICT(entry_id, tag) DO NOTHING",
+        )
+        .bind(entry_id as i64)
+        .bind(tag)
+        .execute(&mut *txn)
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        txn.commit()
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
+        Ok(())
+    }
+
+    /// Remove a single tag from an entry's `entry_tags` lane (vnc-045, ADR-001).
+    ///
+    /// Single-row `DELETE` scoped to the exact `(entry_id, tag)` — NOT the delete-all
+    /// used by `update()`. Removing a tag that is absent is a no-op (zero rows
+    /// affected), not an error. Touches no `entries` column (R-01). `tag` is bound —
+    /// matched literally, no interpolation (R-08).
+    pub async fn remove_tag(&self, entry_id: u64, tag: &str) -> Result<()> {
+        let mut txn = self
+            .write_pool
+            .begin()
+            .await
+            .map_err(|e| map_pool_timeout(e, PoolKind::Write))?;
+
+        sqlx::query("DELETE FROM entry_tags WHERE entry_id = ?1 AND tag = ?2")
+            .bind(entry_id as i64)
+            .bind(tag)
+            .execute(&mut *txn)
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
+
+        txn.commit()
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
+        Ok(())
+    }
+
+    /// Atomically replace the single `namespace:*` tag on an entry (vnc-045, ADR-004).
+    ///
+    /// Runs a namespace-scoped `DELETE` of any prior `namespace:*` tag followed by an
+    /// `INSERT` of `new_tag` in ONE SQLite transaction. If the INSERT fails, the `?`
+    /// early-return drops the transaction WITHOUT commit → the whole transaction rolls
+    /// back → the prior value survives; there is NEVER an observable zero-`namespace:*`
+    /// window (R-02, the core atomicity guarantee).
+    ///
+    /// Returns the evicted prior tag value (for the audit `prior_value`), or `None`
+    /// when the namespace held nothing.
+    ///
+    /// The DELETE is scoped by `LIKE '<namespace>:%' ESCAPE '\'` where the namespace
+    /// prefix is passed through [`like_escape`] so SQL `LIKE` metacharacters (`%`, `_`)
+    /// are matched literally and cannot over-match sibling tags under a different prefix
+    /// (R-08). All statements use bound parameters — no string interpolation.
+    ///
+    /// An empty `namespace` (the degenerate colon-less case, normally routed to
+    /// [`add_tag`](Self::add_tag) by the service) performs a pure insert with no prior
+    /// removed — the primitive stays safe even if reached, never issuing an
+    /// unscoped/over-broad DELETE.
+    pub async fn replace_tag(
+        &self,
+        entry_id: u64,
+        namespace: &str,
+        new_tag: &str,
+    ) -> Result<Option<String>> {
+        let mut txn = self
+            .write_pool
+            .begin()
+            .await
+            .map_err(|e| map_pool_timeout(e, PoolKind::Write))?;
+
+        // Steps A + B run only for a real namespace. Colon-less / empty namespace
+        // degrades to a pure insert (no prior evicted, no over-broad DELETE).
+        let prior: Option<String> = if namespace.is_empty() {
+            None
+        } else {
+            let like_pattern = format!("{}:%", like_escape(namespace));
+
+            // Step A: read the evicted prior (audit prior_value) inside the SAME txn.
+            let prior: Option<String> = sqlx::query_scalar(
+                "SELECT tag FROM entry_tags
+                 WHERE entry_id = ?1 AND tag LIKE ?2 ESCAPE '\\'
+                 LIMIT 1",
+            )
+            .bind(entry_id as i64)
+            .bind(&like_pattern)
+            .fetch_optional(&mut *txn)
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
+
+            // Step B: namespace-scoped DELETE (NOT delete-all) — same escaped pattern.
+            sqlx::query("DELETE FROM entry_tags WHERE entry_id = ?1 AND tag LIKE ?2 ESCAPE '\\'")
+                .bind(entry_id as i64)
+                .bind(&like_pattern)
+                .execute(&mut *txn)
+                .await
+                .map_err(|e| StoreError::Database(e.into()))?;
+
+            prior
+        };
+
+        // Step C: INSERT the new tag. Shares the namespace, so B already removed any
+        // pre-existing copy; the ON CONFLICT guard keeps it idempotent regardless.
+        sqlx::query(
+            "INSERT INTO entry_tags (entry_id, tag) VALUES (?1, ?2)
+             ON CONFLICT(entry_id, tag) DO NOTHING",
+        )
+        .bind(entry_id as i64)
+        .bind(new_tag)
+        .execute(&mut *txn)
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+        // Step D: ONE commit. If A/B/C errored, `?` returned early → txn dropped →
+        // rollback: the prior value survives (R-02).
+        txn.commit()
+            .await
+            .map_err(|e| StoreError::Database(e.into()))?;
+
+        Ok(prior)
+    }
 }
+
+/// Escape SQL `LIKE` metacharacters (`%`, `_`) and the escape char (`\`) in a derived
+/// namespace prefix so that, under `ESCAPE '\'`, the pattern matches only literal
+/// `namespace:` rows and never over-matches siblings (vnc-045 R-08).
+///
+/// Order matters: the escape character itself is escaped first.
+fn like_escape(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
+
+#[cfg(test)]
+#[path = "write_tag_tests.rs"]
+mod write_tag_tests;

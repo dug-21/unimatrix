@@ -357,6 +357,26 @@ pub struct CorrectParams {
     pub edges: Option<Vec<EdgeInput>>,
 }
 
+/// Parameters for `context_tag` (vnc-045) — an in-place single-tag mutation.
+///
+/// `agent_id` is self-declared and **AUDIT-ONLY** (SD-9, convention #1301) — it is NEVER an
+/// authorization input. Authorization is `Capability::Write` only.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct TagParams {
+    /// Integer entry id (int-or-string tolerant, mirrors `CorrectParams`).
+    #[serde(deserialize_with = "crate::mcp::serde_util::deserialize_i64_or_string")]
+    #[schemars(with = "i64")]
+    pub id: i64,
+    /// `"add" | "remove" | "replace"` — first-class client verb (ADR-004); no silent default.
+    pub action: String,
+    /// Opaque tag text; the engine never interprets it (SD-8, value-opacity).
+    pub tag: String,
+    /// Self-declared caller; AUDIT-ONLY, never authz (SD-9).
+    pub agent_id: Option<String>,
+    /// Response format: summary, markdown, or json.
+    pub format: Option<String>,
+}
+
 /// Parameters for deprecating an entry.
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DeprecateParams {
@@ -604,6 +624,94 @@ pub(crate) fn finalize_note(
             } else {
                 None
             }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// vnc-045: context_tag extracted seam functions (module scope, unit-callable)
+// ---------------------------------------------------------------------------
+//
+// The `context_tag` `#[tool]` handler is NOT unit-constructible (needs a live
+// `RequestContext`, #5468), so its two pure decisions are extracted here as `pub(crate)`
+// free fns (pattern #5389). The handler CALLS them; the R-06 boundary table and R-05
+// lifecycle-guard tests exercise them directly WITHOUT a `RequestContext`.
+
+/// Derive the namespace of a tag: the substring before the FIRST `:`, else `None`.
+///
+/// Positional and value-opaque — NOT vocabulary-aware:
+/// - `"delivery:proven"` → `Some("delivery")`
+/// - `"delivery:proven:extra"` → `Some("delivery")` (first colon)
+/// - `"x-delivery:proven"` → `Some("x-delivery")` (positional, not `"delivery"`)
+/// - `"delivery:"` → `Some("delivery")` (empty value; tag still stored verbatim)
+/// - `"reviewed"` → `None`
+///
+/// Derived, NEVER validated (value-opacity, SD-8). The store LIKE-escapes the derived prefix
+/// for the `replace` DELETE (R-08); this fn performs no interpretation.
+pub(crate) fn derive_namespace(tag: &str) -> Option<String> {
+    tag.find(':').map(|i| tag[..i].to_string())
+}
+
+/// Reason a `context_tag` mutation is refused by the lifecycle guard. Transport-agnostic so
+/// any future non-MCP caller can reuse the same seam; the handler maps it to `invalid_params`.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum LifecycleRejection {
+    /// The entry is quarantined — ANY action (add/remove/replace) is refused (FR-11, R-05).
+    Quarantined,
+}
+
+/// Lifecycle-guard DECISION (FR-11, R-05), re-implemented in-op (NOT inherited from
+/// `write_ext.rs:471-482`). Quarantined → refuse ANY action; Deprecated + Active → allow
+/// (free-form tags allowed on deprecated entries; no protected-tag rule ships).
+///
+/// Action is intentionally NOT a parameter: quarantine refuses uniformly and deprecated allows
+/// all, so the decision is status-only — keeping the R-05 table exhaustive over `Status`.
+pub(crate) fn check_tag_lifecycle(status: &Status) -> Result<(), LifecycleRejection> {
+    match status {
+        Status::Quarantined => Err(LifecycleRejection::Quarantined),
+        _ => Ok(()),
+    }
+}
+
+/// Format the success acknowledgement for a `context_tag` mutation (mirrors
+/// `format_correct_success` shape). One minimal line per action; no edge/redirect machinery.
+fn format_tag_success(
+    id: u64,
+    result: &crate::services::store_tag::TagResult,
+    format: crate::mcp::response::ResponseFormat,
+) -> CallToolResult {
+    use crate::mcp::response::ResponseFormat;
+    use crate::services::store_tag::TagAction;
+    use rmcp::model::Content;
+
+    let line = match result.action {
+        TagAction::Add => format!("Added tag '{}' to #{id}.", result.tag),
+        TagAction::Remove => format!("Removed tag '{}' from #{id}.", result.tag),
+        TagAction::Replace => match &result.prior_value {
+            Some(prior) => {
+                format!("Replaced '{}' with '{}' on #{id}.", prior, result.tag)
+            }
+            // replace with no prior (colon-less degrade / no existing namespaced tag) → add
+            None => format!("Added tag '{}' to #{id}.", result.tag),
+        },
+    };
+
+    match format {
+        ResponseFormat::Summary | ResponseFormat::Markdown => {
+            CallToolResult::success(vec![Content::text(line)])
+        }
+        ResponseFormat::Json => {
+            let obj = serde_json::json!({
+                "tagged": true,
+                "id": id,
+                "action": result.action.as_str(),
+                "namespace": result.namespace,
+                "tag": result.tag,
+                "prior_value": result.prior_value,
+            });
+            CallToolResult::success(vec![Content::text(
+                serde_json::to_string_pretty(&obj).unwrap_or_default(),
+            )])
         }
     }
 }
@@ -1423,6 +1531,105 @@ impl UnimatrixServer {
             append_to_first_text(&mut result, &summary_text);
         }
         Ok(result)
+    }
+
+    #[tool(
+        name = "context_tag",
+        description = "Add, remove, or replace a single volatile tag on an entry in place. \
+                       Preserves the entry's content hash, edges, embedding, and learning vector \
+                       (unlike context_correct). Gated on Capability::Write."
+    )]
+    async fn context_tag(
+        &self,
+        Parameters(params): Parameters<TagParams>,
+        request_context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<CallToolResult, rmcp::ErrorData> {
+        // 1. Identity + format + audit context (reuse verbatim — build_context_with_external_identity).
+        let ctx = self
+            .build_context_with_external_identity(
+                &params.agent_id,
+                &params.format,
+                &None,
+                &request_context,
+                None,
+            )
+            .await?;
+
+        // 2. Capability gate. This LOCATION is RETROFIT SEAM #2.
+        //    ── RETROFIT SEAM #2 (comment only): a future enterprise trust-elevation check
+        //       (min_trust_level) attaches HERE, where the principal is already resolved.
+        //       vnc-045 wires NOTHING beyond Write. `agent_id` is audit-only, never authz (SD-9).
+        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+
+        // 3. Parse action → TagAction (no silent default).
+        let action =
+            crate::services::store_tag::TagAction::parse(&params.action).ok_or_else(|| {
+                rmcp::ErrorData::invalid_params(
+                    format!(
+                        "unknown action '{}'; expected add|remove|replace",
+                        params.action
+                    ),
+                    None,
+                )
+            })?;
+
+        // 4. Validate tag (malformed → invalid_params BEFORE any write; no audit, no partial state).
+        //    Non-empty is the ONLY check — no length/vocabulary/shape check (value-opacity, SD-8, R-04).
+        let tag = params.tag;
+        if tag.trim().is_empty() {
+            return Err(rmcp::ErrorData::invalid_params(
+                "tag must not be empty".to_string(),
+                None,
+            ));
+        }
+
+        // 5. Derive namespace via the EXTRACTED pub(crate) seam fn (NOT inline — #5389/#5468).
+        //    Substring before the FIRST ':' , else None. Derived, never validated (value-opacity).
+        //    R-08 (the replace `LIKE 'namespace:%'` DELETE) is handled by escaping in the store
+        //    primitive (store-tag-primitive.md like_escape + ESCAPE clause) — no reject here.
+        let namespace: Option<String> = derive_namespace(&tag);
+
+        // 6. Load the entry (lifecycle status + existence). EntryNotFound → mapped error, no write.
+        let entry = self.entry_store.get(params.id as u64).await.map_err(|e| {
+            rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
+        })?;
+
+        // 7. Lifecycle guard — RE-IMPLEMENTED in-op via the EXTRACTED pub(crate) seam fn (FR-11, R-05).
+        //    Quarantined → refuse ANY action; Deprecated + Active → allow (no protected-tag rule ships).
+        match check_tag_lifecycle(&entry.status) {
+            Ok(()) => {}
+            Err(LifecycleRejection::Quarantined) => {
+                return Err(rmcp::ErrorData::invalid_params(
+                    format!("entry {} is quarantined; cannot tag", params.id),
+                    None,
+                ));
+            }
+        }
+
+        // ── RETROFIT SEAM #1: VALUE-OPACITY PRE-WRITE INTERCEPTION POINT (comment only) ──
+        //    A future protected_tags policy drops exactly one call HERE:
+        //        evaluate(tag) -> Allowed | Rejected
+        //    vnc-045 ships NO validator, NO stub, NO config, NO call — a marked seam ONLY. The
+        //    tag is written uninterpreted. Do NOT invoke validate_outcome_tags — that path is
+        //    context_store's and is unrelated.
+
+        // 8. Delegate: throttle + store write + fire-and-forget audit all happen in the service.
+        let result = self
+            .services
+            .store_tag
+            .tag(
+                params.id as u64,
+                action,
+                tag,
+                namespace,
+                &ctx.audit_ctx,
+                &ctx.caller_id,
+            )
+            .await
+            .map_err(rmcp::ErrorData::from)?;
+
+        // 9. Format success response.
+        Ok(format_tag_success(params.id as u64, &result, ctx.format))
     }
 
     #[tool(
@@ -5868,6 +6075,81 @@ pub(super) async fn run_carry_forward_loop(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // -- vnc-045: derive_namespace boundary table (R-06) --
+    // Direct table test against the extracted pure seam fn (no store, no RequestContext).
+
+    #[test]
+    fn test_derive_namespace_standard() {
+        assert_eq!(
+            derive_namespace("delivery:proven"),
+            Some("delivery".to_string())
+        );
+    }
+
+    #[test]
+    fn test_derive_namespace_colon_terminated() {
+        // Empty value; full tag stored as-is (value-opaque, no rejection).
+        assert_eq!(derive_namespace("delivery:"), Some("delivery".to_string()));
+    }
+
+    #[test]
+    fn test_derive_namespace_colon_less() {
+        // → audit namespace:null; replace degrades to add.
+        assert_eq!(derive_namespace("reviewed"), None);
+    }
+
+    #[test]
+    fn test_derive_namespace_multi_colon() {
+        // Before the FIRST colon, deterministic; full tag stored verbatim.
+        assert_eq!(
+            derive_namespace("delivery:proven:extra"),
+            Some("delivery".to_string())
+        );
+    }
+
+    #[test]
+    fn test_derive_namespace_mid_string_colon() {
+        // First-colon positional rule, NOT vocabulary-aware.
+        assert_eq!(
+            derive_namespace("x-delivery:proven"),
+            Some("x-delivery".to_string())
+        );
+    }
+
+    #[test]
+    fn test_derive_namespace_leading_colon() {
+        // Leading colon → empty namespace before the first ':' (positional, value-opaque).
+        assert_eq!(derive_namespace(":proven"), Some("".to_string()));
+    }
+
+    #[test]
+    fn test_derive_namespace_empty() {
+        // Empty string has no colon → None. (Empty/whitespace tag rejection is the handler's
+        // Step 4 non-empty check, proven at the route seam — not this pure fn.)
+        assert_eq!(derive_namespace(""), None);
+    }
+
+    // -- vnc-045: check_tag_lifecycle over the three Status values (R-05) --
+
+    #[test]
+    fn test_check_tag_lifecycle_quarantined_refused() {
+        assert_eq!(
+            check_tag_lifecycle(&Status::Quarantined),
+            Err(LifecycleRejection::Quarantined)
+        );
+    }
+
+    #[test]
+    fn test_check_tag_lifecycle_deprecated_allowed() {
+        // Free-form tag ALLOWED on a deprecated entry (no protected-tag rule ships).
+        assert_eq!(check_tag_lifecycle(&Status::Deprecated), Ok(()));
+    }
+
+    #[test]
+    fn test_check_tag_lifecycle_active_allowed() {
+        assert_eq!(check_tag_lifecycle(&Status::Active), Ok(()));
+    }
 
     #[test]
     fn test_search_params_deserialize() {
