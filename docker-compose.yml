@@ -8,7 +8,11 @@
 
 services:
   unimatrix:
-    image: ghcr.io/dug-21/unimatrix:latest
+    # Operator-facing default stays ghcr :latest; the ${UNIMATRIX_IMAGE:-...} interpolation
+    # is back-compat (unset => :latest). The release smoke's compose-boot gate (#915)
+    # OVERRIDES it with UNIMATRIX_IMAGE=<version-under-test> + `--pull never` so the gate
+    # proves the candidate build, never the already-released :latest.
+    image: ${UNIMATRIX_IMAGE:-ghcr.io/dug-21/unimatrix:latest}
     # To build locally instead of pulling:
     #   build: .
     restart: unless-stopped

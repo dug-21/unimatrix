@@ -36,6 +36,7 @@ cleanup() {
   if [ "${KEEP:-0}" != "1" ]; then
     docker rm -f "$CNAME" >/dev/null 2>&1 || true
     docker volume rm "$VOL" >/dev/null 2>&1 || true
+    [ "${COMPOSE_UP:-0}" = "1" ] && compose_teardown  # #915 Gate 10: compose down -v from trap
   fi
   [ -n "${TMP:-}" ] && rm -rf "$TMP"
   [ -n "${SANDBOX:-}" ] && rm -rf "$SANDBOX"   # nan-020: hermetic sandbox teardown
@@ -331,14 +332,13 @@ bundle_attach_gates() {
 }
 # === end nan-020 seam ======================================================
 
-# === nan-021 C2: cloud cycle gate (sourced) ===============================
-# The bridge-driven Gate 8 (cloud_cycle_gates) lives in cloud-cycle-lib.sh to
-# keep this file <=500 lines (workspace rule). Sourced here so it runs in the
-# smoke's scope (uses log/fail/store_size/vol + $SLUG/$SLUG_DIR/$TMP/$TOKEN).
-# Like release-gate-lib.sh, it only DEFINES functions on source.
+# === Sourced gate libs (<=500-line split; each only DEFINES functions on source) ===
+# cloud-cycle-lib.sh: Gate 8 cloud cycle. claim-floor-lib.sh: Gate 9 client-works (#916),
+# Gate 10 compose boot (#915), compose_teardown. Both use the smoke's log/fail + scope.
 # shellcheck source=product/test/infra-001/scripts/cloud-cycle-lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/cloud-cycle-lib.sh"
-# === end nan-021 C2 sourced seam ==========================================
+# shellcheck source=product/test/infra-001/scripts/claim-floor-lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/claim-floor-lib.sh"
 
 # Sourced-guard (#5192): when this file is SOURCED (the pre-merge gate-logic
 # test sources it to call bundle_attach_gates against stubs), stop here — do
@@ -481,6 +481,8 @@ log "per-slug store grew ($SLUG_BEFORE -> $SLUG_AFTER) and hash store unchanged 
 # bundle_attach_gates(); reuses the SAME container/volume/slug/port/cert as Gates 1–4.
 bundle_attach_gates
 
+client_works_gate  # Gate 9 (#916/C15): ONE stateless context_status THROUGH the shipped bridge
+
 # Gate 8 (nan-021 C2 cloud cycle) — runs ONLY when the pytest orchestrator wired
 # the C2 inputs (MANIFEST_PATH/RUN_TOKEN/HTTPS_VECTOR_OUT). The standalone #783
 # smoke (no nan-021 env) skips it so its contract is unchanged (append-only).
@@ -490,5 +492,7 @@ if [ -n "${MANIFEST_PATH:-}" ] && [ -n "${RUN_TOKEN:-}" ] && [ -n "${HTTPS_VECTO
 else
   log "nan-021 C2 inputs absent — skipping gate 8 (standalone #783 posture smoke)."
 fi
+
+compose_boot_gate  # Gate 10 (#915/C1): boot the shipped docker-compose.yml (version-under-test pinned)
 
 log "ALL GATES PASSED — clean image boots HTTP-on and routes the registered slug over HTTPS."
