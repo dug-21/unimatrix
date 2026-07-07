@@ -245,10 +245,7 @@ pub struct ServiceLayer {
     pub(crate) store_ops: StoreService,
     /// vnc-045: `context_tag` orchestration seam (check_write_rate → store primitive →
     /// fire-and-forget audit). Reuses the same `Arc`s already built for `store_ops`.
-    // rationale: consumed by the `context_tag` #[tool] handler landing in vnc-045 Wave 3
-    // (mcp/tools.rs); wired now so the service seam is testable and the handler is a thin
-    // delegate. Remove this allow when the handler read lands.
-    #[allow(dead_code)]
+    /// Consumed by the `context_tag` #[tool] handler (mcp/tools.rs).
     pub(crate) store_tag: StoreTagService,
     pub(crate) confidence: ConfidenceService,
     pub(crate) briefing: IndexBriefingService, // crt-027: replaces BriefingService
