@@ -75,12 +75,14 @@ impl SqlxStore {
 
     /// Count write operations by a specific agent since a given timestamp.
     ///
-    /// Only counts `context_store` and `context_correct` operations.
+    /// Only counts `context_store`, `context_correct`, and `context_tag` operations.
+    /// This is a latent, non-enforcing signal (future SLN1 budget), NOT a live
+    /// throttle — the live throttle is `check_write_rate` in the service layer.
     pub async fn audit_write_count_since(&self, agent_id: &str, since: u64) -> Result<u64> {
         let count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM audit_log
              WHERE agent_id = ?1 AND timestamp >= ?2
-             AND operation IN ('context_store', 'context_correct')",
+             AND operation IN ('context_store', 'context_correct', 'context_tag')",
         )
         .bind(agent_id)
         .bind(since as i64)
@@ -471,3 +473,7 @@ mod tests {
         assert!(parsed.get("client_type").is_none());
     }
 }
+
+#[cfg(test)]
+#[path = "audit_count_tests.rs"]
+mod audit_count_tests;
