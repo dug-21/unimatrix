@@ -26,6 +26,27 @@ use crate::uds::transcript_block::{extract_transcript_block, prepend_transcript,
 /// Leaves 10ms margin in the 50ms total budget for process startup + hash computation.
 const HOOK_TIMEOUT: Duration = Duration::from_millis(40);
 
+/// Environment override for [`HOOK_TIMEOUT`] (milliseconds).
+///
+/// Operability knob for slow/loaded hosts where a legitimate injection can miss the
+/// 40ms per-read socket timeout and silently degrade (exit 0). Also lets hook e2e
+/// tests decouple correctness from the latency budget so a routing/envelope test does
+/// not double as a timing test. Precedent: `UNIMATRIX_PARITY_DIR`
+/// (parity_corpus_gen.rs). See ADR bugfix-918.
+const HOOK_TIMEOUT_ENV: &str = "UNIMATRIX_HOOK_TIMEOUT_MS";
+
+/// Resolve the hook transport timeout, honoring the `UNIMATRIX_HOOK_TIMEOUT_MS`
+/// override. Read once at hook startup and applied at BOTH transport sites
+/// (`LocalTransport::new` and `request`). Defaults to [`HOOK_TIMEOUT`] (40ms) when
+/// the var is unset, empty, or unparseable — behavior identical to the pre-seam const.
+fn resolve_hook_timeout() -> Duration {
+    std::env::var(HOOK_TIMEOUT_ENV)
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(HOOK_TIMEOUT)
+}
+
 /// Maximum byte budget for injection output (~350 tokens at 4 bytes/token).
 pub(crate) const MAX_INJECTION_BYTES: usize = 1400;
 
@@ -251,8 +272,12 @@ pub fn run(
             | HookRequest::RecordEvents { .. }
     );
 
-    // Step 7: Connect and send
-    let mut transport = LocalTransport::new(socket_path, HOOK_TIMEOUT);
+    // Step 7: Connect and send.
+    // Resolve the transport timeout once (UNIMATRIX_HOOK_TIMEOUT_MS override, default
+    // 40ms) and apply it at BOTH sites below — LocalTransport::new sets the connect-time
+    // read/write timeout, and request() re-applies it on the racy read path.
+    let hook_timeout = resolve_hook_timeout();
+    let mut transport = LocalTransport::new(socket_path, hook_timeout);
 
     match transport.connect() {
         Ok(()) => {
@@ -268,7 +293,7 @@ pub fn run(
                     eprintln!("unimatrix: fire-and-forget failed: {e}");
                 }
             } else {
-                match transport.request(&request, HOOK_TIMEOUT) {
+                match transport.request(&request, hook_timeout) {
                     Ok(response) => {
                         // Route stdout writing based on source (ADR-006 crt-027):
                         // SubagentStart requires hookSpecificOutput JSON envelope;
@@ -3480,41 +3505,12 @@ mod tests {
 
     // -- crt-027 ADR-006: write_stdout_subagent_inject tests --
 
-    /// AC-SR02: write_stdout_subagent_inject produces a valid JSON envelope.
-    /// Tests the envelope construction deterministically without stdout capture.
-    #[test]
-    fn write_stdout_subagent_inject_valid_json_envelope() {
-        let entries_text =
-            "1  42   crt-027/hook  decision  0.85  Unimatrix routes SubagentStart...";
-        // Verify the envelope structure directly using serde_json (same as the function does)
-        let envelope = serde_json::json!({
-            "hookSpecificOutput": {
-                "hookEventName": "SubagentStart",
-                "additionalContext": entries_text
-            }
-        });
-        // AC-SR02 assertions:
-        assert_eq!(
-            envelope["hookSpecificOutput"]["hookEventName"],
-            "SubagentStart"
-        );
-        assert_eq!(
-            envelope["hookSpecificOutput"]["additionalContext"],
-            entries_text
-        );
-        // Verify the output is valid JSON (parses without error)
-        let json_str = serde_json::to_string(&envelope).expect("must serialize");
-        let parsed: serde_json::Value =
-            serde_json::from_str(&json_str).expect("must parse as valid JSON");
-        assert_eq!(
-            parsed["hookSpecificOutput"]["hookEventName"],
-            "SubagentStart"
-        );
-        assert_eq!(
-            parsed["hookSpecificOutput"]["additionalContext"],
-            entries_text
-        );
-    }
+    // AC-SR02 evidence moved out of this module. The former in-module test
+    // `write_stdout_subagent_inject_valid_json_envelope` was tautological — it rebuilt
+    // the envelope with its own serde_json::json! and asserted on that literal, invoking
+    // ZERO production code (bugfix-918). AC-SR02 is now proven end-to-end through the
+    // compiled binary by `tests/hook_subagent_inject_e2e.rs`, which drives real
+    // run() step-5b routing + the real writer and asserts on captured child stdout.
 
     /// AC-SR03: write_stdout plain text path does NOT produce a hookSpecificOutput JSON envelope.
     /// The plain text output starts with "--- Unimatrix Context ---", not "{".
