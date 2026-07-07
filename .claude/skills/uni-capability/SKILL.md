@@ -35,7 +35,8 @@ Fields (in the entry content / structured body):
   why           one sentence — the problem it solves
   done_when     1-2 BEHAVIORAL, runnable statements — the proof gate AND definition of done.
                 nfr: the test runs ACROSS the governed surface, not a single feature.
-  status        missing | partial | proven | claimed
+  (status)      NOT a content field — the former status is now a first-class TAG: delivery:{proven|partial|missing|asserted}.
+                See "Status is a TAG" below. (This is the single source of delivery status.)
   delivered_by  GH ref(s), e.g. "#787" / "vnc-039"   (FIELD — target is not a Unimatrix node)
   proven_by     evidence ref, e.g. "live: arch-research store/get round-trip" (FIELD)
 
@@ -63,6 +64,35 @@ Status legend:  missing 🔴 | partial 🟡 | proven 🟢 | asserted ⚪ (claime
   other* in retrieval (capability↔capability, never research — that's fine). If capabilities should be
   kept out of *agent delivery* retrieval entirely, filter by `category != "capability"` at the
   retrieval layer — do NOT mangle the edge type; the DAG needs `Prerequisite`.
+
+---
+
+## Status is a TAG (delivery status — the single source)
+
+Capability **delivery status** is a first-class **tag**, never buried in the content blob. This keeps it
+**projectable** (surfaced in `context_graph(… detail="summary")`, so orientation is one call, no parse) and
+**queryable** (`context_lookup(category="capability", tags=["delivery:proven"])` lists every proven cap) — while
+keeping the domain-agnostic engine clean: the engine stores a tag it never interprets. "proven" is *our*
+(capability-domain) meaning, expressed in a domain-agnostic mechanism — NOT an engine field. (This is itself
+a dog-food test of the domain-agnostic goal: manage our own capability domain with tags/config, never a
+bespoke schema field.)
+
+**Two unrelated "status" concepts — never conflate:** the engine's `EntryRecord.status` (Active/Deprecated/…
+lifecycle) vs THIS capability delivery status. Only the latter is a `delivery:` tag.
+
+**Vocabulary — exactly these four:** `delivery:proven` 🟢 · `delivery:partial` 🟡 · `delivery:missing` 🔴 · `delivery:asserted` ⚪.
+
+**Rules:**
+- **Exactly one** `delivery:` tag per capability entry. A status change **replaces** it (never two, never zero).
+- **Single source** — the tag is authoritative; the **content carries NO status value at all**. Content is
+  `kind/name/why/done_when/delivered_by/proven_by` only.
+- **Firewall holds** — `delivery:proven` ONLY with behavioral evidence in `proven_by`; setting/changing status is a
+  `context_correct` that swaps the `delivery:` tag AND updates `proven_by`/`delivered_by` in the same call.
+- `delivery:asserted` = claimed with no behavioral test (a warning to retire) — NOT the "claimable" marketing sense.
+
+**Ownership (single owner):** this skill OWNS the status vocabulary and the set-status operation. Other sessions
+(**uni-zero**, **uni-zero-reviewer**) READ the tag (from the projection) and **route every status mutation
+through this skill's operation** — they never hand-edit a `delivery:` tag or invent a value.
 
 ---
 
@@ -227,18 +257,19 @@ claimed = asserted (often inherited from a goal criterion) with no behavioral te
 3. For each: `context_store category="capability"` with the fields, and an `Advances` edge to the goal:
    ```
    context_store({ category: "capability", topic: "<goal-tag>",
-     content: "name: …\nwhy: …\ndone_when: …\nstatus: missing\ndelivered_by:\nproven_by:",
-     tags: ["capability", "<goal-tag>"],
+     content: "kind: …\nname: …\nwhy: …\ndone_when: …\ndelivered_by:\nproven_by:",   // NO status line — status is a tag
+     tags: ["capability", "<goal-tag>", "<kind>", "delivery:missing"],
      edges: [{ relation: "Advances", target_id: <goal_id> }] })
    ```
 4. Add `Prerequisite` edges for dependencies (source = the prerequisite).
 
 ### Mark a capability proven (the gate)
-- ONLY with attached behavioral evidence. `context_correct` the entry: set `status: proven`, fill
-  `proven_by` (the real-artifact test/evidence) and `delivered_by`. No evidence ⇒ leave `partial`/raise variance.
+- ONLY with attached behavioral evidence. `context_correct` the entry: **swap the tag to `delivery:proven`**
+  (replace the prior `delivery:*` tag — exactly one), fill `proven_by` (the real-artifact test/evidence) and
+  `delivered_by` in the same call. No evidence ⇒ leave `delivery:partial`/raise variance.
 
 ### Record a gap / regression
-- `context_correct`: `proven → partial`, **sharpen `done_when`** to encode the newly-discovered bar.
+- `context_correct`: **swap the tag `delivery:proven → delivery:partial`**, **sharpen `done_when`** to encode the newly-discovered bar.
   This is the dev-process self-learning loop — reality contradicted "proven," the definition tightens.
 
 ### Report what's left for a goal (the strategic query)
