@@ -1,0 +1,27 @@
+# vnc-046 Acceptance Criteria Map
+
+Every AC from SCOPE.md / SPECIFICATION.md. Behavioral ACs (AC-01…AC-05) are **bidirectional at
+N≥2** through the public `/v1/{slug}/…` interface, assembled production wiring (POST via
+`route_observe` → read via that slug's `McpAdapter`); no `Arc::ptr_eq`/field-overwrite in the
+behavioral crate. Verification detail traces to RISK-TEST-STRATEGY.md scenarios (R-xx).
+
+| AC-ID | Description | Verification Method | Verification Detail | Status |
+|-------|-------------|--------------------|--------------------|--------|
+| AC-01 | INV-T1 transcript fidelity: delta to `/v1/{A}/observe` under a cycle is folded by A's `cycle_review` (non-empty candidates/bytes); both A and B. (#930 fixed.) | test | Behavioral integration test, assembled wiring: `route_observe` → `McpAdapter.cycle_review`; assert non-empty fold for the writer, both directions (R-01, R-02). `cargo test -p unimatrix-server --test project_routing_integration` | PENDING |
+| AC-02 | INV-T2 transcript isolation (collision): identical `{phase}-{NNN}` name in A and B; B's `cycle_review` NEVER folds/counts/distills A's, and A↛B. | test | Bidirectional N=2 test, identical cycle name; assert candidate **count** + **distillation-input** exclusion both directions (R-01, R-10, R-15). | PENDING |
+| AC-03 | INV-T3 pending-entries isolation: pending analysis at A's `cycle_review` never observable via B, and vice versa. | test | Bidirectional behavioral test: drive pending state per slug via its own surface; present-in-own, absent-in-other, both directions. | PENDING |
+| AC-04 | INV-K1/K2 knowledge-read fidelity + isolation: A's observe-path briefing/search/compact returns A's knowledge and NEVER B's; B↛A; plus durable-store non-contamination. | test | Bidirectional: write distinct knowledge to A and B; assert own-read returns it, cross-read returns none; persistence assertion that distillation cannot contaminate the victim store (R-09, R-15). Closes vnc-038 read-side gap (SR-07). | PENDING |
+| AC-05 | INV-C1/C2 config fidelity + isolation for every in-scope P3 field: A's declared config governs only A's observable behavior; no silent fallback to builtin/global defaults. | test + white-box (2 fields) | Derive over the wire via `resolve_slug_config` → `build_project_server`, never seeded (R-08). Public surfaces: `signal_class_names → signal_class_counts` (cycle_review), `observation_registry → status`, `retention_config → purge`. `store_config` + `inference_config` → bidirectional wiring-pin unit (documented AC-06 exception, R-04). A and B declare **different** config. | PENDING |
+| AC-06 | Behavioral suite asserts only through the public interface — no `Arc::ptr_eq`/field-overwrite in that suite; stands alone, implementation-agnostic, N≥2, bidirectional per data class; enumerates its own coverage (behavioral vs white-box). | grep + manual | grep the behavioral crate for absence of `ptr_eq`/`dispatch_request(registry=`/field-overwrite calls; assert N≥2 fixture and both-direction cases per invariant; assert the coverage-enumeration table exists and names `store_config` + `inference_config` as white-box-only (R-02, R-04). | PENDING |
+| AC-07 | HTTPS observe-path fidelity equals local UDS for all in-scope state; UDS/stdio construction paths unchanged. | test + manual | Parity test: drive the **same** input through HTTPS (`route_observe`→`McpAdapter`) and local UDS; compare `cycle_review` fold / `MetricVector` field-for-field, excluding wall-clock (`computed_at`) fields (R-16). Diff review confirms no change to UDS/stdio construction (NFR-4). | PENDING |
+| AC-08 | Per-slug boot assertion (`assert_per_slug_isolation`, real `Result<(),ServerError>`, aborts boot) fires for any built slug whose in-scope per-slug state is not wired to its write-path instance, covering the whole default-never-overwritten **class** (not only 9 items). White-box complement, not substitute. | test | Unit: build a slug server with a deliberately-unwired `session_registry` → assert boot returns `Err` (not `debug_assert`, R-03). Wiring-pin: `Arc::ptr_eq(resolver.registry_for(&slug), slug_server.session_registry)` + `pending_for`. Compile-fail census test: add a throwaway `UnimatrixServer` field → exhaustive destructure (no `..`) fails to compile (R-07). Covers `store_config`/`inference_config`. | PENDING |
+| AC-09 | The two vestigial `ObserveContext` fields (`vector_store`, `adapt_service`) are deleted. | grep + shell | `ObserveContext` struct lacks both fields; no remaining references. `cargo build -p unimatrix-server` compiles with the fields and their `dispatch_request` `_`-params removed. grep confirms zero `vector_store`/`adapt_service` references in `http/router.rs`. | PENDING |
+| AC-10 | A ratified ADR records the per-slug-observe-context decision, its relation to goal #5519 + the ADR-007 seam, and the #925 subsume-vs-defense-in-depth verdict. | file-check | ADR-001…005 present under `product/features/vnc-046/architecture/`; ADR-005 records the #925 NOT-subsumed verdict; referenced from the feature issue and PR. | PENDING |
+
+## Notes
+
+- **#800 dependency (WARN):** AC-05, AC-06, AC-07 behavioral vehicles extend the OPEN #800
+  multi-slug HTTP fixture. Confirm #800 owner/status before Session 2 delivery (SR-08, ADR-004).
+- **#930:** resolved by AC-01 (P1). Do not close #930 without a human decision.
+- **#925:** NOT proven by this suite (ADR-005); INV-T2 covers only the cross-**slug** transcript
+  case, not #925's cross-**feature** metrics case. Do not read AC-02 as closing #925.
