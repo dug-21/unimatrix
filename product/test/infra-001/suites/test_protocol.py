@@ -33,8 +33,8 @@ def test_server_info(server):
     assert_tool_success(resp)
 
 
-def test_list_tools_returns_fourteen(server):
-    """P-03: tools/list returns exactly 14 context_* tools (vnc-018: +context_graph)."""
+def test_list_tools_returns_fifteen(server):
+    """P-03: tools/list returns exactly 15 context_* tools (vnc-045: +context_tag)."""
     resp = server.list_tools()
     raw = resp.result
     assert raw is not None, "tools/list should return a result"
@@ -55,8 +55,26 @@ def test_list_tools_returns_fourteen(server):
         "context_cycle_review",
         "context_edge",
         "context_graph",
+        "context_tag",
     ])
     assert tool_names == expected, f"Expected {expected}, got {tool_names}"
+
+
+def test_context_tag_in_tool_list(server):
+    """P-vnc045: context_tag (15th tool) is advertised with an inputSchema exposing
+    id/action/tag/agent_id/format (vnc-045)."""
+    resp = server.list_tools()
+    tools = resp.result.get("tools", [])
+    tag_tool = next((t for t in tools if t["name"] == "context_tag"), None)
+    assert tag_tool is not None, "context_tag must be advertised in tools/list"
+    schema = tag_tool.get("inputSchema", {})
+    assert schema.get("type") == "object", "context_tag schema must be an object"
+    props = schema.get("properties", {})
+    for field in ("id", "action", "tag"):
+        assert field in props, f"context_tag schema missing required property '{field}'"
+    # agent_id (audit-only) and format are optional but must be exposed on the schema.
+    for field in ("agent_id", "format"):
+        assert field in props, f"context_tag schema missing optional property '{field}'"
 
 
 def test_tool_schemas_valid(server):

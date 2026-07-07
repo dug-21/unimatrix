@@ -821,3 +821,26 @@ class UnimatrixClient:
         if detail is not None:
             args["detail"] = detail
         return self.call_tool("context_graph", args, timeout=timeout)
+
+    def context_tag(
+        self,
+        entry_id: int,
+        action: str,
+        tag: str,
+        *,
+        agent_id: str | None = None,
+        format: str | None = None,
+        timeout: float | None = None,
+    ) -> MCPResponse:
+        """vnc-045: 15th MCP tool — in-place single-tag mutation on entry_tags.
+
+        action ∈ {add, remove, replace}. Gated on Capability::Write. Preserves the
+        entry's content hash, edges, embedding, and learning vector (unlike
+        context_correct). Value-opaque: any tag string is written uninterpreted.
+        """
+        args: dict[str, Any] = {"id": entry_id, "action": action, "tag": tag}
+        if agent_id is not None:
+            args["agent_id"] = agent_id
+        if format is not None:
+            args["format"] = format
+        return self.call_tool("context_tag", args, timeout=timeout)

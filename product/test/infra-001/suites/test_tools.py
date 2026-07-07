@@ -5694,3 +5694,92 @@ def test_graph_tool_description_advertises_detail(server):
     assert "detail" in desc, "description must advertise the detail axis"
     assert "summary" in desc and "full" in desc, "description must name summary and full"
     assert "lifecycle" in desc, "description must state the lifecycle-status caveat"
+
+
+# === context_tag (vnc-045 — 15th tool) ================================
+# In-place single-tag mutation on entry_tags. Gated on Capability::Write.
+# Value-opaque: any tag string is written uninterpreted (no allow-list, no
+# vocabulary). Preserves the entry's learning vector / hash / edges (unlike
+# context_correct). Audit-record completeness (prior_value, non-{}, single-event)
+# is proven at the unit read-back seam — audit_log is not MCP-exposed — so these
+# route/format tests assert only that the call is accepted and the mutation is
+# read-back-visible.
+
+def _store_taggable(server, content_suffix):
+    """Store a fresh entry and return its id (format=json)."""
+    resp = server.context_store(
+        f"context_tag route test entry {content_suffix}",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    return extract_entry_id(resp)
+
+
+@pytest.mark.smoke
+def test_context_tag_add_roundtrip(server):
+    """T-TAG01 (smoke): add a namespaced tag; call succeeds and the tag is visible
+    to a subsequent tag-filtered lookup (read-freshness, live SQL — ADR-002)."""
+    entry_id = _store_taggable(server, "add-roundtrip-uniq")
+    resp = server.context_tag(entry_id, "add", "delivery:proven", agent_id="human")
+    assert_tool_success(resp)
+    # Read-freshness: the mutated tag is immediately visible (no invalidation step).
+    lookup = server.context_lookup(tags=["delivery:proven"], agent_id="human", format="json")
+    assert_search_contains(lookup, entry_id)
+
+
+def test_context_tag_remove(server):
+    """T-TAG02: remove a previously added tag; call succeeds."""
+    entry_id = _store_taggable(server, "remove-uniq")
+    server.context_tag(entry_id, "add", "state:draft", agent_id="human")
+    resp = server.context_tag(entry_id, "remove", "state:draft", agent_id="human")
+    assert_tool_success(resp)
+
+
+def test_context_tag_replace_single_value(server):
+    """T-TAG03: replace within a namespace evicts the prior — exactly one delivery:*
+    tag remains after replacing delivery:partial with delivery:proven."""
+    entry_id = _store_taggable(server, "replace-single-uniq")
+    server.context_tag(entry_id, "add", "delivery:partial", agent_id="human")
+    resp = server.context_tag(entry_id, "replace", "delivery:proven", agent_id="human")
+    assert_tool_success(resp)
+    # New value present, prior value gone (namespace-scoped single value).
+    present = server.context_lookup(tags=["delivery:proven"], agent_id="human", format="json")
+    assert_search_contains(present, entry_id)
+    absent = server.context_lookup(tags=["delivery:partial"], agent_id="human", format="json")
+    assert_search_not_contains(absent, entry_id)
+
+
+def test_context_tag_replace_colon_less_degrades_to_add(server):
+    """T-TAG04: replace with a colon-less (null-namespace) tag degrades to a pure
+    insert — never a hard error; the tag becomes present."""
+    entry_id = _store_taggable(server, "replace-colonless-uniq")
+    resp = server.context_tag(entry_id, "replace", "reviewed", agent_id="human")
+    assert_tool_success(resp)
+    lookup = server.context_lookup(tags=["reviewed"], agent_id="human", format="json")
+    assert_search_contains(lookup, entry_id)
+
+
+def test_context_tag_invalid_action_rejected(server):
+    """T-TAG05: an unknown action is rejected (invalid_params); no silent default."""
+    entry_id = _store_taggable(server, "invalid-action-uniq")
+    resp = server.context_tag(entry_id, "sprinkle", "delivery:proven", agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_context_tag_empty_tag_rejected(server):
+    """T-TAG06: an empty/whitespace tag is rejected before any write (malformed)."""
+    entry_id = _store_taggable(server, "empty-tag-uniq")
+    resp = server.context_tag(entry_id, "add", "   ", agent_id="human")
+    assert_tool_error(resp)
+
+
+def test_context_tag_value_opaque_freeform_accepted(server):
+    """T-TAG07: value-opacity — delivery:proven, delivery:anythingelse, and a free-form
+    tag ALL succeed on bare Capability::Write (no allow-list, no vocabulary). No
+    rejection path exists (R-04). Do NOT add a rejection-path assertion here."""
+    entry_id = _store_taggable(server, "value-opaque-uniq")
+    for tag in ("delivery:proven", "delivery:anythingelse", "totally-freeform-xyz"):
+        resp = server.context_tag(entry_id, "add", tag, agent_id="human")
+        assert_tool_success(resp)

@@ -636,3 +636,85 @@ def test_cycle_review_transcript_no_new_persistence(server):
         assert m not in stderr, (
             f"crt-057 R-03: server stderr must not carry the marker '{m}'"
         )
+
+
+# === context_tag security (vnc-045) ===================================
+# Write-capability gate, quarantine lifecycle refusal, and R-08 injection /
+# LIKE over-match resistance (tag stored + matched literally; a replace within a
+# metachar namespace must not delete sibling tags).
+
+def _sec_taggable(server, suffix):
+    resp = server.context_store(
+        f"context_tag security entry {suffix}",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    return extract_entry_id(resp)
+
+
+def _lookup_ids_by_tag(server, tag):
+    resp = server.context_lookup(tags=[tag], agent_id="human", format="json")
+    entries = parse_entries(resp)
+    ids = []
+    for e in entries:
+        v = e.get("id")
+        if isinstance(v, str) and v.isdigit():
+            v = int(v)
+        ids.append(v)
+    return ids
+
+
+@pytest.mark.smoke
+@pytest.mark.security
+def test_context_tag_requires_write_capability(server):
+    """S-TAG01 (smoke): an enrolled agent WITHOUT Write cannot context_tag.
+    Unknown agents auto-enroll with Write (permissive), so we explicitly restrict."""
+    server.context_enroll(
+        "tag-read-only-agent", "restricted", ["read", "search"], agent_id="human"
+    )
+    entry_id = _sec_taggable(server, "requires-write-uniq")
+    resp = server.context_tag(
+        entry_id, "add", "delivery:proven", agent_id="tag-read-only-agent"
+    )
+    assert_tool_error(resp)
+
+
+@pytest.mark.security
+def test_context_tag_quarantined_entry_refused(admin_server):
+    """S-TAG02: any context_tag action on a QUARANTINED entry is refused with a
+    lifecycle error (FR-11, R-05, AC-07)."""
+    server = admin_server
+    entry_id = _sec_taggable(server, "quarantined-refused-uniq")
+    q = server.context_quarantine(entry_id, agent_id="human")
+    assert_tool_success(q)
+    for action, tag in (("add", "delivery:proven"),
+                        ("remove", "delivery:proven"),
+                        ("replace", "delivery:done")):
+        resp = server.context_tag(entry_id, action, tag, agent_id="human")
+        assert_tool_error(resp)
+
+
+@pytest.mark.security
+def test_context_tag_sql_metachar_tag_stored_literally(server):
+    """S-TAG03 (R-08): a tag whose derived namespace contains a SQL LIKE metacharacter
+    ('%') is stored/matched literally, and a namespace-scoped replace does NOT
+    over-match and delete a sibling tag. Bound params + LIKE-escape."""
+    entry_id = _sec_taggable(server, "sql-metachar-uniq")
+    # Namespace 'a%b' — unescaped LIKE 'a%b:%' would match 'axb:sibling'.
+    server.context_tag(entry_id, "add", "a%b:one", agent_id="human")
+    server.context_tag(entry_id, "add", "axb:sibling", agent_id="human")
+    # Both stored literally and findable by their exact strings.
+    assert entry_id in _lookup_ids_by_tag(server, "a%b:one")
+    assert entry_id in _lookup_ids_by_tag(server, "axb:sibling")
+    # Replace within namespace 'a%b': evicts a%b:one, inserts a%b:three.
+    resp = server.context_tag(entry_id, "replace", "a%b:three", agent_id="human")
+    assert_tool_success(resp)
+    # The sibling in the LIKE-adjacent namespace MUST survive (no over-match).
+    assert entry_id in _lookup_ids_by_tag(server, "axb:sibling"), (
+        "R-08: replace over-matched and deleted a sibling tag (LIKE metachar not escaped)"
+    )
+    # New value present, prior evicted.
+    assert entry_id in _lookup_ids_by_tag(server, "a%b:three")
+    assert entry_id not in _lookup_ids_by_tag(server, "a%b:one")
