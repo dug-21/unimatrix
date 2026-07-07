@@ -38,16 +38,16 @@ Add MCP op `context_tag(id, action, tag)`, `action ∈ {add, remove, replace}`, 
 
 ## Component Map
 
-Pseudocode and test-plan files are produced in Session 2 Stage 3a. Components below are drawn from ARCHITECTURE §2; actual file paths are filled during delivery.
+Pseudocode and test-plan files produced in Stage 3a (2026-07-07). Components drawn from ARCHITECTURE §2; all files below exist. Stage 3b waves: Wave 1 = store-tag-primitive + audit-op-list (foundational); Wave 2 = StoreTagService; Wave 3 = context_tag handler.
 
-| Component | Pseudocode | Test Plan |
-|-----------|-----------|-----------|
-| `context_tag` handler (`unimatrix-server` `mcp/tools.rs`) — identity, `Write` gate, action/tag parse, namespace derivation, lifecycle guard, marked value-opacity seam (no validator), delegate | pseudocode/context-tag-handler.md | test-plan/context-tag-handler.md |
-| `StoreTagService` (`unimatrix-server` `services/store_tag.rs`, new) — `check_write_rate` → store write → audit | pseudocode/store-tag-service.md | test-plan/store-tag-service.md |
-| Direct tag-write primitives (`unimatrix-store`, new fns beside `write.rs:161`) — atomic single-row `add_tag`/`remove_tag` + namespace-scoped `replace_tag` | pseudocode/store-tag-primitive.md | test-plan/store-tag-primitive.md |
-| Audit op-list update (`unimatrix-store` `audit.rs:84`) — add `'context_tag'` | pseudocode/audit-op-list.md | test-plan/audit-op-list.md |
+| Component | Wave | Pseudocode | Test Plan |
+|-----------|------|-----------|-----------|
+| Direct tag-write primitives (`unimatrix-store`, new fns beside `write.rs:161`) — atomic single-row `add_tag`/`remove_tag` + namespace-scoped `replace_tag` | 1 | pseudocode/store-tag-primitive.md | test-plan/store-tag-primitive.md |
+| Audit op-list update (`unimatrix-store` `audit.rs:84`) — add `'context_tag'` | 1 | pseudocode/audit-op-list.md | test-plan/audit-op-list.md |
+| `StoreTagService` (`unimatrix-server` `services/store_tag.rs`, new) — `check_write_rate` → store write → audit | 2 | pseudocode/store-tag-service.md | test-plan/store-tag-service.md |
+| `context_tag` handler (`unimatrix-server` `mcp/tools.rs`) — identity, `Write` gate, action/tag parse, namespace derivation, lifecycle guard, marked value-opacity seam (no validator), delegate | 3 | pseudocode/context-tag-handler.md | test-plan/context-tag-handler.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
