@@ -487,6 +487,20 @@ echo "== (c) #859 nonce is construction-safe: default path + adversarial battery
 . "${SCRIPT_DIR}/fixtures/isolation-nonce-logic-cases.sh"
 run_nonce_safety_cases
 
+echo "== #915/#916 cleanup reaps the anon /shared volume (docker rm carries -v) =="
+test_cleanup_container_removal_reaps_anon_volumes() {
+  # The cleanup() container removal must carry -v so the runtime image's unmounted
+  # VOLUME (/shared, anonymous each run since boot mounts only /data) is reaped on
+  # removal — WITHOUT -v it orphans one anonymous volume per run (unbounded disk
+  # growth). Static grep over the shipped smoke (mirrors the claim-floor logic test).
+  if grep -qE 'docker rm -f -v "\$CNAME"' "$GATE"; then
+    pass "test_cleanup_container_removal_reaps_anon_volumes (docker rm -f -v \$CNAME reaps the anon /shared volume)"
+  else
+    oops "test_cleanup_container_removal_reaps_anon_volumes" "cleanup() docker rm is missing -v => orphans the anonymous /shared volume each run (#915/#916 leak)"
+  fi
+}
+test_cleanup_container_removal_reaps_anon_volumes
+
 echo
 echo "release-gate-isolation-logic-test: ${PASS} passed, ${FAIL} failed"
 [ "$FAIL" -eq 0 ]
