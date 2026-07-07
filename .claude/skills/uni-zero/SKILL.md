@@ -54,7 +54,9 @@ On invocation, orient yourself before engaging. Do all of this in parallel:
    traversal: `context_graph(mode="subgraph", seed_ids=[<vision-root id>], direction="incoming",
    edge_types=["Advances"], max_depth=2, detail="summary")` → every goal + its capabilities + status in one
    pull. (Use **`detail="summary"`** for the lean projection — NOT `format=summary`, a deprecated no-op alias.
-   See the `uni-capability` skill's "one-call orientation".) Group by the `Advances` edge and read each goal at
+   See the `uni-capability` skill's "one-call orientation".) Each capability's status is its **`delivery:{proven|partial|missing|asserted}`
+   tag** in the returned `tags` — no content parsing; or count a value directly via `context_lookup(category="capability",
+   tags=["delivery:proven"])`. Group by the `Advances` edge and read each goal at
    **two altitudes** (uni-capability "Claim-floor vs North-star"):
    - **Claim-floor** — its **threshold** capabilities that are `proven` ⇒ the goal is **claimable** ("we have this").
    - **North-star** — its **curve** capabilities (marquee rollup + quality promise); never terminal — a curve at 🟡
