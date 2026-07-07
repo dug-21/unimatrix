@@ -9793,4 +9793,9 @@ mod tests {
     // crt-054 (#752): Surface A compaction_events writer at handle_compact_payload
     // (Component 6) + the store_ops failure-counter wrapper (Component 8). 500-line rule.
     mod compaction_events;
+
+    // bugfix-917 (#917): DA3 claim-floor — a foreign source_domain through the real
+    // ingest+storage path; stored raw, read-path resolves via a config-built
+    // DomainPackRegistry. Shares this module's helpers. 500-line rule.
+    mod foreign_domain;
 }
