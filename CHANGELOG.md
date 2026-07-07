@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.11.0] - 2026-07-07
+
+### Features
+- **context_tag**: new MCP tool — in-place tag mutation (`add`/`remove`/`replace`) on the non-hashed tag lane. Changes volatile tags without rewriting the record, re-pointing edges, re-embedding, or zeroing the entry's learning vector. Complete generic audit contract; value-opaque (no hard-coded vocabulary); atomic `replace`. Capability delivery status (the `delivery:` tag) is the first consumer. The `protected_tags` value-hygiene policy is deferred to a future release. (vnc-045, #929)
+
 ## [0.10.0] - 2026-07-06
 
 ### Features
