@@ -14,12 +14,6 @@
 //! the tag verbatim. The lifecycle guard is applied UPSTREAM by the handler (which holds the
 //! loaded `EntryRecord`); the service assumes an already-guarded, already-authorized call.
 
-// rationale: this module is a forward-wired seam — its whole public surface is consumed by the
-// `context_tag` #[tool] handler landing in vnc-045 Wave 3 (mcp/tools.rs). Until that delegate
-// lands, non-test builds see the surface as unused. The seam IS exercised now by the
-// store_tag_tests.rs seam suite. Remove this allow when the Wave 3 handler read lands.
-#![allow(dead_code)]
-
 use std::sync::Arc;
 
 use unimatrix_core::{CoreError, Store};
