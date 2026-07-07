@@ -19,7 +19,7 @@
 //! through this seam.
 
 use std::convert::Infallible;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use bytes::Bytes;
 use http::{Request, Response, StatusCode};
@@ -29,6 +29,9 @@ use unimatrix_core::Store;
 
 use super::McpAdapter;
 use super::observe::json_error_response;
+use crate::infra::session::SessionRegistry;
+use crate::server::PendingEntriesAnalysis;
+use crate::services::ServiceLayer;
 
 /// Transport-derived project identity (ADR-003 C4 invariant 1; vnc-038 ADR-004).
 ///
@@ -148,6 +151,40 @@ pub trait StoreResolver: Send + Sync + 'static {
     /// allowed here because the type is intentionally crate-internal.
     #[allow(private_interfaces)]
     fn adapter_for(&self, key: &ProjectKey) -> Option<&McpAdapter>;
+
+    /// Resolve the per-slug `SessionRegistry` (vnc-046 ADR-001, FR-12).
+    ///
+    /// Completes the per-request funnel: registry/pending/services resolve from
+    /// the SAME `slug -> ProjectEntry` map as `resolve_store`, so the observe path
+    /// writes into the same instances the slug's `UnimatrixServer` reads — no
+    /// parallel side-map (the vnc-034 #4974 guard).
+    ///
+    /// **No default impl (deliberate, same discipline as `adapter_for`).** A
+    /// default body would re-admit the split-brain bypass this feature closes:
+    /// every implementor MUST resolve from its own `resolve_store` map (R-06).
+    ///
+    /// O(1): one `HashMap` lookup + `Arc::clone`; no I/O, no lock, no DB (NFR-1).
+    ///
+    /// Returns the same `RouteError` domain as `resolve_store` (`UnknownProject`).
+    /// Reached only AFTER `resolve_store` succeeded, so an `Err` here is a
+    /// boot-wiring contradiction the handler maps to 500, never 404 (R-14).
+    fn registry_for(&self, key: &ProjectKey) -> Result<Arc<SessionRegistry>, RouteError>;
+
+    /// Resolve the per-slug `PendingEntriesAnalysis` buffer (vnc-046 ADR-001).
+    ///
+    /// Same funnel, same map, same no-default discipline as `registry_for`. O(1)
+    /// `HashMap` lookup + `Arc::clone`. Error domain / boundary per `registry_for`.
+    fn pending_for(
+        &self,
+        key: &ProjectKey,
+    ) -> Result<Arc<Mutex<PendingEntriesAnalysis>>, RouteError>;
+
+    /// Resolve the per-slug `ServiceLayer` (vnc-046 ADR-001, P2 knowledge-read).
+    ///
+    /// Same funnel, same map, same no-default discipline. `ServiceLayer::clone` is
+    /// a handful of `Arc::clone`s (no reconstruction), so this stays in the O(1)
+    /// cost class of `resolve_store`. Error domain / boundary per `registry_for`.
+    fn services_for(&self, key: &ProjectKey) -> Result<ServiceLayer, RouteError>;
 }
 
 /// Store-resolution failure at the routing edge (ADR-003/004).
