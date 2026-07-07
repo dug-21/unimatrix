@@ -67,8 +67,8 @@ Never wire one without the other.
 
 ## Component Map
 
-Components from the architecture. Pseudocode + test-plan file paths are populated during Session 2
-Stage 3a.
+Components from the architecture. **Stage 3a complete** — all 7 component pseudocode + test-plan
+files below are present and verified 1:1 against this map (paths confirmed by the Delivery Leader).
 
 | Component | Source file(s) | Pseudocode | Test Plan |
 |-----------|----------------|-----------|-----------|
@@ -86,6 +86,23 @@ Stage 3a.
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+
+### #800 multi-slug HTTP fixture — IN-SCOPE (integration-harness deliverable, human directive)
+
+Folded into scope for this delivery (was a dependency). The infra-001 Python fixture
+(`multi_slug_http_server` conftest boots HTTP with ≥2 registered slugs + per-slug `config.toml`;
+per-slug MCP client extending `harness/client.py`; new `suites/test_project_isolation.py`) is
+**built and run by the tester in Stage 3c** per `test-plan/OVERVIEW.md` — it is NOT a Stage 3b
+rust/js dev-wave component. Extends infra-001, does not fork (SR-08).
+
+### Stage 3a Open Questions (routed to Gate 3a → Stage 3b)
+
+Surfaced by the pseudocode/test-plan agents; resolve at Gate 3a or in the owning Stage 3b component:
+1. **Boot-assertion vs `from_servers` move (needs sign-off).** ADR-003's `assert_per_slug_isolation(input: &ProjectServerInput, ...)` collides with `from_servers` consuming inputs before the resolver exists. Recommended refinement: capture a per-slug `IsolationProbe` (Arc clones) in the existing pre-move loop, assert after the router is built. → boot-assertion component.
+2. **Per-slug signature scanner.** Daemon builds its registry `.with_signature_scanner(...)` (`main.rs:852`); ADR-002 param list omits it. Confirm whether FR-9 `signal_class_counts` needs a per-slug scanner or derives from `transcript_signal_class_names` alone. → project-provisioner.
+3. **`categories` classification mismatch.** NFR-5 says global; code threads per-slug `slug_categories` (`main.rs:1183`). The census must classify to match the code, not the brief. → boot-assertion census.
+4. **Vestigial-field blast radius.** Deleting `vector_store`/`adapt_service` forces dropping the two `_`-params from `dispatch_request` across ~100 call sites (mostly `uds/listener.rs` tests) in ONE pass — cannot be half-done. → observe-context / observe-handler wave must own this atomically.
+5. **#800 fixture cert/bearer reuse** and **`inference_config` boot sentinel checkability** — confirm in Stage 3b (test-plan OQ-1/OQ-2).
 
 ## Resolved Decisions
 

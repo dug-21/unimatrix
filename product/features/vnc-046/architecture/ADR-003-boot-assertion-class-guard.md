@@ -23,9 +23,22 @@ Two failure modes constrain the guard:
 Two complementary guards, both mandatory (AC-08), neither a `debug_assert`:
 
 **(1) Runtime per-slug boot assertion — `assert_per_slug_isolation`.** Generalize
-`assert_wave_b_precondition` into a helper called **once per built slug** during boot (in the
-per-slug loop, after `build_project_server`, before `from_servers` moves the inputs), returning
-`Result<(), ServerError>` so any failure aborts daemon boot loud. For each built slug it asserts:
+`assert_wave_b_precondition` into a helper called **once per built slug** during boot, returning
+`Result<(), ServerError>` so any failure aborts daemon boot loud.
+
+*Param refinement (ratifies Stage-3a OQ-1).* The original signature
+`assert_per_slug_isolation(input: &ProjectServerInput, resolver, config)` asserted "after
+`build_project_server`, **before** `from_servers` moves the inputs." That literal ordering is
+**impossible**: the `Arc::ptr_eq` convergence check needs the *resolver*, and the resolver does
+not exist until `from_servers` has already consumed (moved) the per-slug inputs. The accepted
+shape captures a lightweight per-slug **`IsolationProbe`** — `{ slug, session_registry, pending,
+services, has_hold, signal_class_names }`, all cheap `Arc` clones — in the existing pre-move
+tick-context loop (`main.rs:1229`, where the inputs are still owned), **then** builds the router
+via `from_servers`, **then** asserts per slug against the built resolver:
+`assert_per_slug_isolation(&probe, &*router, &config)?`. This is a param-type refinement only
+(`&ProjectServerInput` → `&IsolationProbe`); every guarantee below is preserved unchanged — the
+`ptr_eq` handles compared are the same instances, captured before the move and checked after the
+resolver exists. For each built slug it asserts:
 
 - **P1 convergence (`Arc::ptr_eq`):** `resolver.registry_for(&slug)` **is**
   `input.server.session_registry`, and `resolver.pending_for(&slug)` **is**
@@ -55,9 +68,20 @@ let UnimatrixServer {
 ```
 
 Each binding is routed to its classification — **PER-SLUG** (asserted by guard 1),
-**CORRECTLY-GLOBAL** (`embed_service`, `categories`), or **CORRECTLY-PER-INSTANCE**
+**CORRECTLY-GLOBAL** (`embed_service` — one shared ONNX model), or **CORRECTLY-PER-INSTANCE**
 (`client_type_map`, `tool_router`). Adding any field to `UnimatrixServer` breaks compilation
-until the author classifies it. This is the structural whole-class guard SR-02 demands: a future
+until the author classifies it.
+
+**`categories` is classified PER-SLUG, matching shipped code** — the census records reality, not
+prose. `main.rs:1183` builds a per-slug `slug_categories` from `r.knowledge.categories` and
+threads it into `build_project_server` (`http_provision.rs:153,257,267`), so `categories` is
+config-driven per slug today (crt-031/vnc-040). It is a **config-snapshot** field (set at the
+constructor from the threaded param, like the P3 fields) — so it needs no `Arc::ptr_eq`
+handle-convergence boot check in guard (1); where a sentinel is checkable it is covered like the
+other config-snapshots, otherwise by the census + AC-06 exception. NFR-5's characterization of
+`categories` as a "global operator allowlist" is **stale** relative to shipped code; a reviewer
+should not read the per-slug classification as an NFR-5 violation (NFR-5 prose is the candidate
+for correction at retro, not this census). This is the structural whole-class guard SR-02 demands: a future
 field cannot ship unclassified, and a per-slug classification forces it into guard (1).
 
 The two guards are **complements, not substitutes** for the behavioral suite (ADR-004): the
