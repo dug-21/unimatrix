@@ -86,8 +86,14 @@ lifecycle) vs THIS capability delivery status. Only the latter is a `delivery:` 
 - **Exactly one** `delivery:` tag per capability entry. A status change **replaces** it (never two, never zero).
 - **Single source** — the tag is authoritative; the **content carries NO status value at all**. Content is
   `kind/name/why/done_when/delivered_by/proven_by` only.
-- **Firewall holds** — `delivery:proven` ONLY with behavioral evidence in `proven_by`; setting/changing status is a
-  `context_correct` that swaps the `delivery:` tag AND updates `proven_by`/`delivered_by` in the same call.
+- **Firewall holds** — `delivery:proven` ONLY with behavioral evidence in `proven_by`.
+- **How to set/change status — use the fast path (`context_tag`, vnc-045):**
+  - **Pure status flip** (the `proven_by` evidence is already in content — the normal verify-then-flip case, and a
+    downgrade): `context_tag(id, action="replace", tag="delivery:{value}")`. In-place, atomic, single-value-**per-prefix**
+    (it swaps only the `delivery:` tag, leaves all others), and it **preserves the entry's learning vector, edges, and
+    content hash**. Do NOT use `context_correct` for a pure flip — it rewrites the record and resets learning.
+  - **Status change that ALSO writes content** (attaching *new* `proven_by`, sharpening `done_when`): `context_correct` —
+    the content hash genuinely changes and a re-embed is correct there; set the `delivery:` tag in the same call.
 - `delivery:asserted` = claimed with no behavioral test (a warning to retire) — NOT the "claimable" marketing sense.
 
 **Ownership (single owner):** this skill OWNS the status vocabulary and the set-status operation. Other sessions
@@ -264,12 +270,12 @@ claimed = asserted (often inherited from a goal criterion) with no behavioral te
 4. Add `Prerequisite` edges for dependencies (source = the prerequisite).
 
 ### Mark a capability proven (the gate)
-- ONLY with attached behavioral evidence. `context_correct` the entry: **swap the tag to `delivery:proven`**
-  (replace the prior `delivery:*` tag — exactly one), fill `proven_by` (the real-artifact test/evidence) and
-  `delivered_by` in the same call. No evidence ⇒ leave `delivery:partial`/raise variance.
+- ONLY with attached behavioral evidence in `proven_by`.
+  - If the evidence is **already in content** (the usual verify-then-flip case): `context_tag(id, action="replace", tag="delivery:proven")` — the fast path. No evidence ⇒ leave `delivery:partial`/raise variance.
+  - If you are **attaching new evidence** (writing `proven_by`/`delivered_by` now): `context_correct` (content + `delivery:proven` tag in one call).
 
 ### Record a gap / regression
-- `context_correct`: **swap the tag `delivery:proven → delivery:partial`**, **sharpen `done_when`** to encode the newly-discovered bar.
+- Pure downgrade: `context_tag(id, action="replace", tag="delivery:partial")`. If you also **sharpen `done_when`** to encode the newly-discovered bar (a content change), use `context_correct` instead.
   This is the dev-process self-learning loop — reality contradicted "proven," the definition tightens.
 
 ### Report what's left for a goal (the strategic query)
