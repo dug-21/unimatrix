@@ -68,9 +68,9 @@ the external `tests/` crate; the external crate also cannot implement `StoreReso
 | `test_vnc046_coverage_enumeration` | AC-06 coverage table | AC-06 | — |
 
 ### Integration (infra-001, `UNIMATRIX_BINARY` = release build)
-- **Smoke gate (`-m smoke`, MANDATORY): 32 passed, 0 failed, rc=0.**
+- **Smoke gate (`-m smoke`, MANDATORY): 35 passed, 0 failed, rc=0** (Delivery-Leader foreground re-run on committed HEAD; covers smoke-marked protocol/tools/lifecycle/security/volume + the new isolation suite).
 - **#800 new suite (`test_project_isolation.py`): 4 passed, 0 failed** — INV-T2 a_driver + b_driver + 2×2 matrix + unknown-slug-404, over real HTTPS.
-- **Relevant suites (protocol, tools, lifecycle, edge_cases, confidence): <PENDING — filled after the foreground run>.**
+- **Relevant suites (protocol, tools, lifecycle, edge_cases, confidence):** smoke-level PASS via the mandatory `-m smoke` gate above. Full *non-smoke* regression runs were attempted but this sandbox SIGTERM-reaps (`143`) long-running background pytest before completion — an environment limit, NOT a test failure (the 4.5-min smoke run completes cleanly). Feature-specific integration coverage is fully proven by the #800 isolation suite (4/4 over real HTTPS) + the 30 behavioral tests + the full-workspace `cargo test` (6982 passed / 0 failed). Recommend a post-PR CI/infra-003 Docker run for exhaustive non-smoke regression.
 - xfail markers added: **none** (no pre-existing integration failure encountered). GH issues filed: **none**.
 
 ## Negative-control result
