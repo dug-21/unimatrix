@@ -18,9 +18,7 @@ use unimatrix_engine::confidence::ConfidenceParams;
 use unimatrix_observe::domain::DomainPackRegistry;
 use unimatrix_server::http::{MultiProjectRouter, ProjectKey, ProjectSlug, StoreResolver};
 use unimatrix_server::infra::categories::CategoryAllowlist;
-use unimatrix_server::infra::config::{
-    InferenceConfig, RetentionConfig, StoreConfig, UnimatrixConfig,
-};
+use unimatrix_server::infra::config::{InferenceConfig, RetentionConfig, StoreConfig};
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::nli_handle::NliServiceHandle;
 use unimatrix_server::infra::rayon_pool::RayonPool;
@@ -44,6 +42,9 @@ struct Built {
     session_registry: Arc<SessionRegistry>,
     pending: Arc<Mutex<PendingEntriesAnalysis>>,
     has_hold: bool,
+    /// THIS slug's RESOLVED `transcript_hold_max_sessions` — the value the hold was
+    /// built from (mirrors the production `IsolationProbe` capture, PR #936 Finding 1).
+    transcript_hold_max_sessions: usize,
     signal_class_names: Arc<Vec<String>>,
     store_config: Arc<StoreConfig>,
     inference_config: Arc<InferenceConfig>,
@@ -116,6 +117,7 @@ async fn build_single(slug_name: &str, signals: Vec<String>) -> Built {
     let session_registry = Arc::clone(&input.server.session_registry);
     let pending = Arc::clone(&input.server.pending_entries_analysis);
     let has_hold = input.server.session_registry.has_transcript_hold();
+    let hold_max_sessions = retention_config.transcript_hold_max_sessions;
     let server_signal_names = Arc::clone(&input.server.transcript_signal_class_names);
     let server_store_config = Arc::clone(&input.server.store_config);
     let server_inference_config = Arc::clone(&input.server.inference_config);
@@ -135,6 +137,7 @@ async fn build_single(slug_name: &str, signals: Vec<String>) -> Built {
         session_registry,
         pending,
         has_hold,
+        transcript_hold_max_sessions: hold_max_sessions,
         signal_class_names: server_signal_names,
         store_config: server_store_config,
         inference_config: server_inference_config,
@@ -155,11 +158,48 @@ async fn test_assert_per_slug_isolation_fully_wired_returns_ok() {
         session_registry: Arc::clone(&built.session_registry),
         pending: Arc::clone(&built.pending),
         has_hold: built.has_hold,
+        transcript_hold_max_sessions: built.transcript_hold_max_sessions,
         signal_class_names: Arc::clone(&built.signal_class_names),
         declares_signals: true,
     };
-    assert_per_slug_isolation(&probe, &built.router, &UnimatrixConfig::default())
+    assert_per_slug_isolation(&probe, &built.router)
         .expect("a correctly-wired slug must boot-assert Ok");
+}
+
+/// #6 (PR #936 Finding 1, #934) — a slug whose RESOLVED
+/// `transcript_hold_max_sessions == 0` returns `Err`, even though the GLOBAL config
+/// default is non-zero (the fully-wired test above passes that same default and gets
+/// `Ok`). Proves the zero-check reads the per-slug value captured on the probe — the
+/// value the hold was actually built from — NOT the global config. Closes the evade
+/// path where a slug overlays `0` (project-wins, config.rs:4332) while global is
+/// non-zero, which previously slipped past this loud-abort.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_assert_per_slug_isolation_per_slug_zero_hold_returns_err() {
+    let built = build_single("alpha", vec!["alpha_signal".to_string()]).await;
+    // Sanity: the global/default retention is non-zero — so a probe value of 0 can
+    // ONLY originate from THIS slug's resolved overlay, which is the evade path.
+    assert_ne!(
+        RetentionConfig::default().transcript_hold_max_sessions,
+        0,
+        "guard precondition: the global default must be non-zero for this test to \
+         exercise the per-slug (not global) read"
+    );
+    let probe = IsolationProbe {
+        slug: built.slug.clone(),
+        session_registry: Arc::clone(&built.session_registry),
+        pending: Arc::clone(&built.pending),
+        has_hold: true,
+        transcript_hold_max_sessions: 0, // THIS slug resolved to 0 (global non-zero)
+        signal_class_names: Arc::clone(&built.signal_class_names),
+        declares_signals: false,
+    };
+    let err = assert_per_slug_isolation(&probe, &built.router)
+        .expect_err("a per-slug resolved transcript_hold_max_sessions == 0 must fail loud");
+    assert!(
+        err.to_string()
+            .contains("transcript_hold_max_sessions == 0 disables the hold"),
+        "message must name the disabled per-slug hold: {err}"
+    );
 }
 
 /// #1 (R-03 / AC-08 — Critical) — a `session_registry` left as the constructor
@@ -176,10 +216,11 @@ async fn test_assert_per_slug_isolation_unwired_registry_returns_err() {
         session_registry: stray,
         pending: Arc::clone(&built.pending),
         has_hold: true,
+        transcript_hold_max_sessions: built.transcript_hold_max_sessions,
         signal_class_names: Arc::clone(&built.signal_class_names),
         declares_signals: false,
     };
-    let err = assert_per_slug_isolation(&probe, &built.router, &UnimatrixConfig::default())
+    let err = assert_per_slug_isolation(&probe, &built.router)
         .expect_err("unwired session_registry must fail loud (Result, not a debug panic)");
     assert!(
         err.to_string().contains("not converged"),
@@ -198,11 +239,12 @@ async fn test_assert_per_slug_isolation_unpaired_hold_returns_err() {
         session_registry: Arc::clone(&built.session_registry),
         pending: Arc::clone(&built.pending),
         has_hold: false, // the F1/SR-03 pairing violation
+        transcript_hold_max_sessions: built.transcript_hold_max_sessions,
         signal_class_names: Arc::clone(&built.signal_class_names),
         declares_signals: false,
     };
-    let err = assert_per_slug_isolation(&probe, &built.router, &UnimatrixConfig::default())
-        .expect_err("unpaired hold must fail loud");
+    let err =
+        assert_per_slug_isolation(&probe, &built.router).expect_err("unpaired hold must fail loud");
     assert!(
         err.to_string().contains("transcript_hold not wired"),
         "message must name the unpaired hold: {err}"
@@ -227,10 +269,11 @@ async fn test_assert_per_slug_isolation_unset_config_sentinels_return_err() {
         session_registry: Arc::clone(&built.session_registry),
         pending: Arc::clone(&built.pending),
         has_hold: true,
+        transcript_hold_max_sessions: built.transcript_hold_max_sessions,
         signal_class_names: Arc::clone(&built.signal_class_names),
         declares_signals: true, // config declared [transcript_signals]
     };
-    let err = assert_per_slug_isolation(&probe, &built.router, &UnimatrixConfig::default())
+    let err = assert_per_slug_isolation(&probe, &built.router)
         .expect_err("declared-but-empty signal names must fail loud");
     assert!(
         err.to_string().contains("empty despite declared"),

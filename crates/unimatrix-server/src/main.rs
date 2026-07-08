@@ -128,6 +128,12 @@ struct IsolationProbe {
     /// Whether the server's registry carried a wired transcript hold at capture
     /// time (F1/SR-03 pairing — registry-alone splits the purge gate).
     has_hold: bool,
+    /// THIS slug's RESOLVED `transcript_hold_max_sessions` (the project-wins merge
+    /// output, config.rs:4332) — the exact value the hold was built from
+    /// (`slug_retention_config.transcript_hold_max_sessions`). Captured per-slug so
+    /// the zero-check matches the constructed hold: a slug overlaying `0` while the
+    /// global is non-zero must still fail loud (vnc-046 PR #936 Finding 1, #934).
+    transcript_hold_max_sessions: usize,
     /// The per-slug enabled signal class names the server holds (P3 sentinel).
     signal_class_names: Arc<Vec<String>>,
     /// Whether THIS slug's resolved config declared `[transcript_signals]`. Derived
@@ -141,6 +147,10 @@ impl std::fmt::Debug for IsolationProbe {
         f.debug_struct("IsolationProbe")
             .field("slug", &self.slug)
             .field("has_hold", &self.has_hold)
+            .field(
+                "transcript_hold_max_sessions",
+                &self.transcript_hold_max_sessions,
+            )
             .field("declares_signals", &self.declares_signals)
             .field("signal_class_names", &self.signal_class_names)
             .finish_non_exhaustive()
@@ -165,7 +175,6 @@ impl std::fmt::Debug for IsolationProbe {
 fn assert_per_slug_isolation(
     probe: &IsolationProbe,
     resolver: &dyn unimatrix_server::http::StoreResolver,
-    config: &UnimatrixConfig,
 ) -> Result<(), ServerError> {
     use unimatrix_server::http::ProjectKey;
 
@@ -207,7 +216,12 @@ fn assert_per_slug_isolation(
              (purge gate would split; held buffers never purge)"
         )));
     }
-    if config.retention.transcript_hold_max_sessions == 0 {
+    // Read THIS slug's RESOLVED value (captured off the same config the hold was
+    // built from), NOT the global config: `transcript_hold_max_sessions` is
+    // per-slug overlayable (project-wins, config.rs:4332), so a slug that overlays
+    // `0` while the global is non-zero would otherwise EVADE this loud-abort
+    // (vnc-046 PR #936 Finding 1, #934).
+    if probe.transcript_hold_max_sessions == 0 {
         return Err(ServerError::Config(format!(
             "slug {slug}: transcript_hold_max_sessions == 0 disables the hold \
              (Surface B activity fold would be purged before review)"
@@ -1393,6 +1407,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     session_registry: Arc::clone(&input.server.session_registry),
                     pending: Arc::clone(&input.server.pending_entries_analysis),
                     has_hold: input.server.session_registry.has_transcript_hold(),
+                    // The RESOLVED per-slug value the hold was actually built from
+                    // (same Arc threaded into build_project_server) — NOT the global
+                    // config (PR #936 Finding 1, #934).
+                    transcript_hold_max_sessions: slug_retention_config
+                        .transcript_hold_max_sessions,
                     signal_class_names: Arc::clone(&input.server.transcript_signal_class_names),
                     declares_signals: !slug_signal_class_names.is_empty(),
                 });
@@ -1435,7 +1454,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             // aborts boot LOUD here, before a single request, closing the whole
             // "constructor-default never overwritten" class on the release binary.
             for probe in &isolation_probes {
-                assert_per_slug_isolation(probe, &router, &config)?;
+                assert_per_slug_isolation(probe, &router)?;
             }
             tracing::info!(
                 slug_count = project_slugs.len(),
