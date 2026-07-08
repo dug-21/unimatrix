@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 from harness.parity_dimensions import DIMENSIONS, dimension_by_id
-from harness.parity_outcome import DimensionResult, Outcome, rollup
+from harness.parity_outcome import DimensionResult, Outcome, gate_disposition
 from harness.transport_health import EXIT_INFRA, InfraError
 
 
@@ -39,8 +39,15 @@ def evidence_table(results: list[DimensionResult], run_token: str) -> dict:
     redden); D5 measurability call-outs under `documented_exceptions` (honest, never
     a vacuous pass). The roll-up verdict + exit code are embedded so the table alone
     tells the flip session GREEN / RED / ERROR.
+
+    The table is SELF-DESCRIBING about the job disposition (design-review B1): a
+    WAIVED-ERROR (documented human-signed exception only, job green — ADR-009 /
+    Unimatrix #5648) is distinguishable from a genuine failing ERROR by the
+    `waived` / `gate_disposition` fields — sourced from the SINGLE `gate_disposition`
+    helper. The honest measurement `verdict` / `exit_code` are UNCHANGED (a waived
+    run still reports ERROR / exit 7; never rounded up).
     """
-    verdict, exit_code = rollup(results)
+    verdict, exit_code, waived = gate_disposition(results)
     rows: list[dict] = []
     intra: list[str] = []
     documented: list[dict] = []
@@ -61,15 +68,19 @@ def evidence_table(results: list[DimensionResult], run_token: str) -> dict:
         )
         if r.outcome == Outcome.INTRA_TRANSPORT_NONDETERMINISM:
             intra.append(r.dimension)
-        # A D5 documented measurability limitation surfaces as INFRA-ERROR with a
-        # MEASURABILITY-flagged detail — record it honestly (never rounded up).
-        if r.outcome == Outcome.INFRA_ERROR and "MEASURABILITY" in r.detail.upper():
+        # A D5 documented measurability limitation surfaces as INFRA-ERROR carrying
+        # the STRUCTURAL classifier flag (not a detail-string sniff — design-review
+        # B2). Record it honestly (never rounded up).
+        if r.outcome == Outcome.INFRA_ERROR and r.documented_exception:
             documented.append({"dimension": r.dimension, "detail": r.detail})
     return {
         "run_token": run_token,
         "dimensions": rows,
-        "verdict": verdict,
+        "verdict": verdict,  # honest measurement verdict — unchanged, never rounded up
         "exit_code": exit_code,
+        "waived": waived,  # job passes despite ERROR (documented human-signed exception)
+        # PASS iff GREEN or a documented-exception-only waiver engaged; else FAIL.
+        "gate_disposition": "PASS" if (verdict == "GREEN" or waived) else "FAIL",
         "intra_nondeterminism": intra,  # routed to GH#746; does NOT redden the gate
         "documented_exceptions": documented,  # D5 host-side gap call-outs (honest)
     }
@@ -97,6 +108,15 @@ def assert_rollup(
 
     INTRA-NONDET rows are recorded in the table and do NOT redden — they are routed
     to a separately-filed GH#746 bug.
+
+    WAIVED-ERROR (ADR-009, Unimatrix #5648): when every INFRA-ERROR row is a human-
+    signed documented exception (`documented_exception` AND `blocks_c0_proof is
+    False`) and there is NO PARITY-FAIL, the JOB passes WITHOUT raising — but the
+    emitted `table` still carries the honest `verdict:ERROR` / `exit_code:7` +
+    `documented_exceptions` + `waived:true`. The waiver decision is taken from the
+    SINGLE `gate_disposition` helper (design-review B1 — no recomputation, no drift).
+    The waiver covers ONLY documented-exception INFRA rows; it NEVER masks a real
+    divergence — a PARITY-FAIL always raises RED (even alongside a documented gap).
     """
     if verdict == "GREEN" and exit_code == 0:
         return
@@ -108,13 +128,23 @@ def assert_rollup(
 
     table_str = _json.dumps(table, indent=2, default=str)
 
-    if infra:
+    # Single-source waiver disposition (ADR-009 / #5648). `waived` is True ONLY when
+    # there are no PARITY-FAIL rows and every INFRA row is a signed documented
+    # exception — so this branch cannot fire alongside a real divergence.
+    _v, _e, waived = gate_disposition(results)
+    if waived:
         details = "; ".join(f"{r.dimension}: {r.detail}" for r in infra)
-        raise AssertionError(
-            f"parity matrix INFRA-ERROR (distinct exit {exit_code}={EXIT_INFRA}) — "
-            f"NOT a parity RED; diagnose transport / honour the D5 documented gap. "
+        print(
+            f"parity matrix WAIVED-ERROR — JOB PASSES; artifact keeps honest "
+            f"verdict={verdict}/exit {exit_code} + documented_exceptions (never rounded "
+            f"up). Documented human-signed exception(s) only (ADR-009, Unimatrix #5648): "
             f"{details}\n--- evidence table (run_token-keyed) ---\n{table_str}"
         )
+        return
+
+    # A REAL cross-transport divergence always fails RED — checked BEFORE INFRA so a
+    # PARITY-FAIL is never masked behind an ERROR message (the waiver never engages
+    # here, `waived` is False when any fail exists).
     if fails:
         details = "; ".join(
             f"{r.dimension}: {r.detail} diffs={r.diffs}" for r in fails
@@ -123,6 +153,13 @@ def assert_rollup(
             f"parity matrix RED (exit {exit_code}) — REAL cross-transport divergence; "
             f"file a NEW GH bug, fix NOT absorbed (AC-10). {details}\n"
             f"--- evidence table (run_token-keyed) ---\n{table_str}"
+        )
+    if infra:
+        details = "; ".join(f"{r.dimension}: {r.detail}" for r in infra)
+        raise AssertionError(
+            f"parity matrix INFRA-ERROR (distinct exit {exit_code}={EXIT_INFRA}) — "
+            f"NOT a parity RED; diagnose transport / honour the D5 documented gap. "
+            f"{details}\n--- evidence table (run_token-keyed) ---\n{table_str}"
         )
     # Defensive: a non-GREEN verdict with neither class present is itself a fault.
     raise AssertionError(

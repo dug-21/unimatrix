@@ -115,8 +115,33 @@ def test_intra_transport_check_only_retrieval_and_proactive():
     assert intra == {"retrieval", "proactive"}
 
 
-def test_blocks_c0_proof_all_six_true():
-    assert all(d.blocks_c0_proof is True for d in DIMENSIONS)
+# The human-signed blocks_c0_proof disposition (ADR-009, Unimatrix #5648, bugfix-893,
+# 2026-07-08): the four measurable dimensions block the C0 flip; precompact does NOT —
+# its AC-06 restoration parity is a documented, human-signed measurability exception
+# (not test-only-measurable as shipped). Supersedes the 2026-06-25 all-five-True
+# confirmation FOR PRECOMPACT ONLY. This map IS the in-repo record of that exception.
+EXPECTED_BLOCKS_C0_PROOF = {
+    "retrieval": True,
+    "behavioral": True,
+    "analytics": True,
+    "proactive": True,
+    "precompact": False,
+}
+
+
+def test_blocks_c0_proof_precompact_is_signed_documented_exception():
+    """precompact `blocks_c0_proof` is the human-signed documented exception (ADR-009,
+    Unimatrix #5648, GH#893): the four measurable dimensions block the C0 (#5304) flip,
+    precompact does not. NOT a tautology — each dimension is checked against the signed
+    map. Reverts to all-True (data-only, ADR-001) only when a revert path lands."""
+    actual = {d.id: d.blocks_c0_proof for d in DIMENSIONS}
+    assert actual == EXPECTED_BLOCKS_C0_PROOF
+    # The precompact exception is explicit; the other four still block.
+    assert dimension_by_id("precompact").blocks_c0_proof is False
+    assert all(
+        dimension_by_id(dim_id).blocks_c0_proof is True
+        for dim_id in ("retrieval", "behavioral", "analytics", "proactive")
+    )
 
 
 # ===========================================================================
