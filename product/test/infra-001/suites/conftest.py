@@ -16,3 +16,4 @@ if harness_parent not in sys.path:
 from harness.conftest import server, shared_server, populated_server, admin_server, fast_tick_server  # noqa: F401
 from harness.conftest import get_binary_path, binary_version_preflight  # noqa: F401
 from harness.conftest import daemon_server  # noqa: F401  (nan-021 C3 UDS-leg substrate)
+from harness.conftest import multi_slug_http_server  # noqa: F401  (vnc-046 #800 multi-slug HTTPS)

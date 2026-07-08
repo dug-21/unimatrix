@@ -460,3 +460,40 @@ def _stop_daemon(proc: subprocess.Popen) -> int | None:
     except subprocess.TimeoutExpired:
         _kill(proc)
         return proc.returncode
+
+
+# ---------------------------------------------------------------------------
+# vnc-046 #800 — multi-slug HTTPS fixture (per-slug isolation over the wire).
+# ---------------------------------------------------------------------------
+from harness.multi_slug_client import MultiSlugHttpServer  # noqa: E402
+
+# The two neutral test-scoped slugs (ADR-004 / R-11): distinct, non-substring.
+ISO_SLUG_A = "arch-a"
+ISO_SLUG_B = "iso-b"
+
+
+@pytest.fixture(scope="module")
+def multi_slug_http_server():
+    """A live `unimatrix serve --foreground` daemon with the HTTP transport
+    enabled and slugs {arch-a, iso-b} registered on ONE instance (#800, vnc-046).
+
+    Boots best-effort over HTTPS; if the local HTTPS substrate cannot come up
+    in this environment (no port bind / cert provisioning), the fixture SKIPs
+    the suite (mirroring the parity-leg skip pattern) — the live cross-slug
+    proof also runs in the Docker infra-003 gate. Module-scoped: booted once,
+    isolation tests drive distinct markers so there is no state leakage."""
+    binary = get_binary_path()
+    srv = MultiSlugHttpServer(binary, [ISO_SLUG_A, ISO_SLUG_B])
+    try:
+        srv.start()
+    except Exception as e:  # noqa: BLE001
+        srv.stop()
+        pytest.skip(
+            f"multi-slug HTTPS substrate unavailable in this environment "
+            f"({type(e).__name__}: {e}); the live cross-slug isolation proof "
+            f"also runs in the Docker infra-003 multi-tenant-isolation gate."
+        )
+    try:
+        yield srv
+    finally:
+        srv.stop()
