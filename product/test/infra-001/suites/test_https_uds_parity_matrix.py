@@ -28,6 +28,7 @@ from harness.parity_outcome import (
     DimensionResult,
     Outcome,
     classify_dimension,
+    gate_disposition,
     rollup,
 )
 from harness.parity_workload import default_workload
@@ -101,6 +102,14 @@ def test_matrix_orchestrator_seam_with_fixture_bundle(tmp_path):
     assert table["verdict"] == "ERROR"
     assert table["exit_code"] == EXIT_INFRA
     assert table["documented_exceptions"], "D5 host-side gap must be surfaced honestly"
+
+    # ADR-009 (Unimatrix #5648): precompact blocks_c0_proof=False makes the documented
+    # gap a WAIVED-ERROR — the JOB passes (assert_rollup does NOT raise) while the
+    # artifact stays honest (verdict ERROR / exit 7). This is the disposition the
+    # untested step (assert_rollup) let ship red; it is now asserted here.
+    assert table["waived"] is True
+    assert table["gate_disposition"] == "PASS"
+    assert_rollup(table["verdict"], table["exit_code"], results, table)  # must NOT raise
 
 
 def test_matrix_seam_all_measurable_is_green(tmp_path):
@@ -325,6 +334,125 @@ def test_matrix_emit_infra_and_fail_is_distinct_class():
 
 
 # ===========================================================================
+# ADR-009 (#5648 / GH#893) documented-exception WAIVER — the escape valve wired
+# into the job disposition. The waiver waives ONLY human-signed documented
+# exceptions on non-blocks_c0_proof dims; every other INFRA/RED still fails.
+# ===========================================================================
+
+
+def test_matrix_documented_exception_only_is_waived_but_artifact_stays_error():
+    """A documented-gap bundle (precompact measurable=False, blocks_c0_proof=False per
+    ADR-009): `assert_rollup` does NOT raise (job WAIVED) AND the artifact stays honest
+    — verdict ERROR / exit 7 / non-empty documented_exceptions / waived True / disposition
+    PASS. The honesty pin (design-review B1): the two decision sites' relationship is
+    asserted in the artifact, not just the raise path."""
+    wl = default_workload()
+    uds = fixture_dimension_bundle(feature_cycle=wl.feature_cycle)
+    https = fixture_dimension_bundle(feature_cycle=wl.feature_cycle)
+    results = _classify_all(uds, https)  # precompact fixture is the documented gap
+    table = evidence_table(results, wl.session_id)
+
+    # Honest measurement verdict is never rounded up.
+    assert table["verdict"] == "ERROR"
+    assert table["exit_code"] == EXIT_INFRA
+    assert table["documented_exceptions"]
+    # Self-describing job disposition (single-sourced from gate_disposition).
+    assert table["waived"] is True
+    assert table["gate_disposition"] == "PASS"
+    _v, _e, waived = gate_disposition(results)
+    assert (_v, _e, waived) == ("ERROR", EXIT_INFRA, True)
+    # The JOB passes — assert_rollup must NOT raise on a documented-exception-only run.
+    assert_rollup(table["verdict"], table["exit_code"], results, table)
+
+
+def test_matrix_undocumented_infra_still_raises():
+    """GUARD: an UNDOCUMENTED INFRA row (documented_exception=False — e.g. a measurable
+    leg with an empty/missing capture) is NOT waivable; `assert_rollup` STILL raises.
+    The waiver never engages for a real transport/ingest error."""
+    results = [DimensionResult(d.id, Outcome.PARITY_PASS) for d in DIMENSIONS]
+    # behavioral is blocks_c0_proof=True AND undocumented → non-waivable INFRA.
+    results[1] = DimensionResult(
+        "behavioral", Outcome.INFRA_ERROR, [], "https capture empty", documented_exception=False
+    )
+    table = evidence_table(results, "tok-undoc")
+    assert table["waived"] is False
+    assert table["gate_disposition"] == "FAIL"
+    with pytest.raises(AssertionError) as ei:
+        assert_rollup(table["verdict"], table["exit_code"], results, table)
+    assert "INFRA-ERROR" in str(ei.value)
+
+
+def test_matrix_documented_exception_on_blocking_dim_still_raises():
+    """GUARD: a documented-exception row on a dimension that is STILL blocks_c0_proof=True
+    is NOT waivable — the waiver refuses to engage without the human-signed data flip.
+    Keyed on the FLAG, not the id (ADR-001): retrieval remains blocks_c0_proof=True."""
+    assert dimension_by_id("retrieval").blocks_c0_proof is True  # precondition
+    results = [DimensionResult(d.id, Outcome.PARITY_PASS) for d in DIMENSIONS]
+    results[0] = DimensionResult(
+        "retrieval",
+        Outcome.INFRA_ERROR,
+        [],
+        "DOCUMENTED MEASURABILITY LIMITATION: spoofed on a still-blocking dim",
+        documented_exception=True,
+    )
+    table = evidence_table(results, "tok-blocking")
+    assert table["waived"] is False
+    assert table["gate_disposition"] == "FAIL"
+    with pytest.raises(AssertionError):
+        assert_rollup(table["verdict"], table["exit_code"], results, table)
+
+
+def test_matrix_documented_exception_with_real_parity_fail_raises_red():
+    """GUARD: a documented exception (waivable) coexisting with a REAL PARITY-FAIL on
+    another dim → `assert_rollup` raises RED. The waiver NEVER masks a real divergence
+    (ADR-009 honesty invariant b); the RED message names the divergence, not the gap."""
+    results = [DimensionResult(d.id, Outcome.PARITY_PASS) for d in DIMENSIONS]
+    # precompact: the (now non-blocking) documented exception.
+    results[4] = DimensionResult(
+        "precompact",
+        Outcome.INFRA_ERROR,
+        [],
+        "DOCUMENTED MEASURABILITY LIMITATION: host-side gap",
+        documented_exception=True,
+    )
+    # behavioral: a real cross-transport divergence.
+    results[1] = DimensionResult(
+        "behavioral", Outcome.PARITY_FAIL, [("topic_signals", "a", "b")], "cross-transport divergence"
+    )
+    table = evidence_table(results, "tok-red-plus-gap")
+    assert table["waived"] is False
+    assert table["gate_disposition"] == "FAIL"
+    with pytest.raises(AssertionError) as ei:
+        assert_rollup(table["verdict"], table["exit_code"], results, table)
+    assert "RED" in str(ei.value), "a real divergence must surface RED, not be masked by the gap"
+
+
+def test_matrix_documented_exception_flag_set_only_by_branch_1b():
+    """`classify_dimension` sets `documented_exception=True` ONLY via the D5 branch-1b
+    measurability call-out — never for empty/null/misroute INFRA, and never for a
+    PARITY verdict (not spoofable by a comparator)."""
+    # Branch 1b: precompact measurable=False → documented exception.
+    gap = classify_dimension(
+        dimension_by_id("precompact"),
+        {"restored_payload": None, "measurable": False, "host_side_gap": "g"},
+        {"restored_payload": None, "measurable": False, "host_side_gap": "g"},
+    )
+    assert gap.outcome == Outcome.INFRA_ERROR
+    assert gap.documented_exception is True
+    # An ordinary empty-capture INFRA (measurable dim) is NOT a documented exception.
+    empty_infra = classify_dimension(dimension_by_id("behavioral"), None, {"topic_signals": ["x"]})
+    assert empty_infra.outcome == Outcome.INFRA_ERROR
+    assert empty_infra.documented_exception is False
+    # A PARITY-PASS carries the default False (comparators never set the flag).
+    wl = default_workload()
+    uds = fixture_dimension_bundle(feature_cycle=wl.feature_cycle)
+    https = fixture_dimension_bundle(feature_cycle=wl.feature_cycle)
+    passed = classify_dimension(dimension_by_id("behavioral"), uds["behavioral"], https["behavioral"])
+    assert passed.outcome == Outcome.PARITY_PASS
+    assert passed.documented_exception is False
+
+
+# ===========================================================================
 # Evidence-table emit keyed by run_token (AC-08 — the C0 proof artifact).
 # ===========================================================================
 
@@ -355,7 +483,13 @@ def test_matrix_evidence_table_routes_intra_and_documents_d5():
     results = [
         DimensionResult("retrieval", Outcome.INTRA_TRANSPORT_NONDETERMINISM, [], "flip"),
         DimensionResult(
-            "precompact", Outcome.INFRA_ERROR, [], "DOCUMENTED MEASURABILITY LIMITATION: gap"
+            "precompact",
+            Outcome.INFRA_ERROR,
+            [],
+            "DOCUMENTED MEASURABILITY LIMITATION: gap",
+            # documented_exceptions now keys on the STRUCTURAL flag, not the detail
+            # string (design-review B2) — set it as branch 1b would.
+            documented_exception=True,
         ),
         DimensionResult("behavioral", Outcome.PARITY_PASS),
     ]

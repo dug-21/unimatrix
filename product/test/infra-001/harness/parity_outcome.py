@@ -27,6 +27,7 @@ from enum import Enum
 from typing import Any
 
 from harness.parity_comparator import ParityMismatch
+from harness.parity_dimensions import dimension_by_id
 from harness.ranking_tolerance import (
     STABLE_PREFIX_FLOOR,  # single source for the non-degenerate floor (R-06)
     ranking_parity,  # the ONE tolerance — intra reuses the cross-leg policy (R-07 sc.4)
@@ -67,12 +68,20 @@ class DimensionResult:
     diffs      the comparator diff list (empty unless PARITY_FAIL).
     detail     human-readable: which guard tripped / which leg was intra-unstable /
                the D5 host_side_gap call-out / the ParityMismatch summary.
+    documented_exception
+               STRUCTURAL flag (single source), NOT a detail-string sniff: True ONLY
+               for a human-signed DOCUMENTED measurability limitation set inside
+               `_classify` branch 1b (the D5 measurable=False call-out). It is the
+               classifier-owned input to the job-disposition waiver (`gate_disposition`,
+               ADR-009 / Unimatrix #5648) — a comparator can NEVER set it (comparators
+               only return PARITY_PASS/PARITY_FAIL), so it is not spoofable.
     """
 
     dimension: str
     outcome: Outcome
     diffs: list = field(default_factory=list)
     detail: str = ""
+    documented_exception: bool = False
 
 
 # =============================================================================
@@ -192,12 +201,16 @@ def _classify(dim: Any, cap_uds: Any, cap_https: Any) -> DimensionResult:
             )
             # DOCUMENTED-EXCEPTION call-out — NOT a pass, NOT a parity RED. Recorded
             # distinctly as INFRA-ERROR; NEVER rounded up to "fully measured" (R-08).
+            # documented_exception=True is set ONLY here (branch 1b) — the structural,
+            # classifier-owned single source the job-disposition waiver keys on
+            # (ADR-009, Unimatrix #5648). This is the ONLY setter in the codebase.
             return DimensionResult(
                 dim.id,
                 Outcome.INFRA_ERROR,
                 [],
                 f"DOCUMENTED MEASURABILITY LIMITATION: {gap} "
                 f"(D5 measured-where-drivable; NEVER rounded up to fully-measured)",
+                documented_exception=True,
             )
         # both measurable -> fall through to PARITY with non-null payloads.
 
@@ -344,19 +357,26 @@ def _retrieval_rank(queries: Any) -> dict:
 # 5. rollup — matrix roll-up (ADR-002 §4): ERROR > RED > GREEN precedence
 # =============================================================================
 def rollup(results: list[DimensionResult]) -> tuple[str, int]:
-    """Reduce per-dimension results to a ``(verdict, exit_code)``.
+    """Reduce per-dimension results to the MEASUREMENT ``(verdict, exit_code)``.
 
-    Rules (ADR-002 §4):
-      GREEN iff every blocks_c0_proof dimension is PARITY_PASS.
-      Any PARITY_FAIL                       -> RED.
-      Any INFRA_ERROR (even amid passes)    -> ERROR (distinct exit code).
+    Rules (ADR-002 §4) — the artifact's honest verdict, NEVER rounded up (ADR-006):
+      All PARITY_PASS (INTRA rows ignored)  -> GREEN / EXIT_OK.
+      Any PARITY_FAIL                       -> RED / EXIT_PARITY_FAIL.
+      Any INFRA_ERROR (even amid passes)    -> ERROR / EXIT_INFRA (distinct code).
       INTRA_TRANSPORT_NONDETERMINISM        -> recorded; does NOT redden, does NOT
                                                error (a separately-filed GH#746 bug).
 
     Precedence when multiple classes are present: ERROR > RED > GREEN — an
     INFRA-ERROR means the gate could not MEASURE and must not be reported green or
     red-only; a PARITY-FAIL reddens even alongside an INTRA record (intra never
-    masks a real RED)."""
+    masks a real RED).
+
+    This is deliberately blocks_c0_proof-BLIND and documented_exception-BLIND: a
+    documented, human-signed measurability gap (ADR-009, Unimatrix #5648) STILL
+    yields verdict:ERROR / exit 7 here — the artifact stays honest and is never
+    rounded up to GREEN. Whether such an ERROR run WAIVES the JOB is a separate
+    disposition computed by `gate_disposition` and consumed by `assert_rollup`;
+    `rollup`'s measurement verdict is never altered by the waiver."""
     has_fail = any(r.outcome == Outcome.PARITY_FAIL for r in results)
     has_infra = any(r.outcome == Outcome.INFRA_ERROR for r in results)
     if has_infra:
@@ -364,3 +384,48 @@ def rollup(results: list[DimensionResult]) -> tuple[str, int]:
     if has_fail:
         return ("RED", EXIT_PARITY_FAIL)
     return ("GREEN", EXIT_OK)
+
+
+# =============================================================================
+# 6. gate_disposition — single-source JOB disposition (ADR-009 / #5648 waiver)
+# =============================================================================
+def _is_waivable_infra(r: DimensionResult) -> bool:
+    """Is THIS INFRA-ERROR row a human-signed documented exception the job may waive?
+
+    True iff the row is a structural documented exception (branch-1b flag) AND its
+    dimension is NOT blocks_c0_proof (the human-signed data flip, ADR-009). Keyed on
+    the registry FLAG, never on the id "precompact" (ADR-001 single-source — hard-
+    coding the id would re-introduce the second-source drift the registry prevents).
+    An orphan id (no registry row) is conservatively BLOCKING → never waivable
+    (mirrors `evidence_table`'s KeyError → blocks=True)."""
+    if not r.documented_exception:
+        return False
+    try:
+        return dimension_by_id(r.dimension).blocks_c0_proof is False
+    except KeyError:
+        return False
+
+
+def gate_disposition(results: list[DimensionResult]) -> tuple[str, int, bool]:
+    """The ONE source of the job-pass-despite-ERROR waiver (ADR-009, Unimatrix #5648).
+
+    Returns ``(verdict, exit_code, waived)``:
+      * `verdict` / `exit_code` are `rollup(results)` VERBATIM — the honest
+        measurement verdict, never rounded up (ADR-006). A waived run still reports
+        verdict:ERROR / exit 7 in the artifact.
+      * `waived` — whether the JOB passes despite that ERROR verdict.
+
+    WAIVED iff ALL hold:
+      1. there is >=1 INFRA_ERROR row, AND
+      2. there are ZERO PARITY_FAIL rows (a real divergence is NEVER masked), AND
+      3. EVERY INFRA_ERROR row is waivable — `documented_exception is True` AND its
+         dimension's `blocks_c0_proof is False` (via the registry).
+    Clause 3 subsumes "zero undocumented / still-blocking INFRA rows": any infra row
+    that is undocumented, or documented on a still-C0-blocking dimension, forces
+    `waived=False`. Both evidence_table and assert_rollup consume THIS helper, so the
+    conjunction lives in exactly one place (no drift — design-review B1/B2)."""
+    verdict, exit_code = rollup(results)
+    infra = [r for r in results if r.outcome == Outcome.INFRA_ERROR]
+    has_fail = any(r.outcome == Outcome.PARITY_FAIL for r in results)
+    waived = bool(infra) and not has_fail and all(_is_waivable_infra(r) for r in infra)
+    return (verdict, exit_code, waived)

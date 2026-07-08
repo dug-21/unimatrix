@@ -84,11 +84,14 @@ class Dimension:
 # =============================================================================
 # Flags taken EXACTLY from the brief's Data Structures table:
 #   intra_transport_check=True ONLY for retrieval + proactive (embedding-ranked dims).
-#   blocks_c0_proof=True for ALL FIVE — CONFIRMED correct (human, 2026-06-25): the
-#   corrected C0 (#5304) done_when makes parity the TOTAL bar; the dimension list
-#   grows with the pipeline and never narrows the bar. Any unreachable dimension is a
-#   human-signed DOCUMENTED EXCEPTION (the flag is the data-only escape valve), never
-#   a silent exclusion. `comparator` holds the K2 class NAME until K2 binds it.
+#   blocks_c0_proof=True for the four measurable dimensions. precompact flips to
+#   False per ADR-009 (Unimatrix #5648), human-signed 2026-07-08, bugfix-893 — the
+#   data-only escape valve (ADR-001) exercised for a DOCUMENTED, human-signed
+#   measurability exception (never a silent exclusion). This SUPERSEDES the
+#   2026-06-25 all-five-True confirmation FOR PRECOMPACT ONLY; the other four remain
+#   True. The corrected C0 (#5304) done_when still makes parity the TOTAL bar for the
+#   measurable dimensions; the list grows with the pipeline and never narrows the bar.
+#   `comparator` holds the K2 class NAME until K2 binds it.
 DIMENSIONS: tuple[Dimension, ...] = (
     Dimension(
         id="retrieval",
@@ -128,7 +131,14 @@ DIMENSIONS: tuple[Dimension, ...] = (
         wire_surface=WIRE_HOOK_OBSERVE,
         comparator="PreCompactComparator",
         intra_transport_check=False,
-        blocks_c0_proof=True,
+        # ADR-009 (Unimatrix #5648), human-signed 2026-07-08, bugfix-893: True→False.
+        # AC-06 CompactContext-restoration parity is not test-only-measurable AS
+        # SHIPPED (Claude-Code host-side component the nan-021 harness cannot drive) —
+        # NOT unmeasurable in principle. Reverts to True (data-only, ADR-001) when
+        # EITHER lands: a widened harness compares the server-assembled CompactPayload
+        # cross-transport; OR a full AC-06 host-driven C0-flip measurement proves the
+        # payload is restored into the compacted context.
+        blocks_c0_proof=False,
     ),
 )
 
