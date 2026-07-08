@@ -4434,3 +4434,10 @@ mod gh582_regression_tests {
 #[cfg(test)]
 #[path = "server_edge_cleanup_audit_tests.rs"]
 mod edge_cleanup_audit_tests;
+
+// vnc-046 Wave 4 (ADR-003, FR-13, AC-08) Guard 2: compile-time exhaustive field
+// census (no `..`). A child module of `server` so it can name every field —
+// including the module-private `tool_router`/`server_info`. NOT `#[cfg(test)]`: a
+// new field must break the RELEASE build too, closing the whole class (SR-02).
+#[path = "server_field_census.rs"]
+mod field_census;
