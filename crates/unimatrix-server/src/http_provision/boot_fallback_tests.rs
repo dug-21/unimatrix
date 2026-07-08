@@ -15,10 +15,11 @@ use unimatrix_engine::confidence::ConfidenceParams;
 use unimatrix_observe::domain::DomainPackRegistry;
 use unimatrix_server::http::ProjectSlug;
 use unimatrix_server::infra::categories::CategoryAllowlist;
-use unimatrix_server::infra::config::InferenceConfig;
+use unimatrix_server::infra::config::{InferenceConfig, RetentionConfig, StoreConfig};
 use unimatrix_server::infra::embed_handle::EmbedServiceHandle;
 use unimatrix_server::infra::nli_handle::NliServiceHandle;
 use unimatrix_server::infra::rayon_pool::RayonPool;
+use unimatrix_server::infra::transcript_activity::SignatureScanner;
 use unimatrix_store::{NewEntry, PoolConfig, SqlxStore, Status};
 
 use super::{PROJECT_DB_NAME, PROJECT_VECTOR_DIR, build_project_server};
@@ -112,6 +113,12 @@ async fn test_build_project_server_torn_dump_boots_empty_not_err() {
     let categories = Arc::new(CategoryAllowlist::new());
     let observation_registry = Arc::new(DomainPackRegistry::with_builtin_claude_code());
     let boosted: HashSet<String> = HashSet::new();
+    // vnc-046 Wave 2: config-snapshot params-at-end. This test exercises the torn-dump
+    // boot path only, so defaults + an empty scanner suffice.
+    let store_config = Arc::new(StoreConfig::default());
+    let retention_config = Arc::new(RetentionConfig::default());
+    let signal_class_names = Arc::new(Vec::<String>::new());
+    let signature_scanner = Arc::new(SignatureScanner::empty());
 
     let result = build_project_server(
         base_path,
@@ -128,6 +135,10 @@ async fn test_build_project_server_torn_dump_boots_empty_not_err() {
         &categories,
         &observation_registry,
         &boosted,
+        &store_config,
+        &retention_config,
+        &signal_class_names,
+        &signature_scanner,
     )
     .await;
 

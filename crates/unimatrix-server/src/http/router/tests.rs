@@ -1960,7 +1960,13 @@ async fn test_observe_http_delta_empty_bytes_routes_to_drop() {
 // ===========================================================================
 
 use std::path::Path as StdPath;
+use std::sync::Mutex;
+
 use unimatrix_store::{PoolConfig, SqlxStore};
+
+use crate::infra::session::SessionRegistry;
+use crate::server::PendingEntriesAnalysis;
+use crate::services::ServiceLayer;
 
 /// Open a real lightweight `Arc<Store>` for seam tests. No ONNX model, no
 /// `UnimatrixServer` — `SqlxStore::open` is the cheap store handle the resolver
@@ -1990,6 +1996,31 @@ impl StoreResolver for EmptyResolver {
     fn adapter_for(&self, _key: &ProjectKey) -> Option<&McpAdapter> {
         None
     }
+
+    // vnc-046 R-06: this double's map is EMPTY (`resolve_store` is `UnknownProject`
+    // for every key), so the `*_for` methods resolve from that same empty map and
+    // return `UnknownProject` too — they NEVER mint a fresh/global handle (which
+    // would re-admit the split-brain bypass inside the harness). Fail-closed.
+    fn registry_for(&self, key: &ProjectKey) -> Result<Arc<SessionRegistry>, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
+
+    fn pending_for(
+        &self,
+        key: &ProjectKey,
+    ) -> Result<Arc<Mutex<PendingEntriesAnalysis>>, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
+
+    fn services_for(&self, key: &ProjectKey) -> Result<ServiceLayer, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
 }
 
 /// Stub standing in for the slug-keyed `MultiProjectRouter`: resolves a single
@@ -2010,6 +2041,33 @@ impl StoreResolver for StubProjectRouter {
 
     fn adapter_for(&self, _key: &ProjectKey) -> Option<&McpAdapter> {
         None
+    }
+
+    // vnc-046 R-06: this seam-only double models the STORE funnel only — it holds
+    // no per-slug observe state (registry/pending/services). Rather than fabricate
+    // a fresh/global handle (the exact bypass R-06 forbids), it fails closed with
+    // `UnknownProject`. These methods are unreachable in its route-grammar tests
+    // (they run before the observe path); a fresh handle here would silently green
+    // a broken build.
+    fn registry_for(&self, key: &ProjectKey) -> Result<Arc<SessionRegistry>, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
+
+    fn pending_for(
+        &self,
+        key: &ProjectKey,
+    ) -> Result<Arc<Mutex<PendingEntriesAnalysis>>, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
+
+    fn services_for(&self, key: &ProjectKey) -> Result<ServiceLayer, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
     }
 }
 
@@ -2485,6 +2543,30 @@ impl StoreResolver for CountingResolver {
     fn adapter_for(&self, _key: &ProjectKey) -> Option<&McpAdapter> {
         None
     }
+
+    // vnc-046 R-06: `resolve_store` errors on EVERY key, so the `*_for` methods
+    // resolve from that same (empty) domain and return `UnknownProject` — never a
+    // fresh/global handle. Consistent, fail-closed.
+    fn registry_for(&self, key: &ProjectKey) -> Result<Arc<SessionRegistry>, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
+
+    fn pending_for(
+        &self,
+        key: &ProjectKey,
+    ) -> Result<Arc<Mutex<PendingEntriesAnalysis>>, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
+
+    fn services_for(&self, key: &ProjectKey) -> Result<ServiceLayer, RouteError> {
+        match key {
+            ProjectKey::Slug(_) => Err(RouteError::UnknownProject),
+        }
+    }
 }
 
 /// Build a real `SlugRouter` over a `CountingResolver` and the real
@@ -2660,6 +2742,24 @@ impl StoreResolver for RecordingResolver {
     fn adapter_for(&self, key: &ProjectKey) -> Option<&McpAdapter> {
         self.inner.adapter_for(key)
     }
+
+    // vnc-046 R-06: total delegation to the SAME inner `MultiProjectRouter` map —
+    // observation only, never a fresh/global handle. The recorded slug proves the
+    // funnel ran; resolution still comes from the one real per-entry map (#4974).
+    fn registry_for(&self, key: &ProjectKey) -> Result<Arc<SessionRegistry>, RouteError> {
+        self.inner.registry_for(key)
+    }
+
+    fn pending_for(
+        &self,
+        key: &ProjectKey,
+    ) -> Result<Arc<Mutex<PendingEntriesAnalysis>>, RouteError> {
+        self.inner.pending_for(key)
+    }
+
+    fn services_for(&self, key: &ProjectKey) -> Result<ServiceLayer, RouteError> {
+        self.inner.services_for(key)
+    }
 }
 
 /// Build an `ObserveContext` over the given resolver, sourcing the non-resolver
@@ -2672,12 +2772,7 @@ fn observe_ctx_over(resolver: Arc<dyn StoreResolver>, deps: &UnimatrixServer) ->
     ObserveContext {
         resolver,
         embed_service: Arc::clone(&deps.embed_service),
-        vector_store: Arc::clone(&deps.vector_store),
-        adapt_service: Arc::clone(&deps.adapt_service),
         server_version: "test".to_string(),
-        session_registry: Arc::clone(&deps.session_registry),
-        pending_entries_analysis: Arc::clone(&deps.pending_entries_analysis),
-        services: deps.services.clone(),
     }
 }
 
@@ -2854,4 +2949,162 @@ async fn test_observe_empty_resolver_first_boot_is_loud_404() {
         "with no registered projects, observe must fail loud (404), never a default store"
     );
     assert!(body.contains("unknown project"), "loud body; got {body}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_post_store_star_for_err_maps_to_500_not_404() {
+    // R-14 (Critical mapping): a `*_for` that Errs AFTER `resolve_store` already
+    // succeeded is a boot-wiring contradiction (foreclosed by ADR-003's boot
+    // assertion), NOT an unregistered slug. `route_observe` MUST map it to 500,
+    // never 404, and never panic. `StubProjectRouter` models exactly this — it
+    // resolves the STORE funnel for its known slug but fails the per-slug observe
+    // handles closed (`registry_for`/`pending_for`/`services_for` -> Err).
+    let deps = make_server().await;
+    let backing = make_server().await;
+    let resolver: Arc<dyn StoreResolver> = Arc::new(StubProjectRouter {
+        store: Arc::clone(&backing.store),
+        known_slug: ProjectSlug::try_from("known").expect("valid"),
+    });
+    let ctx = observe_ctx_over(resolver, &deps);
+
+    // `known` resolves a store (Ok) but `registry_for` then Errs -> 500 branch.
+    let (status, _body) = drive_observe(&ctx, "known").await;
+    assert_eq!(
+        status,
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "store resolvable but a post-store `*_for` Err must map to 500 (R-14)"
+    );
+    assert_ne!(
+        status,
+        StatusCode::NOT_FOUND,
+        "a boot-wiring contradiction must NOT be masked as a 404 routing miss (R-14)"
+    );
+}
+
+// ===========================================================================
+// vnc-046 Wave 1 — per-slug resolution funnel (`registry_for` / `pending_for` /
+// `services_for` on `MultiProjectRouter`). Proves convergence-by-construction
+// (R-03): the resolved handle is `Arc::ptr_eq` with the slug server's own handle
+// (clone-before-move in `from_server`), distinct across N=2 slugs (#4974), and
+// `UnknownProject` for an unregistered slug. Risks: R-03, R-06, R-11.
+// ===========================================================================
+
+/// Build a single-slug `MultiProjectRouter`, capturing the slug server's own
+/// registry/pending handles BEFORE the server moves into the entry — so the test
+/// can `ptr_eq` the resolved handle against the ORIGINAL (proving the funnel hands
+/// back the same instance, not a re-mint).
+async fn router_with_slug(
+    slug: &str,
+) -> (
+    MultiProjectRouter,
+    Arc<SessionRegistry>,
+    Arc<Mutex<PendingEntriesAnalysis>>,
+) {
+    let server = make_server().await;
+    let registry = Arc::clone(&server.session_registry);
+    let pending = Arc::clone(&server.pending_entries_analysis);
+    let input = ProjectServerInput {
+        slug: ProjectSlug::try_from(slug).expect("valid slug"),
+        store: Arc::clone(&server.store),
+        server,
+        vector_dir: std::path::PathBuf::from(format!("{slug}/vector")),
+    };
+    let router = MultiProjectRouter::from_servers(
+        vec![input],
+        OBSERVE_MAX_BODY,
+        vec![],
+        vec!["localhost".to_string()],
+    )
+    .expect("build resolver");
+    (router, registry, pending)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_registry_for_resolves_same_instance_as_server() {
+    // R-03 convergence: `from_server` clones the registry off `server` BEFORE the
+    // move, so `registry_for` returns the SAME `Arc` the slug's server holds.
+    let (router, registry, pending) = router_with_slug("alpha").await;
+    let key = ProjectKey::Slug(ProjectSlug::try_from("alpha").expect("valid"));
+
+    let resolved_registry = router.registry_for(&key).expect("registered slug resolves");
+    assert!(
+        Arc::ptr_eq(&resolved_registry, &registry),
+        "registry_for must hand back the slug server's OWN registry (clone-before-move), not a re-mint"
+    );
+
+    let resolved_pending = router.pending_for(&key).expect("registered slug resolves");
+    assert!(
+        Arc::ptr_eq(&resolved_pending, &pending),
+        "pending_for must hand back the slug server's OWN pending buffer"
+    );
+
+    // services_for resolves (config-driven layer); no ptr_eq (ServiceLayer is a
+    // value of Arcs), just proves the funnel hands one back for a registered slug.
+    assert!(
+        router.services_for(&key).is_ok(),
+        "services_for must resolve the slug's service layer"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_star_for_unknown_slug_is_unknown_project() {
+    // Same domain as `resolve_store`: an unregistered slug is `UnknownProject` on
+    // all three methods (R-14 domain).
+    let (router, _registry, _pending) = router_with_slug("alpha").await;
+    let unknown = ProjectKey::Slug(ProjectSlug::try_from("nope").expect("valid"));
+
+    assert!(matches!(
+        router.registry_for(&unknown),
+        Err(RouteError::UnknownProject)
+    ));
+    assert!(matches!(
+        router.pending_for(&unknown),
+        Err(RouteError::UnknownProject)
+    ));
+    assert!(matches!(
+        router.services_for(&unknown),
+        Err(RouteError::UnknownProject)
+    ));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_registry_for_n2_slugs_are_distinct() {
+    // #4974: N=2 is required to prove the funnel resolves from a real per-slug map
+    // and not a shared global — A's registry and B's registry must be DISTINCT.
+    let alpha = make_server().await;
+    let beta = make_server().await;
+    let alpha_input = ProjectServerInput {
+        slug: ProjectSlug::try_from("alpha").expect("valid"),
+        store: Arc::clone(&alpha.store),
+        server: alpha,
+        vector_dir: std::path::PathBuf::from("alpha/vector"),
+    };
+    let beta_input = ProjectServerInput {
+        slug: ProjectSlug::try_from("beta").expect("valid"),
+        store: Arc::clone(&beta.store),
+        server: beta,
+        vector_dir: std::path::PathBuf::from("beta/vector"),
+    };
+    let router = MultiProjectRouter::from_servers(
+        vec![alpha_input, beta_input],
+        OBSERVE_MAX_BODY,
+        vec![],
+        vec!["localhost".to_string()],
+    )
+    .expect("build resolver");
+
+    let a = router
+        .registry_for(&ProjectKey::Slug(
+            ProjectSlug::try_from("alpha").expect("valid"),
+        ))
+        .expect("alpha resolves");
+    let b = router
+        .registry_for(&ProjectKey::Slug(
+            ProjectSlug::try_from("beta").expect("valid"),
+        ))
+        .expect("beta resolves");
+    assert!(
+        !Arc::ptr_eq(&a, &b),
+        "each slug must resolve its OWN registry — N=2 distinctness (no shared global handle)"
+    );
 }

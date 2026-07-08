@@ -32,13 +32,15 @@
 //! built per-slug in the listener wiring (`build_project_entry`, main.rs).
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use unimatrix_core::Store;
 
 use super::McpAdapter;
 use super::seam::{ProjectKey, ProjectSlug, RouteError, StoreResolver};
-use crate::server::UnimatrixServer;
+use crate::infra::session::SessionRegistry;
+use crate::server::{PendingEntriesAnalysis, UnimatrixServer};
+use crate::services::ServiceLayer;
 
 /// One registered slug's runtime entry (vnc-034 Wave 2, FR-C3).
 ///
@@ -54,6 +56,20 @@ pub(crate) struct ProjectEntry {
     store: Arc<Store>,
     /// Per-slug MCP dispatcher (the SOLE dispatch route for this key).
     adapter: McpAdapter,
+    /// Per-slug session registry (vnc-046 ADR-001). `Arc::clone`d off `server` in
+    /// `from_server` BEFORE it moves into `McpAdapter::new`, so this handle and the
+    /// slug's `UnimatrixServer.session_registry` are clones of ONE `Arc` —
+    /// `registry_for` hands back the same instance the adapter's server reads
+    /// (convergence-by-construction, R-03). The write side (observe) and read side
+    /// (cycle-review) meet on one instance per slug.
+    session_registry: Arc<SessionRegistry>,
+    /// Per-slug pending-entries buffer (vnc-046 ADR-001). Same clone-before-move
+    /// convergence as `session_registry`; paired with it on the purge gate.
+    pending_entries_analysis: Arc<Mutex<PendingEntriesAnalysis>>,
+    /// Per-slug config-driven service layer (vnc-046 ADR-001, P2). Cloned off
+    /// `server` (a handful of `Arc::clone`s); `services_for` hands it back per
+    /// request so cross-project knowledge reads cannot leak (SR-07).
+    services: ServiceLayer,
 }
 
 impl std::fmt::Debug for ProjectEntry {
@@ -86,8 +102,22 @@ impl ProjectEntry {
         allowed_origins: Vec<String>,
         allowed_hosts: Vec<String>,
     ) -> Self {
+        // vnc-046 ADR-001/002 — CLONE-BEFORE-MOVE (ordering is load-bearing).
+        // `McpAdapter::new` consumes `server`, so the per-slug handles MUST be
+        // cloned off it FIRST. These are clones of the SAME `Arc`s the adapter's
+        // `UnimatrixServer` reads (convergence-by-construction, R-03) — never
+        // re-minted (`SessionRegistry::new()` here would break the whole feature).
+        let session_registry = Arc::clone(&server.session_registry);
+        let pending_entries_analysis = Arc::clone(&server.pending_entries_analysis);
+        let services = server.service_layer().clone();
         let adapter = McpAdapter::new(server, max_body_bytes, allowed_origins, allowed_hosts);
-        ProjectEntry { store, adapter }
+        ProjectEntry {
+            store,
+            adapter,
+            session_registry,
+            pending_entries_analysis,
+            services,
+        }
     }
 }
 
@@ -219,6 +249,45 @@ impl StoreResolver for MultiProjectRouter {
     fn adapter_for(&self, key: &ProjectKey) -> Option<&McpAdapter> {
         match key {
             ProjectKey::Slug(s) => self.slugs.get(s).map(|e| &e.adapter),
+        }
+    }
+
+    /// Resolve the per-slug session registry from the SAME map `resolve_store`
+    /// reads (vnc-046 ADR-001). O(1) lookup + `Arc::clone`; `UnknownProject` for an
+    /// unregistered slug. No `.unwrap()`, no panic, no I/O — matches the
+    /// `resolve_store` discipline.
+    fn registry_for(&self, key: &ProjectKey) -> Result<Arc<SessionRegistry>, RouteError> {
+        match key {
+            ProjectKey::Slug(s) => match self.slugs.get(s) {
+                Some(entry) => Ok(Arc::clone(&entry.session_registry)),
+                None => Err(RouteError::UnknownProject),
+            },
+        }
+    }
+
+    /// Resolve the per-slug pending-entries buffer from the same map (vnc-046
+    /// ADR-001). O(1) lookup + `Arc::clone`; `UnknownProject` otherwise.
+    fn pending_for(
+        &self,
+        key: &ProjectKey,
+    ) -> Result<Arc<Mutex<PendingEntriesAnalysis>>, RouteError> {
+        match key {
+            ProjectKey::Slug(s) => match self.slugs.get(s) {
+                Some(entry) => Ok(Arc::clone(&entry.pending_entries_analysis)),
+                None => Err(RouteError::UnknownProject),
+            },
+        }
+    }
+
+    /// Resolve the per-slug service layer from the same map (vnc-046 ADR-001).
+    /// `ServiceLayer::clone` is a handful of `Arc::clone`s; `UnknownProject`
+    /// otherwise.
+    fn services_for(&self, key: &ProjectKey) -> Result<ServiceLayer, RouteError> {
+        match key {
+            ProjectKey::Slug(s) => match self.slugs.get(s) {
+                Some(entry) => Ok(entry.services.clone()),
+                None => Err(RouteError::UnknownProject),
+            },
         }
     }
 }

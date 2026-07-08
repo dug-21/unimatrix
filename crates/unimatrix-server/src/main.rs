@@ -103,6 +103,155 @@ fn assert_wave_b_precondition(
     Ok(())
 }
 
+/// vnc-046 Wave 4 (ADR-003, OQ-1): per-slug isolation probe.
+///
+/// Cheap `Arc` clones captured off each built `UnimatrixServer` in the pre-move
+/// boot loop — WHILE this slug's resolved config is still in scope and BEFORE the
+/// inputs move into `MultiProjectRouter::from_servers`. `assert_per_slug_isolation`
+/// checks each probe against the BUILT resolver, so a wiring split (the write-path
+/// instance != the read-path instance) fails LOUD at boot.
+///
+/// The literal ADR-003 signature (`&ProjectServerInput`) is impossible: the
+/// `Arc::ptr_eq` convergence check needs the resolver, which does not exist until
+/// `from_servers` has already consumed the inputs. This probe is the ratified
+/// param-type refinement (OQ-1) — the `ptr_eq` handles are the same instances,
+/// captured before the move and compared after the resolver exists.
+#[derive(Clone)]
+struct IsolationProbe {
+    /// The slug this probe covers (route key).
+    slug: unimatrix_server::http::ProjectSlug,
+    /// The `SessionRegistry` instance the server holds — must be the SAME instance
+    /// the resolver hands the write path (`Arc::ptr_eq` convergence, P1).
+    session_registry: Arc<unimatrix_server::infra::session::SessionRegistry>,
+    /// The pending-entries buffer the server holds (P1 convergence).
+    pending: Arc<Mutex<PendingEntriesAnalysis>>,
+    /// Whether the server's registry carried a wired transcript hold at capture
+    /// time (F1/SR-03 pairing — registry-alone splits the purge gate).
+    has_hold: bool,
+    /// THIS slug's RESOLVED `transcript_hold_max_sessions` (the project-wins merge
+    /// output, config.rs:4332) — the exact value the hold was built from
+    /// (`slug_retention_config.transcript_hold_max_sessions`). Captured per-slug so
+    /// the zero-check matches the constructed hold: a slug overlaying `0` while the
+    /// global is non-zero must still fail loud (vnc-046 PR #936 Finding 1, #934).
+    transcript_hold_max_sessions: usize,
+    /// The per-slug enabled signal class names the server holds (P3 sentinel).
+    signal_class_names: Arc<Vec<String>>,
+    /// Whether THIS slug's resolved config declared `[transcript_signals]`. Derived
+    /// from the config (independent of the server field) so the hollow-counts guard
+    /// can catch "declared but empty" — the constructor default never overwritten.
+    declares_signals: bool,
+}
+
+impl std::fmt::Debug for IsolationProbe {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IsolationProbe")
+            .field("slug", &self.slug)
+            .field("has_hold", &self.has_hold)
+            .field(
+                "transcript_hold_max_sessions",
+                &self.transcript_hold_max_sessions,
+            )
+            .field("declares_signals", &self.declares_signals)
+            .field("signal_class_names", &self.signal_class_names)
+            .finish_non_exhaustive()
+    }
+}
+
+/// vnc-046 Wave 4 (ADR-003, FR-13, AC-08) Guard 1: per-slug isolation boot assertion.
+///
+/// Generalizes `assert_wave_b_precondition` from the single global registry to
+/// EVERY built slug. Called once per slug AFTER the resolver is built; asserts the
+/// write-path instance the resolver resolves IS the read-path instance the slug's
+/// server holds (`Arc::ptr_eq` convergence, P1), the transcript hold is paired
+/// (F1/SR-03), the service layer resolves (P2), and declared signal classes are
+/// non-empty (P3 hollow-counts guard).
+///
+/// A REAL runtime check returning `Result<(), ServerError>` — NOT a `debug_assert`
+/// (compiled out of release ⇒ zero coverage on the shipped cloud binary, SR-06/R-03)
+/// — so any wiring split aborts daemon boot LOUD, before a single request, never a
+/// silent read-zero at review. An `Err` from a `*_for` method here (after
+/// `resolve_store` already succeeded upstream at boot) is a wiring contradiction
+/// (R-14), reported with the slug + unwired field named.
+fn assert_per_slug_isolation(
+    probe: &IsolationProbe,
+    resolver: &dyn unimatrix_server::http::StoreResolver,
+) -> Result<(), ServerError> {
+    use unimatrix_server::http::ProjectKey;
+
+    let slug = &probe.slug;
+    let key = ProjectKey::Slug(slug.clone());
+
+    // P1 convergence — the resolver returns the SAME registry instance the server
+    // holds (write path == read path). This is a boot check on real handles.
+    let reg = resolver.registry_for(&key).map_err(|_| {
+        ServerError::Config(format!(
+            "slug {slug}: registry_for failed at boot — per-slug wiring contradiction"
+        ))
+    })?;
+    if !Arc::ptr_eq(&reg, &probe.session_registry) {
+        return Err(ServerError::Config(format!(
+            "slug {slug}: session_registry not converged (write path resolves a \
+             different instance than the read path holds)"
+        )));
+    }
+    let pend = resolver.pending_for(&key).map_err(|_| {
+        ServerError::Config(format!(
+            "slug {slug}: pending_for failed at boot — per-slug wiring contradiction"
+        ))
+    })?;
+    if !Arc::ptr_eq(&pend, &probe.pending) {
+        return Err(ServerError::Config(format!(
+            "slug {slug}: pending_entries_analysis not converged (write != read instance)"
+        )));
+    }
+
+    // P1 pairing (F1/SR-03) — the registry carried a wired transcript hold, so the
+    // purge gate cannot split (registry-alone ⇒ held buffers never purge ⇒
+    // unbounded memory). Inlines assert_wave_b_precondition's logic per-slug
+    // (generalize, do not duplicate — the global helper stays for the daemon/stdio
+    // path).
+    if !probe.has_hold {
+        return Err(ServerError::Config(format!(
+            "slug {slug}: transcript_hold not wired into session_registry \
+             (purge gate would split; held buffers never purge)"
+        )));
+    }
+    // Read THIS slug's RESOLVED value (captured off the same config the hold was
+    // built from), NOT the global config: `transcript_hold_max_sessions` is
+    // per-slug overlayable (project-wins, config.rs:4332), so a slug that overlays
+    // `0` while the global is non-zero would otherwise EVADE this loud-abort
+    // (vnc-046 PR #936 Finding 1, #934).
+    if probe.transcript_hold_max_sessions == 0 {
+        return Err(ServerError::Config(format!(
+            "slug {slug}: transcript_hold_max_sessions == 0 disables the hold \
+             (Surface B activity fold would be purged before review)"
+        )));
+    }
+
+    // P2 convergence — the service layer resolves for this slug (reachable = wired
+    // to the same store handle the server dispatches against).
+    resolver.services_for(&key).map_err(|_| {
+        ServerError::Config(format!(
+            "slug {slug}: services_for failed at boot — per-slug wiring contradiction"
+        ))
+    })?;
+
+    // P3 sentinel (hollow-counts guard) — when THIS slug's config declared
+    // `[transcript_signals]`, the snapshot class names MUST be non-empty; an empty
+    // vec is the `UnimatrixServer::new` default that was never overwritten (the
+    // `signal_class_counts_json == "{}"` symptom, #930). `store_config` /
+    // `inference_config` have no clean runtime sentinel ⇒ covered by Guard 2 (the
+    // field census) + the wiring-pin unit (documented AC-06 exception, R-04).
+    if probe.declares_signals && probe.signal_class_names.is_empty() {
+        return Err(ServerError::Config(format!(
+            "slug {slug}: transcript_signal_class_names empty despite declared \
+             [transcript_signals] (constructor default never overwritten)"
+        )));
+    }
+
+    Ok(())
+}
+
 /// #783 defense-in-depth: refuse to boot when `[[projects]]` declares routable
 /// slugs but the HTTP transport is disabled.
 ///
@@ -1137,6 +1286,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             // sole creator (C5, OQ-PR-5); a missing store fails loud, no auto-create.
             let base_dir = paths.data_dir.parent().unwrap_or(&paths.data_dir);
             let mut slug_servers: Vec<ProjectServerInput> = Vec::new();
+            // vnc-046 Wave 4 (ADR-003, OQ-1): one isolation probe per built slug,
+            // captured in this loop while `r` is in scope and BEFORE the inputs move
+            // into `from_servers`. Asserted against the built resolver below.
+            let mut isolation_probes: Vec<IsolationProbe> = Vec::new();
             for slug in &project_slugs {
                 // vnc-040 (C6, ADR-002 §1 / FR-04 / R-04 / SR-07): fields 0–2 + permissive
                 // are held GLOBAL BY CONSTRUCTION. The 3 handles are `Arc::clone`d here —
@@ -1201,6 +1354,27 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 let slug_boosted_categories: HashSet<String> =
                     r.knowledge.boosted_categories.iter().cloned().collect();
 
+                // vnc-046 Wave 2 (ADR-002 P3 + P1 scanner): derive the config-snapshot
+                // params from THIS slug's resolved `r`, sourcing the SAME expressions the
+                // daemon uses (main.rs:982/985/989) but from `r` instead of the global config.
+                let slug_store_config = Arc::new(r.store.clone());
+                let slug_retention_config = Arc::new(r.retention.clone());
+                let slug_signal_class_names = Arc::new(r.transcript_signals.enabled_class_names());
+                // Per-slug signature scanner compiled from THIS slug's resolved signals
+                // (ADR-002 OQ-2). Compiled HERE (where `r` lives) and threaded in —
+                // `build_project_server` takes resolved config as explicit params, not `r`
+                // (WARN-1). `r.transcript_signals` is already the validated output of
+                // `resolve_slug_config` (vnc-040), so compile ONLY — NO re-validate (that is
+                // the daemon's file-anchored startup validate; per-slug re-validation is the
+                // wrong level). Fallible compile maps to `ServerError::Config` and aborts THIS
+                // slug's provision loudly (mirror build_signature_scanner main.rs:70-73, R-10).
+                let slug_signature_scanner = Arc::new(
+                    unimatrix_server::infra::transcript_activity::SignatureScanner::compile(
+                        &r.transcript_signals.enabled_patterns(),
+                    )
+                    .map_err(|e| ServerError::Config(e.to_string()))?,
+                );
+
                 let input = http_provision::build_project_server(
                     base_dir,
                     slug,
@@ -1216,8 +1390,31 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     &slug_categories,
                     &slug_observation_registry,
                     &slug_boosted_categories,
+                    &slug_store_config,       // vnc-046 P3 — new param-at-end
+                    &slug_retention_config,   // vnc-046 P3 — new param-at-end
+                    &slug_signal_class_names, // vnc-046 P3 — new param-at-end
+                    &slug_signature_scanner,  // vnc-046 P1 — per-slug scanner (OQ-2)
                 )
                 .await?;
+                // vnc-046 Wave 4 (ADR-003, OQ-1): capture this slug's isolation probe
+                // from the freshly built server (cheap Arc clones) while `r`'s resolved
+                // config is still in scope. `declares_signals` comes from the resolved
+                // config (`slug_signal_class_names` == `r.transcript_signals.enabled_class_names()`),
+                // INDEPENDENT of the server field — so the P3 guard catches a
+                // declared-but-empty snapshot (constructor default never overwritten).
+                isolation_probes.push(IsolationProbe {
+                    slug: input.slug.clone(),
+                    session_registry: Arc::clone(&input.server.session_registry),
+                    pending: Arc::clone(&input.server.pending_entries_analysis),
+                    has_hold: input.server.session_registry.has_transcript_hold(),
+                    // The RESOLVED per-slug value the hold was actually built from
+                    // (same Arc threaded into build_project_server) — NOT the global
+                    // config (PR #936 Finding 1, #934).
+                    transcript_hold_max_sessions: slug_retention_config
+                        .transcript_hold_max_sessions,
+                    signal_class_names: Arc::clone(&input.server.transcript_signal_class_names),
+                    declares_signals: !slug_signal_class_names.is_empty(),
+                });
                 slug_servers.push(input);
             }
             // crt-056 Wave 2: build one PerSlugTickContext per registered slug from
@@ -1249,6 +1446,16 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 allowed_hosts.clone(),
             )
             .map_err(ServerError::Config)?;
+            // vnc-046 Wave 4 (ADR-003, FR-13, AC-08) Guard 1: assert per-slug
+            // isolation against the BUILT resolver — the write-path instance each
+            // slug resolves IS the read-path instance its server holds (Arc::ptr_eq),
+            // the hold is paired, services resolve, and declared signals are
+            // non-empty. A real runtime check (NOT debug_assert): any wiring split
+            // aborts boot LOUD here, before a single request, closing the whole
+            // "constructor-default never overwritten" class on the release binary.
+            for probe in &isolation_probes {
+                assert_per_slug_isolation(probe, &router)?;
+            }
             tracing::info!(
                 slug_count = project_slugs.len(),
                 "project routing active ([[projects]] declared)"
@@ -1268,12 +1475,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         let observe_ctx = ObserveContext {
             resolver: Arc::clone(&resolver),
             embed_service: Arc::clone(&embed_handle),
-            vector_store: Arc::clone(&async_vector_store),
-            adapt_service: Arc::clone(&adapt_service),
             server_version: env!("CARGO_PKG_VERSION").to_string(),
-            session_registry: Arc::clone(&session_registry),
-            pending_entries_analysis: Arc::clone(&pending_entries_analysis),
-            services: services.clone(),
         };
 
         // vnc-034 (ADR-003 + Wave 2): `SlugRouter` is the per-request MCP edge.
@@ -2214,3 +2416,10 @@ mod per_slug_loop_tests;
 #[cfg(test)]
 #[path = "global_serve_seed_tests.rs"]
 mod global_serve_seed_tests;
+
+// vnc-046 Wave 4 (ADR-003): per-slug isolation boot-assertion (Guard 1) + wiring-pin
+// tests. Separate child module so the suite stays focused and main_tests.rs is not
+// bloated. (Guard 2, the compile-time field census, lives in the lib crate.)
+#[cfg(test)]
+#[path = "main_boot_assertion_tests.rs"]
+mod boot_assertion_tests;

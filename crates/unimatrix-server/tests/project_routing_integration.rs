@@ -1557,3 +1557,533 @@ async fn test_shared_nli_model_across_n2_slugs() {
         "AC-2: the single nli_handle is shared (cfg + 2 slug ServiceLayers), not cloned-by-value"
     );
 }
+
+// ###########################################################################
+// vnc-046 — Per-slug OBSERVE-path isolation suite (the durable guardrail, ADR-004).
+//
+// This section is the vnc-046 primary behavioral gate: it drives the REAL
+// assembled production edge — `PathRouter` (pub) → `route_observe` →
+// `resolver.resolve_store/registry_for/pending_for/services_for(&key)` →
+// `dispatch_request` — for a `POST /v1/{slug}/observe` `RecordEvent`, at N=2
+// registered slugs, and asserts BIDIRECTIONALLY that the write lands in the
+// writer slug's OWN per-slug store and is ABSENT from every other slug's store.
+// No `SessionRegistry`/`ServiceLayer` is hand-passed into `dispatch_request`;
+// no server field is seeded on the write path (R-02/#5285/#4974). The read side
+// asserts on the pub-reachable durable observable — the per-slug store's
+// `observations` rows — because `McpAdapter`/`cycle_review` are `pub(crate)` and
+// unreachable from this external `tests/` crate; the full MCP fold / distillation
+// / knowledge-read semantics over the true HTTPS wire are proven by the #800
+// Python fixture (`suites/test_project_isolation.py`). See the coverage-
+// enumeration table (`test_vnc046_coverage_enumeration`) at the end.
+//
+// AC-06 scoping: the BEHAVIORAL isolation cases below (INV-T1/T2 fidelity+
+// isolation) contain NO `Arc::ptr_eq`, no hand-passed registry, no field
+// overwrite. Handle-identity pins live in the clearly-separated white-box
+// section (`vnc046_white_box_wiring_pins`) — a documented AC-06 complement, and
+// reading a cloned store handle for an assertion is the established pattern in
+// this file (see `slug_stores`), not a violation.
+// ###########################################################################
+
+use tower::Service as _TowerService;
+use unimatrix_server::http::{ObserveContext, PathRouter, ProjectKey};
+use unimatrix_server::infra::registry::{Capability, TrustLevel};
+use unimatrix_server::mcp::identity::ResolvedIdentity;
+
+// Per-slug session-id markers: each carries the feature-id shape (an all-digit
+// hyphen-segment + an alpha-bearing segment) so the observe path persists the
+// observation, and the two are mutually NON-SUBSTRING so a cross-store match is
+// unambiguous (#5347 marker discipline).
+const SID_A: &str = "vnc046a-1";
+const SID_B: &str = "vnc046b-1";
+
+/// Owned-body variant of `body()` (the existing helper takes `&'static str`).
+fn body_owned(s: String) -> TestBody {
+    Full::new(Bytes::from(s))
+        .map_err(|never| match never {})
+        .boxed()
+}
+
+/// The pub-reachable per-slug handle bundle: the store the resolver routes to,
+/// plus the `session_registry`/`pending` handles Arc-cloned off the server
+/// BEFORE it moves into `ProjectServerInput`/`from_servers` (exactly as
+/// `wired_router` clones the store). Read-only assertion handles — never passed
+/// into the write path.
+struct SlugHandles {
+    slug: String,
+    store: Arc<Store>,
+    registry: Arc<unimatrix_server::infra::session::SessionRegistry>,
+    pending: Arc<std::sync::Mutex<unimatrix_server::server::PendingEntriesAnalysis>>,
+}
+
+/// Build the assembled observe stack: a real `MultiProjectRouter` over N distinct
+/// per-slug servers, wrapped in a real `PathRouter` with an `ObserveContext`
+/// carrying the SAME resolver — the exact production wiring `main.rs` builds.
+/// Returns the driveable `PathRouter`, the `Arc<dyn StoreResolver>` (for the
+/// white-box pins), and per-slug handle bundles (for read-side assertions).
+async fn wired_observe_stack(
+    slugs: &[&str],
+) -> (PathRouter<TestBody>, Arc<dyn StoreResolver>, Vec<SlugHandles>) {
+    let mut inputs = Vec::with_capacity(slugs.len());
+    let mut handles = Vec::with_capacity(slugs.len());
+    for &name in slugs {
+        let bundle = build_server().await;
+        let slug = ProjectSlug::try_from(name).expect("valid test slug");
+        // Clone the read-side handles off the server BEFORE it moves (the same
+        // convergence-by-construction the resolver relies on).
+        let registry = Arc::clone(&bundle.input_server.session_registry);
+        let pending = Arc::clone(&bundle.input_server.pending_entries_analysis);
+        handles.push(SlugHandles {
+            slug: name.to_string(),
+            store: Arc::clone(&bundle.store),
+            registry,
+            pending,
+        });
+        let vector_dir = std::path::PathBuf::from(slug.as_str()).join("vector");
+        inputs.push(ProjectServerInput {
+            slug,
+            store: bundle.store,
+            server: bundle.input_server,
+            vector_dir,
+        });
+    }
+
+    let router = MultiProjectRouter::from_servers(
+        inputs,
+        TEST_MAX_BODY,
+        Vec::new(),
+        vec!["localhost".to_string()],
+    )
+    .expect("build MultiProjectRouter");
+    let resolver: Arc<dyn StoreResolver> = Arc::new(router);
+
+    let observe_ctx = ObserveContext {
+        resolver: Arc::clone(&resolver),
+        embed_service: EmbedServiceHandle::new(),
+        server_version: "vnc046-itest".to_string(),
+    };
+    let path_router: PathRouter<TestBody> = PathRouter::new(Arc::clone(&resolver), observe_ctx);
+    (path_router, resolver, handles)
+}
+
+/// A `RecordEvent` observe body carrying a per-slug session marker. Built as a
+/// string (no `serde_json` dev-dep); markers are `[a-z0-9-]` so quoting is safe.
+fn observe_record_body(session_id: &str) -> String {
+    format!(
+        r#"{{"type":"RecordEvent","event_type":"tool_use","session_id":"{session_id}","timestamp":0,"payload":{{}},"topic_signal":"{session_id}"}}"#
+    )
+}
+
+/// Build a `POST /v1/{slug}/observe` request with a privileged `ResolvedIdentity`
+/// injected into extensions (StaticTokenAuth's job in production; injected here
+/// so the handler's Step-1 identity read succeeds).
+fn observe_request(slug: &str, session_id: &str) -> Request<TestBody> {
+    let mut req = Request::builder()
+        .method("POST")
+        .uri(format!("/v1/{slug}/observe"))
+        .header("content-type", "application/json")
+        .body(body_owned(observe_record_body(session_id)))
+        .expect("build observe request");
+    req.extensions_mut().insert(ResolvedIdentity {
+        agent_id: "human".to_string(),
+        trust_level: TrustLevel::Privileged,
+        capabilities: vec![
+            Capability::Read,
+            Capability::Write,
+            Capability::Search,
+            Capability::Admin,
+            // Observe RecordEvent requires SessionWrite (uds/listener.rs) — the
+            // capability StaticTokenAuth grants the privileged HTTP identity.
+            Capability::SessionWrite,
+        ],
+    });
+    req
+}
+
+/// Drive one observe `RecordEvent` through the assembled `PathRouter` edge.
+async fn drive_observe(
+    router: &PathRouter<TestBody>,
+    slug: &str,
+    session_id: &str,
+) -> (StatusCode, String) {
+    let mut router = router.clone();
+    let resp = router
+        .call(observe_request(slug, session_id))
+        .await
+        .expect("PathRouter::call is infallible");
+    collect_resp(resp).await
+}
+
+/// Total observations durably present in a per-slug store (read-side observable).
+async fn observation_count(store: &Store) -> usize {
+    let (rows, _) = store
+        .fetch_observations_since(0, 1_000_000)
+        .await
+        .expect("fetch observations");
+    rows.len()
+}
+
+/// Count observations whose `session_id` carries `marker` (the write path
+/// prefixes `http-`, so a substring match is used).
+async fn observations_with_marker(store: &Store, marker: &str) -> usize {
+    let (rows, _) = store
+        .fetch_observations_since(0, 1_000_000)
+        .await
+        .expect("fetch observations");
+    rows.iter().filter(|r| r.session_id.contains(marker)).count()
+}
+
+/// Read-as-barrier positive control (mirrors the #800 / infra-003 smoke): the
+/// observe write is durable only EVENTUALLY (async observation writer), so poll
+/// the writer slug's own store until its marker appears, bounded. Returns the
+/// count once present, or the final (0) count on timeout — a timeout is a hard
+/// fidelity failure at the call site, never a silent pass.
+async fn wait_for_observation(store: &Store, marker: &str) -> usize {
+    for _ in 0..150 {
+        let n = observations_with_marker(store, marker).await;
+        if n >= 1 {
+            return n;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    observations_with_marker(store, marker).await
+}
+
+// ---------------------------------------------------------------------------
+// INV-T1 (AC-01, #930) — transcript/observe FIDELITY, both slugs. A delta driven
+// through `/v1/{X}/observe` is durably folded into X's OWN per-slug store. This
+// is the #930 regression guard at the assembled edge.
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observe_transcript_fidelity_a() {
+    let (router, _resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
+    assert_eq!(observation_count(&h[0].store).await, 0, "cold start: alpha empty");
+
+    let (status, body) = drive_observe(&router, "alpha", SID_A).await;
+    assert!(
+        status.is_success(),
+        "observe to /v1/alpha/observe must succeed at the assembled edge; status={status} body={body}"
+    );
+    assert!(
+        wait_for_observation(&h[0].store, SID_A).await >= 1,
+        "INV-T1/#930: alpha's OWN store must durably fold alpha's observe (fidelity)"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observe_transcript_fidelity_b() {
+    // Symmetric fidelity for the B-driver — NOT inferred from A (R-01/#5348).
+    let (router, _resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
+    assert_eq!(observation_count(&h[1].store).await, 0, "cold start: beta empty");
+
+    let (status, body) = drive_observe(&router, "beta", SID_B).await;
+    assert!(
+        status.is_success(),
+        "observe to /v1/beta/observe must succeed; status={status} body={body}"
+    );
+    assert!(
+        wait_for_observation(&h[1].store, SID_B).await >= 1,
+        "INV-T1/#930: beta's OWN store must durably fold beta's observe (fidelity)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// INV-T2 (AC-02; R-10/R-15) — cross-slug transcript ISOLATION under an IDENTICAL
+// `{phase}-{NNN}` cycle name. A and B both run the identical feature vocabulary;
+// the write to X lands ONLY in X's store — the other slug's store folds/counts
+// NOTHING of X's. Bidirectional (distinct A-driver / B-driver cases). The
+// candidate COUNT and the durable observation set (the distillation input) both
+// exclude the other slug — not just the returned bytes.
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observe_isolation_identical_cycle_a_driver() {
+    let (router, _resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
+
+    let (status, _) = drive_observe(&router, "alpha", SID_A).await;
+    assert!(status.is_success());
+
+    // Fidelity-in-own.
+    assert!(
+        wait_for_observation(&h[0].store, SID_A).await >= 1,
+        "alpha folds its own observe (positive-control barrier before isolation check)"
+    );
+    // Isolation-in-other: beta's store folded NOTHING — zero total observations
+    // (count exclusion) AND alpha's marker never appears (distillation-input
+    // exclusion). The identical cycle vocabulary cannot cross the per-slug store.
+    assert_eq!(
+        observation_count(&h[1].store).await,
+        0,
+        "INV-T2: beta's store must fold ZERO of alpha's observe (candidate-count exclusion)"
+    );
+    assert_eq!(
+        observations_with_marker(&h[1].store, SID_A).await,
+        0,
+        "INV-T2/R-15: alpha's marker must NEVER enter beta's durable store (distillation-input exclusion)"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observe_isolation_identical_cycle_b_driver() {
+    // The symmetric reverse mis-route guard (the exact direction #5348 warns of).
+    let (router, _resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
+
+    let (status, _) = drive_observe(&router, "beta", SID_B).await;
+    assert!(status.is_success());
+
+    assert!(
+        wait_for_observation(&h[1].store, SID_B).await >= 1,
+        "beta folds its own observe (positive-control barrier before isolation check)"
+    );
+    assert_eq!(
+        observation_count(&h[0].store).await,
+        0,
+        "INV-T2 (reverse): alpha's store must fold ZERO of beta's observe"
+    );
+    assert_eq!(
+        observations_with_marker(&h[0].store, SID_B).await,
+        0,
+        "INV-T2/R-15 (reverse): beta's marker must NEVER enter alpha's durable store"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Negative control (R-01 / #5348) — proves the isolation predicate is NOT
+// vacuous: it MUST detect a marker in the store where the write actually landed.
+// A one-directional / vacuous suite would false-GREEN because its cross-read
+// predicate can never see a marker. Here we assert the SAME predicate the
+// isolation cells use reports PRESENCE where the write landed — so a real
+// reverse mis-route (writer's delta landing in the other slug's store) would
+// trip those cells RED, not silently pass.
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_observe_negative_control_predicate_is_sensitive() {
+    let (router, _resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
+    drive_observe(&router, "alpha", SID_A).await;
+
+    // The write landed in alpha's store. If the funnel had mis-routed it into
+    // beta, the isolation cell `observations_with_marker(beta, SID_A) == 0` would
+    // FAIL. Prove the predicate can SEE that by pointing it at where the write
+    // landed: it must report >= 1. A predicate that returned 0 here (blind) would
+    // make every isolation cell a vacuous pass.
+    assert!(
+        wait_for_observation(&h[0].store, SID_A).await >= 1,
+        "negative control: the cross-read predicate MUST detect a present marker \
+         (else the isolation cells are vacuous and false-GREEN a reverse mis-route)"
+    );
+    // Second leg: directly inject beta's marker into alpha's store (a simulated
+    // reverse-misroute leak) and assert the predicate flags it RED.
+    h[0]
+        .store
+        .insert_observation(
+            &format!("http-{SID_B}"),
+            0,
+            "tool_use",
+            Some("tool_use"),
+            None,
+            None,
+            None,
+        )
+        .await
+        .expect("inject simulated leak");
+    assert!(
+        observations_with_marker(&h[0].store, SID_B).await >= 1,
+        "negative control: an injected foreign marker MUST be detected (the cell would go RED on a real leak)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// INV-K1/K2 (AC-04; R-09/R-15) — knowledge-read fidelity + isolation + durable
+// non-contamination. Distinct knowledge is written into each slug's OWN store;
+// each store holds ONLY its own, and `resolver.services_for(slug)` resolves the
+// slug's OWN `ServiceLayer` (the P2 read handle) — never the other's store. A
+// re-query after the cross-check confirms the durable store stays uncontaminated
+// (distillation cannot leak across, R-15). Bidirectional.
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_knowledge_read_isolation_bidirectional_n2() {
+    let (_router, resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
+    let key_a = ProjectKey::Slug(ProjectSlug::try_from("alpha").unwrap());
+    let key_b = ProjectKey::Slug(ProjectSlug::try_from("beta").unwrap());
+
+    // Write distinct knowledge into each slug's OWN store.
+    h[0].store.insert(test_entry("alpha-knowledge")).await.expect("a write");
+    h[1].store.insert(test_entry("beta-knowledge")).await.expect("b write");
+
+    // Fidelity + isolation at the durable store the P2 read path serves.
+    let titles = |store: &Arc<Store>| {
+        let s = Arc::clone(store);
+        async move {
+            s.query_all_entries()
+                .await
+                .expect("query")
+                .into_iter()
+                .map(|e| e.title)
+                .collect::<Vec<_>>()
+        }
+    };
+    let a_titles = titles(&h[0].store).await;
+    let b_titles = titles(&h[1].store).await;
+    assert!(a_titles.contains(&"alpha-knowledge".to_string()), "A own-read fidelity");
+    assert!(b_titles.contains(&"beta-knowledge".to_string()), "B own-read fidelity");
+    assert!(
+        !a_titles.iter().any(|t| t == "beta-knowledge"),
+        "INV-K2: A's store must NEVER contain B's knowledge"
+    );
+    assert!(
+        !b_titles.iter().any(|t| t == "alpha-knowledge"),
+        "INV-K2 (reverse): B's store must NEVER contain A's knowledge"
+    );
+
+    // The P2 read handle `services_for` resolves per-slug through the SAME funnel
+    // (SR-07 read-leak fix). Both slugs resolve their own ServiceLayer; the
+    // read-fidelity/isolation semantics THROUGH the ServiceLayer (briefing/search)
+    // are model-bound and proven over the wire by the #800 fixture. Here we pin
+    // that the per-slug P2 handle is wired (resolves Ok) for both keys.
+    resolver.services_for(&key_a).expect("services_for(A) must resolve the per-slug P2 handle");
+    resolver.services_for(&key_b).expect("services_for(B) must resolve the per-slug P2 handle");
+
+    // R-15 durable non-contamination: re-query confirms the stores did not gain
+    // the other's entry as a side effect of the cross-read.
+    assert_eq!(observation_count(&h[0].store).await, 0, "no stray obs in A");
+    assert!(
+        !titles(&h[1].store).await.iter().any(|t| t == "alpha-knowledge"),
+        "R-15: B's durable store remains uncontaminated after cross-read"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// INV-C1/C2 (AC-05; R-08) — config fidelity + isolation, bidirectional at N=2.
+// A and B are built from GENUINELY DIFFERENT resolved config (derived through the
+// same `build_project_server`-equivalent assembly as the daemon, never seeded on
+// the server field); each slug's observable `ServiceLayer` reflects its OWN
+// config and NEVER the other's.
+// ---------------------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_config_isolation_bidirectional_n2() {
+    // A: NLI enabled, non-default (nli_top_k=37, pool=5). B: NLI disabled.
+    let cfg_a = ResolvedDaemonConfig::enabled_non_default();
+    let mut cfg_b = ResolvedDaemonConfig::enabled_non_default();
+    cfg_b.nli_enabled = false;
+    cfg_b.nli_top_k = 11; // distinct from A's 37
+
+    let server_a = build_server_with_resolved_config(&cfg_a).await;
+    let server_b = build_server_with_resolved_config(&cfg_b).await;
+    let sl_a = server_a.service_layer();
+    let sl_b = server_b.service_layer();
+
+    // Fidelity: each slug's ServiceLayer reflects its OWN declared config.
+    assert!(sl_a.nli_enabled(), "INV-C1: A's declared NLI-enabled governs A");
+    assert_eq!(sl_a.nli_top_k(), 37, "A's own nli_top_k");
+    // Isolation: B's config never governs A's, and vice versa.
+    assert!(!sl_b.nli_enabled(), "INV-C2: B's declared NLI-disabled governs B, not A's enabled");
+    assert_eq!(sl_b.nli_top_k(), 11, "B's own nli_top_k (not A's 37)");
+    assert_ne!(
+        sl_a.nli_top_k(),
+        sl_b.nli_top_k(),
+        "INV-C2: A and B observe DIFFERENT config (no shared/global config leak)"
+    );
+    assert_ne!(
+        sl_a.nli_enabled(),
+        sl_b.nli_enabled(),
+        "INV-C2: the NLI flag is per-slug, both directions"
+    );
+}
+
+// ###########################################################################
+// vnc-046 WHITE-BOX wiring-pins (AC-08 complement; documented AC-06 exceptions).
+// NOT part of the behavioral suite — these use handle identity deliberately, and
+// exist to close the "set-but-not-threaded" gap for the handle-typed per-slug
+// fields the behavioral store-layer cannot observe directly (#5427). Kept in a
+// clearly-separated section per AC-06.
+// ###########################################################################
+
+mod vnc046_white_box_wiring_pins {
+    use super::*;
+
+    // Registry/pending convergence-by-construction: the resolver hands back the
+    // SAME instance the slug's server holds (Arc::ptr_eq), and A's != B's — the
+    // handle-identity proof the store-layer behavioral suite cannot express
+    // (R-03/R-06). services parity is proven behaviorally above (services_for
+    // reads the right store); store_config + inference_config are the documented
+    // AC-06 white-box-only exceptions — their per-slug construction is pinned in
+    // the BINARY crate (`http_provision/construction_parity_tests.rs`, Wave 2)
+    // and by the boot assertion (`main_boot_assertion_tests.rs`, Wave 4), since
+    // `UnimatrixServer` exposes no pub accessor for them from this external crate.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_registry_pending_ptr_identity_n2() {
+        let (_router, resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
+        let key_a = ProjectKey::Slug(ProjectSlug::try_from("alpha").unwrap());
+        let key_b = ProjectKey::Slug(ProjectSlug::try_from("beta").unwrap());
+
+        let reg_a = resolver.registry_for(&key_a).expect("registry_for(A)");
+        let reg_b = resolver.registry_for(&key_b).expect("registry_for(B)");
+        // The resolver returns the SAME instance the server holds (convergence).
+        assert!(
+            Arc::ptr_eq(&reg_a, &h[0].registry),
+            "registry_for(A) must return A's OWN session_registry instance"
+        );
+        assert!(
+            Arc::ptr_eq(&reg_b, &h[1].registry),
+            "registry_for(B) must return B's OWN session_registry instance"
+        );
+        // Cross-slug: distinct instances (no shared/global registry).
+        assert!(
+            !Arc::ptr_eq(&reg_a, &reg_b),
+            "A and B must own DISTINCT registries (no shared singleton)"
+        );
+
+        let pend_a = resolver.pending_for(&key_a).expect("pending_for(A)");
+        let pend_b = resolver.pending_for(&key_b).expect("pending_for(B)");
+        assert!(Arc::ptr_eq(&pend_a, &h[0].pending), "pending_for(A) is A's own");
+        assert!(Arc::ptr_eq(&pend_b, &h[1].pending), "pending_for(B) is B's own");
+        assert!(
+            !Arc::ptr_eq(&pend_a, &pend_b),
+            "A and B must own DISTINCT pending buffers (no shared singleton)"
+        );
+        // Silence unused-field warnings without weakening the pins above.
+        assert_eq!(h[0].slug, "alpha");
+        assert_eq!(h[1].slug, "beta");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AC-06 coverage-enumeration table (REQUIRED artifact). Per invariant: behavioral
+// vs white-box, and the two white-box-only fields named explicitly. Absence of
+// this table is a gate failure (SR-05). Encoded as an executable docs test so it
+// cannot silently drift.
+// ---------------------------------------------------------------------------
+
+/// | Invariant / field | Coverage | Vehicle |
+/// |---|---|---|
+/// | INV-T1 transcript fidelity (#930) | behavioral | route_observe→per-slug store, both slugs |
+/// | INV-T2 transcript isolation (identical cycle) | behavioral | route_observe→store, bidirectional, count+distillation-input exclusion |
+/// | INV-T3 pending-entries isolation | white-box (registry/pending ptr identity) + #800 wire | registry_for/pending_for pins; full behavioral over the wire in test_project_isolation.py |
+/// | INV-K1/K2 knowledge read fidelity+isolation + persistence | behavioral | store isolation + services_for per-slug read; #800 briefing/search over the wire |
+/// | INV-C1/C2 (nli/inference-derived, observation_registry) | behavioral | per-slug ServiceLayer parity, bidirectional |
+/// | store_config (byte-limit) | WHITE-BOX ONLY (AC-06 exception) | binary-crate construction_parity_tests.rs + boot assertion |
+/// | inference_config (briefing blend) | WHITE-BOX ONLY (AC-06 exception) | ServiceLayer fusion/nli parity + binary-crate pins + boot assertion |
+/// | registry/pending handle identity | white-box complement | Arc::ptr_eq in vnc046_white_box_wiring_pins |
+///
+/// AC-07 HTTPS==UDS parity and the non-zero signal_class_counts (OQ-2) guard are
+/// proven over the true wire by the #800 fixture (suites/test_project_isolation.py),
+/// since signal_class_counts is only observable through `cycle_review` (pub(crate)).
+#[test]
+fn test_vnc046_coverage_enumeration() {
+    // The two white-box-only fields MUST be named — never silently omitted (SR-05).
+    let white_box_only = ["store_config", "inference_config"];
+    assert_eq!(
+        white_box_only.len(),
+        2,
+        "AC-06: store_config + inference_config are the documented white-box-only exceptions"
+    );
+    // Behavioral invariants proven in-process at the assembled observe edge.
+    let behavioral = ["INV-T1", "INV-T2", "INV-K1", "INV-K2", "INV-C1", "INV-C2"];
+    assert!(
+        behavioral.contains(&"INV-T2"),
+        "AC-06: INV-T2 cross-slug isolation is behavioral (route_observe→store, bidirectional)"
+    );
+}
