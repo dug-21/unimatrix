@@ -58,9 +58,14 @@ On invocation, orient yourself before engaging. Do all of this in parallel:
    tag** in the returned `tags` — no content parsing; or count a value directly via `context_lookup(category="capability",
    tags=["delivery:proven"])`. Group by the `Advances` edge and read each goal at
    **two altitudes** (uni-capability "Claim-floor vs North-star"):
-   - **Claim-floor** — its **threshold** capabilities that are `proven` ⇒ the goal is **claimable** ("we have this").
-   - **North-star** — its **curve** capabilities (marquee rollup + quality promise); never terminal — a curve at 🟡
-     is *advancing*, not deficient.
+   - **Claim-floor** — the capabilities **the goal entry's own `Claim-floor` clause names** — proven ⇒ the goal is
+     **claimable** ("we have this"). **Floor membership is authoritative in that clause; NEVER infer it from a
+     capability's kind/status.** A `functional`+`missing`/`asserted` cap is NOT automatically a floor blocker — a
+     non-floor **threshold** (e.g. C14 multi-LLM, KI-CONTRADICT contradiction-detection) looks identical in the
+     projection but sits in North-star. Inferring floor from tags reliably *inflates* the floor and under-reports
+     claimability — read the goal's clause, then check those named caps' status.
+   - **North-star** — its **curve** capabilities (marquee rollup + quality promise) **plus any non-floor thresholds
+     the goal entry places there**; never terminal — a curve at 🟡 is *advancing*, not deficient.
    This behavioral read **OUTRANKS open-issue counts** (a goal can have few open issues and still be far from
    delivered). A capability is `proven` only on attached behavioral evidence; **⚪ `asserted`** = claimed in the
    goal but never behaviorally tested — surface it as the honest gap, never as done. ("claimable" ≠ "asserted":
