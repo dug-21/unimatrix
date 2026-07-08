@@ -88,6 +88,8 @@ test-plan/
 
 5. **Concrete Assertions** — Don't write "verify it works." Write "assert that `function_name` returns `Ok(expected_value)` when given `input`."
 
+6. **Prove the Assembled Path, Not a Proxy** — a test that backs a capability's `done_when` (a floor / acceptance test) MUST drive the real, assembled production wiring: the actual entry point, the shared/constructed instances, the real transport. A test that hand-constructs the domain object, re-asserts its own literal, or injects the dependency it should drive *through* passes while blind to the production seam — it is **not** proof of the behavior (the #917 / #918 / #930 family: green tests, holed capabilities). When the behavior is only observable across a process/transport boundary, plan an end-to-end / assembled-wiring test, not a unit proxy.
+
 ---
 
 ## Phase 2: Test Execution (Stage 3c)

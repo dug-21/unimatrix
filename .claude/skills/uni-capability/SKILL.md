@@ -193,8 +193,15 @@ the **goal entry** (a `Claim-floor` and a `North-star` clause), not just in the 
 delivering agent's nomination, moves *structure*, never *status* — the cited test must be **independently
 verified to clear the `done_when` as worded** before a threshold flips `proven` and its goal's floor counts
 as met. The failure modes this catches: an over-scoped `done_when` (the cited test proves a *narrower* thing —
-e.g. "tamper-evident" claimed, only "tamper-recorded" tested), or a mechanism test standing in for an outcome
-test. **Only a 🟢 floor may back a claim; a nominated-but-unverified floor may not.**
+e.g. "tamper-evident" claimed, only "tamper-recorded" tested); a mechanism test standing in for an outcome
+test; and — the sharpest, seen three times in this corpus — **a cited test that passes without ever driving the
+real / assembled production path** (an in-memory proxy that hand-builds the object #917; a tautology re-asserting
+its own literal #918; a test that injects the dependency it should drive *through*, blind to the production
+instance-split #930). So `proven_by` must name **re-runnable test(s) that exercise the assembled path the
+`done_when` describes** — not reasoning, not code-tracing, not a proxy; absent that, the cap is at most `partial`.
+(A one-time live/dogfood observation *on the real path* is behavioral proof but **unguarded** — `proven` for a
+threshold only with a tracked regression-guard test-debt, per PD2→#918.) **Only a 🟢 floor may back a claim; a
+nominated-but-unverified floor may not.**
 
 **One-call orientation (the goal-status query).** The whole map renders in a single traversal —
 `context_graph(mode=subgraph, seed_ids=[<vision-root>], direction=incoming, edge_types=["Advances"],
