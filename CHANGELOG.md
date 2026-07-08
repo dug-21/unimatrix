@@ -3,6 +3,13 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.11.1] - 2026-07-08
+
+### Fixes
+- **Per-slug state isolation (cloud/HTTPS observe path)**: on a multi-project cloud instance the HTTPS `/observe` write path filled daemon-global state while each per-slug server read constructor-defaults, so per-slug transcript folds, knowledge briefings, and config silently saw wrong/empty state (transcript_delta 204-ACKed but never folded). Completed the per-request per-slug resolution funnel (registry + transcript_hold + signature scanner + pending + services + config), added a release-hard boot assertion plus a compile-time exhaustive field census that closes the whole "constructor-default never overwritten" class, and shipped a solution-independent bidirectional behavioral isolation suite. Closes #930. (vnc-046, #936)
+- **hook**: replaced a tautological AC-SR02 test with a real SubagentStart injection e2e; added a `HOOK_TIMEOUT` env seam. (#918, #933)
+- **infra-001**: green blocking smoke for container-cloud HTTPS deploy + operator client-works verification. (#915, #916, #932)
+
 ## [0.11.0] - 2026-07-07
 
 ### Features
