@@ -10,7 +10,8 @@
 //!   clean through the CLI path.
 //! - R-10 — the DB is opened READ-ONLY (unmodified after a run); a missing project
 //!   dir errors cleanly (no panic).
-//! - AC-11 / AC-12 — no MCP verify tool; schema version still 30.
+//! - AC-11 / AC-12 — no MCP verify tool; nxs-014 itself adds no schema migration
+//!   (the pin tracks HEAD: vnc-047 bumped the schema version to 31 for cycle_tags).
 //!
 //! The exit-code-wiring + stdout id-naming assertions (open Q2: main() maps Err to
 //! a non-zero process exit) drive the REAL compiled binary via
