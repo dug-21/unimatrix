@@ -53,8 +53,11 @@ an externally joinable label substrate for later A/B analysis; the cross-run joi
 | C12 ack echo (best-effort, non-gating) | pseudocode/ack-echo.md | test-plan/ack-echo.md |
 | C13 freeze-outcome trace (listener, non-gating) | pseudocode/freeze-trace.md | test-plan/freeze-trace.md |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists
-the expected components from the architecture (C1–C13); actual file paths are filled during delivery.
+Note: Stage 3a COMPLETE (2026-07-09). All 14 pseudocode and 14 test-plan files exist at the paths
+above (C1–C13 + OVERVIEW), verified against HEAD. C2 signature reconciled: `insert_cycle_start_with_tags`
+mirrors HEAD `insert_cycle_event` (db.rs:320) — carries `next_phase`, does NOT write `goal_embedding`
+(populated later by `update_cycle_start_goal_embedding` on `event_type='cycle_start'`). C8 review-populate
+extracted as `pub(crate) populate_review_tags` seam for the AC-05 assembled-path test.
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
