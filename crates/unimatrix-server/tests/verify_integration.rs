@@ -10,7 +10,8 @@
 //!   clean through the CLI path.
 //! - R-10 — the DB is opened READ-ONLY (unmodified after a run); a missing project
 //!   dir errors cleanly (no panic).
-//! - AC-11 / AC-12 — no MCP verify tool; schema version still 30.
+//! - AC-11 / AC-12 — no MCP verify tool; nxs-014 itself adds no schema migration
+//!   (the pin tracks HEAD: vnc-047 bumped the schema version to 31 for cycle_tags).
 //!
 //! The exit-code-wiring + stdout id-naming assertions (open Q2: main() maps Err to
 //! a non-zero process exit) drive the REAL compiled binary via
@@ -406,15 +407,18 @@ fn test_verify_cli_empty_db_is_clean() {
 }
 
 // ===========================================================================
-// AC-12 — no schema migration (schema version still 30)
+// AC-12 — no schema migration introduced by nxs-014 itself (schema version pin).
+// The absolute value tracks the workspace HEAD (bumped to 31 by vnc-047's
+// cycle_tags migration, ADR-001); nxs-014 remains weak-mode and adds no migration.
 // ===========================================================================
 
 #[test]
-fn test_schema_version_still_30() {
+fn test_schema_version_still_31() {
     assert_eq!(
         unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        30,
-        "nxs-014 is weak-mode: no schema migration; schema version must stay 30 (C-05/NFR-02)"
+        31,
+        "nxs-014 is weak-mode: it adds no schema migration. The pin tracks HEAD; \
+         vnc-047 bumped CURRENT_SCHEMA_VERSION to 31 for the cycle_tags junction (C-05/NFR-02)"
     );
 }
 

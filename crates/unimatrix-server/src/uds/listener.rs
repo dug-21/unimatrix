@@ -3059,9 +3059,47 @@ fn handle_cycle_event(
         // col-025: capture goal for spawn; None for PhaseEnd and Stop events.
         let goal_for_db = goal_for_event.clone();
 
+        // vnc-047: extract tags from payload (array-of-strings; degrade to [] on any
+        // shape — missing key, wrong type, non-string elements). payload["tags"] is
+        // the ONLY persistence carrier (SR-03); the C4 hook sets it Start-only and
+        // omits the key entirely when empty, so a tagless start falls to the else arm.
+        let tags_for_db: Vec<String> = event
+            .payload
+            .get("tags")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+        // Capture the lifecycle for the routing decision inside the spawn.
+        let is_start = lifecycle == CycleLifecycle::Start;
+
         let _detached = tokio::spawn(async move {
             let seq = store_clone.get_next_cycle_seq(&cycle_id).await;
-            if let Err(e) = store_clone
+            if is_start && !tags_for_db.is_empty() {
+                // vnc-047: Start-with-tags → NEW primitive (BEGIN IMMEDIATE txn,
+                // whole-set-once EXISTS guard). goal still rides the same start row.
+                // The C13 wrote-set/frozen-skip trace is emitted inside the primitive.
+                if let Err(e) = store_clone
+                    .insert_cycle_start_with_tags(
+                        &cycle_id,
+                        seq,
+                        phase_val.as_deref(),
+                        outcome_val.as_deref(),
+                        next_phase_for_db.as_deref(),
+                        timestamp,
+                        goal_for_db.as_deref(),
+                        &tags_for_db,
+                    )
+                    .await
+                {
+                    tracing::warn!(error = %e, cycle_id = %cycle_id, "vnc-047: insert_cycle_start_with_tags failed");
+                }
+            } else if let Err(e) = store_clone
+                // All other events + start-without-tags → UNCHANGED insert_cycle_event.
                 .insert_cycle_event(
                     &cycle_id,
                     seq,
@@ -7970,6 +8008,464 @@ mod tests {
             goal_from_db.as_deref(),
             Some("test goal"),
             "goal must be persisted to cycle_events DB row (GH #389)"
+        );
+    }
+
+    // ======================================================================================
+    // vnc-047 — ASSEMBLED-PATH tags persistence + surfacing (C5/C8/C9)
+    //
+    // These drive the REAL chain via dispatch_request(HookRequest::RecordEvent{..}) exactly as
+    // T-389-02 (goal) does, then read back through store.get_cycle_tags. proven_by for AC-02/
+    // AC-02a/AC-05/AC-EXTRA-2 cites tests HERE (assembled), never a store-only structural test.
+    // ======================================================================================
+
+    /// Build a blank RetrospectiveReport for the AC-05 read+render assertions.
+    fn blank_report(fc: &str) -> unimatrix_observe::RetrospectiveReport {
+        unimatrix_observe::RetrospectiveReport {
+            feature_cycle: fc.to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: unimatrix_observe::MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+            curation_health: None,
+            tags: Vec::new(),
+        }
+    }
+
+    /// Fire one cycle event through the assembled dispatch chain and settle the
+    /// fire-and-forget spawn. `register` controls whether the session is registered
+    /// first (false → exercises the #519 absent/evicted-session path).
+    async fn drive_cycle_event(
+        store: &Arc<Store>,
+        event_type: &str,
+        session_id: &str,
+        payload: serde_json::Value,
+        topic_signal: Option<String>,
+        register: bool,
+    ) {
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(store);
+        let registry = make_registry();
+        if register {
+            registry.register_session(
+                session_id,
+                None,
+                topic_signal.clone().or_else(|| Some("unused".to_string())),
+            );
+        }
+        let event = make_cycle_event(event_type, session_id, payload, topic_signal);
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event },
+            store,
+            &embed,
+            &es,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(store, &embed, &vs, &es, &adapt),
+            crate::uds::UDS_CAPABILITIES,
+        )
+        .await;
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+    /// AC-02 anchor: a Start carrying tags flows hook→listener→cycle_tags for its
+    /// feature_cycle, stored as the exact submitted set.
+    #[tokio::test]
+    async fn test_cycle_start_tags_flow_from_hook_to_cycle_tags() {
+        let store = make_store().await;
+        let fc = "vnc-047-flow";
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-1",
+            serde_json::json!({"feature_cycle": fc, "tags": ["arm:A", "workflow:v1.3"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+
+        let mut tags = store.get_cycle_tags(fc).await.expect("get_cycle_tags");
+        tags.sort();
+        assert_eq!(
+            tags,
+            vec!["arm:A".to_string(), "workflow:v1.3".to_string()],
+            "start-with-tags must land the exact submitted set in cycle_tags (AC-02)"
+        );
+    }
+
+    /// AC-02 / FR-4 (R-09): a non-start event carrying tags persists NO cycle_tags rows.
+    #[tokio::test]
+    async fn test_non_start_tags_not_persisted() {
+        let store = make_store().await;
+        let fc = "vnc-047-nonstart";
+        drive_cycle_event(
+            &store,
+            CYCLE_PHASE_END_EVENT,
+            "vnc047-2",
+            serde_json::json!({"feature_cycle": fc, "tags": ["arm:A"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+        assert!(
+            store
+                .get_cycle_tags(fc)
+                .await
+                .expect("get_cycle_tags")
+                .is_empty(),
+            "tags on a non-start event must NOT persist (recorded at start only)"
+        );
+    }
+
+    /// AC-02: a re-issued identical start produces no duplicate rows and no error.
+    #[tokio::test]
+    async fn test_duplicate_start_no_dup_no_error() {
+        let store = make_store().await;
+        let fc = "vnc-047-dup";
+        let payload = serde_json::json!({"feature_cycle": fc, "tags": ["arm:A", "arm:B"]});
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-3",
+            payload.clone(),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-3",
+            payload,
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+
+        let mut tags = store.get_cycle_tags(fc).await.expect("get_cycle_tags");
+        tags.sort();
+        assert_eq!(
+            tags,
+            vec!["arm:A".to_string(), "arm:B".to_string()],
+            "duplicate start must not duplicate or error the whole set"
+        );
+    }
+
+    /// AC-02a: a re-issued start with a CHANGED set is a whole-set no-op (first set wins).
+    #[tokio::test]
+    async fn test_whole_set_once_changed_set_noop() {
+        let store = make_store().await;
+        let fc = "vnc-047-changed";
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-4",
+            serde_json::json!({"feature_cycle": fc, "tags": ["arm:A"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-4",
+            serde_json::json!({"feature_cycle": fc, "tags": ["arm:B"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+
+        assert_eq!(
+            store.get_cycle_tags(fc).await.expect("get_cycle_tags"),
+            vec!["arm:A".to_string()],
+            "changed re-start must leave EXACTLY the first set (whole-set no-op)"
+        );
+    }
+
+    /// AC-02a: a re-issued start with a SUPERSET does not accumulate.
+    #[tokio::test]
+    async fn test_whole_set_once_superset_noop() {
+        let store = make_store().await;
+        let fc = "vnc-047-superset";
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-5",
+            serde_json::json!({"feature_cycle": fc, "tags": ["A", "B"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-5",
+            serde_json::json!({"feature_cycle": fc, "tags": ["C"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+
+        let mut tags = store.get_cycle_tags(fc).await.expect("get_cycle_tags");
+        tags.sort();
+        assert_eq!(
+            tags,
+            vec!["A".to_string(), "B".to_string()],
+            "later start must not accumulate onto the frozen set"
+        );
+    }
+
+    /// AC-02a: a tagless start does NOT lock — a later tag-bearing start wins.
+    #[tokio::test]
+    async fn test_tagless_start_does_not_lock() {
+        let store = make_store().await;
+        let fc = "vnc-047-tagless";
+        // First: a tagless start (no `tags` key) — must fall to insert_cycle_event, no lock.
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-6",
+            serde_json::json!({"feature_cycle": fc, "goal": "g"}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+        assert!(
+            store
+                .get_cycle_tags(fc)
+                .await
+                .expect("get_cycle_tags")
+                .is_empty(),
+            "tagless start must not lock or write any tags"
+        );
+        // Then: a tag-bearing start — first *tags* win.
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-6",
+            serde_json::json!({"feature_cycle": fc, "tags": ["A"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+        assert_eq!(
+            store.get_cycle_tags(fc).await.expect("get_cycle_tags"),
+            vec!["A".to_string()],
+            "first *tags* win (tagless start did not burn the one-shot)"
+        );
+    }
+
+    /// R-09: a start WITHOUT tags routes to the UNCHANGED insert_cycle_event arm —
+    /// no cycle_tags rows, but the cycle_start row (and goal) still persists.
+    #[tokio::test]
+    async fn test_start_without_tags_routes_to_insert_cycle_event() {
+        let store = make_store().await;
+        let fc = "vnc-047-notags";
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-7",
+            serde_json::json!({"feature_cycle": fc, "goal": "the goal"}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+
+        assert!(
+            store
+                .get_cycle_tags(fc)
+                .await
+                .expect("get_cycle_tags")
+                .is_empty(),
+            "no tags supplied → no cycle_tags rows"
+        );
+        assert_eq!(
+            store
+                .get_cycle_start_goal(fc)
+                .await
+                .expect("get_cycle_start_goal")
+                .as_deref(),
+            Some("the goal"),
+            "goal must still persist on the plain insert_cycle_event arm"
+        );
+    }
+
+    /// Payload contract robustness: a malformed `tags` payload (object, not array)
+    /// degrades to "no tags" and does not panic — routed to insert_cycle_event.
+    #[tokio::test]
+    async fn test_malformed_tags_payload_degrades() {
+        let store = make_store().await;
+        let fc = "vnc-047-malformed";
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-8",
+            serde_json::json!({"feature_cycle": fc, "tags": {"not": "an array"}}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+        assert!(
+            store
+                .get_cycle_tags(fc)
+                .await
+                .expect("get_cycle_tags")
+                .is_empty(),
+            "malformed tags payload must degrade to no-tags, no panic"
+        );
+    }
+
+    /// AC-EXTRA-2 / R-04: an evicted/absent-session start (NOT registered) still
+    /// persists tags for the correct feature_cycle via the #519 pre-register — the
+    /// gate is !feature_cycle.is_empty(), not registry presence.
+    #[tokio::test]
+    async fn test_evicted_session_tags_persist() {
+        let store = make_store().await;
+        let fc = "vnc-047-evicted";
+        // register = false → session absent from the registry.
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-absent",
+            serde_json::json!({"feature_cycle": fc, "tags": ["arm:A"]}),
+            Some(fc.to_string()),
+            false,
+        )
+        .await;
+        assert_eq!(
+            store.get_cycle_tags(fc).await.expect("get_cycle_tags"),
+            vec!["arm:A".to_string()],
+            "absent-session start with a feature_cycle must still persist tags (#519 pre-register)"
+        );
+    }
+
+    /// AC-EXTRA-2 / R-04.2: an empty feature_cycle is the single documented silent
+    /// drop — persistence is gated off, no orphan rows.
+    #[tokio::test]
+    async fn test_empty_feature_cycle_no_orphan_rows() {
+        let store = make_store().await;
+        // No feature_cycle in payload, no topic_signal → empty feature_cycle → gated off.
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-empty",
+            serde_json::json!({"tags": ["arm:A"]}),
+            None,
+            true,
+        )
+        .await;
+        assert!(
+            store
+                .get_cycle_tags("")
+                .await
+                .expect("get_cycle_tags")
+                .is_empty(),
+            "empty feature_cycle must persist nothing (single documented drop)"
+        );
+    }
+
+    /// AC-05 anchor (assembled read+surface): drive a Start with tags through the
+    /// hook chain, then populate a report via the REAL get_cycle_tags seam and
+    /// assert the tags appear in BOTH the rendered markdown AND the serialized JSON.
+    #[tokio::test]
+    async fn test_review_surfaces_tags_json_and_markdown_assembled() {
+        let store = make_store().await;
+        let fc = "vnc-047-surface";
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-9",
+            serde_json::json!({"feature_cycle": fc, "tags": ["arm:A", "workflow:v1.3"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+
+        // 1) REAL read via the extracted seam (not a hand-built literal).
+        let mut report = blank_report(fc);
+        crate::mcp::tools::populate_review_tags(&store, fc, &mut report).await;
+        let mut got = report.tags.clone();
+        got.sort();
+        assert_eq!(
+            got,
+            vec!["arm:A".to_string(), "workflow:v1.3".to_string()],
+            "populate_review_tags must load the stored set from cycle_tags"
+        );
+
+        // 2) Markdown surface (C9): the ## Tags section lists both tags. Assert
+        // through the PUBLIC formatter (its real call site), not the private fn.
+        let rendered = crate::mcp::response::format_retrospective_markdown(&report);
+        let md: String = rendered
+            .content
+            .iter()
+            .filter_map(|c| c.as_text().map(|t| t.text.clone()))
+            .collect();
+        assert!(
+            md.contains("## Tags"),
+            "markdown must contain the ## Tags section: {md}"
+        );
+        assert!(md.contains("- arm:A"), "markdown must list arm:A: {md}");
+        assert!(
+            md.contains("- workflow:v1.3"),
+            "markdown must list workflow:v1.3: {md}"
+        );
+
+        // 3) JSON surface (C7): the serialized report carries the tags.
+        let json = serde_json::to_string(&report).expect("serialize report");
+        assert!(
+            json.contains("\"tags\""),
+            "JSON must include the tags key: {json}"
+        );
+        assert!(json.contains("arm:A"), "JSON must include arm:A: {json}");
+        assert!(
+            json.contains("workflow:v1.3"),
+            "JSON must include workflow:v1.3: {json}"
+        );
+    }
+
+    /// AC-EXTRA-2 (degrade): a get_cycle_tags read error degrades report.tags to []
+    /// and the populate seam never panics — review still succeeds. Modeled by
+    /// closing the pool before the read (T-RES-03).
+    #[tokio::test]
+    async fn test_review_degrades_to_empty_on_getter_error() {
+        let store = make_store().await;
+        let fc = "vnc-047-degrade";
+        drive_cycle_event(
+            &store,
+            CYCLE_START_EVENT,
+            "vnc047-10",
+            serde_json::json!({"feature_cycle": fc, "tags": ["arm:A"]}),
+            Some(fc.to_string()),
+            true,
+        )
+        .await;
+        // Force the read to error: get_cycle_tags reads the write_pool (db.rs:516);
+        // closing it makes the subsequent query fail (T-RES-03 model).
+        store.write_pool_server().close().await;
+
+        let mut report = blank_report(fc);
+        // Must not panic; degrades to [].
+        crate::mcp::tools::populate_review_tags(&store, fc, &mut report).await;
+        assert!(
+            report.tags.is_empty(),
+            "get_cycle_tags error must degrade report.tags to [] (review still succeeds)"
         );
     }
 

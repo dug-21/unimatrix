@@ -51,7 +51,11 @@ use crate::error::{Result, StoreError};
 ///     and the transcript fold (transcript_* + signal_class_counts_json). These change
 ///     CycleReviewRecord JSON round-trip fidelity, so pre-v5 rows are flagged stale and
 ///     recomputed via #758 guarded-recompute when source data is present.
-pub const SUMMARY_SCHEMA_VERSION: u32 = 5;
+///   - vnc-047: bumped 5 → 6; adds `RetrospectiveReport.tags` (opaque run-identity labels
+///     read from `cycle_tags` at review time). A round-trip FIDELITY STAMP — NO DB migration.
+///     `#[serde(default)]` on the field makes v5 blobs (no `tags` key) backward-readable as an
+///     empty vec (AC-08 no-back-fill is non-fatal).
+pub const SUMMARY_SCHEMA_VERSION: u32 = 6;
 
 /// 4MB ceiling for stored `summary_json` (NFR-03).
 const SUMMARY_JSON_MAX_BYTES: usize = 4 * 1024 * 1024;
@@ -706,18 +710,17 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // CRS-V5-U-01 (replaces CRS-V24-U-01): SUMMARY_SCHEMA_VERSION is 5
+    // CRS-V6-U-01 (replaces CRS-V5-U-01): SUMMARY_SCHEMA_VERSION is 6
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_summary_schema_version_is_5() {
+    fn test_summary_schema_version_is_6() {
         assert_eq!(
-            SUMMARY_SCHEMA_VERSION, 5u32,
-            "SUMMARY_SCHEMA_VERSION must be 5 (bumped in crt-055: adds rank-1/2/3 \
-             aggregate columns, dual reload (context_reload_pct basis points, \
-             compaction_count, compaction_reread_count), and the transcript fold \
-             (transcript_* + signal_class_counts_json), changing CycleReviewRecord \
-             JSON round-trip fidelity)"
+            SUMMARY_SCHEMA_VERSION, 6u32,
+            "SUMMARY_SCHEMA_VERSION must be 6 (bumped in vnc-047: adds \
+             RetrospectiveReport.tags opaque run-identity labels read from cycle_tags \
+             at review time, changing CycleReviewRecord JSON round-trip fidelity; \
+             #[serde(default)] keeps v5 blobs backward-readable)"
         );
     }
 
@@ -1426,7 +1429,7 @@ mod tests {
             .expect("get must not error")
             .expect("must return Some after store");
 
-        assert_eq!(fetched.schema_version, 5, "schema_version round-trip");
+        assert_eq!(fetched.schema_version, 6, "schema_version round-trip (vnc-047: v6)");
         // Every v5 metric column reads back as the DB DEFAULT 0.
         assert_eq!(fetched.phase_count, 0);
         assert_eq!(fetched.phase_transition_count, 0);
@@ -2525,7 +2528,7 @@ mod tests {
             .await
             .expect("get")
             .expect("Some");
-        assert_eq!(after_a.schema_version, 5, "written at schema_version 5");
+        assert_eq!(after_a.schema_version, 6, "written at schema_version 6 (vnc-047)");
         assert_eq!(after_a.phase_count, 101, "non-zero v5 column persisted");
         assert_eq!(
             after_a.context_reload_pct, 3750,

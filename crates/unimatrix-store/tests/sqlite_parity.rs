@@ -1050,14 +1050,15 @@ async fn test_sql_analytics_query() {
 // Updated to 28 for vnc-030 (observations.topic_source column, ADR-005).
 // Updated to 29 for crt-054 (compaction_events table + idx_compaction_events_session).
 // Updated to 30 for crt-055 (cycle_review_index v5 aggregate columns).
+// Updated to 31 for vnc-047 (cycle_tags junction + idx_cycle_tags_tag).
 #[tokio::test]
-async fn test_schema_version_is_30() {
+async fn test_schema_version_is_31() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 30,
-        "schema version must be 30 after crt-055 (was 29 after crt-054)"
+        version, 31,
+        "schema version must be 31 after vnc-047 (was 30 after crt-055)"
     );
     store.close().await.unwrap();
 }

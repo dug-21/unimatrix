@@ -354,6 +354,172 @@ impl SqlxStore {
         Ok(())
     }
 
+    /// Persist a `cycle_start` event row AND the whole submitted tag set in ONE atomic,
+    /// race-safe transaction, enforcing WHOLE-SET-ONCE (vnc-047, ADR-002).
+    ///
+    /// The first tag-bearing start for a `feature_cycle` (== `cycle_id`) freezes the
+    /// ENTIRE tag set; every later start (same / subset / superset / different set) is a
+    /// whole-set no-op — the set is never merged or accumulated. A tagless start does NOT
+    /// lock (routed away by the listener; if invoked here with an empty slice it writes no
+    /// `cycle_tags` rows and creates no lock sentinel).
+    ///
+    /// Freeze mechanism: a row-existence guard
+    /// `SELECT EXISTS(SELECT 1 FROM cycle_tags WHERE feature_cycle = ?1)` inside the txn.
+    /// The transaction is opened with **`BEGIN IMMEDIATE`** on a single dedicated
+    /// connection (NOT sqlx's default DEFERRED `pool.begin()`) so the write lock is taken
+    /// up front and the guard is TOCTOU-safe against a concurrent same-cycle start (R-15) —
+    /// the pattern proven at `unimatrix-server/src/import/mod.rs:196`. Running the inner
+    /// statements through the pool would dispatch them to a different connection that cannot
+    /// see the open txn (SQLITE_BUSY, code 5).
+    ///
+    /// The `cycle_start` INSERT is byte-identical to `insert_cycle_event` — the same 8
+    /// columns, `event_type` fixed to `'cycle_start'`, `goal_embedding` left NULL and
+    /// populated later by the existing `update_cycle_start_goal_embedding` UPDATE (Step 6).
+    ///
+    /// Value-opacity: the guard reads row EXISTENCE only, never tag values or namespaces.
+    /// Tag writes use parameterized binds only (the ONLY SQLi defense, since opacity forbids
+    /// validation). A duplicate tag WITHIN one submitted set is absorbed by
+    /// `ON CONFLICT(feature_cycle, tag) DO NOTHING` (no txn abort) — this is intra-set
+    /// dedup, NOT the whole-set freeze.
+    ///
+    /// Fire-and-forget (ADR-003): any DB error rolls back the whole unit and returns
+    /// `StoreError::Database`; the caller only `tracing::warn`s. Returns `Ok(())` on both
+    /// wrote-set and frozen-skip — the distinction surfaces ONLY as the C13 trace line
+    /// (frozen-skip is not caller-returnable).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn insert_cycle_start_with_tags(
+        &self,
+        cycle_id: &str, // == feature_cycle
+        seq: i64,
+        phase: Option<&str>,
+        outcome: Option<&str>,
+        next_phase: Option<&str>,
+        timestamp: i64,
+        goal: Option<&str>,
+        tags: &[String], // caller-filtered non-empty (C4); still defensively skip empties
+    ) -> Result<()> {
+        let mut conn = self
+            .write_pool
+            .acquire()
+            .await
+            .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        // Open a race-safe write transaction: BEGIN IMMEDIATE takes the write lock now,
+        // so the EXISTS guard below is TOCTOU-safe against a concurrent same-cycle start.
+        sqlx::query("BEGIN IMMEDIATE")
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        // (a) cycle_start event row — byte-identical INSERT to insert_cycle_event,
+        //     event_type fixed to 'cycle_start', goal_embedding left NULL.
+        if let Err(e) = sqlx::query(
+            "INSERT INTO cycle_events
+                (cycle_id, seq, event_type, phase, outcome, next_phase, timestamp, goal)
+             VALUES (?1, ?2, 'cycle_start', ?3, ?4, ?5, ?6, ?7)",
+        )
+        .bind(cycle_id)
+        .bind(seq)
+        .bind(phase)
+        .bind(outcome)
+        .bind(next_phase)
+        .bind(timestamp)
+        .bind(goal)
+        .execute(&mut *conn)
+        .await
+        {
+            let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+            return Err(crate::error::StoreError::Database(e.into()));
+        }
+
+        // (b) WHOLE-SET-ONCE guard — existence only, never reads tag VALUES (value-opacity).
+        let exists: bool = match sqlx::query_scalar::<_, i64>(
+            "SELECT EXISTS(SELECT 1 FROM cycle_tags WHERE feature_cycle = ?1)",
+        )
+        .bind(cycle_id)
+        .fetch_one(&mut *conn)
+        .await
+        {
+            Ok(v) => v != 0,
+            Err(e) => {
+                let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+                return Err(crate::error::StoreError::Database(e.into()));
+            }
+        };
+
+        let wrote_set = if !exists {
+            // First tag-bearing start → freeze the whole submitted set.
+            for tag in tags {
+                if tag.is_empty() {
+                    continue; // defensive; C4 already filtered whitespace-only
+                }
+                if let Err(e) = sqlx::query(
+                    "INSERT INTO cycle_tags (feature_cycle, tag) VALUES (?1, ?2)
+                     ON CONFLICT(feature_cycle, tag) DO NOTHING",
+                )
+                .bind(cycle_id) // PARAMETERIZED — no interpolation (SQLi defense)
+                .bind(tag)
+                .execute(&mut *conn)
+                .await
+                {
+                    let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+                    return Err(crate::error::StoreError::Database(e.into()));
+                }
+            }
+            true
+        } else {
+            // Set already frozen → skip the ENTIRE tag write (no merge, no accumulate).
+            false
+        };
+
+        if let Err(e) = sqlx::query("COMMIT").execute(&mut *conn).await {
+            let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+            return Err(crate::error::StoreError::Database(e.into()));
+        }
+
+        // C13 best-effort freeze-outcome trace (NON-GATING) — the ONLY observation point
+        // for frozen-skip; not returned to the caller (fixed Result<()> signature).
+        if wrote_set {
+            tracing::info!(
+                feature_cycle = %cycle_id,
+                n = tags.len(),
+                "cycle_tags: recorded N labels for feature_cycle"
+            );
+        } else {
+            tracing::info!(
+                feature_cycle = %cycle_id,
+                n = tags.len(),
+                "cycle_tags: set already frozen for feature_cycle, N submitted labels ignored"
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Read the frozen tag set for a `feature_cycle`, deterministically ordered (vnc-047,
+    /// ADR-004; parity `get_cycle_start_goal`).
+    ///
+    /// `SELECT tag FROM cycle_tags WHERE feature_cycle = ?1 ORDER BY tag` — `ORDER BY tag`
+    /// gives a stable order (via `idx_cycle_tags_tag`) for both JSON and markdown output,
+    /// independent of insert order or rowid. Reads via `write_pool` for read-your-writes
+    /// consistency (parity `get_cycle_start_goal`). Returns an empty `Vec` when no rows
+    /// exist (not an error). Value-opaque: tags returned byte-for-byte.
+    ///
+    /// Reads `cycle_tags` (source of truth), NOT the `summary_json` mirror. On DB error the
+    /// caller (review handler) degrades `report.tags` to `[]` + `tracing::warn`; review
+    /// never fails on tag read.
+    pub async fn get_cycle_tags(&self, feature_cycle: &str) -> Result<Vec<String>> {
+        let rows: Vec<String> = sqlx::query_scalar::<_, String>(
+            "SELECT tag FROM cycle_tags WHERE feature_cycle = ?1 ORDER BY tag",
+        )
+        .bind(feature_cycle)
+        .fetch_all(&self.write_pool)
+        .await
+        .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        Ok(rows)
+    }
+
     /// Load the goal from the `cycle_start` event row for a given `cycle_id` (col-025).
     ///
     /// Returns:
@@ -605,6 +771,24 @@ pub(crate) async fn create_tables_if_needed(
     )
     .execute(&mut *conn)
     .await?;
+
+    // cycle_tags: durable source of truth for context_cycle whole-set-once run-identity
+    // tags (vnc-047, ADR-001). entry_tags re-keyed entry_id → feature_cycle, with NO FK
+    // (feature_cycle is free-text, no parent table — parity with cycle_events.cycle_id).
+    // Kept lexically beside entry_tags so this fresh-create DDL stays parallel with the
+    // v30→v31 migration DDL (guards DDL drift between the two routes, #376).
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS cycle_tags (
+            feature_cycle TEXT NOT NULL,
+            tag           TEXT NOT NULL,
+            PRIMARY KEY (feature_cycle, tag)
+        )",
+    )
+    .execute(&mut *conn)
+    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_cycle_tags_tag ON cycle_tags(tag)")
+        .execute(&mut *conn)
+        .await?;
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS vector_map (

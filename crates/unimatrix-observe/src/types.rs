@@ -435,6 +435,13 @@ pub struct RetrospectiveReport {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub goal: Option<String>,
 
+    /// Opaque run-identity labels for this cycle, read from `cycle_tags` at review time (vnc-047).
+    /// REQUIRED field (not `Option`) so the compiler flags every construction site.
+    /// `#[serde(default)]` ONLY (NO `skip_serializing_if`) → always serialized; a v5 blob with
+    /// no `tags` key deserializes to an empty vec (backward-read, AC-08).
+    #[serde(default)]
+    pub tags: Vec<String>,
+
     /// Inferred cycle type from goal keywords (e.g., "Design", "Delivery") (col-026).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cycle_type: Option<String>,
@@ -985,6 +992,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -1064,6 +1072,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -1100,6 +1109,96 @@ mod tests {
         let attr = back.attribution.expect("attribution present");
         assert_eq!(attr.attributed_session_count, 3);
         assert_eq!(attr.total_session_count, 4);
+    }
+
+    // ── vnc-047: RetrospectiveReport.tags (SUMMARY v6, ADR-004) ──────────────
+
+    /// Build a minimal RetrospectiveReport carrying the given tags (all other
+    /// fields at their empty/None defaults). Used by the vnc-047 tag tests.
+    fn report_with_tags(feature_cycle: &str, tags: Vec<String>) -> RetrospectiveReport {
+        RetrospectiveReport {
+            feature_cycle: feature_cycle.to_string(),
+            session_count: 0,
+            total_records: 0,
+            metrics: MetricVector::default(),
+            hotspots: vec![],
+            is_cached: false,
+            baseline_comparison: None,
+            entries_analysis: None,
+            narratives: None,
+            recommendations: vec![],
+            session_summaries: None,
+            feature_knowledge_reuse: None,
+            rework_session_count: None,
+            context_reload_pct: None,
+            attribution: None,
+            phase_narrative: None,
+            goal: None,
+            cycle_type: None,
+            attribution_path: None,
+            is_in_progress: None,
+            phase_stats: None,
+            curation_health: None,
+            tags,
+        }
+    }
+
+    /// AC-05b: populated tags round-trip through serialize → deserialize intact,
+    /// and the JSON always carries a `tags` key (no skip_serializing_if).
+    #[test]
+    fn test_retrospective_report_tags_roundtrip() {
+        let report = report_with_tags(
+            "vnc-047-rt",
+            vec!["arm:A".to_string(), "workflow:v1.3".to_string()],
+        );
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(
+            json.contains("\"tags\""),
+            "serialized JSON must include the `tags` key (always-serialized field): {json}"
+        );
+        let back: RetrospectiveReport = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(
+            back.tags,
+            vec!["arm:A".to_string(), "workflow:v1.3".to_string()],
+            "tags must survive the serde round-trip verbatim"
+        );
+    }
+
+    /// AC-05b backward-read (R-02 scenario 4): a v5-era summary_json blob with NO
+    /// `tags` key deserializes to an empty vec, no error — this is what makes the
+    /// no-back-fill posture (AC-08) non-fatal. Assert explicitly, not by inference.
+    #[test]
+    fn test_v5_blob_deserializes_tags_default_empty() {
+        // Simulate a v5 blob by serializing a report and stripping the `tags` key.
+        let report = report_with_tags("vnc-047-backread", vec![]);
+        let mut value = serde_json::to_value(&report).expect("to_value");
+        value
+            .as_object_mut()
+            .expect("report serializes to a JSON object")
+            .remove("tags");
+        assert!(
+            value.get("tags").is_none(),
+            "precondition: the simulated v5 blob has no `tags` key"
+        );
+
+        let back: RetrospectiveReport = serde_json::from_value(value)
+            .expect("v5 blob (no tags key) must deserialize, not error");
+        assert!(
+            back.tags.is_empty(),
+            "a v5 blob without a `tags` key must backward-read to an empty vec (#[serde(default)])"
+        );
+    }
+
+    /// AC-05d: `tags` is a real surfaced field — it MUST serialize even when empty
+    /// (contrast the crate's must-NOT-serialize transient-field guards).
+    #[test]
+    fn test_tags_field_is_not_transient() {
+        let report = report_with_tags("vnc-047-transient", vec![]);
+        let json = serde_json::to_string(&report).expect("serialize");
+        assert!(
+            json.contains("\"tags\""),
+            "empty `tags` must still serialize to a `tags` key (no skip_serializing_if): {json}"
+        );
     }
 
     #[test]
@@ -1401,6 +1500,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
         let json = serde_json::to_string(&report).expect("serialize");
         assert!(!json.contains("\"goal\""), "goal should be absent");
@@ -1447,6 +1547,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
         report.goal = Some("Design the API surface".to_string());
         report.cycle_type = Some("Design".to_string());
@@ -1543,6 +1644,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
         report.phase_stats = None;
         let json = serde_json::to_string(&report).expect("serialize");
@@ -1577,6 +1679,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
         report.phase_stats = Some(vec![]);
         let json = serde_json::to_string(&report).expect("serialize");
@@ -1994,6 +2097,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None,
+            tags: Vec::new(), // vnc-047
         };
         let json = serde_json::to_string(&report).expect("serialize");
         assert!(

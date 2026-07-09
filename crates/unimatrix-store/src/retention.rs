@@ -575,11 +575,37 @@ mod tests {
             .expect("insert observation_phase_metrics");
         }
 
+        // Seed cycle_tags (vnc-047, protected by OMISSION — must survive BOTH GC surfaces).
+        //   - For a purgeable cycle: proves survival across gc_cycle_activity(cycle).
+        //   - For an unattributed feature_cycle with no owning session: proves survival
+        //     across gc_unattributed_activity() (which never references cycle_tags).
+        {
+            let mut conn = store.write_pool_server().acquire().await.expect("acquire");
+            for (fc, tag) in &[
+                ("purgeable-1", "arm:A"),
+                ("purgeable-1", "run-mode:ci"),
+                ("purgeable-2", "arm:B"),
+                ("unattributed-tags", "arm:C"),
+            ] {
+                sqlx::query("INSERT INTO cycle_tags (feature_cycle, tag) VALUES (?1, ?2)")
+                    .bind(fc)
+                    .bind(tag)
+                    .execute(&mut *conn)
+                    .await
+                    .expect("seed cycle_tags");
+            }
+        }
+
         // Snapshot protected table counts before GC.
         let entries_before = count_table(&store, "entries").await;
         let cycle_events_before = count_table(&store, "cycle_events").await;
         let cycle_review_before = count_table(&store, "cycle_review_index").await;
         let phase_metrics_before = count_table(&store, "observation_phase_metrics").await;
+        let cycle_tags_before = count_table(&store, "cycle_tags").await;
+        assert_eq!(
+            cycle_tags_before, 4,
+            "cycle_tags must be seeded with 4 rows before GC"
+        );
 
         // Add sessions + observations for purgeable cycles.
         for cycle in &["purgeable-1", "purgeable-2"] {
@@ -593,6 +619,16 @@ mod tests {
             .await;
             insert_observation(&store, &session_id).await;
         }
+
+        // POSITIVE CONTROL for gc_unattributed_activity: a closed session with a NULL
+        // feature_cycle MUST be purged (feature_cycle IS NULL AND status != 0).
+        insert_session_direct(
+            &store,
+            "unattrib-sess",
+            None,
+            SessionLifecycleStatus::Completed,
+        )
+        .await;
 
         // Run full GC pass (K=1: only most recent retained).
         let (purgeable, _) = store
@@ -633,6 +669,34 @@ mod tests {
             count_table(&store, "observation_phase_metrics").await,
             phase_metrics_before,
             "observation_phase_metrics count must be unchanged after GC"
+        );
+
+        // vnc-047: cycle_tags is protected by OMISSION from every DELETE path. It must
+        // survive BOTH gc_cycle_activity (purgeable-1/purgeable-2) and
+        // gc_unattributed_activity, including tags for a purged cycle.
+        assert_eq!(
+            count_table(&store, "cycle_tags").await,
+            cycle_tags_before,
+            "cycle_tags count must be unchanged after GC across BOTH surfaces (protected by omission)"
+        );
+
+        // POSITIVE CONTROLS (anti-vacuous): GC actually ran and purged the sessions.
+        //   Surface 1 (gc_cycle_activity): purgeable cycle sessions are gone.
+        assert_eq!(
+            count_for_session(&store, "sessions", "purgeable-1-sess").await,
+            0,
+            "gc_cycle_activity must purge purgeable-1's session (positive control)"
+        );
+        assert_eq!(
+            count_for_session(&store, "sessions", "purgeable-2-sess").await,
+            0,
+            "gc_cycle_activity must purge purgeable-2's session (positive control)"
+        );
+        //   Surface 2 (gc_unattributed_activity): the NULL-feature_cycle session is gone.
+        assert_eq!(
+            count_for_session(&store, "sessions", "unattrib-sess").await,
+            0,
+            "gc_unattributed_activity must purge the unattributed session (positive control)"
         );
 
         // Entry must still be retrievable.

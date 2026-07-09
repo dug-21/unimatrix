@@ -508,6 +508,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -553,6 +554,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
