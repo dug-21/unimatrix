@@ -5676,3 +5676,50 @@ def test_context_tag_persists_across_restart(tmp_path):
     )
     assert_search_contains(lookup, entry_id)
     client2.shutdown()
+
+
+# === vnc-047: bare-MCP no-second-route (AC-EXTRA-1) =========================
+
+def test_bare_mcp_cycle_tags_not_persisted(server):
+    """L-VNC047-01 (AC-EXTRA-1, R-06/SR-03): the bare MCP context_cycle handler is
+    session-unaware and persists NOTHING for tags — tag persistence is hook-path only.
+    Fire a bare context_cycle(start, tags=[...]) over MCP, then context_cycle_review the
+    same feature_cycle: the review must show NO tags. This is the ONE positive statement
+    the Python harness can make about the hook-only constraint; the positive persistence
+    path is proven by the Rust assembled tests in listener.rs."""
+    import json as _json
+
+    topic = "vnc047-no-second-route"
+    resp = server.call_tool(
+        "context_cycle",
+        {"type": "start", "topic": topic, "tags": ["arm:should-not-persist", "mode:bare"], "agent_id": "human"},
+    )
+    assert_tool_success(resp)
+
+    review = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    # The bare MCP context_cycle handler persists NOTHING for this cycle — not tags, and
+    # not even a cycle_events / sessions row (those ride the hook path). So review either
+    # (a) errors with "no observation data" for this feature_cycle — which ITSELF proves no
+    # second persistence route exists — or (b) succeeds but surfaces zero tags. Both satisfy
+    # AC-EXTRA-1; the one outcome that would FAIL it is the tag strings appearing in review.
+    if review.error is not None:
+        msg = str(review.error.get("message", ""))
+        assert "No observation data" in msg or "observation" in msg.lower(), (
+            f"AC-EXTRA-1: unexpected review error (expected no-observation-data): {review.error!r}"
+        )
+        assert "should-not-persist" not in msg, (
+            "AC-EXTRA-1: bare-handler tag strings must not appear anywhere in the review response"
+        )
+        return
+    text = get_result_text(review)
+    assert "should-not-persist" not in text, (
+        "AC-EXTRA-1: bare MCP handler tag strings must not appear in review"
+    )
+    try:
+        data = _json.loads(text)
+        tags = data.get("tags", [])
+        assert not tags, (
+            f"AC-EXTRA-1: bare MCP handler must NOT persist tags; review returned tags={tags!r}"
+        )
+    except _json.JSONDecodeError:
+        assert "## Tags" not in text, "AC-EXTRA-1: bare MCP path must not surface a ## Tags section"
