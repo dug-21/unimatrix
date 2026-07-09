@@ -109,27 +109,32 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
 
 **Check set:**
 
-1. **Risk mitigation proof** — Do test results prove identified risks are mitigated?
+1. **Behavioral-outcome proof (from the scope behavioral lens)** — Does a passing test prove EACH User-Facing Entry Point & Behavioral Outcome in `SCOPE-RISK-ASSESSMENT.md`, driven from the user's actual entry point?
+   - Every outcome in the scope behavioral lens maps to a passing test that drives the user's real invocation path (NOT a seam one layer beneath it)
+   - An outcome with no such passing test, one "proven" only by a sub-entry-point/seam test, or one tested only to CONFIRM a no-op on a user path, is a FAIL — not a pass
+   - This check traces to the SCOPE behavioral lens (authored independent of the implementation) — it is what breaks the closed design→test→gate loop that ships green while the user's path silently fails (vnc-047 / #944)
+
+2. **Risk mitigation proof** — Do test results prove identified risks are mitigated?
    - RISK-COVERAGE-REPORT.md maps test results to risks
    - Each risk has a corresponding passing test
    - No identified risks lack coverage
 
-2. **Test coverage completeness** — Does coverage match the Risk-Based Test Strategy?
+3. **Test coverage completeness** — Does coverage match the Risk-Based Test Strategy?
    - All risk-to-scenario mappings from Phase 2 are exercised
    - Integration tests cover cross-component risks
    - Edge cases from risk analysis are tested
 
-3. **Specification compliance** — Does delivered code match the approved Specification?
+4. **Specification compliance** — Does delivered code match the approved Specification?
    - All functional requirements implemented and tested
    - Non-functional requirements verified where measurable
    - Acceptance criteria from ACCEPTANCE-MAP.md verified
 
-4. **Architecture compliance** — Does the system match the approved Architecture?
+5. **Architecture compliance** — Does the system match the approved Architecture?
    - Component structure matches architecture design
    - Integration points work as specified
    - No architectural drift from approved design
 
-5. **Knowledge stewardship compliance** — Did test-phase agents fulfill stewardship obligations?
+6. **Knowledge stewardship compliance** — Did test-phase agents fulfill stewardship obligations?
    - Tester agent report contains a `## Knowledge Stewardship` section
    - Report has `Queried:` entries (evidence of procedure/pattern queries)
    - Report has `Stored:` or "nothing novel to store -- {reason}" entries

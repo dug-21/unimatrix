@@ -62,6 +62,17 @@ Write to `product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md` (at feature ro
 ```markdown
 # Scope Risk Assessment: {feature-id}
 
+## User-Facing Entry Points & Behavioral Outcomes
+
+The behavioral contract the architecture and tests must BOTH satisfy — authored from SCOPE alone, INDEPENDENT of any implementation path (there is no architecture yet; do not assume one). List every way a user/agent actually invokes this feature; for each, the outcome they must observe.
+
+| Entry point (how the user/agent actually invokes it) | Path-independent outcome they must observe |
+|---|---|
+| e.g. `context_cycle(type=start, tags=[…])` MCP tool call | those tags are visible in `context_cycle_review` |
+
+- State each outcome as what the user OBSERVES, never as an implementation path ("visible in review", NOT "tags ride the hook path"). The path is the architect's to choose; the outcome is fixed here.
+- If an entry point accepts a param/input, its outcome MUST be defined for THAT entry point. An entry point that accepts input and silently no-ops is a Path-Divergence Risk (below), not an acceptable design.
+
 ## Technology Risks
 
 | Risk ID | Risk | Severity | Likelihood | Recommendation |
@@ -80,6 +91,14 @@ Write to `product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md` (at feature ro
 |---------|------|----------|------------|----------------|
 | SR-XX | {interaction with existing components} | ... | ... | {what to watch for} |
 
+## Path-Divergence Risks
+
+For each entry point above: could the feature work on one path (an internal seam) while the path the user actually invokes silently fails or no-ops? The "works on path A, user invokes path B" class — the one the closed design→test→gate loop cannot catch on its own.
+
+| Risk ID | Entry point | Divergence (path that works vs. path the user invokes) | Recommendation |
+|---|---|---|---|
+| SR-XX | … | … | satisfy the outcome from the invoked path; accepted-but-inert input must fail loud, never silently drop |
+
 ## Assumptions
 
 {Assumptions in SCOPE.md that, if wrong, would invalidate the approach. Each should reference the specific SCOPE.md section.}
@@ -96,6 +115,8 @@ Write to `product/features/{feature-id}/SCOPE-RISK-ASSESSMENT.md` (at feature ro
 1. **Product-Level, Not Architecture-Level** — You don't know the architecture yet. Focus on risks inherent in the scope itself: technology choices implied by the scope, dependency risks, scope ambiguities, integration surface with existing code.
 
 2. **Inform, Don't Block** — Your output feeds into design. Flag risks with recommendations, but don't recommend scope changes. The architect addresses risks through design; the spec writer addresses them through constraints.
+
+2b. **Outcomes are Path-Independent; Never Assume an Implementation.** State each behavioral outcome as what the user observes, not how it's delivered — you have no architecture yet, so assuming one ("tags flow through the hook path") is the exact miss that ships a feature green while the user's real path silently fails. (vnc-047 / #944: this pass *assumed* every cycle start rides the hook and blessed the MCP-path tag-drop.) An entry point that accepts input it will not honor is a path-divergence risk, not a design choice.
 
 3. **Concise** — Under 100 lines. Tables over prose. One recommendation per risk.
 
@@ -173,6 +194,16 @@ Write to `product/features/{feature-id}/RISK-TEST-STRATEGY.md` (at feature root 
 ### R-02: {Risk Description}
 ...
 
+## Behavioral-Outcome Coverage (from the scope behavioral lens)
+
+Every entry point + outcome in SCOPE-RISK-ASSESSMENT.md's behavioral lens gets a REQUIRED scenario that proves the outcome FROM the user's actual entry point — independent of the internal path the architecture chose. IN ADDITION to component/integration coverage.
+
+| Outcome (from scope lens) | Entry point | Required scenario (drives the real entry point, asserts the outcome) |
+|---|---|---|
+| … | … | … |
+
+A test that proves the outcome one layer BENEATH the user's entry point (a seam/component test) does NOT discharge this — the scenario must drive the entry point the user invokes.
+
 ## Integration Risks
 
 {Risks specific to component interactions, boundary conditions, data flow}
@@ -226,6 +257,8 @@ Write to `product/features/{feature-id}/RISK-TEST-STRATEGY.md` (at feature root 
 
 7. **Security is a Risk Category** — For every component that accepts external input, explicitly assess: what untrusted data enters, what damage malformed input could cause, and what the blast radius is if the component is compromised. Serialization, file paths, and query parameters are common attack surfaces.
 
+8. **Behavioral Outcomes Are Proven From the User's Entry Point.** Carry every outcome from the scope behavioral lens into a required scenario driving the USER's invocation path and asserting the observed outcome — not a seam one layer beneath it. An outcome proven only on an internal path while the user's path is untested (or tested to confirm a no-op) is the vnc-047 / #944 failure. Accepted-but-inert input on a user path is a fail-loud requirement, not a passing state.
+
 ### What You Return (Architecture-Risk)
 
 - RISK-TEST-STRATEGY.md path
@@ -250,6 +283,9 @@ When part of a swarm, write your agent report to `product/features/{feature-id}/
 - [ ] SCOPE-RISK-ASSESSMENT.md written to feature root
 - [ ] Document is under 100 lines
 - [ ] No architecture-level risks — only product/scope-level risks
+- [ ] User-Facing Entry Points & Behavioral Outcomes section present — every entry point a user/agent actually invokes is listed with its path-independent outcome
+- [ ] No outcome stated as an implementation path (no "rides the hook path" style)
+- [ ] Path-Divergence Risks assessed — any accept-but-no-op on a user path flagged fail-loud, never blessed
 - [ ] No placeholder risks — each risk is specific to this feature
 
 ## Knowledge Stewardship
@@ -284,4 +320,6 @@ Include in your agent report:
 - [ ] No placeholder risks — each risk is specific to this feature
 - [ ] Security Risks section is present — untrusted inputs and blast radius assessed
 - [ ] Scope Risk Traceability table is present — every SR-XX risk has a row
+- [ ] Behavioral-Outcome Coverage section present — every scope-lens outcome maps to a scenario that drives the user's real entry point
+- [ ] No behavioral outcome is discharged solely by a sub-entry-point/seam test
 - [ ] Knowledge Stewardship report block included

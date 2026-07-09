@@ -47,7 +47,7 @@ Each message batches ALL related operations of the same type:
 - NO code changes. NO file edits outside `product/features/`
 - NO launching delivery agents (uni-rust-dev, uni-pseudocode, uni-tester)
 - Agents return: artifact paths + key decisions + open questions (NOT full file contents)
-- **Artifact hierarchy**: Architecture, Specification, and Risk Strategy are the technical ground truth. The Implementation Brief is a coordination artifact derived from them — technical decisions live in source documents, the brief routes and summarizes.
+- **Artifact hierarchy**: Architecture, Specification, and Risk Strategy are the technical ground truth. The Implementation Brief is a coordination artifact derived from them — technical decisions live in source documents, the brief routes and summarizes. The **behavioral lens** (User-Facing Entry Points & Behavioral Outcomes in `SCOPE-RISK-ASSESSMENT.md`) is a BINDING input authored before and independent of the architecture: the architecture must be generated to *satisfy* each outcome from its user entry point, and the Risk Strategy must prove each outcome from that entry point. Architecture may choose the path; it may not change the outcome.
 
 ### No Git Operations in Design
 
@@ -202,7 +202,10 @@ Each specialist receives:
 Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-architect
     ...
     Read scope risk assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
-    Address SR-XX risks in your architecture decisions where applicable.
+    Your architecture MUST satisfy every User-Facing Entry Point & Behavioral Outcome
+    in it — each outcome must hold FROM the user's actual invocation path, not only an
+    internal seam. Address SR-XX risks (incl. Path-Divergence) in your decisions; an
+    entry point that accepts input it will not honor must fail loud, never silently no-op.
 
     After writing each ADR file, store it in Unimatrix:
     context_store(category: 'decision', topic: '{feature-id}', feature_cycle: '{feature-id}',
@@ -251,6 +254,9 @@ Task(
     and specification (acceptance criteria, domain models, constraints)
     to inform your risk analysis. Identify risks that are specific to
     the designed architecture — not generic risks.
+    Carry EVERY User-Facing Entry Point & Behavioral Outcome from the scope behavioral
+    lens into a required test scenario that proves the outcome FROM the user's entry
+    point (not a seam beneath it), in addition to component/integration coverage.
 
     Trace each SR-XX scope risk in the Scope Risk Traceability table."
 )
