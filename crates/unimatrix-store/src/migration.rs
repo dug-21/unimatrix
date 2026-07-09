@@ -23,7 +23,7 @@ use crate::schema::{deserialize_entry, serialize_entry};
 /// Bumped 29 → 30 by crt-055 (cycle_review_index v5 aggregate columns; ADR-001 #5051).
 /// Merge-order note: crt-054 and crt-055 ALTER disjoint tables; whoever merges first is
 /// N, the other N+1. crt-055 here assumes crt-054 landed 29 and takes 30 (lesson #4095).
-pub const CURRENT_SCHEMA_VERSION: u64 = 30;
+pub const CURRENT_SCHEMA_VERSION: u64 = 31;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -1571,10 +1571,42 @@ async fn run_main_migrations(
             }
         }
 
-        // This is now the LAST migration block, so the final INSERT OR REPLACE below
-        // stamps CURRENT_SCHEMA_VERSION (=30). Stamp 30 here too so any later block
-        // added after this one observes the correct intermediate version (#5052).
+        // The v29→v30 block is no longer the last migration block (vnc-047 added the
+        // v30→v31 block below). Stamp 30 here so the later block observes the correct
+        // intermediate version (#5052).
         sqlx::query("UPDATE counters SET value = 30 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // v30 → v31: cycle_tags junction — durable source of truth for context_cycle
+    // whole-set-once run-identity tags (vnc-047, ADR-001, #940). This is entry_tags
+    // (db.rs create_tables_if_needed) re-keyed entry_id → feature_cycle, with NO FK
+    // (feature_cycle is free-text, no parent table — parity with cycle_events.cycle_id).
+    //
+    // Idempotency guard is `CREATE TABLE/INDEX IF NOT EXISTS`: a brand-new table needs
+    // no pragma_table_info pre-check (that is only for ALTER TABLE ADD COLUMN). Re-running
+    // the block is a no-op. Do NOT stamp schema_version inside this block — the single
+    // stamp at the end of the txn (INSERT OR REPLACE below) sets CURRENT_SCHEMA_VERSION (=31).
+    // Additive DDL runs inside the existing main migrate_if_needed transaction (ADR #820).
+    if current_version < 31 {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS cycle_tags (
+                feature_cycle TEXT NOT NULL,
+                tag           TEXT NOT NULL,
+                PRIMARY KEY (feature_cycle, tag)
+            )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_cycle_tags_tag ON cycle_tags(tag)")
             .execute(&mut **txn)
             .await
             .map_err(|e| StoreError::Migration {

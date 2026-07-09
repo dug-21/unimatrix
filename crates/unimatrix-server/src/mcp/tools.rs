@@ -535,10 +535,47 @@ pub struct CycleParams {
     /// Max 1024 bytes (MAX_GOAL_BYTES). Empty/whitespace normalized to None at the
     /// handler layer (FR-11, ADR-005). Old callers omitting this field receive None.
     pub goal: Option<String>,
+    /// Optional opaque run-identity labels for the feature cycle (vnc-047).
+    ///
+    /// Only meaningful for type="start"; ignored for "phase-end" and "stop".
+    /// Set-once whole-set: the first tag-bearing start freezes the entire set; later
+    /// starts are a whole-set no-op. Values are opaque — stored verbatim, non-empty is
+    /// the only check (no vocabulary/length/prefix validation). Old callers omitting this
+    /// field receive None. Persistence rides the hook path (not this handler); this field
+    /// declares the interface and feeds only the best-effort ack echo.
+    pub tags: Option<Vec<String>>,
     /// Agent making the request.
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
+}
+
+/// Build the best-effort tag-ack phrase appended to the `context_cycle` response (vnc-047
+/// C12, ADR-007). NON-GATING: echoes the CALLER's own input — never reads stored `cycle_tags`
+/// and never surfaces the whole-set-once freeze outcome (Non-Goal #6). Applies the same
+/// non-empty filter as the write path (value-opaque; no other validation). An empty/all-blank
+/// list yields an empty string, leaving the base ack unchanged. Wording is accept-for-recording
+/// (fire-and-forget), NOT a durability guarantee — `context_cycle_review` is authoritative.
+/// `pub(crate)` for unit testability without full handler construction.
+pub(crate) fn cycle_tag_ack_phrase(cycle_type: CycleType, tags: Option<&[String]>) -> String {
+    let tag_view: Vec<&str> = tags
+        .unwrap_or(&[])
+        .iter()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if tag_view.is_empty() {
+        String::new()
+    } else if cycle_type == CycleType::Start {
+        format!(
+            " {} run-identity label(s) accepted for recording at cycle start: [{}]. \
+             Recording is fire-and-forget; use context_cycle_review to confirm.",
+            tag_view.len(),
+            tag_view.join(", ")
+        )
+    } else {
+        " tags ignored — labels are only recorded at cycle start.".to_string()
+    }
 }
 
 /// Extract the active workflow phase for a session — infallible, O(1) clone.
@@ -1612,6 +1649,14 @@ impl UnimatrixServer {
         //    vnc-045 ships NO validator, NO stub, NO config, NO call — a marked seam ONLY. The
         //    tag is written uninterpreted. Do NOT invoke validate_outcome_tags — that path is
         //    context_store's and is unrelated.
+
+        // ── vnc-047 DEFERRED SEAM (comment only, NOT built): cycle-tag mutation home ──
+        //    A future cycle-tag add/remove/replace verb attaches HERE via an additive,
+        //    entry-defaulting `target` on context_tag (e.g. target = entry (default) | cycle).
+        //    vnc-047 ships the SET-ONCE cycle-tag WRITE only (hook path, whole-set-once); there is
+        //    NO cycle-tag MUTATION. Do NOT add a `context_cycle_tag` tool. If a future cycle-tag
+        //    NAMESPACE query is added here, `like_escape` + ESCAPE clause become mandatory (the
+        //    cycle-tag write path in vnc-047 ships NO LIKE, so none is needed today).
 
         // 8. Delegate: throttle + store write + fire-and-forget audit all happen in the service.
         let result = self
@@ -4151,7 +4196,7 @@ impl UnimatrixServer {
             }
         }
 
-        let response_text = if let Some(ref g) = validated_goal {
+        let base_ack = if let Some(ref g) = validated_goal {
             format!(
                 "Acknowledged: {} for topic '{}' with goal: '{}'. \
                  Attribution is applied via the hook path (fire-and-forget). \
@@ -4166,6 +4211,12 @@ impl UnimatrixServer {
                 action, validated.topic
             )
         };
+
+        // 4c. vnc-047 (C12, ADR-007): best-effort, NON-GATING tag ack echo on the EXISTING
+        // ack string (no new interface, no read-back API). Echoes the CALLER's own input —
+        // never reads stored cycle_tags, never surfaces the freeze outcome (Non-Goal #6).
+        let tag_phrase = cycle_tag_ack_phrase(validated.cycle_type, params.tags.as_deref());
+        let response_text = format!("{base_ack}{tag_phrase}");
 
         // 5. Audit log (fire-and-forget)
         let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
@@ -8037,6 +8088,92 @@ mod tests {
         let json = r#"{"type": "start", "topic": "col-025", "goal": null}"#;
         let params: CycleParams = serde_json::from_str(json).unwrap();
         assert_eq!(params.goal, None);
+    }
+
+    // -- vnc-047 (C6): CycleParams tags field deserialization (AC-06, FR-1, NFR-4) --
+
+    #[test]
+    fn test_cycle_params_tags_optional_deserializes() {
+        // Present → Some(vec); absent → None (omission preserves prior wire behavior).
+        let json = r#"{"type": "start", "topic": "vnc-047", "tags": ["a", "b"]}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.tags, Some(vec!["a".to_string(), "b".to_string()]));
+
+        let json = r#"{"type": "start", "topic": "vnc-047"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.tags, None);
+    }
+
+    #[test]
+    fn test_cycle_params_backward_compatible() {
+        // A pre-vnc-047 CycleParams JSON (no tags key) deserializes without error (additive Option).
+        let json = r#"{"type": "phase-end", "topic": "col-025", "phase": "design", "outcome": "pass", "goal": "g"}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert!(params.tags.is_none());
+        assert_eq!(params.r#type, "phase-end");
+    }
+
+    #[test]
+    fn test_cycle_params_tags_null() {
+        // Explicit null deserializes as None.
+        let json = r#"{"type": "start", "topic": "vnc-047", "tags": null}"#;
+        let params: CycleParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.tags, None);
+    }
+
+    // -- vnc-047 (C12): best-effort, NON-GATING ack echo strings (AC-09, FR-12) --
+    // A miss here MUST NOT block delivery/any gate.
+
+    #[test]
+    fn test_ack_start_with_tags_accept_for_recording() {
+        let tags = vec!["arm:A".to_string(), "workflow:v1".to_string()];
+        let phrase = cycle_tag_ack_phrase(CycleType::Start, Some(&tags));
+        assert!(
+            phrase.contains("accepted for recording"),
+            "start-with-tags ack must use accept-for-recording wording: {phrase}"
+        );
+        assert!(
+            phrase.contains("context_cycle_review"),
+            "ack must point at context_cycle_review to confirm: {phrase}"
+        );
+        assert!(phrase.contains('2'), "ack must name the count: {phrase}");
+        assert!(
+            phrase.contains("arm:A") && phrase.contains("workflow:v1"),
+            "ack echoes the caller's own labels verbatim: {phrase}"
+        );
+    }
+
+    #[test]
+    fn test_ack_non_start_with_tags_ignored_note() {
+        let tags = vec!["arm:A".to_string()];
+        for ct in [CycleType::PhaseEnd, CycleType::Stop] {
+            let phrase = cycle_tag_ack_phrase(ct, Some(&tags));
+            assert!(
+                phrase.contains("tags ignored") && phrase.contains("only recorded at cycle start"),
+                "non-start-with-tags ack must carry the ignored note: {phrase}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_ack_no_tags_unchanged() {
+        // No tags, empty, or all-blank → no phrase (pre-vnc-047 ack unchanged).
+        assert_eq!(cycle_tag_ack_phrase(CycleType::Start, None), "");
+        assert_eq!(cycle_tag_ack_phrase(CycleType::Start, Some(&[])), "");
+        let blank = vec!["".to_string(), "   ".to_string()];
+        assert_eq!(cycle_tag_ack_phrase(CycleType::Start, Some(&blank)), "");
+        assert_eq!(cycle_tag_ack_phrase(CycleType::Stop, None), "");
+    }
+
+    #[test]
+    fn test_ack_value_opacity_colon_and_bare_pass_through() {
+        // Colon-prefixed and bare tags both echoed unchanged (no namespace branching).
+        let tags = vec!["bare".to_string(), "ns:val".to_string()];
+        let phrase = cycle_tag_ack_phrase(CycleType::Start, Some(&tags));
+        assert!(
+            phrase.contains("bare") && phrase.contains("ns:val"),
+            "{phrase}"
+        );
     }
 
     // -- col-025: Goal validation logic (AC-13a, AC-17) --

@@ -857,6 +857,30 @@ fn build_cycle_event_or_fallthrough(
         None
     };
 
+    // Step 4c: Extract tags for cycle_start events only (vnc-047, GH #940).
+    // Parity with the goal block above: read from tool_input, Start-only.
+    // Value-opacity — non-empty is the ONLY check: no vocabulary/length/prefix
+    // validation, no namespace parsing (a colon-prefixed tag is an ordinary opaque
+    // string). NO byte cap (contrast MAX_GOAL_BYTES on goal — vnc-045 SD-8).
+    // Infallible: malformed input (non-array, non-string elements, all-blank)
+    // degrades silently to an empty list. The hook must never fail (FR-03.7).
+    let tags_vec: Vec<String> = if validated.cycle_type == CycleType::Start {
+        tool_input
+            .get("tags")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .filter(|s| !s.trim().is_empty())
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        // PhaseEnd / Stop never extract tags (FR-4).
+        Vec::new()
+    };
+
     // Build payload with feature_cycle and optional phase/outcome/next_phase.
     // The feature_cycle key in payload is what the #198 extraction path and
     // the cycle event handlers look for.
@@ -877,6 +901,19 @@ fn build_cycle_event_or_fallthrough(
     // Insert goal into payload so the listener can read payload.get("goal") (GH #389).
     if let Some(ref g) = goal_opt {
         payload["goal"] = serde_json::Value::String(g.clone());
+    }
+
+    // Insert tags into payload so the listener can read payload.get("tags") (vnc-047,
+    // GH #940). Only set the key when at least one tag survived the non-empty filter,
+    // so a tagless / all-blank start omits the key entirely — that keeps the whole-set-once
+    // lock unburned (C5 routes a tagless start to the unchanged insert_cycle_event arm).
+    if !tags_vec.is_empty() {
+        payload["tags"] = serde_json::Value::Array(
+            tags_vec
+                .into_iter()
+                .map(serde_json::Value::String)
+                .collect(),
+        );
     }
 
     // Set topic_signal to the topic value -- strong signal for eager attribution
@@ -3291,6 +3328,169 @@ mod tests {
                 );
             }
             _ => panic!("expected phase_end RecordEvent, got {req:?}"),
+        }
+    }
+
+    // -- tag propagation in hook payload (vnc-047, GH #940) --
+
+    #[test]
+    fn test_hook_extracts_tags_on_start() {
+        // cycle_start with tags → payload["tags"] is a JSON array (parity payload["goal"]).
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "vnc-047", "tags": ["arm:A", "foo"]}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_START_EVENT);
+                assert_eq!(
+                    event.payload["tags"],
+                    serde_json::json!(["arm:A", "foo"]),
+                    "tags must be forwarded into the RecordEvent payload verbatim"
+                );
+            }
+            _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn test_hook_omits_tags_on_non_start() {
+        // phase-end carrying tags → payload must NOT contain "tags" (Start-only; FR-4/R-09).
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "phase-end",
+                "topic": "vnc-047",
+                "phase": "design",
+                "outcome": "pass",
+                "tags": ["arm:A", "foo"]
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_PHASE_END_EVENT);
+                assert!(
+                    event.payload.get("tags").is_none(),
+                    "tags must not appear in payload for non-start events"
+                );
+            }
+            _ => panic!("expected phase_end RecordEvent, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn test_hook_omits_tags_on_stop() {
+        // stop carrying tags → payload must NOT contain "tags" (Start-only; FR-4/R-09).
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "stop", "topic": "vnc-047", "tags": ["arm:A"]}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, CYCLE_STOP_EVENT);
+                assert!(
+                    event.payload.get("tags").is_none(),
+                    "tags must not appear in payload for stop events"
+                );
+            }
+            _ => panic!("expected cycle_stop RecordEvent, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn test_hook_filters_empty_string_tags() {
+        // ["a","","b"] → payload["tags"] == ["a","b"] (non-empty filter at intake; R-11).
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {"type": "start", "topic": "vnc-047", "tags": ["a", "", "b", "   "]}
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.payload["tags"],
+                    serde_json::json!(["a", "b"]),
+                    "empty and whitespace-only tags must be dropped"
+                );
+            }
+            _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
+        }
+    }
+
+    #[test]
+    fn test_hook_no_tags_key_when_all_empty_or_absent() {
+        // tags absent, [], or all-blank → NO tags key (so listener routes to unchanged arm; R-09).
+        for tool_input in [
+            serde_json::json!({"type": "start", "topic": "vnc-047"}),
+            serde_json::json!({"type": "start", "topic": "vnc-047", "tags": []}),
+            serde_json::json!({"type": "start", "topic": "vnc-047", "tags": ["", "  "]}),
+        ] {
+            let input = pretooluse_input(serde_json::json!({
+                "tool_name": "mcp__unimatrix__context_cycle",
+                "tool_input": tool_input
+            }));
+            let req = build_request("PreToolUse", &input);
+            match req {
+                HookRequest::RecordEvent { event } => {
+                    assert!(
+                        event.payload.get("tags").is_none(),
+                        "tags key must be absent when no non-empty tag survives"
+                    );
+                }
+                _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_hook_tags_wrong_type_degrades_no_panic() {
+        // tags present but not an array (string / object) → key absent, no panic (C4→C5 contract).
+        for bad in [
+            serde_json::json!("not-an-array"),
+            serde_json::json!({"k": "v"}),
+            serde_json::json!(42),
+        ] {
+            let input = pretooluse_input(serde_json::json!({
+                "tool_name": "mcp__unimatrix__context_cycle",
+                "tool_input": {"type": "start", "topic": "vnc-047", "tags": bad}
+            }));
+            let req = build_request("PreToolUse", &input);
+            match req {
+                HookRequest::RecordEvent { event } => {
+                    assert!(
+                        event.payload.get("tags").is_none(),
+                        "malformed tags type must degrade to no tags key"
+                    );
+                }
+                _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_hook_tags_value_opacity_colon_and_bare_pass_through() {
+        // Colon-prefixed and bare tags survive identically — no namespace branching (AC-07).
+        let input = pretooluse_input(serde_json::json!({
+            "tool_name": "mcp__unimatrix__context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "vnc-047",
+                "tags": ["workflow:v1.3", "bare", "arm:experiment-2", "日本語"]
+            }
+        }));
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.payload["tags"],
+                    serde_json::json!(["workflow:v1.3", "bare", "arm:experiment-2", "日本語"]),
+                    "tags must pass through verbatim with no namespace derivation"
+                );
+            }
+            _ => panic!("expected cycle_start RecordEvent, got {req:?}"),
         }
     }
 
