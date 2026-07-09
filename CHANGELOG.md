@@ -3,6 +3,14 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.11.2] - 2026-07-09
+
+### Features
+- context_cycle whole-set-once run-identity tags: opaque, engine-uninterpreted labels frozen at cycle start in a new `cycle_tags` junction and surfaced in `context_cycle_review` (vnc-047, #940)
+
+### Fixes
+- waive documented D5 precompact exception in nan-021 parity gate (#893)
+
 ## [0.11.1] - 2026-07-08
 
 ### Fixes
