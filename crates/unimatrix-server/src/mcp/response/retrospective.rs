@@ -48,6 +48,10 @@ pub fn format_retrospective_markdown(report: &RetrospectiveReport) -> CallToolRe
     // GH#384: goal section — always rendered, with fallback when None
     output.push_str(&render_goal_section(report));
 
+    // vnc-047: tags section — rendered ONLY when the cycle has tags. A tag-less
+    // cycle appends nothing (no spurious "## Tags" section, AC-05d).
+    output.push_str(&render_tags_section(report));
+
     // 2. Recommendations (moved from position 9 — FR-12)
     if !report.recommendations.is_empty() {
         output.push_str(&render_recommendations(&report.recommendations));
@@ -211,6 +215,38 @@ fn render_goal_section(report: &RetrospectiveReport) -> String {
         None => {
             out.push_str("No goal recorded for this cycle.\n");
         }
+    }
+    out.push('\n');
+    out
+}
+
+/// Render a run's opaque run-identity `tags` as a dedicated `## Tags` markdown
+/// section (vnc-047).
+///
+/// PINNED empty-render behavior (AC-05d): a tag-LESS cycle renders NOTHING — no
+/// `## Tags` header, no fallback line, no blank block (returns an empty `String`).
+/// This INTENTIONALLY DIVERGES from `render_goal_section`, which always emits a
+/// `## Goal` section with a "No goal recorded" fallback. AC-05d / FR-10 require
+/// "no spurious section" for a tag-less cycle, so this returns `String::new()`.
+/// Do NOT re-add a "No tags recorded" fallback back to goal parity.
+///
+/// `pub(crate)` so the vnc-047 AC-05 assembled-path test (in the `uds::listener`
+/// test module) can render this section directly against a report populated by the
+/// real `get_cycle_tags` read.
+pub(crate) fn render_tags_section(report: &RetrospectiveReport) -> String {
+    // Tag-less cycle → render NOTHING (no spurious section, AC-05d).
+    if report.tags.is_empty() {
+        return String::new();
+    }
+    let mut out = String::new();
+    out.push_str("## Tags\n");
+    for tag in &report.tags {
+        // Escape with the SAME escaper render_goal_section uses (tags are opaque,
+        // attacker-controllable strings) — a downstream-renderer safety measure,
+        // not validation (value-opacity preserved). Order follows the getter's
+        // ORDER BY tag (deterministic).
+        let safe = escape_md_text(tag);
+        let _ = writeln!(out, "- {}", safe);
     }
     out.push('\n');
     out
@@ -1288,6 +1324,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         }
     }
 
@@ -4317,6 +4354,99 @@ mod tests {
         assert!(
             !rendered.contains("Distinct entries served"),
             "legacy label 'Distinct entries served' must not appear in any rendered output"
+        );
+    }
+
+    // ── vnc-047: render_tags_section (C9, AC-05d) ────────────────────────────
+
+    /// A report with tags renders a `## Tags` section listing each tag verbatim,
+    /// one bullet per tag (format parity with render_goal_section's escaper).
+    #[test]
+    fn test_render_tags_section_present() {
+        let mut report = make_report();
+        report.tags = vec!["arm:A".to_string(), "workflow:v1.3".to_string()];
+        let out = render_tags_section(&report);
+        assert!(
+            out.contains("## Tags\n"),
+            "must emit the ## Tags header: {out}"
+        );
+        assert!(
+            out.contains("- arm:A\n"),
+            "must list arm:A as a bullet: {out}"
+        );
+        assert!(
+            out.contains("- workflow:v1.3\n"),
+            "must list workflow:v1.3 as a bullet: {out}"
+        );
+    }
+
+    /// PINNED (AC-05d): a tag-LESS cycle renders NOTHING — no `## Tags` header, no
+    /// "No tags" fallback (deliberate divergence from render_goal_section). This is
+    /// asserted against the empty-section pin, not goal-parity.
+    #[test]
+    fn test_render_no_spurious_section_when_empty() {
+        let mut report = make_report();
+        report.tags = vec![];
+        let out = render_tags_section(&report);
+        assert!(
+            out.is_empty(),
+            "tag-less cycle must render an empty string (no spurious section): {out:?}"
+        );
+        // And it does not appear in the full markdown either.
+        let text = extract_text(&format_retrospective_markdown(&report));
+        assert!(
+            !text.contains("## Tags"),
+            "no ## Tags header may appear anywhere in the review for a tag-less cycle"
+        );
+        assert!(
+            !text.contains("No tags"),
+            "no 'No tags' fallback line may appear (divergence from goal parity)"
+        );
+    }
+
+    /// Value-opacity: colon-prefixed and bare tags render as stored, no namespace
+    /// splitting / no derivation.
+    #[test]
+    fn test_render_tags_verbatim_no_derivation() {
+        let mut report = make_report();
+        report.tags = vec!["ns:value".to_string(), "bare".to_string()];
+        let out = render_tags_section(&report);
+        assert!(
+            out.contains("- ns:value\n"),
+            "colon tag rendered verbatim: {out}"
+        );
+        assert!(
+            out.contains("- bare\n"),
+            "bare tag rendered verbatim: {out}"
+        );
+    }
+
+    /// Rendered order follows the getter's ORDER BY tag (deterministic) — the
+    /// render preserves the vec order it is given.
+    #[test]
+    fn test_render_tags_order_deterministic() {
+        let mut report = make_report();
+        report.tags = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let out = render_tags_section(&report);
+        let a = out.find("- a\n").expect("a present");
+        let b = out.find("- b\n").expect("b present");
+        let c = out.find("- c\n").expect("c present");
+        assert!(
+            a < b && b < c,
+            "bullets must preserve the given order: {out}"
+        );
+    }
+
+    /// A tag with markdown metacharacters is escaped via escape_md_text (no
+    /// injection into the review).
+    #[test]
+    fn test_render_tags_escapes_metacharacters() {
+        let mut report = make_report();
+        report.tags = vec!["# not a heading".to_string()];
+        let out = render_tags_section(&report);
+        assert!(
+            out.contains("\\# not a heading"),
+            "leading-# tag must be escaped so it does not render as a heading: {out}"
         );
     }
 }

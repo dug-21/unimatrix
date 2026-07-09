@@ -1292,6 +1292,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None,
+            tags: Vec::new(), // vnc-047
         };
         let json = serde_json::to_string(&report).expect("serialize memoized report");
         assert!(

@@ -2882,6 +2882,7 @@ impl UnimatrixServer {
                             is_in_progress: None,
                             phase_stats: None,
                             curation_health: None, // crt-047
+                            tags: Vec::new(),      // vnc-047
                         };
 
                         // Cached path also respects format (vnc-011)
@@ -3471,6 +3472,11 @@ impl UnimatrixServer {
                     // report.goal remains None, report.cycle_type remains None
                 }
             }
+
+            // vnc-047: populate report.tags from the frozen cycle_tags set (fresh
+            // read, source of truth). Degrades to [] + warn on error; review never
+            // fails on a tag read. Rides summary_json + render_tags_section (C8/C9).
+            populate_review_tags(&store, &feature_cycle, &mut report).await;
 
             // is_in_progress: derived in-memory from cycle_events (no DB call)
             report.is_in_progress = derive_is_in_progress(cycle_events_vec.as_deref());
@@ -4360,6 +4366,34 @@ impl UnimatrixServer {
         // tools.rs contains only this dispatch call.
         crate::mcp::graph_read::handle_graph(&self.store, &typed_graph_state, params, &ctx).await
     }
+}
+
+// ---------------------------------------------------------------------------
+// vnc-047 (#940, ADR-004): review-time tag populate seam (Component 8)
+// ---------------------------------------------------------------------------
+
+/// Populate `report.tags` from the frozen `cycle_tags` set at review time (vnc-047).
+///
+/// Extracted as a module-scope `pub(crate)` seam (codebase idiom: `derive_namespace`,
+/// `current_phase_for_session`) because the `context_cycle_review` rmcp `#[tool]` handler
+/// needs a `RequestContext<RoleServer>` that cannot be built in unit scope (#5389). The
+/// AC-05 assembled-path test drives the REAL `get_cycle_tags` read through this seam.
+///
+/// Reads `cycle_tags` FRESH each review (source of truth) — never trusts a prior
+/// `summary_json` mirror. Degrades to `[]` + `tracing::warn` on read error (parity with the
+/// `get_cycle_start_goal` degrade arm); the review NEVER fails on a tag read.
+pub(crate) async fn populate_review_tags(
+    store: &unimatrix_store::SqlxStore,
+    feature_cycle: &str,
+    report: &mut unimatrix_observe::RetrospectiveReport,
+) {
+    report.tags = match store.get_cycle_tags(feature_cycle).await {
+        Ok(tags) => tags, // deterministic, ORDER BY tag (C3)
+        Err(e) => {
+            tracing::warn!("vnc-047: get_cycle_tags failed for {feature_cycle}: {e}");
+            Vec::new() // degrade — review still succeeds
+        }
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -7491,6 +7525,7 @@ mod tests {
                 is_in_progress: None,
                 phase_stats: None,
                 curation_health: None, // crt-047
+                tags: Vec::new(),      // vnc-047
             };
             serde_json::to_string(&report).expect("test report must serialize")
         };
@@ -7626,6 +7661,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         let record = build_cycle_review_record("feat-x", &report, None, 0, &Default::default())
@@ -7678,6 +7714,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None,
+            tags: Vec::new(), // vnc-047
         }
     }
 
@@ -7806,6 +7843,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         // Clone and truncate
@@ -7859,6 +7897,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         let content = build_lesson_learned_content(&report);
@@ -7910,6 +7949,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         let content = build_lesson_learned_content(&report);
@@ -7945,6 +7985,7 @@ mod tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         };
 
         let content = build_lesson_learned_content(&report);
@@ -10046,6 +10087,7 @@ mod cycle_review_integration_tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         }
     }
 
@@ -10098,6 +10140,7 @@ mod cycle_review_integration_tests {
             is_in_progress: None,
             phase_stats: None,
             curation_health: None, // crt-047
+            tags: Vec::new(),      // vnc-047
         }
     }
 
