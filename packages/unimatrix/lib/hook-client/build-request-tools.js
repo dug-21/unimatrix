@@ -322,6 +322,28 @@ function buildCycleEventOrFallthrough(event, sessionId, input) {
   put("next_phase", validated.nextPhase);
   put("goal", goal);
 
+  // tags only on Start (vnc-047, hook.rs:860-917). Value-opacity: strings only,
+  // dropped when blank-after-trim, NO byte cap (parity — the oracle has none;
+  // contrast MAX_GOAL_BYTES on goal). Omit the key entirely when nothing
+  // survives, so a tagless/all-blank start leaves the whole-set-once lock
+  // unburned (server C5 routes an empty-tags start to the unchanged arm).
+  // Placed AFTER put("goal") and fully guarded: any malformed input (non-array,
+  // null, nested junk, non-string members) degrades to no key and MUST NEVER
+  // throw — a throw here drops the entire cycle frame (topic + goal + tags).
+  let tags = null;
+  if (validated.cycleType === "start") {
+    try {
+      const raw = tiObj.tags;
+      if (Array.isArray(raw)) {
+        const filtered = raw.filter((t) => typeof t === "string" && t.trim() !== "");
+        if (filtered.length > 0) tags = filtered;
+      }
+    } catch (_e) {
+      tags = null; // infallible (FR-03.7): treat any problem as no tags
+    }
+  }
+  put("tags", tags);
+
   // topic_signal = topic (the cycle declaration keeps it).
   return recordEventFrame(eventType, sessionId, payload, validated.topic, input.provider);
 }

@@ -564,6 +564,108 @@ describe("buildRequest: PreToolUse context_cycle interception", () => {
     assert.ok(out.startsWith("x"));
   });
 
+  // vnc-047 / #944: tags ride the hook exactly like goal (Start-only, string
+  // filter, omit-when-empty). Parity oracle: hook.rs:860-917. Infallibility is
+  // load-bearing — a throw here would drop the whole cycle frame incl. goal.
+  it("test_cycle_tags_forwarded_on_start", () => {
+    const r = buildRequest(
+      "PreToolUse",
+      mkInput({
+        extra: {
+          tool_name: "context_cycle",
+          tool_input: { type: "start", topic: "x-1", tags: ["alpha", "beta"] },
+        },
+      })
+    );
+    assert.deepStrictEqual(r.payload.tags, ["alpha", "beta"]);
+  });
+
+  it("test_cycle_tags_non_string_members_filtered", () => {
+    const r = buildRequest(
+      "PreToolUse",
+      mkInput({
+        extra: {
+          tool_name: "context_cycle",
+          tool_input: {
+            type: "start",
+            topic: "x-1",
+            tags: ["keep", 42, null, { a: 1 }, "", "  ", "also-keep"],
+          },
+        },
+      })
+    );
+    // strings only, blank-after-trim dropped; opaque colon-prefixed kept as-is.
+    assert.deepStrictEqual(r.payload.tags, ["keep", "also-keep"]);
+  });
+
+  it("test_cycle_tags_omitted_when_empty_or_absent", () => {
+    const absent = buildRequest(
+      "PreToolUse",
+      mkInput({
+        extra: {
+          tool_name: "context_cycle",
+          tool_input: { type: "start", topic: "x-1" },
+        },
+      })
+    );
+    assert.ok(!("tags" in absent.payload), "tags omitted when absent");
+
+    const emptyArr = buildRequest(
+      "PreToolUse",
+      mkInput({
+        extra: {
+          tool_name: "context_cycle",
+          tool_input: { type: "start", topic: "x-1", tags: [] },
+        },
+      })
+    );
+    assert.ok(!("tags" in emptyArr.payload), "tags omitted when empty array");
+
+    const allBlank = buildRequest(
+      "PreToolUse",
+      mkInput({
+        extra: {
+          tool_name: "context_cycle",
+          tool_input: { type: "start", topic: "x-1", tags: ["", "   ", 7] },
+        },
+      })
+    );
+    assert.ok(!("tags" in allBlank.payload), "tags omitted when nothing survives");
+  });
+
+  it("test_cycle_tags_malformed_never_throws_and_keeps_goal", () => {
+    // Each malformed shape must omit tags, never throw, and still forward goal.
+    for (const bad of [null, "not-an-array", 42, { 0: "a" }, [{ x: 1 }], [[1]]]) {
+      const r = buildRequest(
+        "PreToolUse",
+        mkInput({
+          extra: {
+            tool_name: "context_cycle",
+            tool_input: { type: "start", topic: "x-1", goal: "ship it", tags: bad },
+          },
+        })
+      );
+      assert.ok(r !== null, "cycle frame survives malformed tags");
+      assert.ok(!("tags" in r.payload), "tags omitted for malformed input");
+      assert.strictEqual(r.payload.goal, "ship it", "goal survives bad tags");
+    }
+  });
+
+  it("test_cycle_tags_never_on_phase_end_or_stop", () => {
+    for (const type of ["phase-end", "stop"]) {
+      const ti =
+        type === "phase-end"
+          ? { type, topic: "x-1", phase: "design", next_phase: "delivery", tags: ["nope"] }
+          : { type, topic: "x-1", outcome: "success", tags: ["nope"] };
+      const r = buildRequest(
+        "PreToolUse",
+        mkInput({ extra: { tool_name: "context_cycle", tool_input: ti } })
+      );
+      assert.ok(r !== null, "non-start cycle frame builds");
+      assert.ok(!("tags" in r.payload), "tags never emitted on " + type);
+    }
+  });
+
   it("test_cycle_mcp_context_promotion_does_not_mutate_input", () => {
     const input = mkInput({
       session_id: "gem-1",
