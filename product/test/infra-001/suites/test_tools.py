@@ -3322,20 +3322,21 @@ def _store_two_entries(server):
 # --- AC-19: context_edge tool registered as 13th tool -----------------
 
 
-@pytest.mark.xfail(reason="Pre-existing: GH#942 — hardcoded tool count 14 stale after vnc-045 added context_tag (15th tool); unrelated to vnc-047")
 def test_context_edge_tool_registered(server):
     """AC-19: context_edge is registered as an MCP tool with the correct parameter schema.
 
-    Updated from 13 to 14 tools (vnc-018 adds context_graph as the 14th tool).
-    The important assertion is context_edge presence and schema, not the exact count
-    (which is asserted separately in test_protocol.py::test_list_tools_returns_fourteen).
+    The tool count reached 15 with vnc-045 (#929) adding context_tag. The count
+    assertion is intentional: a new MCP tool must consciously bump it (and add its
+    own presence check), guarding against silent registry drift. The primary
+    assertions remain context_edge presence and schema.
     """
     resp = server.list_tools()
     result = resp.result
     tools = result.get("tools", [])
-    assert len(tools) == 14, f"Expected 14 tools (context_graph added in vnc-018), got {len(tools)}"
+    assert len(tools) == 15, f"Expected 15 tools (context_tag added in vnc-045), got {len(tools)}"
     names = [t["name"] for t in tools]
     assert "context_edge" in names, f"context_edge not in tools: {names}"
+    assert "context_tag" in names, f"context_tag not in tools: {names}"
     edge_tool = next(t for t in tools if t["name"] == "context_edge")
     schema = edge_tool.get("inputSchema", {})
     props = schema.get("properties", {})
