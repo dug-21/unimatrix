@@ -135,8 +135,14 @@ Update these files with the new version:
 
 Run a build check to confirm the version change does not break compilation:
 ```bash
-cargo check --workspace
+cargo test --workspace --no-run
 ```
+This compiles **and links test targets** — matching what the release workflow's `build-linux`
+jobs actually build (`cargo test`). A plain `cargo check --workspace` skips `#[cfg(test)]` and
+test-target code, so a test-only compile break slips past this gate and only surfaces *after* the
+tag is public — requiring tag surgery to recover (v0.11.1 incident, #937). Compiling test targets
+here catches that class cheaply, pre-tag.
+
 If this fails, stop with: **"Build check failed after version update. Review changes before releasing."**
 
 ---
@@ -274,4 +280,4 @@ CI pipeline: https://github.com/anthropic/unimatrix/actions
 | New version <= current version | Stop: "New version must be greater than {current}" |
 | Git tag already exists | Stop: "Tag v{version} already exists" |
 | Uncommitted changes in worktree | Stop: "Clean worktree required for release" |
-| `cargo check` fails | Stop: "Build check failed, review changes" |
+| `cargo test --workspace --no-run` fails | Stop: "Build check failed, review changes" |
