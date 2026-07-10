@@ -1,0 +1,17 @@
+{
+  "type": "RecordEvent",
+  "event_type": "cycle_start",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "feature_cycle": "vnc-047",
+    "goal": "measure arm A reuse",
+    "tags": [
+      "arm:A",
+      "workflow:v1.3",
+      "region:us-east"
+    ]
+  },
+  "topic_signal": "vnc-047",
+  "provider": "claude-code"
+}

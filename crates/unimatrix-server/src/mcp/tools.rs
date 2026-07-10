@@ -542,40 +542,14 @@ pub struct CycleParams {
     /// starts are a whole-set no-op. Values are opaque — stored verbatim, non-empty is
     /// the only check (no vocabulary/length/prefix validation). Old callers omitting this
     /// field receive None. Persistence rides the hook path (not this handler); this field
-    /// declares the interface and feeds only the best-effort ack echo.
+    /// only declares the interface — frame writers read `tool_input.tags` from this
+    /// schema-declared param exactly like `goal`. The MCP handler does nothing extra for
+    /// tags: no recording claim, no read-back (parity with `goal`).
     pub tags: Option<Vec<String>>,
     /// Agent making the request.
     pub agent_id: Option<String>,
     /// Response format: summary, markdown, or json.
     pub format: Option<String>,
-}
-
-/// Build the best-effort tag-ack phrase appended to the `context_cycle` response (vnc-047
-/// C12, ADR-007). NON-GATING: echoes the CALLER's own input — never reads stored `cycle_tags`
-/// and never surfaces the whole-set-once freeze outcome (Non-Goal #6). Applies the same
-/// non-empty filter as the write path (value-opaque; no other validation). An empty/all-blank
-/// list yields an empty string, leaving the base ack unchanged. Wording is accept-for-recording
-/// (fire-and-forget), NOT a durability guarantee — `context_cycle_review` is authoritative.
-/// `pub(crate)` for unit testability without full handler construction.
-pub(crate) fn cycle_tag_ack_phrase(cycle_type: CycleType, tags: Option<&[String]>) -> String {
-    let tag_view: Vec<&str> = tags
-        .unwrap_or(&[])
-        .iter()
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .collect();
-    if tag_view.is_empty() {
-        String::new()
-    } else if cycle_type == CycleType::Start {
-        format!(
-            " {} run-identity label(s) accepted for recording at cycle start: [{}]. \
-             Recording is fire-and-forget; use context_cycle_review to confirm.",
-            tag_view.len(),
-            tag_view.join(", ")
-        )
-    } else {
-        " tags ignored — labels are only recorded at cycle start.".to_string()
-    }
 }
 
 /// Extract the active workflow phase for a session — infallible, O(1) clone.
@@ -4202,7 +4176,11 @@ impl UnimatrixServer {
             }
         }
 
-        let base_ack = if let Some(ref g) = validated_goal {
+        // tags parity with goal: the schema-declared `params.tags` is read by frame
+        // writers off `tool_input.tags` (the hook path persists it). The MCP handler does
+        // NOTHING extra for tags — no recording claim in the ack, no read-back (vnc-047 fix,
+        // #944). `context_cycle_review` is authoritative for what actually persisted.
+        let response_text = if let Some(ref g) = validated_goal {
             format!(
                 "Acknowledged: {} for topic '{}' with goal: '{}'. \
                  Attribution is applied via the hook path (fire-and-forget). \
@@ -4217,12 +4195,6 @@ impl UnimatrixServer {
                 action, validated.topic
             )
         };
-
-        // 4c. vnc-047 (C12, ADR-007): best-effort, NON-GATING tag ack echo on the EXISTING
-        // ack string (no new interface, no read-back API). Echoes the CALLER's own input —
-        // never reads stored cycle_tags, never surfaces the freeze outcome (Non-Goal #6).
-        let tag_phrase = cycle_tag_ack_phrase(validated.cycle_type, params.tags.as_deref());
-        let response_text = format!("{base_ack}{tag_phrase}");
 
         // 5. Audit log (fire-and-forget)
         let metadata_json = match ctx.client_type.as_deref().filter(|s| !s.is_empty()) {
@@ -8162,59 +8134,43 @@ mod tests {
         assert_eq!(params.tags, None);
     }
 
-    // -- vnc-047 (C12): best-effort, NON-GATING ack echo strings (AC-09, FR-12) --
-    // A miss here MUST NOT block delivery/any gate.
+    // -- #944 fix: the MCP handler makes NO tags-recording claim (parity with goal) --
+    // The former `cycle_tag_ack_phrase` accept-for-recording ack was deleted: it lied
+    // (the handler never persisted tags; the hook path does). The response must NOT claim
+    // tags were recorded. `tags` remains a schema field (frame writers read tool_input.tags).
 
     #[test]
-    fn test_ack_start_with_tags_accept_for_recording() {
-        let tags = vec!["arm:A".to_string(), "workflow:v1".to_string()];
-        let phrase = cycle_tag_ack_phrase(CycleType::Start, Some(&tags));
-        assert!(
-            phrase.contains("accepted for recording"),
-            "start-with-tags ack must use accept-for-recording wording: {phrase}"
+    fn test_cycle_start_tags_response_makes_no_recording_claim() {
+        // Regression guard for #944: whatever text the Start arm emits, it must never
+        // assert that run-identity tags were accepted/recorded. Only cycle_cycle_review
+        // is authoritative. We reconstruct the exact base ack the handler builds.
+        let action = "cycle started";
+        let topic = "vnc-047";
+        let goal = "measure arm A reuse";
+        let with_goal = format!(
+            "Acknowledged: {action} for topic '{topic}' with goal: '{goal}'. \
+             Attribution is applied via the hook path (fire-and-forget). \
+             Use context_cycle_review to confirm session attribution."
         );
-        assert!(
-            phrase.contains("context_cycle_review"),
-            "ack must point at context_cycle_review to confirm: {phrase}"
+        let no_goal = format!(
+            "Acknowledged: {action} for topic '{topic}'. \
+             Attribution is applied via the hook path (fire-and-forget). \
+             Use context_cycle_review to confirm session attribution."
         );
-        assert!(phrase.contains('2'), "ack must name the count: {phrase}");
-        assert!(
-            phrase.contains("arm:A") && phrase.contains("workflow:v1"),
-            "ack echoes the caller's own labels verbatim: {phrase}"
-        );
-    }
-
-    #[test]
-    fn test_ack_non_start_with_tags_ignored_note() {
-        let tags = vec!["arm:A".to_string()];
-        for ct in [CycleType::PhaseEnd, CycleType::Stop] {
-            let phrase = cycle_tag_ack_phrase(ct, Some(&tags));
+        for text in [&with_goal, &no_goal] {
             assert!(
-                phrase.contains("tags ignored") && phrase.contains("only recorded at cycle start"),
-                "non-start-with-tags ack must carry the ignored note: {phrase}"
+                !text.contains("accepted for recording"),
+                "ack must not claim tags were recorded: {text}"
+            );
+            assert!(
+                !text.to_lowercase().contains("label"),
+                "ack must not surface run-identity labels: {text}"
+            );
+            assert!(
+                !text.contains("tags ignored"),
+                "ack must not carry a tags-ignored note: {text}"
             );
         }
-    }
-
-    #[test]
-    fn test_ack_no_tags_unchanged() {
-        // No tags, empty, or all-blank → no phrase (pre-vnc-047 ack unchanged).
-        assert_eq!(cycle_tag_ack_phrase(CycleType::Start, None), "");
-        assert_eq!(cycle_tag_ack_phrase(CycleType::Start, Some(&[])), "");
-        let blank = vec!["".to_string(), "   ".to_string()];
-        assert_eq!(cycle_tag_ack_phrase(CycleType::Start, Some(&blank)), "");
-        assert_eq!(cycle_tag_ack_phrase(CycleType::Stop, None), "");
-    }
-
-    #[test]
-    fn test_ack_value_opacity_colon_and_bare_pass_through() {
-        // Colon-prefixed and bare tags both echoed unchanged (no namespace branching).
-        let tags = vec!["bare".to_string(), "ns:val".to_string()];
-        let phrase = cycle_tag_ack_phrase(CycleType::Start, Some(&tags));
-        assert!(
-            phrase.contains("bare") && phrase.contains("ns:val"),
-            "{phrase}"
-        );
     }
 
     // -- col-025: Goal validation logic (AC-13a, AC-17) --
