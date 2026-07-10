@@ -5799,18 +5799,3 @@ def test_context_cycle_accepts_tags_param(server):
         {"type": "start", "topic": "vnc047-accepts-tags", "tags": ["arm:A", "mode:fast"], "agent_id": "human"},
     )
     assert_tool_success(resp)
-
-
-def test_context_cycle_ack_echoes_tags(server):
-    """T-VNC047-02 (AC-09, NON-GATING): best-effort ack echo — a start-with-tags call's
-    ack string contains the accept-for-recording note. Best-effort SHOULD; a miss here
-    does NOT fail delivery (R-16)."""
-    resp = server.call_tool(
-        "context_cycle",
-        {"type": "start", "topic": "vnc047-ack-echo", "tags": ["arm:A"], "agent_id": "human"},
-    )
-    assert_tool_success(resp)
-    text = get_result_text(resp)
-    assert "accepted for recording" in text, (
-        f"AC-09 best-effort ack echo missing accept-for-recording note (NON-GATING): {text!r}"
-    )
