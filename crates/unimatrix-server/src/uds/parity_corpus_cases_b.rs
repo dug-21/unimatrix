@@ -29,6 +29,12 @@ pub(crate) const ARM_KEYS_B: &[&str] = &[
     "cycle::stop",
     "cycle::goal_truncation",
     "cycle::goal_ignored_non_start",
+    // vnc-047 Step 4c tags block (#944): the parity gate that was missing when vnc-047
+    // shipped the oracle change without a corpus case. Mirrors the goal arms above.
+    "cycle::tags",          // start with surviving tags → key present, order preserved
+    "cycle::tags_filtered", // non-string / blank members dropped from the emitted set
+    "cycle::tags_omitted_when_empty", // all-blank / empty tags → key omitted (lock unburned)
+    "cycle::tags_ignored_non_start", // tags present on non-start → key omitted
     // SubagentStart build_request arm
     "build_request::SubagentStart::context_search",
     "build_request::SubagentStart::empty_snippet",
@@ -128,12 +134,22 @@ pub(crate) fn cases() -> Vec<Case> {
     v.push(Case::new(
         "cycle-stop",
         "PreToolUse",
-        &["cycle::stop", "cycle::goal_ignored_non_start"],
-        // goal present but type != start → goal must NOT enter the payload.
+        &[
+            "cycle::stop",
+            "cycle::goal_ignored_non_start",
+            "cycle::tags_ignored_non_start",
+        ],
+        // goal AND tags present but type != start → neither enters the payload
+        // (Step 4c extracts tags for Start only; vnc-047 #944 parity).
         json!({
             "session_id": "sess-corpus",
             "tool_name": "context_cycle",
-            "tool_input": { "type": "stop", "topic": "vnc-026", "goal": "ignored for stop" }
+            "tool_input": {
+                "type": "stop",
+                "topic": "vnc-026",
+                "goal": "ignored for stop",
+                "tags": ["arm:A", "should-not-persist"]
+            }
         })
         .to_string(),
     ));
@@ -155,6 +171,69 @@ pub(crate) fn cases() -> Vec<Case> {
             "session_id": "sess-corpus",
             "tool_name": "context_cycle",
             "tool_input": { "type": "start", "topic": "vnc-026", "goal": "€".repeat(342) }
+        })
+        .to_string(),
+    ));
+
+    // -- vnc-047 Step 4c: cycle_start run-identity tags (#944 parity gate) --
+    //
+    // These pin the hook.rs Step 4c oracle (:860-917): Start-only, string members only,
+    // dropped when blank-after-trim, NO byte cap, key omitted when the surviving set is
+    // empty (so a tagless start leaves the whole-set-once lock unburned). The JS port
+    // (build-request-tools.js) must reproduce these goldens byte-for-byte.
+
+    v.push(Case::new(
+        "cycle-start-tags",
+        "PreToolUse",
+        &["cycle::tags"],
+        // Clean string tags on a start → payload.tags present, order preserved verbatim
+        // (no trim of surviving members, no cap, no namespace parsing of "arm:A").
+        json!({
+            "session_id": "sess-corpus",
+            "tool_name": "context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "vnc-047",
+                "goal": "measure arm A reuse",
+                "tags": ["arm:A", "workflow:v1.3", "region:us-east"]
+            }
+        })
+        .to_string(),
+    ));
+
+    v.push(Case::new(
+        "cycle-start-tags-filtered",
+        "PreToolUse",
+        &["cycle::tags_filtered"],
+        // Mixed members: only string, non-blank-after-trim survive. Non-string members
+        // (number, null, object, nested array) and blank/whitespace strings are dropped.
+        // Oracle result: ["keep", "also-keep"] in input order.
+        json!({
+            "session_id": "sess-corpus",
+            "tool_name": "context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "vnc-047",
+                "tags": ["keep", 42, "", "   ", "also-keep", null, {"o": 1}, ["nested"]]
+            }
+        })
+        .to_string(),
+    ));
+
+    v.push(Case::new(
+        "cycle-start-tags-empty",
+        "PreToolUse",
+        &["cycle::tags_omitted_when_empty"],
+        // All members blank-after-trim → surviving set empty → tags key OMITTED entirely
+        // (payload carries feature_cycle only). Keeps the whole-set-once lock unburned.
+        json!({
+            "session_id": "sess-corpus",
+            "tool_name": "context_cycle",
+            "tool_input": {
+                "type": "start",
+                "topic": "vnc-047",
+                "tags": ["", "   ", "\t"]
+            }
         })
         .to_string(),
     ));

@@ -1,6 +1,6 @@
 {
   "generated_by": "parity_corpus_gen.rs",
-  "case_count": 76,
+  "case_count": 79,
   "conventions": {
     "transcript_path": "relative transcript_path values in stdin.json resolve against the case directory",
     "stdin_cap_bytes": 1048576,
@@ -111,6 +111,18 @@
     ],
     "cycle::stop": [
       "cycle-stop"
+    ],
+    "cycle::tags": [
+      "cycle-start-tags"
+    ],
+    "cycle::tags_filtered": [
+      "cycle-start-tags-filtered"
+    ],
+    "cycle::tags_ignored_non_start": [
+      "cycle-stop"
+    ],
+    "cycle::tags_omitted_when_empty": [
+      "cycle-start-tags-empty"
     ],
     "extract_file_path::absent": [
       "ptu-bash-exit-zero"

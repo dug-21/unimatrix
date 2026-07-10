@@ -1,0 +1,15 @@
+{
+  "type": "RecordEvent",
+  "event_type": "cycle_start",
+  "session_id": "sess-corpus",
+  "timestamp": 0,
+  "payload": {
+    "feature_cycle": "vnc-047",
+    "tags": [
+      "keep",
+      "also-keep"
+    ]
+  },
+  "topic_signal": "vnc-047",
+  "provider": "claude-code"
+}
