@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.11.3] - 2026-07-10
+
+### Fixes
+- persist context_cycle tags via the JS hook-client + delete lying MCP ack — tags now forwarded from the field-selective JS client so they reach the server and persist; removed the accept-then-drop MCP ack (#944, #946)
+
 ## [0.11.2] - 2026-07-09
 
 ### Features
