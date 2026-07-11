@@ -1,0 +1,3 @@
+[profile]
+name = "baseline"
+description = "Production compiled defaults — the reverse-QA odometer measures context_search as shipped"

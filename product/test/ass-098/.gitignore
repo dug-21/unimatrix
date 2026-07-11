@@ -1,0 +1,22 @@
+# Regenerated / sensitive artifacts — NEVER commit. The harness rebuilds all of this
+# from a fresh `unimatrix snapshot`. See README.md "What is never committed".
+
+# snapshots (contain full query_log + agent history — sensitive, NFR-07)
+*.db
+vector/
+
+# judge grade sets (LLM output, regenerated per run)
+grades*/
+
+# human golden CSV (contains snapshot content)
+*_golden*.csv
+
+# python bytecode cache
+__pycache__/
+*.pyc
+
+# default + ad-hoc output directories (entries/queries/scenarios/results live here)
+rqa-out/
+out/
+*-out/
+results/
