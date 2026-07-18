@@ -21,7 +21,9 @@ use sqlx::sqlite::SqliteConnection;
 use unimatrix_store::{AuditEvent, Outcome, SqlxStore};
 
 use crate::format::{ExportHeader, ExportRow};
+use crate::infra::pidfile::{is_process_alive, is_unimatrix_process, read_pid_file};
 use crate::project;
+use crate::projects::slug_store::{SlugStorePaths, resolve_slug_store};
 
 use inserters::{
     insert_agent_registry, insert_audit_log, insert_co_access, insert_counter, insert_cycle_event,
@@ -54,10 +56,11 @@ pub struct ImportCounts {
 pub fn run_import(
     project_dir: Option<&Path>,
     input: &Path,
+    slug: Option<&str>,
     skip_hash_validation: bool,
     force: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    run_import_inner(project_dir, input, skip_hash_validation, force, None)
+    run_import_inner(project_dir, input, slug, skip_hash_validation, force, None)
 }
 
 /// Run the import pipeline with an explicit `base_dir` for test isolation.
@@ -68,6 +71,7 @@ pub fn run_import(
 pub fn run_import_with_base(
     project_dir: Option<&Path>,
     input: &Path,
+    slug: Option<&str>,
     skip_hash_validation: bool,
     force: bool,
     base_dir: &Path,
@@ -75,6 +79,7 @@ pub fn run_import_with_base(
     run_import_inner(
         project_dir,
         input,
+        slug,
         skip_hash_validation,
         force,
         Some(base_dir),
@@ -84,6 +89,7 @@ pub fn run_import_with_base(
 fn run_import_inner(
     project_dir: Option<&Path>,
     input: &Path,
+    slug: Option<&str>,
     skip_hash_validation: bool,
     force: bool,
     base_dir: Option<&Path>,
@@ -95,6 +101,7 @@ fn run_import_inner(
                 handle.block_on(run_import_async(
                     project_dir,
                     input,
+                    slug,
                     skip_hash_validation,
                     force,
                     base_dir,
@@ -110,6 +117,7 @@ fn run_import_inner(
             rt.block_on(run_import_async(
                 project_dir,
                 input,
+                slug,
                 skip_hash_validation,
                 force,
                 base_dir,
@@ -122,15 +130,41 @@ fn run_import_inner(
 async fn run_import_async(
     project_dir: Option<&Path>,
     input: &Path,
+    slug: Option<&str>,
     skip_hash_validation: bool,
     force: bool,
     base_dir: Option<&Path>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Phase 1: Setup
+    // Phase 1: Setup — path-hash paths (C-6 still creates the hash data dir).
     let paths = project::ensure_data_directory(project_dir, base_dir)?;
+
+    // Resolve the DB + vector write targets ONCE, up front. In slug mode they come
+    // from the shared funnel's `SlugStorePaths`; the PID path is NEVER redirected —
+    // it stays base-scoped on `paths.pid_path` (ADR-003/004). Two path sources in
+    // slug mode: do NOT tidy them into one.
+    let (db_target, vector_target) = match slug {
+        Some(raw) => {
+            // Funnel: validate slug → derive base → join → pre-open existence gate
+            // (ADR-001/002, C-3). Creates nothing; opens no DB.
+            let slug_store: SlugStorePaths = resolve_slug_store(&paths, raw)?;
+            (slug_store.db_path, slug_store.vector_dir)
+        }
+        None => (paths.db_path.clone(), paths.vector_dir.clone()),
+    };
+
+    // Live-PID hard-error gate (ADR-003, AC-13) — slug mode ONLY, pre-open and
+    // structural. Reads the base-scoped daemon PID from `paths.pid_path` (NOT
+    // `SlugStorePaths`, which deliberately omits it). Placed before open so a live
+    // daemon refuses before any DB is touched or written.
+    if slug.is_some() {
+        preflight_live_pid_refusal(&paths.pid_path)?;
+    }
+
+    // Phase 1b: open the TARGET store (slug or path-hash). Reached only after the
+    // funnel's existence gate returned Ok in slug mode (C-3).
     let store = Arc::new(
         SqlxStore::open(
-            &paths.db_path,
+            &db_target,
             unimatrix_store::pool_config::PoolConfig::default(),
         )
         .await?,
@@ -151,7 +185,7 @@ async fn run_import_async(
             .fetch_one(pool)
             .await?;
 
-    check_preflight(pool, force, &paths).await?;
+    check_preflight(pool, force, &paths, &db_target, slug.is_some()).await?;
 
     // Phase 4: Validate header against DB
     match header.format_version {
@@ -222,8 +256,11 @@ async fn run_import_async(
     // pool; leaving conn alive would cause a pool timeout (GH#303).
     drop(conn);
 
-    // Phase 10: Re-embed and build vector index (ADR-004: after DB commit)
-    crate::embed_reconstruct::reconstruct_embeddings(&store, &paths.vector_dir)?;
+    // Phase 10: Re-embed and build vector index (ADR-004: after DB commit).
+    // In slug mode this targets `{slug}/vector` (vnc-048 ADR-004) so the daemon
+    // loads the rebuilt index at the next `start`; in no-slug mode it is the
+    // path-hash `paths.vector_dir` (unchanged).
+    crate::embed_reconstruct::reconstruct_embeddings(&store, &vector_target)?;
 
     // Phase 11: Record provenance
     record_provenance(&store, input, &counts).await?;
@@ -246,11 +283,20 @@ fn parse_header(line: &str) -> Result<ExportHeader, Box<dyn std::error::Error>> 
     Ok(header)
 }
 
-/// Pre-flight checks: DB empty check, PID file warning.
+/// Pre-flight checks (all before any write): DB-empty/`--force` check, the
+/// slug-mode non-empty-`audit_log` refusal (ADR-005), and the no-slug PID warning.
+///
+/// `db_target` is the resolved store path (the slug db in slug mode) and is named
+/// by the audit-refusal message so the operator sees the correct absolute path
+/// (vnc-048 OQ-4). In slug mode the live-PID HARD gate already ran pre-open
+/// (`preflight_live_pid_refusal`); the warning-only PID branch is therefore
+/// restricted to no-slug mode so AC-05 parity holds.
 async fn check_preflight(
     pool: &SqlitePool,
     force: bool,
     paths: &project::ProjectPaths,
+    db_target: &Path,
+    slug_mode: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let entry_count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM entries")
         .fetch_one(pool)
@@ -264,14 +310,64 @@ async fn check_preflight(
         .into());
     }
 
-    // PID file check -- warning only, do not block (SR-07)
-    if paths.pid_path.exists() {
+    // Non-empty-`audit_log` pre-flight refusal (ADR-005, AC-10/FR-13, C-5) —
+    // slug mode ONLY, after the entry-count check and BEFORE any write. The
+    // append-only `audit_log` cannot be cleared by `drop_all_data` (schema v25
+    // triggers), so restoring over a non-empty target would collide on the
+    // explicit-`event_id` INSERT with a raw SQLite UNIQUE error. Refuse loud first
+    // with an actionable message naming the resolved slug db path; NEVER surface
+    // the raw UNIQUE error. `--force` does NOT bypass this (no such override).
+    if slug_mode {
+        let audit_rows: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM audit_log")
+            .fetch_one(pool)
+            .await?;
+        if audit_rows > 0 {
+            return Err(format!(
+                "restore target already has {audit_rows} audit rows at {abs}; restore \
+                 targets a fresh slug. Run `project register <new-slug>` and import there.",
+                audit_rows = audit_rows,
+                abs = db_target.display()
+            )
+            .into());
+        }
+    }
+
+    // PID file check -- warning only, do not block (SR-07). No-slug mode only: in
+    // slug mode the live-PID HARD gate already ran pre-open (ADR-003), so re-warning
+    // here would be redundant.
+    if !slug_mode && paths.pid_path.exists() {
         eprintln!(
             "WARNING: PID file exists at {}. A server may be running. Consider stopping it before import.",
             paths.pid_path.display()
         );
     }
 
+    Ok(())
+}
+
+/// Live-PID hard-error gate (ADR-003, AC-13) — slug-mode import refusal.
+///
+/// Refuses when a LIVE `unimatrix` daemon PID is present at the base-scoped
+/// `pid_path`. The predicate is **liveness**, not file presence: `read_pid_file`
+/// then `is_process_alive` (kill -0) AND `is_unimatrix_process` (`/proc` cmdline
+/// identity). A stale/dead PID file, or a reused OS PID owned by a non-unimatrix
+/// process, must NOT block (R-11). Importing into a live slug would be clobbered
+/// when the daemon dumps its stale in-memory index at shutdown; refusing pre-open
+/// makes that clobber structurally unreachable. No `--force` override exists.
+fn preflight_live_pid_refusal(pid_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(pid) = read_pid_file(pid_path)
+        && is_process_alive(pid)
+        && is_unimatrix_process(pid)
+    {
+        return Err(format!(
+            "a live unimatrix daemon (pid {pid}) is running; its PID file is {abs}. \
+             Importing into a live slug would be clobbered at the daemon's next \
+             shutdown. Stop the daemon first: stop → import --slug … → start.",
+            pid = pid,
+            abs = pid_path.display()
+        )
+        .into());
+    }
     Ok(())
 }
 
@@ -637,6 +733,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -660,6 +757,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -692,6 +790,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -725,6 +824,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -755,6 +855,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -790,6 +891,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -817,6 +919,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -844,6 +947,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -868,6 +972,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -899,6 +1004,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -937,6 +1043,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -975,6 +1082,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -999,6 +1107,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1033,6 +1142,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             true, // skip hash -- hash won't match the SQL injection string
             false,
             base_dir.path(),
@@ -1082,6 +1192,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             true,
             false,
             base_dir.path(),
@@ -1120,6 +1231,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             true,
             false,
             base_dir.path(),
@@ -1182,6 +1294,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1272,6 +1385,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1508,6 +1622,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1559,6 +1674,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1611,6 +1727,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1633,6 +1750,7 @@ mod tests {
         let result2 = run_import_with_base(
             Some(project_dir.path()),
             &input_path2,
+            None,
             true,
             true, // force
             base_dir.path(),
@@ -1689,6 +1807,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1761,6 +1880,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1804,6 +1924,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1847,6 +1968,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1894,6 +2016,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1938,6 +2061,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -1991,6 +2115,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -2055,6 +2180,7 @@ mod tests {
         let result = run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
@@ -2103,6 +2229,7 @@ mod tests {
         run_import_with_base(
             Some(project_dir.path()),
             &input_path,
+            None,
             false,
             false,
             base_dir.path(),
