@@ -47,6 +47,7 @@ use crate::project;
 
 /// Atomic `[[projects]]` routing-intent write for `register` (ADR-007).
 mod config_write;
+pub(crate) mod slug_store; // vnc-048 slug-store funnel; export/import consume it (Wave B)
 
 /// Database file name within a per-slug data dir (matches the single-project layout
 /// and `http_provision::build_project_server`).
@@ -120,7 +121,7 @@ pub struct ProjectRegistry {
 /// in it, so the join cannot escape `{base}/{slug}/` (AC-W2-R6). NEVER call this
 /// with a raw `&str`; the `&ProjectSlug` type is the proof the value passed the
 /// parse edge.
-fn per_slug_data_dir(base: &Path, slug: &ProjectSlug) -> PathBuf {
+pub(crate) fn per_slug_data_dir(base: &Path, slug: &ProjectSlug) -> PathBuf {
     base.join(slug.as_str())
 }
 
@@ -203,7 +204,7 @@ impl ProjectRegistry {
     /// Two SEPARATE checks: a charset-valid slug equal to a reserved route segment
     /// (`v1`/`health`/`observe`/`tools`) is still rejected. `tools` is critical —
     /// it shadows the `/v1/tools/...` default-project alias (ADR-005).
-    fn validate_slug(raw_slug: &str) -> Result<ProjectSlug, ServerError> {
+    pub(crate) fn validate_slug(raw_slug: &str) -> Result<ProjectSlug, ServerError> {
         // 1. Charset allowlist (D1) — the shared Wave-1 newtype, NOT a reimpl.
         let slug = ProjectSlug::try_from(raw_slug).map_err(|_| {
             ServerError::Config(format!(
