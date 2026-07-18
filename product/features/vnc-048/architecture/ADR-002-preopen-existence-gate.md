@@ -1,0 +1,14 @@
+## ADR-002: Pre-open existence gate; the gate is file-existence, not registration
+
+### Context
+`SqlxStore::open` → `migrate_if_needed` (`store/src/db.rs:82`) is a **write** that auto-creates and migrates the database. This is the mechanism of the original bug: `export` opened (and thereby auto-created) a near-empty path-hash store and reported success (SR-02). Any resolve that reaches `open` before checking existence re-stages the exact silent-empty-store defect in a new costume (C-3). Separately, the gate must decide *what* qualifies a slug as resolvable: `project list` is deliberately config-driven (#4972), but the highest-value export is taken from a **de-registered** project just before `project delete --purge` destroys it — a registration gate would refuse exactly that (SR-04).
+
+### Decision
+1. **Existence strictly before open (C-3).** `resolve_slug_store` performs `db_path.exists()` (a read, no side effect) and returns an error **before** any caller touches `SqlxStore::open`. `open` is never the gate on either path. On a missing store the command fails loud, **creates nothing** — no store, no dirs, no output file — and the error names the slug, the fully-resolved absolute path tried, and the next action (AC-03). Export and import share this gate through the one funnel.
+2. **The gate is file existence, not registration (SR-04).** `--slug` means "a store dir under the base," not "a registered project." No `[[projects]]` / `project list` lookup gates resolution. Accepted consequences, documented in help text (AC-07), not gated: (a) a de-registered project can still be exported (the load-bearing case); (b) a 16-hex path-hash dir name is a charset-valid slug that would resolve a real store. This is the opposite choice from `project list` (config-driven), and deliberately so.
+3. **No-`--slug` path untouched (AC-05/AC-11).** When `slug = None` the funnel is not entered; `paths.db_path` (path-hash) flows byte-for-byte as today, including `open`'s auto-create semantics for the single-project case. AC-11: `export` without `--slug` from a base containing a populated slug dir yields only the hash store's data — documented, never silently reinterpreted.
+
+### Consequences
+Easier: the silent-empty-store class is closed structurally — an auto-created store is unreachable in slug mode because `exists()` fails first. The de-registered-project export (the highest-value backup) works. The no-`--slug` path carries zero behavioral change, so single-project/local users are unaffected.
+
+Harder: a stray/hash dir under the base is resolvable by name (accepted per SR-04) — mitigated by the export count summary (ADR-006), which self-diagnoses a wrong-store export via "exported 0 entries". The `exists()`-then-`open` sequence is a benign TOCTOU (a store deleted between check and open) — acceptable: the window is an operator racing their own `delete`, and `open` would then surface its own error; no locking is added (AC-08).
