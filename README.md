@@ -65,6 +65,34 @@ The container runs `unimatrix serve --foreground` as PID 1 (non-root, UID 65532)
 
 **Serving projects.** Project identity is mandatory at the cloud/container entrypoint: a fresh deployment serves NO request until at least one project is registered — any attach against an unregistered server fails loud with "register a project to begin." There is no no-slug / default-project route. The first project and the Nth project are registered the IDENTICAL way — a single `unimatrix project register <slug>` command that creates the per-slug store, writes the `[[projects]]` routing intent (no hand-edit of `config.toml`), AND seeds an annotated per-slug `config.toml` the operator can edit (see "Per-Slug Configuration Overlay" below); a daemon restart applies it. Each registered slug is then reachable at `https://host:8443/v1/{slug}/...` with its own database, vector index, hash chain, and analytics under `/data/.unimatrix/{slug}/` — no cross-project read or write. One container serves N fully-isolated projects from a single bearer token, with a per-project bundle emitted by `unimatrix client-bundle <slug>`. Slugs are operator-declared, never client-minted: a client attaches to an existing slug and never auto-creates a project. A slug must match `^[a-z0-9][a-z0-9-]{0,62}$` (lowercase alphanumeric and hyphen, 1–63 chars, starting alphanumeric) and may not be a reserved route segment. (The local single-project STDIO/UDS install is unaffected — it keeps its path-hash identity and requires no slug; see "Wire into your project".)
 
+#### Backup and restore a per-slug project
+
+To back up or move a single project's knowledge between personal-cloud instances, `export`/`import` take a `--slug <slug>` flag that targets the running project's actual per-slug store (`{base}/<slug>/unimatrix.db`, base derived from `--project-dir`) rather than the CLI's path-hash store. `--slug` means "a store dir under the base," **not** "a registered project" — a store directory is resolved directly, so the flag also works on a de-registered slug whose data still exists. The expected posture is to `exec` into the container (where `HOME=/data`, so the base is `/data/.unimatrix`) and invoke the binary there.
+
+**Backup (export):**
+
+```bash
+# exec into the container, then:
+unimatrix --project-dir <dir> export --slug <slug> -o dump.jsonl
+# stderr: exported N entries, M audit rows → dump.jsonl
+```
+
+`exported 0 entries` means the resolve found an empty or wrong store — check the slug and `--project-dir`.
+
+**Restore (import) — canonical sequence (the order is load-bearing):**
+
+```bash
+1. unimatrix project register <slug>              # creates {base}/<slug>/{unimatrix.db, vector}, writes [[projects]]
+2. unimatrix stop                                 # daemon releases the per-slug stores; the live-PID gate clears
+3. unimatrix --project-dir <dir> import --slug <slug> -i dump.jsonl
+4. unimatrix start                                # daemon boots and loads the rebuilt index
+```
+
+After `start`, the restored slug serves the full corpus — **including vector search** — because the rebuilt `{base}/<slug>/vector` index is the one the daemon loads at boot.
+
+- **Why `stop` is mandatory.** `import --slug` hard-errors while a live daemon holds the store: a running daemon would overwrite the freshly rebuilt vector index with its stale in-memory copy at the next shutdown. This is a refusal, not a warning, and there is no `--force` override — take the daemon down across the import.
+- **Restore into a freshly-registered slug.** The target must have an empty audit log. Re-importing into a slug that already has audit history fails loud (audit history is append-only and cannot be cleared) — register a fresh slug and import there.
+
 ### Build from Source
 
 Prerequisites:
