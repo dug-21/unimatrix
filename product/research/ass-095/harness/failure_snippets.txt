@@ -1,0 +1,639 @@
+Exit code 127 crates/unimatrix-store/src/db.rs:7:use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions}; crates/unimatrix-store/src/db.rs:69:        // is respected. Raw sqlite:// URLs do not set create_if_missing by default. crates/unimatrix-store/src/db.rs:1216:            "SELECT sql FROM sqlite_master WHERE type='table' AND name='graph_edges'", crates/unimatrix-store/src/db.rs:1220:        .expect("query sqlite_master"); crates/unimatrix-store/src/db.rs:1226:            "sql
+Exit code 1 === Density under different denominators ===   PPR edges / all entries (4915) = 0.2332   PPR edges / non-quarantined (2414) = 0.4747   PPR edges / active-only (1781) = 0.6435   Q3b threshold = ~1.0/entry. Highest density (active-only denom) = 0.6435  === Out-degree distribution (positive edges), 600 entries have ≥1 out-edge ===   entries with 0 positive out-edges = 4315 of 4915   out-degree 1: 347 entries   out-degree 2: 119 entries   out-degree 3: 68 entries   out-degree 4: 28 ent
+Exit code 1 ====================================================================== PPR-POSITIVE edges — endpoint status (both directions) ======================================================================   src=Active      -> tgt=Active      1146   TOTAL PPR-positive edges: 1146   -> both endpoints ACTIVE: 1146  ====================================================================== dangling edges (endpoint id missing from entries) & self-loops ==============================================
+Exit code 1 still running: 97266 /bin/bash -c source /home/vscode/.claude/shell-snapshots/snapshot-bash-1781063195777-no783o.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && eval 'kill 24212 30005 32691 2>/dev/null; sleep 1; rem=$(pgrep -af '"'"'/usr/local/cargo/bin/unimatrix'"'"'); if [ -z "$rem" ]; then echo "all unimatrix processes terminated"; else echo "still running:"; echo "$rem"; echo "--- sending SIGKILL ---"; pkill -9 -f '"'"'/usr/local/cargo/bin/unimatrix'"'"'; sleep 
+Exit code 123 ===
+Exit code 1 === CRT053_BLEND= === === CRT053_BLEND=0.5 === === CRT053_BLEND=0.9 ===
+Exit code 101  83 | impl EvalServiceLayer {     | --------------------- method in this implementation ... 447 |     pub(crate) fn nli_handle(&self) -> Option<Arc<NliServiceHandle>> {     |                   ^^^^^^^^^^     |     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default  warning: function `test_is_in_progress_three_states` is never used     --> crates/unimatrix-server/src/mcp/response/retrospective.rs:3000:8      | 3000 |     fn test_is_in_progress_three_states() {   
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 144
+Exit code 1 HTTP 401: Requires authentication (https://api.github.com/graphql) Try authenticating with:  gh auth login
+Exit code 2 total 56 drwxr-xr-x  4 vscode vscode   128 Jun  2 15:43 . drwxr-xr-x 77 vscode vscode  2464 Jun 10 12:36 .. -rw-r--r--  1 vscode vscode 35464 Jun  2 15:43 FINDINGS.md -rw-r--r--  1 vscode vscode 17993 Jun  2 15:22 SCOPE.md ---FEATURES--- nan-001 nan-002 nan-003 nan-004 nan-005 nan-006 nan-007 nan-008 nan-009 nan-010 nan-011 nan-013 nan-014 nan-015 nan-018 ---CLIENT---
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 1 dogfood-switchover: not inside a git repository node:child_process:964     throw err;     ^  Error: Command failed: sh /workspaces/unimatrix/scripts/dogfood-switchover.sh promote --settings /var/tmp/insp-1NApOz/.claude/settings.json --client /var/tmp/dogfood-switchtest.FOUui9/dogfood-client dogfood-switchover: not inside a git repository      at genericNodeError (node:internal/errors:985:15)     at wrappedFn (node:internal/errors:539:14)     at checkExecSyncError (node:child_process:
+Exit code 1 === merge-settings === === init === === init-integration === === init-remote ===
+MCP error -32602: Invalid parameter 'content': Content exceeds configured maximum of 8000 bytes (received 8968 bytes). Consider breaking this into multiple focused entries.
+Exit code 2 SCOPE.md ---REVIEWS---
+Exit code 1 accepts at most 1 arg(s), received 2
+Exit code 1 accepts at most 1 arg(s), received 2
+Exit code 2 === ADRs === ADR-001-bundle-wire-form.md ADR-002-cert-fingerprint-format.md ADR-003-resolve-store-seam.md ADR-004-slug-register-attach.md ADR-005-wave1-default-alias.md ADR-006-wave-to-issue-mapping.md ADR-007-http-enable-env-var.md ARCHITECTURE.md === pseudocode === OVERVIEW.md bundle-codec.md cert-provisioner.md container-posture.md default-resolver.md fingerprint-computer.md public-url.md remote-client.md slug-router.md === test-plan === OVERVIEW.md bundle-codec.md cert-provisione
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32007: Unknown category 'lesson'. Valid categories: convention, decision, feature, goal, lesson-learned, pattern, procedure.
+Exit code 2 === test-plan dir === total 68 drwxr-xr-x 12 vscode vscode   384 Jun 11 12:54 . drwxr-xr-x 15 vscode vscode   480 Jun 11 12:58 .. -rw-r--r--  1 vscode vscode 14052 Jun 11 12:50 OVERVIEW.md -rw-r--r--  1 vscode vscode  5640 Jun 11 12:51 bundle-codec.md -rw-r--r--  1 vscode vscode  4324 Jun 11 12:50 cert-provisioner.md -rw-r--r--  1 vscode vscode  2887 Jun 11 12:54 cert-rotation-runbook.md -rw-r--r--  1 vscode vscode  3257 Jun 11 12:53 container-posture.md -rw-r--r--  1 vscode vscode  
+Exit code 2 === ensure_data_directory signature + hash layout === === project.rs location === ls: cannot access 'crates/unimatrix-server/src/project.rs': No such file or directory ls: cannot access 'crates/unimatrix-server/src/project/': No such file or directory
+Exit code 1 GOOD-PIN(secureConnect manual): CONNECTED 200 node:internal/crypto/hash:142     throw new ERR_INVALID_ARG_TYPE(     ^  TypeError [ERR_INVALID_ARG_TYPE]: The "data" argument must be of type string or an instance of Buffer, TypedArray, or DataView. Received undefined     at Hash.update (node:internal/crypto/hash:142:11)     at TLSSocket.<anonymous> (/tmp/pintest3.js:20:67)     at TLSSocket.emit (node:events:509:28)     at TLSSocket.onConnectSecure (node:internal/tls/wrap:1693:8)     at
+Exit code 1 node:fs:561   return binding.open(                  ^  Error: ENOENT: no such file or directory, open '/tmp/test/fixtures/tls/cert.pem'     at Object.openSync (node:fs:561:18)     at Object.readFileSync (node:fs:445:35)     at Object.<anonymous> (/tmp/race-test.js:9:21)     at Module._compile (node:internal/modules/cjs/loader:1854:14)     at Object..js (node:internal/modules/cjs/loader:1985:10)     at Module.load (node:internal/modules/cjs/loader:1577:32)     at Module._load (node:in
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File content (441.4KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 1 wc: crates/unimatrix-server/src/config.rs: No such file or directory
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File content (441.4KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 1 rc=1
+Exit code 1 rc=1
+Exit code 101 test http::token::tests::test_concurrent_creation_no_corruption ... FAILED thread 'http::token::tests::test_concurrent_creation_no_corruption' (5533) panicked at crates/unimatrix-server/src/http/token.rs:381:43: test result: FAILED. 3966 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 7.32s error: test failed, to rerun pass `-p unimatrix-server --lib` rc=101
+File content (449.7KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 2 17:pub use auth::StaticTokenAuthLayer; 20:pub use cert_provisioner::{CertPem, KeyPem, load_or_generate_cert}; 21:pub use listener::start_http_listener; 24:pub use public_url::{Env, PublicUrl, derive_public_url}; 25:pub use router::{ObserveContext, PathRouter}; 31:pub use router::{ 35:pub use tls::build_tls_acceptor; 38:pub use tls::{FP_PREFIX, fingerprint_leaf_der, leaf_der_from_pem}; 39:pub use token::load_or_generate_token; ===http module file?=== crates/unimatrix-server/src/http/m
+File content (449.7KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 101 a non-/v1 MCP path must route to Default and dispatch; got 400 Bad Request  ---- test_default_and_slug_interleaved_no_cross_contamination stdout ----  thread 'test_default_and_slug_interleaved_no_cross_contamination' (78779) panicked at crates/unimatrix-server/tests/project_routing_integration.rs:611:9: dispatch /v1/tools/mcp  ---- test_two_slugs_route_to_distinct_stores stdout ----  thread 'test_two_slugs_route_to_distinct_stores' (78786) panicked at crates/unimatrix-server/tests/
+File content (449.7KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 101     | --------------------- method in this implementation ... 447 |     pub(crate) fn nli_handle(&self) -> Option<Arc<NliServiceHandle>> {     |                   ^^^^^^^^^^     |     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default  warning: function `test_is_in_progress_three_states` is never used     --> crates/unimatrix-server/src/mcp/response/retrospective.rs:3000:8      | 3000 |     fn test_is_in_progress_three_states() {      |        ^^^^^^^^^^^^^^^^^^
+Exit code 101 test uds::listener::tests::transcript::test_delta_dispatch_emits_no_new_audit_events ... ok test uds::listener::tests::transcript::test_mixed_batch_persists_non_delta_merges_delta ... ok test uds::transcript_block::tests_bytes::test_block_bounded_regardless_of_input_size ... ok test uds::mcp_listener::tests::test_session_cap_enforced_at_32 ... ok test uds::mcp_listener::tests::test_sequential_cycles_vec_bounded ... ok test infra::rayon_pool::tests::test_pool_accepts_new_submissions
+Exit code 144 === before === 7335 /usr/local/cargo/bin/unimatrix 69045 /usr/local/cargo/bin/unimatrix 89365 /bin/bash -c source /home/vscode/.claude/shell-snapshots/snapshot-bash-1781128091350-4n78o6.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && eval 'echo "=== before ===" && pgrep -af '"'"'/usr/local/cargo/bin/unimatrix'"'"' || echo "(none)" pkill -f '"'"'/usr/local/cargo/bin/unimatrix'"'"' sleep 1 2>/dev/null echo "=== after kill ===" && pgrep -af '"'"'/usr/local/cargo/bin/
+Exit code 101 test uds::transcript_block::tests_bytes::test_from_bytes_hole_truncated_window_well_formed ... ok test uds::transcript_block::tests_bytes::test_from_bytes_invalid_utf8_lossy_no_panic ... ok test uds::transcript_block::tests_bytes::test_from_bytes_mid_line_tail_start ... ok test uds::transcript_block::tests_bytes::test_from_bytes_respects_byte_budget ... ok test uds::transcript_block::tests_bytes::test_golden_parity_from_path_vs_streamed_from_bytes ... ok test uds::listener::tests::
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 101     = note: `UnimatrixServer` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis  warning: `unimatrix-server` (lib test) generated 36 warnings (9 duplicates) (run `cargo fix --lib -p unimatrix-server --tests` to apply 23 suggestions)    Compiling unimatrix-core v0.7.2 (/workspaces/unimatrix/.claude/worktrees/bugfix-723-model-dir-sep/crates/unimatrix-core) warning: `unimatrix-observe` (lib test) generated 2 warnings (run `cargo fix 
+MCP error -32003: Agent 'uni-security-reviewer' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix+742-deflake-test-integrity.
+Exit code 1 cat: /home/vscode/.claude/projects/-workspaces-unimatrix--claude-worktrees-bugfix-742-deflake-test-integrity/414c3d5b-087f-4ff3-9722-b53tajm03.txt: No such file or directory
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 1 tail: cannot open '/var/tmp/claude-1000/-workspaces-unimatrix/414c3d5b-087f-4ff3-9722-b83602175ccc/tasks/bltxy1czu.output' for reading: No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix+742-deflake-test-integrity.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix+742-deflake-test-integrity.
+Exit code 2 ugrep: warning: /workspaces/unimatrix/.claude/worktrees/bugfix+742-deflake-test-integrity/crates/unimatrix-server/src/mcp/handler.rs: No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix+742-deflake-test-integrity. Did you mean profile?
+Exit code 1 === evade1 (setsid -w cargo test | tail, no separator -> exemption MAY drop, but it IS unhardened pipe) === evade3.md:1:setsid -w true && cargo test --workspace | tail rc=0 pwd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 101   failures:     eval::runner::sweep_tests::test_ac14_correlated_sweep_non_vacuous  test result: FAILED. 4029 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 7.07s  error: test failed, to rerun pass `-p unimatrix-server --lib`
+Exit code 127
+Exit code 2 ---
+Exit code 2 {"body":"## Summary\n\n`context_cycle_review` reports per-session **`Calls: 0`, `Tools: —`, and `0% context reload`** for every cycle delivered under the new **TS UDS hook client** (switched in via `f9397421` / #680, ADR-004 vnc-028 \"F6 soak\"), despite the cycle carrying full records and a populated cycle-level findings/hotspot section. Per-session telemetry is silently zeroed.\n\n## Root cause\n\nEvent-type **contract drift** between the client (write side) and the retrospective
+Exit code 127 ---
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 127 /bin/bash: line 1: fd: command not found ---OBSERVATION--- /bin/bash: line 1: fd: command not found ---SESSION_METRICS--- /bin/bash: line 1: fd: command not found
+Exit code 127 === total PostToolUse Read rows === /bin/bash: line 11: sqlite3: command not found === of those, how many have non-null, non-empty input === /bin/bash: line 13: sqlite3: command not found === how many have input containing file_path === /bin/bash: line 15: sqlite3: command not found === sample 5 input values === /bin/bash: line 17: sqlite3: command not found
+Exit code 101    |                   ------------ field in this struct ... 28 |     confidence_state: ConfidenceStateHandle,    |     ^^^^^^^^^^^^^^^^    |    = note: `UsageService` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis  warning: function `make_sre_tool_response` is never used   --> crates/unimatrix-observe/tests/detection_isolation.rs:62:4    | 62 | fn make_sre_tool_response(ts: u64, event_type: &str, tool: &str, size: u64) -> Obse
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 144
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 127
+MCP error -32602: failed to deserialize parameters: missing field `topic`
+File content (345.8KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+File content (449.7KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 2 total 28 drwxr-xr-x  6 vscode vscode  192 Jun 16 09:27 . drwxr-xr-x 13 vscode vscode  416 Jun 16 09:27 .. -rw-r--r--  1 vscode vscode 7972 Jun 16 09:07 crt-054-agent-1-architect-report.md -rw-r--r--  1 vscode vscode 5989 Jun 16 09:27 crt-054-agent-1-pseudocode-report.md -rw-r--r--  1 vscode vscode 5245 Jun 16 09:11 crt-054-agent-2-spec-report.md -rw-r--r--  1 vscode vscode 1544 Jun 16 02:52 crt-054-synthesizer-report.md ---REPORTS---
+Exit code 101     = note: add `#[derive(Debug)]` to `transcript_activity::SignatureScanner` or manually `impl std::fmt::Debug for transcript_activity::SignatureScanner` help: the trait `std::fmt::Debug` is implemented for `Result<T, E>`    --> /usr/local/rustup/toolchains/stable-aarch64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/result.rs:552:16     | 552 | #[derive(Copy, Debug, Hash)]     |                ^^^^^     = note: required for `Result<transcript_activity::SignatureScanner,
+[Request interrupted by user for tool use]
+File content (462KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+MCP error -32602: failed to deserialize parameters: missing field `topic`
+Exit code 128 === new lifecycle test present? === 1164:def test_compaction_events_table_survives_restart(tmp_path):  === uncommitted diff to lifecycle suite (stat) === fatal: ambiguous argument 'product/test/infra-001/suites/test_lifecycle.py': unknown revision or path not in the working tree. Use '--' to separate paths from revisions, like this: 'git <command> [<revision>...] -- [<file>...]'
+[Request interrupted by user for tool use]
+Exit code 101 159 |     use crate::types::{EvidenceRecord, Severity};     |                        ^^^^^^^^^^^^^^     |     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default  warning: `unimatrix-vector` (lib test) generated 1 warning warning: value assigned to `attribution_path_label` is never read     --> crates/unimatrix-server/src/mcp/tools.rs:1971:64      | 1971 |         let mut attribution_path_label: Option<&'static str> = None;      |                            
+Exit code 101  warning: unused import: `sqlx::Row`     --> crates/unimatrix-server/src/server.rs:4058:13      | 4058 |         use sqlx::Row;      |             ^^^^^^^^^  warning: unused variable: `entries`     --> crates/unimatrix-server/src/services/search.rs:2020:13      | 2020 |         let entries = vec![      |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entries`      |      = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+Exit code 101 test test_record_usage ... ok test test_store_and_get_metrics ... ok test test_sql_analytics_query ... ok test test_store_metrics_empty_phases ... ok test test_update ... ok test test_update_not_found ... ok test test_top_co_access_pairs ... ok test test_update_confidence ... ok test test_v27_indexes_all_exist ... ok test test_update_status ... ok test test_vector_mapping ... ok test test_store_metrics_replace_phases ... ok  failures:  ---- test_create_tables_cycle_review_index_sch
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File content (515.8KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 127 === observations schema === /bin/bash: line 4: sqlite3: command not found  === distinct tool names containing 'context' (PreToolUse), top 20 === /bin/bash: line 5: sqlite3: command not found
+Exit code 1 === observations columns === id INTEGER session_id TEXT ts_millis INTEGER hook TEXT tool TEXT input TEXT response_size INTEGER response_snippet TEXT topic_signal TEXT phase TEXT topic_source TEXT  === tool names for context_get/context_lookup (all event types) === Traceback (most recent call last):   File "<stdin>", line 9, in <module> sqlite3.OperationalError: no such column: event_type
+Exit code 2 ls: cannot access '/workspaces/unimatrix/product/features/vnc-037/reports/': No such file or directory /workspaces/unimatrix/product/features/vnc-037/architecture/: total 80 drwxr-xr-x 10 vscode vscode   320 Jun 16 10:00 . drwxr-xr-x 13 vscode vscode   416 Jun 16 20:42 .. -rw-r--r--  1 vscode vscode  5800 Jun 15 01:20 ADR-001-reuse-direct-neighbors-read-path.md -rw-r--r--  1 vscode vscode  4118 Jun 15 01:21 ADR-002-get-edge-shape-projection-discovery-list.md -rw-r--r--  1 vscode vsco
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 101 229 |     pub(crate) effectiveness_state: EffectivenessStateHandle,     |                ^^^^^^^^^^^^^^^^^^^     |     = note: `UnimatrixServer` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis  error: linking with `cc` failed: exit status: 1   |   = note:  "cc" "/workspaces/unimatrix/target/debug/deps/rustcfbsMf7/symbols.o" "<87 object files omitted>" "-Wl,--as-needed" "-Wl,-Bstatic" "<sysroot>/lib/rustlib/aarch64-unknown-linux-
+Exit code 2 ACCEPTANCE-MAP.md ALIGNMENT-REPORT.md IMPLEMENTATION-BRIEF.md RISK-TEST-STRATEGY.md SCOPE-RISK-ASSESSMENT.md SCOPE.md agents architecture pseudocode reports specification test-plan ---ARCH--- ADR-001-reuse-direct-neighbors-read-path.md ADR-002-get-edge-shape-projection-discovery-list.md ADR-003-serializer-seam-none-key-absent.md ADR-004-additive-source-rawedgerow.md ADR-005-json-totals-and-empty-subgroup-rendering.md ADR-006-ranking-rule-authored-first-target-confidence.md ADR-007-sy
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/product/features/vnc-037/test-plan'
+Exit code 2 === ranked tests file === -rw-r--r-- 1 vscode vscode 31451 Jun 16 21:20 crates/unimatrix-store/src/graph_queries_ranked_tests.rs 874 crates/unimatrix-store/src/graph_queries_ranked_tests.rs === all test files in store/src === crates/unimatrix-store/src/graph_queries_ranked_tests.rs crates/unimatrix-store/src/graph_queries_tests.rs crates/unimatrix-store/src/query_log_tests.rs === server edge test files === crates/unimatrix-server/src/mcp/activity_fold_handler_tests.rs crates/unimatri
+Exit code 1 failed to parse jq expression (line 1, column 233)     .title, "STATE: \(.state) | base=\(.baseRefName) head=\(.headRefName) | mergeable: \(.mergeable) | reviewDecision: \(.reviewDecision)", "+\(.additions)/-\(.deletions) across \(.changedFiles) files", "labels: \([.labels[].name]|join(\", \"))", "---BODY---", .body                                                                                                                                                                           
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32602: Invalid parameter 'content': Content exceeds configured maximum of 8000 bytes (received 9316 bytes). Consider breaking this into multiple focused entries.
+MCP error -32602: Invalid parameter 'title': exceeds 200 characters
+Exit code 2 === workspace members === [workspace] members = ["crates/*"] === bin targets === main.rs: crates/unimatrix-server/src/main.rs === server crate name + bins === name = "unimatrix-server" [[bin]] name = "unimatrix" name = "unimatrix_server"
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 2 SCOPE.md ---REVIEWS---
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File content (45648 tokens) exceeds maximum allowed tokens (25000). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Exit code 2 ugrep: warning: /workspaces/unimatrix/crates/unimatrix-server/src/api/projects.rs: No such file or directory
+Exit code 2 ugrep: warning: /usr/local/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-test-macros-0.2*/src/lib.rs: No such file or directory
+Exit code 1 == bw7gt96ow (0 lines) == == b74noekzj (0 lines) == == b6i15x1e0 (0 lines) ==
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/packages/unimatrix/lib'
+Exit code 101 rc=101 test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s test result: ok. 106 passed; 0 failed; 27 ignored; 0 measured; 0 filtered out; finished in 0.13s test result: ok. 482 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.03s test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s t
+Exit code 144
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32007: Unknown category 'lesson'. Valid categories: convention, decision, feature, goal, lesson-learned, pattern, procedure.
+MCP error -32602: failed to deserialize parameters: missing field `topic`
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 2 {   "name": "@dug-21/unimatrix",   "version": "0.8.1",   "description": "Unimatrix knowledge engine for multi-agent development",   "bin": {     "unimatrix": "bin/unimatrix.js"   },   "scripts": {     "postinstall": "node postinstall.js",     "test": "node --test",     "test:hook-client": "node test/run-hook-client.js",     "test:hook-client:layer2": "node test/run-hook-client.js --only parity-layer2"   },   "optionalDependencies": {     "@dug-21/unimatrix-linux-x64": "0.8.1",     "@
+Exit code 144
+Exit code 1 error: unexpected argument 'test_unset_public_url_yields_non_empty_allowed_hosts' found  Usage: cargo test [OPTIONS] [TESTNAME] [-- [ARGS]...]  For more information, try '--help'.
+Exit code 101 === clippy rc=101 === error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: consider using `sort_by_key` error: the borrowed expression implements the required traits error: field assignment outside of initializer for an instance created with Default::default() error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: 
+Exit code 101 === unimatrix-server clippy rc=101 === error: field assignment outside of initializer for an instance created with Default::default() error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: this `if` statement can be collapsed error: this `if` statement can be collapsed 
+Exit code 1 failed to create review: GraphQL: Review Can not approve your own pull request (addPullRequestReview)
+Exit code 1 accepts at most 1 arg(s), received 4
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 128 fatal: not under version control, source=packages/unimatrix/test/credstore.test.js, destination=packages/unimatrix/test/hook-client/credstore.test.js
+Exit code 128 === status before add === ?? lib/hook-client/credstore.js ?? test/hook-client/credstore.test.js ?? ../../product/features/vnc-032/ ?? ../../product/features/vnc-036/ ?? ../../product/features/vnc-039/agents/vnc-039-agent-3-credstore-report.md ?? ../../product/research/ass-075/ ?? ../../product/research/ass-076/ ?? ../../product/research/ass-078/ ?? ../../product/research/ass-079/ === add targeted === fatal: pathspec 'packages/unimatrix/lib/hook-client/credstore.js' did not match an
+Exit code 1 test/remote-client.test.js ---per-file fail counts--- test/remote-client.test.js: ℹ fail 7
+Exit code 1 === test/hook-client/mcp-bridge-tls.test.js === === test/hook-client/mcp-bridge-sse.test.js === === test/hook-client/config.test.js === === test/hook-client/credstore.test.js ===
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 2 === build output === === binary present? ===
+Exit code 2 ACCEPTANCE-MAP.md ALIGNMENT-REPORT.md DESIGN.md Dockerfile IMPLEMENTATION-BRIEF.md RISK-TEST-STRATEGY.md SCOPE-RISK-ASSESSMENT.md SCOPE.md USAGE-PROTOCOL.md architecture docker-compose.yml fixtures harness pseudocode pytest.ini reports scripts specification suites test-plan testing tests --- ---suites--- ---scripts---
+Exit code 2 ls: cannot access 'product/features/nan-015/tests/': No such file or directory ls: cannot access 'product/features/nan-015/suites/': No such file or directory ls: cannot access 'product/features/nan-015/scripts/': No such file or directory product/features/nan-015/testing/: RISK-COVERAGE-REPORT.md
+Exit code 101 warning: unused import: `EvidenceRecord`    --> crates/unimatrix-observe/src/detection/mod.rs:159:24     | 159 |     use crate::types::{EvidenceRecord, Severity};     |                        ^^^^^^^^^^^^^^     |     = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default  warning: function `make_pre_edit` is never used    --> crates/unimatrix-observe/src/detection/agent.rs:542:8     | 542 |     fn make_pre_edit(ts: u64, path: &str) -> ObservationRecord {     | 
+Exit code 1 Unknown JSON field: "merged" Available fields:   additions   assignees   author   autoMergeRequest   baseRefName   baseRefOid   body   changedFiles   closed   closedAt   closingIssuesReferences   comments   commits   createdAt   deletions   files   fullDatabaseId   headRefName   headRefOid   headRepository   headRepositoryOwner   id   isCrossRepository   isDraft   labels   latestReviews   maintainerCanModify   mergeCommit   mergeStateStatus   mergeable   mergedAt   mergedBy   milesto
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/crates/unimatrix-server/src/http/router'
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File content (464.3KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/product/features/crt-056'
+Exit code 101   |   = note:  "cc" "/workspaces/unimatrix/target/debug/deps/rustcKWaeA5/symbols.o" "<117 object files omitted>" "-Wl,--as-needed" "-Wl,-Bstatic" "/workspaces/unimatrix/target/debug/deps/{libtracing_subscriber-888c7a55d6376c1d,libsharded_slab-320bdc58e189d9f4,libmatchers-cc50b6d489242cec,libnu_ansi_term-52eb26294d0e699a,libthread_local-99848ec71c1817d9,libtracing_log-dd3397afdc7bf018}.rlib" "<sysroot>/lib/rustlib/aarch64-unknown-linux-gnu/lib/{libtest-*,libgetopts-*,librustc_std_wo
+Exit code 101 ---- eval::corpus::fixtures_tests::test_ac14_scenario_search_returns_non_empty_ranked_list stdout ----  thread 'eval::corpus::fixtures_tests::test_ac14_scenario_search_returns_non_empty_ranked_list' (30071) panicked at crates/unimatrix-server/src/eval/corpus/fixtures_tests.rs:248:5: non-vacuous AC-14: both rank_below anchors must be present in results (dep=1009, act=1008, returned=[1011, 1012, 1006, 1000, 1008, 1014, 1016, 1018, 1010, 1013, 1015, 1003, 1002, 1001, 1019, 1017, 1005,
+MCP error -32007: Unknown category 'lesson'. Valid categories: capability, convention, decision, feature, goal, lesson-learned, pattern, procedure.
+Exit code 1 256 === main baseline warning count === No local changes to save   (use "git push" to publish your local commits) 256 Switched to branch 'feature/crt-056' Auto-merging product/WAVE2-ROADMAP.md CONFLICT (content): Merge conflict in product/WAVE2-ROADMAP.md Auto-merging product/test/infra-001/suites/test_volume.py On branch feature/crt-056 Changes to be committed:   (use "git restore --staged <file>..." to unstage) 	modified:   product/test/infra-001/suites/test_volume.py  Unmerged pat
+Exit code 101             error: could not compile `unimatrix-server` (test "export_integration") due to 1 previous error warning: build failed, waiting for other jobs to finish... error: linking with `cc` failed: exit status: 1   |   = note:  "cc" "/workspaces/unimatrix/target/debug/deps/rustciciP5W/symbols.o" "<117 object files omitted>" "-Wl,--as-needed" "-Wl,-Bstatic" "/workspaces/unimatrix/target/debug/deps/{libtracing_subscriber-888c7a55d6376c1d,libsharded_slab-320bdc58e189d9f4,libmatchers
+Exit code 101 warning: unused variable: `entry_a`    --> crates/unimatrix-server/src/services/typed_graph.rs:367:13     | 367 |         let entry_a = make_test_entry(1, unimatrix_core::Status::Active, Some(2));     |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entry_a`  warning: unused variable: `signal`     --> crates/unimatrix-server/src/uds/hook.rs:2428:13      | 2428 |         let signal = extract_event_topic_signal("SomeEvent", &input);      |          
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 1 error: unexpected argument 'shared_nli' found
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 127 --- ---http_provision---
+File content (464.3KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 1 feature/nan-019 ---   476 .github/workflows/release.yml    58 product/test/infra-001/scripts/release-gate-lib.sh   170 product/test/infra-001/scripts/docker-http-posture-smoke.sh   180 product/test/infra-001/scripts/release-gate-logic-test.sh   156 product/test/infra-001/scripts/release-tag-parity-test.sh wc: product/test/infra-001/fixtures/stub-smoke.sh: No such file or directory  1040 total
+Exit code 1   File "<stdin>", line 33     print(f"  if={gate!r} -> {'PASS' if gate==\"github.event_name != 'workflow_dispatch'\" else 'FAIL'}")                                                                                                         ^ SyntaxError: f-string expression part cannot include a backslash
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Validation error: outcome contains control characters
+File content (464.3KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+MCP error -32006: Content rejected: phone number detected (PhoneNumber detected). Remove the flagged content and retry.
+Exit code 2 ls: cannot access '/workspaces/unimatrix/product/features/vnc-040/pseudocode/': No such file or directory ls: cannot access '/workspaces/unimatrix/product/features/vnc-040/test-plan/': No such file or directory
+Exit code 1 Traceback (most recent call last):   File "<stdin>", line 18, in <module> StopIteration
+Exit code 1 Traceback (most recent call last):   File "<stdin>", line 15, in <module> StopIteration
+Exit code 1 === PRs linked to 785 === [{"headRefName":"feature/vnc-040","number":799,"state":"OPEN","title":"[vnc-040] Per-slug configuration overlay resolution (C6 / Feature A)"},{"headRefName":"bugfix/783-cloud-http-enable","number":786,"state":"MERGED","title":"fix: enable HTTP multi-project posture in cloud Docker image (#783)"},{"headRefName":"feature/crt-056","number":789,"state":"MERGED","title":"[crt-056] Per-slug intelligence parity: maintained analytics + correct service config"},{"hea
+Exit code 2 crates/unimatrix-server/src/services/nli_detection_tick.rs:100:enum NliCandidatePair {
+Exit code 123
+File content (472.6KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 2 sed: can't read crates/unimatrix-engine/src/infra/config.rs: No such file or directory
+File content (472.6KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 1 error: unexpected argument 'write_default_config' found  Usage: cargo test [OPTIONS] [TESTNAME] [-- [ARGS]...]  For more information, try '--help'.
+Exit code 1 error: let chains are only allowed in Rust 2024 or later    --> /workspaces/unimatrix/crates/unimatrix-server/src/infra/config.rs:355:8     | 355 |     if let Some(m) = cfg.multiplier     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  error: let chains are only allowed in Rust 2024 or later     --> /workspaces/unimatrix/crates/unimatrix-server/src/infra/config.rs:1282:12      | 1282 |         if let Some(ref sha) = self.embedding_model_sha256      |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Exit code 101  thread 'infra::config::tests::test_render_output_deserializes_to_default_unimatrix_config' (31860) panicked at crates/unimatrix-server/src/infra/config.rs:12813:9: assertion `left == right` failed: a pristine seed must deserialize to the compiled defaults (overlays nothing)   left: UnimatrixConfig { profile: ProfileConfig { preset: Collaborative }, knowledge: KnowledgeConfig { categories: ["convention", "decision", "feature", "goal", "lesson-learned", "pattern", "procedure"], boos
+Exit code 101 test projects::tests::test_register_dir_exists_deregistered_reattaches ... ok test projects::tests::test_re_register_re_attaches_no_clobber ... ok test projects::tests::test_register_seed_does_not_create_config_in_path_hash_dir ... ok test projects::tests::test_register_does_not_modify_shared_a_c_file ... ok test projects::tests::test_purge_then_register_is_fresh_store ... ok test projects::tests::test_register_seed_write_failure_does_not_fail_register ... ok test projects::tests::
+Exit code 101   failures:     projects::tests::test_register_seeded_b_is_resolver_loadable_and_overlays_nothing  test result: FAILED. 47 passed; 1 failed; 0 ignored; 0 measured; 4233 filtered out; finished in 0.33s  error: test failed, to rerun pass `-p unimatrix-server --lib`
+Exit code 101 failures:     projects::tests::test_register_seeded_b_is_resolver_loadable_and_overlays_nothing  test result: FAILED. 47 passed; 1 failed; 0 ignored; 0 measured; 4233 filtered out; finished in 0.36s  error: test failed, to rerun pass `-p unimatrix-server --lib`
+Exit code 101 rc=101
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 2 drwxr-xr-x  15 vscode vscode  480 May 28 19:35 nxs-013 drwxr-xr-x  14 vscode vscode  448 Feb 23 16:08 vnc-001 drwxr-xr-x  13 vscode vscode  416 Mar  6 01:03 vnc-002 drwxr-xr-x  13 vscode vscode  416 Mar  6 01:03 vnc-003 drwxr-xr-x  14 vscode vscode  448 Mar  6 01:03 vnc-004 drwxr-xr-x  15 vscode vscode  480 Mar 19 23:03 vnc-005 drwxr-xr-x  14 vscode vscode  448 Mar  6 01:03 vnc-006 drwxr-xr-x  14 vscode vscode  448 Mar  6 01:03 vnc-007 drwxr-xr-x  14 vscode vscode  448 Mar  4 04:03 v
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/crates/unimatrix-server/src/http'
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 1 ===== AC-02: both files — modes, legacy marker, no broken forms ===== ---- docs/client-setup.md ----   init --bundle <blob> present (expect >=1): 4   --remote <url> --token form present (expect >=1): 3   --remote marked 'legacy' (expect >=1): 4   BROKEN: init --remote unimatrix-bundle: (expect 0): 0   BROKEN: init --remote <bundle> bundle-fed form (expect 0): 0   --slug paired with --bundle (expect 0): 0 ---- README.md ----   init --bundle <blob> present (expect >=1): 7   --remote 
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 128 fatal: path 'infra/infra-001/scripts/docker-http-posture-smoke.sh' does not exist in 'origin/feature/nan-020'
+Exit code 1 re-attached project 'arch-research' to its preserved store at /home/vscode/.unimatrix/arch-research; routing intent written. Restart to apply. RC_EMIT=1 Error: Config("cannot read token /home/vscode/.unimatrix/6ad37a1c27d80275/token: No such file or directory (os error 2). Run the server once to provision it, or check the data volume.") --- bundle prefix ---  --- decoded payload --- <anonymous_script>:1   SyntaxError: Unexpected end of JSON input     at JSON.parse (<anonymous>)     a
+Exit code 144
+Exit code 144
+Exit code 144
+Exit code 2 register rc=0 re-attached project 'arch-research' to its preserved store at /home/vscode/.unimatrix/arch-research; routing intent written. Restart to apply. ls: cannot access '/tmp/g7repo/.unimatrix/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 128 fatal: couldn't find remote ref bugfix/818-smoke-gate7-sessionstart fatal: ambiguous argument 'main...origin/bugfix/818-smoke-gate7-sessionstart': unknown revision or path not in the working tree. Use '--' to separate paths from revisions, like this: 'git <command> [<revision>...] -- [<file>...]'
+MCP error -32602: Invalid parameter 'title': exceeds 200 characters
+MCP error -32602: Invalid parameter 'title': exceeds 200 characters
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/crates/unimatrix-server/src'
+Exit code 1   2156 crates/unimatrix-server/src/main.rs    472 crates/unimatrix-server/src/http/router/seam.rs wc: crates/unimatrix-server/src/http/http_provision.rs: No such file or directory    763 crates/unimatrix-server/src/infra/shutdown.rs   3391 total
+Exit code 101  error: could not compile `unimatrix-server` (test "import_integration") due to 1 previous error error[E0063]: missing field `vector_dir` in initializer of `ProjectServerInput`     --> crates/unimatrix-server/src/http/router/tests.rs:2675:23      | 2675 |     let alpha_input = ProjectServerInput {      |                       ^^^^^^^^^^^^^^^^^^ missing `vector_dir`  error[E0063]: missing field `vector_dir` in initializer of `ProjectServerInput`     --> crates/unimatrix-server/src/h
+Exit code 1 error: unexpected argument 'unregistered_slug_is_loud_404' found  Usage: cargo test [OPTIONS] [TESTNAME] [-- [ARGS]...]  For more information, try '--help'.
+Exit code 101    Compiling unimatrix-server v0.8.4 (/workspaces/unimatrix/crates/unimatrix-server) error: linking with `cc` failed: exit status: 1   |   = note:  "cc" "/workspaces/unimatrix/target/debug/deps/rustcXg7RqK/symbols.o" "<87 object files omitted>" "-Wl,--as-needed" "-Wl,-Bstatic" "<sysroot>/lib/rustlib/aarch64-unknown-linux-gnu/lib/{libtest-*,libgetopts-*,librustc_std_workspace_std-*}.rlib" "/workspaces/unimatrix/target/debug/deps/{libunimatrix_server-63881a06a0b49638,librustls_pemfil
+Exit code 124 === exit rc=124 === suites/test_lifecycle.py::test_auto_quarantine_after_consecutive_bad_ticks XFAILvel. UNIMATRIX_TICK_INTERVAL_SECONDS env var needed to suites/test_lifecycle.py::test_search_multihop_injects_terminal_active XPASSplemented; search injection stops at first hop; not caused by suites/test_lifecycle.py::test_dead_knowledge_entries_deprecated_by_tick XFAILvel. Dead-knowledge deprecation pass runs in background suites/test_lifecycle.py::test_context_status_supports_edge
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 1  07:07 Sl --- temp log ---
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/crates/unimatrix-server/src/infra'
+Exit code 143 Command timed out after 2m 0s
+Exit code 1 ---measure HEAD tree via git show into temp dir--- node:child_process:1000     throw err;     ^  Error: Command failed: git ls-files packages/unimatrix/lib/hook-client | grep "\.js$"     at genericNodeError (node:internal/errors:985:15)     at wrappedFn (node:internal/errors:539:14)     at checkExecSyncError (node:child_process:925:11)     at Object.execSync (node:child_process:997:15)     at [eval]:3:16     at runScriptInThisContext (node:internal/vm:219:10)     at node:internal/pro
+Exit code 143 Command timed out after 10m 0s ============================= test session starts ============================== platform linux -- Python 3.11.2, pytest-9.0.3, pluggy-1.6.0 rootdir: /workspaces/unimatrix/product/test/infra-001 configfile: pytest.ini plugins: timeout-2.4.0, json-report-1.5.0, metadata-3.1.1 timeout: 60.0s timeout method: signal timeout func_only: False collected 195 items  suites/test_tools.py .....................................x............. [ 26%] ...............
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/packages/unimatrix/lib/hook-client/mcp-bridge'
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/crates/unimatrix-server/src/import'
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File content (347.6KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 101 === rc=101 === --- last 15 ---    Compiling unimatrix-observe v0.8.6 (/workspaces/unimatrix/crates/unimatrix-observe)    Compiling unimatrix-embed v0.8.6 (/workspaces/unimatrix/crates/unimatrix-embed)    Compiling unimatrix-adapt v0.8.6 (/workspaces/unimatrix/crates/unimatrix-adapt)    Compiling unimatrix-server v0.8.6 (/workspaces/unimatrix/crates/unimatrix-server)    Compiling unimatrix-engine v0.8.6 (/workspaces/unimatrix/crates/unimatrix-engine) error: linking with `cc` failed:
+Exit code 101 === rc=101 === test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s test result: ok. 73 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.01s test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.02s 
+Exit code 1 wc: conftest.py: No such file or directory
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix. Did you mean categories?
+Exit code 143 Command timed out after 10m 0s
+Exit code 101 === rc=101 === test cycle_aggregates::tests::test_rank3_malformed_query_entry_ids_ignored_not_panicked ... ok test eval::runner::sweep_tests::test_ac14_correlated_sweep_non_vacuous ... FAILED thread 'eval::runner::sweep_tests::test_ac14_correlated_sweep_non_vacuous' (64374) panicked at crates/unimatrix-server/src/eval/runner/sweep_tests.rs:218:5: test result: FAILED. 4291 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out; finished in 7.20s --- passed-summary --- 14 TOTAL_PASS
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/crates/unimatrix-server/tests'
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/product/features/nan-019'
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/product/test/infra-001/scripts'
+Exit code 1 Traceback (most recent call last):   File "<string>", line 4, in <module>   File "/workspaces/unimatrix/product/test/infra-001/harness/parity_workload.py", line 411, in assert_no_seed_reachable     assert pattern not in src, (            ^^^^^^^^^^^^^^^^^^ AssertionError: forbidden seed site '_seed_attributed_observations_832' call-reachable from suites/test_parity_workload.py — the topic_signal column MUST be DERIVED, never seeded (AC-03/FR-6)
+Exit code 1 === pytest.ini === 1:[pytest] 8:markers = 9:    smoke: Critical-path tests for quick validation (~15 tests, <60s) 14:    integration: Tests that require a live daemon (D5/D6 eval harness). === pyproject.toml === === setup.cfg === === tox.ini === === conftest.py ===
+Exit code 1 GOT:{"computed_at":123,"universal":{"total_tool_calls":3}}}} PARSE FAIL: Unexpected non-whitespace character after JSON at position 54 (line 1 column 55)
+Exit code 143 Command timed out after 2m 0s === collection check (all suites) ===         <Function test_large_content_at_limit>         <Function test_large_content_over_limit_rejected>         <Function test_large_content_near_1mb_rejected>  ========================= 448 tests collected in 0.11s ========================= === SMOKE GATE ===
+Exit code 143 Command timed out after 2m 0s
+Exit code 143 Command timed out after 2m 0s
+Exit code 143 Command timed out after 2m 0s
+Exit code 1 === REGRESSION tail === timeout: 120.0s timeout method: signal timeout func_only: False collected 291 items  suites/test_protocol.py .....=== CARGO tail ===
+Exit code 1 === REGRESSION tail === timeout: 120.0s timeout method: signal timeout func_only: False collected 291 items  suites/test_protocol.py ........=== CARGO tail ===
+Exit code 1 === REGRESSION tail === configfile: pytest.ini plugins: timeout-2.4.0, json-report-1.5.0, metadata-3.1.1 timeout: 120.0s timeout method: signal timeout func_only: False collected 291 items  suites/test_protocol.py .............=== CARGO tail ===
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32003: Agent 'uni-security-reviewer' lacks Write capability. Contact project admin.
+Validation error: outcome exceeds 512 characters
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 2 === pseudocode === OVERVIEW.md bridge-cycle-driver.md cloud-cycle-lib.md metric_comparator.md parity_comparator.md parity_dimensions.md parity_legs.md parity_outcome.md parity_workload.md ranking_tolerance.md test_https_uds_parity.md transport_health.md === test-plan === OVERVIEW.md bridge-cycle-driver.md cloud-cycle-lib.md metric_comparator.md parity_bundle_contract.md parity_comparator.md parity_dimensions.md parity_legs.md parity_outcome.md parity_workload.md ranking_tolerance.md 
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Exit code 1 0
+Exit code 143 Command timed out after 2m 0s
+Exit code 143 Command timed out after 2m 0s
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 143 Command timed out after 2m 0s
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Fork is not available inside a forked worker. Complete your task directly using your tools.
+Exit code 143 Command timed out after 2m 0s
+Exit code 1 E: Could not open lock file /var/lib/dpkg/lock-frontend - open (13: Permission denied) E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), are you root? rc=0
+Exit code 1 IMAGE=unimatrix:783-smoke HTTPS_SMOKE=/workspaces/unimatrix/product/test/infra-001/scripts/cloud-cycle-https-leg.sh             text=True,             timeout=HTTPS_SMOKE_TIMEOUT_S,         )         if proc.returncode != 0:             tail = "\n".join((proc.stderr or "").splitlines()[-30:]) >           pytest.fail(                 f"HTTPS smoke leg failed rc={proc.returncode} "                 f"(ERROR, never skip)\n--- smoke stderr tail ---\n{tail}"             ) E           Faile
+Exit code 1                 label,                 "connect deadline expired",                 detail=f"connect took {connect_elapsed:.3f}s > {connect_deadline_s}s",             )              # 2. IDLE / liveness phase — bounded by idle_deadline_s. A socket that accepted         #    but never replies within the deadline is the #839 half-open class.         idle_start = time.monotonic()         try:             replied = probe.liveness(idle_deadline_s)         except (socket.timeout, TimeoutE
+Exit code 1         workload.validate()         run_token = workload.session_id  # the SINGLE correlation token (R-03/R-13)         store_dir = daemon_server["store_dir"]         sandbox = tmp_path / "sandbox"         sandbox.mkdir(parents=True, exist_ok=True)         https_out = sandbox / "https_dimension_bundle.json"         assert not https_out.exists(), "stale HTTPS out-file present at start (R-12 guard)"         manifest_path = workload.write_manifest(sandbox / "parity_workload.json")      
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 1 Updating files:  97% (12818/13123) Updating files:  98% (12861/13123) Updating files:  99% (12992/13123) Updating files: 100% (13123/13123) Updating files: 100% (13123/13123), done. HEAD is now at 070b3f04 fix: ref F6 idle-read deadline timers so they fire in an idle loop (#847) === size check ===       4269      8008  transport-uds.js       3657      6826  cycles.js       3038      4842  mcp-bridge/dispatch.js       3004      5972  mcp-bridge/lifecycle.js       2956      5177  build
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 2 === release workflow refs === .github/workflows/release.yml:444:  # is sourced from product/test/infra-001/scripts/release-gate-lib.sh — the SAME bytes .github/workflows/release.yml:467:          source product/test/infra-001/scripts/release-gate-lib.sh .github/workflows/release.yml:493:          source product/test/infra-001/scripts/release-gate-lib.sh .github/workflows/release.yml:521:          source product/test/infra-001/scripts/release-gate-lib.sh .github/workflows/release.ym
+Exit code 1 accepts at most 1 arg(s), received 4
+Exit code 2 === features dir === vnc-010 vnc-011 vnc-012 vnc-013 vnc-014 vnc-015 vnc-016 vnc-017 vnc-018 vnc-019 vnc-020 vnc-021 vnc-022 vnc-023 vnc-024 vnc-025 vnc-026 vnc-027 vnc-029 vnc-030 vnc-031 vnc-032 vnc-034 vnc-035 vnc-036 vnc-037 vnc-038 vnc-039 vnc-040 vnc-041 === nan features === product/features/nan-001 product/features/nan-002 product/features/nan-003 product/features/nan-004 product/features/nan-005 product/features/nan-006 product/features/nan-007 product/features/nan-008 produc
+Exit code 1 === infra-002 === README.md check-cargo-test-convention.sh === infra-002 SCOPE head ===
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 1   ok   test_no_new_smoke_script (on-disk smokes match the known allow-list: docker-http-posture-smoke.sh docker-embed-readiness-smoke.sh multi-tenant-isolation-smoke.sh) release-gate-bundle-static-test: 12 passed, 0 failed ---shellcheck---  In product/test/infra-001/scripts/multi-tenant-isolation-smoke.sh line 416:   negative_cell "$POS_OBS_A" "$SLUG_DIR_A" observe "$M_OBS_B"; NEG_OBS_A="$NEG"   # B's obs marker in A?                                                                ^--
+MCP error -32007: Unknown category 'lesson'. Valid categories: capability, convention, decision, feature, goal, lesson-learned, pattern, procedure.
+Exit code 1 title:	wire multi-tenant-isolation-smoke.sh into the #788 standing release gate (advance N3 #5161 point-in-time → maintained) state:	OPEN author:	dug-21 labels:	enhancement, goal:personal-cloud comments:	0 assignees:	 projects:	 milestone:	 number:	856 -- ## Summary  infra-003 (#853, PR #855) delivers a behavioral cross-tenant isolation gate (`multi-tenant-isolation-smoke.sh`, bidirectional 2×2 over both HTTP served-write surfaces). As shipped it is a **point-in-time** proof — i
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 143 Command timed out after 2m 0s
+MCP error -32006: Content rejected: phone number detected (PhoneNumber detected). Remove the flagged content and retry.
+Exit code 143 Command timed out after 2m 0s
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/crates/unimatrix-server/src/http'
+Exit code 144
+Exit code 143 Command timed out after 2m 0s pytest.ini --- running smoke ---
+MCP error -32006: Content rejected: phone number detected (PhoneNumber detected). Remove the flagged content and retry.
+MCP error -32006: Content rejected: phone number detected (PhoneNumber detected). Remove the flagged content and retry.
+Exit code 123
+Exit code 1 /bin/bash: line 1: cd: packages/unimatrix: No such file or directory
+Exit code 143 Command timed out after 2m 0s
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/product/test/infra-001'
+Exit code 123
+Exit code 128 fatal: couldn't find remote ref bugfix/844-parity-corpus-underpopulation ---DIFF STAT--- fatal: ambiguous argument 'main...origin/bugfix/844-parity-corpus-underpopulation': unknown revision or path not in the working tree. Use '--' to separate paths from revisions, like this: 'git <command> [<revision>...] -- [<file>...]'
+Exit code 2 drwxr-xr-x  15 vscode vscode  480 Jun 19 21:16 vnc-040 drwxr-xr-x  15 vscode vscode  480 Jun 20 18:00 vnc-041 --- ls: cannot access '/workspaces/unimatrix/product/features/vnc-042': No such file or directory
+Exit code 1   File "<string>", line 16     print(f"{m.group(1) if m else \"?\":8} | {k.group(1) if k else \"?\":10} | {\",\".join(goals):30} | {title}")                                                                                                                 ^ SyntaxError: f-string expression part cannot include a backslash
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 143 Command timed out after 10m 0s
+Exit code 143 Command timed out after 2m 0s
+File content (311KB) exceeds maximum allowed size (256KB). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.
+Exit code 143 Command timed out after 2m 0s
+Exit code 143 Command timed out after 30s
+Exit code 144
+Exit code 143 Command timed out after 2m 0s
+Exit code 143 Command timed out after 2m 0s
+Exit code 2 v24.16.0
+Exit code 1 Unknown JSON field: "merged" Available fields:   additions   assignees   author   autoMergeRequest   baseRefName   baseRefOid   body   changedFiles   closed   closedAt   closingIssuesReferences   comments   commits   createdAt   deletions   files   fullDatabaseId   headRefName   headRefOid   headRepository   headRepositoryOwner   id   isCrossRepository   isDraft   labels   latestReviews   maintainerCanModify   mergeCommit   mergeStateStatus   mergeable   mergedAt   mergedBy   milesto
+MCP error -32603: Agent registry error: database error: pool timed out while waiting for an open connection
+Exit code 101  error: could not compile `unimatrix-server` (test "pipeline_e2e") due to 1 previous error error: linking with `cc` failed: exit status: 1   |   = note:  "cc" "/workspaces/unimatrix/target/debug/deps/rustcIZBAe8/symbols.o" "<257 object files omitted>" "-Wl,--as-needed" "-Wl,-Bstatic" "/workspaces/unimatrix/target/debug/deps/{libtracing_subscriber-888c7a55d6376c1d,libsharded_slab-320bdc58e189d9f4,libmatchers-cc50b6d489242cec,libnu_ansi_term-52eb26294d0e699a,libthread_local-99848ec71
+Exit code 143 Command timed out after 2m 0s
+Exit code 144
+Exit code 144
+Exit code 144
+Exit code 1 wc: /var/tmp/claude-1000/-workspaces-unimatrix/0b43c49e-e84d-467d-82e3-babe15d1c078/scratchpad/gh819-rework.md: No such file or directory
+Exit code 144
+Exit code 1 === cgroup memory.max === max === swap === max === free -h ===                total        used        free      shared  buff/cache   available Mem:            23Gi        13Gi       5.3Gi       7.3Gi        11Gi       9.4Gi Swap:          2.0Gi       2.0Gi       100Ki === nproc === 10 === rustc version === rustc 1.95.0 (59807616e 2026-04-14) === linker === /usr/bin/ld
+Exit code 1 crates/unimatrix-store/src/schema.rs crates/unimatrix-engine/src/graph.rs crates/unimatrix-server/src/mcp/tools.rs ---WC---
+Exit code 1 relink_rc=0    Compiling unimatrix-server v0.8.9 (/workspaces/unimatrix/crates/unimatrix-server)     Finished `test` profile [unoptimized + debuginfo] target(s) in 56.08s   Executable tests/import_integration.rs (target/debug/deps/import_integration-950bf1e07277781e) --- measurement ---
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-881.
+Exit code 101     Checking reqwest v0.12.28     Checking hf-hub v0.4.3     Checking unimatrix-embed v0.8.9 (/workspaces/unimatrix/crates/unimatrix-embed)     Checking unimatrix-vector v0.8.9 (/workspaces/unimatrix/crates/unimatrix-vector)     Checking unimatrix-core v0.8.9 (/workspaces/unimatrix/crates/unimatrix-core)     Checking unimatrix-observe v0.8.9 (/workspaces/unimatrix/crates/unimatrix-observe)     Checking unimatrix-engine v0.8.9 (/workspaces/unimatrix/crates/unimatrix-engine)     Chec
+Exit code 1 error: let chains are only allowed in Rust 2024 or later    --> /workspaces/unimatrix/crates/unimatrix-server/src/mcp/tools.rs:823:16     | 823 |             && let Some(sid) = ctx.audit_ctx.session_id.as_deref()     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  error: let chains are only allowed in Rust 2024 or later    --> /workspaces/unimatrix/crates/unimatrix-server/src/mcp/tools.rs:824:16     | 824 |             && let Some(&entry_id) = target_ids.first()
+MCP error -32603: Agent registry error: database error: pool timed out while waiting for an open connection
+Exit code 143 Command timed out after 10m 0s
+Exit code 143 Command timed out after 10m 0s
+Exit code 143 Command timed out after 2m 0s
+Exit code 2
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-879.
+Exit code 143 Command timed out after 2m 0s    Compiling proc-macro2 v1.0.106    Compiling cfg-if v1.0.4    Compiling quote v1.0.44    Compiling libc v0.2.182    Compiling memchr v2.8.0    Compiling serde_core v1.0.228    Compiling pin-project-lite v0.2.16    Compiling serde v1.0.228    Compiling once_cell v1.21.3    Compiling futures-core v0.3.32    Compiling smallvec v1.15.1    Compiling bytes v1.11.1    Compiling jobserver v0.1.34    Compiling scopeguard v1.2.0    Compiling syn v2.0.117    Co
+Exit code 1 error: unexpected argument 'test_compaction_repoints_through_multi_hop_chain_to_terminal' found  Usage: cargo test [OPTIONS] [TESTNAME] [-- [ARGS]...]  For more information, try '--help'.
+Exit code 143 Command timed out after 2m 0s
+Exit code 124 ============================= test session starts ============================== platform linux -- Python 3.11.2, pytest-9.0.3, pluggy-1.6.0 rootdir: /workspaces/unimatrix/.claude/worktrees/bugfix-879/product/test/infra-001 configfile: pytest.ini plugins: timeout-2.4.0, json-report-1.5.0, metadata-3.1.1 timeout: 60.0s timeout method: signal timeout func_only: False collected 107 items  suites/test_lifecycle.py ....................x.x..............x........x [ 43%] Xxx...INT_RC=124
+Exit code 124 ============================= test session starts ============================== platform linux -- Python 3.11.2, pytest-9.0.3, pluggy-1.6.0 rootdir: /workspaces/unimatrix/.claude/worktrees/bugfix-879/product/test/infra-001 configfile: pytest.ini plugins: timeout-2.4.0, json-report-1.5.0, metadata-3.1.1 timeout: 60.0s timeout method: signal timeout func_only: False collected 89 items  suites/test_lifecycle.py ....................x.x..............x........x [ 52%] Xxx........LC_RC=1
+MCP error -32602: Invalid parameter 'title': exceeds 200 characters
+MCP error -32602: Invalid parameter 'title': exceeds 200 characters
+Exit code 5
+Exit code 5 jq: error (at /home/vscode/.claude/projects/-workspaces-unimatrix/725eabf7-5baf-4056-814c-4c1050015b18/tool-results/mcp-unimatrix-context_lookup-1783079043630.txt:945): split input and separator must be strings
+Exit code 5 jq: error (at /home/vscode/.claude/projects/-workspaces-unimatrix/725eabf7-5baf-4056-814c-4c1050015b18/tool-results/mcp-unimatrix-context_lookup-1783079043630.txt:945): array (["functional"]) is not valid in a csv row
+Validation error: outcome exceeds 512 characters
+Exit code 101    Compiling unimatrix-embed v0.9.0 (/workspaces/unimatrix/crates/unimatrix-embed)    Compiling unimatrix-learn v0.9.0 (/workspaces/unimatrix/crates/unimatrix-learn)    Compiling unimatrix-adapt v0.9.0 (/workspaces/unimatrix/crates/unimatrix-adapt)    Compiling unimatrix-vector v0.9.0 (/workspaces/unimatrix/crates/unimatrix-vector)    Compiling unimatrix-core v0.9.0 (/workspaces/unimatrix/crates/unimatrix-core)    Compiling unimatrix-engine v0.9.0 (/workspaces/unimatrix/crates/unim
+Exit code 143 Command timed out after 2m 0s
+Exit code 101 test mcp::tools::tests::test_cycle_review_output_unchanged_by_purge ... FAILED test mcp::tools::tests::test_cycle_review_render_baseline_byte_identical ... FAILED thread 'mcp::tools::tests::test_cycle_review_output_unchanged_by_purge' (83334) panicked at crates/unimatrix-server/src/mcp/tools.rs:6612:9: thread 'mcp::tools::tests::test_cycle_review_render_baseline_byte_identical' (83349) panicked at crates/unimatrix-server/src/mcp/tools.rs:6549:9: test result: FAILED. 4340 passed; 2 
+Exit code 143 Command timed out after 2m 0s
+Exit code 143 Command timed out after 10m 0s
+Exit code 2
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 143 Command timed out after 20s
+Exit code 1 ===== crt-0037 ===== ===== crt-0039 ===== ===== crt-0040 ===== ===== crt-0041 ===== ===== crt-0044 =====
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+Exit code 2
+Exit code 2 === pseudocode dir === ls: cannot access 'product/features/crt-057/pseudocode/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+Exit code 1 conftest.py test_adaptation.py test_availability.py test_confidence.py test_contradiction.py test_edge_cases.py test_get_edges.py test_https_uds_parity.py test_https_uds_parity_matrix.py test_lifecycle.py test_parity_comparator.py test_parity_dimensions.py test_parity_legs.py test_parity_outcome.py test_parity_workload.py test_protocol.py test_ranking_tolerance.py test_security.py test_tools.py test_transport_health.py test_volume.py ---conftest---  18 product/test/infra-001/suites/c
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+Exit code 143 Command timed out after 10m 0s
+Exit code 144
+Exit code 143 Command timed out after 9m 20s
+Exit code 144
+Exit code 144
+Exit code 1
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-057.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 2 total 156 drwxr-xr-x  15 vscode vscode   480 Jul  4 22:40 . drwxr-xr-x 222 vscode vscode  7104 Jul  4 22:39 .. -rw-r--r--   1 vscode vscode 11597 Jul  4 22:39 ACCEPTANCE-MAP.md -rw-r--r--   1 vscode vscode 15325 Jul  4 22:39 ALIGNMENT-REPORT.md -rw-r--r--   1 vscode vscode 30517 Jul  4 22:40 IMPLEMENTATION-BRIEF.md -rw-r--r--   1 vscode vscode 50130 Jul  4 22:39 RISK-TEST-STRATEGY.md -rw-r--r--   1 vscode vscode  9446 Jul  4 22:39 SCOPE-RISK-ASSESSMENT.md -rw-r--r--   1 vscode vscode
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32602: failed to deserialize parameters: missing field `target_agent_id`
+MCP error -32602: failed to deserialize parameters: missing field `trust_level`
+MCP error -32602: failed to deserialize parameters: missing field `capabilities`
+MCP error -32003: Agent 'anonymous' lacks Admin capability. Contact project admin.
+Exit code 144 === killing all /usr/local/cargo/bin/unimatrix processes ===
+MCP error -32602: Unknown format 'summary'. Valid values: "markdown", "json".
+MCP error -32602: failed to deserialize parameters: invalid type: string "{\"match\": \"reclaim_permitted_by_retention\"}", expected struct TranscriptScope
+MCP error -32602: failed to deserialize parameters: invalid type: string "{\"match\": \"context_cycle_review\"}", expected struct TranscriptScope
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+Exit code 143 Command timed out after 10m 0s
+Exit code 143 Command timed out after 2m 0s
+Exit code 2 ---AGENTS---
+Exit code 1 === rmcp 1.7.0 cached manifest: what does it require for rmcp-macros? === not extracted; checking .crate cache
+Exit code 1 === PR DIFF === could not find pull request diff: Get "https://api.github.com/repos/dug-21/unimatrix/pulls/905": unexpected EOF
+Validation error: outcome exceeds 512 characters
+MCP error -32602: failed to deserialize parameters: invalid type: string "{}", expected struct TranscriptScope
+MCP error -32602: failed to deserialize parameters: invalid type: string "{}", expected struct TranscriptScope
+MCP error -32602: failed to deserialize parameters: invalid type: string "{\"match\": \".*\"}", expected struct TranscriptScope
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+Exit code 2 ACCEPTANCE-MAP.md ALIGNMENT-REPORT.md IMPLEMENTATION-BRIEF.md RISK-TEST-STRATEGY.md SCOPE-RISK-ASSESSMENT.md SCOPE.md agents architecture pseudocode reports specification test-plan ---MAIN--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-043/': No such file or directory
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+Exit code 143 Command timed out after 2m 0s
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 1 === SUBGRAPH EXIT rc=1 === suites/test_tools.py::test_graph_subgraph_basic_response_shape PASSED    [  4%] suites/test_tools.py::test_graph_subgraph_node_shape_matches_entry_record PASSED [  9%] suites/test_tools.py::test_graph_subgraph_edge_record_fields PASSED      [ 13%] suites/test_tools.py::test_graph_subgraph_empty_seed_ids_rejected PASSED [ 18%] suites/test_tools.py::test_graph_subgraph_max_depth_boundary_0_rejected PASSED [ 22%] suites/test_tools.py::test_graph_subgraph_max_d
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32003: Agent 'crt-058-design-leader' lacks Admin capability. Contact project admin.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/vnc-043.
+MCP error -32003: Agent 'anonymous' lacks Write capability. Contact project admin.
+MCP error -32602: failed to deserialize parameters: invalid type: string "{}", expected struct TranscriptScope
+MCP error -32602: failed to deserialize parameters: invalid type: string "{\"match\": \".*\"}", expected struct TranscriptScope
+MCP error -32602: failed to deserialize parameters: invalid type: string "{}", expected struct TranscriptScope
+Exit code 128 warning: could not open directory 'product/features/crt-058/product/features/crt-058/': No such file or directory fatal: pathspec 'product/features/crt-058/' did not match any files
+Exit code 1 On branch feature/crt-058 nothing to commit, working tree clean
+Exit code 2 ugrep: warning: crates/unimatrix-server/src/services/background.rs: No such file or directory
+Exit code 2 sed: can't read mcp/server.rs: No such file or directory
+Exit code 2 sed: can't read mcp/server.rs: No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/crt-058.
+Exit code 143 Command timed out after 2m 0s
+MCP error -32602: failed to deserialize parameters: invalid type: string "{}", expected struct TranscriptScope
+MCP error -32602: failed to deserialize parameters: invalid type: string "{\"phase\": null, \"anchor\": null, \"match\": null, \"window\": null}", expected struct TranscriptScope
+Exit code 1 [main 9bb305c9] docs(capability-graph): reconcile 5-goal map with claim-floor/north-star model  1 file changed, 129 insertions(+), 24 deletions(-) To https://github.com/dug-21/unimatrix  ! [rejected]          main -> main (fetch first) error: failed to push some refs to 'https://github.com/dug-21/unimatrix' hint: Updates were rejected because the remote contains work that you do not hint: have locally. This is usually caused by another repository pushing to hint: the same ref. If you
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 2 total 96 drwxr-xr-x  15 vscode vscode   480 May 28 10:31 . drwxr-xr-x 225 vscode vscode  7200 Jul  5 16:35 .. -rw-r--r--   1 vscode vscode  8083 May 28 10:31 ACCEPTANCE-MAP.md -rw-r--r--   1 vscode vscode 12068 May 28 10:31 ALIGNMENT-REPORT.md -rw-r--r--   1 vscode vscode 15204 May 28 10:31 IMPLEMENTATION-BRIEF.md -rw-r--r--   1 vscode vscode 32221 May 28 10:31 RISK-TEST-STRATEGY.md -rw-r--r--   1 vscode vscode  5167 May 28 10:31 SCOPE-RISK-ASSESSMENT.md -rw-r--r--   1 vscode vscode 
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 123
+Exit code 2 === infra-001 exists? === eval-baselines infra-001 infra-002 infra-003 infra-004 --- suites --- __pycache__ conftest.py test_adaptation.py test_availability.py test_confidence.py test_contradiction.py test_edge_cases.py test_get_edges.py test_https_uds_parity.py test_https_uds_parity_matrix.py test_lifecycle.py test_parity_comparator.py test_parity_dimensions.py test_parity_legs.py test_parity_outcome.py test_parity_workload.py test_protocol.py test_ranking_tolerance.py test_security
+Exit code 143 Command timed out after 2m 0s
+Exit code 124 ============================= test session starts ============================== platform linux -- Python 3.11.2, pytest-9.0.3, pluggy-1.6.0 rootdir: /workspaces/unimatrix/product/test/infra-001 configfile: pytest.ini plugins: timeout-2.4.0, json-report-1.5.0, metadata-3.1.1 timeout: 120.0s timeout method: signal timeout func_only: False collected 96 items  suites/test_lifecycle.py ....................x.x..............x........x [ 48%] Xxx.......---RC=124---
+Exit code 143 Command timed out after 2m 0s
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/product/features/vnc-044/agents'
+Exit code 2 ls: cannot access '/workspaces/unimatrix/product/features/vnc-044/testing/': No such file or directory /workspaces/unimatrix/product/features/vnc-044/agents/: total 76 drwxr-xr-x 16 vscode vscode  512 Jul  5 20:50 . drwxr-xr-x 14 vscode vscode  448 Jul  5 20:21 .. -rw-r--r--  1 vscode vscode 2613 Jul  5 18:54 vnc-044-agent-0-scope-risk-report.md -rw-r--r--  1 vscode vscode 3371 Jul  5 19:05 vnc-044-agent-1-architect-report.md -rw-r--r--  1 vscode vscode 5131 Jul  5 20:17 vnc-044-agen
+EISDIR: illegal operation on a directory, read '/workspaces/unimatrix/product/features/vnc-044/reports'
+Exit code 143 Command timed out after 10m 0s
+Exit code 143 Command timed out after 9m 50s
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 143 Command timed out after 2m 0s
+Exit code 144 === before === 410 /usr/local/cargo/bin/unimatrix 63356 /usr/local/cargo/bin/unimatrix --daemon-child --project-dir /workspaces/unimatrix serve --daemon 63636 /usr/local/cargo/bin/unimatrix 65814 /bin/bash -c source /home/vscode/.claude/shell-snapshots/snapshot-bash-1783273746761-dr5wqd.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && eval 'echo "=== before ===" && pgrep -af '"'"'/usr/local/cargo/bin/unimatrix'"'"' echo "" echo "=== SIGTERM ===" && pkill -TERM -f '
+MCP error -32602: Invalid parameter 'rate_limit': rate limited: 60 per 3600s, retry after 3162s
+MCP error -32602: Invalid parameter 'rate_limit': rate limited: 60 per 3600s, retry after 3158s
+MCP error -32602: Invalid parameter 'rate_limit': rate limited: 60 per 3600s, retry after 3134s
+MCP error -32602: Invalid parameter 'limit': exceeds maximum 100
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 2 === branch === main === vnc-045 dir === ls: cannot access 'product/features/vnc-045/': No such file or directory
+Exit code 144
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 101    Compiling unimatrix-engine v0.10.0 (/workspaces/unimatrix/crates/unimatrix-engine)    Compiling unimatrix-observe v0.10.0 (/workspaces/unimatrix/crates/unimatrix-observe)    Compiling unimatrix-server v0.10.0 (/workspaces/unimatrix/crates/unimatrix-server)     Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 15s      Running unittests src/lib.rs (target/debug/deps/unimatrix_server-a30f4800d2a8d270)  running 17 tests test services::store_tag::store_tag_tests::tes
+Exit code 144 === targets (cargo-bin unimatrix only) === 8513 /usr/local/cargo/bin/unimatrix 15201 /bin/bash -c source /home/vscode/.claude/shell-snapshots/snapshot-bash-1783381600827-9u2fpe.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && eval 'echo "=== targets (cargo-bin unimatrix only) ===" && pgrep -af '"'"'/usr/local/cargo/bin/unimatrix'"'"' echo "=== sending SIGTERM ===" && pkill -TERM -f '"'"'/usr/local/cargo/bin/unimatrix'"'"'; sleep 2 echo "=== remaining cargo-bin unim
+Exit code 2 ugrep: warning: .claude/skills/uni-capability/SKILL.md: No such file or directory
+Exit code 101    Compiling unimatrix-learn v0.11.0 (/workspaces/unimatrix/crates/unimatrix-learn)    Compiling unimatrix-adapt v0.11.0 (/workspaces/unimatrix/crates/unimatrix-adapt)    Compiling unimatrix-vector v0.11.0 (/workspaces/unimatrix/crates/unimatrix-vector)    Compiling unimatrix-core v0.11.0 (/workspaces/unimatrix/crates/unimatrix-core)    Compiling unimatrix-engine v0.11.0 (/workspaces/unimatrix/crates/unimatrix-engine)    Compiling unimatrix-observe v0.11.0 (/workspaces/unimatrix/cr
+Exit code 143 Command timed out after 2m 0s
+Exit code 1 == Part A: Gate 9 client-works truth table (SMOKE_CLIENT_CALL_CMD stub) ==   ok   test_gate9_happy_path_green   ok   test_gate9_drive_rc_nonzero_red   ok   test_gate9_not_ok_red   ok   test_gate9_bounded_timeout_red   ok   test_gate9_missing_credstore_red (read-back precondition enforced)   ok   test_gate9_node_absent_hard_fails (exit 1, distinct message, no self-skip) == Part B: Gate 10 compose-boot control flow (helpers overridden in-harness) ==   FAIL test_gate10_happy_path_green 
+Exit code 128 fatal: a branch named 'bugfix/915-916-cloud-tls-smoke' already exists
+Exit code 2 === root cause report candidates === === agents dir ===
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-915-916-cloud-tls-smoke.
+Exit code 101     | 111 | ///      never sends a framed request cannot hang the test.     |     +++++  error: could not compile `unimatrix-server` (test "hook_subagent_inject_e2e") due to 3 previous errors warning: build failed, waiting for other jobs to finish... error: this `repeat().take()` can be written more concisely    --> crates/unimatrix-server/src/mcp/response/verbosity.rs:192:29     | 192 |         let input: String = std::iter::repeat(two_byte).take(129).collect();     |             
+Exit code 101 error: doc list item without indentation    --> crates/unimatrix-server/tests/hook_subagent_inject_e2e.rs:109:5     | 109 | /// Tolerate the empty first connection, answer the real request, send it back over     |     ^     |     = help: if this is supposed to be its own paragraph, add a blank line     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#doc_lazy_continuation     = note: `-D clippy::doc-lazy-continuation` implied by `
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-915-916-cloud-tls-smoke.
+Exit code 1 === logic test === == Part A: Gate 9 client-works truth table (SMOKE_CLIENT_CALL_CMD stub) ==   ok   test_gate9_happy_path_green   ok   test_gate9_drive_rc_nonzero_red   ok   test_gate9_not_ok_red   ok   test_gate9_bounded_timeout_red   ok   test_gate9_missing_credstore_red (read-back precondition enforced)   ok   test_gate9_node_absent_hard_fails (exit 1, distinct message, no self-skip)   ok   test_gate9_timeout_no_orphan (process-group kill left no orphaned child; rc=124->fail inta
+Exit code 143 Command timed out after 2m 0s
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-915-916-cloud-tls-smoke.
+Exit code 144
+Exit code 124 === SUITES RC: 124 ===
+Exit code 124 === LIFECYCLE RC: 124 ===
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 124 === TOOLS RC: 124 === --tail--  suites/test_tools.py .....................................x............. [ 22%] .....................
+Exit code 2 accepts at most 1 arg(s), received 42 /bin/bash: line 56: Target:: command not found /bin/bash: eval: line 57: syntax error near unexpected token `(' /bin/bash: eval: line 57: `Coverage: **whole** for the done_when as worded, for the SubagentStart event — first automated proof of the pushed-without-asking behavior end-to-end through the compiled binary. (Original dogfood was UserPromptSubmit; this guards the crt-027 SubagentStart path. One durable representative guard on the inject
+Validation error: outcome exceeds 512 characters
+Exit code 2 total 20 drwxr-xr-x   3 vscode vscode    96 Jul  7 21:45 . drwxr-xr-x 230 vscode vscode  7360 Jul  7 21:43 .. -rw-r--r--   1 vscode vscode 19702 Jul  7 21:45 SCOPE.md ---REVIEWS--- ls: cannot access 'product/features/vnc-046/reviews/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/': No such file or directory ---ARCH--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/architecture/': No such file or directory ---SPEC--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/specification/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 === worktree branch === main === vnc-046 dir === ls: cannot access 'product/features/vnc-046/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ACCEPTANCE-MAP.md ALIGNMENT-REPORT.md IMPLEMENTATION-BRIEF.md RISK-TEST-STRATEGY.md SCOPE-RISK-ASSESSMENT.md SCOPE.md agents architecture reviews specification ---MAIN---
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/': No such file or directory ---ARCH--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/architecture/': No such file or directory ---SPEC--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/specification/': No such file or directory
+Exit code 2 === harness dir === total 312 drwxr-xr-x 22 vscode vscode   704 Jul  7 11:29 . drwxr-xr-x 25 vscode vscode   800 Jun 24 13:27 .. -rw-r--r--  1 vscode vscode  1499 Feb 27 14:10 __init__.py drwxr-xr-x 23 vscode vscode   736 Jul  7 17:56 __pycache__ -rw-r--r--  1 vscode vscode  8121 Feb 27 14:10 assertions.py -rw-r--r--  1 vscode vscode 28321 Jul  7 11:29 client.py -rw-r--r--  1 vscode vscode 15808 Jun 24 13:27 conftest.py -rw-r--r--  1 vscode vscode 13177 May 25 11:56 generators.py -rw
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ---ARCH---
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/': No such file or directory ---ARCH--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/architecture/': No such file or directory ---PSEUDO--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/pseudocode/': No such file or directory ---TESTPLAN--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/test-plan/': No such file or directory ---REPORTS--- ls: cannot access '/w
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ls: cannot access 'product/features/vnc-046/': No such file or directory ---BRIEF--- ls: cannot access 'product/features/vnc-046/architecture/': No such file or directory ls: cannot access 'product/features/vnc-046/pseudocode/': No such file or directory ls: cannot access 'product/features/vnc-046/test-plan/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 crates/unimatrix-server/src/http/router/seam.rs:54:pub enum ProjectKey { crates/unimatrix-server/src/http/router/seam.rs:127:pub trait StoreResolver: Send + Sync + 'static { crates/unimatrix-server/src/http/router/seam.rs:131:    fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError>; crates/unimatrix-server/src/http/router/seam.rs:171:    fn registry_for(&self, key: &ProjectKey) -> Result<Arc<SessionRegistry>, RouteError>; crates/unimatrix-server/src/http/router
+Exit code 2 crates/unimatrix-server/src/infra/session.rs:581:    pub fn has_transcript_hold(&self) -> bool { crates/unimatrix-server/src/server.rs:455:    pub fn service_layer(&self) -> &ServiceLayer { crates/unimatrix-server/src/server.rs:463:    pub fn tick_metadata(&self) -> Arc<Mutex<TickMetadata>> { crates/unimatrix-server/src/server.rs:472:    pub fn vector_index(&self) -> Arc<VectorIndex> { crates/unimatrix-server/src/server.rs:481:    pub fn adapt_service(&self) -> Arc<AdaptationService>
+Exit code 2 1323:    pub(crate) async fn make_server() -> UnimatrixServer { 1373:    async fn make_server_with_some_layer() -> (UnimatrixServer, EffectivenessStateHandle) {
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 1 [1]+  Exit 1                  UNIMATRIX_HTTP_ENABLED=true UNIMATRIX_PUBLIC_URL="https://localhost:$PORT" "$BIN" --project-dir "$PROBE/proj" serve --foreground > "$PROBE/daemon.log" 2>&1 HTTP NOT ACTIVE [2m2026-07-08T00:53:54.124197Z[0m [32m INFO[0m [2mhnsw_rs::hnsw[0m[2m:[0m Hnsw distance "anndists::dist::distances::DistDot" [2m2026-07-08T00:53:54.124198Z[0m [32m INFO[0m [2mhnsw_rs::hnsw[0m[2m:[0m Hnsw extend candidates false [2m2026-07-08T00:53:54.127024Z[0m [32m 
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/': No such file or directory ---REPORTS--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/reports/': No such file or directory ---TESTING--- ls: cannot access '/workspaces/unimatrix/product/features/vnc-046/testing/': No such file or directory
+Exit code 2 ls: cannot access 'product/features/vnc-046/agents/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 2 ls: cannot access 'product/features/vnc-046/': No such file or directory ---reports--- ls: cannot access 'product/features/vnc-046/reports/': No such file or directory ---testing--- ls: cannot access 'product/features/vnc-046/testing/': No such file or directory
+File does not exist. Note: your current working directory is /workspaces/unimatrix/.claude/worktrees/bugfix-930.
+Exit code 1 [main 53f45a27] docs(growth): add value-comms assets + fix uni-zero floor-read guidance  3 files changed, 176 insertions(+), 3 deletions(-)  create mode 100644 product/growth/LINKEDIN-COMMS-STRATEGY.md  create mode 100644 product/growth/VOICE.md === push === To https://github.com/dug-21/unimatrix  ! [rejected]          main -> main (non-fast-forward) error: failed to push some refs to 'https://github.com/dug-21/unimatrix' hint: Updates were rejected because the tip of your current br
+Exit code 1 could not add label: 'Proposed' not found
+Exit code 2 ugrep: warning: /workspaces/unimatrix/crates/unimatrix-server/src/tools.rs: No such file or directory
+Exit code 1 ls: cannot access '/workspaces/unimatrix/product/features/vnc-047/ALIGNMENT-REPORT.md': No such file or directory ---
+File does not exist. Note: your current working directory is /workspaces/unimatrix.
+Exit code 2 === migration test files === migration_schema_too_new.rs migration_v10_to_v11.rs migration_v11_to_v12.rs migration_v12_to_v13.rs migration_v13_to_v14.rs migration_v14_to_v15.rs migration_v15_to_v16.rs migration_v16_to_v17.rs migration_v17_to_v18.rs migration_v18_to_v19.rs migration_v19_v20.rs migration_v20_v21.rs migration_v21_v22.rs migration_v22_to_v23.rs migration_v23_to_v24.rs migration_v24_to_v25.rs migration_v25_to_v26.rs migration_v26_to_v27.rs migration_v27_to_v28.rs migratio
+Exit code 101  failures:  ---- eval::runner::sweep_tests::test_ac14_correlated_sweep_non_vacuous stdout ---- 2026-07-09T03:06:27.508384Z  INFO unimatrix_server::eval::profile::layer: eval: TypedGraphState rebuilt profile=baseline entries=20 2026-07-09T03:06:27.509041Z  WARN unimatrix_server::infra::embed_handle: embedding_model_sha256 not set; embedding model integrity verification is disabled 2026-07-09T03:06:27.510692Z  INFO unimatrix_server::eval::profile::layer: eval TypedGraphState rebuilt 
+Exit code 101 rc=101 running 422 tests test result: ok. 422 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.62s running 16 tests test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s running 3 tests test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s running 8 tests test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s running 16 tests test result: ok.
+Exit code 143 Command timed out after 10m 0s
+Exit code 144
+Exit code 2 ---
+Exit code 143 Command timed out after 2m 0s
+Exit code 143 Command timed out after 10m 0s
+Exit code 144 === TARGETS (before) === 19122 19001  2-12:10:02 /usr/local/cargo/bin/unimatrix 31586 31487    01:10:51 /usr/local/cargo/bin/unimatrix 81407     1  2-13:27:33 /usr/local/cargo/bin/unimatrix --daemon-child --project-dir /workspaces/unimatrix serve --daemon 93114 93026    10:16:50 /usr/local/cargo/bin/unimatrix === KILLING ===

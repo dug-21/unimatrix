@@ -1,0 +1,23 @@
+# Empty workspace table: decouple from the parent unimatrix workspace.
+[workspace]
+
+[package]
+name = "ass095-harness"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Ephemeral research harness for ass-095. NOT part of the workspace build.
+# Reproduces aho-corasick vs regex::RegexSet scaling on this machine's toolchain,
+# and runs the lesson-sourced lexical bank over the real failure corpus.
+
+[[bin]]
+name = "bench"
+path = "src/main.rs"
+
+[dependencies]
+aho-corasick = "1.1"
+regex = "1.12"
+
+[profile.release]
+opt-level = 3
