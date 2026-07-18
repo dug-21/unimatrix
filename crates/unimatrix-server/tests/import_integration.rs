@@ -268,8 +268,15 @@ fn parse_lines(output: &str) -> Vec<Value> {
 /// Run export to string by writing to a file then reading it back.
 /// Uses `run_export_with_base` to keep all test data inside `base_dir`.
 fn run_export_to_string(project_dir: &Path, base_dir: &Path, output_file: &Path) -> String {
-    run_export_with_base(Some(project_dir), Some(output_file), base_dir, false, false)
-        .expect("run_export_with_base should succeed");
+    run_export_with_base(
+        Some(project_dir),
+        Some(output_file),
+        base_dir,
+        None,
+        false,
+        false,
+    )
+    .expect("run_export_with_base should succeed");
     std::fs::read_to_string(output_file).expect("read output file")
 }
 
@@ -294,6 +301,7 @@ async fn test_round_trip_export_import_reexport() {
     run_import_with_base(
         Some(project_b.path()),
         &export1_path,
+        None,
         false, // validate hashes
         false, // not force (empty DB)
         base_dir_b.path(),
@@ -405,6 +413,7 @@ async fn test_force_import_replaces_data() {
     run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         true,
         true,
         base_dir.path(),
@@ -448,6 +457,7 @@ async fn test_import_rejected_without_force_on_nonempty() {
     let result = run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         false,
         false,
         base_dir.path(),
@@ -484,6 +494,7 @@ async fn test_force_on_empty_database() {
     let result = run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         false,
         true,
         base_dir.path(),
@@ -528,6 +539,7 @@ async fn test_counter_restoration_prevents_id_collision() {
     run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         false,
         false,
         base_dir.path(),
@@ -561,6 +573,7 @@ async fn test_counter_values_match_export() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        None,
         false,
         false,
     )
@@ -584,6 +597,7 @@ async fn test_counter_values_match_export() {
     run_import_with_base(
         Some(project_b.path()),
         &export_path,
+        None,
         false,
         false,
         base_dir_b.path(),
@@ -643,6 +657,7 @@ async fn test_atomicity_rollback_on_parse_failure() {
     let result = run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         true,
         false,
         base_dir.path(),
@@ -682,6 +697,7 @@ async fn test_atomicity_rollback_on_fk_violation() {
     let result = run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         true,
         false,
         base_dir.path(),
@@ -719,6 +735,7 @@ async fn test_skip_hash_validation_bypass() {
     let result = run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         true, // skip
         false,
         base_dir.path(),
@@ -752,6 +769,7 @@ async fn test_hash_validation_failure_prevents_commit() {
     let result = run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         false,
         false,
         base_dir.path(),
@@ -789,6 +807,7 @@ async fn test_empty_export_imports_successfully() {
     run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         false,
         false,
         base_dir.path(),
@@ -834,6 +853,7 @@ async fn test_audit_provenance_entry_written() {
     run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         false,
         false,
         base_dir.path(),
@@ -866,6 +886,7 @@ async fn test_audit_provenance_no_id_collision() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        None,
         false,
         false,
     )
@@ -876,6 +897,7 @@ async fn test_audit_provenance_no_id_collision() {
     run_import_with_base(
         Some(project_b.path()),
         &export_path,
+        None,
         false,
         false,
         base_dir_b.path(),
@@ -913,6 +935,7 @@ async fn test_all_eight_tables_restored() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        None,
         false,
         false,
     )
@@ -923,6 +946,7 @@ async fn test_all_eight_tables_restored() {
     run_import_with_base(
         Some(project_b.path()),
         &export_path,
+        None,
         false,
         false,
         base_dir_b.path(),
@@ -1025,6 +1049,7 @@ async fn test_entry_columns_preserved_exactly() {
         Some(project_a.path()),
         Some(&export_path),
         base_dir_a.path(),
+        None,
         false,
         false,
     )
@@ -1037,6 +1062,7 @@ async fn test_entry_columns_preserved_exactly() {
     run_import_with_base(
         Some(project_b.path()),
         &export_path,
+        None,
         true,
         false,
         base_dir_b.path(),
@@ -1136,6 +1162,7 @@ async fn test_force_import_counter_restoration() {
     run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         true,
         true,
         base_dir.path(),
@@ -1275,6 +1302,7 @@ async fn test_force_import_clears_observation_metric_tables() {
     run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         false,
         true, // force
         base_dir.path(),
@@ -1370,6 +1398,7 @@ async fn test_observations_id_collision_via_plain_insert() {
     let result = run_import_with_base(
         Some(project_dir.path()),
         &input_path,
+        None,
         false,
         false, // no force
         base_dir.path(),
@@ -1397,6 +1426,7 @@ async fn test_observations_id_collision_via_plain_insert() {
     let result2 = run_import_with_base(
         Some(project_dir.path()),
         &input_path2,
+        None,
         false,
         true, // force
         base_dir.path(),
@@ -1455,6 +1485,7 @@ async fn test_round_trip_all_11_tables() {
     run_import_with_base(
         Some(project_b.path()),
         &export1_path,
+        None,
         false,
         false,
         base_dir_b.path(),
@@ -1543,4 +1574,579 @@ async fn test_round_trip_all_11_tables() {
             "AC-15: line {i} differs:\n  export1: {a}\n  export2: {b}"
         );
     }
+}
+
+// ===========================================================================
+// vnc-048: `import --slug` branch — pre-flight gates + vector redirect
+// (Component 3). Restore into the runtime's literal-slug store
+// (`{base}/<slug>/unimatrix.db` + `/vector`) resolved through the shared funnel.
+// ===========================================================================
+
+const SLUG_DB_NAME: &str = "unimatrix.db";
+const SLUG_VECTOR_DIR: &str = "vector";
+
+use unimatrix_store::pool_config::PoolConfig;
+
+/// Seed a freshly-registered (empty, audit-empty) slug store at
+/// `{base}/<slug>/unimatrix.db` + `{base}/<slug>/vector`, mirroring what
+/// `project register` lays down. `open` creates + migrates the schema (empty
+/// entries, empty audit_log). Returns the slug dir.
+async fn seed_slug_store(base: &Path, slug: &str) -> std::path::PathBuf {
+    let slug_dir = base.join(slug);
+    std::fs::create_dir_all(slug_dir.join(SLUG_VECTOR_DIR)).expect("create slug vector dir");
+    let db = slug_dir.join(SLUG_DB_NAME);
+    let store = SqlxStore::open(&db, PoolConfig::default())
+        .await
+        .expect("seed slug store open");
+    store.close().await.expect("close seeded slug store");
+    slug_dir
+}
+
+/// Count regular files directly under `dir` (0 if `dir` is absent).
+fn file_count(dir: &Path) -> usize {
+    match std::fs::read_dir(dir) {
+        Ok(rd) => rd
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().is_file())
+            .count(),
+        Err(_) => 0,
+    }
+}
+
+/// Build an audit_log JSONL line (explicit event_id — the restore path uses a
+/// plain INSERT that would collide on a non-empty target, C-5).
+fn make_audit_line(event_id: i64, operation: &str, detail: &str) -> String {
+    serde_json::json!({
+        "_table": "audit_log",
+        "event_id": event_id,
+        "timestamp": 1700000000i64 + event_id,
+        "session_id": "seed-sess",
+        "agent_id": "system",
+        "operation": operation,
+        "target_ids": "[]",
+        "outcome": 0,
+        "detail": detail
+    })
+    .to_string()
+}
+
+/// Build a graph_edges JSONL line.
+fn make_graph_edge_line(
+    source_id: i64,
+    target_id: i64,
+    relation_type: &str,
+    weight: f64,
+) -> String {
+    serde_json::json!({
+        "_table": "graph_edges",
+        "source_id": source_id,
+        "target_id": target_id,
+        "relation_type": relation_type,
+        "weight": weight,
+        "created_at": 1700000000i64,
+        "created_by": "test-agent",
+        "source": "runtime",
+        "bootstrap_only": 0,
+        "metadata": null
+    })
+    .to_string()
+}
+
+/// An all-tables restore dump (entries w/ full columns, entry_tags, co_access,
+/// feature_entries, graph_edges, audit_log, counters). Confidence carries a
+/// bit-exact f64 sentinel for type-fidelity assertions.
+fn all_tables_dump(sv: i64) -> Vec<String> {
+    let mut lines = vec![
+        make_header(sv, 2, 3),
+        make_counter_line("schema_version", sv),
+        make_counter_line("next_entry_id", 4),
+        make_counter_line("next_audit_id", 3),
+    ];
+    for id in 1i64..=3 {
+        // make_entry_line emits confidence 0.5; craft a full entry for id 1 with a
+        // bit-exact confidence + JSON-in-TEXT to exercise type fidelity.
+        if id == 1 {
+            let title = "Entry 1";
+            let content = "Content for entry 1";
+            let hash = compute_content_hash(title, content);
+            lines.push(
+                serde_json::json!({
+                    "_table": "entries", "id": 1, "title": title, "content": content,
+                    "topic": "testing", "category": "pattern", "source": "seed",
+                    "status": 0, "confidence": 0.87654321f64,
+                    "created_at": 1700000000i64, "updated_at": 1700000001i64,
+                    "last_accessed_at": 0, "access_count": 0,
+                    "supersedes": null, "superseded_by": null, "correction_count": 0,
+                    "embedding_dim": 384, "created_by": "agent", "modified_by": "agent",
+                    "content_hash": hash, "previous_hash": "",
+                    "version": 1, "feature_cycle": "", "trust_source": "direct",
+                    "helpful_count": 0, "unhelpful_count": 0, "pre_quarantine_status": null
+                })
+                .to_string(),
+            );
+        } else {
+            lines.push(make_entry_line(
+                id,
+                &format!("Entry {id}"),
+                &format!("Content for entry {id}"),
+                "",
+            ));
+        }
+    }
+    lines.push(serde_json::json!({"_table":"entry_tags","entry_id":1,"tag":"rust"}).to_string());
+    lines.push(serde_json::json!({"_table":"entry_tags","entry_id":2,"tag":"testing"}).to_string());
+    lines.push(
+        serde_json::json!({"_table":"co_access","entry_id_a":1,"entry_id_b":2,"count":5,"last_updated":1700000000i64}).to_string(),
+    );
+    lines.push(
+        serde_json::json!({"_table":"feature_entries","feature_id":"vnc-048","entry_id":1})
+            .to_string(),
+    );
+    lines.push(make_graph_edge_line(1, 2, "Supports", 0.85));
+    lines.push(make_audit_line(1, "context_store", "seed 1"));
+    lines.push(make_audit_line(2, "context_search", "seed 2"));
+    lines.push(make_audit_line(3, "context_store", "seed 3"));
+    lines
+}
+
+/// Full `ProjectPaths` for the isolated (project_dir, base_dir) pair.
+fn paths_for(project_dir: &Path, base_dir: &Path) -> project::ProjectPaths {
+    project::ensure_data_directory(Some(project_dir), Some(base_dir)).unwrap()
+}
+
+// ── R-11 / AC-13 — live-PID hard-error (live-only predicate) ────────────────
+
+/// Copy `sleep` to a file named `unimatrix` and spawn it, so
+/// `/proc/<pid>/cmdline` argv[0] has `file_name() == "unimatrix"` — the exact
+/// shape `is_unimatrix_process` matches. Returns the pid + a kill-on-drop guard.
+#[cfg(target_os = "linux")]
+struct DaemonGuard(std::process::Child);
+#[cfg(target_os = "linux")]
+impl Drop for DaemonGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn spawn_fake_daemon(tmp: &Path) -> (u32, DaemonGuard) {
+    use std::os::unix::fs::PermissionsExt;
+    let sleep = ["/bin/sleep", "/usr/bin/sleep"]
+        .iter()
+        .find(|p| Path::new(p).exists())
+        .expect("a sleep binary must exist");
+    let fake = tmp.join("unimatrix");
+    std::fs::copy(sleep, &fake).expect("copy sleep -> unimatrix");
+    let mut perm = std::fs::metadata(&fake).unwrap().permissions();
+    perm.set_mode(0o755);
+    std::fs::set_permissions(&fake, perm).unwrap();
+    let child = std::process::Command::new(&fake)
+        .arg("120")
+        .spawn()
+        .expect("spawn fake unimatrix daemon");
+    (child.id(), DaemonGuard(child))
+}
+
+#[cfg(target_os = "linux")]
+#[tokio::test(flavor = "multi_thread")]
+async fn test_import_slug_live_pid_hard_errors_no_vector_write() {
+    let project_dir = TempDir::new().unwrap();
+    let base_dir = TempDir::new().unwrap();
+    let daemon_tmp = TempDir::new().unwrap();
+    let paths = paths_for(project_dir.path(), base_dir.path());
+    let sv = {
+        let s = open_store(&paths.db_path);
+        let v = get_schema_version(&s).await;
+        s.close().await.unwrap();
+        // Remove the incidental path-hash db so its presence can't mask the slug write.
+        let _ = std::fs::remove_file(&paths.db_path);
+        v
+    };
+
+    let slug_dir = seed_slug_store(base_dir.path(), "live-slug").await;
+
+    // Fabricate a LIVE daemon PID at the base-scoped pid_path and prove the
+    // fixture satisfies BOTH predicates the gate uses.
+    let (pid, _guard) = spawn_fake_daemon(daemon_tmp.path());
+    assert!(unimatrix_server::infra::pidfile::is_process_alive(pid));
+    assert!(unimatrix_server::infra::pidfile::is_unimatrix_process(pid));
+    std::fs::write(&paths.pid_path, format!("{pid}\n")).unwrap();
+
+    let tmp = TempDir::new().unwrap();
+    let input = write_jsonl(&tmp, &all_tables_dump(sv));
+
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input,
+        Some("live-slug"),
+        false,
+        false,
+        base_dir.path(),
+    );
+    assert!(result.is_err(), "live-PID must hard-error");
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("live unimatrix daemon"),
+        "must name a live daemon: {err}"
+    );
+    assert!(
+        err.contains(&paths.pid_path.display().to_string()),
+        "must name the resolved PID path: {err}"
+    );
+    assert!(
+        err.contains("stop"),
+        "must name the stop→import→start remedy: {err}"
+    );
+
+    // Refused before any write: the clobber-path {slug}/vector is never entered.
+    assert_eq!(
+        file_count(&slug_dir.join(SLUG_VECTOR_DIR)),
+        0,
+        "no vector index may be written when the live-PID gate refuses"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_import_slug_stale_pid_does_not_block() {
+    let project_dir = TempDir::new().unwrap();
+    let base_dir = TempDir::new().unwrap();
+    let paths = paths_for(project_dir.path(), base_dir.path());
+    let sv = {
+        let s = open_store(&paths.db_path);
+        let v = get_schema_version(&s).await;
+        s.close().await.unwrap();
+        v
+    };
+    seed_slug_store(base_dir.path(), "stale-slug").await;
+
+    // Dead PID (predicate is live-PID-only) must NOT block.
+    std::fs::write(&paths.pid_path, "4000000\n").unwrap();
+
+    let tmp = TempDir::new().unwrap();
+    let input = write_jsonl(&tmp, &all_tables_dump(sv));
+
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input,
+        Some("stale-slug"),
+        false,
+        false,
+        base_dir.path(),
+    );
+    // The gate must not fire; import proceeds (embedding may Err if the model is
+    // absent, but never the live-daemon refusal).
+    if let Err(e) = &result {
+        let msg = e.to_string();
+        assert!(
+            !msg.contains("live unimatrix daemon"),
+            "stale PID must not trip the live-PID gate: {msg}"
+        );
+    }
+}
+
+// ── R-07 — non-empty-audit pre-flight refusal (C-5, AC-10/FR-13) ────────────
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_import_slug_nonempty_audit_refuses_preflight() {
+    let project_dir = TempDir::new().unwrap();
+    let base_dir = TempDir::new().unwrap();
+    let paths = paths_for(project_dir.path(), base_dir.path());
+    let sv = {
+        let s = open_store(&paths.db_path);
+        let v = get_schema_version(&s).await;
+        s.close().await.unwrap();
+        v
+    };
+
+    // Seed a slug then dirty its audit_log with a row (append-only; INSERT ok).
+    let slug_dir = seed_slug_store(base_dir.path(), "dirty-slug").await;
+    let db = slug_dir.join(SLUG_DB_NAME);
+    {
+        let s = SqlxStore::open(&db, PoolConfig::default()).await.unwrap();
+        sqlx::query(
+            "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
+             operation, target_ids, outcome, detail)
+             VALUES (1, 1700000000, 'prior', 'system', 'store', '[]', 0, 'prior')",
+        )
+        .execute(s.write_pool_server())
+        .await
+        .unwrap();
+        s.close().await.unwrap();
+    }
+
+    let tmp = TempDir::new().unwrap();
+    let input = write_jsonl(&tmp, &all_tables_dump(sv));
+
+    // Without --force.
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input,
+        Some("dirty-slug"),
+        false,
+        false,
+        base_dir.path(),
+    );
+    assert!(result.is_err(), "non-empty audit_log must refuse");
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("audit rows"),
+        "actionable audit message: {err}"
+    );
+    assert!(
+        err.contains("register"),
+        "must direct to register a fresh slug: {err}"
+    );
+    assert!(
+        err.contains(&db.display().to_string()),
+        "must name the resolved slug db path: {err}"
+    );
+    assert!(
+        !err.to_uppercase().contains("UNIQUE"),
+        "must NEVER surface the raw SQLite UNIQUE error: {err}"
+    );
+    // Refused before write: no vector index written.
+    assert_eq!(file_count(&slug_dir.join(SLUG_VECTOR_DIR)), 0);
+
+    // --force must NOT bypass the audit refusal (no such override exists).
+    let forced = run_import_with_base(
+        Some(project_dir.path()),
+        &input,
+        Some("dirty-slug"),
+        false,
+        true,
+        base_dir.path(),
+    );
+    assert!(forced.is_err(), "--force must not bypass the audit refusal");
+    assert!(
+        forced.unwrap_err().to_string().contains("audit rows"),
+        "force path still hits the audit gate"
+    );
+}
+
+// ── R-02 / R-14 — missing store fails loud, creates nothing (AC-03) ─────────
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_import_slug_missing_store_fails_loud_fs_unchanged() {
+    let project_dir = TempDir::new().unwrap();
+    let base_dir = TempDir::new().unwrap();
+    let paths = paths_for(project_dir.path(), base_dir.path());
+    let sv = {
+        let s = open_store(&paths.db_path);
+        let v = get_schema_version(&s).await;
+        s.close().await.unwrap();
+        v
+    };
+    // No slug store seeded for "ghost".
+    let ghost_dir = base_dir.path().join("ghost");
+    let expected_db = ghost_dir.join(SLUG_DB_NAME);
+
+    let tmp = TempDir::new().unwrap();
+    let input = write_jsonl(&tmp, &all_tables_dump(sv));
+
+    let result = run_import_with_base(
+        Some(project_dir.path()),
+        &input,
+        Some("ghost"),
+        false,
+        false,
+        base_dir.path(),
+    );
+    assert!(result.is_err(), "missing slug store must fail loud");
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains(&expected_db.display().to_string()),
+        "must name the fully-resolved absolute db path: {err}"
+    );
+    // Existence gate (a pure read) created nothing under the slug dir.
+    assert!(
+        !ghost_dir.exists(),
+        "existence gate must not create the slug dir"
+    );
+}
+
+// ── R-08 — validation at the CLI edge (AC-04) ───────────────────────────────
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_import_slug_invalid_rejected_no_fs_touch() {
+    let project_dir = TempDir::new().unwrap();
+    let base_dir = TempDir::new().unwrap();
+    let paths = paths_for(project_dir.path(), base_dir.path());
+    let sv = {
+        let s = open_store(&paths.db_path);
+        let v = get_schema_version(&s).await;
+        s.close().await.unwrap();
+        v
+    };
+    let tmp = TempDir::new().unwrap();
+    let input = write_jsonl(&tmp, &all_tables_dump(sv));
+
+    for bad in ["UPPER", "tools", "../escape"] {
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input,
+            Some(bad),
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_err(), "invalid slug {bad:?} must be rejected");
+    }
+}
+
+// ── AC-10 / AC-02 — all-tables restore into a fresh slug B; A untouched ─────
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_import_slug_all_tables_into_fresh_slug_b_vector_redirect() {
+    let project_dir = TempDir::new().unwrap();
+    let base_dir = TempDir::new().unwrap();
+    let paths = paths_for(project_dir.path(), base_dir.path());
+    let sv = {
+        let s = open_store(&paths.db_path);
+        let v = get_schema_version(&s).await;
+        s.close().await.unwrap();
+        // Remove the incidental path-hash db so we can assert the slug is the target.
+        let _ = std::fs::remove_file(&paths.db_path);
+        v
+    };
+
+    // Slug A seeded with a sentinel entry (id 999) — the resolver must NOT read it.
+    let a_dir = seed_slug_store(base_dir.path(), "aslug").await;
+    {
+        let a = SqlxStore::open(&a_dir.join(SLUG_DB_NAME), PoolConfig::default())
+            .await
+            .unwrap();
+        insert_full_entry(a.write_pool_server(), 999).await;
+        a.close().await.unwrap();
+    }
+
+    // Slug B: fresh, audit-empty restore target.
+    let b_dir = seed_slug_store(base_dir.path(), "bslug").await;
+
+    let tmp = TempDir::new().unwrap();
+    let input = write_jsonl(&tmp, &all_tables_dump(sv));
+
+    // Hash validation ON (skip=false) — Ok proves content_hash + chain_verify clean.
+    run_import_with_base(
+        Some(project_dir.path()),
+        &input,
+        Some("bslug"),
+        false,
+        false,
+        base_dir.path(),
+    )
+    .expect("AC-10: restore into fresh slug B must succeed");
+
+    // All tables restored into B's db.
+    let b = open_store(&b_dir.join(SLUG_DB_NAME));
+    let pool = b.write_pool_server();
+    let entries: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entries")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let tags: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entry_tags")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let co: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM co_access")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let fe: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM feature_entries")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let ge: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let audit: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(entries, 3, "entries restored into B");
+    assert_eq!(tags, 2, "entry_tags restored");
+    assert_eq!(co, 1, "co_access restored");
+    assert_eq!(fe, 1, "feature_entries restored");
+    assert_eq!(ge, 1, "graph_edges restored");
+    assert_eq!(audit, 3 + 1, "3 imported audit rows + 1 import provenance");
+
+    // Type fidelity: f64 confidence bit-exact through the round-trip.
+    let conf: f64 = sqlx::query_scalar("SELECT confidence FROM entries WHERE id = 1")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        conf.to_bits(),
+        0.87654321f64.to_bits(),
+        "confidence bit-exact"
+    );
+    b.close().await.unwrap();
+
+    // Resolver targeted B, NOT A: A still holds only its sentinel entry (id 999).
+    let a = open_store(&a_dir.join(SLUG_DB_NAME));
+    let a_entries: Vec<i64> = sqlx::query_scalar("SELECT id FROM entries ORDER BY id")
+        .fetch_all(a.write_pool_server())
+        .await
+        .unwrap();
+    assert_eq!(
+        a_entries,
+        vec![999i64],
+        "slug A must be untouched by an import into B"
+    );
+    a.close().await.unwrap();
+
+    // AC-02 vector redirect: fresh HNSW under {base}/bslug/vector; nothing under
+    // the path-hash vector/.
+    assert!(
+        file_count(&b_dir.join(SLUG_VECTOR_DIR)) > 0,
+        "a fresh HNSW index must be written under the slug's vector dir"
+    );
+    assert_eq!(
+        file_count(&paths.vector_dir),
+        0,
+        "nothing may be written to the path-hash vector dir in slug mode"
+    );
+}
+
+// ── R-09 — no-`--slug` fallthrough parity (AC-05) ───────────────────────────
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_import_no_slug_writes_to_path_hash_data_dir() {
+    let project_dir = TempDir::new().unwrap();
+    let base_dir = TempDir::new().unwrap();
+    let paths = paths_for(project_dir.path(), base_dir.path());
+    let sv = {
+        let s = open_store(&paths.db_path);
+        let v = get_schema_version(&s).await;
+        s.close().await.unwrap();
+        v
+    };
+
+    let tmp = TempDir::new().unwrap();
+    let lines = vec![
+        make_header(sv, 1, 1),
+        make_counter_line("schema_version", sv),
+        make_counter_line("next_entry_id", 2),
+        make_entry_line(1, "NoSlug", "path-hash target", ""),
+    ];
+    let input = write_jsonl(&tmp, &lines);
+
+    run_import_with_base(
+        Some(project_dir.path()),
+        &input,
+        None,
+        false,
+        false,
+        base_dir.path(),
+    )
+    .expect("no-slug import must succeed into the path-hash data dir");
+
+    // The row landed in the path-hash db (unchanged behavior, AC-05).
+    let s = open_store(&paths.db_path);
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entries")
+        .fetch_one(s.write_pool_server())
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
 }

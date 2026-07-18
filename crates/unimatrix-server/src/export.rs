@@ -19,11 +19,17 @@ use sqlx::{Row, SqlitePool};
 use unimatrix_store::{PoolConfig, SqlxStore};
 
 use crate::project;
+use crate::projects::slug_store::resolve_slug_store;
 
 /// Run the export subcommand.
 ///
 /// Opens the database, wraps the read in a single transaction for snapshot
 /// consistency, and writes JSONL to `output` (or stdout if None).
+///
+/// When `slug` is `Some`, the store to export is the runtime's literal-slug store
+/// (`{base}/<slug>/unimatrix.db`), resolved through the shared [`resolve_slug_store`]
+/// funnel (validation + base derivation + pre-open existence gate, ADR-001/002).
+/// When `slug` is `None`, the path-hash store flows byte-for-byte as today (AC-05).
 ///
 /// When `skip_quarantined` is true (with `confirm`), quarantined entries
 /// (status=3) and all rows referencing them are excluded from the export
@@ -32,10 +38,11 @@ use crate::project;
 pub fn run_export(
     project_dir: Option<&Path>,
     output: Option<&Path>,
+    slug: Option<&str>,
     skip_quarantined: bool,
     confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    run_export_inner(project_dir, output, None, skip_quarantined, confirm)
+    run_export_inner(project_dir, output, None, slug, skip_quarantined, confirm)
 }
 
 /// Run the export subcommand with an explicit `base_dir` for test isolation.
@@ -47,6 +54,7 @@ pub fn run_export_with_base(
     project_dir: Option<&Path>,
     output: Option<&Path>,
     base_dir: &Path,
+    slug: Option<&str>,
     skip_quarantined: bool,
     confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -54,6 +62,7 @@ pub fn run_export_with_base(
         project_dir,
         output,
         Some(base_dir),
+        slug,
         skip_quarantined,
         confirm,
     )
@@ -63,6 +72,7 @@ fn run_export_inner(
     project_dir: Option<&Path>,
     output: Option<&Path>,
     base_dir: Option<&Path>,
+    slug: Option<&str>,
     skip_quarantined: bool,
     confirm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -76,22 +86,35 @@ fn run_export_inner(
         );
     }
 
-    // 1. Resolve project paths
+    // 1. Resolve path-hash paths (unchanged; still creates + chmods the hash dir/vector, C-6).
     let paths = project::ensure_data_directory(project_dir, base_dir)?;
 
-    // 2. Bridge async to sync: use block_in_place when inside a tokio runtime
+    // 2. Select the DB to open — the ONLY new branch. In slug mode the funnel
+    //    validates the slug (AC-04), derives the base, joins the single site, and
+    //    applies the pre-open existence gate (ADR-002): on a miss it fails loud
+    //    naming the fully-resolved absolute db_path and creates nothing (AC-03,
+    //    R-02). `?` here propagates that error BEFORE any SqlxStore::open, so the
+    //    open below never auto-creates a slug store. No-slug is byte-for-byte the
+    //    path-hash flow (AC-05/AC-11).
+    let open_db_path = match slug {
+        Some(raw) => resolve_slug_store(&paths, raw)?.db_path,
+        None => paths.db_path.clone(),
+    };
+
+    // 3. Bridge async to sync: use block_in_place when inside a tokio runtime
     //    (e.g. called from tests), otherwise create a temporary runtime.
     //    Never use Builder::new_current_thread().block_on() inside an existing
     //    runtime — that panics with "Cannot start a runtime from within a runtime".
     block_export_sync(async {
-        // 3. Open database (triggers migration if needed)
-        let store = Arc::new(SqlxStore::open(&paths.db_path, PoolConfig::default()).await?);
+        // 4. Open target DB (triggers migration if needed). In slug mode this is
+        //    reached ONLY after the existence gate returned Ok (C-3, R-02).
+        let store = Arc::new(SqlxStore::open(&open_db_path, PoolConfig::default()).await?);
         let pool = store.write_pool_server();
 
-        // 4. Begin snapshot transaction (ADR-001)
+        // 5. Begin snapshot transaction (ADR-001)
         sqlx::query("BEGIN DEFERRED").execute(pool).await?;
 
-        // 5. Build skip set INSIDE the transaction (ADR-008, SR-02)
+        // 6. Build skip set INSIDE the transaction (ADR-008, SR-02)
         let skip_ids: HashSet<i64> = if skip_quarantined {
             sqlx::query_scalar::<_, i64>("SELECT id FROM entries WHERE status = 3")
                 .fetch_all(pool)
@@ -102,7 +125,7 @@ fn run_export_inner(
             HashSet::new() // empty set -- O(1) contains() no-ops
         };
 
-        // 6. Set up writer and run export
+        // 7. Set up writer and run export, capturing the written row counts.
         let result = if let Some(path) = output {
             let file = File::create(path)?;
             let mut writer = BufWriter::new(file);
@@ -114,12 +137,15 @@ fn run_export_inner(
             do_export(pool, &mut writer, &skip_ids, skip_quarantined).await
         };
 
-        // 7. Commit transaction regardless of export result
+        // 8. Commit transaction regardless of export result
         //    Read-only DEFERRED: COMMIT and ROLLBACK are equivalent.
         let _ = sqlx::query("COMMIT").execute(pool).await;
 
-        // 8. Propagate any export error
-        result
+        // 9. AC-06 stderr count summary (both modes). `?` first so a failed export
+        //    never prints a misleading count — the summary is success-only (ADR-006).
+        let counts = result?;
+        emit_export_summary(&counts, output);
+        Ok(())
     })
 }
 
@@ -150,10 +176,41 @@ where
     }
 }
 
+/// Row counts the export actually wrote, surfaced for the AC-06 stderr summary.
+#[derive(Debug)]
+struct ExportCounts {
+    /// Knowledge entries written = total minus `--skip-quarantined` filtered.
+    entries: u64,
+    /// `audit_log` rows written.
+    audit_rows: u64,
+}
+
+/// Format the one-line export summary (ADR-006 / FR-8):
+/// `exported N entries, M audit rows → <dest>`, where `<dest>` is the resolved
+/// output path or `stdout`. Pure (no I/O) so the wording is unit-testable without
+/// capturing process stderr. `exported 0 entries` self-diagnoses a sparse export.
+fn format_export_summary(counts: &ExportCounts, output: Option<&Path>) -> String {
+    let dest = match output {
+        Some(p) => p.display().to_string(),
+        None => "stdout".to_string(),
+    };
+    format!(
+        "exported {} entries, {} audit rows \u{2192} {}",
+        counts.entries, counts.audit_rows, dest
+    )
+}
+
+/// Emit the AC-06 count summary to STDERR — never stdout, so the JSONL piped on
+/// stdout is unaffected (ADR-006). Called only after a successful export.
+fn emit_export_summary(counts: &ExportCounts, output: Option<&Path>) {
+    eprintln!("{}", format_export_summary(counts, output));
+}
+
 /// Execute all export steps against the pool and writer.
 ///
 /// Separated from `run_export` to allow the writer type to vary (file vs stdout)
-/// while keeping transaction logic in one place.
+/// while keeping transaction logic in one place. Returns the [`ExportCounts`] the
+/// AC-06 stderr summary reports.
 ///
 /// `skip_ids` contains quarantined entry IDs to exclude (empty when
 /// `--skip-quarantined` is not active). `skip_quarantined` controls
@@ -163,7 +220,7 @@ async fn do_export(
     writer: &mut impl Write,
     skip_ids: &HashSet<i64>,
     skip_quarantined: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<ExportCounts, Box<dyn std::error::Error>> {
     write_header(pool, writer, skip_quarantined).await?;
     export_counters(pool, writer).await?;
     let skip_entries = export_entries(pool, writer, skip_ids).await?;
@@ -172,7 +229,7 @@ async fn do_export(
     let skip_fe = export_feature_entries(pool, writer, skip_ids).await?;
     export_outcome_index(pool, writer).await?;
     export_agent_registry(pool, writer).await?;
-    export_audit_log(pool, writer).await?;
+    let audit_rows = export_audit_log(pool, writer).await?;
     // nxs-012: 3 additional tables (FR-14: after existing 8)
     let skip_edges = export_graph_edges(pool, writer, skip_ids).await?;
     export_observations(pool, writer).await?;
@@ -181,7 +238,6 @@ async fn do_export(
 
     // Report skip counts to stderr (FR-27, AC-28)
     if skip_quarantined && !skip_ids.is_empty() {
-        let _ = skip_entries; // entries skip count equals skip_ids.len()
         eprintln!("Skipped {} quarantined entries.", skip_ids.len());
         eprintln!("Skipped dependent rows:");
         eprintln!("  Entry tags:      {}", skip_tags);
@@ -190,7 +246,19 @@ async fn do_export(
         eprintln!("  Graph edges:     {}", skip_edges);
     }
 
-    Ok(())
+    // AC-06 / FR-8: entries actually written = total - skipped. `export_entries`
+    // returns the SKIPPED count (its contract is unchanged, NFR-9), so derive the
+    // written count from the in-txn total. A `--skip-quarantined` sparse export
+    // therefore self-diagnoses as "exported 0 entries".
+    let total_entries: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM entries")
+        .fetch_one(pool)
+        .await?;
+    let entries = (total_entries.max(0) as u64).saturating_sub(skip_entries);
+
+    Ok(ExportCounts {
+        entries,
+        audit_rows,
+    })
 }
 
 /// Write the JSONL header line with export metadata.
@@ -613,10 +681,11 @@ async fn export_agent_registry(
 /// Order: event_id ASC.
 ///
 /// The `target_ids` column is JSON-in-TEXT: emitted as a raw string (ADR-002).
+/// Returns the count of rows written (the AC-06 summary's audit-row number).
 async fn export_audit_log(
     pool: &SqlitePool,
     writer: &mut impl Write,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error>> {
     let rows = sqlx::query(
         "SELECT event_id, timestamp, session_id, agent_id, operation,
                 target_ids, outcome, detail
@@ -644,7 +713,7 @@ async fn export_audit_log(
         map.insert("detail".into(), Value::String(row.get::<String, _>(7)));
         write_row(map, writer)?;
     }
-    Ok(())
+    Ok(rows.len() as u64)
 }
 
 /// Export all rows from the `graph_edges` table (9 columns, no id — ADR-005).
@@ -2235,6 +2304,7 @@ line3', NULL, NULL, NULL, NULL)",
             Some(proj.as_path()),
             Some(out.as_path()),
             tmp.path(),
+            None,  // slug
             true,  // skip_quarantined
             false, // confirm missing
         );
@@ -2261,6 +2331,7 @@ line3', NULL, NULL, NULL, NULL)",
             Some(proj.as_path()),
             Some(out.as_path()),
             tmp.path(),
+            None, // slug
             true, // skip_quarantined
             true, // confirm
         );
@@ -2282,6 +2353,7 @@ line3', NULL, NULL, NULL, NULL)",
             Some(proj.as_path()),
             Some(out.as_path()),
             tmp.path(),
+            None,  // slug
             false, // skip_quarantined off
             true,  // confirm present but irrelevant
         );
@@ -2641,5 +2713,311 @@ line3', NULL, NULL, NULL, NULL)",
 
         assert_eq!(skipped, 1);
         assert!(buf.is_empty(), "self-loop quarantined edge filtered");
+    }
+
+    // =======================================================================
+    // vnc-048: `--slug` branch + AC-06 stderr count summary
+    // =======================================================================
+    //
+    // These drive `run_export_with_base(..., slug, ...)` — the operator entry
+    // point — with `base` pinned to a TempDir. The seed path (the runtime
+    // `http_provision` literal-slug layout) is DISTINCT code from the CLI read
+    // path (`run_export_with_base` → `resolve_slug_store`).
+
+    use crate::http::ProjectSlug;
+    use crate::project::ensure_data_directory;
+    use crate::projects::per_slug_data_dir;
+    use std::path::PathBuf;
+
+    /// Open a store at `db_path` and insert `entries` rows with the given ids.
+    /// The parent dir is created first; the store handle is dropped on return so
+    /// the CLI read path opens it fresh.
+    async fn seed_store_at(db_path: &Path, ids: &[i64]) {
+        if let Some(parent) = db_path.parent() {
+            std::fs::create_dir_all(parent).expect("create store parent dir");
+        }
+        let store = SqlxStore::open(db_path, PoolConfig::default())
+            .await
+            .expect("open seed store");
+        let pool = store.write_pool_server();
+        for &id in ids {
+            sqlx::query(
+                "INSERT INTO entries (
+                    id, title, content, topic, category, source, status, confidence,
+                    created_at, updated_at
+                ) VALUES (?1, ?2, ?3, 't', 'p', 's', 1, 0.5, 1, 1)",
+            )
+            .bind(id)
+            .bind(format!("title-{id}"))
+            .bind(format!("content-{id}"))
+            .execute(pool)
+            .await
+            .expect("insert seed entry");
+        }
+    }
+
+    /// Seed a per-slug store via the runtime literal-slug layout
+    /// (`per_slug_data_dir(base, &ProjectSlug) / "unimatrix.db"`). Returns db_path.
+    async fn seed_slug_store(base: &Path, slug: &str, ids: &[i64]) -> PathBuf {
+        let pslug = ProjectSlug::try_from(slug).expect("valid slug");
+        let db_path = per_slug_data_dir(base, &pslug).join("unimatrix.db");
+        seed_store_at(&db_path, ids).await;
+        db_path
+    }
+
+    /// Read a JSONL export file and return the sorted `entries`-table ids emitted.
+    fn emitted_entry_ids(path: &Path) -> Vec<i64> {
+        let content = std::fs::read_to_string(path).expect("read export file");
+        let mut ids: Vec<i64> = content
+            .lines()
+            .filter(|l| !l.is_empty())
+            .filter_map(|l| serde_json::from_str::<Value>(l).ok())
+            .filter(|v| v.get("_table").and_then(|t| t.as_str()) == Some("entries"))
+            .filter_map(|v| v.get("id").and_then(|i| i.as_i64()))
+            .collect();
+        ids.sort_unstable();
+        ids
+    }
+
+    /// Create a canonicalizable project dir under `base`.
+    fn make_project_dir(base: &Path) -> PathBuf {
+        let proj = base.join("project");
+        std::fs::create_dir_all(&proj).expect("create project dir");
+        proj
+    }
+
+    // ── R-01 S1: disagreement seam (AC-09, TOP weight, gate non-negotiable) ──
+    //
+    // #4974 / #5507: an N=1 same-path test — B empty, or B seeded through the
+    // SAME layout as A onto the same store — is CEREMONIAL and does NOT satisfy
+    // AC-09. Here the seed layout (per_slug_data_dir + direct SqlxStore::open) and
+    // the CLI resolver (run_export_with_base → resolve_slug_store) are DIFFERENT
+    // code, and set B is non-empty AND disjoint from A by construction, so
+    // `emitted == A` and `emitted ∩ B == ∅` actually exercises slug-vs-hash divergence.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_export_slug_emits_slug_store_not_hash_store() {
+        let base = tempfile::TempDir::new().unwrap();
+        let proj = make_project_dir(base.path());
+
+        let set_a = [101i64, 102, 103];
+        let set_b = [201i64, 202, 203];
+        seed_slug_store(base.path(), "alpha", &set_a).await;
+        let paths = ensure_data_directory(Some(&proj), Some(base.path())).expect("hash paths");
+        seed_store_at(&paths.db_path, &set_b).await;
+
+        let out = base.path().join("out.jsonl");
+        run_export_with_base(
+            Some(&proj),
+            Some(&out),
+            base.path(),
+            Some("alpha"),
+            false,
+            false,
+        )
+        .expect("export slug store");
+
+        let emitted = emitted_entry_ids(&out);
+        assert_eq!(emitted, set_a.to_vec(), "must emit the slug store's set A");
+        for b in set_b {
+            assert!(
+                !emitted.contains(&b),
+                "emitted ∩ B must be empty, but found hash-store id {b}"
+            );
+        }
+    }
+
+    // ── R-01 S2: no-slug divergence guard (proves the two paths genuinely differ) ──
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_export_no_slug_emits_hash_store_divergence_guard() {
+        let base = tempfile::TempDir::new().unwrap();
+        let proj = make_project_dir(base.path());
+
+        let set_a = [101i64, 102, 103];
+        let set_b = [201i64, 202, 203];
+        seed_slug_store(base.path(), "alpha", &set_a).await;
+        let paths = ensure_data_directory(Some(&proj), Some(base.path())).expect("hash paths");
+        seed_store_at(&paths.db_path, &set_b).await;
+
+        let out = base.path().join("out.jsonl");
+        run_export_with_base(Some(&proj), Some(&out), base.path(), None, false, false)
+            .expect("export hash store");
+
+        let emitted = emitted_entry_ids(&out);
+        assert_eq!(
+            emitted,
+            set_b.to_vec(),
+            "no-slug must emit the path-hash store's set B"
+        );
+        for a in set_a {
+            assert!(
+                !emitted.contains(&a),
+                "no-slug must NOT emit slug-store id {a}"
+            );
+        }
+    }
+
+    // ── R-02 / R-14: missing store fails loud, existence gate creates nothing (AC-03) ──
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_export_slug_missing_store_fails_loud_fs_unchanged() {
+        let base = tempfile::TempDir::new().unwrap();
+        let proj = make_project_dir(base.path());
+        let out = base.path().join("out.jsonl");
+        let slug_dir = base.path().join("ghost");
+        assert!(!slug_dir.exists(), "precondition: no slug store");
+
+        let res = run_export_with_base(
+            Some(&proj),
+            Some(&out),
+            base.path(),
+            Some("ghost"),
+            false,
+            false,
+        );
+
+        let err = res.expect_err("missing store must fail");
+        let msg = err.to_string();
+        let expected_db = slug_dir.join("unimatrix.db");
+        assert!(
+            msg.contains(&expected_db.display().to_string()),
+            "error must name the fully-resolved absolute db path: {msg}"
+        );
+        // The existence gate is before `open`: nothing created under the slug dir.
+        assert!(!out.exists(), "no output file written on miss");
+        assert!(
+            !slug_dir.exists(),
+            "existence gate created nothing (no slug dir)"
+        );
+        assert!(!expected_db.exists(), "no unimatrix.db auto-created");
+        assert!(
+            !slug_dir.join("unimatrix.db-wal").exists(),
+            "no -wal created"
+        );
+        assert!(
+            !slug_dir.join("unimatrix.db-shm").exists(),
+            "no -shm created"
+        );
+    }
+
+    // ── R-08: validation at the CLI edge (AC-04) — charset/reserved/traversal ──
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_export_slug_invalid_rejected_no_fs_touch() {
+        let base = tempfile::TempDir::new().unwrap();
+        let proj = make_project_dir(base.path());
+        let out = base.path().join("out.jsonl");
+
+        for bad in ["Foo!", "UPPER", "a_b", "v1", "tools", "../etc", "a/b", ".."] {
+            let res = run_export_with_base(
+                Some(&proj),
+                Some(&out),
+                base.path(),
+                Some(bad),
+                false,
+                false,
+            );
+            assert!(res.is_err(), "invalid slug {bad:?} must be rejected");
+            assert!(!out.exists(), "no output file for rejected slug {bad:?}");
+        }
+    }
+
+    // ── R-13: stray/hash-looking slug dir never reinterpreted in no-slug mode (AC-11) ──
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_export_no_slug_with_populated_slug_dir_emits_only_hash() {
+        let base = tempfile::TempDir::new().unwrap();
+        let proj = make_project_dir(base.path());
+
+        // A populated slug dir whose name looks like a 16-hex path-hash segment —
+        // charset-valid, but no-slug mode must never reinterpret it (documented, AC-11).
+        let set_a = [301i64, 302];
+        let set_b = [401i64, 402, 403];
+        seed_slug_store(base.path(), "abcdef0123456789", &set_a).await;
+        let paths = ensure_data_directory(Some(&proj), Some(base.path())).expect("hash paths");
+        seed_store_at(&paths.db_path, &set_b).await;
+
+        let out = base.path().join("out.jsonl");
+        run_export_with_base(Some(&proj), Some(&out), base.path(), None, false, false)
+            .expect("export hash store");
+
+        let emitted = emitted_entry_ids(&out);
+        assert_eq!(emitted, set_b.to_vec(), "no-slug emits only the hash store");
+        for a in set_a {
+            assert!(
+                !emitted.contains(&a),
+                "stray slug dir id {a} must not appear"
+            );
+        }
+    }
+
+    // ── AC-06: stderr count summary wording (format is pure + unit-testable) ──
+    #[test]
+    fn test_format_export_summary_file_dest() {
+        let counts = ExportCounts {
+            entries: 5,
+            audit_rows: 3,
+        };
+        let p = PathBuf::from("/tmp/out.jsonl");
+        let s = format_export_summary(&counts, Some(p.as_path()));
+        assert!(s.contains("exported 5 entries"), "{s}");
+        assert!(s.contains("3 audit rows"), "{s}");
+        assert!(s.contains("/tmp/out.jsonl"), "{s}");
+        assert!(
+            s.contains('\u{2192}'),
+            "summary must include the → arrow: {s}"
+        );
+    }
+
+    #[test]
+    fn test_format_export_summary_stdout_dest_sparse_self_diagnoses() {
+        // 0 entries + audit rows → the self-diagnosing sparse line (ADR-006).
+        let counts = ExportCounts {
+            entries: 0,
+            audit_rows: 7,
+        };
+        let s = format_export_summary(&counts, None);
+        assert!(
+            s.contains("exported 0 entries"),
+            "sparse self-diagnoses: {s}"
+        );
+        assert!(s.contains("7 audit rows"), "{s}");
+        assert!(s.contains("stdout"), "None output prints → stdout: {s}");
+    }
+
+    // ── do_export returns the counts the summary reports ──
+    #[tokio::test]
+    async fn test_do_export_returns_written_counts() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        insert_entry_with_status(pool, 1, 1).await;
+        insert_entry_with_status(pool, 2, 1).await;
+        sqlx::query(
+            "INSERT INTO audit_log (event_id, timestamp, session_id, agent_id,
+             operation, target_ids, outcome, detail)
+             VALUES (1, 1, 's1', 'a1', 'store', '[]', 0, 'ok')",
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        let mut buf = Vec::new();
+        let counts = do_export(pool, &mut buf, &HashSet::new(), false)
+            .await
+            .unwrap();
+        assert_eq!(counts.entries, 2, "two entries written");
+        assert_eq!(counts.audit_rows, 1, "one audit row written");
+    }
+
+    #[tokio::test]
+    async fn test_do_export_written_count_excludes_skipped() {
+        let (store, _tmp) = setup_test_db().await;
+        let pool = store.write_pool_server();
+        insert_entry_with_status(pool, 1, 1).await; // active
+        insert_entry_with_status(pool, 2, 3).await; // quarantined
+
+        let skip_ids: HashSet<i64> = [2].into_iter().collect();
+        let mut buf = Vec::new();
+        let counts = do_export(pool, &mut buf, &skip_ids, true).await.unwrap();
+        assert_eq!(
+            counts.entries, 1,
+            "written excludes the skipped quarantined entry"
+        );
     }
 }
