@@ -14,6 +14,8 @@ The key mental model: workflow definitions, agent definitions, and skill definit
 
 Built for agentic software delivery. Configurable for any workflow-centric domain.
 
+**Unimatrix is a platform.** A self-learning knowledge engine with a stable, presented extension contract. Domain solutions — a delivery harness, a research harness, a monitoring stack — are built *on* it, not *into* it: they configure its domain layer, plug their own policy (identity, cost, gates) into its seams, and consume its memory over MCP. The engine is the platform; each solution is an extension along clean, delineated lines. The developer experience of that extension surface is a first-class concern — the seams are documented, versioned, and presented as a product, not left implicit.
+
 ---
 
 ## Story
@@ -37,6 +39,7 @@ Five strategic goals drive all roadmap decisions. Each is maintained as an enric
 | Proactive knowledge delivery | `proactive-delivery` | Knowledge arrives before agents search for it — phase-conditioned, session-aware |
 | Developer-friendly deployment | `personal-cloud` | One container, one bearer token, one command — full pipeline fidelity over HTTPS |
 | Domain-agnostic platform | `domain-agnostic` | Any domain, configured not rebuilt — validated on SDLC and research workflows |
+| Extensible platform surface | `platform` | The extension contract (domain config, policy/auth seams, memory+capability substrate over MCP/SDK) is presented, versioned, and DevX-first — solutions extend it, never reach into it |
 
 Query current goal content: `context_lookup(category="goal", tags=["goal", "{tag}"])`
 
@@ -46,6 +49,7 @@ Feature delivery is tracked via GitHub Issues with `goal:*` labels:
 - `goal:proactive-delivery` — injection, briefing, session context
 - `goal:personal-cloud` — container, HTTPS, auth, multi-LLM
 - `goal:domain-agnostic` — config externalization, domain packs, multi-retrieval
+- `goal:platform` — extension contract, policy/auth seams, plugin DevX, presented+versioned seams
 
 ---
 
