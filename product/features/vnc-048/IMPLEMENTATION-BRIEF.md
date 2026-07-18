@@ -24,7 +24,7 @@ Compiled from the approved Session 1 design. Session 2 agents consume this brief
 | main.rs (clap `--slug` wiring) | pseudocode/main-dispatch.md | test-plan/main-dispatch.md |
 | README (canonical restore procedure) | pseudocode/readme.md | test-plan/readme.md |
 
-Pseudocode and test-plan files are produced in Session 2 Stage 3a; the paths above are expected placeholders — actual paths are filled during delivery. No shared runtime/HTTP path is modified (C-9).
+Pseudocode and test-plan files produced in Stage 3a — all paths above verified present on disk (Delivery Leader, Component Map update). No shared runtime/HTTP path is modified (C-9).
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
