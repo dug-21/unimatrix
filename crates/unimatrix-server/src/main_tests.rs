@@ -83,10 +83,13 @@ fn test_export_subcommand_unchanged() {
     match cli.command {
         Some(Command::Export {
             output,
+            slug,
             skip_quarantined,
             confirm,
         }) => {
             assert_eq!(output, Some(PathBuf::from("/tmp/out.json")));
+            // AC-05: no --slug parses to None (path-hash default).
+            assert_eq!(slug, None);
             assert!(!skip_quarantined);
             assert!(!confirm);
         }
@@ -108,10 +111,12 @@ fn test_export_subcommand_skip_quarantined_flags() {
     match cli.command {
         Some(Command::Export {
             output,
+            slug,
             skip_quarantined,
             confirm,
         }) => {
             assert_eq!(output, Some(PathBuf::from("/tmp/out.json")));
+            assert_eq!(slug, None);
             assert!(skip_quarantined);
             assert!(confirm);
         }
@@ -123,11 +128,107 @@ fn test_export_subcommand_skip_quarantined_flags() {
 fn test_import_subcommand_unchanged() {
     let cli = Cli::try_parse_from(["unimatrix", "import", "--input", "/tmp/in.json"]).unwrap();
     match cli.command {
-        Some(Command::Import { input, .. }) => {
+        Some(Command::Import { input, slug, .. }) => {
             assert_eq!(input, PathBuf::from("/tmp/in.json"));
+            // AC-05: no --slug parses to None (path-hash default).
+            assert_eq!(slug, None);
         }
         other => panic!("expected Import, got {other:?}"),
     }
+}
+
+// ---------------------------------------------------------------------------
+// vnc-048 — `--slug` clap wiring (Component 4) + help contract (AC-07/FR-15)
+// ---------------------------------------------------------------------------
+
+/// AC-05 wiring: `export --slug foo` populates the field as `Some("foo")`, which
+/// `main` forwards to `run_export` via `.as_deref()`.
+#[test]
+fn test_cli_export_slug_threads_into_run_export() {
+    let cli = Cli::try_parse_from(["unimatrix", "export", "--slug", "foo"]).unwrap();
+    match cli.command {
+        Some(Command::Export { slug, .. }) => {
+            assert_eq!(slug.as_deref(), Some("foo"));
+        }
+        other => panic!("expected Export, got {other:?}"),
+    }
+}
+
+/// AC-05 wiring: `import --slug foo` populates the field as `Some("foo")`.
+#[test]
+fn test_cli_import_slug_threads_into_run_import() {
+    let cli = Cli::try_parse_from([
+        "unimatrix",
+        "import",
+        "--input",
+        "/tmp/in.json",
+        "--slug",
+        "foo",
+    ])
+    .unwrap();
+    match cli.command {
+        Some(Command::Import { slug, .. }) => {
+            assert_eq!(slug.as_deref(), Some("foo"));
+        }
+        other => panic!("expected Import, got {other:?}"),
+    }
+}
+
+/// Render a subcommand's long help with whitespace collapsed to single spaces, so
+/// substring assertions are robust against clap's terminal-width line wrapping.
+fn subcommand_long_help(name: &str) -> String {
+    let mut cmd = Cli::command();
+    let sub = cmd
+        .find_subcommand_mut(name)
+        .unwrap_or_else(|| panic!("subcommand {name} should exist"));
+    sub.render_long_help()
+        .to_string()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// AC-07/FR-15: export's `--slug` help states base derivation, in-container posture,
+/// and store-dir-not-registered-project semantics. Substring (not full-snapshot)
+/// assertions so contract-preserving wording tweaks don't false-fail.
+#[test]
+fn test_cli_export_slug_help_states_contract() {
+    let help = subcommand_long_help("export");
+    assert!(
+        help.contains("--project-dir"),
+        "export --slug help must state base is derived from --project-dir; got:\n{help}"
+    );
+    assert!(
+        help.contains("in-container"),
+        "export --slug help must state in-container posture; got:\n{help}"
+    );
+    assert!(
+        help.contains("not a registered"),
+        "export --slug help must state store-dir-not-registered semantics; got:\n{help}"
+    );
+}
+
+/// AC-07/FR-15: import's `--slug` help carries the same contract PLUS the one-line
+/// pointer to the README restore procedure.
+#[test]
+fn test_cli_import_slug_help_carries_readme_pointer() {
+    let help = subcommand_long_help("import");
+    assert!(
+        help.contains("--project-dir"),
+        "import --slug help must state base is derived from --project-dir; got:\n{help}"
+    );
+    assert!(
+        help.contains("in-container"),
+        "import --slug help must state in-container posture; got:\n{help}"
+    );
+    assert!(
+        help.contains("not a registered"),
+        "import --slug help must state store-dir-not-registered semantics; got:\n{help}"
+    );
+    assert!(
+        help.contains("README"),
+        "import --slug help must carry the README restore-procedure pointer; got:\n{help}"
+    );
 }
 
 #[test]
