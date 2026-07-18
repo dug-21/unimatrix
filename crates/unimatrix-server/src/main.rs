@@ -334,6 +334,14 @@ enum Command {
         #[arg(short, long)]
         output: Option<PathBuf>,
 
+        /// Back up a named per-slug project store ({base}/<slug>/unimatrix.db), the
+        /// store the running daemon uses — not the CLI's path-hash store. The base is
+        /// derived from --project-dir; the in-container invocation (HOME=/data) is the
+        /// expected posture. `--slug` names a store DIR under the base, not a registered
+        /// [[projects]] entry.
+        #[arg(long)]
+        slug: Option<String>,
+
         /// Exclude quarantined entries (status=3) and their dependents from export.
         /// Produces a clean snapshot. Requires --confirm.
         #[arg(long)]
@@ -354,6 +362,15 @@ enum Command {
         /// Input JSONL file path (required).
         #[arg(short, long)]
         input: PathBuf,
+
+        /// Restore into a named per-slug project store ({base}/<slug>/unimatrix.db) and
+        /// rebuild its vector index. The base is derived from --project-dir; run
+        /// in-container (HOME=/data). `--slug` names a store DIR under the base, not a
+        /// registered [[projects]] entry. Canonical restore sequence:
+        /// `project register <slug>` -> stop -> import --slug -> start
+        /// (see README "Restore a per-slug project").
+        #[arg(long)]
+        slug: Option<String>,
 
         /// Skip content hash and chain integrity validation.
         #[arg(long)]
@@ -555,6 +572,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Some(Command::Export {
             output,
+            slug,
             skip_quarantined,
             confirm,
         }) => {
@@ -562,12 +580,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             unimatrix_server::export::run_export(
                 cli.project_dir.as_deref(),
                 output.as_deref(),
+                // vnc-048: raw `--slug` forwarded untouched; validation happens
+                // downstream at the funnel's validate_slug edge (Component 1).
+                slug.as_deref(),
                 skip_quarantined,
                 confirm,
             )
         }
         Some(Command::Import {
             input,
+            slug,
             skip_hash_validation,
             force,
         }) => {
@@ -575,6 +597,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             unimatrix_server::import::run_import(
                 cli.project_dir.as_deref(),
                 &input,
+                // vnc-048: raw `--slug` forwarded untouched; validated downstream.
+                slug.as_deref(),
                 skip_hash_validation,
                 force,
             )
