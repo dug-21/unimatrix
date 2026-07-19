@@ -1585,7 +1585,14 @@ async fn test_round_trip_all_11_tables() {
 const SLUG_DB_NAME: &str = "unimatrix.db";
 const SLUG_VECTOR_DIR: &str = "vector";
 
+use std::sync::Arc;
+use unimatrix_embed::{EmbedConfig, OnnxProvider, embed_entry};
 use unimatrix_store::pool_config::PoolConfig;
+use unimatrix_vector::{VectorConfig, VectorIndex};
+
+/// Metadata file the daemon probes at boot to decide load-vs-build
+/// (`http_provision.rs:196`; `unimatrix-vector` `METADATA_FILENAME`).
+const SLUG_VECTOR_META: &str = "unimatrix-vector.meta";
 
 /// Seed a freshly-registered (empty, audit-empty) slug store at
 /// `{base}/<slug>/unimatrix.db` + `{base}/<slug>/vector`, mirroring what
@@ -2106,6 +2113,191 @@ async fn test_import_slug_all_tables_into_fresh_slug_b_vector_redirect() {
         file_count(&paths.vector_dir),
         0,
         "nothing may be written to the path-hash vector dir in slug mode"
+    );
+}
+
+// ── R-03 S2 / AC-12 — served vector search from `start` (gate non-negotiable) ─
+
+/// Insert one semantically-distinct entry (valid content_hash, unchained
+/// `previous_hash = ""`) so the reconstructed HNSW is searchable by meaning.
+async fn insert_semantic_entry(pool: &sqlx::SqlitePool, id: i64, title: &str, content: &str) {
+    let hash = compute_content_hash(title, content);
+    sqlx::query(
+        "INSERT INTO entries (
+            id, title, content, topic, category, source, status, confidence,
+            created_at, updated_at, last_accessed_at, access_count,
+            supersedes, superseded_by, correction_count, embedding_dim,
+            created_by, modified_by, content_hash, previous_hash,
+            version, feature_cycle, trust_source,
+            helpful_count, unhelpful_count, pre_quarantine_status
+        ) VALUES (
+            ?1, ?2, ?3, 'testing', 'pattern', 'seed',
+            1, 0.5,
+            1700000000, 1700000001, 0, 0,
+            NULL, NULL, 0, 384,
+            'agent', 'agent', ?4, '',
+            1, '', 'direct',
+            0, 0, NULL
+        )",
+    )
+    .bind(id)
+    .bind(title)
+    .bind(content)
+    .bind(&hash)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+/// R-03 S2 / AC-12 — the gate non-negotiable. Drives the assembled restore
+/// sequence (register A → seed corpus → export --slug A → register B →
+/// import --slug B), then simulates `start` by loading the POST-IMPORT
+/// `{slug}/vector` through the SAME boot-time per-slug vector-load path the
+/// daemon runs (`build_project_server`, http_provision.rs:186-224:
+/// `SqlxStore::open` the slug db, probe `unimatrix-vector.meta`, then
+/// `VectorIndex::load(store, VectorConfig::default(), &vector_dir)`), and
+/// issues a SERVED vector query through that freshly-loaded index.
+///
+/// This proves the OUTCOME from `start`, not disk state: no in-memory index
+/// built before import is reused, and no `file_count`/presence proxy is
+/// asserted — the rebuilt index must be the one that actually serves, so the
+/// two-resolver / stale-index failure modes (SR-10) could surface here.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_restore_sequence_serves_vector_search_from_start() {
+    let project_dir = TempDir::new().unwrap();
+    let base_dir = TempDir::new().unwrap();
+    let paths = paths_for(project_dir.path(), base_dir.path());
+
+    // 1. register slug A + seed a semantically-distinct source corpus.
+    let a_dir = seed_slug_store(base_dir.path(), "aslug").await;
+    {
+        let a = SqlxStore::open(&a_dir.join(SLUG_DB_NAME), PoolConfig::default())
+            .await
+            .unwrap();
+        let pool = a.write_pool_server();
+        insert_semantic_entry(
+            pool,
+            1,
+            "Tokio asynchronous runtime for Rust",
+            "Tokio provides an asynchronous runtime with async I/O, futures, and task \
+             scheduling for concurrent Rust programs.",
+        )
+        .await;
+        insert_semantic_entry(
+            pool,
+            2,
+            "Sourdough bread baking",
+            "Baking sourdough bread needs a fermented starter of flour and water left \
+             to rise overnight before the loaf goes in the oven.",
+        )
+        .await;
+        insert_semantic_entry(
+            pool,
+            3,
+            "Alpine mountain hiking trails",
+            "Hiking alpine mountain trails means steep elevation gain, rocky switchbacks, \
+             and thin air at high altitude.",
+        )
+        .await;
+        sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('next_entry_id', 4)")
+            .execute(pool)
+            .await
+            .unwrap();
+        a.close().await.unwrap();
+    }
+
+    // 2. export --slug A → dump (the operator's real export invocation).
+    let dump = base_dir.path().join("aslug-export.jsonl");
+    run_export_with_base(
+        Some(project_dir.path()),
+        Some(&dump),
+        base_dir.path(),
+        Some("aslug"),
+        false,
+        false,
+    )
+    .expect("export --slug A must succeed");
+
+    // 3. register a FRESH slug B, then import --slug B (the register → stop →
+    //    import path; the live-PID gate is clear because no daemon is up).
+    let b_dir = seed_slug_store(base_dir.path(), "bslug").await;
+    run_import_with_base(
+        Some(project_dir.path()),
+        &dump,
+        Some("bslug"),
+        false, // hash validation ON — faithful restore
+        false,
+        base_dir.path(),
+    )
+    .expect("import --slug B must succeed");
+
+    // Guard: the import wrote the rebuilt HNSW into B's slug vector dir, not the
+    // path-hash dir (a precondition for the boot path to load the RIGHT index).
+    let b_vector_dir = b_dir.join(SLUG_VECTOR_DIR);
+    assert_eq!(
+        file_count(&paths.vector_dir),
+        0,
+        "slug-mode import must not touch the path-hash vector dir"
+    );
+
+    // 4. Simulate `start` FAITHFULLY — reuse the daemon's boot-time per-slug
+    //    vector-load path (build_project_server, http_provision.rs:186-224)
+    //    against the POST-IMPORT on-disk state. Open the slug store the boot
+    //    way, then load the index the boot way (meta probe → VectorIndex::load).
+    //    No pre-import in-memory index exists to reuse.
+    let b_db = b_dir.join(SLUG_DB_NAME);
+    let boot_store = Arc::new(
+        SqlxStore::open(&b_db, PoolConfig::default())
+            .await
+            .expect("boot: open the restored slug store"),
+    );
+    let meta_path = b_vector_dir.join(SLUG_VECTOR_META);
+    assert!(
+        meta_path.exists(),
+        "boot precondition: import must have dumped a vector index the daemon loads at start"
+    );
+    let boot_index = VectorIndex::load(
+        Arc::clone(&boot_store),
+        VectorConfig::default(),
+        &b_vector_dir,
+    )
+    .await
+    .expect("boot: load the rebuilt per-slug index the SAME way build_project_server does");
+
+    // The rebuilt index actually carries the restored corpus (not an empty
+    // fallback) — the load-then-serve path is live, not a stat.
+    assert_eq!(
+        boot_index.point_count(),
+        3,
+        "the boot-loaded index must hold all 3 restored entries"
+    );
+
+    // 5. Issue a SERVED vector search through the freshly-loaded index. Embed
+    //    the query with the SAME ONNX model the reconstruct path used, so the
+    //    query lands in the index's embedding space.
+    let provider = OnnxProvider::new(EmbedConfig::default())
+        .expect("initialize the ONNX embedding model for the served query");
+    let query = embed_entry(
+        &provider,
+        "asynchronous runtime and concurrency in Rust with tokio",
+        "",
+        ": ",
+    )
+    .expect("embed the served query");
+
+    let results = boot_index
+        .search(&query, 3, 32)
+        .expect("served vector search must run against the boot-loaded index");
+
+    assert!(
+        !results.is_empty(),
+        "served vector search from `start` must return the restored corpus's hits"
+    );
+    assert_eq!(
+        results[0].entry_id, 1,
+        "the top served hit for an async-Rust query must be the restored async-runtime \
+         entry (id 1) — proving the daemon serves the REBUILT index, not a stale/empty one; \
+         got {results:?}"
     );
 }
 
