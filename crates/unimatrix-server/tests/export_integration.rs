@@ -49,6 +49,32 @@ fn open_store(db_path: &Path) -> SqlxStore {
     .expect("open store")
 }
 
+/// Seed a per-slug store at the runtime's literal-slug layout
+/// (`{base}/<slug>/unimatrix.db`) with a full entry for each id in `ids`; returns
+/// the db path.
+///
+/// This is the **seed path** and is deliberately DISTINCT code from the CLI **read
+/// path** (`run_export_with_base(slug=Some(..))` → `resolve_slug_store`): it mirrors
+/// `http_provision`'s `base.join(slug)` join directly rather than calling the
+/// crate-internal resolver, so the two resolvers can actually disagree.
+fn seed_slug_store(base: &Path, slug: &str, ids: &[i64]) -> std::path::PathBuf {
+    let slug_dir = base.join(slug);
+    std::fs::create_dir_all(&slug_dir).expect("create slug dir");
+    let db_path = slug_dir.join("unimatrix.db");
+    let store = open_store(&db_path);
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    rt.block_on(async {
+        for &id in ids {
+            insert_full_entry(store.write_pool_server(), id).await;
+        }
+    });
+    drop(store);
+    db_path
+}
+
 /// Run export to a buffer by writing to a file then reading it back.
 /// Returns the raw output string. Uses `run_export_with_base` to keep
 /// all test data inside `base_dir`.
@@ -1552,4 +1578,105 @@ fn test_skip_quarantined_export_import_hash_valid() {
         .unwrap();
     assert_eq!(count, 2, "AC-31: only 2 active entries in imported DB");
     drop((store_b, db_b)); // keep db_b alive until here
+}
+
+// ---------------------------------------------------------------------------
+// vnc-048 AC-08: export against a LIVE daemon's slug store (read-only under
+// WAL + busy_timeout); no locking is added.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_export_slug_readonly_under_wal_writer() {
+    // AC-08: "Export against a live daemon's slug store succeeds (read-only alongside
+    // WAL + busy_timeout); no locking is added."
+    //
+    // Standing up a full HTTP daemon inside a cargo integration test is infeasible, so
+    // this reproduces the NARROWEST faithful equivalent of the condition AC-08 names:
+    // a SECOND live `SqlxStore`/pool held open on the same per-slug db, with an active
+    // writer running against it WHILE the export reads. What is reused:
+    //   * `SqlxStore::open` applies `journal_mode = WAL` + `busy_timeout = 10s` per
+    //     connection (`unimatrix-store/src/pool_config.rs:143-148`) — byte-for-byte how
+    //     the daemon holds each per-slug store. `build_project_server` opens exactly one
+    //     such store per slug at boot and keeps it open for the daemon's lifetime.
+    //   * A background thread performs continuous INSERTs through the concurrent pool
+    //     for the duration of the export, so the export reads ALONGSIDE a live writer —
+    //     not merely an idle open handle, and NOT a closed store (which would be a proxy).
+    // If AC-08 succeeds, it proves the read coexists with the writer with no lock error
+    // and no locking added.
+
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let (project_dir, base_dir, _hash_db) = setup_project();
+
+    // Seed the per-slug store via the runtime literal-slug layout (seed path, distinct
+    // code from the CLI resolver).
+    let slug = "livedaemon";
+    let slug_db = seed_slug_store(base_dir.path(), slug, &[101, 102, 103]);
+
+    // Hold the store open with a concurrent SqlxStore (WAL + busy_timeout) — mirrors the
+    // daemon's live handle. Kept in scope across the export.
+    let concurrent = open_store(&slug_db);
+
+    // Drive a live writer against the SAME db while the export runs.
+    let stop = Arc::new(AtomicBool::new(false));
+    let writer_pool = concurrent.write_pool_server().clone();
+    let stop_writer = Arc::clone(&stop);
+    let writer = std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("writer runtime");
+        rt.block_on(async {
+            let mut id = 1000i64;
+            while !stop_writer.load(Ordering::Relaxed) {
+                // Best-effort continuous writer; any transient WAL contention is
+                // absorbed by busy_timeout. Ids are disjoint from the seeded corpus.
+                let _ = sqlx::query(
+                    "INSERT INTO entries (id, title, content, topic, category, source,
+                     created_at, updated_at) VALUES (?1, 'w', 'w', 't', 'p', 's', 1, 1)",
+                )
+                .bind(id)
+                .execute(&writer_pool)
+                .await;
+                id += 1;
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+            }
+        });
+    });
+
+    // Run the export against the live slug store.
+    let output_dir = TempDir::new().unwrap();
+    let output_path = output_dir.path().join("export.jsonl");
+    let export_result = run_export_with_base(
+        Some(project_dir.path()),
+        Some(&output_path),
+        base_dir.path(),
+        Some(slug),
+        false,
+        false,
+    );
+
+    // Stop the writer before asserting so a failed export cannot leak the thread.
+    stop.store(true, Ordering::Relaxed);
+    writer.join().expect("writer thread joins");
+    drop(concurrent);
+
+    export_result
+        .expect("AC-08: export must succeed read-only alongside a live WAL writer (no lock error)");
+
+    // The seeded corpus must be emitted — read-only coexistence produced real data.
+    let content = std::fs::read_to_string(&output_path).unwrap();
+    let lines = parse_lines(&content);
+    let entry_ids: HashSet<i64> = lines
+        .iter()
+        .filter(|l| l.get("_table").and_then(|t| t.as_str()) == Some("entries"))
+        .map(|l| l["id"].as_i64().unwrap())
+        .collect();
+    for seeded in [101i64, 102, 103] {
+        assert!(
+            entry_ids.contains(&seeded),
+            "AC-08: seeded entry {seeded} must appear in the export"
+        );
+    }
 }
