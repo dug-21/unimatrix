@@ -33,15 +33,11 @@ use super::{PROJECT_DB_NAME, PROJECT_VECTOR_DIR, ProjectRegistry, per_slug_data_
 /// `SqlxStore::open` and (import only) `vector_dir` as the HNSW rebuild target
 /// (ADR-004). `pid_path` is NOT here — it stays base-scoped on the caller's
 /// `ProjectPaths` (ADR-003/004) and must not be tidied into this struct.
-// Wave-A foundation: constructed by the export/import slug branches in Wave B.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) struct SlugStorePaths {
-    /// The per-slug data dir: `{base}/<slug>`.
-    pub slug_dir: PathBuf,
-    /// The per-slug database file: `slug_dir/unimatrix.db` (`PROJECT_DB_NAME`).
+    /// The per-slug database file: `{base}/<slug>/unimatrix.db` (`PROJECT_DB_NAME`).
     pub db_path: PathBuf,
-    /// The per-slug vector index dir: `slug_dir/vector` (`PROJECT_VECTOR_DIR`).
+    /// The per-slug vector index dir: `{base}/<slug>/vector` (`PROJECT_VECTOR_DIR`).
     pub vector_dir: PathBuf,
 }
 
@@ -58,8 +54,6 @@ pub(crate) struct SlugStorePaths {
 /// Returns [`SlugStorePaths`] on a store that already exists on disk; never opens
 /// the DB and never creates a directory, file, or WAL. Every error is a
 /// [`ServerError`] (converts to `Box<dyn Error>` upstream via `?`).
-// Wave-A foundation: called by the export/import slug branches in Wave B.
-#[allow(dead_code)]
 pub(crate) fn resolve_slug_store(
     paths: &ProjectPaths,
     raw_slug: &str,
@@ -106,7 +100,6 @@ pub(crate) fn resolve_slug_store(
 
     // ── Step 6: success ──
     Ok(SlugStorePaths {
-        slug_dir,
         db_path,
         vector_dir,
     })
@@ -164,7 +157,11 @@ mod tests {
         let paths = paths_with_data_dir(data_dir);
         let resolved = resolve_slug_store(&paths, "alpha").expect("resolve ok");
 
-        assert_eq!(resolved.slug_dir, base.path().join("alpha"));
+        // The resolved db lives under `{base}/<slug>/` — its parent is the slug dir.
+        assert_eq!(
+            resolved.db_path.parent().unwrap(),
+            base.path().join("alpha")
+        );
     }
 
     #[test]
@@ -205,7 +202,11 @@ mod tests {
         let paths = paths_with_data_dir(data_dir);
         let resolved = resolve_slug_store(&paths, "beta").expect("resolve ok");
 
-        assert_eq!(resolved.slug_dir.parent().unwrap(), unimatrix_base);
+        // db_path = `{unimatrix_base}/<slug>/unimatrix.db`; two parents up is the base.
+        assert_eq!(
+            resolved.db_path.parent().unwrap().parent().unwrap(),
+            unimatrix_base
+        );
     }
 
     // ── Validation edge (R-08, C-2, NFR-8) — AC-04 ────────────────────────────
@@ -366,7 +367,6 @@ mod tests {
         let paths = paths_with_data_dir(data_dir);
 
         let resolved = resolve_slug_store(&paths, "gamma").expect("resolve ok");
-        assert_eq!(resolved.slug_dir, slug_dir);
         assert_eq!(resolved.db_path, slug_dir.join(PROJECT_DB_NAME));
         assert_eq!(resolved.vector_dir, slug_dir.join(PROJECT_VECTOR_DIR));
         // Concrete constant values (guards against a second literal drifting).
