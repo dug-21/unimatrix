@@ -68,7 +68,7 @@ is what boot runs verbatim.)
 - The single failure is `eval::runner::sweep_tests::test_ac14_correlated_sweep_non_vacuous` — NOT vnc-048 code (eval-odometer harness, ass-098 branch base; empty vnc-048 diff). Flaky: failed 2/3, passed on re-run. Already tracked: **GH #790**.
 
 ### Integration Tests (Rust, `cargo test -p unimatrix-server --test ...`)
-- `export_integration`: **21 passed, 0 failed**
+- `export_integration`: **22 passed, 0 failed** (21 prior + AC-08 `test_export_slug_readonly_under_wal_writer`, added pre-merge polish `ad214b6c`)
 - `import_integration`: **27 passed, 0 failed** (8 new slug tests + 19 pre-existing) — re-run foreground post-rework, includes the added `test_restore_sequence_serves_vector_search_from_start`
 - New slug integration tests (all PASS): `test_import_slug_live_pid_hard_errors_no_vector_write`, `test_import_slug_stale_pid_does_not_block`, `test_import_slug_nonempty_audit_refuses_preflight`, `test_import_slug_all_tables_into_fresh_slug_b_vector_redirect`, `test_import_slug_missing_store_fails_loud_fs_unchanged`, `test_import_slug_invalid_rejected_no_fs_touch`, `test_import_no_slug_writes_to_path_hash_data_dir`, `test_restore_sequence_serves_vector_search_from_start` (AC-12 gate, rework iter 1)
 
@@ -96,11 +96,10 @@ is what boot runs verbatim.)
    verified against `http_provision.rs:186-224`). Independently confirmed genuine — an assembled-path
    proof, not the prior disk-state/in-memory proxy. **No remaining gate gap.**
 
-2. **AC-08 (Med, non-gate) — export against a live daemon's slug store read-only: no dedicated test.**
-   The planned `test_export_slug_readonly_under_wal_writer` (#2621 `open_readonly` analogue) was not
-   implemented. Low weight; not a gate non-negotiable. Recommend adding for completeness or explicitly
-   descoping. (The `AC-08` strings found in `export_integration.rs` belong to nxs-012's numbering, not
-   vnc-048.)
+2. **AC-08 (Med, non-gate) — export against a live daemon's slug store read-only: CLOSED (pre-merge
+   polish, commit `ad214b6c`).** `test_export_slug_readonly_under_wal_writer` (export_integration.rs)
+   now covers it and passes. No remaining gap. See Acceptance Criteria row AC-08 and the pre-merge
+   re-verification section below.
 
 ## Acceptance Criteria Verification
 
@@ -113,7 +112,7 @@ is what boot runs verbatim.)
 | AC-05 | PASS | `test_export_no_slug_emits_hash_store_divergence_guard`, `test_import_no_slug_writes_to_path_hash_data_dir` + existing suites unchanged (stderr excluded per WARN-1; no existing test asserts stderr emptiness) |
 | AC-06 | PASS (unit/format) | `test_format_export_summary_file_dest`, `test_format_export_summary_stdout_dest_sparse_self_diagnoses`, `test_do_export_returns_written_counts` |
 | AC-07 | PASS | `test_cli_export_slug_help_states_contract`, `test_cli_import_slug_help_carries_readme_pointer` |
-| AC-08 | **NOT COVERED** | No `test_export_slug_readonly_under_wal_writer` (Med weight; see Gaps §2) |
+| AC-08 | **PASS (COVERED)** | `test_export_slug_readonly_under_wal_writer` (export_integration.rs, commit `ad214b6c`) — seeds the slug store via the runtime literal-slug layout, holds a **second live `SqlxStore`/pool** open in WAL + `busy_timeout` (the same per-connection config `build_project_server` holds each per-slug store at boot, `pool_config.rs:143-148`), spawns a **background thread doing continuous INSERTs** through a cloned `write_pool_server()` handle (AtomicBool-gated), then asserts `run_export_with_base(slug=Some("livedaemon"))` **succeeds** (no lock error) and emits the seeded corpus (ids 101/102/103). Genuine read-under-live-writer coexistence, not an export against a closed/idle store; narrowest faithful daemon-free equivalent |
 | **AC-09** | **PASS (gate, genuine)** | `test_export_slug_emits_slug_store_not_hash_store` — set A via runtime layout, disjoint non-empty B via path-hash, `emitted == A ∧ ∩B == ∅`; divergence guard confirms |
 | **AC-10** | **PASS (gate)** | `test_import_slug_all_tables_into_fresh_slug_b_vector_redirect` — all tables A→B (two distinct slugs), f64 bit-exact, chain via `skip=false`, A untouched; `test_import_slug_nonempty_audit_refuses_preflight` retires the audit-collision half |
 | AC-11 | PASS | `test_export_no_slug_with_populated_slug_dir_emits_only_hash` |
@@ -139,7 +138,48 @@ Targeted re-run after import-dev rework commit `18c50cdb` (one added test; no so
 - New test independently read + verified genuine: loads POST-IMPORT `{slug}/vector` via the daemon boot path (`SqlxStore::open` + `VectorIndex::load`, matching `http_provision.rs:186-224` verbatim), issues a real ONNX-embedded served query, asserts semantic ranking — NOT a disk-state/in-memory proxy.
 - `cargo clippy -p unimatrix-server -- -D warnings` → **clean (rc=0)**. (`--tests` surfaces only the pre-existing #935 `verbosity.rs manual_repeat_n` lint — unrelated file, not vnc-048.)
 - Smoke gate + full workspace unit run (4562 pass), export 21/21, LINK smoke, `cargo build --release`: **carried forward** from the prior full run — unchanged surface. Rust flakes #790 / #958 unchanged (still tracked, not vnc-048).
-- **Both gate non-negotiables (AC-09, AC-12) PASS.** AC-08 (Med, non-gate) read-only-export-under-WAL remains an accepted non-blocking gap.
+- **Both gate non-negotiables (AC-09, AC-12) PASS.** AC-08 (Med, non-gate) read-only-export-under-WAL is now CLOSED (see below).
+
+## Pre-Merge Polish Re-Verification (Stage 3c iteration 2 — commit `ad214b6c`)
+
+Targeted re-run after the pre-merge polish commit (non-gating, human-requested). Two source changes in
+`unimatrix-server`: (1) added the AC-08 export test + a `seed_slug_store` helper in
+`export_integration.rs`; (2) removed two stale `#[allow(dead_code)]` and the now-unused `slug_dir` field
+from `SlugStorePaths` in `projects/slug_store.rs`.
+
+- **`SlugStorePaths` is now a 2-field struct** (`db_path`, `vector_dir`) — the `slug_dir` field was
+  removed as genuinely dead (only `db_path`/`vector_dir` are consumed by the export/import callers;
+  `slug_dir` was read only by the struct's own `#[cfg(test)]` unit tests, which were adapted to derive
+  the slug dir from `db_path`'s parent). This differs from the pseudocode's 3-field draft; base-derivation
+  correctness is still fully proven via the adapted unit tests.
+- **Struct-change blast radius (independently re-verified):** grep for `.slug_dir`/`slug_dir:` field
+  access across `crates/` returns no production reference to the removed field — the only `.slug_dir(...)`
+  hits are a test-fixture method on `projects/tests.rs`'s fixture (`fx.slug_dir(slug)`), unrelated to
+  `SlugStorePaths`. Nothing else referenced the removed field.
+- `cargo build -p unimatrix-server --tests` → **0 errors** (whole crate compiles after the field removal).
+- `cargo test -p unimatrix-server --test export_integration` → **22 passed, 0 failed** (incl.
+  `test_export_slug_readonly_under_wal_writer`), foreground.
+- `cargo test -p unimatrix-server --test import_integration` → **27 passed, 0 failed** (unchanged — the
+  funnel struct change did not break import's `vector_dir` consumption), foreground.
+- `cargo test -p unimatrix-server --lib projects::slug_store` → **12 passed, 0 failed** (the three adapted
+  unit-test assertions pass; SlugStorePaths shape still proven via `db_path`).
+- **AC-08 test independently confirmed GENUINE** (read line-by-line, `export_integration.rs:1588-1682`):
+  seeds the per-slug store via the runtime literal-slug layout; holds a **second live `SqlxStore`/pool**
+  open on the same slug db across the export in WAL + `busy_timeout` (byte-for-byte the daemon's boot-time
+  per-slug handle, `pool_config.rs:143-148`); spawns a **background thread performing continuous INSERTs**
+  through a cloned `write_pool_server()` handle (AtomicBool-gated), so the export reads *alongside* an
+  active writer — NOT an idle handle and NOT a closed/idle store; then asserts `run_export_with_base(
+  slug=Some("livedaemon"))` **succeeds** and emits the seeded corpus (101/102/103). This is the real
+  assembled CLI resolver path against a live-writer store — a faithful proxy for AC-08's "live daemon's
+  slug store", not a proxy against a quiescent store.
+- `cargo clippy -p unimatrix-server -- -D warnings` → **clean (rc=0)** (feature files clean). `--tests`
+  surfaces only the pre-existing #935 `verbosity.rs manual_repeat_n` lint — an untouched, non-vnc-048 file,
+  tracked separately; NOT a vnc-048 issue.
+- **Gate non-negotiables AC-09 and AC-12 UNAFFECTED** — neither was touched by this polish; their genuine
+  PASS verdicts carry forward unchanged.
+- Smoke gate, full-workspace unit run, LINK smoke, `cargo build --release`: **carried forward** from the
+  prior full run — no MCP tool surface, server source signature, or `pub(crate)` visibility was changed by
+  this polish (source deltas are one test file + a dead-field removal). Rust flakes #790 / #958 unchanged.
 
 ## Knowledge Stewardship
 - Queried: `mcp__unimatrix__context_briefing` (task: vnc-048 Stage 3c execution) — surfaced #4781
