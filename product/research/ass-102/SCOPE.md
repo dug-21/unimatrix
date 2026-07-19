@@ -10,11 +10,13 @@
 
 Unimatrix has adopted a **platform** framing (PRODUCT-VISION.md): a self-learning knowledge engine with a *presented, versioned, DevX-first extension contract*, on which domain solutions are built rather than baked in. The goal entry `#5689` is thin and emerging. This spike produces the **assessment and candidate capability breakdown** that turns it actionable.
 
+What came out of some research, is that there are products like "Jurati" that intends to create a determistic harness to improve gate reliability, and minimize token costs for things that don't require tokens in the workflow.  I can forsee other potential use cases, combined with domain packs to drive very specific workflows with the graph capabilities... potentially creating mini and an unknown number of and type of them.  These are just some examples.  The number of examples will likely multiply in an enterprise setting...  
+
 **Primary question**: What is the current state of Unimatrix's extension surface (across the L1/L2/L3 layers below), and what **objectives + behaviorally-proven capability decomposition** would deliver a presented, versioned, DevX-first extension contract?
 
 The three layers to assess:
 - **L1 — domain config**: categories, confidence weights, server instructions, observation domain packs.
-- **L2 — policy/auth seams**: the relying-party identity verifier (swappable trusted issuer), BearerValidator, observation ingestion sources — the seams where a solution supplies the policy Unimatrix declined (identity, cost, gates).
+- **L2 — policy/auth seams**: the relying-party identity verifier (swappable trusted issuer), BearerValidator, observation ingestion sources — the seams where a solution supplies the policy Unimatrix declined (identity, cost, gates).  In the security sense, a platform must be the enabler, and the plugins leverage the capabilities the platform exposes.
 - **L3 — solution contract**: the memory + capability-map substrate over the MCP wire + client SDK; the two hard co-evolution seams (wire stability + SDK semver).
 
 ## Why it matters
