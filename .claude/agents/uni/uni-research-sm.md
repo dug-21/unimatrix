@@ -107,4 +107,4 @@ Report to the human:
 
 ## Unimatrix Access
 
-Read-only. You may use `context_search` or `context_get` to understand the project context when validating scope completeness or writing the planning document summary. No writes.
+Read-only **in Unimatrix**. You may use `context_search` or `context_get` to understand the project context when validating scope completeness or writing the planning document summary. No **Unimatrix** writes (`context_store`/`context_correct`/etc.) — this restricts Unimatrix only; you still write the planning-document update to the filesystem.

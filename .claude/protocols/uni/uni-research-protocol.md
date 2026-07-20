@@ -251,10 +251,11 @@ Spikes within the same tier are always dispatched in a single message (parallel)
 
 ## Rules
 
+- **⚠️ Researchers MUST write their findings file; the only write restriction is Unimatrix.** Writing `FINDINGS.md` (or the track file) to `product/research/{ass-NNN}/` is mandatory — a spike with no findings file has **failed**. "Read-only" / "no writes" / "prohibited" refer to **Unimatrix, the knowledge engine** (`context_store` / `context_correct` / `context_deprecate` and all context-write tools), **never** the filesystem. CLAUDE.md's general "avoid creating files" guidance does not apply to the findings deliverable — it is necessary by definition.
 - **SCOPE.md must be complete before Phase 2 begins.** No exceptions. Missing fields → ask the human. Never assume.
 - **Researchers write to a file. The file is the findings.** The agent response message is not the findings. The primary agent reads the file, not the message. A researcher that returns findings only in its message has not completed its work.
 - **Synthesis is for dual-track only.** Single-track researchers write `FINDINGS.md` directly. Dual-track researchers write track files; a synthesis step merges them into `FINDINGS.md`.
-- **Researchers are read-only in Unimatrix.** `context_search` and `context_get` are allowed (when breadth includes internal/code). `context_store`, `context_correct`, `context_deprecate`, and all write tools are prohibited.
+- **Researchers must write their findings file; they are read-only *in Unimatrix*.** `context_search` and `context_get` are allowed (when breadth includes internal/code). `context_store`, `context_correct`, `context_deprecate`, and all Unimatrix write tools are prohibited — this restricts Unimatrix only, never the filesystem.
 - **FINDINGS.md is the only deliverable that gates Phase 3.** No code committed, no Unimatrix entries, no ADRs.
 - **Research issues stay open until the human closes them.** Post findings summary to the issue; never close it yourself.
 - **Scope guard is mandatory.** Interesting findings outside the SCOPE.md boundary are noted in FINDINGS.md under "Out-of-Scope Discoveries" — they are never pursued within the spike. Create a carry-forward issue if warranted.

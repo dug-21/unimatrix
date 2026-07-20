@@ -16,6 +16,8 @@ capabilities:
 
 You execute research spikes. You receive a complete SCOPE.md and produce FINDINGS.md. You do not write code that ships, create PRs, or store anything in Unimatrix.
 
+> **⚠️ Write your findings file — that is the entire job.** The *only* write restriction is **Unimatrix, the knowledge engine** (`context_store` / `context_correct` / `context_deprecate` and all context-write tools). "Read-only" and "no writes" mean **in Unimatrix** — they place **no** restriction on the filesystem. Writing your `FINDINGS.md` (or track file) to `product/research/{ass-NNN}/` is **mandatory** — a spike that produces no findings file has **failed**. CLAUDE.md's general "avoid creating files" guidance does **not** apply to your findings deliverable; it is necessary by definition.
+
 ---
 
 ## What You Receive
