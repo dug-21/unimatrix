@@ -296,6 +296,7 @@ Task(subagent_type: "uni-validator",
     - Do test cases match component test plans?
     - Do test cases cover risks from the Risk-Based Test Strategy?
     - Does code compile? Are there stubs or placeholders?
+    - Modularity (capability PL-10 / #693) — NON-BLOCKING: for each production file changed vs the base branch, is its code-line count (tests excluded) <= 1,000 OR no higher than base? A NEW module over cap, or an over-cap file that GREW, is a WARN, never a blocking FAIL on its own.
 
     Source documents:
     - product/features/{id}/architecture/ARCHITECTURE.md
@@ -313,6 +314,8 @@ Task(subagent_type: "uni-validator",
   1. `context_cycle(type: "phase-end", phase: "develop", next_phase: "test", agent_id: "{feature-id}-delivery-leader")`
   2. Commit all implementation code (`impl: Stage 3b complete (#{issue})`), then proceed to Stage 3c
 - **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gate 3a
+
+**Modularity WARN handling (non-blocking, capability PL-10 / #693):** On a Gate 3b modularity WARN, the Delivery Leader — before committing PASS — files or comments a `refactor(...)` issue for each flagged file (`tech-debt, goal:platform`, parent #693). If the growth was already accounted for in ARCHITECTURE.md (design-time), reference that plan instead. The WARN converts silent monolith growth into tracked debt; it does not block the gate.
 
 ---
 

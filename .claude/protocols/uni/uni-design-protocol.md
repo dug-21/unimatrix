@@ -182,6 +182,7 @@ The Design Leader spawns two specialists in parallel:
 - Integration points and dependencies
 - ADRs as individual files in `architecture/`
 - **Store each ADR in Unimatrix** immediately after writing the file — `context_store(category: "decision", topic: "{feature-id}", feature_cycle: "{feature-id}", title: "{ADR title}", tags: ["adr", "{feature-id}"])` — so delivery agents can retrieve decisions via search without reading every ADR file
+- **Modularity accounting (capability PL-10, standard #693)** — identify any source file this design will push over the **1,000 code-line cap** (tests excluded), and any already-over-cap file the feature modifies. Account for each in ARCHITECTURE.md: new logic goes in a new focused module with thin wiring at the host call site; if a host file must itself be decomposed, schedule it as a tracked `refactor(...)` feature with a test plan (reference or open its `tech-debt, goal:platform` issue) — never an ad-hoc mid-delivery split.
 
 **uni-specification → Specification** (`specification/SPECIFICATION.md`)
 
@@ -206,6 +207,12 @@ Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-archit
     in it — each outcome must hold FROM the user's actual invocation path, not only an
     internal seam. Address SR-XX risks (incl. Path-Divergence) in your decisions; an
     entry point that accepts input it will not honor must fail loud, never silently no-op.
+
+    Apply the modularity standard (#693, capability PL-10): flag any file this
+    design pushes over the 1,000 code-line cap (tests excluded), or any over-cap
+    file you modify, and account for it in ARCHITECTURE.md — new-module wiring, or
+    a scheduled decomposition with a test plan. Never plan an ad-hoc mid-delivery
+    refactor of a monolith.
 
     After writing each ADR file, store it in Unimatrix:
     context_store(category: 'decision', topic: '{feature-id}', feature_cycle: '{feature-id}',
