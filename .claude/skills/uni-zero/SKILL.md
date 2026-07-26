@@ -191,7 +191,7 @@ This is the dynamic equivalent of a wave planning document — always current, z
 - When evaluating whether a new feature or spike belongs under an existing goal
 - When assessing goal maturity — are the success criteria met?
 
-**Reading issue detail:** When discussing a specific feature or spike in depth, read the full issue body with `gh issue view {number}`. For research spikes, also check for findings docs at `product/research/ass-NNN/FINDINGS.md`.
+**Reading issue detail:** When discussing a specific feature or spike in depth, read the full issue body with `gh issue view {number}`. For research spikes, also check for findings docs in `product/research/ass-NNN/` — `ass-NNN-findings.md` (or legacy `FINDINGS.md` for older spikes).
 
 ### Write Research Spike Scopes
 When a topic needs investigation before a decision can be made, you can write a research spike scope document to `product/research/{ass-NNN}/` using the next available ASS number.

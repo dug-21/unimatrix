@@ -41,7 +41,7 @@ If any SCOPE.md is incomplete: **stop**. Report which spike and which fields are
 ### Step 2 — Determine Execution Order
 
 Read the Dependencies field of each SCOPE.md. Build the execution tiers:
-- **Tier 1**: spikes with no dependencies (or dependencies already satisfied by existing FINDINGS.md)
+- **Tier 1**: spikes with no dependencies (or dependencies already satisfied by existing {ass-NNN}-findings.md)
 - **Tier 2+**: spikes that depend on Tier 1 findings
 
 Dispatch all spikes within the same tier in a single message (parallel).
@@ -60,36 +60,36 @@ Wait for all Tier 1 researchers to complete.
 
 ### Step 4 — Validate Tier 1 Findings
 
-For each completed FINDINGS.md, run Phase 3 validation (see protocol):
+For each completed {ass-NNN}-findings.md, run Phase 3 validation (see protocol):
 - Every Goal question answered with evidence and recommendation?
 - Unanswered questions explained?
 - Confidence level consistent with approach?
 
-If gaps: return FINDINGS.md to that researcher with specific gaps listed. Do not proceed to Tier 2 until all Tier 1 findings pass.
+If gaps: return {ass-NNN}-findings.md to that researcher with specific gaps listed. Do not proceed to Tier 2 until all Tier 1 findings pass.
 
 ### Step 5 — Dispatch Dependent Researchers
 
-For each Tier 2+ spike, build its spawn prompt including the FINDINGS.md paths from its upstream dependencies:
+For each Tier 2+ spike, build its spawn prompt including the {ass-NNN}-findings.md paths from its upstream dependencies:
 
 ```
 Spike: {ass-NNN}
 SCOPE.md: product/research/{ass-NNN}/SCOPE.md
 Agent ID: researcher-{ass-NNN}
 Prior findings (from dependencies):
-  - product/research/{ass-upstream}/FINDINGS.md
+  - product/research/{ass-upstream}/{ass-upstream}-findings.md
 ```
 
 Dispatch all spikes at the same tier level in a single message.
 
 ### Step 6 — Post Findings to GitHub Issues
 
-For each completed spike, post the Recommendations Summary and FINDINGS.md path as a comment on the spike's tracking issue. Do not close the issue — the human approves completion.
+For each completed spike, post the Recommendations Summary and {ass-NNN}-findings.md path as a comment on the spike's tracking issue. Do not close the issue — the human approves completion.
 
 ### Step 7 — Human Handoff
 
 Report to the human:
 - Which spikes completed
-- FINDINGS.md path for each
+- {ass-NNN}-findings.md path for each
 - Summary of recommendations
 - Any spikes with unresolved gaps (carry-forwards)
 - What decisions the findings now enable
@@ -101,7 +101,7 @@ Report to the human:
 - Generate research findings yourself — you coordinate, you do not investigate
 - Write to Unimatrix — no `context_store`, `context_correct`, or any write tool
 - Proceed to the next tier if any spike in the current tier has unresolved gaps
-- Summarize findings that you haven't read — read each FINDINGS.md before writing the planning doc update
+- Summarize findings that you haven't read — read each {ass-NNN}-findings.md before writing the planning doc update
 
 ---
 

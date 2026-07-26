@@ -6,13 +6,13 @@ Triggers on: "run the spike", "execute the research", "research session", ASS sp
 
 ## Overview
 
-A research spike answers a bounded question to enable a human decision. It is not a feature — it produces no code, no PRs, no Unimatrix knowledge entries. It produces FINDINGS.md.
+A research spike answers a bounded question to enable a human decision. It is not a feature — it produces no code, no PRs, no Unimatrix knowledge entries. It produces {ass-NNN}-findings.md.
 
 **Phase 1 (scope completion) does not happen in this protocol.** It happens interactively — in a uni-zero session, or directly with the human. By the time a research session is invoked, SCOPE.md must already be complete. If it is not, stop and complete the scope before proceeding.
 
 ### Two Execution Modes
 
-**Single-spike**: One complete SCOPE.md → invoke `uni-spike-researcher` directly → FINDINGS.md.
+**Single-spike**: One complete SCOPE.md → invoke `uni-spike-researcher` directly → {ass-NNN}-findings.md.
 
 **Campaign**: Multiple spikes with dependency ordering → invoke `uni-research-sm` → it dispatches researchers in order, routes findings between dependent spikes, and updates the planning document.
 
@@ -28,7 +28,7 @@ Before Phase 2 can begin, SCOPE.md must contain all of the following.
 | **Breadth** | Where to look: `code-only`, `code+ecosystem`, `industry`, `unknown`, or a combination |
 | **Approach** | How to investigate: `investigation`, `evaluation`, `measurement`, `proof-of-concept`, `literature` |
 | **Confidence required** | `directional` (recommendation without validation) / `validated` (working PoC required) / `empirical` (data from measurement required) |
-| **Target outputs** | What FINDINGS.md contains: decision, ranked options, data + interpretation, go/no-go, design input |
+| **Target outputs** | What {ass-NNN}-findings.md contains: decision, ranked options, data + interpretation, go/no-go, design input |
 | **Constraints** | Two types — must be explicit: **Hard** (technically fixed, changing requires rewriting shipped code) vs. **Hypothesis** (design position held by the human, subject to challenge). Researchers must treat Hypothesis constraints as challengeable. |
 | **Dependencies** | *(conditional)* Inputs required before this spike starts; what this spike unblocks after finishing |
 | **Prior art** | What is already known — researcher starts here, not from zero |
@@ -60,7 +60,7 @@ ALL of the following are true:
 - AND at least one of: confidence = `validated`, confidence = `empirical`, approach = `proof-of-concept`, approach = `literature`
 - AND no Goal questions require reading the Unimatrix codebase or querying Unimatrix state
 
-Single researcher. Writes `FINDINGS.md` directly.
+Single researcher. Writes `{ass-NNN}-findings.md` directly.
 
 ---
 
@@ -68,7 +68,7 @@ Single researcher. Writes `FINDINGS.md` directly.
 
 Use when the answer requires understanding what the project already does — mixed breadth, code-dominant, directional confidence, investigation or evaluation with internal anchoring.
 
-Single researcher. Writes `FINDINGS.md` directly.
+Single researcher. Writes `{ass-NNN}-findings.md` directly.
 
 When in doubt between Case 1 and Case 2: if the answer requires understanding what the project already does, use `uni-spike-researcher`.
 
@@ -114,16 +114,16 @@ Every researcher — regardless of track count — writes their findings to a fi
 
 **Agent**: `uni-spike-researcher` or `uni-external-researcher` (per routing above)
 **Input**: complete SCOPE.md path
-**Output**: `product/research/{ass-NNN}/FINDINGS.md`
+**Output**: `product/research/{ass-NNN}/{ass-NNN}-findings.md`
 
 Spawn with:
 ```
 Spike: {ass-NNN}
 SCOPE.md: product/research/{ass-NNN}/SCOPE.md
 Agent ID: {id}
-Output file: product/research/{ass-NNN}/FINDINGS.md
+Output file: product/research/{ass-NNN}/{ass-NNN}-findings.md
 
-Write your findings to FINDINGS.md. This is your only deliverable — do not
+Write your findings to {ass-NNN}-findings.md. This is your only deliverable — do not
 summarize findings in your response message. The primary agent reads the file, not
 your message.
 ```
@@ -148,29 +148,29 @@ Spawn both researchers in a single message:
 [uni-spike-researcher]
 Spike: {ass-NNN}
 SCOPE.md: product/research/{ass-NNN}/SCOPE.md
-Output file: product/research/{ass-NNN}/FINDINGS-INTERNAL.md
+Output file: product/research/{ass-NNN}/{ass-NNN}-findings-internal.md
 Your questions: {INTERNAL_QUESTIONS — listed explicitly}
 Note: Answer only your assigned questions. External questions are handled in parallel
-by a separate researcher. Write findings to FINDINGS-INTERNAL.md — do not summarize
+by a separate researcher. Write findings to {ass-NNN}-findings-internal.md — do not summarize
 in your response message.
 
 [uni-external-researcher]
 Spike: {ass-NNN}
 SCOPE.md: product/research/{ass-NNN}/SCOPE.md
-Output file: product/research/{ass-NNN}/FINDINGS-EXTERNAL.md
+Output file: product/research/{ass-NNN}/{ass-NNN}-findings-external.md
 Your questions: {EXTERNAL_QUESTIONS — listed explicitly}
 Note: Answer only your assigned questions. Internal questions are handled in parallel
-by a separate researcher. Write findings to FINDINGS-EXTERNAL.md — do not summarize
+by a separate researcher. Write findings to {ass-NNN}-findings-external.md — do not summarize
 in your response message.
 ```
 
-Neither researcher writes `FINDINGS.md`. Each writes only their track file.
+Neither researcher writes `{ass-NNN}-findings.md`. Each writes only their track file.
 
 ---
 
 ### Synthesis — dual-track only
 
-Synthesis applies only to dual-track (Case 3) spikes. Single-track researchers write `FINDINGS.md` directly.
+Synthesis applies only to dual-track (Case 3) spikes. Single-track researchers write `{ass-NNN}-findings.md` directly.
 
 Spawn `uni-spike-researcher` as synthesizer after both track files exist:
 
@@ -178,9 +178,9 @@ Spawn `uni-spike-researcher` as synthesizer after both track files exist:
 Spike: {ass-NNN} — SYNTHESIS
 SCOPE.md: product/research/{ass-NNN}/SCOPE.md
 Researcher file(s): {list all written findings files}
-Output: product/research/{ass-NNN}/FINDINGS.md
+Output: product/research/{ass-NNN}/{ass-NNN}-findings.md
 
-Synthesize the researcher findings into a single coherent FINDINGS.md.
+Synthesize the researcher findings into a single coherent {ass-NNN}-findings.md.
 - Answer every Goal question from SCOPE.md, drawing from the input files
 - Resolve any tensions between tracks explicitly
 - Merge Unanswered Questions and Out-of-Scope Discoveries from all input files
@@ -188,7 +188,7 @@ Synthesize the researcher findings into a single coherent FINDINGS.md.
 Do not re-investigate. Synthesize only from the input files.
 ```
 
-Track files (`FINDINGS-INTERNAL.md`, `FINDINGS-EXTERNAL.md`) are retained alongside `FINDINGS.md` as the audit trail.
+Track files (`{ass-NNN}-findings-internal.md`, `{ass-NNN}-findings-external.md`) are retained alongside `{ass-NNN}-findings.md` as the audit trail.
 
 ---
 
@@ -196,17 +196,17 @@ Track files (`FINDINGS-INTERNAL.md`, `FINDINGS-EXTERNAL.md`) are retained alongs
 
 Lightweight. Does not require a separate agent.
 
-Check FINDINGS.md against SCOPE.md:
+Check {ass-NNN}-findings.md against SCOPE.md:
 - Every Goal question has an explicit answer
 - Every answer includes evidence and a recommendation
 - Unanswered questions are listed with reason (blocked / out of scope / needs another spike)
 - Confidence level is consistent with approach type
 
 **Who validates:**
-- Standalone spike → human reviews FINDINGS.md directly
-- Feed-through spike → consuming spike's researcher reads FINDINGS.md as prior art context; gaps surface when they try to use it
+- Standalone spike → human reviews {ass-NNN}-findings.md directly
+- Feed-through spike → consuming spike's researcher reads {ass-NNN}-findings.md as prior art context; gaps surface when they try to use it
 
-If validation fails: return FINDINGS.md to the researcher with specific gaps. Do not proceed to Phase 4 until gaps are addressed.
+If validation fails: return {ass-NNN}-findings.md to the researcher with specific gaps. Do not proceed to Phase 4 until gaps are addressed.
 
 ---
 
@@ -217,19 +217,19 @@ If validation fails: return FINDINGS.md to the researcher with specific gaps. Do
 Knowledge flows from research into Unimatrix only via downstream sessions (design, delivery, retro) after findings have been validated through implementation. Research is provisional; Unimatrix holds settled knowledge.
 
 Routing actions:
-1. **Post findings to GitHub issue** — comment the Recommendations Summary and `FINDINGS.md` path on the tracking issue. Do not close the issue — the human approves completion.
+1. **Post findings to GitHub issue** — comment the Recommendations Summary and `{ass-NNN}-findings.md` path on the tracking issue. Do not close the issue — the human approves completion.
    ```bash
    gh issue comment {number} --body "$(cat <<'EOF'
    ## Findings: {ass-NNN}
 
-   {Recommendations Summary section from FINDINGS.md}
+   {Recommendations Summary section from {ass-NNN}-findings.md}
 
-   Full findings: `product/research/{ass-NNN}/FINDINGS.md`
+   Full findings: `product/research/{ass-NNN}/{ass-NNN}-findings.md`
    EOF
    )"
    ```
-2. **Feed-through** — for spikes that feed another spike: pass `product/research/{ass-NNN}/FINDINGS.md` path as prior art context in the consuming spike's SCOPE.md or spawn prompt.
-3. **Human handoff** — present FINDINGS.md path and the recommendations summary to the human. The human reviews and closes the issue when satisfied.
+2. **Feed-through** — for spikes that feed another spike: pass `product/research/{ass-NNN}/{ass-NNN}-findings.md` path as prior art context in the consuming spike's SCOPE.md or spawn prompt.
+3. **Human handoff** — present {ass-NNN}-findings.md path and the recommendations summary to the human. The human reviews and closes the issue when satisfied.
 
 ---
 
@@ -241,7 +241,7 @@ When running a campaign, the SM reads all SCOPE.md files and their dependency fi
 1. Identify independent spikes (no Dependencies field, or dependencies already satisfied)
 2. Dispatch all independent spikes in parallel (one researcher per spike)
 3. Wait for all independent spikes to complete and pass Phase 3
-4. Dispatch dependent spikes, passing prior-spike FINDINGS.md as context
+4. Dispatch dependent spikes, passing prior-spike {ass-NNN}-findings.md as context
 5. After all spikes complete: update planning document, present summary to human
 ```
 
@@ -251,12 +251,12 @@ Spikes within the same tier are always dispatched in a single message (parallel)
 
 ## Rules
 
-- **⚠️ Researchers MUST write their findings file; the only write restriction is Unimatrix.** Writing `FINDINGS.md` (or the track file) to `product/research/{ass-NNN}/` is mandatory — a spike with no findings file has **failed**. "Read-only" / "no writes" / "prohibited" refer to **Unimatrix, the knowledge engine** (`context_store` / `context_correct` / `context_deprecate` and all context-write tools), **never** the filesystem. CLAUDE.md's general "avoid creating files" guidance does not apply to the findings deliverable — it is necessary by definition.
+- **⚠️ Researchers MUST write their findings file; the only write restriction is Unimatrix.** Writing `{ass-NNN}-findings.md` (or the track file) to `product/research/{ass-NNN}/` is mandatory — a spike with no findings file has **failed**. "Read-only" / "no writes" / "prohibited" refer to **Unimatrix, the knowledge engine** (`context_store` / `context_correct` / `context_deprecate` and all context-write tools), **never** the filesystem. CLAUDE.md's general "avoid creating files" guidance does not apply to the findings deliverable — it is necessary by definition. The **`ass-NNN-` prefix is required, not cosmetic**: Claude Code's binary refuses any *subagent* file Write whose basename starts with FINDINGS / REPORT / SUMMARY / ANALYSIS (`.md`), *before* permissions run (bypass mode won't help). The id prefix clears it — **never a bare `FINDINGS.md`.**
 - **SCOPE.md must be complete before Phase 2 begins.** No exceptions. Missing fields → ask the human. Never assume.
 - **Researchers write to a file. The file is the findings.** The agent response message is not the findings. The primary agent reads the file, not the message. A researcher that returns findings only in its message has not completed its work.
-- **Synthesis is for dual-track only.** Single-track researchers write `FINDINGS.md` directly. Dual-track researchers write track files; a synthesis step merges them into `FINDINGS.md`.
+- **Synthesis is for dual-track only.** Single-track researchers write `{ass-NNN}-findings.md` directly. Dual-track researchers write track files; a synthesis step merges them into `{ass-NNN}-findings.md`.
 - **Researchers must write their findings file; they are read-only *in Unimatrix*.** `context_search` and `context_get` are allowed (when breadth includes internal/code). `context_store`, `context_correct`, `context_deprecate`, and all Unimatrix write tools are prohibited — this restricts Unimatrix only, never the filesystem.
-- **FINDINGS.md is the only deliverable that gates Phase 3.** No code committed, no Unimatrix entries, no ADRs.
+- **{ass-NNN}-findings.md is the only deliverable that gates Phase 3.** No code committed, no Unimatrix entries, no ADRs.
 - **Research issues stay open until the human closes them.** Post findings summary to the issue; never close it yourself.
-- **Scope guard is mandatory.** Interesting findings outside the SCOPE.md boundary are noted in FINDINGS.md under "Out-of-Scope Discoveries" — they are never pursued within the spike. Create a carry-forward issue if warranted.
+- **Scope guard is mandatory.** Interesting findings outside the SCOPE.md boundary are noted in {ass-NNN}-findings.md under "Out-of-Scope Discoveries" — they are never pursued within the spike. Create a carry-forward issue if warranted.
 - **Campaign SM does not generate findings.** It coordinates only. If it starts writing analysis, it is doing the researcher's job.
