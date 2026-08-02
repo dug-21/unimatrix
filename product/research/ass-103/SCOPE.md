@@ -41,5 +41,6 @@ The background tick has become a cross-cutting maintenance engine spanning **kno
 
 ## Constraints / prior art
 
+- **Confidence required**: `directional` — recommendation-grade identification without validation. Issues are flagged from code reading with `file:line` evidence and a reasoned urgency rating; reproduction/demonstration of each issue is NOT required. Deeper investigation of anything flagged happens in a later spike.
 - **Read-only, no build**; code-verified to `file:line`.
 - Prior art: open tick bugs **#889** (compaction deletes Proposed-edge every tick), **#890** (quarantine-restore loses compaction-deleted inbound edges); tick-cost/oscillation lessons + patterns (**#3822** near-threshold promotion oscillation; the `compute_report`-as-tick-loader inflation lesson); **Architectural Principle 7** (in-memory hot path rebuilt by tick); the capabilities the tick delivers (SL2 / SL4 / C5 / RETAIN / PD3; SLN3 / N3 graph-consistency-under-correction).
