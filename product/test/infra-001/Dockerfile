@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install ONNX Runtime 1.20.1 shared library (matches ort 2.0.0-rc.9)
 RUN wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-linux-x64-1.20.1.tgz \
     && tar xzf onnxruntime-linux-x64-1.20.1.tgz \
-    && cp onnxruntime-linux-x64-1.20.1/lib/* /usr/local/lib/ \
+    && cp -a onnxruntime-linux-x64-1.20.1/lib/*.so* /usr/local/lib/ \
     && ldconfig \
     && rm -rf onnxruntime-linux-x64-1.20.1*
 

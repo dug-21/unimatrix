@@ -1,9 +1,11 @@
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
 
 use anndists::dist::DistDot;
 use hnsw_rs::api::AnnT;
 use hnsw_rs::hnswio;
+use tracing::warn;
 use unimatrix_store::SqlxStore;
 
 use crate::config::VectorConfig;
@@ -198,15 +200,59 @@ impl VectorIndex {
             ))
         })?;
 
-        // Rebuild IdMap from VECTOR_MAP
+        // Rebuild IdMap from VECTOR_MAP — but ONLY for entries whose data_id is
+        // actually present in the graph we just loaded. `vector_map` and the HNSW
+        // graph are separate on-disk artifacts; a DB-only copy (unimatrix.db without
+        // the HNSW dir) leaves `vector_map` recording N vectors while the loaded
+        // graph holds fewer. Rebuilding the IdMap blind (GH#972) makes the
+        // IdMap-based `contains()` lie — it returns true for entries with no graph
+        // point, which both suppresses the capped self-heal (status.rs Sub-case B
+        // keys off `!contains`) and saturates `stale_count()` to 0. Filtering to
+        // graph-present data_ids makes `contains()` truthful, so the existing heal
+        // repopulates the absent entries while retained mappings stay searchable.
         let mappings = store.iter_vector_mappings().await?;
+        let recorded = mappings.len();
+
+        // Enumerate origin_ids present in the loaded graph across ALL LAYERS.
+        // hnsw_rs assigns each point to a single, probabilistically chosen level;
+        // ~6% live at level >= 1 and appear ONLY in points_by_layer[L], not layer 0.
+        // Iterate via IterPoint (IntoIterator for &PointIndexation) exactly as
+        // `get_embedding` does — a `get_layer_iterator(0)` scan would wrongly drop
+        // the level>=1 points and heal them needlessly. (GH#286, lesson #1712)
+        let present_origin_ids: HashSet<u64> = {
+            let point_indexation = hnsw.get_point_indexation();
+            let mut present = HashSet::new();
+            for point in point_indexation {
+                present.insert(point.get_origin_id() as u64);
+            }
+            present
+        };
+
+        let filtered: Vec<(u64, u64)> = mappings
+            .into_iter()
+            .filter(|(_entry_id, data_id)| present_origin_ids.contains(data_id))
+            .collect();
+
+        let dropped = recorded - filtered.len();
+        if dropped > 0 {
+            // Previously invisible divergence (#5718): surface it loudly so a
+            // DB-only copy is diagnosable instead of silently degrading retrieval.
+            warn!(
+                recorded,
+                actual = filtered.len(),
+                dropped,
+                "vector_map records more mappings than the loaded HNSW graph holds \
+                 (DB-only copy without the HNSW index dir?); dropping graph-absent \
+                 mappings so contains() is truthful and the capped self-heal can repopulate"
+            );
+        }
 
         Ok(VectorIndex::from_parts(
             hnsw,
             store,
             config,
             next_data_id,
-            mappings,
+            filtered,
         ))
     }
 }
@@ -644,6 +690,122 @@ mod tests {
         for id in &ids {
             assert!(loaded.contains(*id));
         }
+    }
+
+    // -- GH#972: Graph under-counts VECTOR_MAP (DB-only copy) --
+
+    /// A DB-only copy (unimatrix.db without the HNSW index dir) leaves `vector_map`
+    /// recording more mappings than the loaded graph holds. `load` must filter the
+    /// rebuilt IdMap to graph-present data_ids so `contains()` is truthful: FALSE for
+    /// graph-absent entries (letting the capped self-heal repopulate them) and TRUE
+    /// for retained ones. This is the missing "graph-under-counts-DB" test.
+    ///
+    /// N1 GUARD: 200 seeded points make it near-certain (~1-(15/16)^200) that several
+    /// land at level >= 1. Those points live ONLY in points_by_layer[L], not layer 0.
+    /// Asserting ALL 200 are retained proves the load enumeration walks every layer —
+    /// a layer-0-only scan would drop the level>=1 points and wrongly report them absent.
+    #[tokio::test]
+    async fn test_load_graph_undercounts_vector_map_filters_absent_entries() {
+        let tvi = TestVectorIndex::new().await;
+
+        // Seed 200 vectors: writes HNSW points (data_ids 0..199) AND vector_map rows.
+        let present_ids = seed_vectors(tvi.vi(), tvi.store(), 200).await;
+
+        let dump_dir = tvi.dir().join("index");
+        tvi.vi().dump(&dump_dir).unwrap();
+
+        // Simulate the DB-only copy: vector_map gains rows whose data_ids were never
+        // written to the dumped graph (graph holds only the 200 seeded points).
+        // point_count in meta is 200 (>= 1) — NOT the empty-first-boot short-circuit.
+        let absent_ids: Vec<u64> = (10_001..=10_005).collect();
+        for (i, &eid) in absent_ids.iter().enumerate() {
+            // data_ids 1000+ are guaranteed absent from the 0..199 graph.
+            tvi.store()
+                .put_vector_mapping(eid, 1000 + i as u64)
+                .await
+                .unwrap();
+        }
+
+        let loaded = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir)
+            .await
+            .unwrap();
+
+        // Graph-present entries (including any assigned level >= 1) are RETAINED.
+        for &id in &present_ids {
+            assert!(
+                loaded.contains(id),
+                "graph-present entry {id} must be retained (N1: layer-0-only scan would drop level>=1 points)"
+            );
+        }
+
+        // Graph-absent entries are DROPPED — contains() is now truthfully false, so
+        // the capped self-heal (status.rs Sub-case B, keyed off !contains) can repopulate.
+        for &id in &absent_ids {
+            assert!(
+                !loaded.contains(id),
+                "graph-absent entry {id} must be dropped so contains() no longer lies"
+            );
+        }
+    }
+
+    /// Retained (graph-present) points stay searchable after a load that dropped
+    /// graph-absent mappings, and a graph-absent entry can never surface in search.
+    #[tokio::test]
+    async fn test_load_graph_undercounts_retained_points_searchable() {
+        let tvi = TestVectorIndex::new().await;
+
+        // Manual seed so embeddings are retained for self-search verification.
+        let mut embeddings: Vec<Vec<f32>> = Vec::new();
+        let mut present_ids: Vec<u64> = Vec::new();
+        for i in 0..50 {
+            let entry = unimatrix_store::NewEntry {
+                title: format!("Undercount entry {i}"),
+                content: format!("Content {i}"),
+                topic: "test".to_string(),
+                category: "vector".to_string(),
+                tags: vec![],
+                source: "test".to_string(),
+                status: unimatrix_store::Status::Active,
+                created_by: String::new(),
+                feature_cycle: String::new(),
+                trust_source: String::new(),
+            };
+            let eid = tvi.store().insert(entry).await.unwrap();
+            let emb = random_normalized_embedding(384);
+            tvi.vi().insert(eid, &emb).await.unwrap();
+            embeddings.push(emb);
+            present_ids.push(eid);
+        }
+
+        let dump_dir = tvi.dir().join("index");
+        tvi.vi().dump(&dump_dir).unwrap();
+
+        // Inject a graph-absent mapping (DB-only-copy divergence).
+        let absent_id = 20_000u64;
+        tvi.store()
+            .put_vector_mapping(absent_id, 5000)
+            .await
+            .unwrap();
+
+        let loaded = VectorIndex::load(tvi.store().clone(), VectorConfig::default(), &dump_dir)
+            .await
+            .unwrap();
+
+        // Every retained point is still searchable — self-search returns its entry,
+        // and the graph-absent entry never surfaces (it has no graph point).
+        for (emb, &id) in embeddings.iter().zip(present_ids.iter()) {
+            let results = loaded.search(emb, 1, 32).unwrap();
+            assert_eq!(
+                results[0].entry_id, id,
+                "retained entry {id} must remain searchable after load"
+            );
+            assert!(
+                results.iter().all(|r| r.entry_id != absent_id),
+                "graph-absent entry {absent_id} must never surface in search"
+            );
+        }
+
+        assert!(!loaded.contains(absent_id));
     }
 
     // -- IR-03: New Index with Existing VECTOR_MAP --

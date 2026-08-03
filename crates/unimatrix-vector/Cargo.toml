@@ -12,6 +12,7 @@ test-support = ["unimatrix-store/test-support", "dep:tempfile", "dep:rand"]
 unimatrix-store = { path = "../unimatrix-store" }
 hnsw_rs = { version = "0.3", features = ["simdeez_f"] }
 anndists = "0.1"
+tracing = "0.1"
 tempfile = { version = "3", optional = true }
 rand = { version = "0.9", optional = true }
 
