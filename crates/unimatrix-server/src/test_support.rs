@@ -111,32 +111,34 @@ impl TestHarness {
     ///
     /// Returns `None` if the ONNX model is not available.
     pub async fn new_with_expander(store_path: &Path, ppr_expander_enabled: bool) -> Option<Self> {
-        if skip_if_no_model() {
-            return None;
-        }
-
+        let embed_handle = Self::load_embed_handle().await?;
         let store =
             unimatrix_store::SqlxStore::open(store_path, unimatrix_store::PoolConfig::default())
                 .await
                 .expect("failed to open test store");
         let store = Arc::new(store);
-
-        let vector_config = VectorConfig::default();
         let vector_index = Arc::new(
-            VectorIndex::new(Arc::clone(&store), vector_config)
+            VectorIndex::new(Arc::clone(&store), VectorConfig::default())
                 .expect("failed to create vector index"),
         );
+        Some(Self::wire(
+            store,
+            vector_index,
+            embed_handle,
+            ppr_expander_enabled,
+        ))
+    }
 
-        let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
-
-        let entry_store = Arc::clone(&store);
-        let vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
-
+    /// Build (and await readiness of) the shared ONNX embed handle. `None` when the
+    /// model is unavailable (same `skip_if_no_model()` semantics as `new`). Exposed so a
+    /// round-trip test can share ONE handle across the dump → `VectorIndex::load` → heal
+    /// phases (bugfix-972 Leg 2), authoring the graph before the harness exists.
+    pub async fn load_embed_handle() -> Option<Arc<EmbedServiceHandle>> {
+        if skip_if_no_model() {
+            return None;
+        }
         let embed_handle = EmbedServiceHandle::new();
-        let config = EmbedConfig::default();
-        embed_handle.start_loading(config, None);
-
-        // Wait for model to load
+        embed_handle.start_loading(EmbedConfig::default(), None);
         let mut attempts = 0;
         loop {
             match embed_handle.get_adapter().await {
@@ -151,6 +153,30 @@ impl TestHarness {
                 }
             }
         }
+        Some(embed_handle)
+    }
+
+    /// Construct a harness around a pre-built store, a (possibly pre-loaded) vector index,
+    /// and an embed handle (PPR expander OFF). Enables the bugfix-972 Leg 2 round-trip:
+    /// author+dump a graph, inject a DB-only-copy under-count, `VectorIndex::load`, heal.
+    pub async fn from_parts(
+        store: Arc<Store>,
+        vector_index: Arc<VectorIndex>,
+        embed_handle: Arc<EmbedServiceHandle>,
+    ) -> Self {
+        Self::wire(store, vector_index, embed_handle, false)
+    }
+
+    /// Wire a full `ServiceLayer`; body is the pre-refactor `new_with_expander` verbatim.
+    fn wire(
+        store: Arc<Store>,
+        vector_index: Arc<VectorIndex>,
+        embed_handle: Arc<EmbedServiceHandle>,
+        ppr_expander_enabled: bool,
+    ) -> Self {
+        let vector_adapter = VectorAdapter::new(Arc::clone(&vector_index));
+        let entry_store = Arc::clone(&store);
+        let vector_store = Arc::new(AsyncVectorStore::new(Arc::new(vector_adapter)));
 
         let adapt_service = Arc::new(AdaptationService::new(
             unimatrix_adapt::AdaptConfig::default(),
@@ -169,12 +195,7 @@ impl TestHarness {
                 .expect("test RayonPool construction must succeed"),
         );
 
-        // crt-053: start from the production default config and toggle only the expander flag,
-        // so OFF (default) construction stays bit-identical to pre-crt-053 behavior. All PPR knobs
-        // (alpha, blend weight, inclusion threshold, depth, ceilings) remain at production defaults
-        // — the seed-filter tests observe the Phase 0 `graph_expand` injection at production parity,
-        // isolating it via a topic filter (which excludes graph-injectable neighbors from the HNSW
-        // pool) rather than by altering scoring config.
+        // crt-053: toggle only the expander flag; OFF stays bit-identical to pre-crt-053.
         let inference_config = crate::infra::config::InferenceConfig {
             ppr_expander_enabled,
             ..crate::infra::config::InferenceConfig::default()
@@ -207,18 +228,60 @@ impl TestHarness {
             // nan-018 (ADR-006): default penalties for the test harness (production parity).
             unimatrix_engine::graph::GraphPenaltyParams::default(),
         );
-
-        Some(TestHarness {
+        TestHarness {
             layer,
             store,
             vector_index,
             embed_handle,
-        })
+        }
     }
 
     /// Get a reference to the underlying store.
     pub fn store(&self) -> &Store {
         &self.store
+    }
+
+    /// The `Arc<Store>` this harness wraps (bugfix-972 Leg 2 round-trip setup).
+    pub fn store_arc(&self) -> &Arc<Store> {
+        &self.store
+    }
+
+    /// The vector index this harness wraps — the SAME `Arc` passed to `from_parts`,
+    /// so a test can assert `contains` before/after the maintenance heal (bugfix-972).
+    pub fn vector_index(&self) -> &Arc<VectorIndex> {
+        &self.vector_index
+    }
+
+    /// Drive one maintenance pass through the SAME `StatusService::run_maintenance` path
+    /// the background tick uses. `graph_stale_ratio = 0` (`StatusReport::default`) keeps
+    /// compaction from firing, isolating the heal pass (Sub-case B:
+    /// `embedding_dim > 0 && !contains`) as the repopulation mechanism (bugfix-972 Leg 2).
+    pub async fn run_maintenance_heal(&self) {
+        let active_entries = self
+            .store
+            .load_active_entries_with_tags()
+            .await
+            .expect("load_active_entries_with_tags must succeed in test");
+        let mut report = crate::mcp::response::status::StatusReport::default();
+        let session_registry = crate::infra::session::SessionRegistry::new();
+        let pending = Arc::new(std::sync::Mutex::new(
+            crate::server::PendingEntriesAnalysis::new(),
+        ));
+        let inference_config = crate::infra::config::InferenceConfig::default();
+        let retention_config = crate::infra::config::RetentionConfig::default();
+        self.layer
+            .status
+            .run_maintenance(
+                &active_entries,
+                &mut report,
+                &session_registry,
+                &self.store,
+                &pending,
+                &inference_config,
+                &retention_config,
+            )
+            .await
+            .expect("run_maintenance must succeed in test");
     }
 
     /// crt-053 (test support): embed each entry's stored text and insert it into the HNSW
