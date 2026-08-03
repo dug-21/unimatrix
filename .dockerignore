@@ -8,6 +8,9 @@ patches/anndists/target/
 
 # Documentation and product files
 product/
+# ...but the infra-001 integration test harness is COPYd by its Dockerfile
+# (test-runtime stage) and must remain in the build context.
+!product/test/infra-001/
 *.md
 !README.md
 

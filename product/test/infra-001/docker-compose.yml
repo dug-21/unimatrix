@@ -3,7 +3,7 @@ version: "3.8"
 services:
   test-runner:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: product/test/infra-001/Dockerfile
       target: test-runtime
     environment:
