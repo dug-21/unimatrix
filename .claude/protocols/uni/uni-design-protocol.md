@@ -8,7 +8,20 @@ Triggers on: specification, architecture, design, research, scope, risk strategy
 
 Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. All artifacts land in `product/features/{feature-id}/` as untracked files — no git operations occur during design. Session 2 (Delivery) creates the feature branch, commits the design artifacts, and continues from there.
 
-**You are the Design Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work.
+**This protocol is executed by a dedicated `uni-scrum-master` subagent — the Design Leader — not by the primary agent.**
+
+**Primary agent**: you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the high-level intent (or existing SCOPE.md path) and session type `design`, recording its agent ID; (2) relay each escalation it returns to the human verbatim and resume the SM via `SendMessage` (to that agent ID) with the human's decision — never re-spawn; (3) present the final artifact set to the human. Kickoff spawn:
+
+```
+Task(subagent_type: "uni-scrum-master",
+  prompt: "You are the Design Leader. Session type: design.
+    Execute .claude/protocols/uni/uni-design-protocol.md end to end.
+    High-level intent: {human's description}   (or: SCOPE.md path: {path})
+    Escalate at each human gate per the Escalation Handshake and stop;
+    I will resume you via SendMessage with the human's decision.")
+```
+
+**Design Leader (the spawned uni-scrum-master, referred to as "you" below)**: read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and the Escalation Handshake. You orchestrate — you NEVER generate content. Spawn specialist agents for all work. You cannot talk to the human — every checkpoint below is an escalation-and-resume, not a live prompt.
 
 ```
 Design Leader (you)                                  Design Agents
@@ -121,9 +134,9 @@ Task(
 )
 ```
 
-Then the Design Leader presents SCOPE.md to the human together with the product review's stance and location. **Do not proceed to Phase 1b until the human approves SCOPE.md.**
+Then the Design Leader **returns a SCOPE.md escalation to the primary agent and stops** (Escalation Handshake — the primary presents SCOPE.md together with the product review's stance and location to the human, and resumes you via `SendMessage` with the decision). **Do not proceed to Phase 1b until you are resumed with the human's approval of SCOPE.md.**
 
-**On approval — issue body sync**: if a feature issue exists, the Design Leader updates its body to mirror the approved SCOPE.md (summary, scope/goals, non-goals, dependencies, open questions, scope doc link) via `gh issue edit {n} --body`. The issue body is the single current picture; planning-era content is superseded.
+**On resume with approval — issue body sync**: if a feature issue exists, the Design Leader updates its body to mirror the approved SCOPE.md (summary, scope/goals, non-goals, dependencies, open questions, scope doc link) via `gh issue edit {n} --body`. The issue body is the single current picture; planning-era content is superseded.
 
 **Product Review Rules** (apply at every `uni-zero-reviewer` spawn):
 - The spawn prompt carries ONLY agent ID, gate, feature/issue IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
@@ -375,7 +388,7 @@ context_cycle(
 )
 ```
 
-Then returns to the human:
+Then **returns this escalation to the primary agent** (which presents it to the human):
 
 ```
 SESSION 1 COMPLETE — Design artifacts ready for review.
@@ -400,7 +413,7 @@ Open questions: {list or "none"}
 Human action required: Review design artifacts. Then start Session 2 to deliver.
 ```
 
-**Handling human-requested changes**: If the human requests changes after reviewing artifacts:
+**Handling human-requested changes** (delivered when the primary resumes you with the human's feedback): If the human requests changes after reviewing artifacts:
 - **Technical changes** (architecture decisions, requirements, risk coverage) → update the relevant source document(s) first, then re-run the synthesizer to regenerate the Implementation Brief and Acceptance Map from the updated sources.
 - **Coordination changes only** (wave ordering, component naming, delivery notes) → update the Implementation Brief directly.
 

@@ -28,7 +28,20 @@ Phase 4: Delivery
 
 **Critical sequence**: Stage 3a produces pseudocode + test plans → Delivery Leader updates the Component Map → Gate 3a validates designs → ONLY THEN does Stage 3b begin. Stage 3b agents each receive their specific component's validated pseudocode and test plan.
 
-**You are the Delivery Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work. Run all stages autonomously. Human re-enters only on scope/feasibility failures or when rework iterations are exhausted.
+**This protocol is executed by a dedicated `uni-scrum-master` subagent — the Delivery Leader — not by the primary agent.**
+
+**Primary agent**: you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the IMPLEMENTATION-BRIEF.md path (or GH Issue number) and session type `delivery`, recording its agent ID; (2) relay each escalation it returns to the human verbatim and resume the SM via `SendMessage` (to that agent ID) with the human's decision — never re-spawn; (3) present the final PR + assessment to the human. Delivery is autonomous, so the SM escalates only at the final PR/merge gate and on scope/feasibility failures. Kickoff spawn:
+
+```
+Task(subagent_type: "uni-scrum-master",
+  prompt: "You are the Delivery Leader. Session type: delivery.
+    Execute .claude/protocols/uni/uni-delivery-protocol.md end to end.
+    Implementation brief: {IMPLEMENTATION-BRIEF.md path or GH Issue number}
+    Escalate at the PR/merge gate (and any scope/feasibility failure) per the
+    Escalation Handshake and stop; I will resume you via SendMessage.")
+```
+
+**Delivery Leader (the spawned uni-scrum-master, referred to as "you" below)**: read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and the Escalation Handshake. You orchestrate — you NEVER generate content. Spawn specialist agents for all work. Run all stages autonomously. You cannot talk to the human — the human re-enters (via the primary resuming you) only at the PR/merge gate, on scope/feasibility failures, or when rework iterations are exhausted.
 
 ### Concurrency Rules
 
@@ -498,7 +511,7 @@ Task(subagent_type: "uni-zero-reviewer",
 - The reviewer posts an advisory comment on the PR (pr-review gate target) with recommended actions. The Delivery Leader relays stance + comment URL verbatim in the return and NEVER parses, acts on, or gates on it. Advisory — does not block delivery.
 - Reviewer failure → note "product review failed" in the return and proceed.
 
-**Return format:**
+**Escalation payload** — return this to the primary agent and stop (the primary presents it to the human and resumes you via `SendMessage` once the human decides):
 ```
 SESSION 2 COMPLETE — Feature delivered.
 
@@ -516,10 +529,11 @@ GH Issue: {URL} (updated)
 Human action required: {Approve and merge | Address blocking items}.
 ```
 
-After returning to the human, **KEEP the pr-review phase OPEN. Do NOT stop the cycle yet.** The human
-merge gate is unchanged — the merge/rework activity must be attributed to the still-open cycle.
+After returning this escalation to the primary, **KEEP the pr-review phase OPEN. Do NOT stop the cycle yet.**
+The human merge gate is unchanged — the merge/rework activity must be attributed to the still-open cycle.
+You will be resumed via `SendMessage` once the human acts.
 
-**ONCE THE HUMAN MERGES** (strict order — **merge → close → retro**):
+**ONCE THE PRIMARY RESUMES YOU WITH "MERGED"** (strict order — **merge → close → retro**):
 
 ```
 1. context_cycle(type: "phase-end", phase: "pr-review", agent_id: "{feature-id}-delivery-leader")
@@ -622,9 +636,9 @@ DELIVERY LEADER (you):
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /uni-review-pr — security review + merge readiness
               Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → PR comment
-              Combined return — pr-review phase stays OPEN through the human merge decision
-              ★ HUMAN MERGE GATE (unchanged) ★
-              ...ONCE HUMAN MERGES (strict order — merge → close → retro):
+              Escalate combined payload to primary; STOP — pr-review phase stays OPEN
+              ★ HUMAN MERGE GATE (via primary) — resume via SendMessage once merged ★
+              ...ONCE RESUMED WITH 'MERGED' (strict order — merge → close → retro):
                 context_cycle(type: "phase-end", phase: "pr-review", ...)
                 context_cycle(type: "stop", topic: "{feature-id}", outcome: "...Merged...", agent_id: "{feature-id}-delivery-leader")
                 /uni-retro — post-close verbatim-candidate harvest (repeatable, non-destructive)
