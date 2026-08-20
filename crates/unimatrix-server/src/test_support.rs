@@ -82,6 +82,29 @@ pub struct TestSearchResult {
 // existing call sites (`use crate::test_support::skip_if_no_model`) keep working.
 pub use crate::model_guard::skip_if_no_model;
 
+/// bugfix-978: skip guard for read-only-dir fail-loud tests when running as root.
+///
+/// Root (EUID==0) bypasses Unix permission bits, so a write into a `0o555`/`0o500`
+/// directory SUCCEEDS and the fail-loud assertion these tests exist to enforce can
+/// never fire — a false green, not real coverage. Returns `true` (after emitting a
+/// LOUD skip marker naming `test`) when EUID==0, and `false` otherwise. On a
+/// non-root run the guard is `false`, so the real assertion runs unchanged.
+///
+/// `#[cfg(all(test, unix))]`: only meaningful under a Unix test build; call sites
+/// are Unix-only too, so the workspace still builds on every target.
+#[cfg(all(test, unix))]
+pub(crate) fn skip_if_root(test: &str) -> bool {
+    if nix::unistd::geteuid().is_root() {
+        eprintln!(
+            "SKIP {test}: EUID==0 bypasses permission bits; \
+             read-only-dir fail-loud invariant is unenforceable as root"
+        );
+        true
+    } else {
+        false
+    }
+}
+
 /// Test harness wrapping ServiceLayer with helper methods.
 pub struct TestHarness {
     layer: ServiceLayer,

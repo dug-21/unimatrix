@@ -899,6 +899,13 @@ fn test_register_delete_reregister_roundtrip() {
 fn test_register_on_unwritable_root_fails_loud() {
     use std::os::unix::fs::PermissionsExt;
 
+    // bugfix-978: root bypasses permission bits, so the 0o500 base dir would be
+    // writable and the fail-loud assertion below could never fire. Skip loudly
+    // under root; the assertion stays live on every non-root run.
+    if crate::test_support::skip_if_root("test_register_on_unwritable_root_fails_loud") {
+        return;
+    }
+
     let fx = Fixture::new();
     // Make the base dir read-only so create_dir_all under it fails.
     let mut perms = std::fs::metadata(&fx.base_dir).unwrap().permissions();
