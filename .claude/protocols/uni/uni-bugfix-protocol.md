@@ -8,7 +8,20 @@ Triggers on: bug, fix, bugfix, defect, regression, broken, failing, error, crash
 
 A single-session workflow that takes a bug report from diagnosis through merge. The session includes a human checkpoint after diagnosis — the human must agree with the root cause analysis before any code changes are made.
 
-**You become the Bugfix Leader(uni-scrum-master).** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for your role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work.
+**This protocol is executed by a dedicated `uni-scrum-master` subagent — the Bugfix Leader — not by the primary agent.**
+
+**Primary agent**: you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the bug report and session type `bugfix`, recording its agent ID; (2) relay each escalation it returns to the human verbatim and resume the SM via `SendMessage` (to that agent ID) with the human's decision — never re-spawn; (3) present the final PR + assessment to the human. Kickoff spawn:
+
+```
+Task(subagent_type: "uni-scrum-master",
+  prompt: "You are the Bugfix Leader. Session type: bugfix.
+    Execute .claude/protocols/uni/uni-bugfix-protocol.md end to end.
+    Bug report: {GH Issue URL or description}
+    Escalate at each human gate per the Escalation Handshake and stop;
+    I will resume you via SendMessage with the human's decision.")
+```
+
+**Bugfix Leader (the spawned uni-scrum-master, referred to as "you" below)**: read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for your role boundaries and the Escalation Handshake. You orchestrate — you NEVER generate content. Spawn specialist agents for all work. You cannot talk to the human — every checkpoint below is an escalation-and-resume, not a live prompt.
 
 ```
 Bugfix Leader (you)                                  Specialist Agents
@@ -173,9 +186,9 @@ Task(subagent_type: "uni-zero-reviewer",
 - The spawn prompt carries ONLY agent ID, gate, and issue/PR identifiers — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
 - The reviewer posts an advisory comment on the GH Issue. The Bugfix Leader relays stance + comment link verbatim at the human checkpoint and NEVER parses, acts on, or gates on it. Advisory — does not block.
 
-### Human Checkpoint (MANDATORY — do NOT proceed without human approval)
+### Human Checkpoint (MANDATORY — Escalation Handshake, do NOT proceed without human approval)
 
-After the investigator, architect, and product reviewer return, the Bugfix Manager presents the combined diagnosis and design review to the human:
+After the investigator, architect, and product reviewer return, the Bugfix Manager **returns the escalation block below to the primary agent and stops** (Escalation Handshake — the primary presents it to the human and resumes you via `SendMessage` with the decision):
 
 ```
 DIAGNOSIS + DESIGN REVIEW COMPLETE — Awaiting approval.
@@ -192,7 +205,7 @@ Human action required: Review diagnosis and design, then approve to proceed with
 If either the diagnosis or design is wrong, provide feedback and I will re-investigate.
 ```
 
-On human approval:
+**On resume with the human's approval** (the primary `SendMessage`s you the decision):
 
 ```
 mcp__unimatrix__context_cycle({
@@ -206,7 +219,7 @@ mcp__unimatrix__context_cycle({
 ```
 then proceed to Phase 2
 
-**If the human disagrees**: Re-spawn the investigator with the human's feedback:
+**If the primary resumes you with the human's disagreement**: Re-spawn the investigator with the feedback:
 
 ```
 Task(subagent_type: "uni-bug-investigator",
@@ -449,7 +462,7 @@ retrieve repeatedly. A close before merge, or a retro before close, is a defect.
 
 ## Phase 5: Human Review & Merge
 
-The Bugfix Manager presents the PR and security assessment to the human:
+The Bugfix Manager **returns the escalation block below to the primary agent and stops** (Escalation Handshake — the primary presents the PR to the human and resumes you via `SendMessage` once the human decides):
 
 ```
 BUG FIX COMPLETE — PR ready for review.
@@ -474,7 +487,7 @@ Reports:
 Human action required: Review PR and approve merge.
 ```
 
-On human approval to merge, the Bugfix Manager:
+**On resume with the human's approval to merge**, the Bugfix Manager:
 1. Merges the PR with `gh pr merge --squash --delete-branch` (if human requests it) — squash preferred: one commit = one revert target if backout is needed
 2. Closes the GH Issue with reference to the PR (if applicable)
 
@@ -574,8 +587,8 @@ BUGFIX LEADER (you):
               ...wait...
   Phase 1b:   Task(uni-architect) — design review of proposed fix
   Phase 1c:   Task(uni-zero-reviewer, GATE: fix-approach) — advisory product review → GH comment
-              ...present diagnosis + design review + product review to human...
-              ★ HUMAN CHECKPOINT — human approves diagnosis + design ★
+              ...escalate diagnosis + design review + product review to primary; STOP...
+              ★ HUMAN CHECKPOINT (via primary) — resume via SendMessage on approval ★
               mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
                 "phase": "discovery", "next_phase": "fix", "agent_id": "{issue-number}-bugfix-leader" })
   Phase 2:    git checkout -b bugfix/{issue}-{desc}
@@ -594,9 +607,9 @@ BUGFIX LEADER (you):
               Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → PR comment
               ...wait...
               ...no blocking findings → bug-review phase stays OPEN; proceed to Phase 5. Do NOT stop yet.
-  Phase 5:    Present PR + security assessment to human
-              ★ HUMAN MERGE GATE (unchanged) ★
-              ...ONCE HUMAN MERGES (strict order — merge → close → retro):
+  Phase 5:    Escalate PR + security assessment to primary; STOP
+              ★ HUMAN MERGE GATE (via primary) — resume via SendMessage once merged ★
+              ...ONCE RESUMED WITH 'MERGED' (strict order — merge → close → retro):
                 mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
                   "phase": "bug-review", "agent_id": "{issue-number}-bugfix-leader" })
                 mcp__unimatrix__context_cycle({ "type": "stop", "topic": "bugfix-{issue-number}",

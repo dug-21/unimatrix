@@ -1,6 +1,6 @@
 # Unimatrix — Non-Negotiable Rules
 
-1. **Feature work uses swarms** — read the protocol for the session type and execute it as Design/Delivery/Bugfix Leader. You ARE the scrum master. Follow the protocol exactly — spawn specialist agents, never generate content yourself.
+1. **Feature work uses swarms** — spawn a dedicated `uni-scrum-master` subagent to lead the session; it reads the protocol for the session type and executes it as the Design/Delivery/Bugfix Leader. You do NOT assume the SM role. Your job as primary is narrow: kick off the SM, relay its escalations to the human, resume it via `SendMessage` with the human's decision (never re-spawn — resume preserves its context), and present its final result. The SM spawns all specialist agents and never generates content itself.
    | Intent | Session Type | Protocol |
    |--------|-------------|----------|
    | Design, scope, spec | design | `.claude/protocols/uni/uni-design-protocol.md` |
@@ -12,7 +12,7 @@
 
    **Research session rule**: Phase 1 (scope completion) happens interactively with the human (uni-zero session), not in a research session. A research session begins only when SCOPE.md is complete. Single spike → invoke `uni-spike-researcher` directly. Multiple dependent spikes → invoke `uni-research-sm`.
 
-   Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and behavioral rules. The protocol defines what to do and when; the SM definition defines how you behave.
+   The spawned SM reads its agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries, the escalation handshake, and behavioral rules. The protocol defines what to do and when; the SM definition defines how the SM behaves.
 
    For PR review: `/uni-review-pr`. For retrospective: `/uni-retro`.
 2. **Anti-stub**: Never leave TODO, `unimplemented!()`, `todo!()`, or placeholder functions. Ask if blocked.
