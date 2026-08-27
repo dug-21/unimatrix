@@ -45,7 +45,7 @@ Call `context_briefing` using a 1-2 sentence summary of your specific bug from y
 mcp__unimatrix__context_briefing({
   "task": "<1-2 sentence summary of the bug you are diagnosing>",
   "feature": "bugfix-{issue-number}",
-  "agent_id": "{agent-id}"
+  "agent_id": "uni-bug-investigator"
 })
 ```
 

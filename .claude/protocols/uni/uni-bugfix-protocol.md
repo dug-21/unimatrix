@@ -85,7 +85,7 @@ The Bugfix Manager:
      "topic": "bugfix-{issue-number}",
      "goal": "{1-2 sentence summary of the goal or problem to be fixed}",
      "next_phase": "discovery",
-     "agent_id": "{issue-number}-bugfix-leader"
+     "agent_id": "uni-scrum-master"
    })
    ```
    > **Resuming an interrupted session**: On re-entering a broken or resumed session, the leader's FIRST action is to re-issue `context_cycle(type:"start", topic:"{feature-id}")` (idempotent server-side — `AlreadyMatches`; recreates the client tracker).
@@ -214,7 +214,7 @@ mcp__unimatrix__context_cycle({
   "phase": "discovery",
   "outcome": {1-2 sentence brief summary of phase result},
   "next_phase": "fix",
-  "agent_id": "{issue-number}-bugfix-leader"
+  "agent_id": "uni-scrum-master"
 })
 ```
 then proceed to Phase 2
@@ -283,7 +283,7 @@ mcp__unimatrix__context_cycle({
   "phase": "fix",
   "outcome": {1-2 sentence brief summary of phase result},
   "next_phase": "testing",
-  "agent_id": "{issue-number}-bugfix-leader"
+  "agent_id": "uni-scrum-master"
 })
 ```
 
@@ -389,7 +389,7 @@ Task(subagent_type: "uni-validator",
        "phase": "testing",
        "outcome": {1-2 sentence brief summary of phase result},
        "next_phase": "bug-review",
-       "agent_id": "{issue-number}-bugfix-leader"
+       "agent_id": "uni-scrum-master"
      })
      ```
   2. Commit fix code + tests, open PR, proceed to Phase 4
@@ -441,14 +441,14 @@ proceeding to merge.
      "topic": "bugfix-{issue-number}",
      "phase": "bug-review",
      "outcome": {1-2 sentence brief summary of phase result},
-     "agent_id": "{issue-number}-bugfix-leader"
+     "agent_id": "uni-scrum-master"
    })
 
 2. mcp__unimatrix__context_cycle({
      "type": "stop",
      "topic": "bugfix-{issue-number}",
      "outcome": "Bugfix complete. Merged. Root cause: {summary}. PR: {url}",
-     "agent_id": "{issue-number}-bugfix-leader"
+     "agent_id": "uni-scrum-master"
    })
 
 3. /uni-retro   # post-close verbatim-candidate harvest; retrieval is repeatable + non-destructive
@@ -582,7 +582,7 @@ You will be automatically notified when a background task completes. Do NOT slee
 BUGFIX LEADER (you):
   Init:       /uni-query-patterns + /uni-knowledge-search — prior knowledge
               mcp__unimatrix__context_cycle({ "type": "start", "topic": "bugfix-{issue-number}",
-                "goal": "{summary}", "next_phase": "discovery", "agent_id": "{issue-number}-bugfix-leader" })
+                "goal": "{summary}", "next_phase": "discovery", "agent_id": "uni-scrum-master" })
   Phase 1:    Task(uni-bug-investigator) — diagnose root cause → GH Issue comment
               ...wait...
   Phase 1b:   Task(uni-architect) — design review of proposed fix
@@ -590,12 +590,12 @@ BUGFIX LEADER (you):
               ...escalate diagnosis + design review + product review to primary; STOP...
               ★ HUMAN CHECKPOINT (via primary) — resume via SendMessage on approval ★
               mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
-                "phase": "discovery", "next_phase": "fix", "agent_id": "{issue-number}-bugfix-leader" })
+                "phase": "discovery", "next_phase": "fix", "agent_id": "uni-scrum-master" })
   Phase 2:    git checkout -b bugfix/{issue}-{desc}
               Task(uni-rust-dev) — implement fix + tests → GH Issue comment
               ...wait...
               mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
-                "phase": "fix", "next_phase": "testing", "agent_id": "{issue-number}-bugfix-leader" })
+                "phase": "fix", "next_phase": "testing", "agent_id": "uni-scrum-master" })
   Phase 3:    Task(uni-tester) — full test suite verification → GH Issue comment
               ...wait...
   Gate 3:     Task(uni-validator, bugfix check set) → GH Issue comment
@@ -611,7 +611,7 @@ BUGFIX LEADER (you):
               ★ HUMAN MERGE GATE (via primary) — resume via SendMessage once merged ★
               ...ONCE RESUMED WITH 'MERGED' (strict order — merge → close → retro):
                 mcp__unimatrix__context_cycle({ "type": "phase-end", "topic": "bugfix-{issue-number}",
-                  "phase": "bug-review", "agent_id": "{issue-number}-bugfix-leader" })
+                  "phase": "bug-review", "agent_id": "uni-scrum-master" })
                 mcp__unimatrix__context_cycle({ "type": "stop", "topic": "bugfix-{issue-number}",
                   "outcome": "Bugfix complete. Merged. Root cause: {summary}. PR: {url}", "agent_id": "..." })
                 /uni-retro — post-close verbatim-candidate harvest (repeatable, non-destructive)

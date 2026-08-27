@@ -50,7 +50,7 @@ Call `context_briefing` to surface relevant ADRs, patterns, and conventions befo
 ```
 mcp__unimatrix__context_briefing({
   "task": "<1-2 sentence description of your specific investigation>",
-  "agent_id": "researcher-{ass-NNN}"
+  "agent_id": "uni-spike-researcher"
 })
 ```
 

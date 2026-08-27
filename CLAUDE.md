@@ -92,6 +92,9 @@ mcp__unimatrix__context_get({
 |-----------|---------|-------|
 | `id`, `original_id` | `3267` (integer) | `"3267"` (string) |
 | `tags` | `["adr", "col-031"]` (JSON array) | `"adr, col-031"` or `"[\"adr\"]"` |
+| `agent_id` | `"uni-rust-dev"` (bare agent type) | `"col-031-rust-dev"` / `"{feature-id}-delivery-leader"` (feature-suffixed) or omitted |
 | String content | `"content here"` | `"content \"quoted\" here"` — avoid escaped quotes inside strings |
+
+**`agent_id` is always the bare agent type name** — your persona (`uni-scrum-master`, `uni-rust-dev`, `uni-architect`, …), never feature-suffixed and never omitted. It identifies *who is acting*, not *which work*. Feature identity rides a different field: `topic` on `context_cycle`, `feature_cycle`/`tags` on knowledge writes. Omitting `agent_id` resolves the caller to `anonymous`, which may lack Write capability; one persona record per agent type is correct — never one per feature.
 
 Do not store workflow choreography in Unimatrix. Protocols live in `.claude/protocols/uni/`.

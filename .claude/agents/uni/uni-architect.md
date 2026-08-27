@@ -84,7 +84,7 @@ Before writing any architecture or ADRs for a new feature, you MUST:
    mcp__unimatrix__context_briefing({
      "task": "<1-2 sentence summary of your specific architecture task>",
      "feature": "{feature-id}",
-     "agent_id": "{agent-id}"
+     "agent_id": "uni-architect"
    })
    ```
 

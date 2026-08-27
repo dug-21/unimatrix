@@ -75,7 +75,7 @@ context_cycle(
   type: "start",
   topic: "{feature-id}",
   next_phase: "scope",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 
@@ -175,7 +175,7 @@ context_cycle(
   phase: "scope",
   outcome: "SCOPE.md approved. Scope risk assessment complete.",
   next_phase: "design",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 
@@ -291,7 +291,7 @@ context_cycle(
   phase: "design",
   outcome: "Architecture, specification, and risk strategy complete.",
   next_phase: "design-review",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 
@@ -384,7 +384,7 @@ context_cycle(
   phase: "design-review",
   outcome: "Vision aligned. Synthesis complete.",
   next_phase: "spec",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 
@@ -437,7 +437,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 
 ```
 DESIGN LEADER (you):
-  Init:       context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "{feature-id}-design-leader")
+  Init:       context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "uni-scrum-master")
   Phase 1:    Task(uni-researcher) — scope exploration with human
               Task(uni-zero-reviewer, GATE: scope-review) — advisory review (comment on existing issue; file if none)
               ...on approval: sync existing issue body to approved SCOPE.md...
@@ -470,7 +470,7 @@ context_cycle(
   phase: "design-review",
   outcome: "Vision aligned. Synthesis complete.",
   next_phase: "spec",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 

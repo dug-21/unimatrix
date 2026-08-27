@@ -264,6 +264,8 @@ claimed = asserted (often inherited from a goal criterion) with no behavioral te
 
 ## Operations
 
+> **Every write below carries `agent_id` = your bare agent type** (`"uni-zero"`, `"uni-architect"`, … — never feature-suffixed, never omitted), per the CLAUDE.md MCP Parameter Format Rules. Shown on the `context_store` template; add the same field to every `context_tag` / `context_correct` / `context_edge` call.
+
 ### Decompose a new goal
 1. Confirm the goal entry exists (`context_lookup category="goal"`). Scope research if the capability set is unknown (uni-zero writes the spike scope; a research session executes).
 2. Synthesize findings → outcome-phrased capabilities (apply the authoring rules below).
@@ -272,6 +274,7 @@ claimed = asserted (often inherited from a goal criterion) with no behavioral te
    context_store({ category: "capability", topic: "<goal-tag>",
      content: "kind: …\nname: …\nwhy: …\ndone_when: …\ndelivered_by:\nproven_by:",   // NO status line — status is a tag
      tags: ["capability", "<goal-tag>", "<kind>", "delivery:missing"],
+     agent_id: "{your role name, e.g. uni-zero}",
      edges: [{ relation: "Advances", target_id: <goal_id> }] })
    ```
 4. Add `Prerequisite` edges for dependencies (source = the prerequisite).

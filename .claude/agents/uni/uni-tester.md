@@ -34,7 +34,7 @@ Call `context_briefing` using a 1-2 sentence summary of your specific task from 
 mcp__unimatrix__context_briefing({
   "task": "<1-2 sentence summary of your specific testing task>",
   "feature": "{feature-id}",
-  "agent_id": "{agent-id}"
+  "agent_id": "uni-tester"
 })
 ```
 

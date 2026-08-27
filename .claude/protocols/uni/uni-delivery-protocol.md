@@ -82,7 +82,7 @@ The Delivery Leader:
      type: "start",
      topic: "{feature-id}",
      next_phase: "spec",
-     agent_id: "{feature-id}-delivery-leader"
+     agent_id: "uni-scrum-master"
    )
    ```
    > **Resuming an interrupted session**: On re-entering a broken or resumed session, the leader's FIRST action is to re-issue `context_cycle(type:"start", topic:"{feature-id}")` (idempotent server-side — `AlreadyMatches`; recreates the client tracker).
@@ -151,7 +151,7 @@ Task(subagent_type: "uni-tester",
 Wait for both agents to complete.
 
 ```
-context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", agent_id: "{feature-id}-delivery-leader")
+context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", agent_id: "uni-scrum-master")
 ```
 
 ### Component Map Update (MANDATORY — between Stage 3a and Gate 3a)
@@ -209,7 +209,7 @@ Task(subagent_type: "uni-validator",
 
 **Gate results:**
 - **PASS** →
-  1. `context_cycle(type: "phase-end", phase: "spec-review", next_phase: "develop", agent_id: "{feature-id}-delivery-leader")`
+  1. `context_cycle(type: "phase-end", phase: "spec-review", next_phase: "develop", agent_id: "uni-scrum-master")`
   2. Commit pseudocode + test plans + updated brief (`pseudocode: component design + test plans (#{issue})`), then proceed to Stage 3b
 - **REWORKABLE FAIL** → Loop back to Stage 3a agents (max 2 iterations). Include failure details in re-spawn prompt.
 - **SCOPE FAIL** → Session stops. Return to human with recommendation.
@@ -324,7 +324,7 @@ Task(subagent_type: "uni-validator",
 
 **Gate results:**
 - **PASS** →
-  1. `context_cycle(type: "phase-end", phase: "develop", next_phase: "test", agent_id: "{feature-id}-delivery-leader")`
+  1. `context_cycle(type: "phase-end", phase: "develop", next_phase: "test", agent_id: "uni-scrum-master")`
   2. Commit all implementation code (`impl: Stage 3b complete (#{issue})`), then proceed to Stage 3c
 - **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gate 3a
 
@@ -406,7 +406,7 @@ Task(subagent_type: "uni-validator",
 
 **Gate results:**
 - **PASS** →
-  1. `context_cycle(type: "phase-end", phase: "test", next_phase: "pr-review", agent_id: "{feature-id}-delivery-leader")`
+  1. `context_cycle(type: "phase-end", phase: "test", next_phase: "pr-review", agent_id: "uni-scrum-master")`
   2. Proceed to Phase 4
 - **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gates 3a/3b.
 
@@ -536,8 +536,8 @@ You will be resumed via `SendMessage` once the human acts.
 **ONCE THE PRIMARY RESUMES YOU WITH "MERGED"** (strict order — **merge → close → retro**):
 
 ```
-1. context_cycle(type: "phase-end", phase: "pr-review", agent_id: "{feature-id}-delivery-leader")
-2. context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 2 complete. Merged. PR: {url}", agent_id: "{feature-id}-delivery-leader")
+1. context_cycle(type: "phase-end", phase: "pr-review", agent_id: "uni-scrum-master")
+2. context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 2 complete. Merged. PR: {url}", agent_id: "uni-scrum-master")
 3. /uni-retro   # post-close verbatim-candidate harvest; retrieval is repeatable + non-destructive
 ```
 
@@ -607,7 +607,7 @@ NEVER pipe full cargo output into context.
 ```
 DELIVERY LEADER (you):
   Init:       Read IMPLEMENTATION-BRIEF.md + ACCEPTANCE-MAP.md
-              context_cycle(type: "start", topic: "{feature-id}", next_phase: "spec", agent_id: "{feature-id}-delivery-leader")
+              context_cycle(type: "start", topic: "{feature-id}", next_phase: "spec", agent_id: "uni-scrum-master")
   Stage 3a:   Task(uni-pseudocode) + Task(uni-tester) — parallel, ONE message
               ...wait for both to complete...
               context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", ...)
@@ -640,7 +640,7 @@ DELIVERY LEADER (you):
               ★ HUMAN MERGE GATE (via primary) — resume via SendMessage once merged ★
               ...ONCE RESUMED WITH 'MERGED' (strict order — merge → close → retro):
                 context_cycle(type: "phase-end", phase: "pr-review", ...)
-                context_cycle(type: "stop", topic: "{feature-id}", outcome: "...Merged...", agent_id: "{feature-id}-delivery-leader")
+                context_cycle(type: "stop", topic: "{feature-id}", outcome: "...Merged...", agent_id: "uni-scrum-master")
                 /uni-retro — post-close verbatim-candidate harvest (repeatable, non-destructive)
 ```
 
@@ -668,14 +668,14 @@ then — close the feature cycle, then run the retro. Strict order: **merge → 
 1. context_cycle(
      type: "phase-end",
      phase: "pr-review",
-     agent_id: "{feature-id}-delivery-leader"
+     agent_id: "uni-scrum-master"
    )
 
 2. context_cycle(
      type: "stop",
      topic: "{feature-id}",
      outcome: "Session 2 complete. Merged. PR: {url}",
-     agent_id: "{feature-id}-delivery-leader"
+     agent_id: "uni-scrum-master"
    )
 
 3. /uni-retro   # post-close verbatim-candidate harvest; buffer intact, retrieval repeatable + non-destructive

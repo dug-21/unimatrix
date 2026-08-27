@@ -302,7 +302,7 @@ bloating the goal's correction chain.
 **Adding a new goal:**
 1. Discuss and agree in conversation first — goals emerge from problem exploration, not top-down planning.
 2. Look up the vision root ID: `context_lookup(category="goal", tags=["vision", "root"])`.
-3. Create a thin entry: `context_store(category="goal", topic="product-vision", tags=["goal", "{tag}"], edges=[{Advances → {vision_root_id}}])`
+3. Create a thin entry: `context_store(category="goal", topic="product-vision", tags=["goal", "{tag}"], agent_id="uni-zero", edges=[{Advances → {vision_root_id}}])` — every uni-zero write (`context_store`/`context_correct` here and below) carries `agent_id="uni-zero"`, never omitted.
 4. Create the corresponding `goal:*` GitHub label.
 5. Update `PRODUCT-VISION.md` strategic goals table (add a row with tag + summary — no IDs).
 6. Enrich via `context_correct` as the strategy matures — each correction preserves the evolution.

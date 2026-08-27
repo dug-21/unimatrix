@@ -75,7 +75,8 @@ mcp__unimatrix__context_correct({
   "original_id": 1234,  // integer — never quote it
   "content": "## Context\n{why the old decision is being replaced}\n\n## Decision\n{new decision}\n\n## Consequences\n{what changes}",
   "title": "ADR-NNN: {new decision title}",
-  "reason": "Superseded by {feature-id}: {short explanation}"
+  "reason": "Superseded by {feature-id}: {short explanation}",
+  "agent_id": "{your role name, e.g. uni-architect}"
 })
 ```
 
@@ -131,7 +132,7 @@ because you'll act wrongly without reading it first," don't assert it.
   edges you couldn't make at authoring (the intra-feature `Prerequisite` spine; `Supports` from a
   lesson/pattern to the decision it validates) via:
   ```
-  mcp__unimatrix__context_edge({"mode": "add", "source_id": <from>, "edge_type": "Supports", "target_id": <to>})
+  mcp__unimatrix__context_edge({"mode": "add", "source_id": <from>, "edge_type": "Supports", "target_id": <to>, "agent_id": "{your role name, e.g. uni-architect}"})
   ```
 
 ---
