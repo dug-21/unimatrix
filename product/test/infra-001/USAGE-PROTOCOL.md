@@ -40,6 +40,38 @@ The harness exercises the compiled `unimatrix` binary (built by the `unimatrix-s
 - Docker + Docker Compose
 - No other dependencies — everything is in the image
 
+### Dev-Workstation Smoke Contract: build-from-source vs pull-prebuilt
+
+The harness supports two Docker paths. Know which you are running:
+
+| Path | Command shape | When | Speed |
+|------|--------------|------|-------|
+| **Pull-prebuilt** (`IMAGE=`) | `IMAGE=ghcr.io/... docker compose ...` (lesson #5208) | Everyday check — reuses a released multi-arch image, no local compile | Fast |
+| **Build-from-source** | `docker compose ... build` / `up --build` | Periodic **portability check** — compiles the workspace + links ORT locally | Slow (full compile) |
+
+**The cold-cache from-source build is the portability check** — run it periodically
+and before merging changes that touch the harness Dockerfile:
+
+```bash
+docker compose -f product/test/infra-001/docker-compose.yml build --no-cache
+```
+
+It is the only path that exercises the builder stage's ORT link (`ort` is
+`default-features=false`; the builder provisions ONNX Runtime via the SHA-256-verified
+`ort-libs` stage and sets `ORT_LIB_LOCATION`). A warm BuildKit cache or an `IMAGE=`
+pull both skip that step — which is exactly how a builder-stage link defect (#975)
+stayed latent for months. Run `--no-cache` on any environment/arch change (e.g. an
+ARM↔Intel workstation move) to catch build-time defects that static review cannot
+(lesson #4582).
+
+The `ort-libs` stage is arch-aware (`TARGETARCH` → x64/aarch64). To verify the
+arch-aware claim on a machine without native ARM:
+
+```bash
+docker buildx build --platform linux/arm64 \
+  -f product/test/infra-001/Dockerfile --target test-runtime .
+```
+
 ### Commands
 
 ```bash

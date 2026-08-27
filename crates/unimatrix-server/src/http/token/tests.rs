@@ -301,6 +301,12 @@ fn test_generate_token_is_cryptographically_random() {
 // T-TM-10: test_token_file_on_readonly_parent_dir
 #[test]
 fn test_token_file_on_readonly_parent_dir() {
+    // bugfix-978: root bypasses permission bits, so the read-only dir would be
+    // writable and the fail-loud assertion below could never fire. Skip loudly
+    // under root; the assertion stays live on every non-root run.
+    if crate::test_support::skip_if_root("test_token_file_on_readonly_parent_dir") {
+        return;
+    }
     let tmp = TempDir::new().unwrap();
     // Make directory read-only
     fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o555)).unwrap();
