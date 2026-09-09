@@ -1,0 +1,229 @@
+{
+  "schema": "collective.vocabulary/2",
+  "terms": [
+    {
+      "term": "Program",
+      "kind": "noun",
+      "meaning": "A durable independently operated participant responsible for an objective and continuing work; not its repository, name or owner.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "Baseline",
+      "kind": "noun",
+      "meaning": "Shared operating contract content.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "Release",
+      "kind": "noun",
+      "meaning": "An immutable identified version of contract content, produced through its promotion boundary.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "registers",
+      "kind": "verb",
+      "meaning": "The collective associates an opaque Program identity with mutable discovery information; this is a collective-side act.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "adopts",
+      "kind": "verb",
+      "meaning": "A Program completes its own reviewable acceptance action for a Release; collective distribution is not acceptance.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "validates",
+      "kind": "verb",
+      "meaning": "Deterministic classification of an artifact against known contract facts, not acceptance or proof of its claims.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "Goal",
+      "kind": "noun",
+      "meaning": "An intended outcome — what must become true. A goal is intent, never a boundary and never a piece of work.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "Capability",
+      "kind": "noun",
+      "meaning": "An observable behavior required by at least one goal. A capability is what the organization can be seen to do — distinct from the work that delivers it and from the evidence that it works.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "Obligation",
+      "kind": "noun",
+      "meaning": "A binding requirement with stable identity.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "Extension",
+      "kind": "noun",
+      "meaning": "Program-local names and detail may coexist without weakening an admitted meaning.",
+      "register": "admitted",
+      "remainder_cause": "cleared-no-receiver-referent-built",
+      "disposition_reason": "Manual review maps this meaning to existing concepts in both pinned Programs. This release builds no receiver-side referent and observes no adoption."
+    },
+    {
+      "term": "Declaration",
+      "kind": "noun",
+      "meaning": "A Program's attributable statement about its adopted Release and payload.",
+      "register": "reserved",
+      "remainder_cause": "not-cleared",
+      "disposition_reason": "Reserved for later declaration work; no clearance or obligation is assigned."
+    },
+    {
+      "term": "declares",
+      "kind": "verb",
+      "meaning": "A Program publishes its attributable Declaration.",
+      "register": "reserved",
+      "remainder_cause": "not-cleared",
+      "disposition_reason": "Reserved for later declaration work; no clearance or obligation is assigned."
+    },
+    {
+      "term": "Scope",
+      "kind": "noun",
+      "meaning": "A generalized boundary for intended work.",
+      "register": "deferred",
+      "remainder_cause": "mandated-deferral",
+      "disposition_reason": "Generalized cross-Program admission is deferred without exception; local meanings remain local."
+    },
+    {
+      "term": "Unit",
+      "kind": "noun",
+      "meaning": "A generalized durable, attributable piece of work whose identity survives retry and rework.",
+      "register": "deferred",
+      "remainder_cause": "mandated-deferral",
+      "disposition_reason": "Generalized cross-Program admission is deferred without exception; local meanings remain local."
+    },
+    {
+      "term": "Event",
+      "kind": "noun",
+      "meaning": "A generalized occurrence in an operating lifecycle.",
+      "register": "deferred",
+      "remainder_cause": "mandated-deferral",
+      "disposition_reason": "Generalized cross-Program admission is deferred without exception; local meanings remain local."
+    },
+    {
+      "term": "Record",
+      "kind": "noun",
+      "meaning": "A generalized attributable representation of a fact or action.",
+      "register": "deferred",
+      "remainder_cause": "mandated-deferral",
+      "disposition_reason": "Generalized cross-Program admission is deferred without exception; local meanings remain local."
+    },
+    {
+      "term": "Evidence grade",
+      "kind": "noun",
+      "meaning": "A shared ordering of the strength of evidence behind a claim.",
+      "register": "deferred",
+      "remainder_cause": "mandated-deferral",
+      "disposition_reason": "Generalized cross-Program admission is deferred without exception; local meanings remain local."
+    },
+    {
+      "term": "Collective",
+      "kind": "noun",
+      "meaning": "A locally named organizational or orchestration concept.",
+      "register": "deferred",
+      "remainder_cause": "program-local",
+      "disposition_reason": "The name already has a receiver-local meaning and is withdrawn from admission."
+    },
+    {
+      "term": "Theme",
+      "kind": "noun",
+      "meaning": "A Program-local standing direction for research.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "Finding",
+      "kind": "noun",
+      "meaning": "A Program-local research result or evidenced claim.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "Attempt",
+      "kind": "noun",
+      "meaning": "A Program-local execution of work.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "workflow",
+      "kind": "noun",
+      "meaning": "A Program-local arrangement of work and transitions.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "skill",
+      "kind": "noun",
+      "meaning": "A Program-local reusable set of execution instructions.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "role",
+      "kind": "noun",
+      "meaning": "A Program-local assignment of responsibilities.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "delegation",
+      "kind": "noun",
+      "meaning": "A Program-local assignment of work to another actor.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "gate",
+      "kind": "noun",
+      "meaning": "A Program-local checkpoint in its work process.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "effect-boundary",
+      "kind": "noun",
+      "meaning": "A Program-local boundary governing permitted effects.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    },
+    {
+      "term": "technology",
+      "kind": "noun",
+      "meaning": "A Program-local enabling approach or mechanism.",
+      "register": "program-local",
+      "remainder_cause": "program-local",
+      "disposition_reason": "Local concept retained explicitly; no shared admission or wire obligation depends on it."
+    }
+  ]
+}
