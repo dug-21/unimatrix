@@ -1,0 +1,41 @@
+{
+  "schema": "collective.projection-manifest/1",
+  "authority": "baseline",
+  "files": [
+    {
+      "path": ".collective/ADOPTED.yaml",
+      "digest": "sha256:656ea3e85d8fa32189384d7f49724a97ab68e601ce88e52ec8305fbe65fae5b8",
+      "authority": "baseline"
+    },
+    {
+      "path": ".collective/EXTENSIONS.md",
+      "digest": "sha256:0552842ea9ee6de48c3a978198b45e1b89ff744f0938aef1f4c7d132b3d1298b",
+      "authority": "program"
+    },
+    {
+      "path": ".collective/README.md",
+      "digest": "sha256:a08eebd115896cf51b3927f833f8c7bbad893c9e50cb49ae60571a0bc36540c1",
+      "authority": "baseline"
+    },
+    {
+      "path": ".collective/contract/CONTRACT.md",
+      "digest": "sha256:13e8e0d542ed886581ba16f9d811b722b005b257564eab7e55e75f341e323265",
+      "authority": "baseline"
+    },
+    {
+      "path": ".collective/contract/OBLIGATIONS.yaml",
+      "digest": "sha256:4b84f7189f59d1b9bb372e3adb105029b9fd0ddb61cfd1e79ddab6f1d983c82c",
+      "authority": "baseline"
+    },
+    {
+      "path": ".collective/contract/REGISTRATIONS.yaml",
+      "digest": "sha256:6f6bfaa08f45250a68332e2f0f3234cb059e381cc1fae7986cb96e1b54ed8c0d",
+      "authority": "baseline"
+    },
+    {
+      "path": ".collective/contract/VOCABULARY.yaml",
+      "digest": "sha256:9d18ff03c7e770a5ff6a99cb5e1cc13c900b83fa5ad61a00380889da83a44e49",
+      "authority": "baseline"
+    }
+  ]
+}

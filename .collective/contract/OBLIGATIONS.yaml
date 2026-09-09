@@ -1,0 +1,35 @@
+{
+  "schema": "collective.obligations/2",
+  "obligations": [
+    {
+      "id": "OBL-3C7A",
+      "statement": "A participating Program records, in a form readable without credentials, the exact Release identity and content digest it has adopted.",
+      "terms": [
+        "Program",
+        "Release",
+        "adopts"
+      ],
+      "observed_by": "not-observed-by-this-release"
+    },
+    {
+      "id": "OBL-91D4",
+      "statement": "A Program may define terms of its own and may extend an admitted term with Program-specific detail. It may not redefine an admitted term to mean something else, narrow or weaken its meaning while keeping its name, or rely on an undeclared local change to one.",
+      "terms": [
+        "Program",
+        "Extension"
+      ],
+      "observed_by": "not-observed-by-this-release"
+    },
+    {
+      "id": "OBL-5E08",
+      "statement": "A Program does not modify the files the projection marks `authority: baseline`. A change to that content is taken by adopting a new Release.",
+      "terms": [
+        "Program",
+        "Baseline",
+        "Release",
+        "adopts"
+      ],
+      "observed_by": "not-observed-by-this-release"
+    }
+  ]
+}

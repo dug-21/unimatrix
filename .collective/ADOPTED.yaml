@@ -1,0 +1,9 @@
+{
+  "schema": "collective.adopted-release/1",
+  "authority": "baseline",
+  "program_identity": "prg_034cb0982e95d7ad0afb6460023c75ee",
+  "adopted_release": {
+    "release_identity": "0.2.0",
+    "content_digest": "sha256:7935df94930ec28261b560022bf3869de620f1ba50ee9b5ffbcc2838b556ee7a"
+  }
+}

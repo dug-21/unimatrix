@@ -1,0 +1,19 @@
+{
+  "schema": "collective.registration-set/2",
+  "source": {
+    "revision": "40ac83e74e9e611d6c332d47f01ecddf25559cd2",
+    "registry_digest": "sha256:10d7f311a9f4d2d08f8cb5171749df1985ad1c37be478802ed62c6f9e2d8df19"
+  },
+  "programs": [
+    {
+      "program_identity": "prg_034cb0982e95d7ad0afb6460023c75ee",
+      "display_name": "Unimatrix",
+      "location": "https://github.com/dug-21/unimatrix"
+    },
+    {
+      "program_identity": "prg_f900d720897fcd4592917f14fa92a97c",
+      "display_name": "arch-research",
+      "location": "https://github.com/dug-21/arch-research"
+    }
+  ]
+}
