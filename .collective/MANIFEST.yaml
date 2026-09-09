@@ -4,7 +4,7 @@
   "files": [
     {
       "path": ".collective/ADOPTED.yaml",
-      "digest": "sha256:656ea3e85d8fa32189384d7f49724a97ab68e601ce88e52ec8305fbe65fae5b8",
+      "digest": "sha256:d869477177625999b7cd9e16f9c414769474029a64fc5b75b6bcce11fcc4c79a",
       "authority": "baseline"
     },
     {
@@ -14,7 +14,7 @@
     },
     {
       "path": ".collective/README.md",
-      "digest": "sha256:a08eebd115896cf51b3927f833f8c7bbad893c9e50cb49ae60571a0bc36540c1",
+      "digest": "sha256:db5767b4c3bc3826671f06eb8d3a15713565d9ee2b606aef7c46cbd95281bd7d",
       "authority": "baseline"
     },
     {
@@ -29,12 +29,22 @@
     },
     {
       "path": ".collective/contract/REGISTRATIONS.yaml",
-      "digest": "sha256:6f6bfaa08f45250a68332e2f0f3234cb059e381cc1fae7986cb96e1b54ed8c0d",
+      "digest": "sha256:a669f5c3d735e7b81c598afabfc398f3f05c701d1d815b4ca5095790f58476d7",
       "authority": "baseline"
     },
     {
       "path": ".collective/contract/VOCABULARY.yaml",
       "digest": "sha256:9d18ff03c7e770a5ff6a99cb5e1cc13c900b83fa5ad61a00380889da83a44e49",
+      "authority": "baseline"
+    },
+    {
+      "path": ".collective/onboarding/DIRECTIVE.md",
+      "digest": "sha256:393182857501b2cbed85bccb0e2b0bc4db1ac945397ad5631f7d094e1d4cc2f7",
+      "authority": "baseline"
+    },
+    {
+      "path": ".collective/skills/collective-participation/SKILL.md",
+      "digest": "sha256:f355c47fafeee41db40835fcf6885bf4a3af964ec1728ccb97b5a4a719c8282d",
       "authority": "baseline"
     }
   ]

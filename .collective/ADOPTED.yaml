@@ -3,7 +3,7 @@
   "authority": "baseline",
   "program_identity": "prg_034cb0982e95d7ad0afb6460023c75ee",
   "adopted_release": {
-    "release_identity": "0.2.0",
-    "content_digest": "sha256:7935df94930ec28261b560022bf3869de620f1ba50ee9b5ffbcc2838b556ee7a"
+    "release_identity": "0.3.0",
+    "content_digest": "sha256:b383778d5e11431e30001d3ae56885b05c1d4ce2c1970d8c75388b3fbdeb22f4"
   }
 }
