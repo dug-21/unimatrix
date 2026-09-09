@@ -1,7 +1,7 @@
 {
   "schema": "collective.registration-set/2",
   "source": {
-    "revision": "40ac83e74e9e611d6c332d47f01ecddf25559cd2",
+    "revision": "c2d4eb74fdcdad55572e456cdc57e91f12dcc800",
     "registry_digest": "sha256:10d7f311a9f4d2d08f8cb5171749df1985ad1c37be478802ed62c6f9e2d8df19"
   },
   "programs": [

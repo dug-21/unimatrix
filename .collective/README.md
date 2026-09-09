@@ -20,3 +20,17 @@ Authoritative local source of each fact (path within this directory):
 This surface carries only classified, publishable material. It states no currency,
 drift, proposal, or adoption-status value; the adopted Release is read solely from
 `ADOPTED.yaml`, and only a Program's own merge makes this surface an adoption record.
+
+What you can verify locally, from this surface alone:
+
+- That every file listed in `MANIFEST.yaml` matches its recorded per-file digest,
+  byte for byte — the projected bytes are intact and unaltered.
+- That the content digest string recorded in `ADOPTED.yaml` is the one carried by the
+  cleared pre-admission verdict for this adoption.
+
+What this surface does not let you recompute locally: the adopted Release content
+digest itself. It is assigned collective-side when a candidate is promoted to a
+Release, over the candidate's canonical form, which this surface does not carry.
+Its authority therefore rests on the collective's pre-admission clearance of that
+Release, not on local recomputation from these files. Local recomputation covers
+per-file projection integrity (via `MANIFEST.yaml`), not the release-content binding.
