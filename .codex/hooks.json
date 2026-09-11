@@ -1,9 +1,9 @@
 {
-  "_comment": "IMPORTANT: --provider codex-cli is REQUIRED on all hook commands. Without it, events are mislabeled as claude-code in Unimatrix source_domain attribution. Live Codex CLI MCP hook support is currently non-functional due to Codex upstream bug #16732. This configuration file is provided for forward-compatibility only. When bug #16732 is resolved, these hooks will fire for MCP tool calls without any further changes to this file.",
+  "description": "Unimatrix lifecycle observation for Codex. --provider codex-cli is required for correct source_domain attribution.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "mcp__unimatrix__.*",
+        "matcher": "^context_cycle$|^mcp__unimatrix__context_cycle$",
         "hooks": [
           {
             "type": "command",
@@ -14,11 +14,42 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "mcp__unimatrix__.*",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
             "command": "unimatrix hook PostToolUse --provider codex-cli"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook UserPromptSubmit --provider codex-cli"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook SubagentStart --provider codex-cli"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unimatrix hook PreCompact --provider codex-cli"
           }
         ]
       }
