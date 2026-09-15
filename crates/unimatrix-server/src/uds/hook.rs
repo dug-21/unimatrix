@@ -22,6 +22,17 @@ use crate::infra::validation::{
 };
 use crate::uds::transcript_block::{extract_transcript_block, prepend_transcript, truncate_utf8};
 
+/// OpenCode event-name canonicalization + carrier validation (vnc-049 C2, ADR-005
+/// new-module-with-thin-wiring). Substantive logic lives here; `hook.rs` keeps only a
+/// const entry + one delegating call.
+pub mod opencode;
+
+/// Allowlist of recognized `--provider` hint values. An unknown value is logged and
+/// treated as `None` so the inference path (`normalize_event_name`) runs instead
+/// (security gate F-01). `"opencode"` (vnc-049 C2, AC-02a) makes the OpenCode hint path
+/// accepted instead of warned-and-dropped.
+const KNOWN_PROVIDERS: &[&str] = &["claude-code", "gemini-cli", "codex-cli", "opencode"];
+
 /// Default timeout for transport operations: 40ms.
 /// Leaves 10ms margin in the 50ms total budget for process startup + hash computation.
 const HOOK_TIMEOUT: Duration = Duration::from_millis(40);
@@ -102,6 +113,14 @@ fn map_to_canonical(event: &str) -> &'static str {
 /// - Unknown names return `("__unknown__", "unknown")` sentinel — caller substitutes
 ///   the raw event string (NFR-01).
 pub fn normalize_event_name(event: &str) -> (&'static str, &'static str) {
+    // OpenCode delegating arm (vnc-049 C2, ADR-004/005): OpenCode-specific aliases route
+    // through the hook/opencode.rs module. The C1 shim emits canonical names and always
+    // passes `--provider opencode` (the hint path), so this inference-path guard fires only
+    // for a future OpenCode-unique alias; today it is inert (the guard is `false` for the
+    // seven shared canonical names). It keeps provider inference honest and anchors parity.
+    if opencode::is_opencode_event_alias(event) {
+        return opencode::normalize(event);
+    }
     match event {
         // Gemini-unique names — unambiguous provider inference
         "BeforeTool" => ("PreToolUse", "gemini-cli"),
@@ -154,8 +173,8 @@ pub fn run(
     //              infers both the canonical name and the provider from the event string.
 
     // Allowlist validation: unknown --provider values are logged and treated as None
-    // so the inference path runs instead (security gate F-01).
-    const KNOWN_PROVIDERS: &[&str] = &["claude-code", "gemini-cli", "codex-cli"];
+    // so the inference path runs instead (security gate F-01). [`KNOWN_PROVIDERS`] is a
+    // module-level const (includes "opencode", vnc-049 C2).
     let provider = match &provider {
         Some(p) if KNOWN_PROVIDERS.contains(&p.as_str()) => provider,
         Some(p) => {
@@ -3860,6 +3879,54 @@ mod tests {
         let (canonical, provider) = normalize_event_name("CompletelyUnknownEvent");
         assert_eq!(canonical, "__unknown__");
         assert_eq!(provider, "unknown");
+    }
+
+    // -- vnc-049 C2: OpenCode provider arm (AC-02a, R-03, R-17) --
+
+    /// AC-02a / R-03.3: "opencode" is an allowlisted `--provider` hint value, so the
+    /// OpenCode hint path is accepted instead of warned-and-dropped. Necessary-but-not-
+    /// sufficient (#5427): the behavioral proof is the stored provider="opencode" (C5).
+    #[test]
+    fn test_known_providers_contains_opencode() {
+        assert!(KNOWN_PROVIDERS.contains(&"opencode"));
+    }
+
+    /// R-17 / ADR-005: the hook.rs inference-path arm delegates OpenCode canonicalization
+    /// to hook/opencode.rs rather than inlining it. The delegating guard is safe for the
+    /// seven shared canonical names (must not hijack claude-code inference) and routes a
+    /// future OpenCode-unique alias through the module's `normalize`.
+    #[test]
+    fn test_hook_rs_delegates_opencode_to_module() {
+        // The guard consulted by normalize_event_name is the module's function.
+        for event in opencode::OPENCODE_CANONICAL_EVENTS {
+            assert!(
+                !opencode::is_opencode_event_alias(event),
+                "shared canonical {event} must not be claimed as an opencode alias"
+            );
+            // Shared canonical names still infer claude-code (guard is inert today).
+            assert_eq!(normalize_event_name(event).1, "claude-code");
+        }
+        // The module is the single source of the opencode (name, provider) contract.
+        assert_eq!(
+            opencode::normalize("PreToolUse"),
+            ("PreToolUse", "opencode")
+        );
+    }
+
+    /// R-17: adding the OpenCode arm leaves the claude-code / gemini-cli inference paths
+    /// unchanged (adjacent-code non-regression).
+    #[test]
+    fn test_non_opencode_providers_unchanged() {
+        assert_eq!(
+            normalize_event_name("BeforeTool"),
+            ("PreToolUse", "gemini-cli")
+        );
+        assert_eq!(normalize_event_name("SessionEnd"), ("Stop", "gemini-cli"));
+        assert_eq!(
+            normalize_event_name("PreToolUse"),
+            ("PreToolUse", "claude-code")
+        );
+        assert_eq!(normalize_event_name("Stop"), ("Stop", "claude-code"));
     }
 
     /// AC-01: Category 2 events (cycle_start, etc.) are NOT inputs to normalize_event_name;
