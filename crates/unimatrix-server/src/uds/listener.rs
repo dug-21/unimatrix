@@ -3777,6 +3777,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let response = dispatch_request(
@@ -5220,6 +5221,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -5244,6 +5246,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -5270,6 +5273,7 @@ mod tests {
             }),
             topic_signal: Some("col-019".to_string()),
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -5291,6 +5295,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -5315,6 +5320,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -5414,6 +5420,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -5443,6 +5450,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -5463,6 +5471,7 @@ mod tests {
             payload: serde_json::json!({"error": "boom"}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -5986,6 +5995,7 @@ mod tests {
             payload,
             topic_signal,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         }
     }
@@ -7496,6 +7506,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: Some(unimatrix_engine::wire::CycleStampPayload {
                 topic: topic.to_string(),
                 phase: phase.map(|p| p.to_string()),
@@ -7516,6 +7527,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: topic_signal.map(|s| s.to_string()),
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         }
     }
@@ -9462,6 +9474,7 @@ mod tests {
             payload: serde_json::json!({"tool": "Read", "input": "some file"}),
             topic_signal: None, // no explicit signal — must be enriched from registry
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
 
@@ -9528,6 +9541,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
 
@@ -9981,6 +9995,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
 
@@ -10029,6 +10044,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let obs = extract_observation_fields(&event);
@@ -10058,6 +10074,7 @@ mod tests {
             }),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
 

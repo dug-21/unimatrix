@@ -39,6 +39,7 @@ fn make_stamped_event(
         payload: serde_json::json!({"tool_name": "Bash", "tool_input": {"cmd": "ls"}}),
         topic_signal,
         provider: None,
+        model_id: None,
         cycle_stamp: Some(CycleStampPayload {
             topic: topic.to_string(),
             phase: phase.map(|p| p.to_string()),

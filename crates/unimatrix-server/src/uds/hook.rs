@@ -368,6 +368,7 @@ fn parse_hook_input(raw: &str) -> HookInput {
                 transcript_path: None,
                 prompt: None,
                 provider: None,
+                model_id: None,
                 mcp_context: None,
                 extra: serde_json::Value::Null,
             }
@@ -571,6 +572,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         payload: input.extra.clone(),
                         topic_signal,
                         provider: input.provider.clone(),
+                        model_id: None,
                         cycle_stamp: None,
                     },
                 };
@@ -597,6 +599,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         payload: input.extra.clone(),
                         topic_signal,
                         provider: input.provider.clone(),
+                        model_id: None,
                         cycle_stamp: None,
                     },
                 };
@@ -614,6 +617,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             payload: input.extra.clone(),
                             topic_signal,
                             provider: input.provider.clone(),
+                            model_id: None,
                             cycle_stamp: None,
                         },
                     };
@@ -633,6 +637,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         }),
                         topic_signal: topic_signal.clone(),
                         provider: input.provider.clone(),
+                        model_id: None,
                         cycle_stamp: None,
                     })
                     .collect();
@@ -661,6 +666,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     }),
                     topic_signal,
                     provider: input.provider.clone(),
+                    model_id: None,
                     cycle_stamp: None,
                 },
             }
@@ -689,6 +695,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     payload: input.extra.clone(),
                     topic_signal,
                     provider: input.provider.clone(),
+                    model_id: None,
                     cycle_stamp: None,
                 },
             }
@@ -928,6 +935,7 @@ fn build_cycle_event_or_fallthrough(
             payload,
             topic_signal,
             provider: input.provider.clone(),
+            model_id: None,
             cycle_stamp: None,
         },
     }
@@ -946,6 +954,7 @@ fn generic_record_event(event: &str, session_id: String, input: &HookInput) -> H
             payload: input.extra.clone(),
             topic_signal,
             provider: input.provider.clone(),
+            model_id: None,
             cycle_stamp: None,
         },
     }
@@ -1188,6 +1197,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra: serde_json::Value::Null,
         }
@@ -1465,6 +1475,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra,
         }
@@ -1637,6 +1648,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra: serde_json::Value::Null,
         };
@@ -1655,6 +1667,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra,
         }
@@ -1763,6 +1776,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra: serde_json::Value::Null,
         };
@@ -2556,6 +2570,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra,
         }
@@ -2664,6 +2679,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra,
         }

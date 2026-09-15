@@ -793,6 +793,7 @@ fn test_prefix_session_id_record_event() {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         },
     };
@@ -816,6 +817,7 @@ fn test_prefix_session_id_record_events_batch() {
                 payload: serde_json::json!({}),
                 topic_signal: None,
                 provider: None,
+                model_id: None,
                 cycle_stamp: None,
             },
             ImplantEvent {
@@ -825,6 +827,7 @@ fn test_prefix_session_id_record_events_batch() {
                 payload: serde_json::json!({}),
                 topic_signal: None,
                 provider: None,
+                model_id: None,
                 cycle_stamp: None,
             },
         ],
@@ -938,6 +941,7 @@ fn test_prefix_session_id_preserves_event_type_single() {
             payload: serde_json::json!({"offset": 0, "bytes": "x"}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         },
     };
@@ -964,6 +968,7 @@ fn test_prefix_session_id_preserves_event_type_batch_every_element() {
         payload: serde_json::json!({}),
         topic_signal: None,
         provider: None,
+        model_id: None,
         cycle_stamp: None,
     };
     // Mixed batch: normal events around a transcript_delta.
@@ -1938,6 +1943,7 @@ async fn test_observe_http_delta_empty_bytes_routes_to_drop() {
         payload: serde_json::json!({"offset": 0, "bytes": ""}),
         topic_signal: None,
         provider: None,
+        model_id: None,
         cycle_stamp: None,
     };
     // Routes by event_type regardless of payload contents.
