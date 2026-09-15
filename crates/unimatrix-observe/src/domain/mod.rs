@@ -38,6 +38,22 @@ pub struct DomainPack {
     pub rules: Vec<RuleDescriptor>,
 }
 
+/// Sentinel event type claimed by the built-in opencode pack (vnc-049 C7, EC-07).
+///
+/// The opencode pack MUST NOT be given an empty `event_types` list (that means
+/// "claims ALL events" per `resolve_source_domain`, which would hijack legacy
+/// resolution for every event) and MUST NOT list the shared canonical names
+/// (`PreToolUse`, `PostToolUse`, …) that claude-code already claims — OpenCode
+/// emits those SAME canonical names, so sharing them makes `resolve_source_domain`
+/// non-deterministic between claude-code and opencode (HashMap iteration order).
+///
+/// The opencode pack exists only for category registration and `lookup("opencode")`;
+/// the AC-03 opencode discriminator is the persisted `source_domain` column stamped
+/// at ingest (vnc-049 C5, ADR-001), NOT event-type resolution. This sentinel — an
+/// opencode-namespaced name no other pack claims and that never appears on the wire —
+/// keeps `event_types` non-empty (so it claims nothing shared) without colliding.
+const OPENCODE_PACK_SENTINEL_EVENT: &str = "__opencode_pack_sentinel__";
+
 /// Returns the built-in claude-code domain pack.
 ///
 /// This pack is always loaded first; it cannot be absent. TOML config may
@@ -62,6 +78,36 @@ fn builtin_claude_code_pack() -> DomainPack {
             "procedure".to_string(),
         ],
         // Built-in claude-code detection rules are Rust impls, not DSL descriptors.
+        rules: vec![],
+    }
+}
+
+/// Returns the built-in opencode domain pack (vnc-049 C7, ADR-001).
+///
+/// This pack is loaded zero-config alongside claude-code. Its sole roles are
+/// category registration (`iter_packs` → `CategoryAllowlist` at startup) and the
+/// legacy NULL-row read fallback (`resolve_source_domain`, C6). It is explicitly
+/// NOT how a new opencode row reads back as `opencode` — that is the persisted
+/// `source_domain` column stamped at ingest (C5). See `OPENCODE_PACK_SENTINEL_EVENT`
+/// for why `event_types` is a non-shared sentinel rather than empty or canonical.
+fn builtin_opencode_pack() -> DomainPack {
+    DomainPack {
+        // Matches ^[a-z0-9_-]{1,64}$ (validated in DomainPackRegistry::new).
+        source_domain: "opencode".to_string(),
+        // Non-empty (does NOT claim all) and non-canonical (no collision with
+        // claude-code's shared event names) — see OPENCODE_PACK_SENTINEL_EVENT.
+        event_types: vec![OPENCODE_PACK_SENTINEL_EVENT.to_string()],
+        // Same 7 active INITIAL_CATEGORIES as claude-code.
+        categories: vec![
+            "convention".to_string(),
+            "decision".to_string(),
+            "feature".to_string(),
+            "goal".to_string(),
+            "lesson-learned".to_string(),
+            "pattern".to_string(),
+            "procedure".to_string(),
+        ],
+        // Built-in Rust detection rules, no DSL descriptors.
         rules: vec![],
     }
 }
@@ -92,8 +138,9 @@ impl DomainPackRegistry {
     /// an invalid domain pack (FM-01).
     pub fn new(packs: Vec<DomainPack>) -> Result<Self, ObserveError> {
         let mut map: HashMap<String, DomainPack> = HashMap::new();
-        // Built-in claude-code pack is always loaded first.
+        // Built-in packs are always loaded first (vnc-049 C7: opencode zero-config).
         map.insert("claude-code".to_string(), builtin_claude_code_pack());
+        map.insert("opencode".to_string(), builtin_opencode_pack());
 
         for pack in packs {
             // "unknown" is reserved — reject it (EC-04).
@@ -131,6 +178,8 @@ impl DomainPackRegistry {
     pub fn with_builtin_claude_code() -> Self {
         let mut map = HashMap::new();
         map.insert("claude-code".to_string(), builtin_claude_code_pack());
+        // opencode built-in is present zero-config too (vnc-049 C7).
+        map.insert("opencode".to_string(), builtin_opencode_pack());
         DomainPackRegistry {
             inner: Arc::new(RwLock::new(map)),
         }

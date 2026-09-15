@@ -345,8 +345,90 @@ fn test_iter_packs_returns_all_packs() {
     let packs = registry.iter_packs();
     let domains: Vec<&str> = packs.iter().map(|p| p.source_domain.as_str()).collect();
     assert!(domains.contains(&"claude-code"), "must include built-in");
+    assert!(
+        domains.contains(&"opencode"),
+        "must include built-in opencode"
+    );
     assert!(domains.contains(&"sre"), "must include registered sre pack");
-    assert_eq!(packs.len(), 2);
+    // claude-code + opencode built-ins + sre.
+    assert_eq!(packs.len(), 3);
+}
+
+// ── vnc-049 C7: opencode domain pack ───────────────────────────────────────────
+
+/// C7 T-1: the opencode DomainPack is present zero-config with source_domain
+/// "opencode" and the correct categories.
+#[test]
+fn test_opencode_domain_pack_registered() {
+    let registry = DomainPackRegistry::with_builtin_claude_code();
+    let pack = registry
+        .lookup("opencode")
+        .expect("opencode pack must be present zero-config");
+    assert_eq!(pack.source_domain, "opencode");
+    // Same 7 active INITIAL_CATEGORIES as claude-code.
+    for cat in [
+        "convention",
+        "decision",
+        "feature",
+        "goal",
+        "lesson-learned",
+        "pattern",
+        "procedure",
+    ] {
+        assert!(
+            pack.categories.contains(&cat.to_string()),
+            "opencode pack must include category '{cat}'"
+        );
+    }
+    // Also present via the config constructor.
+    assert!(
+        DomainPackRegistry::new(vec![])
+            .expect("empty config must succeed")
+            .lookup("opencode")
+            .is_some(),
+        "opencode pack must be present via new(vec![])"
+    );
+}
+
+/// C7 T-2 (R-15): the opencode pack's source_domain matches ^[a-z0-9_-]{1,64}$.
+/// Proven transitively — DomainPackRegistry::new validates the format and would
+/// reject an invalid built-in, so a successful construction is the assertion.
+#[test]
+fn test_opencode_source_domain_format_valid() {
+    let registry = DomainPackRegistry::new(vec![]).expect("built-in opencode must pass format");
+    let pack = registry.lookup("opencode").expect("opencode pack present");
+    assert!(!pack.source_domain.is_empty() && pack.source_domain.len() <= 64);
+    assert!(
+        pack.source_domain
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-'),
+        "opencode source_domain must match ^[a-z0-9_-]{{1,64}}$"
+    );
+}
+
+/// C7 T-3 (EC-07 / R-05): registering the opencode pack MUST NOT make a shared
+/// canonical event resolve to "opencode" — claude-code must still resolve
+/// deterministically for legacy rows. This guards the subtle trap that a domain
+/// pack keyed on shared event names cannot be the opencode discriminator (that is
+/// ADR-001's ingest stamp). The opencode pack claims only a private sentinel event.
+#[test]
+fn test_opencode_pack_does_not_shadow_claude_code_resolution() {
+    let registry = DomainPackRegistry::with_builtin_claude_code();
+    // Shared canonical names must remain claude-code (not shadowed by opencode).
+    for event in ["PreToolUse", "PostToolUse", "SubagentStart", "SubagentStop"] {
+        assert_eq!(
+            registry.resolve_source_domain(event),
+            "claude-code",
+            "opencode pack must not shadow claude-code resolution for '{event}'"
+        );
+    }
+    // The opencode pack must NOT claim all events (empty event_types trap): an
+    // unrelated event must still resolve to "unknown", not "opencode".
+    assert_eq!(
+        registry.resolve_source_domain("some_unrelated_event"),
+        "unknown",
+        "opencode pack must not claim-all: unrelated events stay 'unknown'"
+    );
 }
 
 // ── Threshold rule tests ───────────────────────────────────────────────────────
