@@ -322,6 +322,13 @@ enum Command {
         /// When absent, provider is inferred from the event name (vnc-013, ADR-002).
         #[arg(long)]
         provider: Option<String>,
+
+        /// Backend model identity for this event, as "<providerID>/<modelID>"
+        /// (e.g. "ollama/qwen3-coder"). Threaded to ImplantEvent.model_id and
+        /// persisted at ingest. Validated against the carrier charset; an invalid
+        /// or absent value yields None (vnc-049 C2, ADR-002, R-15).
+        #[arg(long)]
+        model: Option<String>,
     },
 
     /// Export the knowledge base to JSONL format.
@@ -565,10 +572,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // C-10: Sync subcommands MUST be dispatched before any Tokio runtime init.
     // The match below runs in declaration order; all sync paths return here.
     match cli.command {
-        Some(Command::Hook { event, provider }) => {
+        Some(Command::Hook {
+            event,
+            provider,
+            model,
+        }) => {
             // Sync path: NO tokio, NO tracing init, NO database open
             // Minimal startup for <50ms budget
-            unimatrix_server::uds::hook::run(event, provider, cli.project_dir)
+            unimatrix_server::uds::hook::run(event, provider, model, cli.project_dir)
         }
         Some(Command::Export {
             output,
