@@ -13,6 +13,7 @@ const transport = require("./hook-client/transport-http.js");
 const { resolveGitFile, computeProjectHash } = require("./hook-client/config.js");
 const { decodeBundle } = require("./hook-client/bundle.js");
 const credstore = require("./hook-client/credstore.js");
+const { maybeProvisionOpenCode } = require("./opencode-install.js");
 
 /**
  * Loud, deterministic message emitted on the legacy `--remote`/`--token` path:
@@ -620,6 +621,11 @@ async function init(options) {
   const skillActions = copySkills(projectRoot, dryRun);
   actions.push(...skillActions);
 
+  // Step 5b: OpenCode provisioning (ADR-006, C9). Strictly additive and
+  // fail-safe: a no-op when OpenCode is not detected, and it never touches the
+  // mcp.unimatrix / Ollama provider retrieval sentinel (AC-05, C10 regression).
+  actions.push(...maybeProvisionOpenCode(projectRoot, { dryRun }));
+
   // Shared env for all binary invocations: libonnxruntime lives next to the binary
   const binDir = path.dirname(binaryPath);
   const ldPath = process.env.LD_LIBRARY_PATH;
@@ -680,5 +686,6 @@ module.exports = {
   copySkills,
   printSummary,
   readJsonOrEmpty,
+  maybeProvisionOpenCode,
   LEGACY_MCP_UNSUPPORTED_MESSAGE,
 };
