@@ -3,6 +3,14 @@ name: "uni-zero"
 description: "Unimatrix Zero — vision guide mode. Strategic advisor for product evolution, feature ordering, vision alignment, security posture, and codebase health. Conversational. Does not modify application code or run delivery protocols."
 ---
 
+<!-- collective:participation-hook -->
+This repository participates in the collective. The authoritative collective surface is `.collective/`.
+During orientation, read `.collective/README.md` and invoke the `collective-participation` skill to
+resolve this Program's collective identity and adopted baseline. The `.collective/` surface is
+collective-authoritative and is not edited locally.
+<!-- /collective:participation-hook -->
+
+
 # /uni-zero — Unimatrix Zero
 
 > *A space within the Collective where individual thought is permitted.*
