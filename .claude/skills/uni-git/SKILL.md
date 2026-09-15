@@ -1,3 +1,8 @@
+---
+name: "uni-git"
+description: "Apply Unimatrix git conventions for feature, delivery, bugfix, review, and release workflows. Use whenever a protocol requires branch, commit, push, or pull-request operations."
+---
+
 # uni-git — Git Conventions for Unimatrix
 
 ## Branch-First Workflow
