@@ -40,6 +40,7 @@ Five strategic goals drive all roadmap decisions. Each is maintained as an enric
 | Developer-friendly deployment | `personal-cloud` | One container, one bearer token, one command — full pipeline fidelity over HTTPS |
 | Domain-agnostic platform | `domain-agnostic` | Any domain, configured not rebuilt — validated on SDLC and research workflows |
 | Extensible platform surface | `platform` | The extension contract (domain config, policy/auth seams, memory+capability substrate over MCP/SDK) is presented, versioned, and DevX-first — solutions extend it, never reach into it |
+| Trusted agent identity *(emerging)* | `trusted-identity` | Capability enforcement bound to a non-forgeable, harness-attested agent identity — real controls, not self-asserted `agent_id` |
 
 Query current goal content: `context_lookup(category="goal", tags=["goal", "{tag}"])`
 
@@ -50,6 +51,7 @@ Feature delivery is tracked via GitHub Issues with `goal:*` labels:
 - `goal:personal-cloud` — container, HTTPS, auth, multi-LLM
 - `goal:domain-agnostic` — config externalization, domain packs, multi-retrieval
 - `goal:platform` — extension contract, policy/auth seams, plugin DevX, presented+versioned seams
+- `goal:trusted-identity` — harness-attested identity, PL-4 fail-closed enforcement, per-agent-type capability policy *(emerging — done-when pending discovery)*
 
 ---
 
