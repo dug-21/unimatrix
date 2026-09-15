@@ -1,6 +1,6 @@
 # Unimatrix - Non-Negotiable Rules
 
-1. **Feature work uses protocols and delegated agents where available** - read the protocol for the session type and execute it as Design/Delivery/Bugfix Leader. You are the scrum master for the session. Follow the protocol exactly within the capabilities of the current agent environment.
+1. **Feature work uses delegated protocol leaders** - spawn a dedicated `uni-scrum-master` subagent to lead the session. The primary agent does not assume the SM role: it kicks off the SM, relays human checkpoints, resumes the same SM thread with the human's decision, and presents the final result. The SM reads the protocol and its agent definition, spawns specialists, manages gates, and does not generate worker artifacts itself.
 
    | Intent | Session Type | Protocol |
    |--------|--------------|----------|
@@ -13,7 +13,7 @@
 
    **Research session rule**: Phase 1 (scope completion) happens interactively with the human (uni-zero session), not in a research session. A research session begins only when `SCOPE.md` is complete. Single spike: invoke `uni-spike-researcher` where available. Multiple dependent spikes: invoke `uni-research-sm` where available.
 
-   Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and behavioral rules. The protocol defines what to do and when; the SM definition defines how you behave.
+   Every delegated role must read its canonical definition at `.claude/agents/uni/{role}.md`. For Codex, map Claude `Task`/`Agent` calls to subagent spawning and `SendMessage` to follow-up on the same subagent thread. Read `.claude/agents/uni/uni-scrum-master.md` for the SM's role boundaries and escalation handshake. The protocol defines what to do and when; the agent definition defines how the role behaves.
 
    For PR review: `/uni-review-pr`. For retrospective: `/uni-retro`.
 2. **Anti-stub**: Never leave TODO, `unimplemented!()`, `todo!()`, or placeholder functions. Ask if blocked.
@@ -57,6 +57,7 @@ Features use `{phase}-{NNN}` naming. Track via **GitHub Issues**; commits refere
 - Never proactively create documentation unless explicitly requested.
 - Never store keys or secrets in code. Use `.env`.
 - Always follow predefined protocols for work unless specifically directed not to.
+- For Rust or Cargo work, read and follow `.claude/rules/rust-workspace.md` before acting; Claude applies this contextually, while Codex must load it explicitly.
 - **Test infrastructure is cumulative** - extend existing fixtures and helpers, never create isolated scaffolding.
 - **Search efficiently**: use `rg` for content search and `rg --files` for file discovery. Use shell commands for cargo, git, and other project tooling as needed.
 
@@ -97,6 +98,11 @@ mcp__unimatrix__context_get({
 |-----------|---------|-------|
 | `id`, `original_id` | `3267` (integer) | `"3267"` (string) |
 | `tags` | `["adr", "col-031"]` (JSON array) | `"adr, col-031"` or `"[\"adr\"]"` |
+| `agent_id` | `"uni-rust-dev"` (bare agent type) | `"col-031-rust-dev"`, feature-suffixed values, or omitted |
 | String content | `"content here"` | `"content \"quoted\" here"` - avoid escaped quotes inside strings |
+
+**`agent_id` is always the bare agent type name** (`uni-scrum-master`, `uni-rust-dev`, `uni-architect`, etc.), never feature-suffixed and never omitted. Feature identity belongs in `topic`, `feature_cycle`, or `tags`.
+
+If Unimatrix MCP tools are unavailable in the current Codex host, report that capability gap immediately. Do not fabricate calls or silently substitute file-based ADRs or outcomes.
 
 Do not store workflow choreography in Unimatrix. Protocols live in `.claude/protocols/uni/`.
