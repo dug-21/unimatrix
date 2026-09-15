@@ -1,6 +1,8 @@
 {
   "model": "claude-opus-4-8",
-  "enabledMcpjsonServers": ["unimatrix"],
+  "enabledMcpjsonServers": [
+    "unimatrix"
+  ],
   "hooks": {
     "SessionStart": [
       {
@@ -8,7 +10,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "LD_LIBRARY_PATH=/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin /usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix hook SessionStart"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js SessionStart"
           }
         ]
       }
@@ -19,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "LD_LIBRARY_PATH=/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin /usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix hook Stop"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js Stop"
           }
         ]
       }
@@ -30,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "LD_LIBRARY_PATH=/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin /usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix hook UserPromptSubmit"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js UserPromptSubmit"
           }
         ]
       }
@@ -41,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "LD_LIBRARY_PATH=/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin /usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix hook PreToolUse"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PreToolUse"
           }
         ]
       }
@@ -52,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "LD_LIBRARY_PATH=/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin /usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix hook PostToolUse"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PostToolUse"
           }
         ]
       }
@@ -63,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "LD_LIBRARY_PATH=/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin /usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix hook PostToolUseFailure"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PostToolUseFailure"
           }
         ]
       }
@@ -74,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "LD_LIBRARY_PATH=/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin /usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix hook SubagentStart"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js SubagentStart"
           }
         ]
       }
@@ -85,7 +87,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "LD_LIBRARY_PATH=/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin /usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix hook PreCompact"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PreCompact"
           }
         ]
       }
