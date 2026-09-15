@@ -1,0 +1,66 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".claude/rules/**/*.md",
+    ".claude/protocols/uni/uni-agent-routing.md"
+  ],
+  "skills": {
+    "paths": [
+      ".claude/skills"
+    ]
+  },
+  "subagent_depth": 3,
+  "default_agent": "uni-scrum-master",
+  "permission": {
+    "edit": "allow",
+    "bash": {
+      "*": "ask",
+      "git status": "allow",
+      "git diff*": "allow",
+      "git log*": "allow"
+    }
+  },
+  "mcp": {
+    "unimatrix": {
+      "type": "local",
+      "command": [
+        "/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix"
+      ],
+      "environment": {
+        "LD_LIBRARY_PATH": "/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin"
+      },
+      "enabled": true
+    }
+  },
+  "provider": {
+    "myollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "MyOllama",
+      "options": {
+        "baseURL": "http://100.122.119.72:11434/v1"
+      },
+      "models": {
+        "gemma4:26B": {
+          "name": "Gemma 4 26B"
+        },
+        "qwen3.8:latest": {
+          "name": "Qwen 3.8"
+        },
+        "qwen3:4b-instruct": {
+          "name": "Qwen 3 4B Instruct"
+        },
+        "gemma3:12b": {
+          "name": "Gemma 3 12B"
+        },
+        "gemma3:4b": {
+          "name": "Gemma 3 4B"
+        },
+        "qwen3:30b-a3b": {
+          "name": "Qwen 3 30B A3B"
+        }
+      }
+    }
+  }
+}
