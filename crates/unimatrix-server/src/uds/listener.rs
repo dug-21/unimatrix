@@ -1485,6 +1485,10 @@ pub(crate) async fn dispatch_request(
                     topic_signal: enriched_signal,
                     phase,                         // crt-043
                     topic_source: enriched_source, // vnc-030 (ADR-005)
+                    // vnc-049: context_search query row is not a provider ingest event —
+                    // no source_domain stamp / model_id (read-derived fallback applies).
+                    source_domain: None,
+                    model_id: None,
                 };
 
                 let store_for_obs = Arc::clone(store);
@@ -3220,6 +3224,46 @@ struct ObservationRow {
     /// 'declared'|'extracted'|'registry-fill'|'vote'|NULL. Set at insert time only;
     /// never updated afterward (rows are immutable — ADR-005 §1).
     topic_source: Option<String>,
+    /// Provider-first source_domain stamp (vnc-049, ADR-001). Some("opencode") ONLY for
+    /// opencode events; None for claude-code/gemini-cli/codex-cli/None → NULL → read-derived
+    /// resolution (R-05). This is the PINNED ingest derivation site (OQ-4): the stored
+    /// opencode source_domain originates here, never falls to the claude-code default.
+    source_domain: Option<String>,
+    /// Backend model identity carrier (vnc-049, ADR-002). Validated against
+    /// `is_valid_model_id` at this boundary (R-15); an invalid value drops to None + warn,
+    /// never reaches SQL raw.
+    model_id: Option<String>,
+}
+
+/// Derive the persisted `source_domain` from an ImplantEvent (vnc-049 ADR-001, OQ-4).
+///
+/// OPENCODE-ONLY STAMP (human ruling 2026-09-15, R-05): fires ONLY when provider is
+/// `"opencode"`. Every other provider (claude-code/gemini-cli/codex-cli) and a missing
+/// provider return `None` → the column stays NULL → the read path resolves it via today's
+/// read-derived resolution (T-SEC-12/13 unchanged). This function NEVER returns
+/// `"claude-code"`: it is fail-loud by construction — there is no silent default here.
+fn derive_source_domain(event: &unimatrix_engine::wire::ImplantEvent) -> Option<String> {
+    match event.provider.as_deref() {
+        Some("opencode") => Some("opencode".to_string()),
+        _ => None,
+    }
+}
+
+/// Resolve + validate the persisted `model_id` from an ImplantEvent (vnc-049 ADR-002, R-15).
+///
+/// Validated against the C4 carrier charset (`is_valid_model_id`, `^[a-z0-9._/-]{1,128}$`).
+/// An invalid value is dropped to `None` with a warn (fail-open) — never passed raw to SQL.
+fn resolve_model_id(event: &unimatrix_engine::wire::ImplantEvent) -> Option<String> {
+    match event.model_id.as_deref() {
+        Some(m) if unimatrix_engine::wire::is_valid_model_id(m) => Some(m.to_string()),
+        Some(_bad) => {
+            tracing::warn!(
+                "vnc-049: invalid model_id dropped at ingest (charset/length); stored NULL"
+            );
+            None
+        }
+        None => None,
+    }
 }
 
 /// Extract observation fields from an ImplantEvent for SQL insertion.
@@ -3306,6 +3350,18 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
         hook
     );
 
+    // vnc-049 (ADR-001/ADR-002): derive attribution at THIS pinned ingest site (OQ-4).
+    let source_domain = derive_source_domain(event);
+    let model_id = resolve_model_id(event);
+
+    // Fail-loud canary (ADR-001 §4, R-02.4): an opencode event MUST resolve a source_domain
+    // stamp here. If a future edit makes the stamp unresolvable, trip loud rather than let
+    // the row fall silently to the read-derived claude-code default.
+    debug_assert!(
+        !(event.provider.as_deref() == Some("opencode") && source_domain.is_none()),
+        "opencode event reached write path with no source_domain stamp (vnc-049 ADR-001)"
+    );
+
     ObservationRow {
         session_id,
         ts_millis,
@@ -3317,6 +3373,8 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
         topic_signal: event.topic_signal.clone(),
         phase: None, // crt-043: captured at call site before spawn_blocking (FR-C-05)
         topic_source: None, // vnc-030: set by apply_stamp_to_row before insert (ADR-005)
+        source_domain, // vnc-049 ADR-001: opencode-only stamp, else NULL (read-derived)
+        model_id,    // vnc-049 ADR-002: validated backend model identity, else NULL
     }
 }
 
@@ -3388,8 +3446,8 @@ fn insert_observation(
     tokio::runtime::Handle::current()
         .block_on(
             sqlx::query(
-                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase, topic_source)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase, topic_source, source_domain, model_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             )
             .bind(&obs.session_id)
             .bind(obs.ts_millis)
@@ -3401,6 +3459,8 @@ fn insert_observation(
             .bind(&obs.topic_signal)
             .bind(&obs.phase) // crt-043: ?9
             .bind(&obs.topic_source) // vnc-030: ?10 — topic content via parameterized bind, never interpolation (ADR-005)
+            .bind(&obs.source_domain) // vnc-049 ADR-001: ?11 — opencode-only stamp, parameterized bind
+            .bind(&obs.model_id) // vnc-049 ADR-002: ?12 — validated model identity, parameterized bind (R-15)
             .execute(pool),
         )
         .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
@@ -3429,8 +3489,8 @@ fn insert_observations_batch(
             .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
         for obs in batch {
             sqlx::query(
-                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase, topic_source)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase, topic_source, source_domain, model_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             )
             .bind(&obs.session_id)
             .bind(obs.ts_millis)
@@ -3442,6 +3502,8 @@ fn insert_observations_batch(
             .bind(&obs.topic_signal)
             .bind(&obs.phase) // crt-043: ?9
             .bind(&obs.topic_source) // vnc-030: ?10 — parameterized bind, never interpolation (ADR-005)
+            .bind(&obs.source_domain) // vnc-049 ADR-001: ?11 — opencode-only stamp, parameterized bind
+            .bind(&obs.model_id) // vnc-049 ADR-002: ?12 — validated model identity, parameterized bind (R-15)
             .execute(&mut *txn)
             .await
             .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
@@ -7544,6 +7606,8 @@ mod tests {
             topic_signal: topic_signal.map(|s| s.to_string()),
             phase: None,
             topic_source: None,
+            source_domain: None,
+            model_id: None,
         }
     }
 
@@ -10145,4 +10209,10 @@ mod tests {
     // ingest+storage path; stored raw, read-path resolves via a config-built
     // DomainPackRegistry. Shares this module's helpers. 500-line rule.
     mod foreign_domain;
+
+    // vnc-049 C5 (#986): AC-03 (stored source_domain=opencode + mandatory negative) and
+    // AC-06 GATING (local-vs-cloud model_id distinctness) through the real assembled
+    // dispatch→insert→SELECT path; R-05 opencode-only stamp, R-15 model_id charset,
+    // ADR-001 fail-loud. Shares this module's helpers. 500-line rule (ADR-005).
+    mod opencode_persistence;
 }
