@@ -29,8 +29,8 @@ retrieval (C10).
 
 ## Component Map
 
-Components from ARCHITECTURE.md §Component Breakdown (C1..C9). Pseudocode and test-plan file paths are
-populated during Session 2 Stage 3a.
+Components from ARCHITECTURE.md §Component Breakdown (C1..C9). Pseudocode and test-plan file paths
+CONFIRMED during Session 2 Stage 3a (all files present, paths verified).
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
@@ -44,16 +44,33 @@ populated during Session 2 Stage 3a.
 | C8 Parity corpus (opencode cases) | pseudocode/c8-parity-corpus.md | test-plan/c8-parity-corpus.md |
 | C9 Installer OpenCode branch (init.js + new opencode-install.js) | pseudocode/c9-installer.md | test-plan/c9-installer.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (confirmed — Stage 3a)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: the actual file paths are filled during delivery. C1/C3/C9 are JS/TS surfaces (uni-js-dev);
-C2/C4/C5/C6/C7/C8 are Rust surfaces (uni-rust-dev). C1+C3+C8 are coupled and must change together
-(col-022 split-brain — see Constraints).
+Note: C1/C3/C9 are JS/TS surfaces (uni-js-dev); C2/C4/C5/C6/C7/C8 are Rust surfaces (uni-rust-dev).
+C1+C3+C8 are coupled and must change together (col-022 split-brain — see Constraints).
+
+### Stage 3b Wave Plan (from pseudocode/OVERVIEW.md dependency ordering)
+
+Critical path: C4 → C5 → {C2, C1} → C8. col-022 override: the C2+C3+C8 triad (and C1's event map)
+must land together, so the waves sequence *implementation start*, not separate merges for that triad.
+
+- **Wave 1 (foundation):** C4 (wire carriers, Rust), C7 (domain pack, Rust), C5 schema migration (Rust)
+- **Wave 2 (ingest + normalize):** C5 write-path bind (Rust), C2 (Rust provider arm)
+- **Wave 3 (read + edge + plugin):** C6 (read path, Rust), C3 (JS mirror), C1 (plugin shim, TS)
+- **Wave 4 (guards + provisioning):** C8 (parity corpus, Rust), C9 (installer, JS)
+
+Delivery-time corrections flagged by Stage 3a (dev agents resolve live, gate reviews):
+- Parity-corpus target file is `uds/parity_corpus_cases*.rs` + `parity_corpus_gen.rs` (drift gate),
+  NOT `parity_corpus_uds.rs` — confirm at C8 implementation.
+- Schema version: `CURRENT_SCHEMA_VERSION`=31 today → next is 32; resolve live, do NOT hardcode.
+- OQ-4 derivation site: pin the ADR-001 ingest site that stamps stored `source_domain` (C5).
+- OQ-A: two `ObservationRow` structs (write-path listener.rs vs read observations.rs) — confirm
+  which carries `source_domain`/`model_id` and where it is constructed from `ImplantEvent`.
 
 ## Resolved Decisions
 
