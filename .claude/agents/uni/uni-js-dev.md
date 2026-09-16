@@ -158,4 +158,5 @@ Include in your agent report:
 - [ ] All modified files are within the scope defined in the brief
 - [ ] Module system (ESM/CJS) matches the edited file; no mixed module syntax
 - [ ] Did NOT run or modify integration tests (Stage 3c handles those)
+- [ ] Agent report written to `product/features/{feature-id}/agents/{agent-id}-report.md` (swarm runs only)
 - [ ] Knowledge Stewardship report block included with Queried and Stored/Declined entries
