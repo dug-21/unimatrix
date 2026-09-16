@@ -14,6 +14,7 @@ const { resolveGitFile, computeProjectHash } = require("./hook-client/config.js"
 const { decodeBundle } = require("./hook-client/bundle.js");
 const credstore = require("./hook-client/credstore.js");
 const { maybeProvisionOpenCode } = require("./opencode-install.js");
+const { wire } = require("./wire.js");
 
 /**
  * Loud, deterministic message emitted on the legacy `--remote`/`--token` path:
@@ -659,16 +660,7 @@ async function init(options) {
   const binaryPath = resolveBinary();
   actions.push("Binary: " + binaryPath);
 
-  // Step 3: Write/merge .mcp.json
-  const mcpActions = writeMcpJson(projectRoot, binaryPath, dryRun);
-  actions.push(...mcpActions);
-
-  // Step 4: Merge hooks into .claude/settings.json
-  const settingsPath = path.join(projectRoot, ".claude", "settings.json");
-  const settingsResult = mergeSettings(settingsPath, binaryPath, { dryRun });
-  actions.push(...settingsResult.actions);
-
-  // Step 5: Install skill files (ADR-004: install-if-absent; `--force`
+  // Step 3: Install skill files (ADR-004: install-if-absent; `--force`
   // overwrites Unimatrix-owned skills only, never foreign files, never wiring).
   const skillActions = installSkills(projectRoot, {
     force: opts.force || false,
@@ -676,10 +668,15 @@ async function init(options) {
   });
   actions.push(...skillActions);
 
-  // Step 5b: OpenCode provisioning (ADR-006, C9). Strictly additive and
-  // fail-safe: a no-op when OpenCode is not detected, and it never touches the
-  // mcp.unimatrix / Ollama provider retrieval sentinel (AC-05, C10 regression).
-  actions.push(...maybeProvisionOpenCode(projectRoot, { dryRun }));
+  // Step 4: Wiring layer (nan-023, ADR-005 §1) — claude MCP + hooks (reused
+  // writers, byte-for-byte common path, SR-07), opencode plugin + retrieval, and
+  // codex all run through ONE `wire()` call so `init` and the `wire` verb share
+  // one path and cannot drift. `--force` is NEVER forwarded here (C-12): wiring
+  // is always-additive. No `--harness` from init → opencode/codex NEW user-owned
+  // entries are intent-gated (skipped-intent) until the user opts in.
+  const clientPath = resolveClientPath();
+  const wireResult = wire(projectRoot, { clientPath, binaryPath, dryRun });
+  actions.push(...wireResult.actions);
 
   // Shared env for all binary invocations: libonnxruntime lives next to the binary
   const binDir = path.dirname(binaryPath);
@@ -730,9 +727,25 @@ async function init(options) {
   printSummary(actions, dryRun);
 }
 
+/**
+ * Resolve the absolute path to the installed JS hook client. `require.resolve`
+ * is the contract; the computed-path fallback yields the identical absolute path
+ * once index.js exists (mirrors initRemote Step 2).
+ *
+ * @returns {string}
+ */
+function resolveClientPath() {
+  try {
+    return require.resolve("./hook-client/index.js");
+  } catch (_err) {
+    return path.join(__dirname, "hook-client", "index.js");
+  }
+}
+
 module.exports = {
   init,
   initRemote,
+  resolveClientPath,
   resolveRemoteTarget,
   detectProjectRoot,
   writeMcpJson,
