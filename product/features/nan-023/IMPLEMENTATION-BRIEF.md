@@ -38,14 +38,14 @@ Give the Unimatrix installation package (JS client / dogfood mechanism) a non-de
 | CLI routing (`bin/unimatrix.js`) | pseudocode/cli-routing.md | test-plan/cli-routing.md |
 | C14 verifier (`test/`) | pseudocode/c14-verifier.md | test-plan/c14-verifier.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts (produced in Stage 3a)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
 | Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
 | Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists expected components from the architecture — actual file paths are filled during delivery.
+Component Map and Cross-Cutting Artifact paths above are confirmed against the files produced in Stage 3a (pseudocode/ and test-plan/ both carry one file per Component Map component plus OVERVIEW.md). Gate-0 (codex trust-feasibility) outcome recorded in test-plan/OVERVIEW.md: cloud trust-seeding NOT feasible in CI → codex-cloud self-firing (Q4 evidence column) is a documented conditional; local firing, command-level firing, and retrieval-return stay HARD; C14 codex leg claimed proven(local)/partial(cloud), never silent-skipped.
 
 ## Resolved Decisions
 
