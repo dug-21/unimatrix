@@ -27,7 +27,7 @@ cascade: three paths + parity + back-fill + idempotency), #907/#918/#930 (proven
 | **R-12** | **PreCompact experimental API (ADR-009 / SR-03).** `experimental.session.compacting` changes/vanishes upstream; leg breaks. Degraded/flagged-leg posture — must fail safe and stay documented, NOT fail the cap. | Med | Med | **Medium** |
 | **R-13** | **Plugin transport fail-open (NFR-02).** Per-event `$ unimatrix hook` shell/UDS failure (binary absent, socket down) blocks or crashes the user's OpenCode session instead of failing open. | Med | Med | **Medium** |
 | **R-14** | **Bus-derived field synthesis corruption.** SessionStart/Stop lack `transcript_path`; `cwd`/`worktree` derived from `PluginInput`. Bad derivation stores wrong/empty fields as if full-fidelity. | Med | Low | **Medium** |
-| **R-15** | **Untrusted plugin/installer input (security).** Event payloads, `model:{providerID,modelID}`, tool args, and `opencode.json` are untrusted; unvalidated `model_id`/`source_domain` breaks the `^[a-z0-9_-]{1,64}$` contract or reaches SQL/paths. | Med | Low | **Medium** |
+| **R-15** | **Untrusted plugin/installer input (security).** Event payloads, `model:{providerID,modelID}`, tool args, and `opencode.json` are untrusted; unvalidated `source_domain` breaks its `^[a-z0-9_-]{1,64}$` contract, unvalidated `model_id` breaks its `^[a-z0-9._/-]{1,128}$` contract, or either reaches SQL/paths. | Med | Low | **Medium** |
 | **R-16** | **AC-01 false-pass on parity gap.** Unreachable/degraded legs (SubagentStart injection, degraded Stop) reported as passing full-fidelity, or silently dropping data, instead of recorded as the measured parity gap (FR-12). | Med | Med | **Medium** |
 | **R-17** | **Over-cap wiring surgery (ADR-005).** Minimal wiring into over-cap `listener.rs`/`hook.rs`/`observation.rs`/`db.rs`/`migration.rs` regresses adjacent untested code, or an ad-hoc mid-delivery carve introduces untested surgery. | Low | Med | **Low** |
 
@@ -241,15 +241,16 @@ outcome.
 - PreCompact experimental API absent/renamed (R-12).
 - Empty/malformed bus payload; missing `transcript_path`; `cwd` underivable (R-14).
 - Installer run twice; `opencode.json` with pre-existing partial plugin array (R-09).
-- `model_id`/`source_domain` exceeding or violating `^[a-z0-9_-]{1,64}$` (R-15).
+- `source_domain` exceeding/violating `^[a-z0-9_-]{1,64}$`, or `model_id` exceeding/violating `^[a-z0-9._/-]{1,128}$` (R-15).
 
 ## Security Risks
 
 Untrusted-input surfaces and blast radius:
 - **Plugin event payloads (C1).** OpenCode event bus / typed-hook data (prompt, tool args, tool
   output, `model:{providerID,modelID}`) is untrusted. Blast radius: fields flow into `HookInput` →
-  `ImplantEvent` → DB INSERT. `model_id` and `source_domain` MUST be validated against
-  `^[a-z0-9_-]{1,64}$`; reject/sanitize, never pass raw to SQL or path construction (R-15).
+  `ImplantEvent` → DB INSERT. `source_domain` MUST be validated against `^[a-z0-9_-]{1,64}$` and
+  `model_id` against `^[a-z0-9._/-]{1,128}$` (wider charset admits namespaced IDs like
+  `ollama/qwen3-coder`); reject/sanitize, never pass raw to SQL or path construction (R-15).
 - **Spoofable identity (R-07).** `session.agent` must come only from OpenCode's validated
   `agent.get()` field on the observe channel; tool args are attacker-controllable and must never set
   agent identity. Protects AC-04 alignment integrity and the AC-07 seam.
