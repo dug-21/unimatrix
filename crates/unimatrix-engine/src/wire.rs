@@ -83,6 +83,17 @@ pub struct HookInput {
     #[serde(default)]
     pub provider: Option<String>,
 
+    /// Backend model identity, format "<providerID>/<modelID>" (e.g. "ollama/qwen3-coder").
+    /// Populated by hook::run() from the --model CLI arg (like `provider`), NOT from stdin JSON.
+    /// `#[serde(default)]` so existing claude-code/gemini/codex hook JSON (which omits it)
+    /// deserializes to None without error (vnc-049 C4, ADR-002, R-10.2).
+    ///
+    /// The value contains `/` (provider/model), so it is validated against the distinct
+    /// [`is_valid_model_id`] carrier charset (`^[a-z0-9._/-]{1,128}$`), NOT the narrower
+    /// `source_domain` contract.
+    #[serde(default)]
+    pub model_id: Option<String>,
+
     /// Gemini CLI structured MCP context field. Present in BeforeTool and AfterTool
     /// payloads. Structure: { "server_name": str, "tool_name": str, "url": str }.
     /// Also captured by the `extra` flatten, but the named field enables typed access
@@ -274,6 +285,14 @@ pub struct ImplantEvent {
     /// produce wire frames without this field; the listener handles missing field as None.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
+
+    /// Backend model identity propagated from HookInput.model_id through normalization.
+    /// None for events predating vnc-049 or without a model (cloud default). Mirrors `provider`:
+    /// `skip_serializing_if = "Option::is_none"` keeps a frame without `model_id` byte-identical
+    /// on the wire (frozen-fixture safety, R-10.2). Value format `<providerID>/<modelID>`,
+    /// validated against [`is_valid_model_id`] at the ingest boundary (vnc-049 C4, ADR-002).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
 
     /// F4b client-declared cycle attribution (ADR-003). Some => this row
     /// attributes from the stamp (topic_source='declared'); None => legacy
@@ -481,6 +500,27 @@ pub fn deserialize_response(data: &[u8]) -> Result<HookResponse, TransportError>
     serde_json::from_slice(data).map_err(|e| TransportError::Codec(e.to_string()))
 }
 
+/// Maximum length of a valid `model_id` carrier value (chars).
+pub const MODEL_ID_MAX_LEN: usize = 128;
+
+/// Validate a `model_id` carrier value (vnc-049 C4, R-15).
+///
+/// The carrier value is `"<providerID>/<modelID>"` (e.g. `"ollama/qwen3-coder"`) and therefore
+/// **contains `/`**, so it does NOT satisfy the narrower `source_domain` contract
+/// `^[a-z0-9_-]{1,64}$`. This is the distinct carrier charset:
+///
+/// `^[a-z0-9._/-]{1,128}$` — 1..=128 chars, each in `[a-z0-9._/-]`, non-empty, no control chars.
+///
+/// Fail-open callers (C2 `hook::run`, C5 bind) drop an invalid value to `None` + `tracing::warn!`
+/// rather than passing raw bytes to SQL — never a hard error, never a panic.
+pub fn is_valid_model_id(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= MODEL_ID_MAX_LEN
+        && s.chars().all(|c| {
+            c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '.' | '_' | '/' | '-')
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -596,6 +636,7 @@ mod tests {
             payload: serde_json::json!({"tool": "Read"}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let req = HookRequest::RecordEvent { event };
@@ -621,6 +662,7 @@ mod tests {
                 payload: serde_json::json!({}),
                 topic_signal: None,
                 provider: None,
+                model_id: None,
                 cycle_stamp: None,
             },
             ImplantEvent {
@@ -630,6 +672,7 @@ mod tests {
                 payload: serde_json::json!({"entry_id": 42}),
                 topic_signal: None,
                 provider: None,
+                model_id: None,
                 cycle_stamp: None,
             },
         ];
@@ -1044,6 +1087,7 @@ mod tests {
             payload: serde_json::json!({"tool": "Bash", "duration_ms": 150}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let bytes = serde_json::to_vec(&event).unwrap();
@@ -1449,6 +1493,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let json = serde_json::to_string(&event).unwrap();
@@ -1467,6 +1512,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: Some("col-017".to_string()),
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let json = serde_json::to_string(&event).unwrap();
@@ -1492,6 +1538,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp,
         }
     }
@@ -1833,6 +1880,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: Some("gemini-cli".to_string()),
+            model_id: None,
             cycle_stamp: None,
         };
         let json = serde_json::to_string(&event).expect("serialize");
@@ -1857,6 +1905,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let json = serde_json::to_string(&event).expect("serialize");
@@ -1946,6 +1995,7 @@ mod tests {
                         payload: serde_json::json!({ "tool": "Read", "path": "src/wire.rs" }),
                         topic_signal: Some("vnc-024".to_string()),
                         provider: Some("claude-code".to_string()),
+                        model_id: None,
                         cycle_stamp: None,
                     },
                 },
@@ -1961,6 +2011,7 @@ mod tests {
                         payload: serde_json::json!({ "tool": "Read" }),
                         topic_signal: None,
                         provider: None,
+                        model_id: None,
                         cycle_stamp: None,
                     },
                 },
@@ -1976,6 +2027,7 @@ mod tests {
                             payload: serde_json::json!({ "tool": "Bash" }),
                             topic_signal: Some("vnc-024".to_string()),
                             provider: Some("claude-code".to_string()),
+                            model_id: None,
                             cycle_stamp: None,
                         },
                         ImplantEvent {
@@ -1985,6 +2037,7 @@ mod tests {
                             payload: serde_json::json!({ "entry_id": 42 }),
                             topic_signal: None,
                             provider: None,
+                            model_id: None,
                             cycle_stamp: None,
                         },
                     ],
@@ -2199,6 +2252,7 @@ mod tests {
             payload: serde_json::json!({}),
             topic_signal: None,
             provider: None,
+            model_id: None,
             cycle_stamp: None,
         };
         let ev_val = serde_json::to_value(&ev_none).unwrap();
@@ -2601,5 +2655,86 @@ mod tests {
             .unwrap(),
             r#"{"type":"Entries","items":[],"total_tokens":0}"#
         );
+    }
+
+    // -- vnc-049 C4: model_id wire carrier (ADR-002, R-10, R-15) --
+
+    #[test]
+    fn test_hookinput_deserializes_without_model_id() {
+        // R-10.2: pre-vnc-049 / cloud / other-harness frame omits model_id → None (no error).
+        let json = r#"{"hook_event_name":"PreToolUse","session_id":"s1"}"#;
+        let input: HookInput = serde_json::from_str(json).unwrap();
+        assert!(input.model_id.is_none());
+    }
+
+    #[test]
+    fn test_implantevent_deserializes_without_model_id() {
+        // R-10.2: a frame predating vnc-049 (no model_id key) deserializes to None.
+        let json = r#"{"event_type":"tool_use","session_id":"s1","timestamp":100,"payload":{}}"#;
+        let event: ImplantEvent = serde_json::from_str(json).unwrap();
+        assert!(event.model_id.is_none());
+    }
+
+    #[test]
+    fn test_implantevent_omits_model_id_when_none() {
+        // skip_serializing_if: a None model_id is NOT serialized (frozen-fixture byte stability).
+        let event = ImplantEvent {
+            event_type: "tool_use".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({}),
+            topic_signal: None,
+            provider: None,
+            model_id: None,
+            cycle_stamp: None,
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(
+            !json.contains("model_id"),
+            "model_id: None must not appear in serialized JSON; got: {json}"
+        );
+    }
+
+    #[test]
+    fn test_implantevent_serializes_model_id_when_some() {
+        let event = ImplantEvent {
+            event_type: "tool_use".to_string(),
+            session_id: "s1".to_string(),
+            timestamp: 100,
+            payload: serde_json::json!({}),
+            topic_signal: None,
+            provider: Some("opencode".to_string()),
+            model_id: Some("ollama/qwen3-coder".to_string()),
+            cycle_stamp: None,
+        };
+        let bytes = serde_json::to_vec(&event).unwrap();
+        let decoded: ImplantEvent = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(decoded.model_id.as_deref(), Some("ollama/qwen3-coder"));
+    }
+
+    #[test]
+    fn test_hookinput_roundtrip_with_model_id() {
+        let json = r#"{"hook_event_name":"UserPromptSubmit","model_id":"ollama/qwen3-coder"}"#;
+        let input: HookInput = serde_json::from_str(json).unwrap();
+        assert_eq!(input.model_id.as_deref(), Some("ollama/qwen3-coder"));
+    }
+
+    #[test]
+    fn test_model_id_format_contract() {
+        // Carrier charset ^[a-z0-9._/-]{1,128}$ — MUST allow `/` (provider/model), unlike the
+        // narrower source_domain contract ^[a-z0-9_-]{1,64}$.
+        assert!(is_valid_model_id("ollama/qwen3-coder"));
+        assert!(is_valid_model_id("gpt-4o"));
+        assert!(is_valid_model_id("anthropic/claude-3.5-sonnet"));
+        assert!(is_valid_model_id("a"));
+        assert!(is_valid_model_id(&"a".repeat(MODEL_ID_MAX_LEN)));
+
+        // Rejections: empty, over-length, control chars, injection punctuation, uppercase.
+        assert!(!is_valid_model_id(""));
+        assert!(!is_valid_model_id(&"a".repeat(MODEL_ID_MAX_LEN + 1)));
+        assert!(!is_valid_model_id("a;drop"));
+        assert!(!is_valid_model_id("model with space"));
+        assert!(!is_valid_model_id("Ollama/Qwen"));
+        assert!(!is_valid_model_id("model\nname"));
     }
 }

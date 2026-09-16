@@ -23,7 +23,9 @@ use crate::schema::{deserialize_entry, serialize_entry};
 /// Bumped 29 → 30 by crt-055 (cycle_review_index v5 aggregate columns; ADR-001 #5051).
 /// Merge-order note: crt-054 and crt-055 ALTER disjoint tables; whoever merges first is
 /// N, the other N+1. crt-055 here assumes crt-054 landed 29 and takes 30 (lesson #4095).
-pub const CURRENT_SCHEMA_VERSION: u64 = 31;
+/// Bumped 30 → 31 by vnc-047 (cycle_tags junction + idx_cycle_tags_tag).
+/// Bumped 31 → 32 by vnc-049 (observations.source_domain + observations.model_id; ADR-001/ADR-002).
+pub const CURRENT_SCHEMA_VERSION: u64 = 32;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -1589,9 +1591,9 @@ async fn run_main_migrations(
     //
     // Idempotency guard is `CREATE TABLE/INDEX IF NOT EXISTS`: a brand-new table needs
     // no pragma_table_info pre-check (that is only for ALTER TABLE ADD COLUMN). Re-running
-    // the block is a no-op. Do NOT stamp schema_version inside this block — the single
-    // stamp at the end of the txn (INSERT OR REPLACE below) sets CURRENT_SCHEMA_VERSION (=31).
-    // Additive DDL runs inside the existing main migrate_if_needed transaction (ADR #820).
+    // the block is a no-op. vnc-049 appended the v31→v32 block below, so this block is no
+    // longer last: intra-stamp the intermediate version to 31 (#5052) so the v31→v32 block
+    // observes v31. Additive DDL runs inside the existing main migrate_if_needed transaction (ADR #820).
     if current_version < 31 {
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS cycle_tags (
@@ -1612,6 +1614,89 @@ async fn run_main_migrations(
             .map_err(|e| StoreError::Migration {
                 source: Box::new(e),
             })?;
+
+        // Intra-stamp to 31 (pattern #5052): the v31→v32 block below is now the last one.
+        sqlx::query("UPDATE counters SET value = 31 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // v31 → v32: observations.source_domain + observations.model_id (vnc-049, ADR-001/ADR-002).
+    //
+    // Two nullable TEXT columns persisting ingest attribution:
+    //   source_domain — provider-first stamp (opencode-only, ADR-001); NULL for non-opencode
+    //                   + legacy rows, which keep the read-derived resolution (R-05).
+    //   model_id      — backend model identity (ADR-002); NULL when no model / non-opencode / legacy.
+    //
+    // Idempotency (pattern #4092): SQLite has no ALTER TABLE ADD COLUMN IF NOT EXISTS.
+    // Multi-column rule — run BOTH pragma_table_info pre-checks BEFORE either ALTER so a
+    // partially-applied prior attempt (one column added, no version bump) recovers cleanly.
+    // Both ALTERs run inside the outer migrate_if_needed transaction; any failure rolls back
+    // and schema_version stays at 31. This is the last block, so the single INSERT OR REPLACE
+    // below stamps CURRENT_SCHEMA_VERSION (=32) — no intra-stamp needed here.
+    if current_version < 32 {
+        // Guard on the observations table existing. A genuine DB at version < 32 always
+        // has observations (present since v7). A minimal forward-only test fixture seeded
+        // at an earlier version may not; pragma on a missing table returns zero rows, which
+        // would make every column "absent" and the ALTER fail with "no such table". Skip the
+        // column work when the table is absent — a fresh-create DB gets both columns from
+        // db.rs directly. (Same guard shape as the v29→v30 cycle_review_index block.)
+        let observations_exists: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'observations'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        if observations_exists {
+            // Multi-column rule (#4092): run BOTH pre-checks before either ALTER.
+            let has_source_domain: bool = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM pragma_table_info('observations') WHERE name = 'source_domain'",
+            )
+            .fetch_one(&mut **txn)
+            .await
+            .map(|count| count > 0)
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+
+            let has_model_id: bool = sqlx::query_scalar::<_, i64>(
+                "SELECT COUNT(*) FROM pragma_table_info('observations') WHERE name = 'model_id'",
+            )
+            .fetch_one(&mut **txn)
+            .await
+            .map(|count| count > 0)
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+
+            if !has_source_domain {
+                sqlx::query("ALTER TABLE observations ADD COLUMN source_domain TEXT")
+                    .execute(&mut **txn)
+                    .await
+                    .map_err(|e| StoreError::Migration {
+                        source: Box::new(e),
+                    })?;
+            }
+
+            if !has_model_id {
+                sqlx::query("ALTER TABLE observations ADD COLUMN model_id TEXT")
+                    .execute(&mut **txn)
+                    .await
+                    .map_err(|e| StoreError::Migration {
+                        source: Box::new(e),
+                    })?;
+            }
+        }
+
+        // No backfill: pre-vnc-049 rows keep source_domain = NULL and model_id = NULL.
+        // NULL source_domain is the read-derived fallback contract (ADR-001, R-05).
     }
 
     // Update schema_version counter to CURRENT_SCHEMA_VERSION.

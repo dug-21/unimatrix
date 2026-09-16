@@ -215,6 +215,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: snippet.map(|s| s.to_string()),
+            model_id: None,
         }
     }
 
@@ -366,6 +367,7 @@ mod tests {
                 input: None,
                 response_size: None,
                 response_snippet: snippet,
+                model_id: None,
             });
         }
 

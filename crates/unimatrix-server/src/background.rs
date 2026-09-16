@@ -1676,6 +1676,7 @@ async fn fetch_observation_batch(
             input,
             response_size: response_size.map(|s| s as u64),
             response_snippet: snippet,
+            model_id: None,
         });
     }
     Ok((records, max_id))
@@ -4221,6 +4222,7 @@ mod tests {
                     input: Some(serde_json::json!({"file_path": "/tmp/test.rs"})),
                     response_size: None,
                     response_snippet: None,
+                    model_id: None,
                 });
             }
             for i in 0..2u64 {
@@ -4233,6 +4235,7 @@ mod tests {
                     input: None,
                     response_size: Some(100),
                     response_snippet: None,
+                    model_id: None,
                 });
             }
         }

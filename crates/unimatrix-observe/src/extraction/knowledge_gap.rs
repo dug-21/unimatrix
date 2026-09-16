@@ -122,6 +122,7 @@ mod tests {
             input: Some(serde_json::json!({"query": query})),
             response_size,
             response_snippet: snippet.map(|s| s.to_string()),
+            model_id: None,
         }
     }
 

@@ -1048,7 +1048,9 @@ pub(crate) async fn create_tables_if_needed(
             response_snippet TEXT,
             topic_signal     TEXT,
             phase            TEXT,   -- crt-043: active session phase at write time, NULL when no cycle active
-            topic_source     TEXT    -- vnc-030: topic_signal provenance (declared/extracted/registry-fill/vote/NULL), F6 #682 evidence base
+            topic_source     TEXT,   -- vnc-030: topic_signal provenance (declared/extracted/registry-fill/vote/NULL), F6 #682 evidence base
+            source_domain    TEXT,   -- vnc-049 ADR-001: provider-first stamp, opencode-only; NULL for non-opencode + legacy rows (read-derived)
+            model_id         TEXT    -- vnc-049 ADR-002: backend model identity, NULL when no model / non-opencode / legacy
         )",
     )
     .execute(&mut *conn)

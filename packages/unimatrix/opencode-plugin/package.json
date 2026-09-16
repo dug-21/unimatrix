@@ -1,0 +1,31 @@
+{
+  "name": "@dug-21/unimatrix-opencode-plugin",
+  "version": "0.11.3",
+  "description": "OpenCode observation plugin for Unimatrix — maps OpenCode typed hooks + event bus to Claude-shaped hook frames (vnc-049 C18)",
+  "type": "module",
+  "main": "unimatrix.js",
+  "exports": {
+    ".": "./unimatrix.js"
+  },
+  "files": [
+    "unimatrix.js",
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "1.18.31"
+  },
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dug-21/unimatrix"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

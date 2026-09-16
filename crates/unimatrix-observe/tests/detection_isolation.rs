@@ -25,6 +25,7 @@ fn make_sre(ts: u64, event_type: &str) -> ObservationRecord {
         input: None,
         response_size: None,
         response_snippet: None,
+        model_id: None,
     }
 }
 
@@ -38,6 +39,7 @@ fn make_sre_tool(ts: u64, event_type: &str, tool: &str) -> ObservationRecord {
         input: None,
         response_size: None,
         response_snippet: None,
+        model_id: None,
     }
 }
 
@@ -56,6 +58,7 @@ fn make_sre_tool_input(
         input: Some(input),
         response_size: None,
         response_snippet: None,
+        model_id: None,
     }
 }
 
@@ -196,6 +199,7 @@ fn test_cold_restart_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": "/tmp/a.log"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         },
         ObservationRecord {
             ts: 2000,
@@ -206,6 +210,7 @@ fn test_cold_restart_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": "/tmp/b.log"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         },
         ObservationRecord {
             ts: 1000 + gap_ms,
@@ -216,6 +221,7 @@ fn test_cold_restart_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": "/tmp/a.log"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         },
         ObservationRecord {
             ts: 2000 + gap_ms,
@@ -226,6 +232,7 @@ fn test_cold_restart_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": "/tmp/b.log"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         },
     ];
     let findings = run_rule("cold_restart", &records);
@@ -266,6 +273,7 @@ fn test_post_completion_work_ignores_non_claude_code_domain() {
         input: Some(serde_json::json!({"taskId": "1", "status": "completed"})),
         response_size: None,
         response_snippet: None,
+        model_id: None,
     });
     records.extend((0u64..20).map(|i| make_sre_tool(8100 + i * 100, "PreToolUse", "Read")));
     let findings = run_rule("post_completion_work", &records);
@@ -289,6 +297,7 @@ fn test_rework_events_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"taskId": "1", "status": "in_progress"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         },
         ObservationRecord {
             ts: 2000,
@@ -299,6 +308,7 @@ fn test_rework_events_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"taskId": "1", "status": "completed"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         },
         ObservationRecord {
             ts: 3000,
@@ -309,6 +319,7 @@ fn test_rework_events_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"taskId": "1", "status": "in_progress"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         },
     ];
     let findings = run_rule("rework_events", &records);
@@ -333,6 +344,7 @@ fn test_context_load_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": "/tmp/a.log"})),
             response_size: Some(102_400),
             response_snippet: None,
+            model_id: None,
         },
         ObservationRecord {
             ts: 2000,
@@ -343,6 +355,7 @@ fn test_context_load_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": "/tmp/b.log"})),
             response_size: Some(102_400),
             response_snippet: None,
+            model_id: None,
         },
         make_sre_tool(3000, "PostToolUse", "Write"),
     ];
@@ -383,6 +396,7 @@ fn test_file_breadth_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": format!("/tmp/file_{i}.log")})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         })
         .collect();
     let findings = run_rule("file_breadth", &records);
@@ -410,6 +424,7 @@ fn test_reread_rate_ignores_non_claude_code_domain() {
                 input: Some(serde_json::json!({"file_path": path})),
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             });
         }
     }
@@ -434,6 +449,7 @@ fn test_mutation_spread_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": format!("/tmp/file_{i}.log")})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         })
         .collect();
     let findings = run_rule("mutation_spread", &records);
@@ -480,6 +496,7 @@ fn test_edit_bloat_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": "/tmp/edit.log"})),
             response_size: Some(60_000),
             response_snippet: None,
+            model_id: None,
         },
         ObservationRecord {
             ts: 2000,
@@ -490,6 +507,7 @@ fn test_edit_bloat_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": "/tmp/edit2.log"})),
             response_size: Some(70_000),
             response_snippet: None,
+            model_id: None,
         },
     ];
     let findings = run_rule("edit_bloat", &records);
@@ -513,6 +531,7 @@ fn test_source_file_count_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"file_path": format!("/tmp/file_{i}.rs")})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         })
         .collect();
     let findings = run_rule("source_file_count", &records);
@@ -538,6 +557,7 @@ fn test_design_artifact_count_ignores_non_claude_code_domain() {
             ),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         })
         .collect();
     let findings = run_rule("design_artifact_count", &records);
@@ -563,6 +583,7 @@ fn test_adr_count_ignores_non_claude_code_domain() {
             ),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         })
         .collect();
     let findings = run_rule("adr_count", &records);
@@ -586,6 +607,7 @@ fn test_post_delivery_issues_ignores_non_claude_code_domain() {
             input: Some(serde_json::json!({"taskId": "1", "status": "completed"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         },
         make_sre_tool_input(
             2000,
@@ -705,6 +727,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
         input: None,
         response_size: None,
         response_snippet: None,
+        model_id: None,
     });
     records.push(ObservationRecord {
         ts: base_ts + 5_000,
@@ -715,6 +738,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
         input: None,
         response_size: None,
         response_snippet: None,
+        model_id: None,
     });
 
     // ~20 Read PreToolUse calls (contributes to file_breadth, reread_rate)
@@ -728,6 +752,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
             input: Some(serde_json::json!({"file_path": format!("/workspace/crates/file_{i}.rs")})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         });
     }
 
@@ -742,6 +767,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         });
     }
     // Only 2 PostToolUse for Read (leaves 6 orphaned = > 2 threshold)
@@ -755,6 +781,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         });
     }
 
@@ -769,6 +796,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
             input: Some(serde_json::json!({"command": "cargo test --workspace 2>&1 | tail -30"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         });
     }
 
@@ -782,6 +810,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
         input: Some(serde_json::json!({"command": "sleep 2"})),
         response_size: None,
         response_snippet: None,
+        model_id: None,
     });
 
     // A 3-hour gap (triggers session_timeout)
@@ -795,6 +824,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
         input: None,
         response_size: None,
         response_snippet: None,
+        model_id: None,
     });
 
     // Task completion
@@ -807,6 +837,7 @@ fn build_representative_claude_code_fixture() -> Vec<ObservationRecord> {
         input: Some(serde_json::json!({"taskId": "fixture-task-1", "status": "completed"})),
         response_size: None,
         response_snippet: None,
+        model_id: None,
     });
 
     records

@@ -1,0 +1,143 @@
+{
+  "generated_by": "parity_corpus_opencode.rs (hook/opencode.rs arm oracle, vnc-049 C8, col-022 split-brain guard)",
+  "purpose": "Rust hook/opencode.rs (C2) <-> JS normalize.js (C3) arm parity: canonicalization, provider stamp, alias guard, and model_id carrier validation must match byte-for-byte. Editing one arm alone turns this golden (Rust) or the JS consumer suite red.",
+  "provider": "opencode",
+  "unknown_event_sentinel": "__unknown__",
+  "known_providers": [
+    "claude-code",
+    "gemini-cli",
+    "codex-cli",
+    "opencode"
+  ],
+  "canonical_events": [
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "SubagentStart",
+    "PreCompact",
+    "Stop"
+  ],
+  "normalize": [
+    {
+      "event_in": "SessionStart",
+      "canonical": "SessionStart",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "UserPromptSubmit",
+      "canonical": "UserPromptSubmit",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "PreToolUse",
+      "canonical": "PreToolUse",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "PostToolUse",
+      "canonical": "PostToolUse",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "SubagentStart",
+      "canonical": "SubagentStart",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "PreCompact",
+      "canonical": "PreCompact",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "Stop",
+      "canonical": "Stop",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "session.created",
+      "canonical": "__unknown__",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "chat.message",
+      "canonical": "__unknown__",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "tool.execute.before",
+      "canonical": "__unknown__",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "tool.execute.after",
+      "canonical": "__unknown__",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "session.idle",
+      "canonical": "__unknown__",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    },
+    {
+      "event_in": "experimental.session.compacting",
+      "canonical": "__unknown__",
+      "provider": "opencode",
+      "is_opencode_event_alias": false
+    }
+  ],
+  "model_id_validation": [
+    {
+      "model_id": "ollama/qwen3-coder",
+      "valid": true
+    },
+    {
+      "model_id": "anthropic/claude-sonnet-4-5",
+      "valid": true
+    },
+    {
+      "model_id": "github-copilot/gpt-4.1",
+      "valid": true
+    },
+    {
+      "model_id": "a",
+      "valid": true
+    },
+    {
+      "model_id": "model with space",
+      "valid": false
+    },
+    {
+      "model_id": "UPPER/case",
+      "valid": false
+    },
+    {
+      "model_id": "ollama/qwen3-coder\n",
+      "valid": false
+    },
+    {
+      "model_id": "emoji/🚀",
+      "valid": false
+    },
+    {
+      "model_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "valid": false
+    },
+    {
+      "model_id": "",
+      "valid": false
+    }
+  ]
+}

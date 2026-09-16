@@ -1667,6 +1667,7 @@ mod tests {
             input,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 

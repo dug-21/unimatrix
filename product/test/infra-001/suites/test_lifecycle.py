@@ -18,6 +18,7 @@ from harness.assertions import (
     assert_search_contains,
     assert_search_not_contains,
     get_result_text,
+    read_observation_attribution,
 )
 from harness.generators import make_entries, make_correction_chain
 from harness.client import UnimatrixClient
@@ -5723,3 +5724,202 @@ def test_bare_mcp_cycle_tags_not_persisted(server):
         )
     except _json.JSONDecodeError:
         assert "## Tags" not in text, "AC-EXTRA-1: bare MCP path must not surface a ## Tags section"
+
+
+# ===========================================================================
+# vnc-049 (C18) — OpenCode attribution: stored-record assertions (AC-03, AC-06)
+# ===========================================================================
+#
+# These extend the GH#819 `daemon_server` + `UnimatrixHookClient` +
+# `_observation_row_count` durability model with a read-back SELECT of the two
+# vnc-049 attribution columns (`source_domain`, `model_id`). They discharge the
+# CLI->store segment of AC-03 / AC-06 through the COMPILED binary end-path.
+#
+# ANTI-SEED CONTRACT (#5285, load-bearing): every test drives the event over the
+# real UDS wire carrying `provider`/`model_id` on the flattened `ImplantEvent`,
+# exactly as `unimatrix hook --provider opencode --model <...>` populates them.
+# The daemon's `extract_observation_fields` DERIVES the persisted `source_domain`
+# (`derive_source_domain`, opencode-only) and validates + binds `model_id` at
+# `insert_observation` — attribution flows wire->INSERT, it is never seeded (there
+# is no `source_domain` wire field to seed). The assertion is on the QUERIED row.
+#
+# NOTE (harness reach, per OVERVIEW §4.5 OQ): the plugin (TS) end is not reachable
+# from infra-001; the plugin->CLI segment is covered by the C1 node plugin tests
+# and the Rust `listener.rs` crossing tests. This suite proves the CLI->wire->
+# INSERT->store->query segment through the daemon.
+
+_OC_LOCAL_MODEL = "ollama/qwen3-coder"
+_OC_LOCAL_MODEL_2 = "ollama/llama3"
+_OC_CLOUD_MODEL = "anthropic/claude-sonnet-4"
+
+
+def _drive_opencode_observe(hook_sock, sid, tool, *, provider="opencode",
+                            model_id=None, feature="vnc-049"):
+    """Register a session and drive ONE PostToolUse observe over the real hook
+    UDS wire, tagged by a unique `tool` name so the stored row is locatable.
+    Attribution (`provider`/`model_id`) rides the flattened ImplantEvent."""
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(h.session_register(sid, agent_role="tester", feature=feature),
+                 f"SessionRegister({sid})")
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_ok(
+            h.record_post_tool_use(
+                sid, tool, response_size=16, response_snippet="vnc-049 observe",
+                provider=provider, model_id=model_id,
+            ),
+            f"PostToolUse observe ({tool})",
+        )
+
+
+def _attribution_for_tool(store_dir, tool):
+    """The (source_domain, model_id) of the single stored row tagged `tool`."""
+    rows = [r for r in read_observation_attribution(store_dir) if r[2] == tool]
+    assert len(rows) == 1, (
+        f"expected exactly one stored observation tagged tool={tool!r}, "
+        f"found {len(rows)}: {rows}"
+    )
+    return rows[0][0], rows[0][1]
+
+
+@pytest.mark.smoke
+@pytest.mark.integration
+def test_opencode_event_stored_source_domain_is_opencode(daemon_server):
+    """AC-03 / R-02 (authoritative, non-proxy): a real opencode event driven over
+    the wire reads back with stored `source_domain == "opencode"`, and the
+    MANDATORY negative — it is NOT the `claude-code` hook-path default. Asserted on
+    the SELECTed row, not on "--provider opencode was passed"."""
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+    baseline = _observation_row_count(store_dir)
+
+    tool = "OC_AC03_SourceDomain"
+    _drive_opencode_observe(hook_sock, "vnc049-ac03", tool, model_id=_OC_LOCAL_MODEL)
+    assert _wait_for_row_count(store_dir, baseline + 1) == baseline + 1, (
+        "opencode observe did not persist a row (wire->INSERT drop)"
+    )
+
+    source_domain, _ = _attribution_for_tool(store_dir, tool)
+    assert source_domain == "opencode", (
+        f"stored source_domain={source_domain!r}; expected 'opencode' "
+        f"(ADR-001 provider-first ingest stamp)"
+    )
+    # MANDATORY negative (AC-03 verification method):
+    assert source_domain != "claude-code", (
+        "opencode event mis-attributed to the claude-code hook-path default "
+        "(SR-07/SR-11 silent-default class)"
+    )
+
+
+@pytest.mark.smoke
+@pytest.mark.integration
+def test_opencode_local_vs_cloud_model_distinct_on_queried_row(daemon_server):
+    """AC-06 GATING / R-01 (authoritative, non-proxy): a LOCAL-model opencode event
+    and a CLOUD-model opencode event, both driven over the real wire, read back as
+    DISTINGUISHABLE on the stored `model_id`. Distinctness is asserted on the
+    QUERIED rows, never on an in-memory ImplantEvent.
+
+    Anti-tautology: the assertion is on EXACT stored values, so it FAILS if the
+    `model_id` bind were dropped/homogenized/NULLed between wire and INSERT (both
+    would collapse to NULL and the exact-match/distinctness asserts would break).
+    """
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+    baseline = _observation_row_count(store_dir)
+
+    local_tool, cloud_tool = "OC_AC06_Local", "OC_AC06_Cloud"
+    _drive_opencode_observe(hook_sock, "vnc049-ac06-local", local_tool,
+                            model_id=_OC_LOCAL_MODEL)
+    _drive_opencode_observe(hook_sock, "vnc049-ac06-cloud", cloud_tool,
+                            model_id=_OC_CLOUD_MODEL)
+    assert _wait_for_row_count(store_dir, baseline + 2) == baseline + 2, (
+        "both opencode observes did not persist (wire->INSERT drop)"
+    )
+
+    local_sd, local_model = _attribution_for_tool(store_dir, local_tool)
+    cloud_sd, cloud_model = _attribution_for_tool(store_dir, cloud_tool)
+
+    # Exact stored values (fails on any drop/homogenize/NULL — the negative).
+    assert local_model == _OC_LOCAL_MODEL, f"local model_id={local_model!r}"
+    assert cloud_model == _OC_CLOUD_MODEL, f"cloud model_id={cloud_model!r}"
+    # The raison d'être: local is queryable as DISTINCT from cloud.
+    assert local_model != cloud_model, (
+        "local-model activity is INDISTINGUISHABLE from cloud on the stored row — "
+        "C18 raison d'être unmet (R-01 GATING)"
+    )
+    # Both carry the opencode attribution stamp.
+    assert local_sd == "opencode" and cloud_sd == "opencode"
+
+
+@pytest.mark.integration
+def test_opencode_two_local_models_mutually_distinct(daemon_server):
+    """R-01.3: two DIFFERENT local models (qwen3-coder vs llama3) are mutually
+    distinguishable on the stored `model_id` (not homogenized to a single 'local'
+    bucket)."""
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+    baseline = _observation_row_count(store_dir)
+
+    t1, t2 = "OC_TwoLocal_A", "OC_TwoLocal_B"
+    _drive_opencode_observe(hook_sock, "vnc049-2local-a", t1, model_id=_OC_LOCAL_MODEL)
+    _drive_opencode_observe(hook_sock, "vnc049-2local-b", t2, model_id=_OC_LOCAL_MODEL_2)
+    assert _wait_for_row_count(store_dir, baseline + 2) == baseline + 2
+
+    _, m1 = _attribution_for_tool(store_dir, t1)
+    _, m2 = _attribution_for_tool(store_dir, t2)
+    assert m1 == _OC_LOCAL_MODEL and m2 == _OC_LOCAL_MODEL_2
+    assert m1 != m2, "two local models collapsed to the same stored model_id"
+
+
+@pytest.mark.integration
+def test_opencode_provider_evidenced_by_stored_source_domain(daemon_server):
+    """AC-02c / R-03.4: the stored row evidences `provider="opencode"`. The
+    `observations` table has no `provider` column; `source_domain="opencode"` is
+    its DB-observable proof, because `derive_source_domain` stamps 'opencode' ONLY
+    when the event's provider is 'opencode' (opencode-only stamp). A stored
+    source_domain of 'opencode' therefore cannot arise from any other provider."""
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+    baseline = _observation_row_count(store_dir)
+
+    tool = "OC_AC02c_Provider"
+    _drive_opencode_observe(hook_sock, "vnc049-ac02c", tool, model_id=_OC_LOCAL_MODEL)
+    assert _wait_for_row_count(store_dir, baseline + 1) == baseline + 1
+
+    source_domain, _ = _attribution_for_tool(store_dir, tool)
+    assert source_domain == "opencode", (
+        "stored source_domain is the opencode-only DB-observable of provider=opencode; "
+        f"got {source_domain!r}"
+    )
+
+
+@pytest.mark.integration
+def test_opencode_cloud_event_without_model_id_stored_null(daemon_server):
+    """R-10.2 edge: an opencode event WITHOUT a model_id (cloud default / field
+    absent) deserializes and persists cleanly — stored `model_id` is NULL while
+    `source_domain` is still stamped 'opencode' (attribution axes are independent;
+    a frame without model_id must not break ingest)."""
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+    baseline = _observation_row_count(store_dir)
+
+    tool = "OC_NoModel"
+    _drive_opencode_observe(hook_sock, "vnc049-nomodel", tool, model_id=None)
+    assert _wait_for_row_count(store_dir, baseline + 1) == baseline + 1
+
+    source_domain, model_id = _attribution_for_tool(store_dir, tool)
+    assert source_domain == "opencode"
+    assert model_id is None, f"expected NULL model_id for a model-less event, got {model_id!r}"
+
+
+@pytest.mark.integration
+def test_context_retrieval_unaffected_by_attribution_columns(server):
+    """AC-05c / R-04 regression sentinel: the schema migration adding
+    `source_domain`/`model_id` must not regress MCP retrieval. A store->search
+    roundtrip through `context_*` still returns the stored entry."""
+    unique = "vnc049 attribution migration retrieval sentinel zeta7"
+    store_resp = server.context_store(
+        unique, "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)  # store succeeded and returned an id
+    search_resp = server.context_search(unique, format="json")
+    assert_search_contains(search_resp, entry_id)

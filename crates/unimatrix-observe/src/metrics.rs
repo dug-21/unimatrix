@@ -411,6 +411,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -424,6 +425,7 @@ mod tests {
             input: None,
             response_size: Some(response_size),
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -437,6 +439,7 @@ mod tests {
             input: Some(serde_json::json!({"subject": subject})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -648,6 +651,7 @@ mod tests {
                 input: Some(serde_json::json!({"command": "grep -r 'test' ."})),
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
             ObservationRecord {
                 ts: 2000,
@@ -658,6 +662,7 @@ mod tests {
                 input: Some(serde_json::json!({"command": "cargo build"})),
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
         ];
 
@@ -683,6 +688,7 @@ mod tests {
             input: None,
             response_size: Some(response_size),
             response_snippet: Some(snippet.to_string()),
+            model_id: None,
         }
     }
 
@@ -701,6 +707,7 @@ mod tests {
             input: Some(input),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -987,6 +994,7 @@ mod tests {
             input: Some(serde_json::json!({"command": "sleep 5"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }];
 
         let mv = compute_metric_vector(&records, &[], 0);
@@ -1007,6 +1015,7 @@ mod tests {
                 input: None,
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
             ObservationRecord {
                 ts: 2000,
@@ -1017,6 +1026,7 @@ mod tests {
                 input: None,
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
         ];
 
@@ -1040,6 +1050,7 @@ mod tests {
                 input: None,
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
             ObservationRecord {
                 ts: 2000,
@@ -1050,6 +1061,7 @@ mod tests {
                 input: None,
                 response_size: Some(4096),
                 response_snippet: None,
+                model_id: None,
             },
         ];
 
@@ -1087,6 +1099,7 @@ mod tests {
                 input: None,
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
             ObservationRecord {
                 ts: 4000,
@@ -1097,6 +1110,7 @@ mod tests {
                 input: None,
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
         ];
 

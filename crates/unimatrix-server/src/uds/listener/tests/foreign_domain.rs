@@ -129,6 +129,7 @@ async fn test_foreign_pack_event_stored_raw_and_read_resolves_to_sre() {
         payload: serde_json::json!({ "alert": "cpu_high" }),
         topic_signal: None,
         provider: None,
+        model_id: None,
         cycle_stamp: None,
     };
 
@@ -204,6 +205,7 @@ async fn test_unknown_event_type_stored_raw_and_read_falls_back_to_claude_code()
         payload: serde_json::json!({ "note": "claimed by no pack" }),
         topic_signal: None,
         provider: None,
+        model_id: None,
         cycle_stamp: None,
     };
 

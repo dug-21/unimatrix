@@ -38,6 +38,13 @@ pub struct ObservationRecord {
     /// First 500 chars of response. Populated for PostToolUse (from tool_response object)
     /// and PostToolUseFailure (from error string). None for all other event types.
     pub response_snippet: Option<String>,
+    /// Backend model identity (vnc-049 ADR-002, AC-06). Stamped at ingest for opencode
+    /// events (e.g. "ollama/qwen3-coder"), surfaced from the persisted `model_id` column
+    /// so local-model activity is queryable as distinct from cloud/legacy rows. `None`
+    /// for non-opencode and pre-vnc-049 rows. `#[serde(default)]` keeps existing payloads
+    /// deserializing unchanged.
+    #[serde(default)]
+    pub model_id: Option<String>,
 }
 
 /// A parsed session with its records.
@@ -79,6 +86,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         };
         assert_eq!(record.event_type, "PostToolUse");
         assert_eq!(record.source_domain, "claude-code");
@@ -120,6 +128,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         };
 
         let v = serde_json::to_value(&record).expect("serialize");
@@ -150,6 +159,7 @@ mod tests {
             input: Some(serde_json::json!({"cmd": "ls"})),
             response_size: Some(1024),
             response_snippet: Some("output".to_string()),
+            model_id: None,
         };
         // Access every field to ensure none were accidentally removed.
         let _ = record.ts;

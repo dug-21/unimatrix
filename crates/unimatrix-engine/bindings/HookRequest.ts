@@ -40,6 +40,14 @@ topic_signal?: string | null,
  */
 provider?: string | null, 
 /**
+ * Backend model identity propagated from HookInput.model_id through normalization.
+ * None for events predating vnc-049 or without a model (cloud default). Mirrors `provider`:
+ * `skip_serializing_if = "Option::is_none"` keeps a frame without `model_id` byte-identical
+ * on the wire (frozen-fixture safety, R-10.2). Value format `<providerID>/<modelID>`,
+ * validated against [`is_valid_model_id`] at the ingest boundary (vnc-049 C4, ADR-002).
+ */
+model_id?: string | null, 
+/**
  * F4b client-declared cycle attribution (ADR-003). Some => this row
  * attributes from the stamp (topic_source='declared'); None => legacy
  * heuristic chain. Additive/frozen-F1: skip_serializing_if so it never

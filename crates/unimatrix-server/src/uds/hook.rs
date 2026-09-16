@@ -14,6 +14,7 @@ use unimatrix_engine::project::compute_project_hash;
 use unimatrix_engine::transport::{LocalTransport, Transport};
 use unimatrix_engine::wire::{
     EntryPayload, HookInput, HookRequest, HookResponse, ImplantEvent, TransportError,
+    is_valid_model_id,
 };
 use unimatrix_observe::extract_topic_signal;
 
@@ -21,6 +22,17 @@ use crate::infra::validation::{
     CYCLE_PHASE_END_EVENT, CYCLE_START_EVENT, CYCLE_STOP_EVENT, CycleType, validate_cycle_params,
 };
 use crate::uds::transcript_block::{extract_transcript_block, prepend_transcript, truncate_utf8};
+
+/// OpenCode event-name canonicalization + carrier validation (vnc-049 C2, ADR-005
+/// new-module-with-thin-wiring). Substantive logic lives here; `hook.rs` keeps only a
+/// const entry + one delegating call.
+pub mod opencode;
+
+/// Allowlist of recognized `--provider` hint values. An unknown value is logged and
+/// treated as `None` so the inference path (`normalize_event_name`) runs instead
+/// (security gate F-01). `"opencode"` (vnc-049 C2, AC-02a) makes the OpenCode hint path
+/// accepted instead of warned-and-dropped.
+const KNOWN_PROVIDERS: &[&str] = &["claude-code", "gemini-cli", "codex-cli", "opencode"];
 
 /// Default timeout for transport operations: 40ms.
 /// Leaves 10ms margin in the 50ms total budget for process startup + hash computation.
@@ -102,6 +114,14 @@ fn map_to_canonical(event: &str) -> &'static str {
 /// - Unknown names return `("__unknown__", "unknown")` sentinel — caller substitutes
 ///   the raw event string (NFR-01).
 pub fn normalize_event_name(event: &str) -> (&'static str, &'static str) {
+    // OpenCode delegating arm (vnc-049 C2, ADR-004/005): OpenCode-specific aliases route
+    // through the hook/opencode.rs module. The C1 shim emits canonical names and always
+    // passes `--provider opencode` (the hint path), so this inference-path guard fires only
+    // for a future OpenCode-unique alias; today it is inert (the guard is `false` for the
+    // seven shared canonical names). It keeps provider inference honest and anchors parity.
+    if opencode::is_opencode_event_alias(event) {
+        return opencode::normalize(event);
+    }
     match event {
         // Gemini-unique names — unambiguous provider inference
         "BeforeTool" => ("PreToolUse", "gemini-cli"),
@@ -133,6 +153,7 @@ pub fn normalize_event_name(event: &str) -> (&'static str, &'static str) {
 pub fn run(
     event: String,
     provider: Option<String>,
+    model: Option<String>,
     project_dir: Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Read stdin
@@ -140,6 +161,12 @@ pub fn run(
 
     // Step 2: Parse hook input (defensive -- ADR-006)
     let mut hook_input = parse_hook_input(&stdin_content);
+
+    // Step 2a: Set model_id from the CLI --model arg (vnc-049 C2 §2, ADR-002, R-15).
+    // Validated against the carrier charset (wire::is_valid_model_id). Fail-open: an
+    // invalid value is dropped to None + warn rather than passing raw untrusted bytes
+    // downstream to SQL. Absent --model yields None (back-compat with existing harnesses).
+    hook_input.model_id = validate_cli_model_id(model);
 
     // Step 2b: Normalize event name and set provider on hook_input (ADR-001, ADR-002 vnc-013).
     //
@@ -154,8 +181,8 @@ pub fn run(
     //              infers both the canonical name and the provider from the event string.
 
     // Allowlist validation: unknown --provider values are logged and treated as None
-    // so the inference path runs instead (security gate F-01).
-    const KNOWN_PROVIDERS: &[&str] = &["claude-code", "gemini-cli", "codex-cli"];
+    // so the inference path runs instead (security gate F-01). [`KNOWN_PROVIDERS`] is a
+    // module-level const (includes "opencode", vnc-049 C2).
     let provider = match &provider {
         Some(p) if KNOWN_PROVIDERS.contains(&p.as_str()) => provider,
         Some(p) => {
@@ -353,6 +380,25 @@ fn read_stdin() -> String {
     input
 }
 
+/// Validate the CLI `--model` value into a `HookInput.model_id` (vnc-049 C2 §2, ADR-002, R-15).
+///
+/// Fail-open (NFR-02, R-15): a value that fails the carrier charset
+/// ([`is_valid_model_id`]) is dropped to `None` + `tracing`-free `eprintln!` warn rather than
+/// passing raw untrusted bytes toward SQL. An absent `--model` yields `None` (back-compat).
+fn validate_cli_model_id(model: Option<String>) -> Option<String> {
+    match model {
+        Some(m) if is_valid_model_id(&m) => Some(m),
+        Some(m) => {
+            eprintln!(
+                "[unimatrix] warning: invalid --model value {:?}; dropping to None",
+                m
+            );
+            None
+        }
+        None => None,
+    }
+}
+
 /// Parse hook input with maximum defensive serde (ADR-006).
 fn parse_hook_input(raw: &str) -> HookInput {
     match serde_json::from_str::<HookInput>(raw) {
@@ -368,6 +414,7 @@ fn parse_hook_input(raw: &str) -> HookInput {
                 transcript_path: None,
                 prompt: None,
                 provider: None,
+                model_id: None,
                 mcp_context: None,
                 extra: serde_json::Value::Null,
             }
@@ -571,6 +618,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         payload: input.extra.clone(),
                         topic_signal,
                         provider: input.provider.clone(),
+                        model_id: input.model_id.clone(),
                         cycle_stamp: None,
                     },
                 };
@@ -597,6 +645,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         payload: input.extra.clone(),
                         topic_signal,
                         provider: input.provider.clone(),
+                        model_id: input.model_id.clone(),
                         cycle_stamp: None,
                     },
                 };
@@ -614,6 +663,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             payload: input.extra.clone(),
                             topic_signal,
                             provider: input.provider.clone(),
+                            model_id: input.model_id.clone(),
                             cycle_stamp: None,
                         },
                     };
@@ -633,6 +683,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         }),
                         topic_signal: topic_signal.clone(),
                         provider: input.provider.clone(),
+                        model_id: input.model_id.clone(),
                         cycle_stamp: None,
                     })
                     .collect();
@@ -661,6 +712,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     }),
                     topic_signal,
                     provider: input.provider.clone(),
+                    model_id: input.model_id.clone(),
                     cycle_stamp: None,
                 },
             }
@@ -689,6 +741,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     payload: input.extra.clone(),
                     topic_signal,
                     provider: input.provider.clone(),
+                    model_id: input.model_id.clone(),
                     cycle_stamp: None,
                 },
             }
@@ -928,6 +981,7 @@ fn build_cycle_event_or_fallthrough(
             payload,
             topic_signal,
             provider: input.provider.clone(),
+            model_id: input.model_id.clone(),
             cycle_stamp: None,
         },
     }
@@ -946,6 +1000,7 @@ fn generic_record_event(event: &str, session_id: String, input: &HookInput) -> H
             payload: input.extra.clone(),
             topic_signal,
             provider: input.provider.clone(),
+            model_id: input.model_id.clone(),
             cycle_stamp: None,
         },
     }
@@ -1188,6 +1243,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra: serde_json::Value::Null,
         }
@@ -1233,6 +1289,72 @@ mod tests {
                 assert_eq!(session_id, "sess-1");
             }
             _ => panic!("expected SessionClose"),
+        }
+    }
+
+    // -- vnc-049 C2 §2: --model CLI arg → HookInput.model_id → ImplantEvent.model_id --
+
+    /// A valid --model value survives validation (AC-06 CLI leg).
+    #[test]
+    fn validate_cli_model_id_valid_returns_some() {
+        assert_eq!(
+            validate_cli_model_id(Some("ollama/qwen3-coder".to_string())),
+            Some("ollama/qwen3-coder".to_string())
+        );
+    }
+
+    /// An invalid --model value is dropped to None, never passed raw downstream (R-15).
+    #[test]
+    fn validate_cli_model_id_invalid_returns_none() {
+        // Uppercase + space + '@' are outside the carrier charset ^[a-z0-9._/-]{1,128}$.
+        assert_eq!(validate_cli_model_id(Some("Bad Model@!".to_string())), None);
+        // Over-length (>128) is rejected.
+        let oversized = "a".repeat(129);
+        assert_eq!(validate_cli_model_id(Some(oversized)), None);
+        // Empty string is rejected.
+        assert_eq!(validate_cli_model_id(Some(String::new())), None);
+    }
+
+    /// Absent --model yields None (back-compat: existing harnesses unaffected).
+    #[test]
+    fn validate_cli_model_id_absent_returns_none() {
+        assert_eq!(validate_cli_model_id(None), None);
+    }
+
+    /// End of the CLI leg: a HookInput carrying model_id threads it into the built
+    /// ImplantEvent so C5's INSERT persists it (AC-06 assembled path).
+    #[test]
+    fn build_request_threads_model_id_into_implant_event() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        // provider = opencode routes PostToolUse to the generic RecordEvent arm.
+        input.provider = Some("opencode".to_string());
+        input.model_id = Some("ollama/qwen3-coder".to_string());
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(
+                    event.model_id.as_deref(),
+                    Some("ollama/qwen3-coder"),
+                    "model_id must thread from HookInput into ImplantEvent"
+                );
+            }
+            _ => panic!("expected RecordEvent"),
+        }
+    }
+
+    /// A HookInput without model_id yields an ImplantEvent with model_id = None.
+    #[test]
+    fn build_request_no_model_id_yields_none() {
+        let mut input = test_input();
+        input.session_id = Some("sess-1".to_string());
+        input.provider = Some("opencode".to_string());
+        let req = build_request("PostToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert!(event.model_id.is_none());
+            }
+            _ => panic!("expected RecordEvent"),
         }
     }
 
@@ -1465,6 +1587,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra,
         }
@@ -1637,6 +1760,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra: serde_json::Value::Null,
         };
@@ -1655,6 +1779,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra,
         }
@@ -1763,6 +1888,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra: serde_json::Value::Null,
         };
@@ -2556,6 +2682,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra,
         }
@@ -2664,6 +2791,7 @@ mod tests {
             transcript_path: None,
             prompt: None,
             provider: None,
+            model_id: None,
             mcp_context: None,
             extra,
         }
@@ -3844,6 +3972,54 @@ mod tests {
         let (canonical, provider) = normalize_event_name("CompletelyUnknownEvent");
         assert_eq!(canonical, "__unknown__");
         assert_eq!(provider, "unknown");
+    }
+
+    // -- vnc-049 C2: OpenCode provider arm (AC-02a, R-03, R-17) --
+
+    /// AC-02a / R-03.3: "opencode" is an allowlisted `--provider` hint value, so the
+    /// OpenCode hint path is accepted instead of warned-and-dropped. Necessary-but-not-
+    /// sufficient (#5427): the behavioral proof is the stored provider="opencode" (C5).
+    #[test]
+    fn test_known_providers_contains_opencode() {
+        assert!(KNOWN_PROVIDERS.contains(&"opencode"));
+    }
+
+    /// R-17 / ADR-005: the hook.rs inference-path arm delegates OpenCode canonicalization
+    /// to hook/opencode.rs rather than inlining it. The delegating guard is safe for the
+    /// seven shared canonical names (must not hijack claude-code inference) and routes a
+    /// future OpenCode-unique alias through the module's `normalize`.
+    #[test]
+    fn test_hook_rs_delegates_opencode_to_module() {
+        // The guard consulted by normalize_event_name is the module's function.
+        for event in opencode::OPENCODE_CANONICAL_EVENTS {
+            assert!(
+                !opencode::is_opencode_event_alias(event),
+                "shared canonical {event} must not be claimed as an opencode alias"
+            );
+            // Shared canonical names still infer claude-code (guard is inert today).
+            assert_eq!(normalize_event_name(event).1, "claude-code");
+        }
+        // The module is the single source of the opencode (name, provider) contract.
+        assert_eq!(
+            opencode::normalize("PreToolUse"),
+            ("PreToolUse", "opencode")
+        );
+    }
+
+    /// R-17: adding the OpenCode arm leaves the claude-code / gemini-cli inference paths
+    /// unchanged (adjacent-code non-regression).
+    #[test]
+    fn test_non_opencode_providers_unchanged() {
+        assert_eq!(
+            normalize_event_name("BeforeTool"),
+            ("PreToolUse", "gemini-cli")
+        );
+        assert_eq!(normalize_event_name("SessionEnd"), ("Stop", "gemini-cli"));
+        assert_eq!(
+            normalize_event_name("PreToolUse"),
+            ("PreToolUse", "claude-code")
+        );
+        assert_eq!(normalize_event_name("Stop"), ("Stop", "claude-code"));
     }
 
     /// AC-01: Category 2 events (cycle_start, etc.) are NOT inputs to normalize_event_name;

@@ -37,6 +37,17 @@ prompt: string | null,
  */
 provider: string | null, 
 /**
+ * Backend model identity, format "<providerID>/<modelID>" (e.g. "ollama/qwen3-coder").
+ * Populated by hook::run() from the --model CLI arg (like `provider`), NOT from stdin JSON.
+ * `#[serde(default)]` so existing claude-code/gemini/codex hook JSON (which omits it)
+ * deserializes to None without error (vnc-049 C4, ADR-002, R-10.2).
+ *
+ * The value contains `/` (provider/model), so it is validated against the distinct
+ * [`is_valid_model_id`] carrier charset (`^[a-z0-9._/-]{1,128}$`), NOT the narrower
+ * `source_domain` contract.
+ */
+model_id: string | null, 
+/**
  * Gemini CLI structured MCP context field. Present in BeforeTool and AfterTool
  * payloads. Structure: { "server_name": str, "tool_name": str, "url": str }.
  * Also captured by the `extra` flatten, but the named field enables typed access

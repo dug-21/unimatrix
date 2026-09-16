@@ -262,10 +262,9 @@ async fn test_migration_v30_to_v31_creates_cycle_tags() {
         index_exists(&store, "idx_cycle_tags_tag").await,
         "v31 migration must create idx_cycle_tags_tag"
     );
-    assert_eq!(
-        read_schema_version(&store).await,
-        31,
-        "schema_version must be stamped 31 after the v30→v31 migration"
+    assert!(
+        read_schema_version(&store).await >= 31,
+        "schema_version must be at least 31 after the v30→v31 migration (vnc-049 bumped current to 32)"
     );
 
     store.close().await.unwrap();
@@ -290,10 +289,9 @@ async fn test_migration_v30_to_v31_idempotent() {
         "cycle_tags must persist across re-open"
     );
     assert!(index_exists(&store, "idx_cycle_tags_tag").await);
-    assert_eq!(
-        read_schema_version(&store).await,
-        31,
-        "re-open must remain at v31"
+    assert!(
+        read_schema_version(&store).await >= 31,
+        "re-open must remain at least v31 (vnc-049 bumped current to 32)"
     );
     // Exactly one table of this name.
     let count = sqlx::query_scalar::<_, i64>(
@@ -359,7 +357,7 @@ async fn test_migration_with_stray_cycle_tags_no_error() {
     // Opening triggers the migration; IF NOT EXISTS makes it a no-op, not an error.
     let store = open_store(&dir).await;
     assert!(table_exists(&store, "cycle_tags").await);
-    assert_eq!(read_schema_version(&store).await, 31);
+    assert!(read_schema_version(&store).await >= 31);
     store.close().await.unwrap();
 }
 

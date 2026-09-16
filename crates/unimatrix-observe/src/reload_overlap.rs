@@ -247,6 +247,7 @@ mod tests {
             input: Some(json!({ "file_path": file_path })),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
