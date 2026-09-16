@@ -84,13 +84,24 @@ const EVENT_MATCHERS = {
  * would mis-parse — quoting is required for execution correctness, not just
  * for the ownership regex. See pseudocode/init-remote.md §1.
  *
+ * An optional providerHint (nan-023 ADR-003 §2) appends " --provider <hint>" so
+ * the codex hook writer emits `node <path> <EVENT> --provider codex-cli`. The
+ * codex writer only ever passes the literal "codex-cli" (a KNOWN_PROVIDERS
+ * member), so no escaping is needed. Every existing 2-arg call (claude-code)
+ * returns the identical string as before — byte-identical backward compat (SR-07).
+ *
  * @param {string} clientPath - Absolute path to lib/hook-client/index.js.
  * @param {string} event - Hook event name (the trailing argument).
+ * @param {string} [providerHint] - Optional provider name to stamp on the command.
  * @returns {string} The hook command string.
  */
-function buildHookClientCommand(clientPath, event) {
+function buildHookClientCommand(clientPath, event, providerHint) {
   const quoted = /\s/.test(clientPath) ? '"' + clientPath + '"' : clientPath;
-  return "node " + quoted + " " + event;
+  const base = "node " + quoted + " " + event;
+  if (typeof providerHint === "string" && providerHint.length > 0) {
+    return base + " --provider " + providerHint;
+  }
+  return base;
 }
 
 /**
