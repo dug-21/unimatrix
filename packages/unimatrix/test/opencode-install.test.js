@@ -17,6 +17,8 @@ const {
   detectsOpenCode,
   provisionOpenCode,
   maybeProvisionOpenCode,
+  writeOpencodeMcp,
+  buildOpencodeEntry,
   appendPluginEntry,
   mergePackageDep,
   isWithinProject,
@@ -371,5 +373,249 @@ describe("merge helpers", () => {
     assert.strictEqual(pkg.dependencies.foo, "1.0.0");
     assert.strictEqual(mergePackageDep(pkg, "bar", "^2.0.0"), true);
     assert.strictEqual(pkg.dependencies.bar, "^2.0.0");
+  });
+});
+
+// ── writeOpencodeMcp — retrieval writer (ADR-001, vnc-049 C-05, AC-05/10) ──
+//
+// New additive `mcp.unimatrix` retrieval entry. Byte-for-byte sentinel
+// preservation (provider + foreign keys), WireLeg contract, idempotence,
+// malformed fail-safe, dry-run, intent gate. The live `context_*` RETURN leg
+// (AC-05/AC-10) is a Stage 3c C14-verifier concern, not exercised here.
+
+const LOCAL_BINARY = "/opt/uni/bin/unimatrix";
+
+/** The exact local (stdio-binary) entry the writer must emit for LOCAL_BINARY. */
+function expectedLocalEntry() {
+  return {
+    type: "local",
+    command: [LOCAL_BINARY],
+    environment: { LD_LIBRARY_PATH: "/opt/uni/bin" },
+    enabled: true,
+  };
+}
+
+/** opencode.json fixture WITHOUT a pre-existing mcp.unimatrix (fresh case). */
+function freshConfig() {
+  return {
+    $schema: "https://opencode.ai/config.json",
+    provider: {
+      ollama: {
+        npm: "@ai-sdk/openai-compatible",
+        options: { baseURL: "http://localhost:11434/v1" },
+        models: { "qwen3-coder": {} },
+      },
+    },
+    permission: { edit: "allow", bash: "ask" },
+  };
+}
+
+function readRaw(dir) {
+  return fs.readFileSync(path.join(dir, "opencode.json"), "utf8");
+}
+
+function assertWireLegShape(leg, action) {
+  assert.strictEqual(leg.harness, "opencode");
+  assert.strictEqual(leg.surface, "retrieval");
+  assert.strictEqual(leg.action, action);
+  assert.strictEqual(typeof leg.path, "string");
+  if (action.startsWith("skipped")) {
+    assert.strictEqual(typeof leg.reason, "string", "skipped leg carries a reason");
+    assert.strictEqual(leg.entry, undefined, "skipped leg has no entry");
+  } else {
+    assert.ok(leg.entry && typeof leg.entry === "object", "write leg carries an entry");
+  }
+}
+
+describe("writeOpencodeMcp — sentinel preservation (R-08, C-05)", () => {
+  it("test_writeOpencodeMcp_preserves_ollama_provider_block", () => {
+    const dir = makeTempProject();
+    const original = sentinelConfig();
+    writeOpencodeJson(dir, original);
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY }, false);
+    // Unimatrix owns mcp.unimatrix — it may be updated — but the provider block
+    // and permissions are foreign and survive byte-for-byte.
+    const after = readJson(path.join(dir, "opencode.json"));
+    assert.strictEqual(
+      JSON.stringify(after.provider, null, 2),
+      JSON.stringify(original.provider, null, 2)
+    );
+    assert.strictEqual(
+      JSON.stringify(after.permission, null, 2),
+      JSON.stringify(original.permission, null, 2)
+    );
+    assert.ok(["created", "updated", "unchanged"].includes(leg.action));
+  });
+
+  it("test_writeOpencodeMcp_preserves_existing_mcp_unimatrix", () => {
+    const dir = makeTempProject();
+    // Pre-existing entry equal to what the writer would emit → unchanged, no write.
+    const cfg = freshConfig();
+    cfg.mcp = { unimatrix: expectedLocalEntry() };
+    writeOpencodeJson(dir, cfg);
+    const before = readRaw(dir);
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY }, false);
+    assertWireLegShape(leg, "unchanged");
+    assert.deepStrictEqual(leg.entry, expectedLocalEntry());
+    assert.strictEqual(readRaw(dir), before, "no write on unchanged");
+  });
+
+  it("test_writeOpencodeMcp_preserves_foreign_keys_and_indent", () => {
+    const dir = makeTempProject();
+    const cfg = freshConfig();
+    cfg.customTool = { alpha: 1, beta: ["x", "y"] };
+    // Write with 4-space indent to prove detectIndent is honored.
+    fs.writeFileSync(
+      path.join(dir, "opencode.json"),
+      JSON.stringify(cfg, null, 4) + "\n",
+      "utf8"
+    );
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY, harnessSelected: true }, false);
+    assertWireLegShape(leg, "created");
+    const raw = readRaw(dir);
+    const after = readJson(path.join(dir, "opencode.json"));
+    assert.deepStrictEqual(after.customTool, cfg.customTool, "foreign key preserved");
+    assert.deepStrictEqual(after.provider, cfg.provider, "provider preserved");
+    // 4-space indent preserved (a top-level key sits at 4 spaces).
+    assert.ok(/\n {4}"provider"/.test(raw), "4-space indent preserved");
+    assert.deepStrictEqual(after.mcp.unimatrix, expectedLocalEntry());
+  });
+});
+
+describe("writeOpencodeMcp — fresh additive write (AC-05)", () => {
+  it("test_writeOpencodeMcp_fresh_creates_mcp_unimatrix", () => {
+    const dir = makeTempProject();
+    writeOpencodeJson(dir, freshConfig());
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY, harnessSelected: true }, false);
+    assertWireLegShape(leg, "created");
+    assert.deepStrictEqual(leg.entry, expectedLocalEntry());
+    const after = readJson(path.join(dir, "opencode.json"));
+    assert.deepStrictEqual(after.mcp.unimatrix, expectedLocalEntry());
+    // Foreign keys preserved; only mcp is additive.
+    assert.deepStrictEqual(after.provider, freshConfig().provider);
+  });
+
+  it("test_writeOpencodeMcp_entry_shape_local_vs_cloud", () => {
+    // Local (stdio-binary).
+    const local = buildOpencodeEntry({ binaryPath: LOCAL_BINARY });
+    assert.deepStrictEqual(local, expectedLocalEntry());
+
+    // Cloud (token-free stdio-bridge). NEVER a token-bearing url (Q1).
+    const cloud = buildOpencodeEntry({
+      transport: { kind: "stdio-bridge", bridgePath: "/proj/.unimatrix/mcp-bridge.js", projectHash: "abc123" },
+    });
+    assert.deepStrictEqual(cloud, {
+      type: "local",
+      command: ["node", "/proj/.unimatrix/mcp-bridge.js", "abc123"],
+      enabled: true,
+    });
+    const cloudJson = JSON.stringify(cloud);
+    assert.ok(!/token|url|bearer/i.test(cloudJson), "no secret/url in cloud entry");
+  });
+
+  it("test_writeOpencodeMcp_bare_url_never_emits_token_entry", () => {
+    const dir = makeTempProject();
+    writeOpencodeJson(dir, freshConfig());
+    const before = readRaw(dir);
+    // Only a bare url (no bridge descriptor) → cannot emit token-free → skip.
+    const leg = writeOpencodeMcp(dir, { url: "https://cloud/mcp?token=SECRET", harnessSelected: true }, false);
+    assert.strictEqual(leg.action, "skipped");
+    // The writer never reads or echoes the url, so neither the secret nor the
+    // url appears anywhere in the leg (the reason mentions "token-free" only).
+    assert.ok(!/SECRET|https:\/\//.test(JSON.stringify(leg)), "no secret/url leaked into the leg");
+    assert.strictEqual(readRaw(dir), before, "no write");
+  });
+});
+
+describe("writeOpencodeMcp — idempotence (AC-04)", () => {
+  it("test_writeOpencodeMcp_run_twice_byte_identical", () => {
+    const dir = makeTempProject();
+    writeOpencodeJson(dir, freshConfig());
+    writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY, harnessSelected: true }, false);
+    const afterFirst = readRaw(dir);
+    const leg2 = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY, harnessSelected: true }, false);
+    const afterSecond = readRaw(dir);
+    assert.strictEqual(afterSecond, afterFirst, "second run byte-identical");
+    assert.strictEqual(leg2.action, "unchanged");
+  });
+
+  it("test_writeOpencodeMcp_updates_stale_command", () => {
+    const dir = makeTempProject();
+    const cfg = freshConfig();
+    cfg.mcp = { unimatrix: { type: "local", command: ["/old/path/unimatrix"], enabled: true } };
+    writeOpencodeJson(dir, cfg);
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY }, false);
+    assertWireLegShape(leg, "updated");
+    const after = readJson(path.join(dir, "opencode.json"));
+    assert.deepStrictEqual(after.mcp.unimatrix, expectedLocalEntry());
+    // Surrounding keys byte-identical.
+    assert.deepStrictEqual(after.provider, cfg.provider);
+  });
+});
+
+describe("writeOpencodeMcp — malformed / fail-safe (R-11, AC-15)", () => {
+  it("test_writeOpencodeMcp_malformed_json_skips_and_preserves", () => {
+    const dir = makeTempProject();
+    const malformed = "{ this is not : json ]";
+    fs.writeFileSync(path.join(dir, "opencode.json"), malformed, "utf8");
+    let leg;
+    assert.doesNotThrow(() => {
+      leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY, harnessSelected: true }, false);
+    });
+    assert.strictEqual(leg.action, "skipped-malformed");
+    assert.strictEqual(readRaw(dir), malformed, "malformed file byte-preserved");
+  });
+
+  it("test_writeOpencodeMcp_mcp_not_object_skips", () => {
+    const dir = makeTempProject();
+    const cfg = freshConfig();
+    cfg.mcp = "not-an-object";
+    writeOpencodeJson(dir, cfg);
+    const before = readRaw(dir);
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY, harnessSelected: true }, false);
+    assert.strictEqual(leg.action, "skipped-malformed");
+    assert.strictEqual(readRaw(dir), before, "user value not clobbered");
+  });
+});
+
+describe("writeOpencodeMcp — intent gate (AC-11)", () => {
+  it("test_writeOpencodeMcp_new_entry_without_intent_skipped", () => {
+    const dir = makeTempProject();
+    writeOpencodeJson(dir, freshConfig());
+    const before = readRaw(dir);
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY }, false);
+    assertWireLegShape(leg, "skipped-intent");
+    assert.strictEqual(readRaw(dir), before, "no write without opt-in");
+  });
+
+  it("test_writeOpencodeMcp_additive_into_existing_no_optin_needed", () => {
+    const dir = makeTempProject();
+    const cfg = freshConfig();
+    cfg.mcp = { unimatrix: { type: "local", command: ["/old/path/unimatrix"], enabled: true } };
+    writeOpencodeJson(dir, cfg);
+    // No harnessSelected — an existing entry proceeds (updated), not skipped.
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY }, false);
+    assert.strictEqual(leg.action, "updated");
+  });
+});
+
+describe("writeOpencodeMcp — dry-run + containment (AC-12, AC-14)", () => {
+  it("test_writeOpencodeMcp_dry_run_writes_nothing", () => {
+    const dir = makeTempProject();
+    writeOpencodeJson(dir, freshConfig());
+    const before = readRaw(dir);
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY, harnessSelected: true }, true);
+    assertWireLegShape(leg, "created");
+    assert.deepStrictEqual(leg.entry, expectedLocalEntry());
+    assert.strictEqual(readRaw(dir), before, "dry-run wrote nothing");
+  });
+
+  it("test_writeOpencodeMcp_within_project_guard", () => {
+    const dir = makeTempProject();
+    writeOpencodeJson(dir, freshConfig());
+    const leg = writeOpencodeMcp(dir, { binaryPath: LOCAL_BINARY, harnessSelected: true }, false);
+    // The only target is <dir>/opencode.json — always inside the project.
+    assert.ok(isWithinProject(dir, leg.path), "target within project");
+    assert.strictEqual(leg.path, path.join(dir, "opencode.json"));
   });
 });
