@@ -284,6 +284,7 @@ Task(subagent_type: "uni-js-dev",        ← JS component (packages/unimatrix/**
 ```
 
 2. **Wait for all agents in the wave to complete.**
+2a. **Verify each agent's report on return (MANDATORY, per-agent).** As each Stage 3b agent returns, confirm its `product/features/{id}/agents/{agent-id}-report.md` exists and includes the required Report + Knowledge Stewardship blocks. If a report is missing or incomplete, resume that one agent via `SendMessage` to produce it **now** — before committing the wave and before Gate 3b. Catching the gap at return costs one targeted resume; letting it reach Gate 3b turns it into a full rework loop (lesson from vnc-049).
 3. **Commit the wave**: `git add -p && git commit -m "impl: wave {N} — {component list} (#{issue})"`
 4. **Spawn the next wave**, which now builds on the committed state.
 

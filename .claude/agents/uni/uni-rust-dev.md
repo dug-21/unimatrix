@@ -154,4 +154,5 @@ Include in your agent report:
 - [ ] Code follows validated pseudocode — no silent deviations
 - [ ] Test cases match component test plan expectations
 - [ ] No source file exceeds 500 lines — split into modules if needed
+- [ ] Agent report written to `product/features/{feature-id}/agents/{agent-id}-report.md` (swarm runs only)
 - [ ] Knowledge Stewardship report block included with Queried and Stored/Declined entries
