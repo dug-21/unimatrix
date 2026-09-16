@@ -134,7 +134,7 @@ impl ObservationSource for SqlObservationSource {
                 .collect::<Vec<_>>()
                 .join(",");
             let sql = format!(
-                "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet \
+                "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet, source_domain, model_id \
                      FROM observations \
                      WHERE session_id IN ({}) \
                      ORDER BY ts_millis ASC",
@@ -200,7 +200,7 @@ impl ObservationSource for SqlObservationSource {
                 .collect::<Vec<_>>()
                 .join(",");
             let sql = format!(
-                "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet \
+                "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet, source_domain, model_id \
                  FROM observations \
                  WHERE session_id IN ({}) \
                  ORDER BY session_id, ts_millis ASC",
@@ -444,7 +444,7 @@ impl ObservationSource for SqlObservationSource {
                 .join(",");
 
             let sql = format!(
-                "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet \
+                "SELECT session_id, ts_millis, hook, tool, input, response_size, response_snippet, source_domain, model_id \
                  FROM observations \
                  WHERE session_id IN ({placeholders}) \
                    AND ts_millis >= ?1 \
@@ -564,15 +564,19 @@ fn json_depth(v: &serde_json::Value, current: usize, max: usize) -> bool {
 /// Rejected records are skipped (FM-02) with a WARN log; remaining records
 /// in the batch are processed normally.
 ///
-/// Fallback source_domain for DB read paths (Approach A, ADR-004, FR-06.3).
+/// LEGACY-ROW fallback source_domain for DB read paths (Approach A, ADR-004, FR-06.3).
 ///
-/// Used when `DomainPackRegistry::resolve_source_domain()` returns `"unknown"` for
-/// event types not in the builtin claude-code pack (e.g., Stop, SessionStart,
-/// cycle_start, cycle_stop). Preserves the existing hook-path invariant.
+/// vnc-049 C6 (ADR-001): as of the prefer-stored read fork, this is reached ONLY when the
+/// persisted `source_domain` column is NULL — i.e. pre-vnc-049 rows AND every non-opencode
+/// row (the ingest stamp is opencode-only, R-05). Opencode rows carry a stored value and
+/// never reach this fallback. Used when `DomainPackRegistry::resolve_source_domain()` returns
+/// `"unknown"` for event types not in the builtin claude-code pack (e.g., Stop, SessionStart,
+/// cycle_start, cycle_stop). Preserves the existing hook-path invariant byte-for-byte.
 pub(crate) const DEFAULT_HOOK_SOURCE_DOMAIN: &str = "claude-code";
 
-/// DB read path source_domain derivation uses Approach A: resolve via registry,
-/// fall back to DEFAULT_HOOK_SOURCE_DOMAIN when the result is "unknown" (FR-06.3).
+/// DB read path source_domain derivation (vnc-049 C6, ADR-001): PREFER the persisted
+/// `source_domain` column when non-NULL; on NULL fall back to Approach A (resolve via
+/// registry, then DEFAULT_HOOK_SOURCE_DOMAIN when the result is "unknown", FR-06.3).
 fn parse_observation_rows(
     rows: Vec<sqlx::sqlite::SqliteRow>,
     registry: &DomainPackRegistry,
@@ -586,20 +590,33 @@ fn parse_observation_rows(
         let input_str: Option<String> = row.get(4);
         let response_size: Option<i64> = row.get(5);
         let response_snippet: Option<String> = row.get(6);
+        // vnc-049 C6 (ADR-001/ADR-002): persisted attribution columns. NULL for
+        // legacy/non-opencode rows (col idx 7/8, appended after response_snippet).
+        let stored_source_domain: Option<String> = row.get(7);
+        let stored_model_id: Option<String> = row.get(8);
 
         // Set event_type from the raw hook string (no filtering — FR-03.1, AC-11).
         let event_type: String = hook_str;
 
-        // Approach A: derive source_domain from DomainPackRegistry (ADR-004, FR-06.3).
-        // Events in the builtin pack (PreToolUse, PostToolUse, PostToolUseFailure,
-        // SubagentStart) resolve directly; all others (Stop, SessionStart, cycle_start,
-        // cycle_stop, etc.) return "unknown" and fall back to DEFAULT_HOOK_SOURCE_DOMAIN.
-        let source_domain: String = {
-            let resolved = registry.resolve_source_domain(&event_type);
-            if resolved != "unknown" {
-                resolved
-            } else {
-                DEFAULT_HOOK_SOURCE_DOMAIN.to_string()
+        // vnc-049 C6 read fork (ADR-001, R-02): PREFER the persisted source_domain when
+        // present (opencode rows stamped at ingest, C5). A NULL column (legacy row AND
+        // every non-opencode row) falls back to today's read-derived Approach A resolution
+        // EXACTLY as before, preserving hook-path behavior byte-for-byte (R-05, T-SEC-12/13).
+        // The stored value is authoritative; resolve_source_domain is reachable ONLY on NULL
+        // (OQ-4 derivation-site pin — a stored opencode row can never re-derive to claude-code).
+        let source_domain: String = match stored_source_domain {
+            Some(sd) if !sd.is_empty() => sd,
+            // Approach A legacy fallback (ADR-004, FR-06.3): events in the builtin pack
+            // (PreToolUse, PostToolUse, PostToolUseFailure, SubagentStart) resolve directly;
+            // all others (Stop, SessionStart, cycle_start, cycle_stop, etc.) return "unknown"
+            // and fall back to DEFAULT_HOOK_SOURCE_DOMAIN.
+            _ => {
+                let resolved = registry.resolve_source_domain(&event_type);
+                if resolved != "unknown" {
+                    resolved
+                } else {
+                    DEFAULT_HOOK_SOURCE_DOMAIN.to_string()
+                }
             }
         };
 
@@ -649,6 +666,9 @@ fn parse_observation_rows(
             input,
             response_size: response_size.map(|v| v as u64),
             response_snippet,
+            // vnc-049 C6 (ADR-002, AC-06): surface the persisted model_id so local-model
+            // activity is queryable as distinct from cloud/legacy rows. NULL -> None.
+            model_id: stored_model_id,
         });
     }
     Ok(records)
@@ -712,6 +732,187 @@ mod tests {
         .execute(store.write_pool_server())
         .await
         .expect("insert observation");
+    }
+
+    /// vnc-049 C6 test helper: insert an observation with persisted attribution columns
+    /// (source_domain, model_id) set — the shape C5's opencode write path produces. The
+    /// plain `insert_observation` helper above leaves both NULL (legacy/non-opencode shape).
+    async fn insert_observation_attributed(
+        store: &SqlxStore,
+        session_id: &str,
+        ts_millis: i64,
+        hook: &str,
+        source_domain: Option<&str>,
+        model_id: Option<&str>,
+    ) {
+        sqlx::query(
+            "INSERT INTO observations \
+             (session_id, ts_millis, hook, tool, input, response_size, response_snippet, \
+              source_domain, model_id) \
+             VALUES (?1, ?2, ?3, NULL, NULL, NULL, NULL, ?4, ?5)",
+        )
+        .bind(session_id)
+        .bind(ts_millis)
+        .bind(hook)
+        .bind(source_domain)
+        .bind(model_id)
+        .execute(store.write_pool_server())
+        .await
+        .expect("insert attributed observation");
+    }
+
+    /// C6 / R-02.1 / AC-03 (read half): a row with a stored `source_domain="opencode"` reads
+    /// back "opencode" — the prefer-stored branch. The event_type is a canonical name that,
+    /// via the registry, would otherwise read-derive to the claude-code default; the stored
+    /// value MUST win (OQ-4 derivation-site pin — a stored opencode row never re-derives).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_parse_rows_prefers_stored_source_domain_when_present() {
+        let store = setup_test_store().await;
+        insert_session(&store, "sess-oc", Some("vnc-049")).await;
+        // "PreToolUse" resolves via the builtin claude-code pack — proves stored wins over derive.
+        insert_observation_attributed(
+            &store,
+            "sess-oc",
+            1700000000000,
+            "PreToolUse",
+            Some("opencode"),
+            Some("ollama/qwen3-coder"),
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_feature_observations("vnc-049").unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(
+            records[0].source_domain, "opencode",
+            "stored source_domain must be preferred over read-derived resolution"
+        );
+        // R-02.2 negative: must NOT be the claude-code read-derived default.
+        assert_ne!(records[0].source_domain, "claude-code");
+    }
+
+    /// C6 / R-04.2: a legacy row with NULL `source_domain` reads back via the registry /
+    /// DEFAULT_HOOK_SOURCE_DOMAIN path EXACTLY as today (the fallback branch of the fork).
+    /// Both fork branches are asserted (this + the prefer-stored test above), per #5427.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_parse_rows_falls_back_to_registry_when_source_domain_null() {
+        let store = setup_test_store().await;
+        insert_session(&store, "sess-legacy", Some("vnc-049")).await;
+        // NULL source_domain (plain insert helper) — legacy/non-opencode shape.
+        insert_observation(
+            &store,
+            "sess-legacy",
+            1700000000000,
+            "PreToolUse",
+            Some("Bash"),
+            None,
+            None,
+            None,
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_feature_observations("vnc-049").unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(
+            records[0].source_domain, "claude-code",
+            "NULL source_domain must fall back to read-derived resolution (legacy branch)"
+        );
+        assert_eq!(records[0].model_id, None, "legacy row has no model_id");
+    }
+
+    /// C6 / AC-06 (read half): a row with a stored `model_id` surfaces it on the record so
+    /// local-model activity is queryable as distinct from cloud/legacy rows.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_parse_rows_surfaces_model_id() {
+        let store = setup_test_store().await;
+        insert_session(&store, "sess-oc", Some("vnc-049")).await;
+        insert_observation_attributed(
+            &store,
+            "sess-oc",
+            1700000000000,
+            "PostToolUse",
+            Some("opencode"),
+            Some("ollama/qwen3-coder"),
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_feature_observations("vnc-049").unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(
+            records[0].model_id.as_deref(),
+            Some("ollama/qwen3-coder"),
+            "stored model_id must be surfaced on the queried record"
+        );
+    }
+
+    /// C6 / AC-06: a row with NULL `model_id` (cloud / legacy) surfaces None cleanly.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_parse_rows_null_model_id_surfaces_none() {
+        let store = setup_test_store().await;
+        insert_session(&store, "sess-cloud", Some("vnc-049")).await;
+        // opencode source_domain stored but no resolved backend model (NULL model_id).
+        insert_observation_attributed(
+            &store,
+            "sess-cloud",
+            1700000000000,
+            "PostToolUse",
+            Some("opencode"),
+            None,
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_feature_observations("vnc-049").unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].source_domain, "opencode");
+        assert_eq!(
+            records[0].model_id, None,
+            "NULL model_id must surface as None"
+        );
+    }
+
+    /// C6 edge case: a mixed table (one stored-opencode row + one NULL legacy row in the same
+    /// query) resolves each row via its correct fork branch — no cross-contamination.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_parse_rows_mixed_stored_and_null_no_cross_contamination() {
+        let store = setup_test_store().await;
+        insert_session(&store, "sess-mix", Some("vnc-049")).await;
+        insert_observation_attributed(
+            &store,
+            "sess-mix",
+            1700000000000,
+            "PreToolUse",
+            Some("opencode"),
+            Some("ollama/qwen3-coder"),
+        )
+        .await;
+        insert_observation(
+            &store,
+            "sess-mix",
+            1700000001000,
+            "PreToolUse",
+            Some("Bash"),
+            None,
+            None,
+            None,
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let mut records = source.load_feature_observations("vnc-049").unwrap();
+        records.sort_by_key(|r| r.ts);
+
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].source_domain, "opencode");
+        assert_eq!(records[0].model_id.as_deref(), Some("ollama/qwen3-coder"));
+        assert_eq!(records[1].source_domain, "claude-code");
+        assert_eq!(records[1].model_id, None);
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -199,6 +199,7 @@ mod tests {
                 input: Some(serde_json::json!({"file_path": "/tmp/test.rs"})),
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             })
             .collect();
         obs.extend((0..2).map(|i| ObservationRecord {
@@ -210,6 +211,7 @@ mod tests {
             input: None,
             response_size: Some(100),
             response_snippet: None,
+            model_id: None,
         }));
         obs
     }

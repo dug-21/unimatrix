@@ -791,6 +791,7 @@ mod tests {
             input: Some(serde_json::json!({"file_path": "/tmp/test.rs"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         };
         let json = serde_json::to_string(&record).expect("serialize");
         let back: ObservationRecord = serde_json::from_str(&json).expect("deserialize");

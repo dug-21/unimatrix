@@ -156,6 +156,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -169,6 +170,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -182,6 +184,7 @@ mod tests {
             input: Some(serde_json::json!({"command": command})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -195,6 +198,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -398,6 +402,7 @@ mod tests {
             input: Some(serde_json::json!({"status": "completed", "taskId": "1"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }];
         let refs: Vec<&ObservationRecord> = records.iter().collect();
         assert_eq!(find_completion_boundary(&refs), Some(5000));
@@ -415,6 +420,7 @@ mod tests {
                 input: Some(serde_json::json!({"status": "completed", "taskId": "1"})),
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
             ObservationRecord {
                 ts: 8000,
@@ -425,6 +431,7 @@ mod tests {
                 input: Some(serde_json::json!({"status": "completed", "taskId": "2"})),
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             },
         ];
         let refs: Vec<&ObservationRecord> = records.iter().collect();
@@ -449,6 +456,7 @@ mod tests {
             input: Some(serde_json::json!({"status": "in_progress", "taskId": "1"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }];
         let refs: Vec<&ObservationRecord> = records.iter().collect();
         assert_eq!(find_completion_boundary(&refs), None);

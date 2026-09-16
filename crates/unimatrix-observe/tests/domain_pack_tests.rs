@@ -26,6 +26,7 @@ fn make_record(ts: u64, event_type: &str, source_domain: &str) -> ObservationRec
         input: None,
         response_size: None,
         response_snippet: None,
+        model_id: None,
     }
 }
 
@@ -44,6 +45,7 @@ fn make_record_with_input(
         input: Some(input),
         response_size: None,
         response_snippet: None,
+        model_id: None,
     }
 }
 

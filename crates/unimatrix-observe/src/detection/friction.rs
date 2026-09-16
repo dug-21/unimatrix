@@ -432,6 +432,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -445,6 +446,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -458,6 +460,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -471,6 +474,7 @@ mod tests {
             input: Some(serde_json::json!({"command": command})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -811,6 +815,7 @@ mod tests {
                 input: None,
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             })
             .collect();
         let rule = ToolFailureRule;
@@ -831,6 +836,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }));
         let rule = ToolFailureRule;
         let findings = rule.detect(&records);
@@ -851,6 +857,7 @@ mod tests {
                 input: None,
                 response_size: None,
                 response_snippet: Some("permission denied".to_string()),
+                model_id: None,
             })
             .collect();
         let rule = ToolFailureRule;
@@ -877,6 +884,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }];
         let rule = ToolFailureRule;
         assert!(rule.detect(&records).is_empty());

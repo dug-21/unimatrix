@@ -15,6 +15,7 @@ fn obs(session_id: &str, ts: u64, event_type: &str) -> ObservationRecord {
         input: None,
         response_size: None,
         response_snippet: None,
+        model_id: None,
     }
 }
 
@@ -34,6 +35,7 @@ fn obs_full(
         input: Some(input),
         response_size: Some(snippet.len() as u64),
         response_snippet: Some(snippet.to_string()),
+        model_id: None,
     }
 }
 

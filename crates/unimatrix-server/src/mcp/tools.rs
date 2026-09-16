@@ -7128,6 +7128,7 @@ mod tests {
                 input,
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             }
         }
         let bash = |ts: u64, cmd: &str| {
@@ -8342,6 +8343,7 @@ mod tests {
             input: Some(serde_json::json!({"id": 42})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }];
 
         // sessions is empty — no query_log or injection_log records needed;
@@ -8378,6 +8380,7 @@ mod tests {
             input: Some(serde_json::Value::String(r#"{"id": 99}"#.to_string())),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }];
 
         let result =
@@ -8883,6 +8886,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -9177,6 +9181,7 @@ mod phase_stats_tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 

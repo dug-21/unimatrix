@@ -388,6 +388,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -401,6 +402,7 @@ mod tests {
             input: Some(serde_json::json!({"file_path": path})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -414,6 +416,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -427,6 +430,7 @@ mod tests {
             input: Some(serde_json::json!({"taskId": task_id, "status": status})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -440,6 +444,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 

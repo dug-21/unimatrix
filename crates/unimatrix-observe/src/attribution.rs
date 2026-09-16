@@ -185,6 +185,7 @@ mod tests {
             input: input_str.map(|s| serde_json::Value::String(s.to_string())),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 

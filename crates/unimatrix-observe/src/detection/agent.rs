@@ -494,6 +494,7 @@ mod tests {
             input: Some(serde_json::json!({"file_path": path})),
             response_size: Some(size),
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -507,6 +508,7 @@ mod tests {
             input: Some(serde_json::json!({"file_path": path})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -520,6 +522,7 @@ mod tests {
             input: Some(serde_json::json!({"file_path": "/tmp/out.rs"})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -533,6 +536,7 @@ mod tests {
             input: Some(serde_json::json!({"file_path": path})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -546,6 +550,7 @@ mod tests {
             input: Some(serde_json::json!({"file_path": "/tmp/edit.rs"})),
             response_size: Some(size),
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -559,6 +564,7 @@ mod tests {
             input: Some(serde_json::json!({"command": command})),
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -572,6 +578,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 
@@ -585,6 +592,7 @@ mod tests {
             input: None,
             response_size: None,
             response_snippet: None,
+            model_id: None,
         }
     }
 

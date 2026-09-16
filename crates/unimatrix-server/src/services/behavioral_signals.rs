@@ -619,6 +619,8 @@ mod tests {
             input: input.map(|s| s.to_string()),
             response_size: None,
             response_snippet: None,
+            source_domain: None,
+            model_id: None,
         }
     }
 

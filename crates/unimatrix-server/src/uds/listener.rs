@@ -2408,6 +2408,7 @@ fn content_based_attribution_fallback(store: &Store, session_id: &str) -> Option
                 input: input_str.map(serde_json::Value::String),
                 response_size: None,
                 response_snippet: None,
+                model_id: None,
             }
         })
         .collect();

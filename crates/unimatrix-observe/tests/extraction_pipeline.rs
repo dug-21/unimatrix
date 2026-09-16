@@ -25,6 +25,7 @@ fn make_search_obs(session_id: &str, query: &str) -> ObservationRecord {
         input: Some(serde_json::json!({"query": query})),
         response_size: Some(0),
         response_snippet: Some("No results found".to_string()),
+        model_id: None,
     }
 }
 
