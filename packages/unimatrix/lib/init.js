@@ -119,15 +119,28 @@ function writeMcpJson(projectRoot, binaryPath, dryRun) {
 }
 
 /**
- * Copy bundled skill files from the package's skills/ directory
- * into the project's .claude/skills/ directory. Overwrites existing
- * unimatrix skills, preserves non-unimatrix skills.
+ * Non-destructive definition install for bundled SKILLS ONLY (ADR-004).
+ *
+ * Default (force:false) = install-if-absent: each shipped skill file is written
+ * only when its destination does not exist, so a user-edited installed skill
+ * survives a re-run byte-for-byte (AC-01, the copySkills-clobber regression).
+ * force:true overwrites Unimatrix-owned skill files with their shipped versions.
+ *
+ * Ownership is enforced structurally: the loop iterates ONLY the shipped source
+ * tree (`__dirname/../skills`). Foreign files under `.claude/skills/` (skills the
+ * package does not ship) are never read, written, or deleted on ANY path —
+ * including `--force` (AC-02). Scope is skills only; protocols/agents are out of
+ * scope (C-13, SR-05) — stated in a boundary action line.
  *
  * @param {string} projectRoot - Absolute path to project root.
- * @param {boolean} dryRun - If true, do not copy files.
- * @returns {string[]} Actions taken.
+ * @param {object} opts
+ * @param {boolean} [opts.force=false] - Overwrite Unimatrix-owned skills.
+ * @param {boolean} [opts.dryRun=false] - Print intended actions, write nothing.
+ * @returns {string[]} Action lines (one per shipped file + a scope boundary line).
  */
-function copySkills(projectRoot, dryRun) {
+function installSkills(projectRoot, opts) {
+  const force = (opts && opts.force) || false;
+  const dryRun = (opts && opts.dryRun) || false;
   const actions = [];
   const targetDir = path.join(projectRoot, ".claude", "skills");
   const sourceDir = path.join(__dirname, "..", "skills");
@@ -152,32 +165,66 @@ function copySkills(projectRoot, dryRun) {
 
     if (!dryRun) {
       fs.mkdirSync(dst, { recursive: true });
+    }
 
-      const files = fs.readdirSync(src);
-      for (const file of files) {
-        if (file.includes("..")) {
-          throw new Error(
-            "Path traversal detected in skill file: " + file
-          );
-        }
-
-        const srcFile = path.join(src, file);
-        const dstFile = path.join(dst, file);
-
-        // Only copy files, not subdirectories
-        const stat = fs.statSync(srcFile);
-        if (stat.isFile()) {
-          fs.copyFileSync(srcFile, dstFile);
-        }
+    const files = fs.readdirSync(src);
+    for (const file of files) {
+      // Retained package-integrity guard (ADR-004 §6): a shipped filename that
+      // escapes the resolved dir is a package defect, so throwing loud is right.
+      if (file.includes("..")) {
+        throw new Error("Path traversal detected in skill file: " + file);
       }
 
-      actions.push("Copied skill: " + skillDir);
-    } else {
-      actions.push("[dry-run] Would copy skill: " + skillDir);
+      const srcFile = path.join(src, file);
+      const dstFile = path.join(dst, file);
+
+      // Only files, not subdirectories (parity with copySkills).
+      if (!fs.statSync(srcFile).isFile()) {
+        continue;
+      }
+
+      const destExists = fs.existsSync(dstFile);
+      const rel = skillDir + "/" + file;
+
+      if (destExists && !force) {
+        // Install-if-absent default: leave the existing (possibly edited) file
+        // byte-for-byte (AC-01).
+        actions.push(
+          (dryRun ? "[dry-run] " : "") + "Kept skill file (exists): " + rel
+        );
+        continue;
+      }
+
+      // Write path: absent (install) OR force (overwrite Unimatrix-owned).
+      const pastVerb = destExists ? "Overwrote (--force)" : "Installed";
+      const willVerb = destExists ? "overwrite (--force)" : "install";
+      if (dryRun) {
+        actions.push("[dry-run] Would " + willVerb + " skill file: " + rel);
+      } else {
+        fs.copyFileSync(srcFile, dstFile);
+        actions.push(pastVerb + " skill file: " + rel);
+      }
     }
   }
 
+  // Skills-only boundary (SR-05): stated so "parity" is not misread as
+  // all-definitions (protocols/agents are out of scope, C-13).
+  actions.push("Definition scope: skills only (protocols/agents not installed)");
   return actions;
+}
+
+/**
+ * Backward-compatible alias for the pre-nan-023 2-arg `copySkills(root, dryRun)`
+ * surface. Delegates to the install-if-absent default (never overwrites), so any
+ * external caller keeps working while gaining the AC-01 non-clobber guarantee.
+ * Internal call sites use `installSkills` directly.
+ *
+ * @param {string} projectRoot - Absolute path to project root.
+ * @param {boolean} dryRun - If true, do not write files.
+ * @returns {string[]} Actions taken.
+ */
+function copySkills(projectRoot, dryRun) {
+  return installSkills(projectRoot, { force: false, dryRun: dryRun });
 }
 
 /**
@@ -512,10 +559,14 @@ async function initRemote(options) {
   );
   actions.push(...settingsResult.actions);
 
-  // Step 5: copy skills (FR-B7); remote mode DOES copy skills. Do NOT append a
-  // CLAUDE.md knowledge block (uni-init owns it) — the /unimatrix-init pointer
-  // printed by printSummary is the only onboarding pointer (AC-W1-C6).
-  actions.push(...copySkills(projectRoot, dryRun));
+  // Step 5: install skills (FR-B7); remote mode DOES install skills. Non-
+  // destructive install-if-absent (ADR-004); `--force` overwrites owned skills
+  // only. Do NOT append a CLAUDE.md knowledge block (uni-init owns it) — the
+  // /unimatrix-init pointer printed by printSummary is the only onboarding
+  // pointer (AC-W1-C6).
+  actions.push(
+    ...installSkills(projectRoot, { force: options.force || false, dryRun })
+  );
   actions.push("Skipped binary/database steps: no local binary in remote mode");
 
   // Step 6: Ping validation over the PINNED TLS connection — the ONE loud
@@ -617,8 +668,12 @@ async function init(options) {
   const settingsResult = mergeSettings(settingsPath, binaryPath, { dryRun });
   actions.push(...settingsResult.actions);
 
-  // Step 5: Copy skill files
-  const skillActions = copySkills(projectRoot, dryRun);
+  // Step 5: Install skill files (ADR-004: install-if-absent; `--force`
+  // overwrites Unimatrix-owned skills only, never foreign files, never wiring).
+  const skillActions = installSkills(projectRoot, {
+    force: opts.force || false,
+    dryRun,
+  });
   actions.push(...skillActions);
 
   // Step 5b: OpenCode provisioning (ADR-006, C9). Strictly additive and
@@ -683,6 +738,7 @@ module.exports = {
   writeMcpJson,
   writeMcpBridgeEntry,
   cleanStaleRemoteSubtree,
+  installSkills,
   copySkills,
   printSummary,
   readJsonOrEmpty,
