@@ -24,6 +24,16 @@
  *   concatenation of a raw path into `command = ...`.
  */
 
+const fs = require("fs");
+const path = require("path");
+// Wave B reuse (do not reinvent — codex-install.md §Module constants / reuse):
+const { isWithinProject, readJsonSafe, detectIndent } = require("./opencode-install.js");
+const {
+  buildHookClientCommand,
+  isUnimatrixHook,
+  EVENT_MATCHERS,
+} = require("./merge-settings.js");
+
 const OWNED_TABLE = "mcp_servers.unimatrix";
 
 // ---------------------------------------------------------------------------
@@ -254,15 +264,358 @@ function tomlString(s) {
   return out + '"';
 }
 
+// ===========================================================================
+// WAVE B — fs-touching writers (codex-install.md; ADR-001/003/006).
+//
+// Bring codex-cli to C14 parity: write `[mcp_servers.unimatrix]` into
+// `.codex/config.toml` (surgical, foreign-preserving) and Claude-like hooks into
+// `.codex/hooks.json` targeting the JS hook client with `--provider codex-cli` on
+// EVERY command. Fail-safe: warn-and-skip, NEVER throw out of `maybeWireCodex`
+// (AC-15). Every TOML value routes through the Wave A `tomlString` escaper (R-10).
+// ===========================================================================
+
+const CONFIG_FILE = ".codex/config.toml";
+const HOOKS_FILE = ".codex/hooks.json";
+const CODEX_HARNESS = "codex-cli";
+const CODEX_PROVIDER = "codex-cli"; // mandatory hook hint (C-04, NFR-07)
+const TOML_MALFORMED_REASON =
+  "config.toml has an ambiguous table boundary — preserved unchanged";
+
+// ADR-003 §3 / Q4 — the 7 emitted events. Excludes PostToolUseFailure
+// (Claude-specific arm) and SubagentStop (opt-in). Matchers reused from
+// EVENT_MATCHERS so codex and claude stay in step (PreToolUse = cycle matcher).
+const CODEX_EVENTS = [
+  "SessionStart",
+  "UserPromptSubmit",
+  "PreToolUse",
+  "PostToolUse",
+  "PreCompact",
+  "SubagentStart",
+  "Stop",
+];
+
+/** Best-effort text read; a missing/unreadable file is treated as "" (fail-safe). */
+function readTextSafe(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch (_err) {
+    return "";
+  }
+}
+
+/**
+ * Surfaced trust precondition (ADR-006 §3, NFR-09). `.codex/` config + hooks
+ * only load for a TRUSTED layer; wiring cannot make it trusted, so we state the
+ * conditionality on every codex leg — never a silent inert pass.
+ */
+function codexTrustNote() {
+  return "codex wiring is active only in a trusted .codex/ layer (mark .codex/ trusted in Codex)";
+}
+
+/** Structured WireLeg builder; `extra` carries command/entry/reason/note. */
+function leg(surface, action, legPath, extra) {
+  return Object.assign(
+    { harness: CODEX_HARNESS, surface: surface, action: action, path: legPath },
+    extra || {}
+  );
+}
+
+/**
+ * Resolve the emit shape. Q1: cloud is the token-free stdio bridge; a bearer
+ * token / `url =` is NEVER written to TOML (Principle 8, R-03). Prefers an
+ * explicit `transport` descriptor from the orchestrator, then `binaryPath`
+ * (local), then `bridgePath` + `projectHash` (cloud). `url` is intentionally
+ * NOT mapped to a `url =` entry — the orchestrator resolves cloud to a bridge.
+ * @returns {{kind:string, binaryPath?:string, bridgePath?:string, projectHash?:string}}
+ */
+function resolveCodexTransport(opts) {
+  const o = opts || {};
+  if (o.transport && typeof o.transport.kind === "string") {
+    return o.transport;
+  }
+  if (typeof o.binaryPath === "string" && o.binaryPath) {
+    return { kind: "stdio-binary", binaryPath: o.binaryPath };
+  }
+  if (
+    typeof o.bridgePath === "string" &&
+    o.bridgePath &&
+    typeof o.projectHash === "string" &&
+    o.projectHash
+  ) {
+    return { kind: "stdio-bridge", bridgePath: o.bridgePath, projectHash: o.projectHash };
+  }
+  return { kind: "none" };
+}
+
+/**
+ * Owned-table key lines (TOML-escaped via `tomlString`, R-10) plus a structured
+ * `entry` mirror for the WireLeg (the C14 verifier spawns/connects from it).
+ * Returns null for `kind === "none"` (caller emits a skipped leg).
+ */
+function buildTomlEmit(transport) {
+  if (transport.kind === "stdio-binary") {
+    return {
+      bodyLines: ["command = " + tomlString(transport.binaryPath)],
+      entry: { command: transport.binaryPath },
+    };
+  }
+  if (transport.kind === "stdio-bridge") {
+    return {
+      bodyLines: [
+        'command = "node"',
+        "args = [" +
+          tomlString(transport.bridgePath) +
+          ", " +
+          tomlString(transport.projectHash) +
+          "]",
+      ],
+      entry: { command: "node", args: [transport.bridgePath, transport.projectHash] },
+    };
+  }
+  return null;
+}
+
+/**
+ * Surgical TOML MCP writer. Self-gates the intent decision (AC-11) and never
+ * throws on malformed input — the file is byte-preserved and the leg is skipped
+ * (AC-15). Malformed is checked BEFORE the intent gate.
+ * @returns {object} a single WireLeg
+ */
+function writeCodexMcpToml(dir, opts, dryRun) {
+  const options = opts || {};
+  const cfgPath = path.join(dir, CONFIG_FILE);
+  const S = "mcp";
+
+  if (!isWithinProject(dir, cfgPath)) {
+    return leg(S, "skipped-undetected", cfgPath, { reason: "path escapes project root" }); // AC-12
+  }
+
+  const raw = readTextSafe(cfgPath);
+  const existing = readTomlTable(raw, OWNED_TABLE);
+  if (existing.malformed) {
+    return leg(S, "skipped-malformed", cfgPath, { reason: TOML_MALFORMED_REASON });
+  }
+
+  // Intent gate (self-gating): a NEW entry into a user-owned config needs opt-in.
+  if (!existing.present && options.harnessSel !== CODEX_HARNESS) {
+    return leg(S, "skipped-intent", cfgPath, {
+      reason: "new codex entry needs opt-in: run `unimatrix wire --harness codex-cli`",
+    }); // AC-11
+  }
+
+  const emit = buildTomlEmit(options.transport || { kind: "none" });
+  if (!emit) {
+    return leg(S, "skipped-undetected", cfgPath, {
+      reason: "no transport source (binaryPath / bridge absent) — nothing to wire",
+    });
+  }
+
+  const result = upsertTomlTable(raw, OWNED_TABLE, emit.bodyLines);
+  if (result.malformed) {
+    return leg(S, "skipped-malformed", cfgPath, { reason: TOML_MALFORMED_REASON });
+  }
+  if (!result.changed) {
+    return leg(S, "unchanged", cfgPath, { entry: emit.entry }); // idempotent — no write (AC-04)
+  }
+
+  const action = existing.present ? "updated" : "created";
+  if (!dryRun) {
+    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
+    fs.writeFileSync(cfgPath, result.text, "utf8");
+  }
+  return leg(S, action, cfgPath, { entry: emit.entry });
+}
+
+/**
+ * Fail-loud invariant (NFR-07, C-04): a codex hook command MUST carry
+ * `--provider codex-cli`. A missing flag is a defect, not a silent degrade.
+ */
+function requireProviderFlag(command) {
+  if (typeof command !== "string" || !command.includes("--provider " + CODEX_PROVIDER)) {
+    throw new Error(
+      "codex hook command missing --provider codex-cli (fail-loud, NFR-07/C-04)"
+    );
+  }
+  return command;
+}
+
+/**
+ * Non-clobbering matcher-group upsert for one event, scoped to Unimatrix-owned
+ * entries (isUnimatrixHook). Mirrors mergeSettings Step 3: find the matcher
+ * group, update/append the uni-owned hook, dedup extra uni hooks. Foreign hook
+ * entries and foreign matcher groups are NEVER touched. Mutates `hooksObj`;
+ * returns true iff it changed.
+ */
+function upsertHookEntry(hooksObj, event, matcher, command) {
+  const newEntry = { type: "command", command: command };
+  if (!Array.isArray(hooksObj[event])) {
+    hooksObj[event] = [];
+  }
+  const groups = hooksObj[event];
+  for (const group of groups) {
+    if (!group || group.matcher !== matcher) {
+      continue;
+    }
+    if (!Array.isArray(group.hooks)) {
+      group.hooks = [];
+    }
+    let idx = -1;
+    const dups = [];
+    for (let i = 0; i < group.hooks.length; i++) {
+      if (isUnimatrixHook(group.hooks[i])) {
+        if (idx === -1) {
+          idx = i;
+        } else {
+          dups.push(i);
+        }
+      }
+    }
+    let changed = false;
+    for (let j = dups.length - 1; j >= 0; j--) {
+      group.hooks.splice(dups[j], 1);
+      changed = true; // dedup on re-run
+    }
+    if (idx >= 0) {
+      const cur = group.hooks[idx];
+      if (cur.type !== "command" || cur.command !== command) {
+        group.hooks[idx] = newEntry;
+        changed = true;
+      }
+    } else {
+      group.hooks.push(newEntry);
+      changed = true;
+    }
+    return changed;
+  }
+  groups.push({ matcher: matcher, hooks: [newEntry] });
+  return true;
+}
+
+/**
+ * Write `.codex/hooks.json` (same matcher-group shape as `.claude/settings.json`)
+ * targeting the JS hook client — NEVER the unimatrix binary (C-03, AC-08) — with
+ * `--provider codex-cli` on every command (C-04, AC-07). Returns ONE WireLeg per
+ * event so the manifest carries every exact command string (SR-09, R-02).
+ * @returns {object[]} WireLeg[]
+ */
+function writeCodexHooks(dir, opts) {
+  const options = opts || {};
+  const hooksPath = path.join(dir, HOOKS_FILE);
+  const S = "hooks";
+
+  if (!isWithinProject(dir, hooksPath)) {
+    return [leg(S, "skipped-undetected", hooksPath, { reason: "path escapes project root" })]; // AC-12
+  }
+
+  const read = readJsonSafe(hooksPath);
+  if (read.malformed) {
+    return [
+      leg(S, "skipped-malformed", hooksPath, {
+        reason: ".codex/hooks.json is not valid JSON — preserved unchanged",
+      }),
+    ];
+  }
+  const content = read.parsed || {};
+  if (
+    content.hooks !== undefined &&
+    (typeof content.hooks !== "object" || Array.isArray(content.hooks))
+  ) {
+    return [
+      leg(S, "skipped-malformed", hooksPath, {
+        reason: "`hooks` key is not an object — preserved unchanged",
+      }),
+    ];
+  }
+  if (content.hooks === undefined) {
+    content.hooks = {};
+  }
+
+  let changed = false;
+  const commands = [];
+  for (const event of CODEX_EVENTS) {
+    const matcher = EVENT_MATCHERS[event];
+    const command = requireProviderFlag(
+      buildHookClientCommand(options.clientPath, event, CODEX_PROVIDER)
+    );
+    commands.push({ event: event, command: command });
+    if (upsertHookEntry(content.hooks, event, matcher, command)) {
+      changed = true;
+    }
+  }
+
+  let action = read.present ? "updated" : "created";
+  if (!changed && read.present) {
+    action = "unchanged";
+  }
+
+  if (!options.dryRun && action !== "unchanged") {
+    fs.mkdirSync(path.dirname(hooksPath), { recursive: true });
+    fs.writeFileSync(
+      hooksPath,
+      JSON.stringify(content, null, detectIndent(read.raw || "")) + "\n",
+      "utf8"
+    );
+  }
+
+  // One WireLeg per event — each carries its own exact command (manifest fidelity).
+  return commands.map((c) => leg(S, action, hooksPath, { command: c.command }));
+}
+
+/**
+ * Top-level codex fan-out: MCP TOML + hooks. Fail-safe — never throws out of the
+ * wire layer (AC-15); an unexpected throw becomes a skipped leg. The trust
+ * precondition is surfaced on every codex leg (NFR-09), never a silent no-op.
+ * @returns {object[]} WireLeg[]
+ */
+function maybeWireCodex(dir, opts) {
+  const options = opts || {};
+  const transport = resolveCodexTransport(options);
+  const legs = [];
+  try {
+    legs.push(
+      writeCodexMcpToml(
+        dir,
+        { transport: transport, harnessSel: options.harnessSel },
+        options.dryRun
+      )
+    );
+    const hookLegs = writeCodexHooks(dir, {
+      clientPath: options.clientPath,
+      dryRun: options.dryRun,
+    });
+    for (const l of hookLegs) {
+      legs.push(l);
+    }
+  } catch (e) {
+    legs.push(
+      leg("mcp", "skipped-malformed", path.join(dir, CONFIG_FILE), {
+        reason: "codex wiring error: " + e.message,
+      })
+    );
+  }
+  const note = codexTrustNote();
+  for (const l of legs) {
+    l.note = note;
+  }
+  return legs;
+}
+
 module.exports = {
   // Wave A — surgical TOML helpers (ADR-002, toml-surgical.md). DO NOT remove.
   upsertTomlTable,
   readTomlTable,
   tomlString,
   OWNED_TABLE,
-  // ---- Wave B export seam ----------------------------------------------------
-  // Wave B (codex-install.md) adds the fs-touching writers below and to this
-  // object WITHOUT altering the Wave A helpers above:
-  //   maybeWireCodex, writeCodexMcpToml, writeCodexHooks
-  // buildTomlBody (Wave B) must build values via `tomlString` (R-10).
+  // Wave B — fs-touching writers (codex-install.md, ADR-001/003/006).
+  maybeWireCodex,
+  writeCodexMcpToml,
+  writeCodexHooks,
+  resolveCodexTransport,
+  requireProviderFlag,
+  codexTrustNote,
+  CODEX_EVENTS,
+  CODEX_PROVIDER,
+  CODEX_HARNESS,
+  CONFIG_FILE,
+  HOOKS_FILE,
 };
