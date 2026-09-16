@@ -371,11 +371,22 @@ class UnimatrixHookClient:
         *,
         timestamp: int | None = None,
         topic_signal: str | None = None,
+        provider: str | None = None,
+        model_id: str | None = None,
         timeout: float | None = None,
     ) -> HookResponse:
         """Send a single RecordEvent (the live wire variant). The flattened
         `ImplantEvent` carries `event_type` + `payload`; the daemon turns it into a
-        durable ObservationRow (or a cycle_events row for `cycle_*`)."""
+        durable ObservationRow (or a cycle_events row for `cycle_*`).
+
+        vnc-049: `provider`/`model_id` are the flattened `ImplantEvent` attribution
+        carriers (wire.rs :284/:295). They ride the top level of the frame exactly
+        as the `unimatrix hook --provider opencode --model <...>` CLI populates them
+        after normalize; the daemon's `extract_observation_fields` then DERIVES the
+        persisted `source_domain` (`derive_source_domain`, opencode-only) and
+        validates/binds `model_id` at `insert_observation`. These are the real
+        production ingest inputs — attribution is DERIVED at INSERT, never seeded as
+        a stored column (there is no `source_domain` wire field; #5285 anti-seed)."""
         event: dict[str, Any] = {
             "event_type": event_type,
             "session_id": session_id,
@@ -384,6 +395,10 @@ class UnimatrixHookClient:
         }
         if topic_signal is not None:
             event["topic_signal"] = topic_signal
+        if provider is not None:
+            event["provider"] = provider
+        if model_id is not None:
+            event["model_id"] = model_id
         # RecordEvent #[serde(flatten)]s ImplantEvent — the event fields sit at the
         # top level beside the `type` tag.
         request = {"type": "RecordEvent", **event}
@@ -444,11 +459,17 @@ class UnimatrixHookClient:
         response_size: int = 0,
         response_snippet: str = "",
         tool_input: dict[str, Any] | None = None,
+        provider: str | None = None,
+        model_id: str | None = None,
         timeout: float | None = None,
     ) -> HookResponse:
         """RecordEvent(`PostToolUse`) — records one observation row. `tool_name` +
         the legacy `response_size`/`response_snippet` payload keys are the fields
-        `extract_observation_fields` / `extract_response_fields` consume."""
+        `extract_observation_fields` / `extract_response_fields` consume.
+
+        vnc-049: `provider`/`model_id` ride the flattened `ImplantEvent` attribution
+        carriers (see `record_event`); the daemon derives `source_domain` and binds
+        `model_id` at ingest."""
         payload: dict[str, Any] = {
             "tool_name": tool,
             "response_size": response_size,
@@ -457,5 +478,6 @@ class UnimatrixHookClient:
         if tool_input is not None:
             payload["tool_input"] = tool_input
         return self.record_event(
-            session_id, "PostToolUse", payload, timeout=timeout
+            session_id, "PostToolUse", payload,
+            provider=provider, model_id=model_id, timeout=timeout
         )

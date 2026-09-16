@@ -409,16 +409,19 @@ fn test_verify_cli_empty_db_is_clean() {
 // ===========================================================================
 // AC-12 — no schema migration introduced by nxs-014 itself (schema version pin).
 // The absolute value tracks the workspace HEAD (bumped to 31 by vnc-047's
-// cycle_tags migration, ADR-001); nxs-014 remains weak-mode and adds no migration.
+// cycle_tags migration, ADR-001; bumped to 32 by vnc-049's source_domain/model_id
+// attribution columns, ADR-001/ADR-002); nxs-014 remains weak-mode and adds no
+// migration. This is a HEAD-tracking pin: bump the expected value with the schema.
 // ===========================================================================
 
 #[test]
-fn test_schema_version_still_31() {
+fn test_schema_version_still_32() {
     assert_eq!(
         unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        31,
+        32,
         "nxs-014 is weak-mode: it adds no schema migration. The pin tracks HEAD; \
-         vnc-047 bumped CURRENT_SCHEMA_VERSION to 31 for the cycle_tags junction (C-05/NFR-02)"
+         vnc-049 bumped CURRENT_SCHEMA_VERSION to 32 for the observation \
+         source_domain/model_id attribution columns (ADR-001/ADR-002)"
     );
 }
 

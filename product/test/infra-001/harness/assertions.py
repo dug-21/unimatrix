@@ -245,3 +245,39 @@ def _parse_entry_from_text(text: str) -> dict:
             value = match.group(2).strip()
             entry[key] = value
     return entry
+
+
+# ---------------------------------------------------------------------------
+# vnc-049 (C18) — observation attribution readback
+# ---------------------------------------------------------------------------
+#
+# The AC-03 / AC-06 / R-01 / R-02 assertions are stored-record assertions: drive
+# a real opencode event over the UDS hook path (provider/model_id on the wire),
+# let the daemon DERIVE `source_domain` + bind `model_id` at `insert_observation`,
+# then SELECT the stored row and assert the QUERIED value. This is the read-back
+# half of the GH#819 `_observation_row_count` durability pattern, projecting the
+# two vnc-049 attribution columns instead of only COUNT(*). It never seeds a row
+# (#5285 anti-seed) — the caller drives the wire; this only reads what landed.
+
+
+def read_observation_attribution(store_dir):
+    """Return [(source_domain, model_id, tool), ...] for every `observations`
+    row in the daemon's per-slug store, newest last (by rowid).
+
+    A fresh sqlite3 reader sees WAL-committed rows (#5265), so this is exact for
+    committed writes; callers settle-poll fire-and-forget writes via row COUNT
+    before reading attribution."""
+    import sqlite3
+    from pathlib import Path
+
+    db = Path(store_dir) / "unimatrix.db"
+    if not db.is_file():
+        return []
+    conn = sqlite3.connect(str(db))
+    try:
+        cur = conn.execute(
+            "SELECT source_domain, model_id, tool FROM observations ORDER BY id ASC"
+        )
+        return [(r[0], r[1], r[2]) for r in cur.fetchall()]
+    finally:
+        conn.close()

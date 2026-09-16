@@ -11,7 +11,8 @@ import threading
 import time
 import pytest
 from pathlib import Path
-from harness.assertions import assert_tool_success, assert_tool_error, extract_entry_id, parse_entries, get_result_text
+from harness.assertions import assert_tool_success, assert_tool_error, extract_entry_id, parse_entries, get_result_text, read_observation_attribution
+from harness.hook_client import UnimatrixHookClient
 from harness.conftest import get_binary_path
 
 
@@ -718,3 +719,106 @@ def test_context_tag_sql_metachar_tag_stored_literally(server):
     # New value present, prior evicted.
     assert entry_id in _lookup_ids_by_tag(server, "a%b:three")
     assert entry_id not in _lookup_ids_by_tag(server, "a%b:one")
+
+
+# ===========================================================================
+# vnc-049 (C18) — attribution ingest security boundaries (R-05, R-15)
+# ===========================================================================
+#
+# Drives real events over the hook UDS wire (provider/model_id on the flattened
+# ImplantEvent) and SELECTs the stored `observations` row to assert the write-time
+# attribution boundary. Anti-seed (#5285): attribution is DERIVED at INSERT, never
+# seeded — there is no `source_domain` wire field.
+
+_SEC_SETTLE_DEADLINE_S = 10.0
+_SEC_SETTLE_POLL_S = 0.25
+
+
+def _hook_acked(resp, label):
+    raw = getattr(resp, "raw", {}) or {}
+    assert raw.get("type") != "Error", f"{label} rejected by hook daemon: {raw}"
+    return resp
+
+
+def _wait_for_tagged_row(store_dir, tool, deadline_s=_SEC_SETTLE_DEADLINE_S):
+    """Settle-poll the fire-and-forget observe write until a row tagged `tool`
+    appears; return its (source_domain, model_id), or fail on timeout."""
+    start = time.time()
+    while time.time() - start <= deadline_s:
+        rows = [r for r in read_observation_attribution(store_dir) if r[2] == tool]
+        if rows:
+            assert len(rows) == 1, f"expected one row tagged {tool!r}, got {len(rows)}"
+            return rows[0][0], rows[0][1]
+        time.sleep(_SEC_SETTLE_POLL_S)
+    raise AssertionError(f"observe tagged tool={tool!r} never persisted within {deadline_s}s")
+
+
+def _drive_observe(hook_sock, sid, tool, *, provider, model_id=None):
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_acked(h.session_register(sid, agent_role="tester", feature="vnc-049"),
+                    f"SessionRegister({sid})")
+    with UnimatrixHookClient(hook_sock, timeout=30.0) as h:
+        _hook_acked(
+            h.record_post_tool_use(
+                sid, tool, response_size=8, response_snippet="sec",
+                provider=provider, model_id=model_id,
+            ),
+            f"PostToolUse({tool})",
+        )
+
+
+@pytest.mark.integration
+def test_source_domain_stamp_fires_only_for_opencode(daemon_server):
+    """R-05 (opencode-only stamp, DECIDED 2026-09-15): the write-time source_domain
+    stamp fires ONLY for provider=='opencode'. A non-opencode event
+    (e.g. gemini-cli) leaves the stored `source_domain` NULL (-> read-derived
+    fallback), preserving existing-harness behavior byte-for-byte. The opencode
+    control event on the same daemon proves the stamp itself is live."""
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+
+    # Non-opencode: stored source_domain must be NULL at write.
+    _drive_observe(hook_sock, "vnc049-r05-gemini", "R05_Gemini", provider="gemini-cli")
+    sd_gemini, _ = _wait_for_tagged_row(store_dir, "R05_Gemini")
+    assert sd_gemini is None, (
+        f"non-opencode event stored source_domain={sd_gemini!r}; expected NULL "
+        "(opencode-only stamp — non-opencode rows keep the read-derived path, R-05)"
+    )
+
+    # Opencode control on the same daemon: the stamp IS live for opencode.
+    _drive_observe(hook_sock, "vnc049-r05-oc", "R05_Opencode",
+                   provider="opencode", model_id="ollama/qwen3-coder")
+    sd_oc, _ = _wait_for_tagged_row(store_dir, "R05_Opencode")
+    assert sd_oc == "opencode", (
+        f"opencode event stored source_domain={sd_oc!r}; expected 'opencode' "
+        "(the stamp must be live, else the R-05 negative is vacuous)"
+    )
+
+
+@pytest.mark.integration
+def test_model_id_invalid_charset_not_persisted_raw(daemon_server):
+    """R-15: an untrusted `model_id` that violates the C4 carrier charset
+    (`^[a-z0-9._/-]{1,128}$`) is dropped to NULL at the ingest bind — never
+    persisted raw and never reaches SQL. The event still lands (fail-open, still
+    a valid opencode observation) with source_domain='opencode' and model_id NULL."""
+    store_dir = daemon_server["store_dir"]
+    hook_sock = daemon_server["socket_path"]
+
+    # SQL-ish / bad-char model_id (spaces, ';', uppercase) — violates the charset.
+    hostile = "ollama/qwen3'; DROP TABLE observations;--"
+    _drive_observe(hook_sock, "vnc049-r15", "R15_BadModel",
+                   provider="opencode", model_id=hostile)
+    source_domain, model_id = _wait_for_tagged_row(store_dir, "R15_BadModel")
+
+    assert model_id is None, (
+        f"invalid model_id was persisted as {model_id!r}; expected NULL "
+        "(rejected at ingest bind, never raw to SQL — R-15)"
+    )
+    assert model_id != hostile, "hostile model_id reached the stored row raw"
+    # Still a well-formed opencode observation (fail-open, not a hard reject).
+    assert source_domain == "opencode"
+    # The table itself survived the injection attempt (parameterized binds).
+    all_rows = read_observation_attribution(store_dir)
+    assert any(r[2] == "R15_BadModel" for r in all_rows), (
+        "observations table missing the tagged row — injection may have executed"
+    )

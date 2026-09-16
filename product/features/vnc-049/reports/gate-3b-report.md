@@ -2,7 +2,35 @@
 
 > Gate: 3b (Code Review)
 > Date: 2026-09-16
-> Result: REWORKABLE FAIL
+> Result: PASS (re-validated 2026-09-16, iteration 1)
+
+## Re-Validation Outcome (iteration 1) — PASS
+
+The sole prior blocker (Check 7 stewardship, four missing reports) is resolved.
+Technical Checks 1–6 were not re-run — no code changed (verified below).
+
+**Check 7 — now PASS.** All four missing agent reports exist with substantive
+`## Knowledge Stewardship` blocks (Queried + Stored):
+| Component | Report file | Stored |
+|-----------|-------------|--------|
+| C1 plugin shim | `agents/vnc-049-agent-3-c1-plugin-shim-report.md` | #5755 ✓ |
+| C3 JS normalizer mirror | `agents/vnc-049-agent-3-c3-provider-arm-js-report.md` | #5754 ✓ |
+| C5 ingest persistence | `agents/vnc-049-agent-3-c5-ingest-persistence-report.md` | #5752 ✓ |
+| C6 read path | `agents/vnc-049-agent-3-c6-read-path-report.md` | #5756 ✓ |
+
+Each block has `Queried:` entries (context_search/context_get/briefing before implementing)
+and a `Stored:` entry at the expected ID. Stored IDs match the rework claim exactly.
+
+**Documentation-only rework — CONFIRMED.** Commit `0a4bb8ef` `--stat` shows 5 files, all
+`.md` (the four agent reports + this gate report), +389/-0 lines, zero code/fixture files.
+No `.rs`/`.js` diff vs main changed (the reviewed code is intact). The specific fixture
+`packages/unimatrix/test/fixtures/parity/sas-tail-multibyte-window-edge/expected-request.json`
+is NOT modified vs main (empty diff). Adjudication item 3 (pre-existing drift) stands.
+
+All 7 checks PASS. Original REWORKABLE FAIL body preserved below for audit.
+
+---
+
 
 Feature: OpenCode as the fourth observation harness (C18). Branch `feature/vnc-049`,
 merge-base `a989e033`, 17 commits, 9 components (C1–C9) + C2b plumbing across 5 waves.
