@@ -35,6 +35,8 @@ mod cases_stdout;
 mod cases_tools;
 #[path = "parity_corpus_gen_tests.rs"]
 mod gen_tests;
+#[path = "parity_corpus_opencode.rs"]
+mod opencode_arm;
 #[path = "parity_corpus_transcripts.rs"]
 mod transcripts;
 #[path = "parity_corpus_uds.rs"]
@@ -498,6 +500,10 @@ fn generate_parity_corpus() {
     // dir prune so `uds-framing/` survives; `project-hash-goldens.json` is a file
     // (the prune only touches directories).
     uds_layer::generate(&out_dir);
+
+    // vnc-049 C8 OpenCode arm goldens (col-022 split-brain guard). A flat file
+    // (survives the dir-prune) generated from the shipped hook/opencode.rs arm.
+    opencode_arm::generate(&out_dir);
 
     // Non-vacuity: the corpus the job just wrote must be non-trivial.
     assert!(
