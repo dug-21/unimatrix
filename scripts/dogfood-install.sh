@@ -35,6 +35,37 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "required tool not found: $1" 1
 }
 
+# realpath_m <path>: resolve <path> to an absolute, symlink-collapsed path even
+# when trailing components do not exist — a portable stand-in for GNU
+# `realpath -m` (BSD/macOS realpath lacks -m). Make absolute against cwd, walk up
+# to the deepest existing ancestor, canonicalize it with `cd -P`/`pwd -P` (which
+# resolves symlinks and `.`/`..`), then re-append the non-existent tail. No
+# subshell command that BSD and GNU disagree on is used.
+realpath_m() {
+  _rm_path="$1"
+  case "$_rm_path" in
+    /*) : ;;
+    *) _rm_path="$(pwd -P)/$_rm_path" ;;
+  esac
+  _rm_tail=""
+  while [ ! -d "$_rm_path" ]; do
+    _rm_base=$(basename "$_rm_path")
+    _rm_path=$(dirname "$_rm_path")
+    if [ -z "$_rm_tail" ]; then
+      _rm_tail="$_rm_base"
+    else
+      _rm_tail="$_rm_base/$_rm_tail"
+    fi
+    [ "$_rm_path" = "/" ] && break
+  done
+  _rm_real=$(cd "$_rm_path" 2>/dev/null && pwd -P) || _rm_real="$_rm_path"
+  if [ -n "$_rm_tail" ]; then
+    printf '%s\n' "${_rm_real%/}/$_rm_tail"
+  else
+    printf '%s\n' "$_rm_real"
+  fi
+}
+
 # is_ancestor_of <ancestor> <descendant>: true if ancestor == descendant or a
 # parent dir of descendant. Compares realpath'd absolute paths with a trailing
 # slash so /a/bc is not treated as an ancestor of /a/bcd.
@@ -68,11 +99,11 @@ guard_target() {
     && [ "$_base" != "/" ] \
     || die "unsafe target basename: $_target" 3
 
-  _rp_parent=$(realpath -m "$(dirname "$_target")")
+  _rp_parent=$(realpath_m "$(dirname "$_target")")
   # Collapse a trailing slash on the parent so "/" -> "" yields "/$_base",
   # never "//$_base" (basename "/" is "/", handled by the basename guard above).
   RESOLVED="${_rp_parent%/}/$_base"
-  _home_rp=$(realpath -m "$HOME")
+  _home_rp=$(realpath_m "$HOME")
   _home_rp="${_home_rp%/}"
 
   case "$RESOLVED" in
