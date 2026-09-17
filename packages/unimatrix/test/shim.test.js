@@ -3,9 +3,36 @@
 const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const fs = require("node:fs");
 const { execFileSync } = require("node:child_process");
 
 const shimPath = path.resolve(__dirname, "../bin/unimatrix.js");
+
+// Resolve a coreutil (true/false/echo) to its real absolute path. macOS ships
+// `true`/`false` at /usr/bin, not /bin, so hard-coding /bin/true ENOENTs there;
+// echo exists in both but is resolved the same way for consistency. Search PATH
+// first, then the conventional dirs, and fall back to the bare name (execFile
+// performs its own PATH lookup) so a test never dies for lack of an abs path.
+function resolveCmd(name) {
+  const dirs = String(process.env.PATH || "")
+    .split(path.delimiter)
+    .concat(["/usr/bin", "/bin", "/usr/local/bin"]);
+  for (const d of dirs) {
+    if (!d) continue;
+    const p = path.join(d, name);
+    try {
+      fs.accessSync(p, fs.constants.X_OK);
+      return p;
+    } catch (_e) {
+      // keep looking
+    }
+  }
+  return name;
+}
+
+const TRUE_BIN = resolveCmd("true");
+const FALSE_BIN = resolveCmd("false");
+const ECHO_BIN = resolveCmd("echo");
 
 // Helper: run the shim in a child process with controlled argv and mocked modules
 function runShim(args, env = {}) {
@@ -121,7 +148,7 @@ describe("JS Shim — Argument Routing", () => {
   it("test_hook_arg_routes_to_binary", () => {
     // Use 'echo' as the mock binary — it will succeed and print args
     const result = runShim(["hook", "SessionStart"], {
-      _TEST_BINARY_PATH: "/bin/echo",
+      _TEST_BINARY_PATH: ECHO_BIN,
     });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     // echo prints its args to stdout
@@ -132,19 +159,19 @@ describe("JS Shim — Argument Routing", () => {
   });
 
   it("test_export_arg_routes_to_binary", () => {
-    const result = runShim(["export"], { _TEST_BINARY_PATH: "/bin/echo" });
+    const result = runShim(["export"], { _TEST_BINARY_PATH: ECHO_BIN });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     assert.ok(result.stdout.includes("export"));
   });
 
   it("test_no_args_routes_to_binary", () => {
     // 'true' binary exits 0 with no output
-    const result = runShim([], { _TEST_BINARY_PATH: "/bin/true" });
+    const result = runShim([], { _TEST_BINARY_PATH: TRUE_BIN });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
   });
 
   it("test_version_arg_routes_to_binary", () => {
-    const result = runShim(["version"], { _TEST_BINARY_PATH: "/bin/echo" });
+    const result = runShim(["version"], { _TEST_BINARY_PATH: ECHO_BIN });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     assert.ok(result.stdout.includes("version"));
     // Should NOT have called init
@@ -152,10 +179,10 @@ describe("JS Shim — Argument Routing", () => {
   });
 
   it("test_dash_dash_version_routes_to_binary", () => {
-    // /bin/echo with --version may not print the flag literally.
-    // Use /bin/true to confirm the binary is invoked (not init), and verify
+    // echo with --version may not print the flag literally.
+    // Use `true` to confirm the binary is invoked (not init), and verify
     // init was NOT called.
-    const result = runShim(["--version"], { _TEST_BINARY_PATH: "/bin/true" });
+    const result = runShim(["--version"], { _TEST_BINARY_PATH: TRUE_BIN });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     // Should NOT have called init
     assert.ok(!result.stdout.includes("INIT_CALLED:"));
@@ -164,12 +191,12 @@ describe("JS Shim — Argument Routing", () => {
 
 describe("JS Shim — Exit Code Passthrough", () => {
   it("test_binary_exit_0_propagates", () => {
-    const result = runShim([], { _TEST_BINARY_PATH: "/bin/true" });
+    const result = runShim([], { _TEST_BINARY_PATH: TRUE_BIN });
     assert.equal(result.exitCode, 0);
   });
 
   it("test_binary_exit_1_propagates", () => {
-    const result = runShim([], { _TEST_BINARY_PATH: "/bin/false" });
+    const result = runShim([], { _TEST_BINARY_PATH: FALSE_BIN });
     assert.equal(result.exitCode, 1);
   });
 

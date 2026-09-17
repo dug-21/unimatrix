@@ -16,9 +16,34 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const fs = require("node:fs");
 const { execFileSync } = require("node:child_process");
 
 const shimPath = path.resolve(__dirname, "../bin/unimatrix.js");
+
+// Resolve a coreutil (true/echo) to its real absolute path. macOS ships `true`
+// at /usr/bin, not /bin, so hard-coding /bin/true ENOENTs there. Search PATH
+// first, then the conventional dirs, and fall back to the bare name (execFile
+// performs its own PATH lookup).
+function resolveCmd(name) {
+  const dirs = String(process.env.PATH || "")
+    .split(path.delimiter)
+    .concat(["/usr/bin", "/bin", "/usr/local/bin"]);
+  for (const d of dirs) {
+    if (!d) continue;
+    const p = path.join(d, name);
+    try {
+      fs.accessSync(p, fs.constants.X_OK);
+      return p;
+    } catch (_e) {
+      // keep looking
+    }
+  }
+  return name;
+}
+
+const TRUE_BIN = resolveCmd("true");
+const ECHO_BIN = resolveCmd("echo");
 
 // Run bin/unimatrix.js in a child process with mocked resolve-binary and
 // mcp-bridge modules. The mocks emit deterministic markers to stdout so the
@@ -143,7 +168,7 @@ describe("bin/unimatrix.js — mcp-bridge subcommand (AC-13)", () => {
     // early-return before the Rust exec block — assert the Rust path (resolveBinary)
     // is never reached for this subcommand.
     const result = runShim(["mcp-bridge", "deadbeefcafe0001"], {
-      _TEST_BINARY_PATH: "/bin/true",
+      _TEST_BINARY_PATH: TRUE_BIN,
     });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     assert.ok(result.stdout.includes("BRIDGE_MAIN_CALLED:"));
@@ -157,7 +182,7 @@ describe("bin/unimatrix.js — mcp-bridge subcommand (AC-13)", () => {
     // The projectHash (the bridge's store key) is forwarded at argv[2], the
     // same slot a direct `node <bridge> <projectHash>` spawn uses.
     const result = runShim(["mcp-bridge", "0123456789abcdef"], {
-      _TEST_BINARY_PATH: "/bin/true",
+      _TEST_BINARY_PATH: TRUE_BIN,
     });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     const match = result.stdout.match(/BRIDGE_MAIN_CALLED:(.+)/);
@@ -168,7 +193,7 @@ describe("bin/unimatrix.js — mcp-bridge subcommand (AC-13)", () => {
 
   it("test_binMcpBridge_missingHash_usageExit2_noExec", () => {
     // No projectHash: usage to stderr, exit code 2, no bridge call, no Rust exec.
-    const result = runShim(["mcp-bridge"], { _TEST_BINARY_PATH: "/bin/true" });
+    const result = runShim(["mcp-bridge"], { _TEST_BINARY_PATH: TRUE_BIN });
     assert.equal(result.exitCode, 2, `stderr: ${result.stderr}`);
     assert.ok(
       result.stderr.includes("usage: unimatrix mcp-bridge <projectHash>"),
@@ -189,9 +214,9 @@ describe("bin/unimatrix.js — mcp-bridge subcommand (AC-13)", () => {
     // that never reaches resolveBinary. Run both and assert neither touches the
     // Rust path, so a future non-init subcommand audit stays coherent.
     const bridge = runShim(["mcp-bridge", "feed0000feed0000"], {
-      _TEST_BINARY_PATH: "/bin/true",
+      _TEST_BINARY_PATH: TRUE_BIN,
     });
-    const init = runShim(["init", "--dry-run"], { _TEST_BINARY_PATH: "/bin/true" });
+    const init = runShim(["init", "--dry-run"], { _TEST_BINARY_PATH: TRUE_BIN });
 
     assert.ok(bridge.stdout.includes("BRIDGE_MAIN_CALLED:"));
     assert.ok(!bridge.stdout.includes("RESOLVE_BINARY_CALLED"));
@@ -206,7 +231,7 @@ describe("bin/unimatrix.js — non-regression of existing routing", () => {
     // A non-mcp-bridge, non-init subcommand still routes to the Rust exec block
     // (the early-return is scoped to mcp-bridge, not a blanket bypass).
     const result = runShim(["hook", "SessionStart"], {
-      _TEST_BINARY_PATH: "/bin/echo",
+      _TEST_BINARY_PATH: ECHO_BIN,
     });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     assert.ok(
@@ -220,7 +245,7 @@ describe("bin/unimatrix.js — non-regression of existing routing", () => {
   });
 
   it("test_bin_init_branchUnchanged", () => {
-    const result = runShim(["init"], { _TEST_BINARY_PATH: "/bin/true" });
+    const result = runShim(["init"], { _TEST_BINARY_PATH: TRUE_BIN });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     assert.ok(result.stdout.includes("INIT_CALLED:"));
     assert.ok(

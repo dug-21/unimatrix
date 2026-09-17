@@ -372,14 +372,42 @@ async function makeHttpIngress() {
 }
 
 /**
+ * A SHORT temp base for the UDS ingress home. macOS/BSD cap Unix-domain
+ * `sun_path` at ~104 bytes (Linux ~108); the default macOS os.tmpdir()
+ * ($TMPDIR) is a long `/var/folders/<a>/<b>/T` path, so rooting the ephemeral
+ * home there and appending `/.unimatrix/<hash>/unimatrix.sock` overflows and
+ * bind/listen returns EINVAL (surfaces on macOS Node 24, right at the boundary).
+ * `/tmp` (the literal — macOS symlinks it to /private/tmp but the short literal
+ * is what counts toward sun_path) keeps the absolute socket path ~60 bytes.
+ * Harmless on Linux. Falls back to os.tmpdir() only if /tmp is unusable, which
+ * does not occur on the CI runners this spine targets. The client discovers the
+ * socket via os.homedir() → $HOME, so both the bind side (here) and the connect
+ * side (config.socketPathFor) resolve the identical short literal.
+ */
+function shortUdsTmpBase() {
+  if (process.platform !== "win32") {
+    try {
+      fs.accessSync("/tmp", fs.constants.W_OK);
+      return "/tmp";
+    } catch (_e) {}
+  }
+  return os.tmpdir();
+}
+
+/**
  * UDS ingress — the "local" (Rust binary / UDS) path. With no remote env the
  * client falls to UDS mode at ~/.unimatrix/<hash>/unimatrix.sock; we listen at
  * that exact derived path and capture framed request bodies (4-byte BE len +
  * JSON). Same frames, same `provider` field — deployment parity for AC-09 local.
+ *
+ * The home roots under a SHORT base (shortUdsTmpBase) with terse prefixes so the
+ * absolute socket path stays well under the macOS sun_path limit; per-run
+ * isolation is preserved by mkdtemp's unique suffix. See shortUdsTmpBase.
  */
 async function makeUdsIngress() {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), "c14-uds-home-"));
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "c14-uds-proj-"));
+  const base = shortUdsTmpBase();
+  const home = fs.mkdtempSync(path.join(base, "uc14h-"));
+  const projectRoot = fs.mkdtempSync(path.join(base, "uc14p-"));
   fs.mkdirSync(path.join(projectRoot, ".git"), { recursive: true });
   const root = config.walkToProjectRoot(projectRoot);
   const hash = config.computeProjectHash(root);
