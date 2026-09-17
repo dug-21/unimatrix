@@ -451,12 +451,13 @@ describe("initRemote — token hygiene (R-12 / NFR-06)", () => {
 });
 
 // ============================================================================
-// Install footprint < 290 KB (AC-W1-C3 / NFR-01 / R-12) — HARD GATE
-// Cap raised 250KB→290KB for the vnc-039 stdio→HTTPS MCP bridge (~24KB new
-// pure-JS). Human-approved, recorded on #775.
+// Install footprint < 380 KB (AC-W1-C3 / NFR-01 / R-12) — HARD GATE
+// Cap raised 290KB→380KB, human-approved on GH #994: nan-023 per-harness wiring
+// added ~48KB of legitimate footprint (post-merge main footprint ~359,908 bytes),
+// leaving ~20KB headroom. Supersedes the #775 250→290KB raise (vnc-039 bridge).
 // ============================================================================
 describe("remote install footprint (AC-W1-C3 / NFR-01)", () => {
-  const SIZE_LIMIT = 290000; // 290 KB (raised from 250*1024 for vnc-039, #775)
+  const SIZE_LIMIT = 380000; // 380 KB (raised from 290000, GH #994; prior #775 250→290)
 
   // The shipped remote install is the pure-JS client (lib/) + skills/, with NO
   // native binary and NO model. Walk both trees and sum file bytes.
@@ -483,15 +484,10 @@ describe("remote install footprint (AC-W1-C3 / NFR-01)", () => {
     return total;
   }
 
-  // xfail (nan-023 Stage 3c): pre-existing tech debt — the gate is RED on `main`
-  // (baseline 312005 > 290000) before nan-023. nan-023 adds ~47.9KB of legitimate
-  // new per-harness wiring (branch total 359908). Raising the 290KB cap vs trimming
-  // is a human gate-raise-vs-trim decision (precedent #775: 250→290KB for vnc-039).
-  // Tracked by GH#994; remove this marker when the cap decision lands. Skipped so
-  // the suite stays green while the debt is tracked (USAGE-PROTOCOL triage).
-  it("test_remote_install_under_290kb — lib/ + skills/ shipped footprint", {
-    skip: "Pre-existing: GH#994 — footprint 359908 > 290000 (main baseline 312005 already over); human gate-raise-vs-trim decision, precedent #775",
-  }, () => {
+  // Active guard: the 380KB cap was human-approved on GH #994 after nan-023's
+  // per-harness wiring added ~48KB of legitimate footprint (post-merge main
+  // ~359,908 bytes, ~20KB headroom). Supersedes the #775 250→290KB raise.
+  it("test_remote_install_under_380kb — lib/ + skills/ shipped footprint", () => {
     const pkgRoot = path.join(__dirname, "..");
     const libBytes = dirBytes(path.join(pkgRoot, "lib"));
     const skillsBytes = dirBytes(path.join(pkgRoot, "skills"));
