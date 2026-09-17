@@ -10,7 +10,7 @@ const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 // Core unit tests (detectProjectRoot, writeMcpJson, printSummary) are in
 // init.test.js.
 
-const { copySkills } = require("../lib/init.js");
+const { copySkills, installSkills } = require("../lib/init.js");
 
 /** Create a temp directory that acts as a project root with .git */
 function makeTempProject() {
@@ -55,9 +55,11 @@ describe("copySkills", () => {
         );
       }
 
+      // ADR-004: install-if-absent emits per-FILE "Installed skill file: <skill>/<file>"
+      // (the retired blanket copy reported "Copied skill: <name>").
       assert.ok(
-        actions.some((a) => a.includes("Copied skill: test-skill-a")),
-        "Should report copied skills"
+        actions.some((a) => a.includes("Installed skill file: test-skill-a")),
+        "Should report installed skill files"
       );
     } finally {
       // Clean up test skills from source
@@ -67,29 +69,51 @@ describe("copySkills", () => {
     }
   });
 
-  it("test_overwrites_existing_unimatrix_skills", () => {
+  // ADR-004 replaced the retired blanket-overwrite copySkills with install-if-absent
+  // + `--force` (AC-01 non-clobber / AC-02 force-overwrite). Default KEEPS an existing
+  // Unimatrix-owned skill byte-for-byte; only `installSkills(dir, {force:true})`
+  // overwrites it with the shipped version.
+  it("test_default_keeps_existing_skill_force_overwrites", () => {
     const dir = makeTempProject();
     const packageDir = path.join(__dirname, "..");
     const skillsSource = path.join(packageDir, "skills");
 
-    // Create a bundled skill
+    // Create a bundled (shipped) skill
     const skillDir = path.join(skillsSource, "overwrite-test");
     fs.mkdirSync(skillDir, { recursive: true });
     fs.writeFileSync(path.join(skillDir, "SKILL.md"), "NEW CONTENT");
 
-    // Pre-create the same skill in the project with different content
+    // Pre-create the same skill in the project with edited (older) content
     const targetSkillDir = path.join(dir, ".claude", "skills", "overwrite-test");
     fs.mkdirSync(targetSkillDir, { recursive: true });
-    fs.writeFileSync(path.join(targetSkillDir, "SKILL.md"), "OLD CONTENT");
+    const targetFile = path.join(targetSkillDir, "SKILL.md");
+    fs.writeFileSync(targetFile, "OLD CONTENT");
 
     try {
-      copySkills(dir, false);
-
-      const content = fs.readFileSync(
-        path.join(targetSkillDir, "SKILL.md"),
-        "utf8"
+      // Default (force:false) — install-if-absent: an existing edited skill SURVIVES
+      // byte-for-byte (AC-01, the copySkills-clobber regression).
+      const keptActions = installSkills(dir, { force: false, dryRun: false });
+      assert.strictEqual(
+        fs.readFileSync(targetFile, "utf8"),
+        "OLD CONTENT",
+        "Default install-if-absent must NOT overwrite an existing skill (AC-01)"
       );
-      assert.strictEqual(content, "NEW CONTENT", "Should overwrite existing skill");
+      assert.ok(
+        keptActions.some((a) => a.includes("Kept skill file (exists): overwrite-test")),
+        "Should report the existing skill file was kept"
+      );
+
+      // force:true — overwrite the Unimatrix-owned skill with the shipped version (AC-02).
+      const forceActions = installSkills(dir, { force: true, dryRun: false });
+      assert.strictEqual(
+        fs.readFileSync(targetFile, "utf8"),
+        "NEW CONTENT",
+        "--force must overwrite the Unimatrix-owned skill (AC-02)"
+      );
+      assert.ok(
+        forceActions.some((a) => a.includes("Overwrote (--force) skill file: overwrite-test")),
+        "Should report the --force overwrite"
+      );
     } finally {
       fs.rmSync(skillDir, { recursive: true, force: true });
     }
@@ -142,9 +166,10 @@ describe("copySkills", () => {
       const actions = copySkills(dir, true);
       const targetDir = path.join(dir, ".claude", "skills", "dryrun-test");
       assert.ok(!fs.existsSync(targetDir), "Should NOT copy in dry-run");
+      // ADR-004 install-if-absent dry-run wording (retired: "[dry-run] Would copy skill:").
       assert.ok(
-        actions.some((a) => a.includes("[dry-run] Would copy skill:")),
-        "Should report planned actions"
+        actions.some((a) => a.includes("[dry-run] Would install skill file: dryrun-test")),
+        "Should report planned install actions"
       );
     } finally {
       fs.rmSync(skillDir, { recursive: true, force: true });
