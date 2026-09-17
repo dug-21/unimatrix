@@ -9,7 +9,10 @@
     "postinstall": "node postinstall.js",
     "test": "node --test",
     "test:hook-client": "node test/run-hook-client.js",
-    "test:hook-client:layer2": "node test/run-hook-client.js --only parity-layer2"
+    "test:hook-client:layer2": "node test/run-hook-client.js --only parity-layer2",
+    "test:package": "node test/run-hook-client.js --set package",
+    "test:opencode-plugin": "node test/run-hook-client.js --set opencode-plugin",
+    "test:audit-suites": "node test/run-hook-client.js --set audit"
   },
   "optionalDependencies": {
     "@dug-21/unimatrix-linux-x64": "0.11.3",

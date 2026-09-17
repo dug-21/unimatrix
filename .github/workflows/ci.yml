@@ -60,6 +60,41 @@ jobs:
       - name: Run hook-client unit + Layer 1 parity suites
         run: npm run test:hook-client
 
+  # ── bug #995: top-level package + opencode-plugin JS suites ────────────────
+  # These suites (test/*.test.js and opencode-plugin/test/*.test.js) previously
+  # ran in NO CI job — the hook-client runner globs only test/hook-client/
+  # (lesson #5781). This job runs them via the explicit serial file-list runner
+  # (`--test-concurrency=1`, mandatory: several suites mutate the shared real
+  # skills/ tree and race under default parallelism — #5778).
+  #
+  # NOT windows-latest: the top-level suites hard-code Unix shapes (#!/bin/sh
+  # fake binaries + chmod 0o755, /bin/true, /bin/echo, bash scripts) and are
+  # Unix-only by construction (#5781); the runner also fast-skips them on win32.
+  # NOT a required status check: these suites have never run on macOS / Node
+  # 18/20 before, so real pre-existing failures may surface here — keep it
+  # non-blocking until that grid is proven green.
+  package-suite:
+    name: Package + opencode-plugin suites (Node ${{ matrix.node }} / ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["18", "20", "22", "24"]
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # No `npm ci` — suites use only node:test + built-ins (zero-dep audit).
+      - name: Run top-level package suites (serial)
+        run: npm run test:package
+      - name: Run opencode-plugin ESM suites (serial)
+        run: npm run test:opencode-plugin
+
   hook-client-audit:
     name: Hook client zero-dep + payload size audit (AC-12 / C-04)
     runs-on: ubuntu-latest
@@ -75,3 +110,9 @@ jobs:
         run: node test/check-zero-deps.js
       - name: Payload size check (lib/hook-client/ < 100 KB)
         run: node test/check-hook-client-size.js
+      # Orphan-suite guard (bug #995 / lesson #5781): fail if any *.test.js under
+      # test/ or opencode-plugin/test/ is claimed by no CI selection set. Runs in
+      # THIS single ubuntu cell — the enumeration is OS/version-independent, so it
+      # need not repeat across the matrix.
+      - name: Orphan-suite audit (every *.test.js is CI-selected)
+        run: npm run test:audit-suites

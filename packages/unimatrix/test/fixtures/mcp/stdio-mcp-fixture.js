@@ -19,13 +19,20 @@
 
 const { StdioFramer } = require("../../../lib/hook-client/mcp-bridge/stdio-frame.js");
 
-const framer = new StdioFramer(process.stdin, process.stdout);
-
 function ok(id, result) {
   return { jsonrpc: "2.0", id: id, result: result };
 }
 
-framer.onMessage((msg) => {
+// Guard (#995): only bind stdin and run the server body when this file IS the
+// entry module (the C14 verifier spawns it exactly that way — c14-verifier.js
+// spawns it as `entry.command`). If some module ever `require()`s this fixture
+// in-process, the guard keeps it from attaching to stdin. (CI itself never runs
+// this file: the runner's selection sets read test/, test/hook-client/ and
+// opencode-plugin/test/ non-recursively and so never touch fixtures/.)
+function main() {
+  const framer = new StdioFramer(process.stdin, process.stdout);
+
+  framer.onMessage((msg) => {
   if (!msg || typeof msg !== "object") return;
   // Notifications (no id, e.g. notifications/initialized) get no response.
   if (msg.id === undefined || msg.id === null) return;
@@ -76,8 +83,13 @@ framer.onMessage((msg) => {
     id: msg.id,
     error: { code: -32601, message: "method not found: " + String(method) },
   });
-});
+  });
 
-// Exit cleanly when the verifier closes stdin (teardown).
-process.stdin.on("end", () => process.exit(0));
-process.stdin.on("error", () => process.exit(0));
+  // Exit cleanly when the verifier closes stdin (teardown).
+  process.stdin.on("end", () => process.exit(0));
+  process.stdin.on("error", () => process.exit(0));
+}
+
+if (require.main === module) {
+  main();
+}
