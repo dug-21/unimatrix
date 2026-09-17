@@ -131,7 +131,7 @@ function runEntry(event, stdin, opts) {
   env.HOME = home;
   env.USERPROFILE = home; // Windows home
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [ENTRY, event], {
+    const child = spawn(process.execPath, [ENTRY, event].concat(options.args || []), {
       cwd: options.cwd || tmpRoot,
       env,
     });
@@ -262,6 +262,42 @@ describe("sessionIdOf", () => {
       index.sessionIdOf({ type: "RecordEvents", events: [{ session_id: "d" }] }),
       "d"
     );
+  });
+});
+
+// nan-023 ADR-003 §1: --provider argv hint parsing. parseHookArgs is a pure,
+// never-throwing scan of process.argv (real args from index 2). The behavioral
+// stamp (ingested provider = hint, not inference) is proven by the spawn test
+// below and the C14 verifier (Stage 3c); source_domain is out of scope.
+describe("parseHookArgs (nan-023 ADR-003 §1)", () => {
+  it("test_parseHookArgs_event_only_no_hint", () => {
+    const r = index.parseHookArgs(["node", "index.js", "PreToolUse"]);
+    assert.deepStrictEqual(r, { event: "PreToolUse", providerHint: null });
+  });
+  it("test_parseHookArgs_space_form", () => {
+    const r = index.parseHookArgs(["node", "index.js", "PostToolUse", "--provider", "codex-cli"]);
+    assert.deepStrictEqual(r, { event: "PostToolUse", providerHint: "codex-cli" });
+  });
+  it("test_parseHookArgs_equals_form", () => {
+    const r = index.parseHookArgs(["node", "index.js", "PostToolUse", "--provider=codex-cli"]);
+    assert.deepStrictEqual(r, { event: "PostToolUse", providerHint: "codex-cli" });
+  });
+  it("test_parseHookArgs_unknown_hint_returned_verbatim", () => {
+    // parseHookArgs does NOT validate membership — it returns the raw hint; main()
+    // ignores an unknown hint and falls back to inference. Never throws.
+    const r = index.parseHookArgs(["node", "index.js", "Stop", "--provider", "bogus"]);
+    assert.deepStrictEqual(r, { event: "Stop", providerHint: "bogus" });
+  });
+  it("test_parseHookArgs_trailing_provider_no_value_stays_null", () => {
+    // Missing value → hint stays null (fail-open, never reads past argv end).
+    const r = index.parseHookArgs(["node", "index.js", "Stop", "--provider"]);
+    assert.deepStrictEqual(r, { event: "Stop", providerHint: null });
+  });
+  it("test_parseHookArgs_no_event_yields_empty_string", () => {
+    assert.deepStrictEqual(index.parseHookArgs(["node", "index.js"]), {
+      event: "",
+      providerHint: null,
+    });
   });
 });
 
@@ -756,6 +792,60 @@ describe("spawn: exit-0 / no-stdout guarantee", () => {
       const src = fs.readFileSync(path.join(dir, f), "utf8");
       assert.ok(!src.includes("/dev/stdin"), f + " must not use /dev/stdin");
     }
+  });
+});
+
+// nan-023 ADR-003 §1 (R-05 root defect): a present, KNOWN --provider hint routes
+// the hint path so the ingested frame carries provider=<hint>, NOT the inferred
+// claude-code. UserPromptSubmit is a generic RecordEvent that carries provider
+// verbatim. Absent/unknown hint → today's claude-code inference (byte-identical,
+// SR-07). Assert on `provider` only — source_domain is forced claude-code at
+// ingress (#5748) and is out of scope.
+describe("spawn: --provider hint stamps ingested provider (nan-023)", () => {
+  let stub;
+  beforeEach(() => freshProject());
+  afterEach(async () => {
+    if (stub) {
+      await stub.close();
+      stub = null;
+    }
+    cleanup();
+  });
+
+  it("test_hint_codex_cli_stamps_provider_not_inference", async () => {
+    stub = await startStubServer();
+    stub.respondWith({ status: 204 });
+    writeRemoteConfig(stub.url, "tok");
+    const r = await runEntry("UserPromptSubmit", JSON.stringify({ session_id: "s1" }), {
+      args: ["--provider", "codex-cli"],
+    });
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(r.stdout.length, 0);
+    assert.strictEqual(stub.requests.length, 1);
+    const frame = JSON.parse(stub.requests[0].body.toString("utf8"));
+    assert.strictEqual(frame.provider, "codex-cli"); // hint stamped, NOT claude-code
+  });
+
+  it("test_no_hint_infers_claude_code_backward_compat", async () => {
+    stub = await startStubServer();
+    stub.respondWith({ status: 204 });
+    writeRemoteConfig(stub.url, "tok");
+    const r = await runEntry("UserPromptSubmit", JSON.stringify({ session_id: "s1" }));
+    assert.strictEqual(r.status, 0);
+    const frame = JSON.parse(stub.requests[0].body.toString("utf8"));
+    assert.strictEqual(frame.provider, "claude-code"); // inference unchanged (SR-07)
+  });
+
+  it("test_unknown_hint_falls_back_to_inference_exit0", async () => {
+    stub = await startStubServer();
+    stub.respondWith({ status: 204 });
+    writeRemoteConfig(stub.url, "tok");
+    const r = await runEntry("UserPromptSubmit", JSON.stringify({ session_id: "s1" }), {
+      args: ["--provider", "bogus"],
+    });
+    assert.strictEqual(r.status, 0); // fail-open, never throws
+    const frame = JSON.parse(stub.requests[0].body.toString("utf8"));
+    assert.strictEqual(frame.provider, "claude-code"); // unknown hint ignored → inference
   });
 });
 

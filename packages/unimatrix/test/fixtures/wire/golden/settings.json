@@ -1,0 +1,92 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LD_LIBRARY_PATH=/opt/unimatrix/bin /opt/unimatrix/bin/unimatrix hook SessionStart"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LD_LIBRARY_PATH=/opt/unimatrix/bin /opt/unimatrix/bin/unimatrix hook Stop"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LD_LIBRARY_PATH=/opt/unimatrix/bin /opt/unimatrix/bin/unimatrix hook UserPromptSubmit"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^context_cycle$|^mcp__unimatrix__context_cycle$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LD_LIBRARY_PATH=/opt/unimatrix/bin /opt/unimatrix/bin/unimatrix hook PreToolUse"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LD_LIBRARY_PATH=/opt/unimatrix/bin /opt/unimatrix/bin/unimatrix hook PostToolUse"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LD_LIBRARY_PATH=/opt/unimatrix/bin /opt/unimatrix/bin/unimatrix hook PostToolUseFailure"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LD_LIBRARY_PATH=/opt/unimatrix/bin /opt/unimatrix/bin/unimatrix hook PreCompact"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "LD_LIBRARY_PATH=/opt/unimatrix/bin /opt/unimatrix/bin/unimatrix hook SubagentStart"
+          }
+        ]
+      }
+    ]
+  }
+}

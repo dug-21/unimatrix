@@ -335,20 +335,53 @@ function describeReason(reason) {
 }
 
 /**
+ * Parse argv into { event, providerHint } (nan-023 ADR-003 §1). event = argv[2];
+ * scan the rest for `--provider <name>` and `--provider=<name>`. Pure, never
+ * throws — a missing value leaves providerHint null (fail-open, exit-0 contract).
+ * @param {string[]} argv - process.argv (real args start at index 2).
+ * @returns {{ event: string, providerHint: (string|null) }}
+ */
+function parseHookArgs(argv) {
+  const event = argv[2] || "";
+  let providerHint = null;
+  for (let i = 3; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--provider") {
+      if (i + 1 < argv.length) providerHint = argv[i + 1];
+      i++;
+    } else if (typeof a === "string" && a.indexOf("--provider=") === 0) {
+      providerHint = a.slice("--provider=".length);
+    }
+  }
+  return { event, providerHint };
+}
+
+/**
  * main — top-level pipeline. Always resolves; never exits nonzero; never writes
  * stdout on a failure path.
  */
 async function main() {
   try {
-    const rawEvent = process.argv[2] || "";
+    const parsed = parseHookArgs(process.argv);
+    const rawEvent = parsed.event;
+    const providerHint = parsed.providerHint;
     const raw = readStdin(); // never throws
     const input = parseHookInput(raw); // never throws
 
-    const normalized = normalize.normalizeEventName(rawEvent);
-    const canonical = normalized[0];
-    const providerStr = normalized[1];
-    // hook.rs run() step 2b: overwrite provider from inference (no --provider, F3)
-    input.provider = providerStr;
+    // nan-023 ADR-003 §1: a present, KNOWN --provider hint takes the hint path
+    // (as opencode does) — canonicalize the name WITHOUT letting inference
+    // overwrite the stamped provider. Absent/unknown hint → today's inference
+    // (byte-identical, SR-07; unknown hint ignored — fail-open).
+    let canonical;
+    if (providerHint !== null && normalize.KNOWN_PROVIDERS.indexOf(providerHint) !== -1) {
+      canonical = normalize.mapToCanonical(rawEvent); // name-only canonicalization
+      input.provider = providerHint; // STAMP the hint (e.g. "codex-cli")
+    } else {
+      const normalized = normalize.normalizeEventName(rawEvent);
+      canonical = normalized[0];
+      // hook.rs run() step 2b: overwrite provider from inference (no hint path)
+      input.provider = normalized[1];
+    }
     const effectiveEvent = canonical === normalize.UNKNOWN_EVENT ? rawEvent : canonical;
 
     const cwd = resolveCwd(input);
@@ -436,6 +469,7 @@ async function main() {
 
 module.exports = {
   main,
+  parseHookArgs,
   readStdin,
   parseHookInput,
   resolveCwd,

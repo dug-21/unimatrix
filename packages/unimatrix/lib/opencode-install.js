@@ -327,6 +327,250 @@ function provisionOpenCode(dir, options) {
 }
 
 /**
+ * Strict plain-object test (not null, not array). Used to reject a user-set
+ * value we must not clobber (a scalar/array where an object is expected).
+ *
+ * @param {*} v
+ * @returns {boolean}
+ */
+function isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/**
+ * Order-insensitive structural equality (idempotence check — AC-04). Small,
+ * dependency-free; only the shapes this module emits (JSON-safe objects,
+ * arrays, scalars) are ever compared.
+ *
+ * @param {*} a
+ * @param {*} b
+ * @returns {boolean}
+ */
+function deepEqual(a, b) {
+  if (a === b) {
+    return true;
+  }
+  if (typeof a !== typeof b || a === null || b === null || typeof a !== "object") {
+    return false;
+  }
+  const aArr = Array.isArray(a);
+  if (aArr !== Array.isArray(b)) {
+    return false;
+  }
+  if (aArr) {
+    if (a.length !== b.length) {
+      return false;
+    }
+    for (let i = 0; i < a.length; i += 1) {
+      if (!deepEqual(a[i], b[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
+  if (ak.length !== bk.length) {
+    return false;
+  }
+  for (const k of ak) {
+    if (!Object.prototype.hasOwnProperty.call(b, k) || !deepEqual(a[k], b[k])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Resolve the concrete, token-free transport for the emitted MCP entry.
+ *
+ * The orchestrator (ADR-001/ADR-006 Q1) decides deployment and hands this
+ * writer a resolved shape. Two shapes exist:
+ *   - stdio-binary (LOCAL): spawn the native binary directly.
+ *   - stdio-bridge (CLOUD): spawn `node <mcp-bridge.js> <projectHash>`; the
+ *     bridge resolves the credential from the hash, so NO secret enters the
+ *     file (Q1 — a bearer token in config violates Principle 8).
+ *
+ * A bare `url` is accepted for signature-compat but is NEVER emitted as a
+ * token-bearing `url=` entry; a cloud entry MUST arrive as a bridge descriptor
+ * (`transport` or `bridgePath`+`projectHash`).
+ *
+ * @param {object} opts
+ * @returns {({kind:"stdio-binary", binaryPath:string}|{kind:"stdio-bridge", bridgePath:string, projectHash:string}|null)}
+ */
+function resolveOpencodeTransport(opts) {
+  const t = opts && opts.transport;
+  if (isPlainObject(t)) {
+    if (t.kind === "stdio-bridge" && t.bridgePath && t.projectHash != null) {
+      return { kind: "stdio-bridge", bridgePath: t.bridgePath, projectHash: String(t.projectHash) };
+    }
+    if (t.kind === "stdio-binary" && t.binaryPath) {
+      return { kind: "stdio-binary", binaryPath: t.binaryPath };
+    }
+  }
+  if (opts && opts.bridgePath && opts.projectHash != null) {
+    return { kind: "stdio-bridge", bridgePath: opts.bridgePath, projectHash: String(opts.projectHash) };
+  }
+  if (opts && opts.binaryPath) {
+    return { kind: "stdio-binary", binaryPath: opts.binaryPath };
+  }
+  return null;
+}
+
+/**
+ * Build the exact `mcp.unimatrix` entry object opencode spawns. Shape confirmed
+ * against the hand-authored reference config this repo ships (root
+ * `opencode.json`) and the `.mcp.json` local writer (`init.js` writeMcpJson):
+ * opencode reads a `type:"local"` server whose `command` is an argv ARRAY, with
+ * `environment` (not `env`) and `enabled:true`. `LD_LIBRARY_PATH` is required so
+ * the native binary resolves its shared libs at spawn — its absence makes the
+ * entry present-but-not-spawnable and breaks the AC-10 retrieval-returns path.
+ *
+ * @param {object} opts - { binaryPath? , transport? , bridgePath? , projectHash? }
+ * @returns {(object|null)} The entry, or null when no token-free transport is resolvable.
+ */
+function buildOpencodeEntry(opts) {
+  const transport = resolveOpencodeTransport(opts);
+  if (!transport) {
+    return null;
+  }
+  if (transport.kind === "stdio-bridge") {
+    // Cloud: token-free node bridge; no LD_LIBRARY_PATH (node, not the binary).
+    return {
+      type: "local",
+      command: ["node", transport.bridgePath, transport.projectHash],
+      enabled: true,
+    };
+  }
+  return {
+    type: "local",
+    command: [transport.binaryPath],
+    environment: { LD_LIBRARY_PATH: path.dirname(transport.binaryPath) },
+    enabled: true,
+  };
+}
+
+/**
+ * Construct a well-formed opencode retrieval `WireLeg` (ADR-001 §3). `entry` is
+ * attached only for a real write action; `reason` only for a skip.
+ *
+ * @param {string} action
+ * @param {string} filePath
+ * @param {object} [extra] - { entry?, reason? }
+ * @returns {object} WireLeg
+ */
+function opencodeLeg(action, filePath, extra) {
+  const legObj = { harness: "opencode", surface: "retrieval", action: action, path: filePath };
+  if (extra && extra.entry !== undefined) {
+    legObj.entry = extra.entry;
+  }
+  if (extra && extra.reason !== undefined) {
+    legObj.reason = extra.reason;
+  }
+  return legObj;
+}
+
+/**
+ * Additive, non-clobbering writer for the opencode `mcp.unimatrix` retrieval
+ * entry (ADR-001, vnc-049 C-05). Closes the retrieval gap: `maybeProvisionOpenCode`
+ * wires only the plugin surface; this adds the spawnable MCP server so a
+ * `context_*` call RETURNS against the opencode slug (AC-05/AC-10).
+ *
+ * Touches ONLY `config.mcp.unimatrix`. The Ollama `provider` block, foreign
+ * `mcp.*` servers, `permission`, and every non-Unimatrix key survive
+ * byte-for-byte (C-05, SR-06): parse → mutate one key → re-serialize at the
+ * file's own indentation. Fail-safe: malformed input is preserved and skipped,
+ * never thrown (AC-15). Containment-guarded (AC-12). Idempotent (AC-04).
+ *
+ * Intent gate (AC-11, writer-visible portion): creating a NEW `mcp.unimatrix`
+ * where none exists requires explicit opt-in (`harnessSelected:true`, driven by
+ * `--harness opencode`); merging into an existing entry is additive and needs
+ * no opt-in. The decision lives here (single site) so the orchestrator only
+ * forwards the flag.
+ *
+ * @param {string} dir - Absolute project root.
+ * @param {object} opts - { binaryPath?, url?, transport?, bridgePath?, projectHash?, harnessSelected? }
+ * @param {boolean} dryRun
+ * @returns {object} WireLeg
+ */
+function writeOpencodeMcp(dir, opts, dryRun) {
+  const options = opts || {};
+  const cfgPath = path.join(dir, "opencode.json");
+
+  // Containment (AC-12): never follow a path escaping the resolved root.
+  if (!isWithinProject(dir, cfgPath)) {
+    return opencodeLeg("skipped", cfgPath, { reason: "path escapes project root" });
+  }
+
+  const read = readJsonSafe(cfgPath);
+  if (read.malformed) {
+    return opencodeLeg("skipped-malformed", cfgPath, {
+      reason: "opencode.json is not valid JSON — preserved unchanged",
+    });
+  }
+
+  const desiredEntry = buildOpencodeEntry(options);
+  if (!desiredEntry) {
+    // No token-free transport resolvable (e.g. only a bare `url`). Never emit a
+    // token-bearing entry (Q1); skip visibly instead.
+    return opencodeLeg("skipped", cfgPath, {
+      reason: "no token-free transport resolved (need binaryPath or bridgePath+projectHash)",
+    });
+  }
+
+  const config = read.parsed || {};
+
+  // Ensure the `mcp` container without clobbering a foreign value.
+  let mcp = config.mcp;
+  if (mcp === undefined) {
+    mcp = {};
+  } else if (!isPlainObject(mcp)) {
+    return opencodeLeg("skipped-malformed", cfgPath, {
+      reason: "`mcp` key is not an object — preserved unchanged",
+    });
+  }
+
+  const existing = mcp.unimatrix;
+  if (existing !== undefined && !isPlainObject(existing)) {
+    // A user-set non-object value: treat as foreign, skip rather than clobber.
+    return opencodeLeg("skipped-malformed", cfgPath, {
+      reason: "`mcp.unimatrix` is not an object — preserved unchanged",
+    });
+  }
+
+  const entryExists = existing !== undefined;
+
+  // Intent gate (AC-11): a brand-new entry needs explicit opt-in.
+  if (!entryExists && options.harnessSelected !== true) {
+    return opencodeLeg("skipped-intent", cfgPath, {
+      reason: "new mcp.unimatrix retrieval entry requires explicit --harness opencode opt-in",
+    });
+  }
+
+  // Idempotent short-circuit (AC-04): no write when already correct.
+  if (entryExists && deepEqual(existing, desiredEntry)) {
+    return opencodeLeg("unchanged", cfgPath, { entry: desiredEntry });
+  }
+
+  const action = entryExists ? "updated" : "created";
+  if (dryRun) {
+    return opencodeLeg(action, cfgPath, { entry: desiredEntry });
+  }
+
+  // Mutate ONLY mcp.unimatrix; every foreign key/block stays in place.
+  config.mcp = mcp;
+  mcp.unimatrix = desiredEntry;
+  const indent = read.present ? detectIndent(read.raw) : 2;
+  try {
+    writeJson(cfgPath, config, indent);
+  } catch (e) {
+    // fs error → fail-safe skip; message carries paths only, never a secret.
+    return opencodeLeg("skipped", cfgPath, { reason: "write failed: " + e.message });
+  }
+  return opencodeLeg(action, cfgPath, { entry: desiredEntry });
+}
+
+/**
  * Detection-gated entry point for init.js (ADR-005 thin wiring). Returns no
  * actions when OpenCode is not detected (branch skipped).
  *
@@ -349,6 +593,8 @@ module.exports = {
   detectsOpenCode,
   provisionOpenCode,
   maybeProvisionOpenCode,
+  writeOpencodeMcp,
+  buildOpencodeEntry,
   appendPluginEntry,
   mergePackageDep,
   isWithinProject,

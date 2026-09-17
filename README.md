@@ -25,7 +25,7 @@ Built for agentic software delivery. Configurable for any workflow-centric domai
 ### Install via npm
 
 > **Platform: Linux x64 and arm64 only.** macOS and Windows are not supported via npm.
-> **Hook providers: Claude Code (full), Gemini CLI (v0.31+), Codex CLI (config ready; live MCP hook testing blocked by Codex upstream bug #16732), and OpenCode (in-process TS plugin — observation harness with local-model attribution; SubagentStart retrieval-injection not supported)**
+> **Hook providers: Claude Code (full), Gemini CLI (v0.31+), Codex CLI (wired by the package — MCP + hooks targeting the JS hook client with `--provider codex-cli`; hook firing verified locally, cloud self-firing trust-gated on a trusted `.codex/` layer), and OpenCode (in-process TS plugin — observation harness with local-model attribution; SubagentStart retrieval-injection not supported)**
 
 **Prerequisites — both required before installing:**
 - Node.js >= 18
@@ -123,9 +123,26 @@ Run this once from your project root:
 npx unimatrix init
 ```
 
-This configures everything automatically — MCP server, hooks, skills, and database. It is safe to re-run; existing configuration is preserved.
+This configures everything for the detected harnesses — MCP server, hooks, skills, and database — and is safe to re-run. Definition install (**skills only**) is **install-if-absent**: a skill you have edited survives a re-run byte-for-byte and is never clobbered. `init --force` re-installs the shipped versions of Unimatrix-owned skill files — definitions only; it never re-asserts wiring, and foreign files are never touched. Protocols and agents are not part of definition install. Wiring (MCP + hooks + retrieval) is always additive and non-clobbering, and nothing is ever written outside the project root.
 
-If the project is an OpenCode workspace (`opencode.json` or `.opencode/` present), `init` also provisions the OpenCode observation plugin non-clobbering: the plugin shim is added under `.opencode/` (its dependency recorded in `.opencode/package.json` and/or appended to the `plugin` array in `opencode.json`) without disturbing the existing `mcp.unimatrix` retrieval entry, local STDIO command, or provider block — the delta is strictly additive and idempotent.
+Beyond Claude Code, `init` wires each harness it detects by a project-local marker:
+
+- **OpenCode** (`opencode.json` / `.opencode/`) — provisions the observation plugin non-clobbering (the plugin shim under `.opencode/`, its dependency recorded in `.opencode/package.json` and/or appended to the `plugin` array in `opencode.json`) and ensures the `mcp.unimatrix` retrieval entry in `opencode.json`, preserving any existing entry, the Ollama `provider` block, the local STDIO command, and all foreign keys byte-for-byte.
+- **Codex CLI** (`.codex/`) — writes `[mcp_servers.unimatrix]` into project-local `.codex/config.toml` (foreign `[mcp_servers.*]` tables, keys, comments, and ordering preserved) and provisions Codex hooks in a Claude-like, event-driven shape that target the JS hook client (`lib/hook-client/`) with `--provider codex-cli` on every command. `.codex/config.toml` and its hooks load only for a trusted `.codex/` layer.
+
+Writing a **new** MCP/retrieval entry into a user-owned config (`opencode.json`, `.codex/config.toml`) is an explicit-intent action — it requires `--harness <name>` opt-in. Merging additively into a surface you already have needs no extra flag.
+
+#### Wire without touching definitions
+
+To re-ensure MCP + hooks + retrieval for every detected harness without installing or overwriting any skill files, use the `wire` verb:
+
+```bash
+npx unimatrix wire                       # ensure wiring for every detected harness
+npx unimatrix wire --harness codex-cli   # target one harness (claude-code | opencode | codex-cli)
+npx unimatrix wire --dry-run             # print intended actions (prefixed [dry-run]); write nothing
+```
+
+`wire` touches zero definition files and runs no database steps. Both `wire` and `init` honor `--dry-run`. Wiring is idempotent — running it twice produces byte-identical config. A malformed harness config is left unchanged and that leg is skipped with a warning; an undetected harness is a silent no-op.
 
 Then start a Claude Code session and run:
 
@@ -232,7 +249,7 @@ All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. 
 
 Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — this combined with a `context_briefing` call on the outset, provides agents with an index of the most relevant artifacts to their goal and task. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. **No guidance is better than misdirection**. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC. Hooks provide the telemetry necessary for Unimatrix to learn.
 
-Multi-provider hook support: Gemini CLI events (`BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary — no downstream code sees provider-specific strings. Codex CLI uses the same event names as Claude Code; the `--provider codex-cli` flag on the `unimatrix hook` subcommand disambiguates attribution. Reference configurations are provided at `.gemini/settings.json` and `.codex/hooks.json`. Codex live MCP hook support is pending resolution of Codex upstream bug #16732.
+Multi-provider hook support: Gemini CLI events (`BeforeTool`, `AfterTool`, `SessionEnd`) are normalized to canonical Unimatrix names at the ingest boundary — no downstream code sees provider-specific strings. Codex CLI uses the same event names as Claude Code; the `--provider codex-cli` flag on the `unimatrix hook` subcommand disambiguates attribution. Reference configurations are provided at `.gemini/settings.json` and `.codex/hooks.json`; for Codex, `unimatrix init`/`wire` now provision this hook config directly into a consumer repo, targeting the JS hook client with `--provider codex-cli` on every command. The former Codex live-MCP-hook blocker (upstream bug #16732) is resolved — Codex MCP-tool-call hooks fire; firing is verified locally, while cloud self-firing depends on a trusted `.codex/` layer.
 
 OpenCode attaches as the fourth observation harness. Because OpenCode exposes no stdin command-hook contract, an in-process TypeScript plugin (provisioned under `.opencode/` by `unimatrix init`) maps its typed hooks and event bus to Claude-shaped frames and invokes `unimatrix hook <EVENT> --provider opencode`; the plugin is the normalization boundary. `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, and `PreCompact` arrive via typed hooks, while `SessionStart`, `Stop`, and subagent spawns are reconstructed from observe-only bus events. SubagentStart **retrieval-injection** is an accepted architectural parity gap: the spawn is observed and aligned to the owning cycle, but Unimatrix cannot inject retrieval into the new subagent's context the way Claude Code's `SubagentStart` hook does. `PreCompact` rests on OpenCode's experimental compaction API.
 

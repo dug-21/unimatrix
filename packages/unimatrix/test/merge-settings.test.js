@@ -1406,3 +1406,58 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
     assert.strictEqual(countUni(result.content, "SessionStart"), 1);
   });
 });
+
+// nan-023 ADR-003 §2 (AC-07/AC-08, C-03): buildHookClientCommand gains an
+// optional 3rd providerHint arg. The codex hook writer passes "codex-cli" so it
+// emits `node <path> <EVENT> --provider codex-cli`. Every existing 2-arg call is
+// byte-identical (SR-07 backward compat).
+describe("nan-023 buildHookClientCommand provider hint", function () {
+  const P = "/abs/pkg/lib/hook-client/index.js";
+
+  it("test_buildHookClientCommand_no_hint_backward_compatible", function () {
+    // 2-arg call unchanged — guards the claude-code golden (SR-07).
+    assert.strictEqual(buildHookClientCommand(P, "Stop"), "node " + P + " Stop");
+  });
+
+  it("test_buildHookClientCommand_appends_provider_hint", function () {
+    assert.strictEqual(
+      buildHookClientCommand(P, "PreToolUse", "codex-cli"),
+      "node " + P + " PreToolUse --provider codex-cli"
+    );
+  });
+
+  it("test_buildHookClientCommand_empty_hint_omits_flag", function () {
+    // Empty/whitespace-defensive: an empty-string hint appends nothing.
+    assert.strictEqual(buildHookClientCommand(P, "Stop", ""), "node " + P + " Stop");
+  });
+
+  it("test_buildHookClientCommand_targets_hook_client_not_binary", function () {
+    // AC-08 / C-03: invokes `node …/hook-client/index.js`, never the binary.
+    const cmd = buildHookClientCommand(P, "PostToolUse", "codex-cli");
+    assert.ok(/^node .*\/hook-client\/index\.js /.test(cmd));
+    assert.ok(!/\bunimatrix\s+hook\b/.test(cmd));
+  });
+
+  it("test_buildHookClientCommand_matches_ownership_regex", function () {
+    // AC-04: emitted command is Unimatrix-owned so re-runs are idempotent.
+    const cmd = buildHookClientCommand(P, "SessionStart", "codex-cli");
+    assert.ok(isUnimatrixHook({ command: cmd }));
+  });
+
+  it("test_buildHookClientCommand_path_with_space_quoted", function () {
+    // R-10: a spaced path is double-quoted; the hint appends after the event.
+    const spaced = "/abs/my dir/lib/hook-client/index.js";
+    const cmd = buildHookClientCommand(spaced, "Stop", "codex-cli");
+    assert.strictEqual(cmd, 'node "' + spaced + '" Stop --provider codex-cli');
+    assert.ok(isUnimatrixHook({ command: cmd })); // quoted arm of pattern 5
+  });
+
+  it("test_every_hook_event_carries_provider_flag", function () {
+    // AC-07: every codex hook command must carry --provider codex-cli (fail-loud
+    // if any is missing). Mirrors the codex writer's per-event emission.
+    for (const event of HOOK_EVENTS) {
+      const cmd = buildHookClientCommand(P, event, "codex-cli");
+      assert.ok(cmd.endsWith(" --provider codex-cli"), event + " missing provider flag");
+    }
+  });
+});

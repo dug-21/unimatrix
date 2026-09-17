@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "unimatrix": {
+      "command": "/opt/unimatrix/bin/unimatrix",
+      "args": [],
+      "env": {
+        "LD_LIBRARY_PATH": "/opt/unimatrix/bin"
+      }
+    }
+  }
+}
