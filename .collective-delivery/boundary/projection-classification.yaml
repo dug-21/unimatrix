@@ -1,0 +1,109 @@
+schema: collective.projection-classification/1
+# col-005 C7 projection boundary classification (default-deny per field, ADR-016).
+# Extends the col-004 tools/boundary/ base alongside classification.yaml; it does not
+# modify or weaken the accepted release-classification rows. This is the CLOSED set of
+# publishable projected `.collective/` artifacts and, per artifact, the CLOSED allow-list
+# of fields that may cross into a receiver. Anything absent here is denied by default.
+# `forbidden_markers` are reused from the col-004 base (classification.yaml).
+rows:
+  - artifact: .collective/README.md
+    kind: text
+    authority: baseline
+    public_fields:
+      - "/text"
+  - artifact: .collective/EXTENSIONS.md
+    kind: text
+    authority: program
+    public_fields:
+      - "/text"
+  - artifact: .collective/contract/CONTRACT.md
+    kind: text
+    authority: baseline
+    public_fields:
+      - "/text"
+  - artifact: .collective/ADOPTED.yaml
+    kind: yaml
+    schema: collective.adopted-release/1
+    authority: baseline
+    public_fields:
+      - "/schema"
+      - "/authority"
+      - "/program_identity"
+      - "/adopted_release"
+      - "/adopted_release/release_identity"
+      - "/adopted_release/content_digest"
+  - artifact: .collective/MANIFEST.yaml
+    kind: yaml
+    schema: collective.projection-manifest/1
+    authority: baseline
+    public_fields:
+      - "/schema"
+      - "/authority"
+      - "/files"
+      - "/files/*"
+      - "/files/*/path"
+      - "/files/*/digest"
+      - "/files/*/authority"
+  - artifact: .collective/contract/VOCABULARY.yaml
+    kind: yaml
+    schema: collective.vocabulary/2
+    authority: baseline
+    public_fields:
+      - "/schema"
+      - "/terms"
+      - "/terms/*"
+      - "/terms/*/disposition_reason"
+      - "/terms/*/kind"
+      - "/terms/*/meaning"
+      - "/terms/*/register"
+      - "/terms/*/remainder_cause"
+      - "/terms/*/term"
+  - artifact: .collective/contract/OBLIGATIONS.yaml
+    kind: yaml
+    schema: collective.obligations/2
+    authority: baseline
+    public_fields:
+      - "/schema"
+      - "/obligations"
+      - "/obligations/*"
+      - "/obligations/*/id"
+      - "/obligations/*/observed_by"
+      - "/obligations/*/statement"
+      - "/obligations/*/terms"
+      - "/obligations/*/terms/*"
+  - artifact: .collective/contract/REGISTRATIONS.yaml
+    kind: yaml
+    schema: collective.registration-set/2
+    authority: baseline
+    public_fields:
+      - "/schema"
+      - "/source"
+      - "/source/registry_digest"
+      - "/source/revision"
+      - "/programs"
+      - "/programs/*"
+      - "/programs/*/display_name"
+      - "/programs/*/location"
+      - "/programs/*/program_identity"
+  # col-006 program-facing payload (ADR-031 #168, CONTRACT §8). Two closed single-file
+  # text rows mirroring the README/CONTRACT text rows; whole file is publishable text,
+  # default-deny on everything else. Multi-file skill projection is deferred (no prefix rule).
+  - artifact: .collective/onboarding/DIRECTIVE.md
+    kind: text
+    authority: baseline
+    public_fields:
+      - "/text"
+  - artifact: .collective/skills/collective-participation/SKILL.md
+    kind: text
+    authority: baseline
+    public_fields:
+      - "/text"
+forbidden_markers:
+  - "PRIVATE:"
+  - "BEGIN PRIVATE"
+  - "private_assessment"
+  - "owner_decision_reference"
+  - "registered_at"
+  - "carrier_hints"
+  - "release-control/manual-reviews/"
+  - "product/features/"

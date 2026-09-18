@@ -1,0 +1,56 @@
+name: Collective pre-adoption check
+
+# col-007 P2 — Unimatrix's required pre-adoption check on a collective adoption PR.
+#
+# It runs on any pull request that changes the adopted `.collective/**` surface and runs the
+# Program-owned verifier (`.collective-delivery/preadoption-check.js`) against the vendored
+# collective verifier. The verifier independently re-reads the approved mirror source and the
+# proposed revision and exits NON-ZERO on any held/refused outcome — which fails this check.
+#
+# To ENFORCE it, add "Verify collective adoption proposal" to this repository's branch
+# protection required status checks. `compatible` proposals may be eligible for automated
+# adoption under the baseline, but this rail never merges; `extending` / `breaking` proposals
+# always require Unimatrix's human adoption decision. Read-only: no merge, no collective grant.
+
+on:
+  pull_request:
+    paths:
+      - '.collective/**'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verify:
+    name: Verify collective adoption proposal
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install receiver dependencies
+        working-directory: .collective-delivery
+        run: npm install --no-audit --no-fund
+
+      - name: Run pre-adoption verifier
+        working-directory: .collective-delivery
+        env:
+          COLLECTIVE_PR_BODY: ${{ github.event.pull_request.body }}
+          COLLECTIVE_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Public mirror read configuration (repo vars) + read token (secret). The verifier
+          # is fail-closed if any required public source evidence cannot be read.
+          COLLECTIVE_MIRROR_HOST_API_URL: ${{ vars.COLLECTIVE_MIRROR_HOST_API_URL }}
+          COLLECTIVE_MIRROR_PUBLIC_TOKEN: ${{ secrets.COLLECTIVE_MIRROR_PUBLIC_TOKEN }}
+          COLLECTIVE_MIRROR_OWNER_LOGIN: ${{ vars.COLLECTIVE_MIRROR_OWNER_LOGIN }}
+          COLLECTIVE_MIRROR_LANDING_CHECK: ${{ vars.COLLECTIVE_MIRROR_LANDING_CHECK }}
+          COLLECTIVE_MIRROR_CHECK_APP_ID: ${{ vars.COLLECTIVE_MIRROR_CHECK_APP_ID }}
+          COLLECTIVE_MIRROR_LOCATOR_ACTOR: ${{ vars.COLLECTIVE_MIRROR_LOCATOR_ACTOR }}
+          COLLECTIVE_RECEIVER_HOST_API_URL: ${{ github.api_url }}
+          COLLECTIVE_RECEIVER_HOST_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node preadoption-check.js

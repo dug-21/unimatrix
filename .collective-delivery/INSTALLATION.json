@@ -1,0 +1,10 @@
+{
+  "schema": "collective.delivery-installation/1",
+  "program_identity": "prg_034cb0982e95d7ad0afb6460023c75ee",
+  "mirror": {
+    "repository_identity": "dug-21/collective-mirror",
+    "accepted_ref": "refs/heads/main"
+  },
+  "canonical_branch": "main",
+  "proposal_base": "main"
+}
