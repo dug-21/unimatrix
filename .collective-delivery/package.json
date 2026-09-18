@@ -1,0 +1,13 @@
+{
+  "name": "collective-delivery-receiver",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Program-owned copy of the collective col-007 adoption-rail receiver tools (P1 receiver-run, P2 verify-proposal). Vendored verbatim; do not edit.",
+  "type": "commonjs",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "yaml": "2.8.3"
+  }
+}

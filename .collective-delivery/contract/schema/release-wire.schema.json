@@ -1,0 +1,1329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "release-wire.schema.json",
+  "title": "col-004 release wire design; schemas are structural authority",
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "identity": {
+      "type": "string",
+      "pattern": "^prg_[0-9a-f]{32}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*[\\\\\\x00-\\x1f\\x7f])[^/]+(?:/[^/]+)*$"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "obligationId": {
+      "type": "string",
+      "pattern": "^OBL-[0-9A-F]{4}$"
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "mode",
+        "size",
+        "digest"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "mode": {
+          "enum": [
+            "0644",
+            "0755"
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "registry_digest"
+      ],
+      "properties": {
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "registry_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_digest",
+        "registry_source",
+        "prior_index_digest",
+        "policy_digest"
+      ],
+      "properties": {
+        "candidate_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "registry_source": {
+          "$ref": "#/$defs/source"
+        },
+        "prior_index_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "policy_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "predecessor": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "version"
+          ],
+          "properties": {
+            "state": {
+              "const": "unpromoted-prior-version"
+            },
+            "version": {
+              "const": "0.1.0"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "version"
+          ],
+          "properties": {
+            "state": {
+              "const": "promoted-release"
+            },
+            "version": {
+              "$ref": "#/$defs/version"
+            }
+          }
+        }
+      ]
+    },
+    "invalidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "change",
+        "invalidates"
+      ],
+      "properties": {
+        "change": {
+          "enum": [
+            "participation-posture",
+            "unit-evidence-deferral",
+            "local-workflow-withdrawal",
+            "publication-split",
+            "collective-withdrawal",
+            "declare-extensions-withdrawal",
+            "baseline-release-distinction"
+          ]
+        },
+        "invalidates": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "release_identity",
+        "compatibility",
+        "predecessor",
+        "supersedes",
+        "invalidations"
+      ],
+      "properties": {
+        "release_identity": {
+          "$ref": "#/$defs/version"
+        },
+        "compatibility": {
+          "enum": [
+            "compatible",
+            "extending",
+            "breaking"
+          ]
+        },
+        "predecessor": {
+          "$ref": "#/$defs/predecessor"
+        },
+        "supersedes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/version"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "invalidations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/invalidation"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "vocabulary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "terms"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.vocabulary/2"
+        },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "term",
+              "kind",
+              "meaning",
+              "register",
+              "remainder_cause",
+              "disposition_reason"
+            ],
+            "properties": {
+              "term": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "noun",
+                  "verb"
+                ]
+              },
+              "meaning": {
+                "type": "string",
+                "minLength": 1
+              },
+              "register": {
+                "enum": [
+                  "admitted",
+                  "reserved",
+                  "deferred",
+                  "program-local"
+                ]
+              },
+              "remainder_cause": {
+                "enum": [
+                  "not-cleared",
+                  "cleared-no-receiver-referent-built",
+                  "mandated-deferral",
+                  "program-local"
+                ]
+              },
+              "disposition_reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "obligations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "obligations"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.obligations/2"
+        },
+        "obligations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "statement",
+              "terms",
+              "observed_by"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/obligationId"
+              },
+              "statement": {
+                "type": "string",
+                "minLength": 1
+              },
+              "terms": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "observed_by": {
+                "const": "not-observed-by-this-release"
+              }
+            }
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "registration-set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "source",
+        "programs"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.registration-set/2"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "programs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "program_identity",
+              "display_name",
+              "location"
+            ],
+            "properties": {
+              "program_identity": {
+                "$ref": "#/$defs/identity"
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "location": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "key",
+        "meaning_digest"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "term",
+            "obligation"
+          ]
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "meaning_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "receiver": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program_identity",
+        "location",
+        "receiver_revision",
+        "referent",
+        "content_digest",
+        "content_reference",
+        "recorded_by",
+        "recorded_at",
+        "existence",
+        "semantic_outcome"
+      ],
+      "properties": {
+        "program_identity": {
+          "$ref": "#/$defs/identity"
+        },
+        "location": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receiver_revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "referent": {
+          "$ref": "#/$defs/path"
+        },
+        "content_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "content_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recorded_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/time"
+        },
+        "existence": {
+          "enum": [
+            "corroborated",
+            "missing",
+            "unavailable"
+          ]
+        },
+        "semantic_outcome": {
+          "enum": [
+            "cleared",
+            "not-cleared",
+            "unreviewed"
+          ]
+        }
+      }
+    },
+    "clearances": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "reviews"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.clearances/2"
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "subject",
+              "receivers"
+            ],
+            "properties": {
+              "subject": {
+                "$ref": "#/$defs/subject"
+              },
+              "receivers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/receiver"
+                },
+                "minItems": 2,
+                "uniqueItems": true,
+                "maxItems": 2
+              }
+            }
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "release-intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "release_identity",
+        "compatibility",
+        "predecessor",
+        "supersedes",
+        "invalidations",
+        "registry_source",
+        "released_paths",
+        "program_facing_paths"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.release-intent/2"
+        },
+        "release_identity": {
+          "$ref": "#/$defs/version"
+        },
+        "compatibility": {
+          "enum": [
+            "compatible",
+            "extending",
+            "breaking"
+          ]
+        },
+        "predecessor": {
+          "$ref": "#/$defs/predecessor"
+        },
+        "supersedes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/version"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "invalidations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/invalidation"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "registry_source": {
+          "$ref": "#/$defs/source"
+        },
+        "released_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "program_facing_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check",
+        "result"
+      ],
+      "properties": {
+        "check": {
+          "enum": [
+            "PPG-01",
+            "PPG-02",
+            "PPG-03",
+            "PPG-04",
+            "PPG-05",
+            "PPG-06",
+            "PPG-07",
+            "PPG-08",
+            "PPG-09",
+            "PPG-10",
+            "PPG-11",
+            "PPG-12",
+            "PPG-13",
+            "PPG-14",
+            "PPG-17",
+            "PPG-18",
+            "PPG-19"
+          ]
+        },
+        "result": {
+          "const": "pass"
+        }
+      }
+    },
+    "gate-verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "gate",
+        "result",
+        "binding",
+        "executed",
+        "not_checked",
+        "recorded_by",
+        "recorded_at"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.gate-verdict/2"
+        },
+        "gate": {
+          "const": "pre-promotion"
+        },
+        "result": {
+          "const": "pass"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "executed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check"
+          },
+          "minItems": 17,
+          "uniqueItems": true,
+          "maxItems": 17
+        },
+        "not_checked": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "receiver-resolution",
+              "receiver-semantics",
+              "receiver-current-head",
+              "receiver-self-inspection",
+              "future-admission-schema-support",
+              "PPG-15",
+              "PPG-16",
+              "semantic-compatibility"
+            ]
+          },
+          "minItems": 8,
+          "uniqueItems": true,
+          "maxItems": 8
+        },
+        "recorded_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/time"
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "metadata",
+        "binding"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.release/2"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "files"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.manifest/2"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approver",
+        "approved_at",
+        "gate_verdict_digest"
+      ],
+      "properties": {
+        "approver": {
+          "const": "dug-21"
+        },
+        "approved_at": {
+          "$ref": "#/$defs/time"
+        },
+        "gate_verdict_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "indexEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metadata",
+        "binding",
+        "content_digest",
+        "promotion"
+      ],
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "content_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "promotion": {
+          "$ref": "#/$defs/promotion"
+        }
+      }
+    },
+    "release-index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "entries"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.release-index/2"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/indexEntry"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "promotion-authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "owner",
+        "owner_decision_reference",
+        "binding",
+        "gate_verdict_digest",
+        "public_attribution",
+        "public_material_approved"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.promotion-authorization/1"
+        },
+        "owner": {
+          "const": "dug-21"
+        },
+        "owner_decision_reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "gate_verdict_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "public_attribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "approver",
+            "approved_at"
+          ],
+          "properties": {
+            "approver": {
+              "const": "dug-21"
+            },
+            "approved_at": {
+              "$ref": "#/$defs/time"
+            }
+          }
+        },
+        "public_material_approved": {
+          "const": true
+        }
+      }
+    },
+    "manual-review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "subject",
+        "receiver",
+        "repeat_read",
+        "corroboration",
+        "private_assessment"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.manual-review/1"
+        },
+        "subject": {
+          "$ref": "#/$defs/subject"
+        },
+        "receiver": {
+          "$ref": "#/$defs/receiver"
+        },
+        "repeat_read": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "argv",
+            "working_directory"
+          ],
+          "properties": {
+            "argv": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            },
+            "working_directory": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "corroboration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "digest"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/path"
+            },
+            "digest": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        },
+        "private_assessment": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "rule",
+        "item",
+        "message"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "item": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "release-result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "operation",
+        "state",
+        "diagnostics",
+        "accepted_revision",
+        "release_identity",
+        "content_digest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.release-result/1"
+        },
+        "operation": {
+          "enum": [
+            "prepare",
+            "validate",
+            "promote",
+            "validate-change",
+            "recover",
+            "lookup",
+            "verify",
+            "publication"
+          ]
+        },
+        "state": {
+          "enum": [
+            "candidate-ready",
+            "candidate-valid",
+            "promotion-prepared",
+            "change-valid",
+            "recovery-complete",
+            "release-found",
+            "release-intact",
+            "publication-valid",
+            "usage-invalid",
+            "source-unavailable",
+            "source-invalid",
+            "candidate-invalid",
+            "manual-evidence-insufficient",
+            "publication-denied",
+            "verdict-invalid",
+            "authorization-missing",
+            "authorization-mismatch",
+            "inputs-stale",
+            "version-occupied",
+            "transaction-busy",
+            "recovery-conflict",
+            "release-unknown",
+            "authoring-state",
+            "release-missing-content",
+            "release-changed-content",
+            "release-unexpected-content",
+            "release-invalid-metadata",
+            "release-unsupported",
+            "release-multiple-defects"
+          ]
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/diagnostic"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "accepted_revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/revision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "release_identity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "custodyRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pattern",
+        "component",
+        "authority",
+        "writer",
+        "source",
+        "classification",
+        "cardinality"
+      ],
+      "properties": {
+        "pattern": {
+          "$ref": "#/$defs/path"
+        },
+        "component": {
+          "enum": [
+            "R1",
+            "R2",
+            "R3",
+            "R4",
+            "R5",
+            "R6"
+          ]
+        },
+        "authority": {
+          "type": "string",
+          "minLength": 1
+        },
+        "writer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "classification": {
+          "enum": [
+            "public",
+            "private"
+          ]
+        },
+        "cardinality": {
+          "enum": [
+            "required",
+            "zero-or-more"
+          ]
+        }
+      }
+    },
+    "release-custody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "rows"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.release-custody/1"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/custodyRow"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "classificationRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact",
+        "schema",
+        "public_fields"
+      ],
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/path"
+        },
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "public_fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "release-classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "rows",
+        "forbidden_markers"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.release-classification/1"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/classificationRow"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "forbidden_markers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "release-policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "owner",
+        "accepted_ref",
+        "registry_paths",
+        "control_paths",
+        "schema_ids",
+        "posture"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.release-policy/1"
+        },
+        "owner": {
+          "const": "dug-21"
+        },
+        "accepted_ref": {
+          "const": "refs/remotes/origin/main"
+        },
+        "registry_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "control_paths": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "schema_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "posture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_revision",
+            "source_blob",
+            "source_path",
+            "digest",
+            "size"
+          ],
+          "properties": {
+            "source_revision": {
+              "$ref": "#/$defs/revision"
+            },
+            "source_blob": {
+              "$ref": "#/$defs/revision"
+            },
+            "source_path": {
+              "$ref": "#/$defs/path"
+            },
+            "digest": {
+              "const": "sha256:8acba5f5819b7c82a23b374c15de0c37248aa4275c13a6b73ba965b00da5c69e"
+            },
+            "size": {
+              "const": 812
+            }
+          }
+        }
+      }
+    },
+    "promotion-transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "binding",
+        "base_revision",
+        "release_identity",
+        "gate_verdict_digest",
+        "prior_index",
+        "new_files",
+        "proposed_index_digest",
+        "phase"
+      ],
+      "properties": {
+        "schema": {
+          "const": "collective.promotion-transaction/1"
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "base_revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "release_identity": {
+          "$ref": "#/$defs/version"
+        },
+        "gate_verdict_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "prior_index": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "digest"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/path"
+            },
+            "digest": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        },
+        "new_files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "proposed_index_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "phase": {
+          "enum": [
+            "staged",
+            "validated",
+            "files-installed",
+            "index-installed"
+          ]
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/vocabulary"
+    },
+    {
+      "$ref": "#/$defs/obligations"
+    },
+    {
+      "$ref": "#/$defs/registration-set"
+    },
+    {
+      "$ref": "#/$defs/clearances"
+    },
+    {
+      "$ref": "#/$defs/release-intent"
+    },
+    {
+      "$ref": "#/$defs/gate-verdict"
+    },
+    {
+      "$ref": "#/$defs/release"
+    },
+    {
+      "$ref": "#/$defs/manifest"
+    },
+    {
+      "$ref": "#/$defs/release-index"
+    },
+    {
+      "$ref": "#/$defs/promotion-authorization"
+    },
+    {
+      "$ref": "#/$defs/manual-review"
+    },
+    {
+      "$ref": "#/$defs/release-result"
+    },
+    {
+      "$ref": "#/$defs/release-custody"
+    },
+    {
+      "$ref": "#/$defs/release-classification"
+    },
+    {
+      "$ref": "#/$defs/release-policy"
+    },
+    {
+      "$ref": "#/$defs/promotion-transaction"
+    }
+  ]
+}
