@@ -1,11 +1,9 @@
 {
   "mcpServers": {
     "unimatrix": {
-      "command": "/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix",
+      "command": "/usr/local/cargo/bin/unimatrix",
       "args": [],
-      "env": {
-        "LD_LIBRARY_PATH": "/usr/local/share/nvm/versions/node/v24.18.1/lib/node_modules/@dug-21/unimatrix/node_modules/@dug-21/unimatrix-linux-x64/bin"
-      }
+      "env": {}
     }
   }
 }
