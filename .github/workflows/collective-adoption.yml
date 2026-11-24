@@ -1,0 +1,52 @@
+name: Collective adoption proposal
+
+# col-007 P1 — the receiver's scheduled/triggered adoption job.
+#
+# It runs the Program-owned receiver (`.collective-delivery/propose.js`), which pulls the
+# approved collective release from the public mirror and, when one is available and
+# independently verifiable, opens ONE reviewable adoption pull request on its own branch.
+# It NEVER merges and holds no collective grant: the only write scopes are contents +
+# pull-requests, so the job can open a proposal but cannot merge it or change protected refs.
+# Absent an approved mirror source the job is fail-closed — it holds and opens nothing.
+#
+# Dormant until Unimatrix opts in by setting repository variable
+# COLLECTIVE_ADOPTION_ENABLED = 'true' and configuring COLLECTIVE_TARGET_RELEASE.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: collective-adoption
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    name: Open adoption proposal (fail-closed)
+    if: ${{ vars.COLLECTIVE_ADOPTION_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install receiver dependencies
+        working-directory: .collective-delivery
+        run: npm install --no-audit --no-fund
+
+      - name: Run receiver proposal job
+        working-directory: .collective-delivery
+        env:
+          # Receiver-scoped token: proposal (branch/PR) permission ONLY, no merge grant.
+          COLLECTIVE_RECEIVER_HOST_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COLLECTIVE_RECEIVER_HOST_API_URL: ${{ github.api_url }}
+          # Release identity to propose (repo-configured deployment input).
+          COLLECTIVE_TARGET_RELEASE: ${{ vars.COLLECTIVE_TARGET_RELEASE }}
+        run: node propose.js
