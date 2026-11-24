@@ -562,3 +562,57 @@ fn test_include_edges_three_resolutions() {
         "Some(false) ⇒ opt-out, skip all edge queries"
     );
 }
+
+// ---------------------------------------------------------------------------
+// #1009 — quarantined neighbors never surface on an active entry's edges block
+// ---------------------------------------------------------------------------
+
+async fn set_status(pool: &SqlitePool, id: u64, status: i64) {
+    sqlx::query("UPDATE entries SET status = ?1 WHERE id = ?2")
+        .bind(status)
+        .bind(id as i64)
+        .execute(pool)
+        .await
+        .expect("set status");
+}
+
+/// context_get(A) with A→Q, Q quarantined (no tick): Q absent from displayed edges AND
+/// subtracted from totals; restore → Q reappears immediately.
+#[tokio::test]
+async fn test_edges_view_excludes_quarantined_target_and_totals() {
+    let (store, _dir) = open_test_store().await;
+    let pool = store.write_pool_server();
+
+    let a = insert_entry_conf(pool, "A", 0.5).await;
+    let q = insert_entry_conf(pool, "Q", 0.9).await;
+    let c = insert_entry_conf(pool, "C", 0.1).await;
+    insert_edge(pool, a, q, "Supports", "agent").await;
+    insert_edge(pool, a, c, "Supports", "agent").await;
+    set_status(pool, q, 3).await;
+
+    for resolve in [true, false] {
+        let view = build_edges_view(&store as &Store, a, resolve)
+            .await
+            .expect("build");
+        assert!(
+            view.edges.iter().all(|e| e.target_id != q),
+            "quarantined Q must not be displayed (resolve={resolve})"
+        );
+        assert!(view.edges.iter().any(|e| e.target_id == c));
+        assert_eq!(
+            view.totals.outbound, 1,
+            "totals exclude Q (resolve={resolve})"
+        );
+        assert_eq!(view.authored_total, 1);
+    }
+
+    set_status(pool, q, 0).await;
+    let view = build_edges_view(&store as &Store, a, true)
+        .await
+        .expect("build");
+    assert!(
+        view.edges.iter().any(|e| e.target_id == q),
+        "restored Q reappears"
+    );
+    assert_eq!(view.totals.outbound, 2);
+}

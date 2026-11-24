@@ -843,6 +843,43 @@ def test_quarantine_visible_via_get(server):
     assert_tool_success(get_resp)
 
 
+def test_quarantine_get_includes_status(server):
+    """#1009: context_get(Q) returns Q with its quarantined status."""
+    store_resp = server.context_store(
+        "quarantine get status 1009", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    entry = parse_entry(server.context_get(entry_id, format="json"))
+    assert str(entry.get("status", "")).lower() == "quarantined", entry
+
+
+def test_quarantine_lookup_by_id_includes_status(server):
+    """#1009: lookup by id MAY return a quarantined entry, but must carry its status."""
+    store_resp = server.context_store(
+        "quarantine lookup id 1009", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    entry = parse_entry(server.context_lookup(id=entry_id, format="json"))
+    assert entry.get("id") == entry_id
+    assert str(entry.get("status", "")).lower() == "quarantined", entry
+
+
+def test_quarantine_lookup_status_override_returns_empty(server):
+    """#1009: filtered lookup never serves quarantined, even with status="quarantined"."""
+    store_resp = server.context_store(
+        "quarantine override 1009", "quarantine-1009", "convention",
+        agent_id="human", format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    for status in (None, "quarantined", "active"):
+        resp = server.context_lookup(topic="quarantine-1009", status=status, format="json")
+        ids = [e.get("id") for e in parse_entries(resp)]
+        assert entry_id not in ids, (status, ids)
+
+
 def test_restore_quarantined(server):
     """T-77: Restore returns entry to active status."""
     store_resp = server.context_store(

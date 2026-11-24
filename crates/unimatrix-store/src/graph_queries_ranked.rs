@@ -75,6 +75,13 @@ pub struct EdgeCountSplit {
 /// of one unordered pair share `(relation_type, pair_lo, pair_hi, 1)` and collapse to
 /// a single group row; asymmetric rows group on their distinct `other_id` and are
 /// never merged across distinct neighbors.
+///
+/// #1009: quarantined neighbors (`status = 3`) are dropped in `canon`, so they are
+/// absent from BOTH the displayed rows and the totals (stored totals would leak the
+/// existence/count of untrusted neighbors — deliberate override of vnc-037 N5). This
+/// is a "not quarantined" denylist, not an Active allowlist: deprecated targets must
+/// stay visible so `follow_to_current` can resolve them to their terminal. Dangling
+/// targets (no `entries` row) are retained (`NOT IN` over existing ids only).
 const CANON_CTE: &str = "WITH nbr AS (
         SELECT source_id, target_id, target_id AS other_id, relation_type, source,
                'outbound' AS leg
@@ -93,6 +100,7 @@ const CANON_CTE: &str = "WITH nbr AS (
                MIN(?1, other_id) AS pair_lo,
                MAX(?1, other_id) AS pair_hi
         FROM nbr
+        WHERE other_id NOT IN (SELECT id FROM entries WHERE status = 3)
     ),
     deduped AS (
         SELECT relation_type, source, other_id, direction

@@ -44,10 +44,19 @@ pub(super) async fn handle_chain(
         }
     };
 
+    // #1009: quarantined set loaded once per request.
+    let excluded = super::graph_read_exclusion::ExcludedNodes::load_quarantined(store).await?;
     // ADR-001: SQL recursive CTE path is mandatory. find_terminal_active is PROHIBITED.
     match query_supersession_chain(store.read_pool_server(), id, direction, 50).await {
+        // #1009: quarantined members are omitted from output, but the CTE still walks
+        // through them — a supersession chain is lineage, so active members on either side
+        // of a quarantined link stay visible (unlike path/neighbor reachability, which breaks).
         Ok(chain_result) => Ok(ChainResult {
-            entries: chain_result.entries,
+            entries: chain_result
+                .entries
+                .into_iter()
+                .filter(|e| !excluded.contains(e.id))
+                .collect(),
             truncated: Truncated {
                 forward: chain_result.forward_capped,
                 backward: chain_result.backward_capped,

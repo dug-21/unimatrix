@@ -26,7 +26,8 @@ use unimatrix_store::{NeighborDirection, query_direct_neighbors};
 use crate::error::{ERROR_INTERNAL, ERROR_INVALID_PARAMS};
 use crate::services::typed_graph::TypedGraphState;
 
-use super::graph_read_neighbors::{all_non_supersedes_types, follow_to_current};
+use super::graph_read_exclusion::{ExcludedNodes, admit};
+use super::graph_read_neighbors::all_non_supersedes_types;
 use super::{EdgeRecord, GraphParams, SubgraphResponse};
 
 // ---------------------------------------------------------------------------
@@ -160,6 +161,8 @@ pub(super) async fn handle_subgraph(
     // terminal by default. Explicit `false` remains the raw/audit opt-out. Node-collapse is
     // expected — multiple deprecated variants resolving to one terminal shrink node/edge counts.
     let resolve_supersessions = params.resolve_supersessions.unwrap_or(true);
+    // #1009: quarantined set loaded once per request, after param validation.
+    let excluded = &ExcludedNodes::load_quarantined(store).await?;
 
     // Depth-1 live dispatch (ADR-001 vnc-043, GH #903).
     // Exact `== 1` (never `<= 1`/range): max_depth is already validated to 1..=10, so
@@ -177,6 +180,7 @@ pub(super) async fn handle_subgraph(
             &petgraph_dirs,
             &edge_types,
             resolve_supersessions,
+            excluded,
         )
         .await;
     }
@@ -203,6 +207,7 @@ pub(super) async fn handle_subgraph(
             &petgraph_dirs,
             &edge_types,
             resolve_supersessions,
+            excluded,
         )
         .await;
     }
@@ -220,10 +225,10 @@ pub(super) async fn handle_subgraph(
     // Step 4: Seed phase.
     // Supersession resolution BEFORE visited check (R-01).
     for &seed_id in &seed_ids {
-        let effective_id = if resolve_supersessions {
-            follow_to_current(store, seed_id).await.unwrap_or(seed_id)
-        } else {
-            seed_id
+        // #1009: quarantined seeds are dropped (before the visited check and cap).
+        let Some(effective_id) = admit(store, excluded, seed_id, resolve_supersessions).await
+        else {
+            continue;
         };
 
         if visited.contains(&effective_id) {
@@ -290,12 +295,11 @@ pub(super) async fn handle_subgraph(
                         };
 
                         // Supersession resolution on neighbor (R-01).
-                        let effective_neighbor = if resolve_supersessions {
-                            follow_to_current(store, neighbor_id)
-                                .await
-                                .unwrap_or(neighbor_id)
-                        } else {
-                            neighbor_id
+                        // #1009: skip excluded nodes BEFORE edge record / max_nodes cap / truncated.
+                        let Some(effective_neighbor) =
+                            admit(store, excluded, neighbor_id, resolve_supersessions).await
+                        else {
+                            continue;
                         };
 
                         // Record the edge with the RESOLVED neighbor endpoint (bugfix-881):
@@ -416,6 +420,7 @@ pub(super) async fn handle_subgraph(
 ///
 /// Per-node fan-out is capped at `MAX_DB_NEIGHBORS_PER_NODE` (same value as
 /// `path_via_db`) to prevent runaway BFS on extremely high-degree nodes.
+#[allow(clippy::too_many_arguments)] // #1009 added `excluded`
 async fn subgraph_via_db(
     store: &Store,
     seed_ids: &[u64],
@@ -424,6 +429,7 @@ async fn subgraph_via_db(
     petgraph_dirs: &[PetgraphDirection],
     edge_types: &[RelationType],
     resolve_supersessions: bool,
+    excluded: &ExcludedNodes,
 ) -> Result<SubgraphResponse, ErrorData> {
     let type_strs: Vec<&str> = edge_types.iter().map(|t| t.as_str()).collect();
     let max_nodes_usize = max_nodes as usize;
@@ -440,10 +446,10 @@ async fn subgraph_via_db(
 
     // Seed phase — mirrors handle_subgraph seed phase.
     for &seed_id in seed_ids {
-        let effective_id = if resolve_supersessions {
-            follow_to_current(store, seed_id).await.unwrap_or(seed_id)
-        } else {
-            seed_id
+        // #1009: quarantined seeds are dropped (before the visited check and cap).
+        let Some(effective_id) = admit(store, excluded, seed_id, resolve_supersessions).await
+        else {
+            continue;
         };
 
         if visited.contains(&effective_id) {
@@ -510,12 +516,11 @@ async fn subgraph_via_db(
                     };
 
                     // Supersession resolution on neighbor (R-01).
-                    let effective_neighbor = if resolve_supersessions {
-                        follow_to_current(store, neighbor_id)
-                            .await
-                            .unwrap_or(neighbor_id)
-                    } else {
-                        neighbor_id
+                    // #1009: skip excluded nodes BEFORE edge record / max_nodes cap / truncated.
+                    let Some(effective_neighbor) =
+                        admit(store, excluded, neighbor_id, resolve_supersessions).await
+                    else {
+                        continue;
                     };
 
                     // Record the edge with the RESOLVED neighbor endpoint (bugfix-881) — see the

@@ -60,6 +60,9 @@ mod graph_read_path;
 #[path = "graph_read_validation.rs"]
 mod graph_read_validation;
 
+#[path = "graph_read_exclusion.rs"]
+mod graph_read_exclusion;
+
 // vnc-042: re-export the canonical supersession-resolution helper so the tools.rs
 // handler can bind it at `crate::mcp::graph_read::follow_to_current` (Pattern #4436).
 // Mirrors the submodule-symbol re-export idiom used for `EdgeRecord` in mcp/mod.rs.
