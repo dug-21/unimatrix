@@ -3,8 +3,9 @@
 //! Quarantine exclusion previously relied on background-tick side effects (orphaned-edge
 //! compaction + `TypedGraphState` rebuild), so a freshly quarantined entry stayed
 //! traversable until the next tick, and seed/chain hydration never filtered at all.
-//! [`ExcludedNodes`] is loaded once per request by `handle_graph` (neighbors / path /
-//! subgraph / chain only) and consulted by every traversal loop, independent of the tick.
+//! [`ExcludedNodes`] is loaded once per request at the top of each traversal handler
+//! (`handle_neighbors` / `handle_path` / `handle_subgraph` / `handle_chain`; never for
+//! inverse / filter / current) and consulted by every traversal loop, independent of the tick.
 //!
 //! Written as a generic "excluded node set" so a future node-property traversal
 //! constraint (PL-11) can generalize it instead of replacing per-site checks.

@@ -922,10 +922,12 @@ impl UnimatrixServer {
             let mut entries = self.entry_store.query(filter).await.map_err(|e| {
                 rmcp::ErrorData::from(crate::error::ServerError::Core(CoreError::Store(e)))
             })?;
-            // #1009: filtered lookup NEVER serves quarantined entries — including an explicit
-            // `status: "quarantined"` override, which now yields an empty result. By-`id`
-            // lookup above may return one; its formatted output carries the status.
-            entries.retain(|e| e.status != Status::Quarantined);
+            // #1009: filtered lookup serves quarantined entries ONLY for an explicit
+            // `status: "quarantined"` filter; default and every other filter exclude them.
+            // By-`id` lookup above may return one; its formatted output carries the status.
+            if status != Some(Status::Quarantined) {
+                entries.retain(|e| e.status != Status::Quarantined);
+            }
             entries.truncate(limit);
             let ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
             (format_lookup_results(&entries, ctx.format), ids)

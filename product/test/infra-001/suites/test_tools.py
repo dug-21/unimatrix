@@ -866,18 +866,36 @@ def test_quarantine_lookup_by_id_includes_status(server):
     assert str(entry.get("status", "")).lower() == "quarantined", entry
 
 
-def test_quarantine_lookup_status_override_returns_empty(server):
-    """#1009: filtered lookup never serves quarantined, even with status="quarantined"."""
+def test_quarantine_lookup_explicit_status_returns_quarantined(server):
+    """#1009: explicit status="quarantined" is the ONLY filter that returns quarantined."""
     store_resp = server.context_store(
-        "quarantine override 1009", "quarantine-1009", "convention",
+        "quarantine explicit 1009", "quarantine-1009-explicit", "convention",
         agent_id="human", format="json",
     )
     entry_id = extract_entry_id(store_resp)
     server.context_quarantine(entry_id, agent_id="human")
-    for status in (None, "quarantined", "active"):
-        resp = server.context_lookup(topic="quarantine-1009", status=status, format="json")
+    resp = server.context_lookup(
+        topic="quarantine-1009-explicit", status="quarantined", format="json"
+    )
+    ids = [e.get("id") for e in parse_entries(resp)]
+    assert entry_id in ids, ids
+
+
+def test_quarantine_lookup_default_and_other_status_exclude(server):
+    """#1009: default and every non-quarantined status filter exclude quarantined."""
+    store_resp = server.context_store(
+        "quarantine other status 1009", "quarantine-1009-other", "convention",
+        agent_id="human", format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    for status in (None, "active", "deprecated", "proposed"):
+        resp = server.context_lookup(topic="quarantine-1009-other", status=status, format="json")
         ids = [e.get("id") for e in parse_entries(resp)]
         assert entry_id not in ids, (status, ids)
+    # Non-topic filter path (category only) also excludes it by default.
+    resp = server.context_lookup(category="convention", limit=100, format="json")
+    assert entry_id not in [e.get("id") for e in parse_entries(resp)]
 
 
 def test_restore_quarantined(server):
