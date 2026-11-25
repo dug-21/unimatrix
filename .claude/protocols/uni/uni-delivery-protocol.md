@@ -30,7 +30,7 @@ Phase 4: Delivery
 
 **This protocol is executed by a dedicated `uni-scrum-master` subagent — the Delivery Leader — not by the primary agent.**
 
-**Primary agent**: you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the IMPLEMENTATION-BRIEF.md path (or GH Issue number) and session type `delivery`, recording its agent ID; (2) relay each escalation it returns to the human verbatim and resume the SM via `SendMessage` (to that agent ID) with the human's decision — never re-spawn; (3) present the final PR + assessment to the human. Delivery is autonomous, so the SM escalates only at the final PR/merge gate and on scope/feasibility failures. Kickoff spawn:
+**Primary agent** (runs as `/uni-zero-delivery`): you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the IMPLEMENTATION-BRIEF.md path (or GH Issue number) and session type `delivery`, recording its agent ID; (2) triage each escalation it returns under `.claude/protocols/uni/uni-primary-authority.md` — decide and record routine items in `DECISIONS.md`, take H-items to the human — and resume the SM via `SendMessage` (to that agent ID) with the decision — never re-spawn; (3) present the final PR + assessment to the human. Delivery is autonomous, so the SM escalates only at the final PR/merge gate and on scope/feasibility failures. Kickoff spawn:
 
 ```
 Task(subagent_type: "uni-scrum-master",
@@ -509,7 +509,7 @@ Task(subagent_type: "uni-zero-reviewer",
 
 **Product Review Rules:**
 - The spawn prompt carries ONLY agent ID, gate, IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
-- The reviewer posts an advisory comment on the PR (pr-review gate target) with recommended actions. The Delivery Leader relays stance + comment URL verbatim in the return and NEVER parses, acts on, or gates on it. Advisory — does not block delivery.
+- The reviewer posts an advisory comment on the PR (pr-review gate target) with recommended actions. The Delivery Leader returns stance + comment URL unaltered and NEVER acts on or gates on it. The primary may use it for its merge recommendation. Advisory — does not block delivery.
 - Reviewer failure → note "product review failed" in the return and proceed.
 
 **Escalation payload** — return this to the primary agent and stop (the primary presents it to the human and resumes you via `SendMessage` once the human decides):

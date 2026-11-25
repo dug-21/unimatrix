@@ -10,7 +10,7 @@ Session 1 produces three sacred source-of-truth documents, a scope risk assessme
 
 **This protocol is executed by a dedicated `uni-scrum-master` subagent — the Design Leader — not by the primary agent.**
 
-**Primary agent**: you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the high-level intent (or existing SCOPE.md path) and session type `design`, recording its agent ID; (2) relay each escalation it returns to the human verbatim and resume the SM via `SendMessage` (to that agent ID) with the human's decision — never re-spawn; (3) present the final artifact set to the human. Kickoff spawn:
+**Primary agent** (runs as `/uni-zero-design`): you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the high-level intent (or existing SCOPE.md path) and session type `design`, recording its agent ID; (2) triage each escalation it returns under `.claude/protocols/uni/uni-primary-authority.md` — decide and record routine items in `DECISIONS.md`, take H-items to the human — and resume the SM via `SendMessage` (to that agent ID) with the decision — never re-spawn; (3) present the final artifact set to the human. Kickoff spawn:
 
 ```
 Task(subagent_type: "uni-scrum-master",
@@ -140,7 +140,7 @@ Then the Design Leader **returns a SCOPE.md escalation to the primary agent and 
 
 **Product Review Rules** (apply at every `uni-zero-reviewer` spawn):
 - The spawn prompt carries ONLY agent ID, gate, feature/issue IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
-- The review is advisory input to the human gate. The Design Leader relays the stance and location verbatim and NEVER parses, acts on, or gates on it.
+- The review is advisory input to the human gate. The Design Leader returns the stance and location unaltered in its escalation and NEVER acts on or gates on it. The primary may use it to form its recommendation; the human decides the gate.
 - At `scope-review` and `design-review`, the review includes a **capability-coverage verdict** — whole vs. visible-partial against the target capability's `done_when` (pulled from the corpus; design-review is authorized to verify against code) **— including whether the acceptance test mapped to each `done_when` drives the real assembled path, not a proxy / tautology / injected-dependency (a passing proxy yields a proven-but-holed cap: #917 / #918 / #930)**. The reviewer reads but never mutates the map; any status implication is relayed to the human for uni-zero to apply.
 
 ### Phase 1b: Scope Risk Assessment

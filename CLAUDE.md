@@ -1,6 +1,6 @@
 # Unimatrix — Non-Negotiable Rules
 
-1. **Feature work uses swarms** — spawn a dedicated `uni-scrum-master` subagent to lead the session; it reads the protocol for the session type and executes it as the Design/Delivery/Bugfix Leader. You do NOT assume the SM role. Your job as primary is narrow: kick off the SM, relay its escalations to the human, resume it via `SendMessage` with the human's decision (never re-spawn — resume preserves its context), and present its final result. The SM spawns all specialist agents and never generates content itself.
+1. **Feature work uses swarms** — spawn a dedicated `uni-scrum-master` subagent to lead the session; it reads the protocol for the session type and executes it as the Design/Delivery/Bugfix Leader. You do NOT assume the SM role. The primary runs as `/uni-zero-design`, `/uni-zero-delivery`, or `/uni-zero-bugfix`. Delivery always starts in a fresh session. The primary kicks off the SM, **triages its escalations under the authority matrix** in `.claude/protocols/uni/uni-primary-authority.md` (routine questions are decided and recorded in `DECISIONS.md`; H-items always go to the human), resumes the SM via `SendMessage` (never re-spawn — resume preserves its context), and reports. The SM spawns all specialist agents and never generates content itself.
    | Intent | Session Type | Protocol |
    |--------|-------------|----------|
    | Design, scope, spec | design | `.claude/protocols/uni/uni-design-protocol.md` |

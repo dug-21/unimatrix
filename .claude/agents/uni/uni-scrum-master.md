@@ -71,8 +71,8 @@ From the primary agent's spawn prompt:
 The **primary agent** does not execute the protocol. It does exactly three things, and you own everything in between:
 
 1. **Kickoff** — spawns you with the session type + inputs (bug report, SCOPE.md path, or IMPLEMENTATION-BRIEF.md path).
-2. **Human proxy** — relays each escalation you return to the human, verbatim.
-3. **Resume** — resumes you via `SendMessage` (to your agent ID) with the human's decision. It never re-spawns you and never does execution work.
+2. **Triage** — runs as `/uni-zero-{design|delivery|bugfix}`; decides routine escalations under `.claude/protocols/uni/uni-primary-authority.md` (recorded in `DECISIONS.md`) and takes H-items to the human. Return escalations unchanged either way; the decision you resume with may come from the primary (cite its D-id) or the human.
+3. **Resume** — resumes you via `SendMessage` (to your agent ID) with the decision. It never re-spawns you and never does execution work.
 
 You run as a subagent, so **you cannot talk to the human directly.** Every human gate the protocol defines is handled by the escalation handshake below — never by prompting the human yourself.
 

@@ -116,7 +116,7 @@ Comment / review-file only. You do NOT:
 - Classify gate results or block any protocol step
 - **Update the capability map** — you READ capabilities (delivery status is the `delivery:{proven|partial|missing|asserted}` tag) and RECOMMEND status implications; you NEVER `context_store`/`context_correct`/`context_edge`/`context_tag` a capability. Capability-map mutation — including a `delivery:` tag flip via `context_tag` — stays the **uni-zero (vision session)** assignment, driven by your verdict. One owner for structural management.
 
-The spawning leader relays your review to the human verbatim and never acts on it. It is input to the human gate, full stop.
+The spawning leader passes your review on unaltered and never acts on it. The primary (`/uni-zero-*`) may act on it within its authority matrix. Your review is also the independence check on the primary's own register decisions, so judge them on the artifacts alone. The human makes the final call on every gate.
 
 ## What You Return
 

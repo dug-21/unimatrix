@@ -42,7 +42,7 @@ Every swarm also includes `uni-validator` at gates. Non-negotiable.
 
 ### Coordinator (`uni-scrum-master`, spawned by the primary agent)
 
-The primary agent spawns `uni-scrum-master` as the coordinator and acts only as the human proxy (kickoff, relay escalations, resume via `SendMessage`). The coordinator reads the protocol for the session type, spawns specialist agents, manages gates, updates GH Issues, and escalates at each human gate. It reads `.claude/agents/uni/uni-scrum-master.md` for role boundaries, the escalation handshake, and behavioral rules.
+The primary agent spawns `uni-scrum-master` as the coordinator and runs as `/uni-zero-{design|delivery|bugfix}` (kickoff, triage escalations under `uni-primary-authority.md`, resume via `SendMessage`). The coordinator reads the protocol for the session type, spawns specialist agents, manages gates, updates GH Issues, and escalates at each human gate. It reads `.claude/agents/uni/uni-scrum-master.md` for role boundaries, the escalation handshake, and behavioral rules.
 
 ### Validation (1 agent — spawned at every gate)
 
@@ -93,7 +93,7 @@ Stage 3b routes one dev agent per component by target language (see uni-delivery
 ### Design Session
 
 ```
-Primary:      spawn uni-scrum-master, then relay escalations + resume via SendMessage
+Primary:      /uni-zero-{type}: spawn uni-scrum-master, triage escalations (authority matrix) + resume via SendMessage
 Coordinator:  uni-scrum-master (reads uni-design-protocol.md + uni-scrum-master.md)
 Phase 1:      uni-researcher (scope exploration; proposes SCOPE.md)
               ★ HUMAN CHECKPOINT — escalate SCOPE.md to primary; resume on approval ★
@@ -109,7 +109,7 @@ Phase 2d:     git commit + push + gh pr create --draft
 ### Delivery Session
 
 ```
-Primary:      spawn uni-scrum-master, then relay escalations + resume via SendMessage
+Primary:      /uni-zero-{type}: spawn uni-scrum-master, triage escalations (authority matrix) + resume via SendMessage
 Coordinator:  uni-scrum-master (reads uni-delivery-protocol.md + uni-scrum-master.md)
 Init:         Read IMPLEMENTATION-BRIEF.md, create feature branch
 Stage 3a:     uni-pseudocode + uni-tester (test plans)             (parallel)
@@ -128,7 +128,7 @@ Phase 4:      Commit, push, open PR
 ### Bug Fix Session
 
 ```
-Primary:      spawn uni-scrum-master, then relay escalations + resume via SendMessage
+Primary:      /uni-zero-{type}: spawn uni-scrum-master, triage escalations (authority matrix) + resume via SendMessage
 Coordinator:  uni-scrum-master (reads uni-bugfix-protocol.md + uni-scrum-master.md)
 Init:         /uni-query-patterns + /uni-knowledge-search — prior knowledge
 Phase 1:      uni-bug-investigator (diagnose root cause)
@@ -170,7 +170,7 @@ Phase 5:      Summary + outcome recording — RETRO ENDS
 
 ## Composition Rules
 
-1. **Every swarm session**: the primary spawns `uni-scrum-master` as the coordinator; the SM reads the protocol and its definition and runs the session. The primary is the human proxy only (kickoff, relay, resume). No exceptions.
+1. **Every swarm session**: the primary spawns `uni-scrum-master` as the coordinator; the SM reads the protocol and its definition and runs the session. The primary runs as the matching `/uni-zero-*` skill (kickoff, triage, resume, report) under `uni-primary-authority.md`. No exceptions.
 2. **Validation gates**: `uni-validator` spawned at each gate by you.
 3. **Design session**: All six design agents in defined phase order per protocol.
 4. **Delivery session**: pseudocode + tester + rust-dev/js-dev (per component language) + validator at three gates per protocol.

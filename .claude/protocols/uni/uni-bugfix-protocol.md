@@ -10,7 +10,7 @@ A single-session workflow that takes a bug report from diagnosis through merge. 
 
 **This protocol is executed by a dedicated `uni-scrum-master` subagent — the Bugfix Leader — not by the primary agent.**
 
-**Primary agent**: you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the bug report and session type `bugfix`, recording its agent ID; (2) relay each escalation it returns to the human verbatim and resume the SM via `SendMessage` (to that agent ID) with the human's decision — never re-spawn; (3) present the final PR + assessment to the human. Kickoff spawn:
+**Primary agent** (runs as `/uni-zero-bugfix`): you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the bug report and session type `bugfix`, recording its agent ID; (2) triage each escalation it returns under `.claude/protocols/uni/uni-primary-authority.md` — decide and record routine items in `DECISIONS.md`, take H-items to the human — and resume the SM via `SendMessage` (to that agent ID) with the decision — never re-spawn; (3) present the final PR + assessment to the human. Kickoff spawn:
 
 ```
 Task(subagent_type: "uni-scrum-master",
@@ -34,7 +34,7 @@ spawn architect (Phase 1b) ─────────────────�
 spawn uni-zero-reviewer (Phase 1c) ─────────────────► advisory product review → GH comment
 ◄────────────────────────────────────────────────────
 present diagnosis + design review to human
-★ HUMAN CHECKPOINT ★
+★ HUMAN CHECKPOINT ★ (primary may decide per /uni-zero-bugfix §2)
 human approves diagnosis + design
 create branch (Phase 2)
 spawn rust-dev ─────────────────────────────────────► implement fix + tests
@@ -184,7 +184,7 @@ Task(subagent_type: "uni-zero-reviewer",
 
 **Product Review Rules** (apply at every `uni-zero-reviewer` spawn):
 - The spawn prompt carries ONLY agent ID, gate, and issue/PR identifiers — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
-- The reviewer posts an advisory comment on the GH Issue. The Bugfix Leader relays stance + comment link verbatim at the human checkpoint and NEVER parses, acts on, or gates on it. Advisory — does not block.
+- The reviewer posts an advisory comment on the GH Issue. The Bugfix Leader returns stance + comment link unaltered at the checkpoint and NEVER acts on or gates on it. The primary may use it to decide or recommend. Advisory — does not block.
 
 ### Human Checkpoint (MANDATORY — Escalation Handshake, do NOT proceed without human approval)
 
