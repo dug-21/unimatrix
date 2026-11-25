@@ -28,6 +28,7 @@ const transform = require("./transform");
 const delta = require("./delta");
 const queue = require("./queue");
 const state = require("./state");
+const observeLatch = require("./observe-latch");
 // vnc-030 ADR-002: FNF cycle-stamp decoration seam (lifecycle dispatch, stamp
 // attach, suppression strip, subagent-gated canary). Split out for the
 // modular-file limit; mutates `request` upstream of selectTransport.
@@ -253,7 +254,7 @@ async function runSync(request, reqSource, config, transport = transportHttp) {
   const res = await transport.post(config, request, { sync: true }); // Accept: text/plain
   transform.writeSyncOutput(reqSource, res); // stdout iff 200 text/plain non-empty
   state.recordSendOutcomes(config.stateDir, config.urlHost, [res], queue.queueDepth(config.stateDir));
-  if (!res.ok) stderrLine(res.failureClass, "sync request failed");
+  if (!res.ok && !res.deny) stderrLine(res.failureClass, "sync request failed");
 }
 
 /**
@@ -288,7 +289,9 @@ async function runFireAndForget(
   const results = await Promise.allSettled(tasks);
 
   const carrying = settledSendResult(results[0]);
-  if (!carrying.ok) {
+  if (carrying.deny) {
+    // vnc-050 HD 10: SessionWrite 403 — latched; never queued, no generic line.
+  } else if (!carrying.ok) {
     queue.enqueue(config.stateDir, request); // NEVER a delta frame here (ADR-004)
     stderrLine(carrying.failureClass, "send failed, event queued");
   } else if (canonicalEvent === "TaskCompleted") {
@@ -304,7 +307,8 @@ async function runFireAndForget(
   const deltaOutcome = results.length > 1 ? settledDeltaOutcome(results[1]) : null;
   const deltaSend =
     deltaOutcome && deltaOutcome.attempted === true ? deltaOutcome.send : null;
-  if (deltaSend && !deltaSend.ok) {
+  if (deltaSend && deltaSend.deny) observeLatch.latch(config);
+  else if (deltaSend && !deltaSend.ok) {
     stderrLine(deltaSend.failureClass, "transcript delta send failed");
   }
 
@@ -318,12 +322,14 @@ async function runFireAndForget(
 
 /** Map a config-miss reason to a breadcrumb/stderr failure class. */
 function classForReason(reason) {
-  return reason === "partial_env" ? "auth" : "connect";
+  return reason === "partial_env" || reason === "misconfig" ? "auth" : "connect";
 }
 
 /** Human-readable description of a config-miss reason (no secrets). */
-function describeReason(reason) {
+function describeReason(reason, detail) {
   switch (reason) {
+    case "misconfig":
+      return detail; // names the variable; token/value-free (remote-resolve)
     case "partial_env":
       return "only one of UNIMATRIX_REMOTE_URL / UNIMATRIX_REMOTE_TOKEN set";
     case "malformed":
@@ -389,7 +395,7 @@ async function main() {
 
     if (!config.ok) {
       // ADR-006: breadcrumb + stderr, exit 0, NO network.
-      stderrLine(classForReason(config.reason), describeReason(config.reason));
+      stderrLine(classForReason(config.reason), describeReason(config.reason, config.detail));
       state.writeBreadcrumb(config.stateDir, {
         failureClass: classForReason(config.reason),
       });
@@ -446,7 +452,11 @@ async function main() {
 
     // ADR-002 §4: transport chosen ONCE per spawn from config.mode, after the
     // null guard, and threaded through both dispatch paths + queue.replay.
-    const transport = selectTransport(config);
+    let transport = selectTransport(config);
+    if (config.mode === "http") {
+      if (observeLatch.isDenied(config)) return; // vnc-050 HD 10: exit 0, no network
+      transport = observeLatch.guard(config, transport);
+    }
 
     if (isFnf) {
       // vnc-030 ADR-002: FNF-only decoration seam. Mutates `request` in place

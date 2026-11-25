@@ -67,7 +67,7 @@
 ## Design Recommendations
 
 1. SR-05/SR-06/SR-13: one credential resolver and one bundle decoder shared by `init --bundle`, bridge and observe path; `--headless` is a flag, not a flow.
-2. SR-01: CA branch built from default `https` agent; pin branch untouched; byte-level "no token before verify" test.
+2. SR-01: CA branch built from default `https` agent with explicit `rejectUnauthorized: true`; global TLS override (`NODE_TLS_REJECT_UNAUTHORIZED=0`) is ignored by design; pin branch untouched; byte-level "no token before verify" test, plus var=0 + untrusted cert on CA path → refused, zero app bytes.
 3. SR-10/SR-11: single post-parse slug guard + existing Capability gate; route x token matrix test.
 4. SR-03: specify live revocation (reload-on-change or per-request read) with ADR.
 5. SR-07/SR-17: inventory read-tool side effects; gate by identity; assert DB state.

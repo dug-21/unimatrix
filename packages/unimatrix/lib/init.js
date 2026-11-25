@@ -13,6 +13,7 @@ const transport = require("./hook-client/transport-http.js");
 const { resolveGitFile, computeProjectHash } = require("./hook-client/config.js");
 const { decodeBundle } = require("./hook-client/bundle.js");
 const credstore = require("./hook-client/credstore.js");
+const { parseExtraHeaders } = require("./hook-client/remote-resolve.js");
 const { maybeProvisionOpenCode } = require("./opencode-install.js");
 const { wire } = require("./wire.js");
 
@@ -580,7 +581,9 @@ async function initRemote(options) {
       observeUrl,
       token,
       undefined,
-      pinnedFp
+      pinnedFp,
+      // ADR-007: ResolveError (bad header) propagates → init fails loud, exit 1.
+      parseExtraHeaders(process.env.UNIMATRIX_REMOTE_HEADERS)
     );
     if (!res.ok) {
       throw new Error(

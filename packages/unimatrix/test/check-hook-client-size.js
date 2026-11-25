@@ -6,8 +6,8 @@
 // ----------------------------------------------------------------------------
 // Two independent limits over lib/hook-client/**/*.js (decimal bytes):
 //
-//   PRIMARY  : comment-stripped total <= 110,000 bytes
-//   BACKSTOP : raw (on-disk) total    <= 200,000 bytes
+//   PRIMARY  : comment-stripped total <= 113,137 bytes
+//   BACKSTOP : raw (on-disk) total    <= 200,623 bytes
 //
 // The PRIMARY limit measures shipped logic only — line and block comments are
 // removed before counting so the oracle-citation comment style this client
@@ -57,8 +57,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const PRIMARY_LIMIT = 110000; // comment-stripped bytes (decimal) — regrounded 102000→110000 per ass-086 (#840, #861): baseline (as-measured stripped 101,445; reclaim was moot — the #839 ~1.4KB was already banked, the remainder is live availability logic) + ~two-module review margin. NOT a reclaim-to-100000 (that is the #4780 round-number failure mode). Human-approved, recorded on #840.
-const BACKSTOP_LIMIT = 200000; // raw bytes (decimal) — regrounded 180000→200000 per ass-086 (#840, #861): baseline (as-measured raw 179,944) + ~two-module review margin; clears the prior 56B latent reactive-bump headroom. Human-approved, recorded on #840.
+const PRIMARY_LIMIT = 113137; // comment-stripped bytes (decimal) — raised 110000→113137 = as-measured after vnc-050 C9/C10/C6c, no headroom (PL-10 no-grow). Human decision, vnc-050 #1010.
+const BACKSTOP_LIMIT = 200623; // raw bytes (decimal) — raised 200000→200623 = as-measured after vnc-050, no headroom (PL-10 no-grow). Human decision, vnc-050 #1010.
 const ROOT = path.resolve(__dirname, "..", "lib", "hook-client");
 
 // Lexer states.

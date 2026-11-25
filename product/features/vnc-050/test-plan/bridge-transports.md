@@ -13,7 +13,8 @@ Risks: R-01, R-07, R-08, R-09, R-11, R-18. ACs: AC-02, AC-03, AC-04, AC-05, AC-0
 | `untrusted_self_signed_zero_bytes_bridge` | no fp; capture server bytes == 0; exit 1; stderr lacks token |
 | `ca_trusted_wrong_host_zero_bytes_bridge` | same |
 | `..._observe_post`, `..._ping_for_init` | same for `transport-http.js` observe and `pingForInit` |
-| `guard_throws_on_reject_unauthorized_false` | unpinned request options with `rejectUnauthorized:false` → throws before socket |
+| `guard_throws_on_reject_unauthorized_false` | unpinned request options with `rejectUnauthorized:false` or key absent → throws before socket |
+| `global_tls_override_ignored_ca_path` | `NODE_TLS_REJECT_UNAUTHORIZED=0`, no fp, untrusted self-signed cert → refused; capture server bytes == 0; exit 1; stderr lacks token |
 | `ca_branch_no_cert_pin_agent` | companion: CA-trusted correct host → connects (AC-02) |
 
 ## R-11 Pinned unchanged

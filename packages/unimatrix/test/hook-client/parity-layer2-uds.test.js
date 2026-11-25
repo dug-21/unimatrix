@@ -111,13 +111,10 @@ function spawnClient(event, stdin, extraEnv) {
   delete env.UNIMATRIX_REMOTE_URL;
   delete env.UNIMATRIX_REMOTE_TOKEN;
   Object.assign(env, extraEnv || {});
-  // vnc-038: the cloud listener is HTTPS-only with a self-signed cert and the
-  // env-pair remote config carries no cert pin. For HTTPS-origin spawns, let the
-  // child's Node TLS accept the self-signed leaf (test-only; localhost self-call).
-  // UDS spawns (no UNIMATRIX_REMOTE_URL) are unaffected.
-  if (env.UNIMATRIX_REMOTE_URL) {
-    env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-  }
+  // vnc-050: HTTPS-only self-signed listener → pin its leaf via the env
+  // fingerprint (real pinned TLS). UDS spawns (no UNIMATRIX_REMOTE_URL) unaffected.
+  delete env.UNIMATRIX_REMOTE_FINGERPRINT;
+  if (env.UNIMATRIX_REMOTE_URL) env.UNIMATRIX_REMOTE_FINGERPRINT = server.pinnedFp;
   return runProc(process.execPath, [ENTRY, event], stdin, env);
 }
 
