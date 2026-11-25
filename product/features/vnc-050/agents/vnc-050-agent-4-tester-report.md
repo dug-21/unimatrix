@@ -11,6 +11,8 @@
 - Feature bugs: none. GH issues filed: none.
 - Output: product/features/vnc-050/testing/RISK-COVERAGE-REPORT.md
 
+- Gate 3c rework: added `test/hook-client/observe-bundle.test.js` (10 tests: bundle-only pinned/CA delivery plus negatives, and hook precedence/conflict matching the bridge) and a `tls` option on `test/helpers/stub-server.js`. npm test: 1406 tests, 1404 passed, 0 failed, 2 skipped, audit PASS. No bugs found. R-07 row corrected.
+
 ## Knowledge Stewardship
-- Queried: context_briefing not called (proceeded from feature docs; non-blocking).
+- Queried: mcp__unimatrix__context_briefing (rework). It surfaced #5775 (bin CLI child-process test helper), #5126 (credential store keyed by projectHash at ~/.unimatrix/<hash>/remote.json; used for store-tier fixtures), and #5828 (embedding-free tools in HTTP tests). Not called in the initial run.
 - Stored: nothing stored. Candidate pattern: random uuid hex markers in stored content can trip the PII phone-number scanner, so use digit-free markers. Not stored because it is a test-local gotcha. Recommend storing it at retro.

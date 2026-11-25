@@ -12,7 +12,7 @@ Stage 3c, 2026-11-25, branch `feature/vnc-050`.
 | R-04 | Read-token learning side effects | Rust table-snapshot tests; infra `test_read_token_leaves_learning_tables_unchanged` (search/get/lookup/briefing at real daemon; rw drain barrier + rw query_log companion) | PASS | Full |
 | R-05 | Revocation not live / tombstone | `client_bundle_headless_e2e.rs` (revoke/list/remint); infra `test_revoked_token_returns_401_without_restart` (open session 401, re-init 401, `--list` revoked, remint fails) | PASS | Full |
 | R-06 | Timing leak in scan | scoped-validator unit (index 0 / n-1, no HashMap/early break) | PASS | Full |
-| R-07 | Bridge vs observe resolve divergence | JS remote-resolve precedence matrix + spawned bridge/config.js | PASS | Full |
+| R-07 | Bridge vs observe resolve divergence | JS remote-resolve precedence unit matrix; spawned bridge suites (MCP side); spawned hook `test/hook-client/observe-bundle.test.js` (Stage 3c rework): UNIMATRIX_BUNDLE only, clean HOME, no remote.json/env, so the event lands at the bundle observe_url with the bundle token (pinned fp and fp:null + NODE_EXTRA_CA_CERTS; wrong-fp and untrusted-CA negatives send nothing). Hook precedence store < env pair < bundle, bundle + URL/TOKEN conflict (nothing sent, exit 0, var named), and empty vars give no conflict. Same winners as resolveRemote/bridge | PASS | Full (scenarios 2 and 3 now at the hook entry point; Gate 3c iteration 1 found the earlier "Full" was overstated) |
 | R-08 | Extra headers per request type / reserved override | JS capturing proxy + reject matrix | PASS | Full |
 | R-09 | Secret/header leakage | JS sentinel grep; Rust CLI stdout/stderr tests; infra `--list` and 403 body token-absence asserts | PASS | Full |
 | R-10 | Bundle decoder `fp:null` / parity | `bundle_codec_fp_null.rs`, `fingerprint_parity.rs`, JS parity corpus | PASS | Full |
@@ -36,7 +36,7 @@ Stage 3c, 2026-11-25, branch `feature/vnc-050`.
 Full-workspace link smoke (`check-workspace-link-smoke.sh`): rc=0 (#878 holds).
 
 ### JS (`npm test`, packages/unimatrix)
-1395 tests: 1393 passed, 0 failed, 2 skipped (`test_root_walk_windows_separators`, platform; `fr39_legacy_response_diff`, needs `UNIMATRIX_COMPAT_BASELINE_BIN`). Selection-set audit PASS. The parity-layer2 AC-04 flake did not recur.
+Rework re-run: 1406 tests, 1404 passed, 0 failed, 2 skipped, audit PASS (64 suites). Initial run: 1395 tests: 1393 passed, 0 failed, 2 skipped (`test_root_walk_windows_separators`, platform; `fr39_legacy_response_diff`, needs `UNIMATRIX_COMPAT_BASELINE_BIN`). Selection-set audit PASS. The parity-layer2 AC-04 flake did not recur.
 
 ### Integration (infra-001, release binary)
 | Suite | Passed | Failed | xfail/skip |
@@ -58,6 +58,8 @@ Full-workspace link smoke (`check-workspace-link-smoke.sh`): rc=0 (#878 holds).
 All xfails are pre-existing markers with existing GH issues; none added.
 
 ## New Integration Tests
+- `packages/unimatrix/test/hook-client/observe-bundle.test.js` (10 spawned-hook tests, R-07.2/.3). `test/helpers/stub-server.js` gained a `tls` option (HTTPS stub).
+- `compat-matrix.test.js` old-client write cell (AC-20).
 - `suites/test_headless_access.py` (9 tests) on `multi_slug_http_server`. The fixture substrate `harness/multi_slug_client.py` gained `mint_token`/`revoke_token`/`list_tokens` (real `client-bundle --headless` CLI against the running daemon), `mcp_open`/`mcp_call` (Streamable HTTP MCP), `observe_record_as`, `query` (WAL-robust read), and passes `UNIMATRIX_MODEL_CACHE` so write tools can embed.
 - `suites/test_security.py::test_agent_id_token_prefix_reserved` (stdio leg of R-13).
 - Triage: one failure in the new test, caused by the test itself. Random hex markers sometimes matched the PII phone scanner. Fixed with digit-free markers (`_tag()`).
