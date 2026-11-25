@@ -4,6 +4,7 @@
 //! and ToolContext for handler ceremony reduction.
 
 pub(crate) mod activity_fold_handler;
+pub(crate) mod cap_ceiling;
 pub(crate) mod context;
 pub(crate) mod distill_handler;
 pub(crate) mod distill_scope;

@@ -8,10 +8,12 @@ pub(crate) mod auth;
 pub(crate) mod cert_provisioner;
 pub(crate) mod health;
 pub(crate) mod listener;
+pub(crate) mod principal;
 pub(crate) mod public_url;
 pub(crate) mod router;
 pub(crate) mod tls;
 pub(crate) mod token;
+pub(crate) mod token_table;
 
 // Re-exports for main.rs (binary crate) HTTP startup wiring.
 pub use auth::StaticTokenAuthLayer;

@@ -17,8 +17,12 @@ use http_body_util::{BodyExt, Full};
 use subtle::ConstantTimeEq;
 use tower::{Layer, Service};
 
+use crate::http::principal::BearerPrincipal;
 use crate::infra::registry::{Capability, TrustLevel};
 use crate::mcp::identity::ResolvedIdentity;
+
+mod scoped;
+pub(crate) use scoped::TokenTableValidator;
 
 /// Credential type written to audit logs for HTTP bearer-token callers (ADR-006).
 // rationale: audit-label constant consumed by the bearer audit path still being wired
@@ -50,6 +54,8 @@ pub(crate) enum AuthError {
     /// Unexpected internal failure.
     #[allow(dead_code)]
     Internal(String),
+    /// Legacy token matched but is disabled by config (vnc-050 FR-11).
+    LegacyDisabled,
 }
 
 impl std::fmt::Display for AuthError {
@@ -59,9 +65,15 @@ impl std::fmt::Display for AuthError {
             AuthError::InvalidFormat => write!(f, "invalid authorization format"),
             AuthError::InvalidToken => write!(f, "invalid token"),
             AuthError::Internal(msg) => write!(f, "internal auth error: {msg}"),
+            AuthError::LegacyDisabled => write!(f, "legacy token disabled"),
         }
     }
 }
+
+/// Future returned by `BearerValidator::validate_principal`.
+pub(crate) type PrincipalFuture<'a> = Pin<
+    Box<dyn Future<Output = Result<(ResolvedIdentity, BearerPrincipal), AuthError>> + Send + 'a>,
+>;
 
 /// Abstraction for bearer token validation (FR-14).
 ///
@@ -73,6 +85,13 @@ pub(crate) trait BearerValidator: Send + Sync + 'static {
         &self,
         token: &str,
     ) -> Pin<Box<dyn Future<Output = Result<ResolvedIdentity, AuthError>> + Send + '_>>;
+
+    /// Validate and also return the `BearerPrincipal` (vnc-050). Default:
+    /// legacy-shaped, so existing validators compile unchanged.
+    fn validate_principal(&self, token: &str) -> PrincipalFuture<'_> {
+        let fut = self.validate(token);
+        Box::pin(async move { fut.await.map(|id| (id, BearerPrincipal::Legacy)) })
+    }
 }
 
 /// Concrete `BearerValidator` for static 256-bit tokens.
@@ -150,6 +169,19 @@ impl StaticTokenAuthLayer {
         Self {
             validator: Arc::new(StaticTokenValidator::new(token_bytes)),
         }
+    }
+
+    /// Boot constructor (vnc-050 C2): legacy token + `{data_dir}/tokens.json`
+    /// scoped table. `pub` because the binary crate cannot name the
+    /// crate-private `TokenTableValidator`/`TokenTable` types.
+    pub fn with_token_table(legacy: [u8; 32], data_dir: &std::path::Path) -> Self {
+        let table = Arc::new(crate::http::token_table::TokenTable::open(data_dir));
+        Self::with_validator(Arc::new(TokenTableValidator::new(Some(legacy), table)))
+    }
+
+    /// Create an auth layer over an arbitrary validator (vnc-050).
+    pub(crate) fn with_validator(validator: Arc<dyn BearerValidator>) -> Self {
+        Self { validator }
     }
 }
 
@@ -245,16 +277,21 @@ where
         std::mem::swap(&mut self.inner, &mut inner);
 
         Box::pin(async move {
-            match validator.validate(&token).await {
-                Ok(identity) => {
+            match validator.validate_principal(&token).await {
+                Ok((identity, principal)) => {
                     // Insert ResolvedIdentity into request extensions.
                     // Consumed by rmcp -> build_context_with_external_identity.
                     let mut request = request;
                     request.extensions_mut().insert(identity);
+                    // vnc-050: principal consumed by slug guard + cap ceiling.
+                    request.extensions_mut().insert(principal);
                     inner.call(request).await
                 }
+                Err(AuthError::LegacyDisabled) => {
+                    Ok(unauthorized_with(r#"{"error":"legacy token disabled"}"#))
+                }
                 Err(_) => {
-                    // ALL auth failures produce identical response (FR-10, FR-11).
+                    // ALL other auth failures produce identical response (FR-10, FR-11).
                     Ok(unauthorized_response())
                 }
             }
@@ -267,15 +304,18 @@ where
 /// Returns JSON body with generic error message to prevent information leakage
 /// about which stage of validation failed.
 fn unauthorized_response() -> Response<BoxBody<Bytes, Infallible>> {
+    unauthorized_with(r#"{"error":"missing or invalid authorization"}"#)
+}
+
+/// 401 with a fixed static body (never echoes request data).
+fn unauthorized_with(body: &'static str) -> Response<BoxBody<Bytes, Infallible>> {
     Response::builder()
         .status(StatusCode::UNAUTHORIZED)
         .header("content-type", "application/json")
         .body(
-            Full::new(Bytes::from(
-                r#"{"error":"missing or invalid authorization"}"#,
-            ))
-            .map_err(|never| match never {})
-            .boxed(),
+            Full::new(Bytes::from(body))
+                .map_err(|never| match never {})
+                .boxed(),
         )
         .expect("static response builder cannot fail")
 }

@@ -419,6 +419,7 @@ impl TestHarness {
                 },
                 caller_id: crate::services::CallerId::Agent("test-harness".to_string()),
                 client_type: None,
+                cap_ceiling: None,
             },
         )
         .await

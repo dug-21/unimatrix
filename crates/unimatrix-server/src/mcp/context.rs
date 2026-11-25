@@ -33,4 +33,9 @@ pub(crate) struct ToolContext {
     /// Used to populate `AuditEvent.agent_attribution` and `AuditEvent.metadata`.
     /// MUST NOT be confused with `agent_id` (which is agent-declared, spoofable).
     pub client_type: Option<String>,
+    /// Token-mode capability ceiling (vnc-050 ADR-003). None = no ceiling
+    /// (stdio, UDS, legacy token).
+    // rationale: read by `require_cap` (vnc-050 Wave 1).
+    #[allow(dead_code)]
+    pub cap_ceiling: Option<crate::mcp::cap_ceiling::CapCeiling>,
 }
