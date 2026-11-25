@@ -306,6 +306,9 @@ bloating the goal's correction chain.
 | Proactive knowledge delivery | `proactive-delivery` | `goal:proactive-delivery` |
 | Developer-friendly deployment | `personal-cloud` | `goal:personal-cloud` |
 | Domain-agnostic platform | `domain-agnostic` | `goal:domain-agnostic` |
+| Knowledge integrity | `integrity` | `goal:integrity` |
+| Extensible platform surface | `platform` | `goal:platform` |
+| Trusted agent identity *(emerging)* | `trusted-identity` | `goal:trusted-identity` |
 
 **Adding a new goal:**
 1. Discuss and agree in conversation first — goals emerge from problem exploration, not top-down planning.

@@ -30,7 +30,7 @@ The intelligence pipeline is the core. It is a session-conditioned, self-improvi
 
 ## Strategic Goals
 
-Five strategic goals drive all roadmap decisions. Each is maintained as an enriched entry in Unimatrix — query `context_lookup(category="goal")` for current content.
+Seven strategic goals drive all roadmap decisions. Each is maintained as an enriched entry in Unimatrix — query `context_lookup(category="goal")` for current content.
 
 | Goal | Tag | Summary |
 |------|-----|---------|
