@@ -224,7 +224,11 @@ function main() {
   // projectHash argument; no token ever on the command line (AC-09/AC-13).
   if (args[0] === "mcp-bridge") {
     const projectHash = args[1];
-    if (!projectHash || typeof projectHash !== "string") {
+    // vnc-050 FR-21: headless launch (UNIMATRIX_BUNDLE or the env MCP URL)
+    // needs no projectHash; the bridge resolves the credential from env.
+    const headless =
+      !!process.env.UNIMATRIX_BUNDLE || !!process.env.UNIMATRIX_REMOTE_MCP_URL;
+    if (!headless && (!projectHash || typeof projectHash !== "string")) {
       process.stderr.write("usage: unimatrix mcp-bridge <projectHash>\n");
       process.exitCode = 2;
       return;

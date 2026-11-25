@@ -88,6 +88,153 @@ When TLS is terminated by a reverse proxy (nginx, Caddy, cloud load balancer), s
 
 ---
 
+## Headless automation access
+
+CI jobs, scripts, and other non-interactive agents attach with a **scoped headless token** minted per slug. Each token is bound to exactly one slug, carries a fixed mode (`read` or `read-write`), and is revocable by label without touching any other client. It never receives Admin.
+
+### Mint, list, revoke (server host)
+
+```bash
+unimatrix project register alpha          # existing step; slugs are never minted by clients
+unimatrix client-bundle alpha --headless --mode read --label ci-read --trust ca > ci-read.bundle
+unimatrix client-bundle alpha --list      # stderr table: label, mode, slugs, created, state — no secrets
+unimatrix client-bundle alpha --revoke ci-read
+```
+
+- Stdout is one `unimatrix-bundle:` blob and nothing else; store it as a CI secret immediately — it is shown once and the server keeps only a hash. Stderr echoes URLs, trust, label, mode and slug, never the token.
+- Labels are unique forever: a revoked label cannot be reused. A revoked token is rejected with `401` on its next request; audit rows it wrote keep its `token:<label>` attribution.
+- Set `UNIMATRIX_PUBLIC_URL` on the server before minting, or the bundle carries a placeholder URL.
+
+### Mode semantics
+
+| Mode | Capabilities | Observe / telemetry | Learning signals |
+|---|---|---|---|
+| `read` | Read + Search | rejected `403`; the client logs one warning and the job does **not** fail | none recorded |
+| `read-write` | Read + Search + Write + SessionWrite | accepted | recorded |
+
+Neither mode ever grants Admin. A token bound to `alpha` gets `403` on every `/v1/<other-slug>/…` route.
+
+Residual gap: within a token's ceiling the `agent_id` argument is self-asserted (a `read-write` token with no `agent_id` writes as `anonymous`). The ceiling, not `agent_id`, is the security boundary.
+
+### Trust: pinned vs CA
+
+- **Pinned (default, `--trust pin`)**: the bundle carries the server leaf's `sha256:` fingerprint; use this with the self-signed cert the server provisions.
+- **CA (`--trust ca`)**: the bundle carries `fp: null` and the client verifies the server cert against the CA store with hostname checking. Use it only when the server presents a CA-issued cert (for example behind a proxy with a public cert). For a private CA, point Node at it with `NODE_EXTRA_CA_CERTS=/path/to/ca.pem`.
+- `NODE_TLS_REJECT_UNAUTHORIZED` is **ignored** on the CA path: certificate verification cannot be switched off. Never set it as a workaround — fix the trust chain instead.
+
+### Attach with `UNIMATRIX_BUNDLE` (no `init`)
+
+The bridge and the observe client read the bundle straight from the environment; no `init`, no `remote.json`, no project hash.
+
+| Variable | Meaning |
+|---|---|
+| `UNIMATRIX_BUNDLE` | The headless bundle. Takes precedence over every other credential source. |
+| `UNIMATRIX_REMOTE_HEADERS` | JSON object of extra request headers, e.g. for an access proxy. |
+| `NODE_EXTRA_CA_CERTS` | Private CA bundle for `--trust ca` bundles. |
+
+- `UNIMATRIX_BUNDLE` cannot be combined with `UNIMATRIX_REMOTE_MCP_URL`, `UNIMATRIX_REMOTE_URL`, `UNIMATRIX_REMOTE_TOKEN` or `UNIMATRIX_REMOTE_FINGERPRINT`; the client exits with an error naming the conflicting variable.
+- An empty value is treated as unset (no trimming).
+
+### Extra headers (`UNIMATRIX_REMOTE_HEADERS`)
+
+```bash
+export UNIMATRIX_REMOTE_HEADERS='{"CF-Access-Client-Id":"<id>","CF-Access-Client-Secret":"<secret>"}'
+```
+
+At most 32 headers, names must be valid HTTP tokens, values printable ASCII up to 8 KiB, and no case-insensitive duplicates. Reserved names cannot be set: `Authorization`, `Mcp-Session-Id`, `Host`, `Content-Length`, `Content-Type`, `Transfer-Encoding`, `Connection`, `Accept`. Header values are never logged.
+
+### Direct HTTPS (curl)
+
+Any HTTP client can speak MCP Streamable HTTP directly. Decode the bundle (Node is enough; `CA` is only needed for a private CA):
+
+```sh smoke
+MCP_URL=$(node -e 'console.log(JSON.parse(Buffer.from(process.argv[1].slice(17),"base64url")).mcp_url)' "$UNIMATRIX_BUNDLE")
+TOKEN=$(node -e 'console.log(JSON.parse(Buffer.from(process.argv[1].slice(17),"base64url")).token)' "$UNIMATRIX_BUNDLE")
+CURL="curl -sS --fail ${CA:+--cacert $CA} -H Content-Type:application/json -H Accept:application/json,text/event-stream"
+```
+
+Initialize and confirm the session, then call a tool:
+
+```sh smoke
+$CURL -H "Authorization: Bearer $TOKEN" -D headers.txt \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}' \
+  "$MCP_URL" > /dev/null
+SID=$(grep -i '^mcp-session-id:' headers.txt | cut -d' ' -f2 | tr -d '\r')
+$CURL -H "Authorization: Bearer $TOKEN" -H "Mcp-Session-Id: $SID" \
+  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}' "$MCP_URL" > /dev/null
+```
+
+```sh smoke
+$CURL -H "Authorization: Bearer $TOKEN" -H "Mcp-Session-Id: $SID" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"context_lookup","arguments":{"query":"deploy"}}}' \
+  "$MCP_URL"
+```
+
+With a pinned (self-signed) bundle, curl cannot pin by fingerprint; use the bridge below, or `--cacert` the server's own `cert.pem`.
+
+### Generic MCP client (stdio bridge)
+
+Any MCP client that launches a stdio server can use the bridge with the bundle in its environment:
+
+```json mcp-config
+{
+  "mcpServers": {
+    "unimatrix": {
+      "command": "npx",
+      "args": ["-y", "@dug-21/unimatrix", "mcp-bridge"],
+      "env": { "UNIMATRIX_BUNDLE": "<bundle>" }
+    }
+  }
+}
+```
+
+The bridge expects a real MCP client: it relays requests after the `initialize` handshake completes. For shell scripts and CI, use the curl recipe above.
+
+### GitHub Actions example
+
+Store the bundle as a repository secret. This is an example for your own workflow — Unimatrix ships no workflow file.
+
+```yaml
+jobs:
+  knowledge:
+    runs-on: ubuntu-latest
+    env:
+      UNIMATRIX_BUNDLE: ${{ secrets.UNIMATRIX_BUNDLE_CI_READ }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Search Unimatrix
+        run: |
+          MCP_URL=$(node -e 'console.log(JSON.parse(Buffer.from(process.argv[1].slice(17),"base64url")).mcp_url)' "$UNIMATRIX_BUNDLE")
+          TOKEN=$(node -e 'console.log(JSON.parse(Buffer.from(process.argv[1].slice(17),"base64url")).token)' "$UNIMATRIX_BUNDLE")
+          CURL="curl -sS --fail -H Content-Type:application/json -H Accept:application/json,text/event-stream"
+          $CURL -H "Authorization: Bearer $TOKEN" -D headers.txt \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"gha","version":"0"}}}' \
+            "$MCP_URL" > /dev/null
+          SID=$(grep -i '^mcp-session-id:' headers.txt | cut -d' ' -f2 | tr -d '\r')
+          $CURL -H "Authorization: Bearer $TOKEN" -H "Mcp-Session-Id: $SID" \
+            -d '{"jsonrpc":"2.0","method":"notifications/initialized"}' "$MCP_URL" > /dev/null
+          $CURL -H "Authorization: Bearer $TOKEN" -H "Mcp-Session-Id: $SID" \
+            -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"context_search","arguments":{"query":"release checklist"}}}' \
+            "$MCP_URL"
+```
+
+With a `read` bundle the search succeeds and `context_store` is rejected with a capability error. With a `read-write` bundle `context_store` on the bundle's slug succeeds; any other slug returns `403`.
+
+### Disable the legacy token
+
+The per-data-dir legacy bearer token (`{data_volume}/token`, used by `client-bundle <slug>` without `--headless`) stays enabled by default so existing clients keep working. Once every client uses scoped tokens, disable it:
+
+```toml
+[http]
+legacy_token_enabled = false
+```
+
+or set `UNIMATRIX_LEGACY_TOKEN_ENABLED=false`. Requests with the legacy token then get `401` with a `legacy token disabled` indication; scoped tokens are unaffected.
+
+---
+
 ## Verifying the connection
 
 ### 1. Liveness (server is up)

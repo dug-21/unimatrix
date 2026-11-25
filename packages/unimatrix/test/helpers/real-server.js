@@ -54,9 +54,11 @@ function resolveServerBinary() {
     path.join(root, "target", "release", "unimatrix"),
     path.join(root, "target", "debug", "unimatrix"),
   ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
-  }
+  // vnc-050: prefer the most recently built binary so a stale release build
+  // never shadows a fresh debug build (or vice versa).
+  const built = candidates.filter((c) => fs.existsSync(c));
+  built.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+  if (built.length > 0) return built[0];
   throw new Error(
     "Layer 2 requires a cargo-built server binary. Run `cargo build --release` " +
       "(or `cargo build`) first. Looked in:\n  " +
@@ -255,7 +257,7 @@ async function startRealServer(opts) {
   // POST path, but keeps the harness reusable).
   fs.mkdirSync(path.join(projectDir, ".git"), { recursive: true });
 
-  const port = await reservePort();
+  const port = options.port || (await reservePort());
   const bind = "127.0.0.1";
 
   // Data dir mirrors project.rs::ensure_data_directory(projectDir, base=$HOME/.unimatrix).
@@ -280,15 +282,25 @@ async function startRealServer(opts) {
     "\n\n" +
     "[tls]\n" +
     "enabled = false\n";
-  fs.writeFileSync(path.join(dataDir, "config.toml"), configToml);
+  fs.writeFileSync(path.join(dataDir, "config.toml"), configToml + (options.extraToml || ""));
+  // vnc-050 C11: pre-seed an operator-supplied leaf (e.g. CA-issued) so
+  // load_or_generate_cert loads it verbatim instead of self-provisioning.
+  if (options.tlsPair) {
+    const tlsDir = path.join(dataDir, "tls");
+    fs.mkdirSync(tlsDir, { recursive: true });
+    fs.writeFileSync(path.join(tlsDir, "cert.pem"), options.tlsPair.cert);
+    fs.writeFileSync(path.join(tlsDir, "key.pem"), options.tlsPair.key, { mode: 0o600 });
+  }
 
-  const bin = resolveServerBinary();
+  const bin = options.bin || resolveServerBinary();
   const env = Object.assign({}, process.env, {
     HOME: home,
     USERPROFILE: home,
     // Force the config the harness wrote; do not consult the developer's global.
     UNIMATRIX_CONFIG: path.join(dataDir, "config.toml"),
-  });
+    // vnc-050 C11: bundles carry real URLs (no <EDIT-ME>) when requested.
+    UNIMATRIX_PUBLIC_URL: options.publicUrl ? "https://" + bind + ":" + port : "",
+  }, options.env || {});
 
   // vnc-038 (ADR-003/ADR-004/ADR-007): the HTTP/cloud listener only binds when a
   // project slug is registered in `[[projects]]`; with none, `serve` boots as the
@@ -297,6 +309,7 @@ async function startRealServer(opts) {
   // preserving the [http] block the harness wrote). `register` is a synchronous,
   // pre-tokio subcommand; run it to completion before spawning the daemon.
   await registerSlug(bin, projectDir, env, OBSERVE_SLUG);
+  for (const s of options.extraSlugs || []) await registerSlug(bin, projectDir, env, s);
 
   const child = spawn(bin, ["--project-dir", projectDir, "serve", "--foreground"], {
     env,
@@ -397,6 +410,11 @@ async function startRealServer(opts) {
     // The harness slug the HTTP listener is registered/bound for (ADR-007).
     slug: OBSERVE_SLUG,
     token,
+    dataDir,
+    /** vnc-050 C11: run a `unimatrix` CLI subcommand against this data dir. */
+    cli(args, extraEnv) {
+      return runCli(bin, projectDir, Object.assign({}, env, extraEnv || {}), args);
+    },
     home,
     projectDir,
     socketPath,
@@ -531,6 +549,21 @@ async function startRealServer(opts) {
       }
     },
   };
+}
+
+// Async CLI run (pattern #4774); resolves { code, stdout, stderr }, never rejects on exit code.
+function runCli(bin, projectDir, env, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, ["--project-dir", projectDir, ...args], { env, stdio: ["ignore", "pipe", "pipe"] });
+    const out = [];
+    const err = [];
+    child.stdout.on("data", (c) => out.push(c));
+    child.stderr.on("data", (c) => err.push(c));
+    child.on("error", reject);
+    child.on("exit", (code) =>
+      resolve({ code, stdout: Buffer.concat(out).toString("utf8"), stderr: Buffer.concat(err).toString("utf8") })
+    );
+  });
 }
 
 function sleep(ms) {
