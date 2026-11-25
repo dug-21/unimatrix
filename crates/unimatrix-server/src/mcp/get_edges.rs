@@ -53,6 +53,10 @@ use super::response::edges::{
 /// from the uncapped STORED edge set (unresolved) — they may exceed the distinct displayed
 /// targets after resolve+dedup; this is the intended honest-stored-totals design (vnc-037),
 /// NOT a counting bug.
+///
+/// #1009: quarantined neighbors are excluded inside the shared canonicalization CTE, so they
+/// are absent from both the displayed rows and the totals (deliberate override of N5 —
+/// stored totals would leak the existence/count of untrusted neighbors).
 pub(crate) async fn build_edges_view(
     store: &Store,
     id: u64,

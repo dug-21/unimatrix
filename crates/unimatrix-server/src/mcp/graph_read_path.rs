@@ -32,7 +32,8 @@ use unimatrix_store::NeighborDirection;
 use crate::error::{ERROR_INTERNAL, ERROR_INVALID_PARAMS};
 use crate::services::typed_graph::TypedGraphState;
 
-use super::graph_read_neighbors::{all_non_supersedes_types, follow_to_current};
+use super::graph_read_exclusion::{ExcludedNodes, admit};
+use super::graph_read_neighbors::all_non_supersedes_types;
 use super::{GraphParams, PathHop, PathResponse};
 
 use unimatrix_store::query_direct_neighbors;
@@ -136,19 +137,22 @@ pub(super) async fn handle_path(
     // context_graph per issue #881): deprecated endpoints resolve to their active terminal
     // by default, aligning with context_get. Explicit `false` remains the raw/audit opt-out.
     let resolve_supersessions = params.resolve_supersessions.unwrap_or(true);
+    // #1009: quarantined set loaded once per request, after param validation.
+    let excluded = &ExcludedNodes::load_quarantined(store).await?;
 
-    let effective_from: u64 = if resolve_supersessions {
-        // follow_to_current returns None when chain exceeds 50 hops or entry is
-        // an orphaned deprecated terminal — fall back to original ID (ADR-006 §Consequences).
-        follow_to_current(store, from_id).await.unwrap_or(from_id)
-    } else {
-        from_id
-    };
-
-    let effective_to: u64 = if resolve_supersessions {
-        follow_to_current(store, to_id).await.unwrap_or(to_id)
-    } else {
-        to_id
+    // #1009: a quarantined endpoint (raw or resolved) -> found:false. `admit` keeps the
+    // None -> raw fallback for deprecated orphans / 50-hop cap (ADR-006 §Consequences).
+    let (Some(effective_from), Some(effective_to)) = (
+        admit(store, excluded, from_id, resolve_supersessions).await,
+        admit(store, excluded, to_id, resolve_supersessions).await,
+    ) else {
+        return Ok(PathResponse {
+            found: false,
+            from_id,
+            to_id,
+            hops: vec![],
+            length: 0,
+        });
     };
 
     // Step 7: Acquire graph snapshot (lock → clone → release) BEFORE BFS.
@@ -177,6 +181,7 @@ pub(super) async fn handle_path(
             &edge_types,
             max_depth,
             resolve_supersessions,
+            excluded,
         )
         .await;
     }
@@ -266,12 +271,11 @@ pub(super) async fn handle_path(
                 };
 
                 // Per-hop supersession resolution (ADR-006 — follows graph_read_subgraph pattern).
-                let effective_neighbor: u64 = if resolve_supersessions {
-                    follow_to_current(store, raw_neighbor_id)
-                        .await
-                        .unwrap_or(raw_neighbor_id)
-                } else {
-                    raw_neighbor_id
+                // #1009: skip excluded nodes before destination check / enqueue.
+                let Some(effective_neighbor) =
+                    admit(store, excluded, raw_neighbor_id, resolve_supersessions).await
+                else {
+                    continue;
                 };
 
                 // Build the hop that leads to effective_neighbor.
@@ -354,6 +358,7 @@ async fn path_via_db(
     edge_types: &[RelationType],
     max_depth: u8,
     resolve_supersessions: bool,
+    excluded: &ExcludedNodes,
 ) -> Result<PathResponse, ErrorData> {
     let type_strs: Vec<&str> = edge_types.iter().map(|t| t.as_str()).collect();
 
@@ -392,12 +397,11 @@ async fn path_via_db(
             let raw_neighbor_id = row.target_id;
 
             // Per-hop supersession resolution (mirrors in-memory BFS — ADR-006).
-            let effective_neighbor: u64 = if resolve_supersessions {
-                follow_to_current(store, raw_neighbor_id)
-                    .await
-                    .unwrap_or(raw_neighbor_id)
-            } else {
-                raw_neighbor_id
+            // #1009: skip excluded nodes before destination check / enqueue.
+            let Some(effective_neighbor) =
+                admit(store, excluded, raw_neighbor_id, resolve_supersessions).await
+            else {
+                continue;
             };
 
             // Build the hop toward effective_neighbor.

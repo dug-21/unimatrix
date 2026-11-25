@@ -843,6 +843,61 @@ def test_quarantine_visible_via_get(server):
     assert_tool_success(get_resp)
 
 
+def test_quarantine_get_includes_status(server):
+    """#1009: context_get(Q) returns Q with its quarantined status."""
+    store_resp = server.context_store(
+        "quarantine get status 1009", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    entry = parse_entry(server.context_get(entry_id, format="json"))
+    assert str(entry.get("status", "")).lower() == "quarantined", entry
+
+
+def test_quarantine_lookup_by_id_includes_status(server):
+    """#1009: lookup by id MAY return a quarantined entry, but must carry its status."""
+    store_resp = server.context_store(
+        "quarantine lookup id 1009", "testing", "convention", agent_id="human", format="json"
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    entry = parse_entry(server.context_lookup(id=entry_id, format="json"))
+    assert entry.get("id") == entry_id
+    assert str(entry.get("status", "")).lower() == "quarantined", entry
+
+
+def test_quarantine_lookup_explicit_status_returns_quarantined(server):
+    """#1009: explicit status="quarantined" is the ONLY filter that returns quarantined."""
+    store_resp = server.context_store(
+        "quarantine explicit 1009", "quarantine-1009-explicit", "convention",
+        agent_id="human", format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    resp = server.context_lookup(
+        topic="quarantine-1009-explicit", status="quarantined", format="json"
+    )
+    ids = [e.get("id") for e in parse_entries(resp)]
+    assert entry_id in ids, ids
+
+
+def test_quarantine_lookup_default_and_other_status_exclude(server):
+    """#1009: default and every non-quarantined status filter exclude quarantined."""
+    store_resp = server.context_store(
+        "quarantine other status 1009", "quarantine-1009-other", "convention",
+        agent_id="human", format="json",
+    )
+    entry_id = extract_entry_id(store_resp)
+    server.context_quarantine(entry_id, agent_id="human")
+    for status in (None, "active", "deprecated", "proposed"):
+        resp = server.context_lookup(topic="quarantine-1009-other", status=status, format="json")
+        ids = [e.get("id") for e in parse_entries(resp)]
+        assert entry_id not in ids, (status, ids)
+    # Non-topic filter path (category only) also excludes it by default.
+    resp = server.context_lookup(category="convention", limit=100, format="json")
+    assert entry_id not in [e.get("id") for e in parse_entries(resp)]
+
+
 def test_restore_quarantined(server):
     """T-77: Restore returns entry to active status."""
     store_resp = server.context_store(

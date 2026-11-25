@@ -23,7 +23,7 @@ use crate::mcp::graph_read::graph_read_subgraph::handle_subgraph;
 use crate::mcp::tools::resolve_effective_id;
 use crate::services::typed_graph::TypedGraphState;
 
-async fn open_test_store() -> (SqlxStore, tempfile::TempDir) {
+pub(super) async fn open_test_store() -> (SqlxStore, tempfile::TempDir) {
     let dir = tempfile::tempdir().expect("temp dir");
     let path = dir.path().join("test.db");
     let store = SqlxStore::open(&path, PoolConfig::test_default())
@@ -32,7 +32,7 @@ async fn open_test_store() -> (SqlxStore, tempfile::TempDir) {
     (store, dir)
 }
 
-async fn insert_active(store: &SqlxStore, title: &str) -> u64 {
+pub(super) async fn insert_active(store: &SqlxStore, title: &str) -> u64 {
     store
         .insert(NewEntry {
             title: title.to_string(),
@@ -50,7 +50,7 @@ async fn insert_active(store: &SqlxStore, title: &str) -> u64 {
         .unwrap_or_else(|e| panic!("insert {title}: {e:?}"))
 }
 
-async fn insert_supports_edge(store: &SqlxStore, source_id: u64, target_id: u64) {
+pub(super) async fn insert_supports_edge(store: &SqlxStore, source_id: u64, target_id: u64) {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
@@ -80,7 +80,7 @@ async fn deprecate_toward(store: &SqlxStore, id: u64, superseded_by: u64) {
 
 /// Cold-start handle (`use_fallback = true`) so subgraph/path take the live-SQL DB-fallback
 /// path (no tick rebuild needed); neighbors depth=1 always uses live SQL.
-fn cold_start_handle() -> Arc<RwLock<TypedGraphState>> {
+pub(super) fn cold_start_handle() -> Arc<RwLock<TypedGraphState>> {
     Arc::new(RwLock::new(TypedGraphState::new()))
 }
 

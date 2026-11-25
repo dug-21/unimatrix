@@ -541,9 +541,12 @@ async fn test_query_ranked_no_literal_three_and_positional_binds() {
         sql.contains("LIMIT ?2"),
         "cap is a positional bind, not inlined"
     );
+    // #1009: the quarantine predicate (`status = 3`, the Status::Quarantined code) is the
+    // only permitted `3` — it is a static status code, not the display cap.
+    let without_status = sql.replace("WHERE status = 3", "");
     assert!(
-        !sql.contains('3'),
-        "no literal 3 anywhere in the ranked SQL"
+        !without_status.contains('3'),
+        "no literal 3 (cap) anywhere in the ranked SQL"
     );
     assert!(sql.contains("?1"), "anchor is a positional bind");
 }
@@ -871,4 +874,65 @@ async fn test_count_uses_positional_binds() {
         sql.contains("SUM(CASE"),
         "counting is a SQL aggregate, not a row fetch"
     );
+}
+
+// -----------------------------------------------------------------------
+// #1009 — quarantined neighbors excluded from displayed rows AND totals
+// -----------------------------------------------------------------------
+
+async fn set_status(pool: &SqlitePool, id: u64, status: i64) {
+    sqlx::query("UPDATE entries SET status = ?1 WHERE id = ?2")
+        .bind(status)
+        .bind(id as i64)
+        .execute(pool)
+        .await
+        .expect("set status");
+}
+
+/// A quarantined neighbor (outbound, inbound, symmetric) is absent from the ranked rows and
+/// subtracted from every totals bucket; a deprecated neighbor stays (denylist, not allowlist).
+#[tokio::test]
+async fn test_ranked_and_split_exclude_quarantined_neighbors() {
+    let (store, _dir) = open_test_store().await;
+    let pool = &store.write_pool;
+    let a = insert_entry_conf(pool, "A", 0.5).await;
+    let q_out = insert_entry_conf(pool, "Qout", 0.9).await;
+    let q_in = insert_entry_conf(pool, "Qin", 0.9).await;
+    let q_sym = insert_entry_conf(pool, "Qsym", 0.9).await;
+    let c = insert_entry_conf(pool, "C", 0.1).await;
+    let d = insert_entry_conf(pool, "Dep", 0.1).await;
+    insert_edge_src(pool, a, q_out, "Supports", "agent").await;
+    insert_edge_src(pool, q_in, a, "Supports", "agent").await;
+    insert_symmetric_pair(pool, a, q_sym, "CoAccess", "agent").await;
+    insert_edge_src(pool, a, c, "Supports", "nli").await;
+    insert_edge_src(pool, a, d, "Supports", "nli").await;
+    for q in [q_out, q_in, q_sym] {
+        set_status(pool, q, 3).await;
+    }
+    set_status(pool, d, 1).await; // deprecated — still listed
+
+    let rows = query_ranked_neighbors(pool, a).await.expect("ranked");
+    let ids = target_ids(&rows);
+    for q in [q_out, q_in, q_sym] {
+        assert!(!ids.contains(&q), "quarantined {q} must not be displayed: {ids:?}");
+    }
+    assert!(ids.contains(&c) && ids.contains(&d), "{ids:?}");
+
+    let split = count_neighbors_split(pool, a).await.expect("split");
+    assert_eq!(
+        split,
+        EdgeCountSplit {
+            inbound: 0,
+            outbound: 2,
+            both: 0,
+            authored: 0,
+        },
+        "totals must exclude quarantined neighbors"
+    );
+
+    // Restore (status back to Active) → reappears immediately, no tick involved.
+    set_status(pool, q_out, 0).await;
+    let split = count_neighbors_split(pool, a).await.expect("split");
+    assert_eq!(split.outbound, 3);
+    assert_eq!(split.authored, 1);
 }

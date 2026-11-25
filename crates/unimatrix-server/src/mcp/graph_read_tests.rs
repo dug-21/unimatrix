@@ -451,3 +451,10 @@ mod cross_surface;
 
 #[path = "graph_read_tests_vnc044.rs"]
 mod vnc044;
+
+// -----------------------------------------------------------------------
+// #1009: read-time quarantine exclusion across neighbors/path/subgraph/chain.
+// -----------------------------------------------------------------------
+
+#[path = "graph_read_quarantine_tests.rs"]
+mod quarantine;

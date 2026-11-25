@@ -22,6 +22,7 @@ use unimatrix_core::Status;
 use crate::error::{ERROR_INTERNAL, ERROR_INVALID_PARAMS};
 use crate::services::typed_graph::TypedGraphState;
 
+use super::graph_read_exclusion::{ExcludedNodes, admit};
 use super::{EdgeRecord, GraphParams, NeighborsResponse};
 
 // ---------------------------------------------------------------------------
@@ -182,8 +183,14 @@ pub(super) async fn handle_neighbors(
     // G1 (bugfix-881): the depth-1 arm now honors the flag — previously neighbors_sql ignored
     // it entirely, so even an explicit `true` was a no-op on the default-depth neighbors call.
     let resolve = params.resolve_supersessions.unwrap_or(true);
+    // #1009: quarantined set loaded once per request, after param validation.
+    let excluded = &ExcludedNodes::load_quarantined(store).await?;
+    // #1009: a quarantined anchor yields no edges.
+    if excluded.contains(id) {
+        return Ok(NeighborsResponse { edges: vec![] });
+    }
     let edges = if depth == 1 {
-        neighbors_sql(store, id, &requested_types, direction, resolve).await?
+        neighbors_sql(store, id, &requested_types, direction, resolve, excluded).await?
     } else {
         neighbors_bfs(
             store,
@@ -193,6 +200,7 @@ pub(super) async fn handle_neighbors(
             direction,
             depth,
             resolve,
+            excluded,
         )
         .await?
     };
@@ -218,6 +226,7 @@ async fn neighbors_sql(
     types: &[RelationType],
     direction: NeighborDirection,
     resolve: bool,
+    excluded: &ExcludedNodes,
 ) -> Result<Vec<EdgeRecord>, ErrorData> {
     let type_strs: Vec<&str> = types.iter().map(|t| t.as_str()).collect();
 
@@ -233,6 +242,10 @@ async fn neighbors_sql(
     for row in raw_rows {
         let outgoing = row.source_id == id;
         let (mut source_id, mut target_id) = (row.source_id, row.target_id);
+        // #1009: skip quarantined neighbors before resolution (no None -> raw re-admit).
+        if excluded.contains(if outgoing { target_id } else { source_id }) {
+            continue;
+        }
         if resolve {
             if outgoing {
                 target_id = resolve_memoized(store, &mut memo, target_id).await;
@@ -263,6 +276,7 @@ async fn neighbors_sql(
 /// Graph and use_fallback are cloned/read out from under the lock before any async work.
 /// When use_fallback=true, delegates to `neighbors_via_db` (GH #623).
 /// Visited set is `HashSet<u64>` keyed by node_id only (AC-11a, R-18).
+#[allow(clippy::too_many_arguments)] // #1009 added `excluded`
 async fn neighbors_bfs(
     store: &Store,
     typed_graph_state: &Arc<RwLock<TypedGraphState>>,
@@ -271,6 +285,7 @@ async fn neighbors_bfs(
     direction: NeighborDirection,
     depth: u8,
     resolve_supersessions: bool,
+    excluded: &ExcludedNodes,
 ) -> Result<Vec<EdgeRecord>, ErrorData> {
     use petgraph::Direction;
 
@@ -285,7 +300,16 @@ async fn neighbors_bfs(
     // node_index_for(id) returns None, BFS never starts, depth_reached=0 for all seeds.
     // Delegate to live DB path instead (GH #623).
     if use_fallback {
-        return neighbors_via_db(store, id, types, direction, depth, resolve_supersessions).await;
+        return neighbors_via_db(
+            store,
+            id,
+            types,
+            direction,
+            depth,
+            resolve_supersessions,
+            excluded,
+        )
+        .await;
     }
 
     // Find anchor node in the in-memory graph (ADR-008).
@@ -342,15 +366,12 @@ async fn neighbors_bfs(
                         Direction::Incoming => "incoming",
                     };
 
-                    // Resolve supersession if requested (ADR-005, R-10).
-                    let effective_id = if resolve_supersessions {
-                        // follow_to_current returns None on 50-hop cap or orphaned deprecated
-                        // — use original ID as fallback (ADR-005, R-10 acceptance).
-                        follow_to_current(store, neighbor_node_id)
-                            .await
-                            .unwrap_or(neighbor_node_id)
-                    } else {
-                        neighbor_node_id
+                    // #1009: skip excluded (quarantined) nodes before recording/enqueue;
+                    // resolution per ADR-005/R-10 inside `admit`.
+                    let Some(effective_id) =
+                        admit(store, excluded, neighbor_node_id, resolve_supersessions).await
+                    else {
+                        continue;
                     };
 
                     // Visited set keyed by node_id only (AC-11a, R-18).
@@ -417,6 +438,7 @@ async fn neighbors_via_db(
     direction: NeighborDirection,
     depth: u8,
     resolve_supersessions: bool,
+    excluded: &ExcludedNodes,
 ) -> Result<Vec<EdgeRecord>, ErrorData> {
     let type_strs: Vec<&str> = types.iter().map(|t| t.as_str()).collect();
 
@@ -457,13 +479,11 @@ async fn neighbors_via_db(
                 (row.source_id, "incoming", row.source_id, current_id)
             };
 
-            // Supersession resolution (ADR-005, R-10).
-            let effective_id = if resolve_supersessions {
-                follow_to_current(store, neighbor_id)
-                    .await
-                    .unwrap_or(neighbor_id)
-            } else {
-                neighbor_id
+            // #1009: skip excluded nodes; supersession resolution (ADR-005, R-10).
+            let Some(effective_id) =
+                admit(store, excluded, neighbor_id, resolve_supersessions).await
+            else {
+                continue;
             };
 
             // Visited set keyed by node_id only (AC-11a, R-18).
