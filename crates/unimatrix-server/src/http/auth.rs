@@ -174,9 +174,15 @@ impl StaticTokenAuthLayer {
     /// Boot constructor (vnc-050 C2): legacy token + `{data_dir}/tokens.json`
     /// scoped table. `pub` because the binary crate cannot name the
     /// crate-private `TokenTableValidator`/`TokenTable` types.
-    pub fn with_token_table(legacy: [u8; 32], data_dir: &std::path::Path) -> Self {
+    pub fn with_token_table(
+        legacy: [u8; 32],
+        data_dir: &std::path::Path,
+        legacy_enabled: bool,
+    ) -> Self {
         let table = Arc::new(crate::http::token_table::TokenTable::open(data_dir));
-        Self::with_validator(Arc::new(TokenTableValidator::new(Some(legacy), table)))
+        Self::with_validator(Arc::new(
+            TokenTableValidator::new(Some(legacy), table).with_legacy_enabled(legacy_enabled),
+        ))
     }
 
     /// Create an auth layer over an arbitrary validator (vnc-050).

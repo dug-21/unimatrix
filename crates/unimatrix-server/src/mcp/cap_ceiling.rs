@@ -59,8 +59,6 @@ fn principal_ceiling(p: Option<&BearerPrincipal>) -> Option<CapCeiling> {
 }
 
 /// Whether the ceiling permits `cap`. `None` → always.
-// rationale: consumed by `require_cap` (vnc-050 Wave 1).
-#[allow(dead_code)]
 pub(crate) fn permits(c: Option<&CapCeiling>, cap: Capability) -> bool {
     match c {
         None => true,
@@ -69,8 +67,6 @@ pub(crate) fn permits(c: Option<&CapCeiling>, cap: Capability) -> bool {
 }
 
 /// Whether learning signals may be recorded (ADR-004): requires Write.
-// rationale: consumed by `UsageContext.learning_allowed` (vnc-050 Wave 1).
-#[allow(dead_code)]
 pub(crate) fn records_learning(c: Option<&CapCeiling>) -> bool {
     permits(c, Capability::Write)
 }
@@ -78,6 +74,14 @@ pub(crate) fn records_learning(c: Option<&CapCeiling>) -> bool {
 #[cfg(test)]
 #[path = "cap_ceiling_http_tests.rs"]
 mod http_tests;
+
+#[cfg(test)]
+#[path = "cap_ceiling_deny_tests.rs"]
+mod deny_tests;
+
+#[cfg(test)]
+#[path = "cap_ceiling_learning_tests.rs"]
+mod learning_tests;
 
 #[cfg(test)]
 mod tests {

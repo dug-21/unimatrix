@@ -44,13 +44,13 @@ const BUNDLE_MCP_URL = "https://unimatrix.example.com/v1/myslug";
 const BUNDLE_OBSERVE_URL = "https://unimatrix.example.com/v1/myslug/observe";
 const BUNDLE_TOKEN = "a".repeat(64);
 const BUNDLE_FP = "sha256:" + "b".repeat(64);
-function makeBundle() {
+function makeBundle(fp) {
   const json = JSON.stringify({
     v: 2,
     mcp_url: BUNDLE_MCP_URL,
     observe_url: BUNDLE_OBSERVE_URL,
     token: BUNDLE_TOKEN,
-    fp: BUNDLE_FP,
+    fp: fp === undefined ? BUNDLE_FP : fp,
   });
   return "unimatrix-bundle:" + Buffer.from(json, "utf8").toString("base64url");
 }
@@ -1083,5 +1083,34 @@ describe("Ping validation (R-18)", () => {
     assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
     assert.ok(fs.existsSync(path.join(dir, ".mcp.json")));
     assert.ok(fs.existsSync(storePath(dir)), "store written before Ping");
+  });
+});
+
+describe("vnc-050 C8 — init --bundle with a CA (fp:null) bundle", () => {
+  it("init_bundle_ca_stores_fingerprint_null", async () => {
+    let pinArg = "unset";
+    stubPing((_u, _t, _to, fp) => {
+      pinArg = fp;
+      return okPing();
+    });
+    const dir = makeTempProject();
+    await initRemote({ bundle: makeBundle(null), projectDir: dir });
+    const rec = readStore(dir);
+    assert.strictEqual(rec.fingerprint, null);
+    assert.strictEqual(rec.token, BUNDLE_TOKEN);
+    assert.strictEqual(pinArg, null, "Ping uses CA trust (no pin)");
+    const mcp = JSON.parse(fs.readFileSync(path.join(dir, ".mcp.json"), "utf8"));
+    assert.ok(
+      JSON.stringify(mcp).includes(path.basename(BRIDGE_PATH)),
+      "CA bundle registers the stdio bridge like a pinned bundle"
+    );
+    assert.ok(!JSON.stringify(mcp).includes(BUNDLE_TOKEN), ".mcp.json token-free");
+  });
+
+  it("init_bundle_pinned_unchanged", async () => {
+    stubPing(okPing);
+    const dir = makeTempProject();
+    await initRemote({ bundle: makeBundle(), projectDir: dir });
+    assert.strictEqual(readStore(dir).fingerprint, BUNDLE_FP);
   });
 });

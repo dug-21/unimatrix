@@ -1622,7 +1622,11 @@ struct SlugHandles {
 /// white-box pins), and per-slug handle bundles (for read-side assertions).
 async fn wired_observe_stack(
     slugs: &[&str],
-) -> (PathRouter<TestBody>, Arc<dyn StoreResolver>, Vec<SlugHandles>) {
+) -> (
+    PathRouter<TestBody>,
+    Arc<dyn StoreResolver>,
+    Vec<SlugHandles>,
+) {
     let mut inputs = Vec::with_capacity(slugs.len());
     let mut handles = Vec::with_capacity(slugs.len());
     for &name in slugs {
@@ -1681,6 +1685,7 @@ fn observe_request(slug: &str, session_id: &str) -> Request<TestBody> {
         .method("POST")
         .uri(format!("/v1/{slug}/observe"))
         .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {}", "5a".repeat(32)))
         .body(body_owned(observe_record_body(session_id)))
         .expect("build observe request");
     req.extensions_mut().insert(ResolvedIdentity {
@@ -1705,7 +1710,15 @@ async fn drive_observe(
     slug: &str,
     session_id: &str,
 ) -> (StatusCode, String) {
-    let mut router = router.clone();
+    // vnc-050: the slug guard requires the auth layer's `BearerPrincipal`, so
+    // drive through the real `StaticTokenAuthLayer` (legacy token).
+    let dir = tempfile::TempDir::new().expect("tmp");
+    let auth = unimatrix_server::http::StaticTokenAuthLayer::with_token_table(
+        [0x5A; 32],
+        dir.path(),
+        true,
+    );
+    let mut router = tower::Layer::layer(&auth, router.clone());
     let resp = router
         .call(observe_request(slug, session_id))
         .await
@@ -1729,7 +1742,9 @@ async fn observations_with_marker(store: &Store, marker: &str) -> usize {
         .fetch_observations_since(0, 1_000_000)
         .await
         .expect("fetch observations");
-    rows.iter().filter(|r| r.session_id.contains(marker)).count()
+    rows.iter()
+        .filter(|r| r.session_id.contains(marker))
+        .count()
 }
 
 /// Read-as-barrier positive control (mirrors the #800 / infra-003 smoke): the
@@ -1757,7 +1772,11 @@ async fn wait_for_observation(store: &Store, marker: &str) -> usize {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_observe_transcript_fidelity_a() {
     let (router, _resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
-    assert_eq!(observation_count(&h[0].store).await, 0, "cold start: alpha empty");
+    assert_eq!(
+        observation_count(&h[0].store).await,
+        0,
+        "cold start: alpha empty"
+    );
 
     let (status, body) = drive_observe(&router, "alpha", SID_A).await;
     assert!(
@@ -1774,7 +1793,11 @@ async fn test_observe_transcript_fidelity_a() {
 async fn test_observe_transcript_fidelity_b() {
     // Symmetric fidelity for the B-driver — NOT inferred from A (R-01/#5348).
     let (router, _resolver, h) = wired_observe_stack(&["alpha", "beta"]).await;
-    assert_eq!(observation_count(&h[1].store).await, 0, "cold start: beta empty");
+    assert_eq!(
+        observation_count(&h[1].store).await,
+        0,
+        "cold start: beta empty"
+    );
 
     let (status, body) = drive_observe(&router, "beta", SID_B).await;
     assert!(
@@ -1874,8 +1897,7 @@ async fn test_observe_negative_control_predicate_is_sensitive() {
     );
     // Second leg: directly inject beta's marker into alpha's store (a simulated
     // reverse-misroute leak) and assert the predicate flags it RED.
-    h[0]
-        .store
+    h[0].store
         .insert_observation(
             &format!("http-{SID_B}"),
             0,
@@ -1909,8 +1931,14 @@ async fn test_knowledge_read_isolation_bidirectional_n2() {
     let key_b = ProjectKey::Slug(ProjectSlug::try_from("beta").unwrap());
 
     // Write distinct knowledge into each slug's OWN store.
-    h[0].store.insert(test_entry("alpha-knowledge")).await.expect("a write");
-    h[1].store.insert(test_entry("beta-knowledge")).await.expect("b write");
+    h[0].store
+        .insert(test_entry("alpha-knowledge"))
+        .await
+        .expect("a write");
+    h[1].store
+        .insert(test_entry("beta-knowledge"))
+        .await
+        .expect("b write");
 
     // Fidelity + isolation at the durable store the P2 read path serves.
     let titles = |store: &Arc<Store>| {
@@ -1926,8 +1954,14 @@ async fn test_knowledge_read_isolation_bidirectional_n2() {
     };
     let a_titles = titles(&h[0].store).await;
     let b_titles = titles(&h[1].store).await;
-    assert!(a_titles.contains(&"alpha-knowledge".to_string()), "A own-read fidelity");
-    assert!(b_titles.contains(&"beta-knowledge".to_string()), "B own-read fidelity");
+    assert!(
+        a_titles.contains(&"alpha-knowledge".to_string()),
+        "A own-read fidelity"
+    );
+    assert!(
+        b_titles.contains(&"beta-knowledge".to_string()),
+        "B own-read fidelity"
+    );
     assert!(
         !a_titles.iter().any(|t| t == "beta-knowledge"),
         "INV-K2: A's store must NEVER contain B's knowledge"
@@ -1942,14 +1976,21 @@ async fn test_knowledge_read_isolation_bidirectional_n2() {
     // read-fidelity/isolation semantics THROUGH the ServiceLayer (briefing/search)
     // are model-bound and proven over the wire by the #800 fixture. Here we pin
     // that the per-slug P2 handle is wired (resolves Ok) for both keys.
-    resolver.services_for(&key_a).expect("services_for(A) must resolve the per-slug P2 handle");
-    resolver.services_for(&key_b).expect("services_for(B) must resolve the per-slug P2 handle");
+    resolver
+        .services_for(&key_a)
+        .expect("services_for(A) must resolve the per-slug P2 handle");
+    resolver
+        .services_for(&key_b)
+        .expect("services_for(B) must resolve the per-slug P2 handle");
 
     // R-15 durable non-contamination: re-query confirms the stores did not gain
     // the other's entry as a side effect of the cross-read.
     assert_eq!(observation_count(&h[0].store).await, 0, "no stray obs in A");
     assert!(
-        !titles(&h[1].store).await.iter().any(|t| t == "alpha-knowledge"),
+        !titles(&h[1].store)
+            .await
+            .iter()
+            .any(|t| t == "alpha-knowledge"),
         "R-15: B's durable store remains uncontaminated after cross-read"
     );
 }
@@ -1976,10 +2017,16 @@ async fn test_config_isolation_bidirectional_n2() {
     let sl_b = server_b.service_layer();
 
     // Fidelity: each slug's ServiceLayer reflects its OWN declared config.
-    assert!(sl_a.nli_enabled(), "INV-C1: A's declared NLI-enabled governs A");
+    assert!(
+        sl_a.nli_enabled(),
+        "INV-C1: A's declared NLI-enabled governs A"
+    );
     assert_eq!(sl_a.nli_top_k(), 37, "A's own nli_top_k");
     // Isolation: B's config never governs A's, and vice versa.
-    assert!(!sl_b.nli_enabled(), "INV-C2: B's declared NLI-disabled governs B, not A's enabled");
+    assert!(
+        !sl_b.nli_enabled(),
+        "INV-C2: B's declared NLI-disabled governs B, not A's enabled"
+    );
     assert_eq!(sl_b.nli_top_k(), 11, "B's own nli_top_k (not A's 37)");
     assert_ne!(
         sl_a.nli_top_k(),
@@ -2038,8 +2085,14 @@ mod vnc046_white_box_wiring_pins {
 
         let pend_a = resolver.pending_for(&key_a).expect("pending_for(A)");
         let pend_b = resolver.pending_for(&key_b).expect("pending_for(B)");
-        assert!(Arc::ptr_eq(&pend_a, &h[0].pending), "pending_for(A) is A's own");
-        assert!(Arc::ptr_eq(&pend_b, &h[1].pending), "pending_for(B) is B's own");
+        assert!(
+            Arc::ptr_eq(&pend_a, &h[0].pending),
+            "pending_for(A) is A's own"
+        );
+        assert!(
+            Arc::ptr_eq(&pend_b, &h[1].pending),
+            "pending_for(B) is B's own"
+        );
         assert!(
             !Arc::ptr_eq(&pend_a, &pend_b),
             "A and B must own DISTINCT pending buffers (no shared singleton)"

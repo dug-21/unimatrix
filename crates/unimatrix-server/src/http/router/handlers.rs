@@ -22,6 +22,7 @@ use http_body_util::{BodyExt, Full, Limited};
 
 use http::Request;
 
+use crate::infra::registry::Capability;
 use crate::mcp::identity::ResolvedIdentity;
 use crate::uds::listener::dispatch_request;
 
@@ -46,6 +47,22 @@ where
     ReqBody::Data: Send + 'static,
     ReqBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
+    // Step -1 (vnc-050 ADR-004): SessionWrite gate, pre-dispatch — before any
+    // resolve_store, registry/pending/services lookup, or body read.
+    let identity = match request.extensions().get::<ResolvedIdentity>() {
+        Some(id) => id.clone(),
+        None => {
+            tracing::error!("observe: ResolvedIdentity missing from extensions");
+            return Ok(json_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal error: identity not resolved",
+            ));
+        }
+    };
+    if let Err(resp) = require_session_write(&identity) {
+        return Ok(resp);
+    }
+
     // Step 0: transport-derived identity via the SAME grammar as MCP, then resolve
     // the per-request store through the ONE funnel (ADR-003 — no boot-bound handle).
     let key = match seam::parse_project_key(request.uri().path()) {
@@ -98,17 +115,7 @@ where
         Err(_) => return Ok(internal_error_response()),
     };
 
-    // Step 1: Extract ResolvedIdentity from request extensions.
-    let identity = match request.extensions().get::<ResolvedIdentity>() {
-        Some(id) => id.clone(),
-        None => {
-            tracing::error!("observe: ResolvedIdentity missing from extensions");
-            return Ok(json_error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal error: identity not resolved",
-            ));
-        }
-    };
+    // Step 1: identity extracted at Step -1 (vnc-050 ADR-004).
 
     // Step 2: Content-Length fast-path size check (same pattern as McpAdapter).
     let exceeds_limit = request
@@ -134,6 +141,8 @@ where
 
     // Step 3: Stream-level body collection with size limit (GH #663 pattern).
     let (_parts, body) = request.into_parts();
+    #[cfg(test)]
+    let path_for_spy = _parts.uri.path().to_owned();
     let limited_body = Limited::new(body, DEFAULT_MAX_BODY_BYTES);
 
     let collected = match limited_body.collect().await {
@@ -167,6 +176,13 @@ where
     // `store` serves BOTH the `store` and `entry_store` params (the boot pairing
     // preserved per-request, ADR-003). registry/pending/services are the per-slug
     // handles resolved at Step 0b (vnc-046) — NOT global `ObserveContext` fields.
+    #[cfg(test)]
+    if let Ok(super::seam::ProjectKey::Slug(s)) = seam::parse_project_key(&path_for_spy) {
+        DISPATCH_SPY
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .push(s.as_str().to_string());
+    }
     let response = dispatch_request(
         hook_request,
         &store,
@@ -183,6 +199,32 @@ where
     // Step 7: Map HookResponse to HTTP response (content negotiation, ADR-003).
     Ok(observe_response_to_http(response, wants_text))
 }
+
+/// 403 when the auth-layer identity lacks `SessionWrite` (read tokens).
+///
+/// Every session-telemetry HTTP route MUST call this before dispatch. Today the
+/// only one is `POST /v1/{slug}/observe` (all session frames travel inside it).
+// rationale: Err is the ready HTTP response returned as-is; boxing adds nothing.
+#[allow(clippy::result_large_err)]
+pub(crate) fn require_session_write(
+    id: &ResolvedIdentity,
+) -> Result<(), Response<BoxBody<Bytes, Infallible>>> {
+    if id.capabilities.contains(&Capability::SessionWrite) {
+        Ok(())
+    } else {
+        Err(json_error_response(
+            StatusCode::FORBIDDEN,
+            SESSION_WRITE_DENIED_MESSAGE,
+        ))
+    }
+}
+
+/// Fixed 403 body for observe without `SessionWrite`.
+pub(crate) const SESSION_WRITE_DENIED_MESSAGE: &str = "token lacks SessionWrite";
+
+/// Test-only seam (vnc-050): slug of every observe request reaching dispatch.
+#[cfg(test)]
+pub(crate) static DISPATCH_SPY: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
 /// Map the health response (String body) to BoxBody for consistency.
 pub(crate) fn map_health_response(resp: Response<String>) -> Response<BoxBody<Bytes, Infallible>> {

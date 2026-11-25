@@ -2341,6 +2341,9 @@ pub struct HttpConfig {
     /// Independent of allowed_hosts (Host header / DNS rebinding defense).
     /// Both checks apply independently when configured.
     pub allowed_origins: Vec<String>,
+    /// Accept the legacy all-slugs `{data_dir}/token`. Default `true`
+    /// (vnc-050 ADR-001). Overridable by `UNIMATRIX_LEGACY_TOKEN_ENABLED`.
+    pub legacy_token_enabled: bool,
 }
 
 impl Default for HttpConfig {
@@ -2353,6 +2356,7 @@ impl Default for HttpConfig {
             max_request_body_bytes: 1_048_576,
             connection_timeout_secs: 30,
             allowed_origins: Vec::new(),
+            legacy_token_enabled: true,
         }
     }
 }
@@ -2814,6 +2818,11 @@ pub enum ConfigError {
         /// The regex compile error (operator diagnostics).
         detail: String,
     },
+    /// `UNIMATRIX_LEGACY_TOKEN_ENABLED` holds an unrecognized value (vnc-050
+    /// ADR-001). The value is never echoed.
+    InvalidLegacyTokenOverride {
+        var: &'static str,
+    },
 }
 
 impl fmt::Display for ConfigError {
@@ -3140,6 +3149,10 @@ impl fmt::Display for ConfigError {
                 name,
                 detail
             ),
+            ConfigError::InvalidLegacyTokenOverride { var } => write!(
+                f,
+                "{var} must be one of true|1|false|0 (empty = no override)"
+            ),
         }
     }
 }
@@ -3293,6 +3306,16 @@ pub fn load_config(home_dir: &Path, data_dir: &Path) -> Result<ConfigLoadResult,
         resolve_http_enabled_override(std::env::var(HTTP_ENABLED_VAR).ok().as_deref())
     {
         merged.http.enabled = enabled;
+    }
+
+    // Step 3d: UNIMATRIX_LEGACY_TOKEN_ENABLED override (vnc-050 ADR-001).
+    // Applied after the file merge; an unrecognized value is a boot error.
+    if let Some(v) = super::legacy_token_config::resolve_legacy_token_override(
+        std::env::var(super::legacy_token_config::LEGACY_TOKEN_ENABLED_VAR)
+            .ok()
+            .as_deref(),
+    )? {
+        merged.http.legacy_token_enabled = v;
     }
 
     // Step 4: post-merge validation — catches constraint violations that only appear

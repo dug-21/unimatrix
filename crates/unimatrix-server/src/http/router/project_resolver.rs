@@ -224,6 +224,11 @@ impl MultiProjectRouter {
     }
 }
 
+/// Test-only seam (vnc-050 OVERVIEW §Test-Only Seams): every `resolve_store`
+/// key, so tests prove the slug guard runs before the funnel.
+#[cfg(test)]
+pub(crate) static RESOLVE_SPY: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
 impl StoreResolver for MultiProjectRouter {
     /// THE store funnel. Total over `ProjectKey`; map lookup + `Arc::clone` only —
     /// no I/O, no `.unwrap()`, no panic.
@@ -232,6 +237,11 @@ impl StoreResolver for MultiProjectRouter {
     ///   slug. NEVER falls back to a default or another slug (vnc-038 ADR-004,
     ///   R-09) — there is no default store to leak.
     fn resolve_store(&self, key: &ProjectKey) -> Result<Arc<Store>, RouteError> {
+        #[cfg(test)]
+        RESOLVE_SPY
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .push(format!("{key:?}"));
         match key {
             ProjectKey::Slug(s) => match self.slugs.get(s) {
                 Some(entry) => Ok(Arc::clone(&entry.store)),

@@ -23,13 +23,39 @@ use crate::http::token_table::tests::write_table;
 use crate::infra::config::HttpConfig;
 use crate::server::tests::make_server;
 
-const LEGACY: [u8; 32] = [0x5A; 32];
+pub(super) const LEGACY: [u8; 32] = [0x5A; 32];
 const SCOPED: [u8; 32] = [0x11; 32];
 const LABEL: &str = "step0-ci-read";
 
+/// Booted listener + the in-process server handle (shared Arcs with the router).
+pub(super) struct Fixture {
+    pub(super) addr: SocketAddr,
+    pub(super) shutdown: CancellationToken,
+    pub(super) server: crate::server::UnimatrixServer,
+}
+
+fn strip_principal(
+    mut r: http::Request<hyper::body::Incoming>,
+) -> http::Request<hyper::body::Incoming> {
+    r.extensions_mut().remove::<BearerPrincipal>();
+    r
+}
+
 /// Boot the real auth layer + PathRouter + listener (plain HTTP) for slug `alpha`.
-async fn boot(dir: &std::path::Path) -> (SocketAddr, CancellationToken) {
-    write_table(dir, &[(LABEL, SCOPED, "read", &["alpha"], false)]);
+///
+/// `scoped`: `(label, token, mode)` rows bound to `alpha`. `strip`: insert a
+/// test-only layer between auth and router that removes the `BearerPrincipal`
+/// (Parts reach the tool without a principal — empty-ceiling path).
+pub(super) async fn boot_with(
+    dir: &std::path::Path,
+    scoped: &[(&str, [u8; 32], &str)],
+    strip: bool,
+) -> Fixture {
+    let rows: Vec<_> = scoped
+        .iter()
+        .map(|(l, t, m)| (*l, *t, *m, &["alpha"][..], false))
+        .collect();
+    write_table(dir, &rows);
     let table = Arc::new(TokenTable::open(dir));
     let validator = TokenTableValidator::new(Some(LEGACY), table);
     let auth = StaticTokenAuthLayer::with_validator(Arc::new(validator));
@@ -39,7 +65,7 @@ async fn boot(dir: &std::path::Path) -> (SocketAddr, CancellationToken) {
     let input = ProjectServerInput {
         slug: ProjectSlug::try_from("alpha").expect("valid"),
         store: Arc::clone(&server.store),
-        server,
+        server: server.clone(),
         vector_dir: std::path::PathBuf::from("alpha/vector"),
     };
     let router = MultiProjectRouter::from_servers(
@@ -55,7 +81,6 @@ async fn boot(dir: &std::path::Path) -> (SocketAddr, CancellationToken) {
         embed_service: Arc::clone(&deps.embed_service),
         server_version: "test".to_string(),
     };
-    let service = tower::Layer::layer(&auth, PathRouter::new(resolver, observe_ctx));
     let config = HttpConfig {
         enabled: true,
         content_port: 0,
@@ -64,16 +89,41 @@ async fn boot(dir: &std::path::Path) -> (SocketAddr, CancellationToken) {
         max_request_body_bytes: 1_048_576,
         connection_timeout_secs: 30,
         allowed_origins: Vec::new(),
+        legacy_token_enabled: true,
     };
     let shutdown = CancellationToken::new();
-    let (_h, addr) = start_http_listener(&config, None, service, shutdown.clone())
-        .await
-        .expect("listener binds");
-    (addr, shutdown)
+    let path_router = PathRouter::new(resolver, observe_ctx);
+    let addr = if strip {
+        let inner = tower::Layer::layer(
+            &tower::util::MapRequestLayer::new(strip_principal as fn(_) -> _),
+            path_router,
+        );
+        let service = tower::Layer::layer(&auth, inner);
+        start_http_listener(&config, None, service, shutdown.clone())
+            .await
+            .expect("listener binds")
+            .1
+    } else {
+        let service = tower::Layer::layer(&auth, path_router);
+        start_http_listener(&config, None, service, shutdown.clone())
+            .await
+            .expect("listener binds")
+            .1
+    };
+    Fixture {
+        addr,
+        shutdown,
+        server,
+    }
+}
+
+async fn boot(dir: &std::path::Path) -> (SocketAddr, CancellationToken) {
+    let f = boot_with(dir, &[(LABEL, SCOPED, "read")], false).await;
+    (f.addr, f.shutdown)
 }
 
 /// One HTTP/1.1 POST over a fresh TCP connection; returns (head, body) text.
-async fn post(
+pub(super) async fn post(
     addr: SocketAddr,
     token: &[u8; 32],
     session: Option<&str>,
@@ -104,7 +154,7 @@ async fn post(
     (head.to_string(), rest.to_string())
 }
 
-fn session_id(head: &str) -> String {
+pub(super) fn session_id(head: &str) -> String {
     head.lines()
         .find_map(|l| {
             let (k, v) = l.split_once(':')?;
@@ -142,6 +192,88 @@ async fn run_session(addr: SocketAddr, token: &[u8; 32]) {
         head.starts_with("HTTP/1.1 200"),
         "tools/call: {head}\n{body}"
     );
+}
+
+/// initialize + notifications/initialized; returns the session id.
+pub(super) async fn open(addr: SocketAddr, token: &[u8; 32]) -> String {
+    let init = serde_json::json!({
+        "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {"name": "cap-ceiling", "version": "0"}
+        }
+    });
+    let (head, body) = post(addr, token, None, &init).await;
+    assert!(
+        head.starts_with("HTTP/1.1 200"),
+        "initialize: {head}\n{body}"
+    );
+    let sid = session_id(&head);
+    let note = serde_json::json!({"jsonrpc": "2.0", "method": "notifications/initialized"});
+    let (head, _) = post(addr, token, Some(&sid), &note).await;
+    assert!(head.starts_with("HTTP/1.1 202"), "initialized: {head}");
+    sid
+}
+
+/// `tools/call` in session `sid`; returns the JSON-RPC response object.
+pub(super) async fn call(
+    addr: SocketAddr,
+    token: &[u8; 32],
+    sid: &str,
+    name: &str,
+    args: serde_json::Value,
+) -> serde_json::Value {
+    let req = serde_json::json!({
+        "jsonrpc": "2.0", "id": 7, "method": "tools/call",
+        "params": {"name": name, "arguments": args}
+    });
+    let (head, body) = post(addr, token, Some(sid), &req).await;
+    assert!(head.starts_with("HTTP/1.1 200"), "{name}: {head}\n{body}");
+    body.lines()
+        .filter_map(|l| l.trim().strip_prefix("data:"))
+        .filter_map(|d| serde_json::from_str::<serde_json::Value>(d.trim()).ok())
+        .find(|v| v.get("id") == Some(&serde_json::json!(7)))
+        .unwrap_or_else(|| panic!("{name}: no JSON-RPC response in body: {body}"))
+}
+
+/// JSON-RPC error code, if the call failed at the protocol level.
+pub(super) fn err_code(v: &serde_json::Value) -> Option<i64> {
+    v.get("error")
+        .and_then(|e| e.get("code"))
+        .and_then(|c| c.as_i64())
+}
+
+/// Call succeeded (no JSON-RPC error and no tool-level `isError`).
+pub(super) fn ok(v: &serde_json::Value) -> bool {
+    v.get("error").is_none()
+        && v.get("result")
+            .and_then(|r| r.get("isError"))
+            .and_then(|e| e.as_bool())
+            != Some(true)
+}
+
+pub(super) async fn seed_entry(server: &crate::server::UnimatrixServer, topic: &str) -> u64 {
+    let entry = unimatrix_core::NewEntry {
+        title: format!("seed {topic}"),
+        content: format!("seed content for {topic}"),
+        topic: topic.to_string(),
+        category: "pattern".to_string(),
+        tags: vec![],
+        source: String::new(),
+        status: unimatrix_core::Status::Active,
+        created_by: "test".to_string(),
+        feature_cycle: String::new(),
+        trust_source: "agent".to_string(),
+    };
+    server.store.insert(entry).await.expect("seed insert")
+}
+
+pub(super) async fn scalar(server: &crate::server::UnimatrixServer, sql: &str) -> i64 {
+    sqlx::query_scalar::<_, i64>(sql)
+        .fetch_one(server.store.read_pool_test())
+        .await
+        .unwrap_or_else(|e| panic!("{sql}: {e}"))
 }
 
 fn probe_snapshot() -> Vec<ProbeRecord> {

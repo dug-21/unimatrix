@@ -534,6 +534,9 @@ impl UnimatrixServer {
         use crate::mcp::context::ToolContext;
         use crate::services::{AuditContext, AuditSource, CallerId};
 
+        crate::http::principal::reject_reserved_agent_id(params_agent_id)
+            .map_err(rmcp::ErrorData::from)?;
+
         // 1. Resolve identity.
         //    When external_identity is Some (W2-3 activation path), bypass resolve_agent
         //    and use the provided identity directly.
@@ -629,13 +632,21 @@ impl UnimatrixServer {
     ///
     /// Uses `spawn_blocking` to avoid holding the Store mutex on an async
     /// runtime thread (#176).
+    /// The token-mode ceiling (vnc-050 ADR-003) is checked first; effective
+    /// capabilities = registry grants ∩ ceiling. Same error either way.
     pub(crate) async fn require_cap(
         &self,
-        agent_id: &str,
+        ctx: &crate::mcp::context::ToolContext,
         cap: crate::infra::registry::Capability,
     ) -> Result<(), rmcp::ErrorData> {
+        if !crate::mcp::cap_ceiling::permits(ctx.cap_ceiling.as_ref(), cap) {
+            return Err(rmcp::ErrorData::from(ServerError::CapabilityDenied {
+                agent_id: ctx.agent_id.clone(),
+                capability: cap,
+            }));
+        }
         let registry = Arc::clone(&self.registry);
-        let agent_id = agent_id.to_string();
+        let agent_id = ctx.agent_id.clone();
         tokio::task::spawn_blocking(move || registry.require_capability(&agent_id, cap))
             .await
             .map_err(|e| {

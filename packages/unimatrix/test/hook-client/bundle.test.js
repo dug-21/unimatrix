@@ -192,6 +192,52 @@ describe("bundle decode — strict schema reject (load-bearing)", () => {
 // ============================================================================
 // v:1 hard-cut with actionable message (R-04)
 // ============================================================================
+describe("bundle decode — nullable fp (vnc-050 C8, ADR-005)", () => {
+  it("accepts fp:null (CA trust) and returns fp:null", () => {
+    const o = Object.assign({}, VALID_FIELDS, { fp: null });
+    const b = decodeBundle(wireFrom(o));
+    assert.strictEqual(b.fp, null);
+    assert.deepStrictEqual(b, o);
+  });
+  const bad = [
+    ["empty string", ""],
+    ["bare prefix", "sha256:"],
+    ["uppercase prefix", "SHA256:" + "a".repeat(64)],
+    ["uppercase hex", "sha256:" + "A".repeat(64)],
+    ["number", 0],
+    ["false", false],
+    ["object", {}],
+  ];
+  for (const [name, fp] of bad) {
+    it("rejects fp " + name, () => {
+      const o = Object.assign({}, VALID_FIELDS, { fp });
+      assert.throws(
+        () => decodeBundle(wireFrom(o)),
+        (err) =>
+          err instanceof BundleError &&
+          /fp/.test(err.message) &&
+          !err.message.includes(VALID_FIELDS.token)
+      );
+    });
+  }
+  it("rejects missing fp key (null is not absence)", () => {
+    const o = Object.assign({}, VALID_FIELDS);
+    delete o.fp;
+    assert.throws(() => decodeBundle(wireFrom(o)), BundleError);
+  });
+  it("rejects extra key alongside fp:null", () => {
+    const o = Object.assign({}, VALID_FIELDS, { fp: null, trust: "ca" });
+    assert.throws(() => decodeBundle(wireFrom(o)), BundleError);
+  });
+  it("pre-vnc-050 pinned golden rows still decode pinned (AC-24)", () => {
+    for (const row of BUNDLE_GOLDEN.rows || BUNDLE_GOLDEN) {
+      if (!row.wire || !row.fields || row.fields.v !== 2) continue;
+      if (row.fields.fp === null) continue;
+      assert.match(decodeBundle(row.wire).fp, /^sha256:[0-9a-f]{64}$/);
+    }
+  });
+});
+
 describe("bundle decode — v:1 fails closed with re-issue message (R-04)", () => {
   it("rejects a well-formed v:1 bundle and tells the operator to re-issue", () => {
     // A complete v:1 bundle: {v:1, base_url, token, fp}. Exact-key guard fails

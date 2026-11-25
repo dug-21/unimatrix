@@ -142,9 +142,45 @@ pub(crate) fn auth_identity(p: &BearerPrincipal) -> ResolvedIdentity {
     }
 }
 
+/// Reject caller-supplied agent ids in the reserved `token:` namespace (R-13).
+///
+/// Case- and leading-whitespace-insensitive. Called first in
+/// `build_context_with_external_identity` (stdio and HTTP).
+pub(crate) fn reject_reserved_agent_id(
+    agent_id: &Option<String>,
+) -> Result<(), crate::error::ServerError> {
+    if let Some(id) = agent_id
+        && id.trim().to_ascii_lowercase().starts_with(AUTH_ID_PREFIX)
+    {
+        return Err(crate::error::ServerError::InvalidInput {
+            field: "agent_id".to_string(),
+            reason: "the token: prefix is reserved".to_string(),
+        });
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reserved_token_prefix_rejected() {
+        for id in ["token:ci", "TOKEN:ci", " token:ci", "Token:"] {
+            assert!(
+                reject_reserved_agent_id(&Some(id.to_string())).is_err(),
+                "{id}"
+            );
+        }
+        for id in [
+            None,
+            Some("human".to_string()),
+            Some("tok:x".to_string()),
+            Some("my-token:x".to_string()),
+        ] {
+            assert!(reject_reserved_agent_id(&id).is_ok());
+        }
+    }
 
     fn slug(s: &str) -> ProjectSlug {
         ProjectSlug::try_from(s).expect("valid slug")

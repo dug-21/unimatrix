@@ -2808,6 +2808,8 @@ fn observe_ping_request(slug: &str) -> Request<TestBody> {
             Capability::Write,
             Capability::Search,
             Capability::Admin,
+            // vnc-050 ADR-004: observe requires SessionWrite.
+            Capability::SessionWrite,
         ],
     });
     req

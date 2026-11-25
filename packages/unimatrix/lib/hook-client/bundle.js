@@ -62,7 +62,7 @@ function keysAreExactly(keys) {
  * posted verbatim by the caller (ADR-001).
  *
  * @param {string} raw - The raw pasted bundle string.
- * @returns {{v:2, mcp_url:string, observe_url:string, token:string, fp:string}}
+ * @returns {{v:2, mcp_url:string, observe_url:string, token:string, fp:(string|null)}}
  */
 function decodeBundle(raw) {
   if (typeof raw !== "string") {
@@ -142,8 +142,9 @@ function decodeBundle(raw) {
     // never echo the token (NFR-06).
     throw new BundleError("token must be 64 lowercase hex chars");
   }
-  if (typeof obj.fp !== "string" || !FP_RE.test(obj.fp)) {
-    throw new BundleError("fp must be sha256:<64 hex>");
+  // fp:null = CA trust (vnc-050 ADR-005); the key itself stays mandatory.
+  if (obj.fp !== null && (typeof obj.fp !== "string" || !FP_RE.test(obj.fp))) {
+    throw new BundleError("fp must be null or sha256:<64 hex>");
   }
 
   return {
