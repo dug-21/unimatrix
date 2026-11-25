@@ -65,15 +65,20 @@ function run(extraEnv) {
 
 function writeStore(observeUrl) {
   const hash = configMod.computeProjectHash(configMod.walkToProjectRoot(root));
-  const prev = process.env.HOME;
+  // os.homedir() reads USERPROFILE on Windows, HOME elsewhere: set both.
+  const prev = process.env.HOME, prevUp = process.env.USERPROFILE;
   process.env.HOME = root;
+  process.env.USERPROFILE = root;
   try {
     credstore.write(hash, {
       mcp_url: observeUrl.replace(/\/observe$/, "/mcp"), observe_url: observeUrl,
       token: STORE_TOKEN, fingerprint: null,
     });
   } finally {
-    process.env.HOME = prev;
+    for (const [k, v] of [["HOME", prev], ["USERPROFILE", prevUp]]) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
   }
   return path.join(root, ".unimatrix", hash, "remote.json");
 }
@@ -127,7 +132,7 @@ describe("hook observe via UNIMATRIX_BUNDLE (vnc-050 R-07.3)", { skip: SKIP }, (
   });
 
   it("bundle_only_fp_null_ca_trust_event_lands", async () => {
-    const url = caSrv.url.replace("127.0.0.1", "localhost") + "/v1/alpha/observe";
+    const url = caSrv.url + "/v1/alpha/observe";
     const r = await run({ UNIMATRIX_BUNDLE: bundle(url, BUNDLE_TOKEN, null), NODE_EXTRA_CA_CERTS: ca.caPath });
     assert.strictEqual(r.code, 0, r.stderr);
     assert.strictEqual(caSrv.requests.length, 1, "exactly one observe POST: " + r.stderr);
@@ -137,7 +142,7 @@ describe("hook observe via UNIMATRIX_BUNDLE (vnc-050 R-07.3)", { skip: SKIP }, (
   });
 
   it("bundle_fp_null_without_trusted_ca_sends_nothing (CA verified)", async () => {
-    const url = caSrv.url.replace("127.0.0.1", "localhost") + "/v1/alpha/observe";
+    const url = caSrv.url + "/v1/alpha/observe";
     const r = await run({ UNIMATRIX_BUNDLE: bundle(url, BUNDLE_TOKEN, null) });
     assert.strictEqual(r.code, 0);
     assert.strictEqual(caSrv.requests.length, 0);
@@ -149,7 +154,7 @@ describe("hook credential precedence = resolveRemote/bridge (vnc-050 R-07.2)", {
   let bSrv;
   let eSrv;
   let sSrv;
-  const host = (s) => s.url.replace("127.0.0.1", "localhost") + "/v1/alpha/observe";
+  const host = (s) => s.url + "/v1/alpha/observe";
   before(async () => {
     const t = { tls: { cert: ca.good.cert, key: ca.good.key } };
     [bSrv, eSrv, sSrv] = await Promise.all([startStubServer(t), startStubServer(t), startStubServer(t)]);
@@ -184,6 +189,20 @@ describe("hook credential precedence = resolveRemote/bridge (vnc-050 R-07.2)", {
     const r = await run(Object.assign(CA(), { UNIMATRIX_BUNDLE: bundle(host(bSrv), BUNDLE_TOKEN, null) }));
     assert.deepStrictEqual(counts(), [1, 0, 0], r.stderr);
     assert.strictEqual(bearer(bSrv.requests[0]), BUNDLE_TOKEN);
+  });
+
+  it("F1: http:// UNIMATRIX_REMOTE_URL -> nothing sent, exit 0, one stderr line naming var", async () => {
+    writeStore(host(sSrv));
+    const url = host(eSrv).replace(/^https:/, "http:");
+    const r = await run(Object.assign(CA(), { UNIMATRIX_REMOTE_URL: url, UNIMATRIX_REMOTE_TOKEN: ENV_TOKEN }));
+    assert.deepStrictEqual(counts(), [0, 0, 0], r.stderr);
+    assert.strictEqual(r.code, 0, "hook is non-fatal");
+    assert.strictEqual(r.stdout, "");
+    const lines = r.stderr.split("\n").filter(Boolean);
+    assert.strictEqual(lines.length, 1, r.stderr);
+    assert.match(lines[0], /UNIMATRIX_REMOTE_URL must be an https:\/\/ URL/);
+    assert.ok(!r.stderr.includes("127.0.0.1"), "URL value leaked");
+    noSecrets(r);
   });
 
   for (const v of ["UNIMATRIX_REMOTE_URL", "UNIMATRIX_REMOTE_TOKEN"]) {

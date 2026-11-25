@@ -168,6 +168,26 @@ describe("resolveRemote precedence", () => {
   });
 });
 
+// F1 (#1010): env URLs carry the Bearer token — https only, never cleartext.
+describe("env URL scheme (F1)", () => {
+  for (const v of [VARS.MCP_URL, VARS.URL]) {
+    it(`${v} https:// accepted (incl. uppercase scheme)`, () => {
+      for (const u of ["https://e.example/x", "HTTPS://e.example/x"]) {
+        const r = resolveRemote({ [v]: u, [VARS.TOKEN]: TOKEN }, {});
+        assert.strictEqual((v === VARS.MCP_URL ? r.mcp : r.observe).url, u);
+      }
+    });
+    for (const u of ["http://e.example/x?k=" + HSENT, "ws://e.example/x", "ftp://e.example/x", "e.example/x", "https:e.example"]) {
+      it(`${v}=${u.slice(0, 10)}... rejected bad_url naming var, value-free`, () => {
+        const e = rejects(() => resolveRemote({ [v]: u, [VARS.TOKEN]: TOKEN }, {}), "bad_url");
+        assert.strictEqual(e.varName, v);
+        assert.match(e.message, new RegExp(v + " must be an https:// URL"));
+        assert.ok(!e.message.includes("e.example"), "URL value leaked");
+      });
+    }
+  }
+});
+
 describe("parseExtraHeaders", () => {
   const H = (o) => JSON.stringify(o);
   const reject = (raw, nameInMsg) => {

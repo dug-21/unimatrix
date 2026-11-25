@@ -31,7 +31,7 @@ function childPost(port, extra, fn, extraEnv) {
   return new Promise((resolve) => {
     const c = spawn(process.execPath, ["-e", script], {
       env: { ...process.env, NODE_EXTRA_CA_CERTS: fx.caPath, ...extraEnv,
-        ARGS: JSON.stringify({ url: `https://localhost:${port}/v1/s/observe`, tok: TOKEN, extra, fn }) },
+        ARGS: JSON.stringify({ url: `https://127.0.0.1:${port}/v1/s/observe`, tok: TOKEN, extra, fn }) },
     });
     let stdout = "", stderr = "";
     c.stdout.on("data", (d) => { stdout += d; });
@@ -40,11 +40,11 @@ function childPost(port, extra, fn, extraEnv) {
   });
 }
 
-function runBridge(port, extraEnv) {
+function runBridge(port, extraEnv, eofNow) {
   return new Promise((resolve) => {
     const c = spawn(process.execPath, [path.join(LIB, "mcp-bridge.js")], {
       env: { ...process.env, HOME: fx.dir, NODE_EXTRA_CA_CERTS: fx.caPath,
-        UNIMATRIX_REMOTE_MCP_URL: `https://localhost:${port}/v1/s/mcp`, UNIMATRIX_REMOTE_TOKEN: TOKEN,
+        UNIMATRIX_REMOTE_MCP_URL: `https://127.0.0.1:${port}/v1/s/mcp`, UNIMATRIX_REMOTE_TOKEN: TOKEN,
         UNIMATRIX_REMOTE_HEADERS: JSON.stringify({ "X-Sentinel": HDR }), ...extraEnv },
     });
     let out = "", err = "";
@@ -53,6 +53,7 @@ function runBridge(port, extraEnv) {
     c.on("exit", (code) => resolve({ code, out, err }));
     c.stdin.write(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize",
       params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "0" } } }) + "\n");
+    if (eofNow) c.stdin.end();
     setTimeout(() => c.kill(), 15000);
   });
 }
@@ -110,13 +111,25 @@ describe("vnc-050 C10 CA trust branch", opt, () => {
       assert.strictEqual(c.bytes.length, 0);
     });
 
-    it(name + "_zero_bytes_bridge", async () => {
-      const c = await cap(fx[which], mcpRespond);
-      const r = await runBridge(c.port);
-      assert.strictEqual(r.code, 1);
-      assert.strictEqual(c.bytes.length, 0);
-      assert.match(r.err, /TLS certificate verification failed/);
-      assert.ok(!(r.err + r.out).includes(TOKEN) && !(r.err + r.out).includes(HDR));
+    // Zero-bytes and exit-code are independent subtests: neither masks the other.
+    describe(name + "_zero_bytes_bridge", () => {
+      let c, r;
+      before(async () => { c = await cap(fx[which], mcpRespond); r = await runBridge(c.port); });
+      it("zero_application_bytes", () => assert.strictEqual(c.bytes.length, 0));
+      it("exit_1_tls_verify_message", () => {
+        assert.strictEqual(r.code, 1, r.err);
+        assert.match(r.err, /TLS certificate verification failed/);
+      });
+      it("no_secret_in_output", () => assert.ok(!(r.err + r.out).includes(TOKEN) && !(r.err + r.out).includes(HDR)));
+    });
+
+    // #1021: stdin EOF right after the request (printf | bridge) must still
+    // fail loud — the bridge drains in-flight requests before exiting.
+    it(name + "_bridge_eof_immediately_exits_1", async () => {
+      const b = await cap(fx[which], mcpRespond);
+      const r = await runBridge(b.port, {}, true);
+      assert.strictEqual(b.bytes.length, 0, "zero application bytes");
+      assert.strictEqual(r.code, 1, r.err);
     });
   }
 
@@ -161,6 +174,14 @@ describe("vnc-050 C10 CA trust branch", opt, () => {
     assert.match(s, /DELETE \/v1\/s\/mcp/);
     assert.strictEqual(s.split("X-Sentinel: " + HDR).length - 1, 2, "header on POST and DELETE");
     assert.ok(!r.err.includes(TOKEN) && !r.err.includes(HDR));
+  });
+
+  it("bridge_http_env_url_exits_1_naming_var (F1)", async () => {
+    const r = await runBridge(1, { UNIMATRIX_REMOTE_MCP_URL: "http://127.0.0.1:1/v1/s/mcp" });
+    assert.strictEqual(r.code, 1);
+    assert.match(r.err, /UNIMATRIX_REMOTE_MCP_URL must be an https:\/\/ URL/);
+    assert.strictEqual(r.out, "");
+    assert.ok(!r.err.includes(TOKEN) && !r.err.includes("127.0.0.1"));
   });
 
   it("bridge_bundle_conflict_exits_1_naming_var", async () => {

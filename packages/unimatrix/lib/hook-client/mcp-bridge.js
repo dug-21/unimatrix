@@ -48,23 +48,32 @@ function run(session, deps) {
   // (N3: run() previously built Lifecycle with no deps → stderr-only, untestable).
   const lifecycle = new Lifecycle(session, deps);
 
-  framer.onMessage(async (msg) => {
-    let response = null;
-    try {
-      response = await lifecycle.handle(msg);
-    } catch (_err) {
-      return; // pin mismatch already exited loud; keep bridge alive otherwise
-    }
-    if (response !== null) framer.write(response);
+  // #1021: requests arriving before initialize resolves wait for it (else they
+  // go session-less -> id:null); on EOF, drain in-flight requests (a TLS verify
+  // failure exits 1 there) before teardown + exit 0 after stdout flushes.
+  const pending = new Set();
+  let init = null;
+  framer.onMessage((msg) => {
+    const isInit = msg && msg.method === "initialize";
+    const gate = init;
+    const p = (async () => {
+      if (!isInit && gate) await gate;
+      const response = await lifecycle.handle(msg);
+      if (response !== null) framer.write(response);
+    })().catch(() => {}); // pin mismatch already exited loud; keep bridge alive otherwise
+    if (isInit) init = p;
+    pending.add(p);
+    p.then(() => pending.delete(p));
   });
 
   stdin.on("end", async () => {
+    while (pending.size) await Promise.all([...pending]);
     try {
       await session.teardown();
     } catch (_err) {
       // best-effort
     }
-    exit(0);
+    try { stdout.write("", () => exit(0)); } catch (_e) { exit(0); }
   });
 }
 

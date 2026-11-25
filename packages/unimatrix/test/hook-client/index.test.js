@@ -23,6 +23,7 @@ const { spawn } = require("child_process");
 
 const index = require("../../lib/hook-client/index");
 const { startStubServer, refusedPort } = require("../helpers/stub-server");
+const CA = require("../helpers/ca-fixture").makeCaFixture();
 
 const ENTRY = path.resolve(__dirname, "../../lib/hook-client/index.js");
 
@@ -750,8 +751,9 @@ describe("spawn: exit-0 / no-stdout guarantee", () => {
     assert.strictEqual(r.stdout.length, 0);
   });
 
-  it("test_unwritable_state_dir_exit0", async () => {
-    stub = await startStubServer();
+  it("test_unwritable_state_dir_exit0", { skip: CA ? false : "openssl unavailable" }, async () => {
+    // F1 (#1010): env URLs must be https — TLS stub with a locally trusted CA.
+    stub = await startStubServer({ tls: { cert: CA.good.cert, key: CA.good.key } });
     stub.respondWith({ status: 204 });
     // Point HOME at a file so the state dir cannot be created (state is best-effort).
     // vnc-039 Scope B: the credential store is HOME-keyed too, so a file-HOME also
@@ -762,7 +764,7 @@ describe("spawn: exit-0 / no-stdout guarantee", () => {
     fs.writeFileSync(homeFile, "x");
     const r = await runEntry("Stop", JSON.stringify({ session_id: "s1" }), {
       home: homeFile,
-      env: { UNIMATRIX_REMOTE_URL: withObserve(stub.url), UNIMATRIX_REMOTE_TOKEN: "tok" },
+      env: { UNIMATRIX_REMOTE_URL: withObserve(stub.url), UNIMATRIX_REMOTE_TOKEN: "tok", NODE_EXTRA_CA_CERTS: CA.caPath },
     });
     assert.strictEqual(r.status, 0);
     assert.strictEqual(r.stdout.length, 0);

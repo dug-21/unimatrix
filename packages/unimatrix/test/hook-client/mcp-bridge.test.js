@@ -1062,3 +1062,62 @@ describe("store-error posture (R-13) + no-leak (R-09)", () => {
     });
   });
 });
+
+// ── run loop: EOF drain + pre-initialize ordering (#1021) ───────────────────
+
+describe("bridge run loop (#1021)", () => {
+  // bodyStream emits on nextTick — too early when resolved from a timer.
+  function lateBody(buf) {
+    const r = new EventEmitter();
+    r.destroy = () => {};
+    r.resume = () => {};
+    setTimeout(() => { r.emit("data", buf); r.emit("end"); }, 5);
+    return r;
+  }
+  function harness(delayMs) {
+    const stdin = new EventEmitter();
+    stdin.setEncoding = () => {};
+    const lines = [];
+    const stdout = { write: (s, cb) => { if (s) lines.push(JSON.parse(s)); if (cb) cb(); return true; } };
+    const order = [];
+    let tornDown = false;
+    const session = {
+      sessionId: null, protocolVersion: null,
+      request(body, opts) {
+        order.push((opts && opts.isInitialize ? "init:" : "req:") + body.method + ":" + this.sessionId);
+        return new Promise((resolve) => setTimeout(() => {
+          if (opts && opts.isInitialize) this.sessionId = "sid-1";
+          resolve({ status: 200, contentType: "application/json",
+            res: lateBody(Buffer.from(JSON.stringify({ jsonrpc: "2.0", id: body.id, result: {} }))) });
+        }, delayMs));
+      },
+      teardown() { tornDown = true; return Promise.resolve(); },
+    };
+    let exitCode = null;
+    const exited = new Promise((resolve) => {
+      bridge.run(session, { stdin, stdout, exit: (c) => { exitCode = c; resolve(); }, errOut: () => {} });
+    });
+    return { stdin, lines, order, exited, code: () => exitCode, tornDown: () => tornDown };
+  }
+  const msg = (o) => JSON.stringify(Object.assign({ jsonrpc: "2.0" }, o)) + "\n";
+
+  it("test_bridge_eofDrainsInFlightBeforeExit", async () => {
+    const h = harness(50);
+    h.stdin.emit("data", msg({ id: 1, method: "initialize", params: {} }) + msg({ id: 2, method: "tools/list" }));
+    h.stdin.emit("end");
+    await h.exited;
+    assert.strictEqual(h.code(), 0);
+    assert.deepStrictEqual(h.lines.map((l) => l.id), [1, 2], "both responses written before exit");
+    assert.ok(h.tornDown());
+  });
+
+  it("test_bridge_preInitializeRequest_waitsForSession_noNullId", async () => {
+    const h = harness(30);
+    h.stdin.emit("data", msg({ id: 1, method: "initialize", params: {} }));
+    h.stdin.emit("data", msg({ id: 2, method: "tools/list" }));
+    h.stdin.emit("end");
+    await h.exited;
+    assert.deepStrictEqual(h.order, ["init:initialize:null", "req:tools/list:sid-1"]);
+    assert.ok(h.lines.every((l) => l.id !== null && !l.error), JSON.stringify(h.lines));
+  });
+});

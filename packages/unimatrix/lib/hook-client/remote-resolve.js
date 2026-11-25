@@ -89,6 +89,9 @@ function resolveRemote(env, opts) {
   if (nz(fp) && !nz(mu) && !nz(ou)) {
     throw err("fp_without_url", `${FP} is set but neither ${MCP_URL} nor ${URL} is set`, FP);
   }
+  for (const u of [MCP_URL, URL]) { // F1: never send the Bearer token in cleartext
+    if (nz(env[u]) && !/^https:\/\//i.test(env[u])) throw err("bad_url", `${u} must be an https:// URL`, u);
+  }
   if (nz(tok) && !nz(mu) && !nz(ou)) throw err("partial_pair", `${absence(env, URL)}; ${TOKEN} is set`, URL);
   for (const u of [MCP_URL, URL]) {
     if (nz(env[u]) && !nz(tok)) throw err("partial_pair", `${absence(env, TOKEN)}; ${u} is set`, TOKEN);

@@ -24,6 +24,9 @@ const { spawn } = require("child_process");
 
 const config = require("../lib/hook-client/config.js");
 const { startStubServer } = require("./helpers/stub-server.js");
+const { makeCaFixture } = require("./helpers/ca-fixture.js");
+
+let caFx;
 
 const STDIO_FIXTURE = path.resolve(__dirname, "fixtures", "mcp", "stdio-mcp-fixture.js");
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -342,10 +345,13 @@ function sleep(ms) {
  * HTTP ingress — the "cloud" command-level path. Sets UNIMATRIX_REMOTE_URL/TOKEN
  * so the client posts every frame to a scriptable stub; each recorded request
  * body is a wire frame carrying `provider`. Deployment-representative and CI-
- * robust (no binary, no trust).
+ * robust (no binary; local test CA).
  */
 async function makeHttpIngress() {
-  const stub = await startStubServer();
+  // F1 (vnc-050 #1010): env URLs must be https — TLS stub + locally trusted CA.
+  caFx = caFx || makeCaFixture();
+  if (!caFx) throw new Error("openssl unavailable: cloud-http ingress needs a TLS fixture");
+  const stub = await startStubServer({ tls: { cert: caFx.good.cert, key: caFx.good.key } });
   stub.respondWith({ status: 204 });
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "c14-http-home-"));
   return {
@@ -354,6 +360,7 @@ async function makeHttpIngress() {
     env: {
       UNIMATRIX_REMOTE_URL: stub.url,
       UNIMATRIX_REMOTE_TOKEN: "c14-token",
+      NODE_EXTRA_CA_CERTS: caFx.caPath,
       HOME: home,
       USERPROFILE: home,
     },

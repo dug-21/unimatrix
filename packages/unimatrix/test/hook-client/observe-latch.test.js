@@ -12,6 +12,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
 const { startStubServer, refusedPort } = require("../helpers/stub-server");
+const { makeCaFixture } = require("../helpers/ca-fixture");
 const configMod = require("../../lib/hook-client/config");
 
 const ENTRY = path.resolve(__dirname, "../../lib/hook-client/index.js");
@@ -20,6 +21,10 @@ const RW_TOKEN = "SENTINEL-rw-token-bbbb";
 const DENY = { status: 403, contentType: "application/json", body: '{"error":"token lacks SessionWrite"}' };
 const WARN = /observe denied/;
 const STDIN = JSON.stringify({ hook_event_name: "Stop", session_id: "s1" });
+
+// F1 (#1010): env URLs must be https — serve TLS with a locally trusted CA.
+const ca = makeCaFixture();
+const TLS = ca ? { tls: { cert: ca.good.cert, key: ca.good.key } } : undefined;
 
 let root;
 let stub;
@@ -43,6 +48,7 @@ function run(token, url) {
     USERPROFILE: root,
     UNIMATRIX_REMOTE_URL: url || stub.url + "/observe",
     UNIMATRIX_REMOTE_TOKEN: token,
+    NODE_EXTRA_CA_CERTS: ca ? ca.caPath : "",
   });
   return new Promise((resolve, reject) => {
     const c = spawn(process.execPath, [ENTRY, "Stop"], { cwd: root, env });
@@ -65,11 +71,11 @@ async function runN(n, token, url) {
 const warnings = (rs) => rs.reduce((a, r) => a + (r.stderr.match(/observe denied/g) || []).length, 0);
 const byToken = (map) => (e) => map[(e.headers.authorization || "").replace(/^Bearer /, "")] || { status: 204 };
 
-describe("observe-denied marker latch (vnc-050 HD 10)", () => {
+describe("observe-denied marker latch (vnc-050 HD 10)", { skip: ca ? false : "openssl unavailable" }, () => {
   beforeEach(async () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-latch-test-"));
     fs.mkdirSync(path.join(root, ".git"));
-    stub = await startStubServer();
+    stub = await startStubServer(TLS);
   });
   afterEach(async () => {
     await stub.close();
@@ -154,7 +160,7 @@ describe("observe-denied marker latch (vnc-050 HD 10)", () => {
 
   it("latch_only_on_sessionwrite_403: connection refused", async () => {
     const port = await refusedPort();
-    const rs = await runN(2, READ_TOKEN, "http://127.0.0.1:" + port + "/observe");
+    const rs = await runN(2, READ_TOKEN, "https://127.0.0.1:" + port + "/observe");
     assert.strictEqual(warnings(rs), 0);
     assert.ok(!fs.existsSync(marker()));
   });
