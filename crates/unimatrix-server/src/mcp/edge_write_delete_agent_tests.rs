@@ -8,13 +8,13 @@
 //! from an identical fixture — a copy would drift and defeat the subset
 //! assertion (R-02 fixture identity).
 
-use super::{delete_agent_edges_for_entry, EDGE_SOURCE_AGENT};
+use super::{EDGE_SOURCE_AGENT, delete_agent_edges_for_entry};
 
 use crate::background::insert_graph_edge_with_source;
 use sqlx::Row;
 use tempfile::TempDir;
-use unimatrix_store::test_helpers::open_test_store;
 use unimatrix_store::SqlxStore;
+use unimatrix_store::test_helpers::open_test_store;
 
 // ── local count helpers (test-only) ─────────────────────────────────────────
 
@@ -73,7 +73,11 @@ async fn test_delete_agent_edges_for_entry_removes_inbound_and_outbound_returns_
         .await
         .expect("eager delete must succeed");
 
-    assert_eq!(removed.len(), 2, "both inbound and outbound agent edges removed");
+    assert_eq!(
+        removed.len(),
+        2,
+        "both inbound and outbound agent edges removed"
+    );
     assert_eq!(
         count_agent_edges_touching(&store, e).await,
         0,
@@ -81,8 +85,12 @@ async fn test_delete_agent_edges_for_entry_removes_inbound_and_outbound_returns_
     );
 
     // Tuple capture correctness: both directions present in the returned set.
-    let has_outbound = removed.iter().any(|r| r.source_id == 100 && r.target_id == 200);
-    let has_inbound = removed.iter().any(|r| r.source_id == 300 && r.target_id == 100);
+    let has_outbound = removed
+        .iter()
+        .any(|r| r.source_id == 100 && r.target_id == 200);
+    let has_inbound = removed
+        .iter()
+        .any(|r| r.source_id == 300 && r.target_id == 100);
     assert!(has_outbound, "outbound tuple (100->200) captured");
     assert!(has_inbound, "inbound tuple (300->100) captured");
 }
@@ -152,7 +160,11 @@ async fn test_delete_returning_is_single_statement_capture() {
     // ONE call both deleted and captured the SAME set: returned count equals the
     // pre-count of matching rows, and none remain. No delete-then-separate-SELECT
     // window could produce this equality.
-    assert_eq!(removed.len() as i64, pre, "captured tuples == rows that matched");
+    assert_eq!(
+        removed.len() as i64,
+        pre,
+        "captured tuples == rows that matched"
+    );
     assert_eq!(
         count_agent_edges_touching(&store, e).await,
         0,
@@ -268,7 +280,11 @@ async fn test_high_degree_entry_all_agent_edges_removed() {
         .await
         .expect("eager delete must succeed");
 
-    assert_eq!(removed.len(), 50, "all 50 agent edges removed in one statement");
+    assert_eq!(
+        removed.len(),
+        50,
+        "all 50 agent edges removed in one statement"
+    );
     assert_eq!(
         count_agent_edges_touching(&store, e).await,
         0,
@@ -300,7 +316,10 @@ async fn test_shared_edge_removed_by_first_deprecation() {
     let second = delete_agent_edges_for_entry(&store, b as u64)
         .await
         .expect("second delete must succeed");
-    assert!(second.is_empty(), "second deprecation's RETURNING omits the already-gone edge");
+    assert!(
+        second.is_empty(),
+        "second deprecation's RETURNING omits the already-gone edge"
+    );
 }
 
 // ── NFR-01 / NFR-02 / R-02 — predicate & pool pin (structural) ──────────────

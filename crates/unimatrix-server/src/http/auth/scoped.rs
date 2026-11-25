@@ -33,8 +33,6 @@ impl TokenTableValidator {
     }
 
     /// Disable the legacy token (FR-11); a match then yields `LegacyDisabled`.
-    // rationale: wired to `http.legacy_token_enabled` by C5 (vnc-050 Wave 1).
-    #[allow(dead_code)]
     pub(crate) fn with_legacy_enabled(mut self, enabled: bool) -> Self {
         self.legacy_enabled = enabled;
         self

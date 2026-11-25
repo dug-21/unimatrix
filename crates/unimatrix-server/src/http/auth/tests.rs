@@ -436,3 +436,44 @@ fn test_static_token_validator_capabilities_complete_set() {
         "Admin must NOT be granted to HTTP bearer callers"
     );
 }
+
+// ---- vnc-050 C5: legacy disable through the real layer ----
+
+async fn call_with_table(legacy_enabled: bool, presented: &str) -> (StatusCode, String) {
+    let dir = tempfile::tempdir().unwrap();
+    crate::http::token_table::tests::write_table(
+        dir.path(),
+        &[("ci", [7; 32], "read-write", &["alpha"], false)],
+    );
+    let layer =
+        StaticTokenAuthLayer::with_token_table(test_token_bytes(), dir.path(), legacy_enabled);
+    let mut svc = layer.layer(MockInnerService);
+    let req = Request::builder()
+        .uri("/mcp")
+        .method(Method::POST)
+        .header("authorization", format!("Bearer {presented}"))
+        .body(empty_body())
+        .unwrap();
+    body_to_string(svc.call(req).await.unwrap()).await
+}
+
+#[tokio::test]
+async fn disabled_legacy_401_no_echo() {
+    let (status, body) = call_with_table(false, &test_token_hex()).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(body, r#"{"error":"legacy token disabled"}"#);
+    assert!(!body.contains(&test_token_hex()));
+}
+
+#[tokio::test]
+async fn disabled_legacy_scoped_unaffected() {
+    let (status, body) = call_with_table(false, &hex::encode([7u8; 32])).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(body.contains("token:ci"), "{body}");
+}
+
+#[tokio::test]
+async fn enabled_legacy_passes_through_table_layer() {
+    let (status, _) = call_with_table(true, &test_token_hex()).await;
+    assert_eq!(status, StatusCode::OK);
+}

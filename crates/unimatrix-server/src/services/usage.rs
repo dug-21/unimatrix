@@ -29,6 +29,8 @@ pub(crate) struct UsageService {
     // the service for wiring but not read directly through this field today.
     #[allow(dead_code)]
     confidence_state: ConfidenceStateHandle,
+    #[cfg(test)]
+    test_hooks: Arc<super::usage_test_hooks::UsageTestHooks>,
     /// Operator-configured confidence weights (dsn-001, GH #311).
     ///
     /// Resolved once at startup via `resolve_confidence_params()` and threaded
@@ -80,6 +82,9 @@ pub(crate) struct UsageContext {
     /// Set true only at the context_store call site (after require_cap(Write) passes).
     /// All other UsageContext construction sites must explicitly set false.
     pub write_capable: bool,
+    /// vnc-050 ADR-004: false for read-token calls; `record_access` returns early.
+    /// No `Default` impl: every construction site must decide (R-04.6).
+    pub(crate) learning_allowed: bool,
 }
 
 impl UsageService {
@@ -95,7 +100,23 @@ impl UsageService {
             usage_dedup,
             confidence_state,
             confidence_params,
+            #[cfg(test)]
+            test_hooks: Arc::default(),
         }
+    }
+
+    /// Test seam: number of `record_access` calls past the learning gate.
+    #[cfg(test)]
+    pub(crate) fn enqueued(&self) -> usize {
+        self.test_hooks
+            .enqueued
+            .load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Test seam: wait for all spawned recording tasks to finish.
+    #[cfg(test)]
+    pub(crate) async fn flush(&self) {
+        self.test_hooks.flush().await;
     }
 
     /// Record access for a set of entry IDs.
@@ -103,9 +124,16 @@ impl UsageService {
     /// Fire-and-forget: spawns blocking tasks and returns immediately.
     /// Errors in spawned tasks are logged, never propagated.
     pub(crate) fn record_access(&self, entry_ids: &[u64], source: AccessSource, ctx: UsageContext) {
+        if !ctx.learning_allowed {
+            return;
+        }
         if entry_ids.is_empty() {
             return;
         }
+        #[cfg(test)]
+        self.test_hooks
+            .enqueued
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         match source {
             AccessSource::McpTool => self.record_mcp_usage(entry_ids, ctx),
@@ -229,7 +257,11 @@ impl UsageService {
             dyn Fn(&unimatrix_store::EntryRecord, u64) -> f64 + Send + Sync,
         > = Box::new(move |entry, now| crate::confidence::compute_confidence(entry, now, &params));
 
+        #[cfg(test)]
+        let _inflight = self.test_hooks.track();
         let _detached = tokio::spawn(async move {
+            #[cfg(test)]
+            let _inflight = _inflight;
             // Async usage recording (nxs-011: record_usage_with_confidence is now async)
             if let Err(e) = store
                 .record_usage_with_confidence(
@@ -298,14 +330,22 @@ impl UsageService {
         // co_access: fire-and-forget via analytics drain (eventual consistency acceptable)
         if let Some(pairs) = co_access_pairs {
             let s = Arc::clone(&store);
+            #[cfg(test)]
+            let _inflight = self.test_hooks.track();
             tokio::task::spawn_blocking(move || {
+                #[cfg(test)]
+                let _inflight = _inflight;
                 s.record_co_access_pairs(&pairs);
             });
         }
         // feature_entries: direct async write (immediate visibility required)
         if let Some((feature_str, ids)) = feature_recording {
             let s = Arc::clone(&store);
+            #[cfg(test)]
+            let _inflight = self.test_hooks.track();
             tokio::spawn(async move {
+                #[cfg(test)]
+                let _inflight = _inflight;
                 // ADR-001 crt-025: use call-time phase snapshot, not live SessionState.
                 if let Err(e) = s
                     .record_feature_entries(&feature_str, &ids, phase_snapshot.as_deref())
@@ -338,7 +378,11 @@ impl UsageService {
         let store = Arc::clone(&self.store);
         // GH #311: use operator-configured params, not ConfidenceParams::default().
         let params = Arc::clone(&self.confidence_params);
+        #[cfg(test)]
+        let _inflight = self.test_hooks.track();
         let _detached = tokio::spawn(async move {
+            #[cfg(test)]
+            let _inflight = _inflight;
             // Async usage recording (nxs-011)
             if let Err(e) = store
                 .record_usage_with_confidence(
@@ -416,6 +460,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
     }
@@ -437,6 +482,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
 
@@ -468,6 +514,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
 
@@ -494,6 +541,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
 
@@ -521,6 +569,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -538,6 +587,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -566,6 +616,7 @@ mod usage_tests {
                     access_weight: 1,
                     current_phase: None,
                     write_capable: false,
+                    learning_allowed: true,
                 },
             );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -594,6 +645,7 @@ mod usage_tests {
                     access_weight: 1,
                     current_phase: None,
                     write_capable: false,
+                    learning_allowed: true,
                 },
             );
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -623,6 +675,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -648,6 +701,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         let elapsed = start.elapsed();
@@ -675,6 +729,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: true,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -711,6 +766,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -750,6 +806,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -782,6 +839,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -800,6 +858,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -829,6 +888,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -859,6 +919,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -893,6 +954,7 @@ mod usage_tests {
                 access_weight: 2, // context_lookup sets this
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -928,6 +990,7 @@ mod usage_tests {
                 access_weight: 2,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -951,6 +1014,7 @@ mod usage_tests {
                 access_weight: 2,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -982,6 +1046,7 @@ mod usage_tests {
             access_weight: 1,
             current_phase: Some("scope".to_string()),
             write_capable: false,
+            learning_allowed: true,
         };
         assert_eq!(ctx.current_phase.as_deref(), Some("scope"));
 
@@ -994,6 +1059,7 @@ mod usage_tests {
             access_weight: 1,
             current_phase: None,
             write_capable: false,
+            learning_allowed: true,
         };
         assert!(ctx_none.current_phase.is_none());
     }
@@ -1020,6 +1086,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: Some("scope".to_string()),
                 write_capable: true,
+                learning_allowed: true,
             },
         );
 
@@ -1060,6 +1127,7 @@ mod usage_tests {
                 access_weight: 1,
                 current_phase: None,
                 write_capable: true,
+                learning_allowed: true,
             },
         );
 
@@ -1109,6 +1177,7 @@ mod usage_tests {
                 access_weight: 0,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -1133,6 +1202,7 @@ mod usage_tests {
                 access_weight: 2,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -1205,6 +1275,7 @@ mod usage_tests {
                 access_weight: 0,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
@@ -1232,6 +1303,7 @@ mod usage_tests {
                     access_weight: 2,
                     current_phase: None,
                     write_capable: false,
+                    learning_allowed: true,
                 },
             );
         }
@@ -1268,6 +1340,7 @@ mod usage_tests {
                     access_weight: 0,
                     current_phase: None,
                     write_capable: false,
+                    learning_allowed: true,
                 },
             );
         }
@@ -1293,6 +1366,7 @@ mod usage_tests {
                 access_weight: 2,
                 current_phase: None,
                 write_capable: false,
+                learning_allowed: true,
             },
         );
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -1324,6 +1398,7 @@ mod usage_tests {
                 feature_cycle: None,
                 trust_level: None,
                 write_capable: false,
+                learning_allowed: true,
                 access_weight: 0,
                 current_phase: None,
             },
@@ -1357,6 +1432,7 @@ mod usage_tests {
             access_weight: 1,
             current_phase: None,
             write_capable: false,
+            learning_allowed: true,
         };
         let entry_ids: &[u64] = &[1, 2, 3];
 
@@ -1391,6 +1467,7 @@ mod usage_tests {
             access_weight: 1,
             current_phase: None,
             write_capable: true,
+            learning_allowed: true,
         };
         let entry_ids: &[u64] = &[42];
 

@@ -12,6 +12,7 @@ pub mod contradiction;
 pub mod daemon;
 pub mod embed_handle;
 pub mod hash;
+pub mod legacy_token_config;
 pub mod nli_handle;
 pub mod outcome_tags;
 pub mod pidfile;

@@ -1521,7 +1521,11 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         // resolver owns (FR-X5, no fixed-adapter fallback). The `resolver` arg is
         // the sole swap point (R-01 sc.2).
         let path_router = PathRouter::new(resolver, observe_ctx);
-        let auth_layer = StaticTokenAuthLayer::with_token_table(token_array, &paths.data_dir);
+        let auth_layer = StaticTokenAuthLayer::with_token_table(
+            token_array,
+            &paths.data_dir,
+            config.http.legacy_token_enabled,
+        );
         let service = tower::Layer::layer(&auth_layer, path_router);
 
         // 5. Start HTTP listener
@@ -2140,18 +2144,26 @@ fn load_config_and_build_allowlist(
                 tracing::info!(preset = ?result.config.profile.preset, "config loaded");
                 (result.config, result.projects)
             }
+            Err(
+                e @ unimatrix_server::infra::config::ConfigError::InvalidLegacyTokenOverride {
+                    ..
+                },
+            ) => {
+                // vnc-050 ADR-001: a bad override is a boot error, never a fallback.
+                return Err(ServerError::Config(e.to_string()));
+            }
             Err(e) => {
                 tracing::error!(
                     error = %e,
                     "CONFIG LOAD FAILED: {e} — falling back to compiled defaults. \
                      Review the config file for syntax errors."
                 );
-                (UnimatrixConfig::default(), Vec::new())
+                (fallback_config()?, Vec::new())
             }
         },
         None => {
             tracing::warn!("home directory not found; using compiled defaults (R-15)");
-            (UnimatrixConfig::default(), Vec::new())
+            (fallback_config()?, Vec::new())
         }
     };
 
@@ -2204,6 +2216,15 @@ fn load_config_and_build_allowlist(
 }
 
 /// Log provenance of each config source at appropriate levels.
+/// Compiled-default config with the legacy-token env override still applied
+/// (vnc-050 ADR-001): a config-load fallback must not re-enable the legacy token.
+fn fallback_config() -> Result<UnimatrixConfig, ServerError> {
+    let mut config = UnimatrixConfig::default();
+    unimatrix_server::infra::legacy_token_config::apply_legacy_token_env(&mut config)
+        .map_err(|e| ServerError::Config(e.to_string()))?;
+    Ok(config)
+}
+
 fn log_config_provenance(provenance: &ConfigProvenance) {
     match &provenance.global {
         SourceStatus::Loaded { path } => {

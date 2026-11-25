@@ -114,6 +114,8 @@ where
 {
     slug_router: SlugRouter,
     observe_ctx: ObserveContext,
+    /// vnc-050 ADR-002: `http_access` sink used by the slug guard.
+    access_audit: Arc<dyn slug_guard::AccessAudit>,
     _phantom: std::marker::PhantomData<fn(ReqBody)>,
 }
 
@@ -146,9 +148,12 @@ where
     /// (vnc-034 Wave 2 funnel-elimination, OQ-PR-8/9). The `resolver` argument
     /// alone is the Wave 1 <-> Wave 2 swap point (R-01 sc.2).
     pub fn new(resolver: Arc<dyn StoreResolver>, observe_ctx: ObserveContext) -> Self {
+        let access_audit: Arc<dyn slug_guard::AccessAudit> =
+            Arc::new(slug_guard::ResolverAccessAudit::new(Arc::clone(&resolver)));
         PathRouter {
             slug_router: SlugRouter::new(resolver),
             observe_ctx,
+            access_audit,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -164,6 +169,7 @@ where
         PathRouter {
             slug_router: self.slug_router.clone(),
             observe_ctx: self.observe_ctx.clone(),
+            access_audit: Arc::clone(&self.access_audit),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -192,6 +198,13 @@ where
         // `POST /v1/{slug}/observe`, detected by suffix and dispatched through the
         // SAME funnel as MCP (`route_observe`). Everything else is MCP via the
         // `SlugRouter` (`route_mcp`).
+        // vnc-050 ADR-002: slug guard before the observe/MCP split and before any
+        // `resolve_store`. `/health` is exempt (exact match, = AUTH_BYPASS_PATHS).
+        if !(method == Method::GET && path == "/health")
+            && let Err(resp) = slug_guard::check(&request, &*self.access_audit)
+        {
+            return Box::pin(async move { Ok(resp) });
+        }
         match (&method, path.as_str()) {
             (&Method::GET, "/health") => {
                 // Route to health handler. Auth already bypassed by StaticTokenAuth (ADR-002).
@@ -220,6 +233,7 @@ where
 // lines). Re-exported below so the `super::*` test module and existing call
 // sites are unaffected (pure relocation, no behavior change).
 mod handlers;
+pub(crate) mod slug_guard;
 // The observe handler and its `StatusCode` / `HookRequest` dependencies moved
 // into `handlers`; the `super::*` test module still references those types, so
 // they are re-imported test-only here (no runtime use remains in this file).

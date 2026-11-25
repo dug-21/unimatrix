@@ -1,7 +1,7 @@
 //! Scoped token table `{data_dir}/tokens.json` (vnc-050 C1, ADR-001).
 //!
-//! Read side only (Wave 0): strict parse, per-request stat-stamp snapshot,
-//! constant-time full scan. Hashes at rest (SHA-256 of the raw 32 bytes);
+//! Read side here (strict parse, per-request stat-stamp snapshot,
+//! constant-time full scan); writers in `write`. Hashes at rest (SHA-256 of the raw 32 bytes);
 //! revoked records are tombstones that still participate in the scan. A file
 //! that exists but does not parse fails closed — no last-good snapshot.
 
@@ -288,6 +288,17 @@ impl TokenTable {
         (r, visits)
     }
 }
+
+mod write;
+#[allow(unused_imports)] // rationale: consumed by C7 `client-bundle tokens list` (W2).
+pub(crate) use write::EntryView;
+
+/// Test seam (OVERVIEW §Test-Only Seams): called by `atomic_write` right
+/// after the tmp file is created, before any bytes are written.
+#[cfg(test)]
+#[allow(clippy::type_complexity)]
+pub(crate) static AFTER_TMP_CREATE: std::sync::Mutex<Option<Box<dyn Fn(&Path) + Send>>> =
+    std::sync::Mutex::new(None);
 
 #[cfg(test)]
 pub(crate) mod tests;

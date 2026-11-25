@@ -26,6 +26,7 @@ use crate::infra::validation::{
     validate_status_params, validate_store_params, validated_id, validated_k, validated_limit,
     validated_max_tokens,
 };
+use crate::mcp::cap_ceiling;
 use crate::mcp::response::{
     ResolutionNote, format_correct_success, format_deprecate_success, format_duplicate_found,
     format_edges_carried, format_enroll_success, format_index_table, format_lookup_results,
@@ -753,7 +754,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Search).await?;
+        self.require_cap(&ctx, Capability::Search).await?;
 
         // 2. Validation
         validate_search_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -827,11 +828,13 @@ impl UnimatrixServer {
                 access_weight: 1,
                 current_phase: current_phase.clone(), // col-028: phase captured above (C-04)
                 write_capable: false, // context_search does not write feature_entries
+                learning_allowed: cap_ceiling::records_learning(ctx.cap_ceiling.as_ref()),
             },
         );
 
-        // 7. nxs-010: Query log recording (fire-and-forget, ADR-002)
-        {
+        // 7. nxs-010: Query log recording (fire-and-forget, ADR-002).
+        //    vnc-050 ADR-004: suppressed for read-token calls.
+        if cap_ceiling::records_learning(ctx.cap_ceiling.as_ref()) {
             let entry_ids: Vec<u64> = search_results
                 .entries
                 .iter()
@@ -887,7 +890,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Read).await?;
+        self.require_cap(&ctx, Capability::Read).await?;
 
         // 2. Validation
         validate_lookup_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -970,6 +973,7 @@ impl UnimatrixServer {
                 access_weight: 2,
                 current_phase,        // col-028: phase captured above
                 write_capable: false, // context_lookup does not write feature_entries
+                learning_allowed: cap_ceiling::records_learning(ctx.cap_ceiling.as_ref()),
             },
         );
 
@@ -978,6 +982,7 @@ impl UnimatrixServer {
         // errors before reaching here. Multi-ID filter results are NOT explicit fetches.
         if target_ids.len() == 1
             && params.id.is_some()
+            && cap_ceiling::records_learning(ctx.cap_ceiling.as_ref()) // vnc-050 ADR-004
             && let Some(sid) = ctx.audit_ctx.session_id.as_deref()
             && let Some(&entry_id) = target_ids.first()
         {
@@ -1006,7 +1011,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+        self.require_cap(&ctx, Capability::Write).await?;
 
         // 2. Validation
         validate_store_params(&params, self.store_config.max_content_bytes)
@@ -1188,6 +1193,7 @@ impl UnimatrixServer {
                     access_weight: 1,
                     current_phase: current_phase.clone(),
                     write_capable: true, // require_cap(Write) already passed; always true here
+                    learning_allowed: cap_ceiling::records_learning(ctx.cap_ceiling.as_ref()),
                 },
             );
         }
@@ -1229,7 +1235,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Read).await?;
+        self.require_cap(&ctx, Capability::Read).await?;
 
         // 2. Validation
         validate_get_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -1334,13 +1340,16 @@ impl UnimatrixServer {
                 access_weight: 2,     // col-028: was 1; deliberate full-content read
                 current_phase,        // col-028: phase captured above
                 write_capable: false, // context_get does not write feature_entries
+                learning_allowed: cap_ceiling::records_learning(ctx.cap_ceiling.as_ref()),
             },
         );
 
         // col-028 FR-08: always record explicit fetch in confirmed_entries (EC-05 contract:
         // only reached after successful entry_store.get, so entry definitely exists).
         // vnc-042: record effective_id — the entry actually confirmed/returned.
-        if let Some(sid) = ctx.audit_ctx.session_id.as_deref() {
+        if cap_ceiling::records_learning(ctx.cap_ceiling.as_ref()) // vnc-050 ADR-004
+            && let Some(sid) = ctx.audit_ctx.session_id.as_deref()
+        {
             self.session_registry
                 .record_confirmed_entry(sid, effective_id);
         }
@@ -1367,7 +1376,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+        self.require_cap(&ctx, Capability::Write).await?;
 
         // 2. Validation (includes original_id range check)
         validate_correct_params(&params, self.store_config.max_content_bytes)
@@ -1576,7 +1585,7 @@ impl UnimatrixServer {
         //    ── RETROFIT SEAM #2 (comment only): a future enterprise trust-elevation check
         //       (min_trust_level) attaches HERE, where the principal is already resolved.
         //       vnc-045 wires NOTHING beyond Write. `agent_id` is audit-only, never authz (SD-9).
-        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+        self.require_cap(&ctx, Capability::Write).await?;
 
         // 3. Parse action → TagAction (no silent default).
         let action =
@@ -1676,7 +1685,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+        self.require_cap(&ctx, Capability::Write).await?;
 
         // 2. Validation (includes id range check)
         validate_deprecate_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -1796,7 +1805,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Read).await?;
+        self.require_cap(&ctx, Capability::Read).await?;
 
         // 2. Validation
         validate_status_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -1901,7 +1910,7 @@ impl UnimatrixServer {
                     None,
                 )
                 .await?;
-            self.require_cap(&ctx.agent_id, Capability::Search).await?;
+            self.require_cap(&ctx, Capability::Search).await?;
 
             // 2. Validation
             validate_briefing_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -2215,6 +2224,7 @@ impl UnimatrixServer {
                     access_weight: 0, // col-028: was 1; offer-only, not explicit read
                     current_phase,    // col-028: phase captured above
                     write_capable: false, // context_briefing does not write feature_entries
+                    learning_allowed: cap_ceiling::records_learning(ctx.cap_ceiling.as_ref()),
                 },
             );
 
@@ -2244,7 +2254,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Admin).await?;
+        self.require_cap(&ctx, Capability::Admin).await?;
 
         // 2. Validation
         validate_quarantine_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -2368,7 +2378,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Admin).await?;
+        self.require_cap(&ctx, Capability::Admin).await?;
 
         // 2. Input validation
         validate_enroll_params(&params).map_err(rmcp::ErrorData::from)?;
@@ -3867,7 +3877,7 @@ impl UnimatrixServer {
                 None,
             )
             .await?;
-        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+        self.require_cap(&ctx, Capability::Write).await?;
 
         // ── Step 2: Source fetch ──────────────────────────────────────────────
         let source_entry = self.entry_store.get(params.source_id).await.map_err(|_| {
@@ -4107,7 +4117,7 @@ impl UnimatrixServer {
             .await?;
 
         // 2. Capability check -- SessionWrite maps to Write capability
-        self.require_cap(&ctx.agent_id, Capability::Write).await?;
+        self.require_cap(&ctx, Capability::Write).await?;
 
         // 3. Validation via shared validate_cycle_params (ADR-004, C-02)
         let validated = match validate_cycle_params(
@@ -4333,7 +4343,7 @@ impl UnimatrixServer {
         // ── Step 2: Capability check — runs BEFORE handle_graph (FR-02, Constraints §3) ─
         // Ordering mandated: capability check → parameter validation → mode dispatch.
         // validate_no_unsupported_params runs inside handle_graph, not here.
-        self.require_cap(&ctx.agent_id, Capability::Read).await?;
+        self.require_cap(&ctx, Capability::Read).await?;
 
         // ── Step 3: Acquire typed_graph_state handle ──────────────────────────────
         // Arc::clone is cheap — the handle is shared with the background tick service.

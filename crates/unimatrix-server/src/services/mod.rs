@@ -43,6 +43,8 @@ pub(crate) mod store_ops;
 pub(crate) mod store_tag;
 pub(crate) mod typed_graph;
 pub(crate) mod usage;
+#[cfg(test)]
+pub(crate) mod usage_test_hooks;
 
 pub(crate) use confidence::ConfidenceService;
 pub use confidence::{ConfidenceState, ConfidenceStateHandle};
