@@ -36,6 +36,7 @@ import ssl
 import subprocess
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -83,6 +84,13 @@ class MultiSlugHttpServer:
 
         env["UNIMATRIX_HTTP_ENABLED"] = "true"
         env["UNIMATRIX_PUBLIC_URL"] = self.base
+        # Reuse the developer model cache (temp HOME would otherwise force a
+        # download) so write tools that embed can complete. Empty = unset.
+        _models = Path(os.path.expanduser("~")) / ".cache" / "unimatrix" / "models"
+        if "UNIMATRIX_MODEL_CACHE" not in env and _models.is_dir():
+            env["UNIMATRIX_MODEL_CACHE"] = str(_models)
+        self._env = env
+        self._proj = proj
         log_path = self._home / "daemon.log"
         self._logf = open(log_path, "w")
         self._proc = subprocess.Popen(
@@ -238,3 +246,117 @@ class MultiSlugHttpServer:
                 return n
             time.sleep(0.5)
         return self.count_observations(slug, topic_signal)
+
+    # -- vnc-050 scoped headless tokens (real `client-bundle` CLI) -----------
+    def _cli(self, args: list[str]) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [self.binary, "--project-dir", str(self._proj), "client-bundle", *args],
+            env=self._env, capture_output=True, text=True, timeout=60,
+        )
+
+    def mint_token(self, slug: str, mode: str, label: str) -> str:
+        """Mint a scoped token via `client-bundle --headless` against the
+        running daemon's data dir; return the secret decoded from the bundle."""
+        import base64
+        r = self._cli([slug, "--headless", "--mode", mode, "--label", label])
+        if r.returncode != 0:
+            raise RuntimeError(f"mint {label} failed rc={r.returncode}: {r.stderr[-400:]}")
+        blob = r.stdout.strip()
+        assert blob.startswith("unimatrix-bundle:"), blob[:40]
+        body = blob[len("unimatrix-bundle:"):]
+        body += "=" * (-len(body) % 4)
+        return json.loads(base64.urlsafe_b64decode(body))["token"]
+
+    def revoke_token(self, slug: str, label: str) -> subprocess.CompletedProcess:
+        return self._cli([slug, "--revoke", label])
+
+    def list_tokens(self, slug: str) -> subprocess.CompletedProcess:
+        return self._cli([slug, "--list"])
+
+    def _post(self, url: str, body: dict, token: str, sid: str | None = None):
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        if sid:
+            headers["Mcp-Session-Id"] = sid
+        req = urllib.request.Request(url, data=json.dumps(body).encode(),
+                                     method="POST", headers=headers)
+        try:
+            with urllib.request.urlopen(req, context=self._ssl_ctx(), timeout=60) as resp:
+                return resp.status, dict(resp.headers), resp.read().decode(errors="replace")
+        except urllib.error.HTTPError as e:
+            return e.code, dict(e.headers), e.read().decode(errors="replace")
+
+    def mcp_open(self, slug: str, token: str) -> tuple[int, str | None]:
+        """initialize + notifications/initialized on `/v1/{slug}/mcp`.
+        Returns (status, session_id)."""
+        url = f"{self.base}/v1/{slug}/mcp"
+        st, hdrs, _ = self._post(url, {
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                       "clientInfo": {"name": "infra001-headless", "version": "0"}},
+        }, token)
+        sid = next((v for k, v in hdrs.items() if k.lower() == "mcp-session-id"), None)
+        if st == 200 and sid:
+            self._post(url, {"jsonrpc": "2.0", "method": "notifications/initialized"}, token, sid)
+        return st, sid
+
+    def mcp_call(self, slug: str, token: str, sid: str, tool: str, args: dict,
+                 call_id: int = 2) -> tuple[int, dict | None, str]:
+        """tools/call; returns (http_status, parsed JSON-RPC message or None, raw)."""
+        st, _, raw = self._post(f"{self.base}/v1/{slug}/mcp", {
+            "jsonrpc": "2.0", "id": call_id, "method": "tools/call",
+            "params": {"name": tool, "arguments": args},
+        }, token, sid)
+        msg = None
+        for line in raw.splitlines():
+            line = line.strip()
+            if line.startswith("data:"):
+                line = line[5:].strip()
+            if line.startswith("{"):
+                try:
+                    cand = json.loads(line)
+                except ValueError:
+                    continue
+                if cand.get("id") == call_id:
+                    msg = cand
+        return st, msg, raw
+
+    def observe_record_as(self, slug: str, token: str, session_id: str, topic_signal: str) -> tuple[int, str]:
+        body = json.dumps({
+            "type": "RecordEvent", "event_type": "tool_use", "session_id": session_id,
+            "timestamp": 0, "payload": {}, "topic_signal": topic_signal,
+        }).encode()
+        req = urllib.request.Request(
+            f"{self.base}/v1/{slug}/observe", data=body, method="POST",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, context=self._ssl_ctx(), timeout=30) as resp:
+                return resp.status, resp.read().decode(errors="replace")
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode(errors="replace")
+
+    def query(self, slug: str, sql: str, params: tuple = ()) -> list[tuple]:
+        """WAL-robust read-only snapshot query of the slug's store."""
+        import shutil
+        db = self.store_db[slug]
+        tmp = f"{db}.q.{os.getpid()}.db"
+        try:
+            shutil.copy(db, tmp)
+            for ext in ("-wal", "-shm"):
+                if Path(db + ext).exists():
+                    shutil.copy(db + ext, tmp + ext)
+            conn = sqlite3.connect(tmp)
+            try:
+                return conn.execute(sql, params).fetchall()
+            finally:
+                conn.close()
+        finally:
+            for ext in ("", "-wal", "-shm"):
+                try:
+                    os.remove(tmp + ext)
+                except OSError:
+                    pass
