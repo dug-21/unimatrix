@@ -43,6 +43,9 @@ On invocation, orient yourself before engaging. Do all of this in parallel:
    gh issue list --label "goal:self-learning" --state all --limit 10 --json number,title,state
    gh issue list --label "goal:proactive-delivery" --state all --limit 10 --json number,title,state
    gh issue list --label "goal:domain-agnostic" --state all --limit 10 --json number,title,state
+   gh issue list --label "goal:integrity" --state all --limit 10 --json number,title,state
+   gh issue list --label "goal:platform" --state all --limit 10 --json number,title,state
+   gh issue list --label "goal:trusted-identity" --state all --limit 10 --json number,title,state
    ```
 4. **Check security posture**:
    ```bash
