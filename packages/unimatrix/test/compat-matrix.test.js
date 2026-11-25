@@ -145,7 +145,11 @@ describe("vnc-050 R-21 compat matrix", { skip: SKIP }, () => {
     let srv;
     let legacy;
     before(async () => {
-      srv = await startRealServer({ publicUrl: true, tlsPair: ca.good });
+      srv = await startRealServer({
+        publicUrl: true, tlsPair: ca.good,
+        // Reuse the developer/CI model cache so the AC-20 old-client write can embed.
+        env: { UNIMATRIX_MODEL_CACHE: process.env.UNIMATRIX_MODEL_CACHE || path.join(os.homedir(), ".cache", "unimatrix", "models") },
+      });
       const r = await srv.cli(["client-bundle", srv.slug]);
       assert.equal(r.code, 0, r.stderr);
       legacy = r.stdout.trim();
@@ -178,6 +182,32 @@ describe("vnc-050 R-21 compat matrix", { skip: SKIP }, () => {
         { cwd: tmp, env: clientEnv(path.join(tmp, "en-home2"), { UNIMATRIX_BUNDLE: legacy }) }, reqs);
       assert.ok(ok(eb.responses.get(2)), "new bridge pinned UNIMATRIX_BUNDLE: " + eb.stderr);
       assert.equal(typeof newBundle.decodeBundle(legacy).fp, "string");
+    });
+
+    it("compat_matrix_legacy_enabled: old bridge writes via legacy token (AC-20 write)", async () => {
+      const home = path.join(tmp, "wr-home");
+      fs.mkdirSync(home);
+      const proj = mkProject(tmp, "wr-proj");
+      const init = await run(process.execPath, [old.bin, "init", "--bundle", legacy], { cwd: proj, env: clientEnv(home) });
+      assert.equal(init.code, 0, init.stderr + init.stdout);
+      const hash = require(path.join(old.dir, "lib", "hook-client", "config.js")).computeProjectHash(proj);
+      const content = "old client legacy write compat marker";
+      const STORE = { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "context_store",
+        arguments: { title: "compat old write", content, topic: "compat-write", category: "pattern", agent_id: "human" } } };
+      const deadline = Date.now() + 120000; // embedding model loads asynchronously after boot
+      let last;
+      for (;;) {
+        last = await bridge(process.execPath, [path.join(old.dir, "lib/hook-client/mcp-bridge.js"), hash],
+          { cwd: proj, env: clientEnv(home) }, [INIT, INITIALIZED, STORE]);
+        if (ok(last.responses.get(2)) || Date.now() > deadline) break;
+        await new Promise((res) => setTimeout(res, 2000));
+      }
+      assert.ok(ok(last.responses.get(2)), "old bridge store: " + JSON.stringify(last.responses.get(2)) + last.stderr);
+      const LOOK = { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "context_lookup", arguments: { topic: "compat-write" } } };
+      const lk = await bridge(process.execPath, [path.join(old.dir, "lib/hook-client/mcp-bridge.js"), hash],
+        { cwd: proj, env: clientEnv(home) }, [INIT, INITIALIZED, LOOK]);
+      assert.ok(ok(lk.responses.get(3)) && JSON.stringify(lk.responses.get(3)).includes("compat old write"),
+        "written entry visible: " + JSON.stringify(lk.responses.get(3)));
     });
 
     it("compat_matrix_legacy_enabled: old env observe lands (AC-22; 0.11.3 ignores the fingerprint var, env path is CA-verified)", async () => {

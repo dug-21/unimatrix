@@ -26,7 +26,7 @@ Stage 3c, 2026-11-25, branch `feature/vnc-050`.
 | R-18 | Bundle/env conflict list | JS conflict-var tests (bridge + hook), empty-string, partial pair | PASS | Full |
 | R-19 | Modularity | gate-3b line delta (WARN, non-blocking, documented) | WARN | Full (gate check) |
 | R-20 | Residual agent_id gap (accepted) | cap_ceiling regression pin (rw + human write OK, Admin denied) | PASS | Full |
-| R-21 | Backward compat | `compat-matrix.test.js` (0.11.3 tarball), FR-39 diff skipped without baseline bin | PASS | Partial (see Gaps) |
+| R-21 | Backward compat | `compat-matrix.test.js` (0.11.3 tarball) incl. old-client write and `fr39_legacy_response_diff` vs main-built baseline (7/7) | PASS | Full |
 | R-22 | Omitted agent_id → anonymous (accepted) | cap_ceiling/principal tests | PASS | Full |
 
 ## Test Results
@@ -63,8 +63,8 @@ All xfails are pre-existing markers with existing GH issues; none added.
 - Triage: one failure in the new test, caused by the test itself. Random hex markers sometimes matched the PII phone scanner. Fixed with digit-free markers (`_tag()`).
 
 ## Gaps
-- **AC-20 old-client write**: 0.11.3 cells only exercise read tools (`context_status`/`context_lookup`). Legacy-token writes against the new server are covered by the new client and by infra `test_legacy_token_still_works_all_slugs` (raw HTTP with the legacy token). An old-client binary write has not been run. Partial.
-- **FR-39 response diff**: skipped by default because it needs a binary built from main (`UNIMATRIX_COMPAT_BASELINE_BIN`). This is a pre-PR gate step. Partial for R-21.
+- **Closed (follow-up)**: AC-20 old-client write. New cell `compat_matrix_legacy_enabled: old bridge writes via legacy token (AC-20 write)` uses the 0.11.3 bridge to `context_store` through the legacy token, then looks the entry up. It uses the local model cache, which the server receives through `UNIMATRIX_MODEL_CACHE`.
+- **Closed (follow-up)**: FR-39. Baseline server built from `main` (c4140ff0) in a temp worktree, which was then removed. `fr39_legacy_response_diff` ran with `UNIMATRIX_COMPAT_BASELINE_BIN` and passed. compat-matrix: 7 pass, 0 fail, 0 skip. By default it still skips without the env var.
 - **AC-17 audit attribution test** reads audit_log through python3 sqlite3 and would skip if python3 were missing. python3 is present here, so it ran.
 - **Closed**: `server_db_zero_observation_rows`. AC-18 server-side zero rows is now proven at the real daemon by `test_read_token_observe_returns_403_zero_rows`.
 
@@ -92,7 +92,7 @@ All xfails are pre-existing markers with existing GH issues; none added.
 | AC-17 | PASS | CLI tombstone tests; infra list/remint |
 | AC-18 | PASS | observe_gate_tests; infra real-daemon zero rows; JS marker latch |
 | AC-19 | PASS | `legacy_token_boot.rs` + config×env matrix |
-| AC-20 | PARTIAL | old-client initialize/read PASS; old-client write not exercised |
+| AC-20 | PASS | compat-matrix old-client initialize/read + old-client `context_store` write via legacy token |
 | AC-21 | PASS | compat-matrix remote.json byte compare |
 | AC-22 | PASS | compat-matrix env observe (old client ignores fp; CA cell) |
 | AC-23 | PASS | compat-matrix legacy-disabled cells |
