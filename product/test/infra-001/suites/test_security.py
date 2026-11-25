@@ -124,6 +124,26 @@ def test_restricted_agent_lookup_allowed(server):
 
 
 @pytest.mark.security
+def test_agent_id_token_prefix_reserved(server):
+    """vnc-050 R-13 (stdio leg): `token:` agent_id namespace is reserved on
+    stdio — a caller cannot self-assert a scoped-token identity. Rejection on
+    store and search; companion: ordinary agent_id succeeds; no `token:` row
+    is ever enrolled (checked via context_status agent count not needed —
+    rejection precedes resolve_or_enroll)."""
+    resp = server.context_store(
+        "forged attribution", "testing", "convention", agent_id="token:ci"
+    )
+    assert_tool_error(resp, "reserved")
+    resp = server.context_search("forged", agent_id="token:ci")
+    assert_tool_error(resp, "reserved")
+    # Success companion (#4416).
+    resp = server.context_store(
+        "legit attribution", "testing", "convention", agent_id="tok-ci"
+    )
+    assert_tool_success(resp)
+
+
+@pytest.mark.security
 def test_restricted_agent_store_allowed_permissive(server):
     """S-21: With permissive auto-enroll, restricted agent CAN store (has Write)."""
     resp = server.context_store(
