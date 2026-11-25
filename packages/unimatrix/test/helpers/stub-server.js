@@ -13,6 +13,7 @@
 //   await stub.close();
 
 const http = require("http");
+const https = require("https");
 const net = require("net");
 const fs = require("fs");
 const os = require("os");
@@ -31,7 +32,9 @@ function startStubServer(opts) {
   // Responder: (requestEntry) => responseSpec | undefined. Default 204 empty.
   let responder = () => ({ status: 204 });
 
-  const server = http.createServer((req, res) => {
+  // opts.tls = { cert, key } serves HTTPS (vnc-050 bundle/CA observe tests).
+  const tlsOpts = opts && opts.tls;
+  const handler = (req, res) => {
     // Clients may abort mid-response (timeout tests) — never crash the stub.
     req.on("error", () => {});
     res.on("error", () => {});
@@ -68,7 +71,8 @@ function startStubServer(opts) {
         send();
       }
     });
-  });
+  };
+  const server = tlsOpts ? https.createServer(tlsOpts, handler) : http.createServer(handler);
   // Sockets held open by delayed responses must not block close().
   const sockets = new Set();
   server.on("connection", (s) => {
@@ -83,7 +87,7 @@ function startStubServer(opts) {
       const port = server.address().port;
       const urlHost = host.includes(":") ? "[" + host + "]" : host;
       resolve({
-        url: "http://" + urlHost + ":" + port,
+        url: (tlsOpts ? "https://" : "http://") + urlHost + ":" + port,
         port,
         host,
         requests,
