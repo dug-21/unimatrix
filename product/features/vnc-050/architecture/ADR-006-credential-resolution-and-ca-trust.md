@@ -1,0 +1,21 @@
+## ADR-006: One Shared Remote-Credential Resolver; CA Trust When Unpinned (Relaxes vnc-039 ADR-005)
+
+### Context
+Prior decision vnc-039 ADR-005 (#5119) says cloud MCP is bundle-only, and `mcp-bridge.js` refuses a credential whose fingerprint is null. vnc-050 needs `UNIMATRIX_BUNDLE`, a low-level env pair (`UNIMATRIX_REMOTE_MCP_URL` + `UNIMATRIX_REMOTE_TOKEN`), and CA-validated TLS when there is no pin. SR-13 and SR-15: the observe path (`config.js`, which already honors `UNIMATRIX_REMOTE_URL`/`_TOKEN`) and the MCP bridge could resolve credentials differently. SR-19: a bundle fp and an env fingerprint could conflict. SR-01: the CA path must not inherit `rejectUnauthorized:false` from `cert-pin.js`, and must not send the token before verification. vnc-039 ADR-001's fail-loud pinned contract and the vnc-034 ADR-002 fp format must not regress (AC-05).
+
+### Decision
+- **New module** `lib/hook-client/remote-resolve.js`: `resolveRemote(env, {projectHash}) -> {mcp, observe, headers} | throws ResolveError`. Both `mcp-bridge.js buildSession` and `config.js resolve` consume it.
+- **Precedence** (first matching source wins; a conflict is a terminal error, exit 1, with a token-free message):
+  1. `UNIMATRIX_BUNDLE` is decoded with `bundle.js decodeBundle`, the same decoder `init --bundle` uses. MCP uses `{mcp_url, token, fp}` and observe uses `{observe_url, token, fp}`. Explicit combination list (human decision V-2b):
+     - **Rejected (terminal, exit 1, names the conflicting variable, never its value)**: bundle + any of `UNIMATRIX_REMOTE_MCP_URL`, `UNIMATRIX_REMOTE_URL`, `UNIMATRIX_REMOTE_TOKEN`, `UNIMATRIX_REMOTE_FINGERPRINT`.
+     - **Allowed**: bundle + `UNIMATRIX_REMOTE_HEADERS` (e.g. Cloudflare Access service-token headers); headers apply to both MCP and observe requests (ADR-007).
+     - Any other unrelated env var is ignored by the resolver.
+  2. Env pairs: MCP is `UNIMATRIX_REMOTE_MCP_URL` + `UNIMATRIX_REMOTE_TOKEN`. Observe is `UNIMATRIX_REMOTE_URL` + `UNIMATRIX_REMOTE_TOKEN`, with unchanged meaning. A URL without the token, or the token without any URL, is a terminal misconfiguration. Tiers resolve per consumer: the MCP env tier is active only when `UNIMATRIX_REMOTE_MCP_URL` is set; with only the existing observe pair (`UNIMATRIX_REMOTE_URL` + `_TOKEN`) the bridge falls through to the credential store exactly as today (backward compatibility for existing env-var observe setups). The observe path without `UNIMATRIX_REMOTE_URL` falls back to UDS as today. `UNIMATRIX_REMOTE_FINGERPRINT` (validated as `sha256:<64hex>`, vnc-034 ADR-002) pins both URLs. When it is absent, the connection uses CA trust. If `UNIMATRIX_REMOTE_FINGERPRINT` is set with no URL, that is an error.
+  3. The credential store (`credstore.read`) keeps its existing behavior. A stored `fingerprint:null` now means CA trust instead of an error.
+- **TLS branches** (`http-session.js`, `transport-http.js`): `pinnedFp` truthy keeps the existing `applyCertPin` / `verifyPeerFingerprint` path byte-for-byte. `pinnedFp` null uses plain `https.request` options with no `rejectUnauthorized` key, no `checkServerIdentity` override and no agent from `cert-pin.js`, so Node validates against default CAs and `NODE_EXTRA_CA_CERTS`. A guard asserts that `rejectUnauthorized === false` never reaches an unpinned request. Node buffers writes until `secureConnect`, and a failed verification destroys the socket, so no header or body bytes leave the client. A test against an untrusted server and a hostname-mismatched server asserts that the server saw zero application bytes.
+- **Supersession**: #5119 is corrected via `context_correct`. Cloud MCP is now "bundle, env pair, or store", and an unpinned credential uses CA trust instead of being refused.
+
+### Consequences
+- Both paths share one precedence rule and one decoder, so the MCP and observe paths cannot diverge.
+- The env-pair partial-config rule now applies to the MCP bridge as well as the observe path.
+- Private CAs need `NODE_EXTRA_CA_CERTS`. There is no custom CA setting.
