@@ -276,7 +276,7 @@ describe("size-gate header", function () {
     // #4780 round-number trim. Human-approved, recorded on #840. Keep these
     // meta-assertions in lockstep with the PRIMARY_LIMIT / BACKSTOP_LIMIT
     // constants in check-hook-client-size.js.
-    assert.strictEqual(PRIMARY_LIMIT, 113137); // vnc-050 #1010 human decision
-    assert.strictEqual(BACKSTOP_LIMIT, 200623);
+    assert.strictEqual(PRIMARY_LIMIT, 113639); // vnc-050 #1010 human decision (+F1/#1021)
+    assert.strictEqual(BACKSTOP_LIMIT, 201399);
   });
 });

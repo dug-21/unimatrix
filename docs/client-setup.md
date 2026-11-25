@@ -134,6 +134,7 @@ The bridge and the observe client read the bundle straight from the environment;
 
 - `UNIMATRIX_BUNDLE` cannot be combined with `UNIMATRIX_REMOTE_MCP_URL`, `UNIMATRIX_REMOTE_URL`, `UNIMATRIX_REMOTE_TOKEN` or `UNIMATRIX_REMOTE_FINGERPRINT`; the client exits with an error naming the conflicting variable.
 - An empty value is treated as unset (no trimming).
+- `UNIMATRIX_REMOTE_MCP_URL` and `UNIMATRIX_REMOTE_URL` must be `https://` URLs; any other scheme is rejected (the token is never sent in cleartext). The hook logs one stderr line and exits 0; the bridge exits 1.
 
 ### Extra headers (`UNIMATRIX_REMOTE_HEADERS`)
 
