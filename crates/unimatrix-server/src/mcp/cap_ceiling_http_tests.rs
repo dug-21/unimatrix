@@ -122,16 +122,27 @@ async fn boot(dir: &std::path::Path) -> (SocketAddr, CancellationToken) {
     (f.addr, f.shutdown)
 }
 
-/// One HTTP/1.1 POST over a fresh TCP connection; returns (head, body) text.
+/// One HTTP/1.1 POST to `/v1/alpha/mcp`; returns (head, body) text.
 pub(super) async fn post(
     addr: SocketAddr,
     token: &[u8; 32],
     session: Option<&str>,
     body: &serde_json::Value,
 ) -> (String, String) {
+    post_at(addr, "alpha", token, session, body).await
+}
+
+/// One HTTP/1.1 POST to `/v1/{slug}/mcp` over a fresh TCP connection.
+pub(super) async fn post_at(
+    addr: SocketAddr,
+    slug: &str,
+    token: &[u8; 32],
+    session: Option<&str>,
+    body: &serde_json::Value,
+) -> (String, String) {
     let body = body.to_string();
     let mut req = format!(
-        "POST /v1/alpha/mcp HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\
+        "POST /v1/{slug}/mcp HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\
          Authorization: Bearer {}\r\nContent-Type: application/json\r\n\
          Accept: application/json, text/event-stream\r\nContent-Length: {}\r\n",
         hex::encode(token),
@@ -194,8 +205,13 @@ async fn run_session(addr: SocketAddr, token: &[u8; 32]) {
     );
 }
 
-/// initialize + notifications/initialized; returns the session id.
+/// initialize + notifications/initialized on `alpha`; returns the session id.
 pub(super) async fn open(addr: SocketAddr, token: &[u8; 32]) -> String {
+    open_at(addr, "alpha", token).await
+}
+
+/// initialize + notifications/initialized on `slug`; returns the session id.
+pub(super) async fn open_at(addr: SocketAddr, slug: &str, token: &[u8; 32]) -> String {
     let init = serde_json::json!({
         "jsonrpc": "2.0", "id": 1, "method": "initialize",
         "params": {
@@ -204,21 +220,33 @@ pub(super) async fn open(addr: SocketAddr, token: &[u8; 32]) -> String {
             "clientInfo": {"name": "cap-ceiling", "version": "0"}
         }
     });
-    let (head, body) = post(addr, token, None, &init).await;
+    let (head, body) = post_at(addr, slug, token, None, &init).await;
     assert!(
         head.starts_with("HTTP/1.1 200"),
         "initialize: {head}\n{body}"
     );
     let sid = session_id(&head);
     let note = serde_json::json!({"jsonrpc": "2.0", "method": "notifications/initialized"});
-    let (head, _) = post(addr, token, Some(&sid), &note).await;
+    let (head, _) = post_at(addr, slug, token, Some(&sid), &note).await;
     assert!(head.starts_with("HTTP/1.1 202"), "initialized: {head}");
     sid
 }
 
-/// `tools/call` in session `sid`; returns the JSON-RPC response object.
+/// `tools/call` on `alpha` in session `sid`; returns the JSON-RPC response.
 pub(super) async fn call(
     addr: SocketAddr,
+    token: &[u8; 32],
+    sid: &str,
+    name: &str,
+    args: serde_json::Value,
+) -> serde_json::Value {
+    call_at(addr, "alpha", token, sid, name, args).await
+}
+
+/// `tools/call` on `slug` in session `sid`; returns the JSON-RPC response.
+pub(super) async fn call_at(
+    addr: SocketAddr,
+    slug: &str,
     token: &[u8; 32],
     sid: &str,
     name: &str,
@@ -228,7 +256,7 @@ pub(super) async fn call(
         "jsonrpc": "2.0", "id": 7, "method": "tools/call",
         "params": {"name": name, "arguments": args}
     });
-    let (head, body) = post(addr, token, Some(sid), &req).await;
+    let (head, body) = post_at(addr, slug, token, Some(sid), &req).await;
     assert!(head.starts_with("HTTP/1.1 200"), "{name}: {head}\n{body}");
     body.lines()
         .filter_map(|l| l.trim().strip_prefix("data:"))

@@ -13,6 +13,10 @@ const TEST_FP: &str = "sha256:abcdef0123456789abcdef0123456789abcdef0123456789ab
 const TEST_MCP_URL: &str = "https://cloud.example:8443/v1/alpha";
 const TEST_OBSERVE_URL: &str = "https://cloud.example:8443/v1/alpha/observe";
 
+fn alpha() -> ProjectSlug {
+    ProjectSlug::try_from("alpha").unwrap()
+}
+
 // --- compose_route_urls (route grammar owner, ADR-002) ---
 
 #[test]
@@ -40,10 +44,17 @@ fn test_client_bundle_stdout_is_opaque_blob_only() {
         TEST_MCP_URL,
         TEST_OBSERVE_URL,
         TEST_TOKEN,
-        TEST_FP,
+        Some(TEST_FP),
     )
     .unwrap();
-    let (stdout, _stderr) = render_output(&blob, TEST_MCP_URL, TEST_OBSERVE_URL, TEST_FP);
+    let (stdout, _stderr) = render_output(
+        &blob,
+        TEST_MCP_URL,
+        TEST_OBSERVE_URL,
+        Some(TEST_FP),
+        None,
+        &alpha(),
+    );
     // stdout is EXACTLY the blob — no prose, no extra lines, pipeable.
     assert_eq!(stdout, blob);
     assert!(stdout.starts_with("unimatrix-bundle:"));
@@ -57,10 +68,17 @@ fn test_client_bundle_stderr_echoes_urls_and_fp_only() {
         TEST_MCP_URL,
         TEST_OBSERVE_URL,
         TEST_TOKEN,
-        TEST_FP,
+        Some(TEST_FP),
     )
     .unwrap();
-    let (_stdout, stderr) = render_output(&blob, TEST_MCP_URL, TEST_OBSERVE_URL, TEST_FP);
+    let (_stdout, stderr) = render_output(
+        &blob,
+        TEST_MCP_URL,
+        TEST_OBSERVE_URL,
+        Some(TEST_FP),
+        None,
+        &alpha(),
+    );
     assert!(stderr.contains(TEST_MCP_URL), "stderr must echo mcp-url");
     assert!(
         stderr.contains(TEST_OBSERVE_URL),
@@ -81,10 +99,17 @@ fn test_client_bundle_token_absent_from_stdout_and_stderr() {
         TEST_MCP_URL,
         TEST_OBSERVE_URL,
         TEST_TOKEN,
-        TEST_FP,
+        Some(TEST_FP),
     )
     .unwrap();
-    let (stdout, stderr) = render_output(&blob, TEST_MCP_URL, TEST_OBSERVE_URL, TEST_FP);
+    let (stdout, stderr) = render_output(
+        &blob,
+        TEST_MCP_URL,
+        TEST_OBSERVE_URL,
+        Some(TEST_FP),
+        None,
+        &alpha(),
+    );
     assert!(
         !stdout.contains(TEST_TOKEN),
         "token must not be plaintext in stdout"
@@ -102,8 +127,8 @@ fn test_client_bundle_token_absent_from_stdout_and_stderr() {
 fn test_client_bundle_edit_me_placeholder_visible_on_stderr() {
     let mcp = "https://<EDIT-ME>:8443/v1/alpha";
     let obs = "https://<EDIT-ME>:8443/v1/alpha/observe";
-    let blob = encode_bundle(BUNDLE_VERSION, mcp, obs, TEST_TOKEN, TEST_FP).unwrap();
-    let (_stdout, stderr) = render_output(&blob, mcp, obs, TEST_FP);
+    let blob = encode_bundle(BUNDLE_VERSION, mcp, obs, TEST_TOKEN, Some(TEST_FP)).unwrap();
+    let (_stdout, stderr) = render_output(&blob, mcp, obs, Some(TEST_FP), None, &alpha());
     assert!(
         stderr.contains("<EDIT-ME>"),
         "placeholder must be visible on stderr"
@@ -117,7 +142,16 @@ fn test_client_bundle_edit_me_placeholder_visible_on_stderr() {
 #[test]
 fn test_run_client_bundle_rejects_invalid_slug() {
     // Invalid slug → loud Config error; no blob emitted (ADR-001/004).
-    let err = run_client_bundle(None, "badslug!").unwrap_err();
+    let args = ClientBundleArgs {
+        slug: "badslug!".to_string(),
+        headless: false,
+        mode: None,
+        label: None,
+        trust: None,
+        list: false,
+        revoke: None,
+    };
+    let err = run_client_bundle(None, args).unwrap_err();
     let msg = err.to_string();
     assert!(
         msg.contains("slug"),
@@ -162,4 +196,50 @@ fn test_is_token_and_is_fingerprint() {
     assert!(is_fingerprint(TEST_FP));
     assert!(!is_fingerprint("md5:abc"), "wrong algo prefix rejects");
     assert!(!is_fingerprint(TEST_TOKEN), "missing prefix rejects");
+}
+
+// --- vnc-050 C7: nullable fp + headless echo ---
+
+#[test]
+fn test_render_output_ca_trust_and_minted_echo() {
+    let blob = encode_bundle(
+        BUNDLE_VERSION,
+        TEST_MCP_URL,
+        TEST_OBSERVE_URL,
+        TEST_TOKEN,
+        None,
+    )
+    .unwrap();
+    let (stdout, stderr) = render_output(
+        &blob,
+        TEST_MCP_URL,
+        TEST_OBSERVE_URL,
+        None,
+        Some(("ci-bot", TokenMode::Read)),
+        &alpha(),
+    );
+    assert_eq!(stdout, blob);
+    assert!(stderr.contains("trust       : ca"), "{stderr}");
+    assert!(!stderr.contains("cert-fp"), "{stderr}");
+    assert!(stderr.contains("label       : ci-bot"));
+    assert!(stderr.contains("mode        : read"));
+    assert!(stderr.contains("slug        : alpha"));
+    assert!(stderr.contains("shown once"));
+    assert!(!stderr.contains(TEST_TOKEN));
+    assert_eq!(decode_bundle(&stdout).unwrap().fp, None);
+}
+
+#[test]
+fn test_encode_bundle_fp_none_serializes_null_key_present() {
+    let blob = encode_bundle(
+        BUNDLE_VERSION,
+        TEST_MCP_URL,
+        TEST_OBSERVE_URL,
+        TEST_TOKEN,
+        None,
+    )
+    .unwrap();
+    let body = blob.strip_prefix(BUNDLE_SCHEME).unwrap();
+    let json = String::from_utf8(URL_SAFE_NO_PAD.decode(body).unwrap()).unwrap();
+    assert!(json.ends_with(",\"fp\":null}"), "{json}");
 }

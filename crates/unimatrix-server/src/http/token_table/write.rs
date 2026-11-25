@@ -23,8 +23,6 @@ use crate::http::router::ProjectSlug;
 pub(crate) const TOKENS_TMP: &str = "tokens.json.tmp";
 pub(crate) const TOKENS_LOCK: &str = "tokens.lock";
 
-// rationale: writers are consumed by C7 `client-bundle tokens` (vnc-050 W2).
-#[allow(dead_code)]
 /// Non-secret listing row for one token (no hash).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EntryView {
@@ -82,7 +80,6 @@ fn read_current(table: &TokenTable) -> Result<TokenFile, ServerError> {
     }
 }
 
-#[allow(dead_code)] // rationale: consumed by C7 `client-bundle tokens` (vnc-050 W2).
 impl TokenTable {
     /// Run `f` on the current file under the exclusive lock; write its
     /// returned file (if any) atomically. Lock released on drop.
@@ -225,7 +222,9 @@ impl TokenTable {
         Ok(out)
     }
 
-    /// Infallible listing; a corrupt file yields empty (logged).
+    /// Infallible listing; a corrupt file yields empty (logged). Test-only:
+    /// the CLI uses [`Self::list_for_checked`] so corruption is reported.
+    #[cfg(test)]
     pub(crate) fn list_for(&self, slug: &ProjectSlug) -> Vec<EntryView> {
         self.list_for_checked(slug).unwrap_or_else(|e| {
             tracing::error!(error = %e, "tokens.json list failed");

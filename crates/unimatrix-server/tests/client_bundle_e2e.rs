@@ -166,11 +166,12 @@ fn test_e2e_bundle_fp_equals_served_leaf_der() {
     // Independent SHA-256 over the served leaf DER -> canonical sha256:<hex>.
     let expected = format!("sha256:{}", hex::encode(Sha256::digest(&served_der)));
     assert_eq!(
-        bundle.fp, expected,
+        bundle.fp.as_deref(),
+        Some(expected.as_str()),
         "emitted bundle fp must equal an independent fingerprint of the SERVED leaf DER"
     );
     // And it must equal the production oracle over the same DER (no second compute path).
-    assert_eq!(bundle.fp, fingerprint_leaf_der(&served_der));
+    assert_eq!(bundle.fp, Some(fingerprint_leaf_der(&served_der)));
     // vnc-038 ADR-002: the bundle carries server-composed `v:2` URLs (mcp_url +
     // observe_url) built from PUBLIC_URL + the `/v1/{slug}` grammar — no bare
     // `base_url`. These are what the client posts verbatim (ADR-001).
@@ -228,7 +229,7 @@ fn test_e2e_token_absent_from_stdout_and_stderr() {
         "token round-trips inside the blob only"
     );
     assert!(
-        stderr.contains(&bundle.fp),
+        stderr.contains(bundle.fp.as_deref().expect("pinned")),
         "stderr echoes the cert fingerprint"
     );
 }
@@ -252,7 +253,7 @@ fn test_e2e_emitted_blob_round_trips() {
     assert_eq!(bundle.mcp_url, expected_mcp_url());
     assert_eq!(bundle.observe_url, expected_observe_url());
     assert_eq!(bundle.token, SYNTH_TOKEN);
-    assert_eq!(bundle.fp, fingerprint_leaf_der(&served_der));
+    assert_eq!(bundle.fp, Some(fingerprint_leaf_der(&served_der)));
 }
 
 // ===========================================================================
@@ -287,7 +288,7 @@ fn test_e2e_rotation_changes_fp_old_pin_would_mismatch() {
     );
     assert_eq!(
         bundle2.fp,
-        fingerprint_leaf_der(&der2),
+        Some(fingerprint_leaf_der(&der2)),
         "new bundle fp pins the freshly-served leaf DER (re-bundle restores reconnect)"
     );
 }

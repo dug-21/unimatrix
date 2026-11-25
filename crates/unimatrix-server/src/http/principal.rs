@@ -53,8 +53,6 @@ impl TokenMode {
     }
 
     /// Parse the wire form; `None` for anything else.
-    // rationale: consumed by the C7 clap value parser (vnc-050 Wave 2).
-    #[allow(dead_code)]
     pub(crate) fn parse_wire(s: &str) -> Option<TokenMode> {
         match s {
             "read" => Some(TokenMode::Read),
