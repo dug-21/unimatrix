@@ -45,3 +45,12 @@ Approved edits: fix AC-29 + R-18 scenario 4; brief line 76 -> FR-40; AC-27..29 i
 ## Decision 9 — Live AC-13 / AC-14 are post-delivery manual checks
 AC-13 live GH Actions run and AC-14 Tailscale findings are POST-DELIVERY operator checks, not part of vnc-050 delivery and never a delivery gate. vnc-050 contains no GH Actions workflow/infrastructure and no Tailscale work; only the scripted local CI equivalent of AC-13 is in delivery scope. C19 (#5792) remains unproven until the operator runs both.
 Update: SCOPE, SPEC (FR-32/FR-33), ACCEPTANCE-MAP (mark live AC-13 + AC-14 post-delivery), IMPLEMENTATION-BRIEF, #1010 body.
+
+## Decision 10 — Observe-denied marker replaces ADR-004 per-process latch
+APPROVED. Hook runs one process per event, so a per-process latch floods (R-17). Relaxing AC-18 rejected. Up-front skip rejected: ADR-005 keeps token mode out of the bundle (server-side authority), so the client must learn from the 403.
+1. Latch only on 403 with body `token lacks SessionWrite`; other 403, 401, network failure unchanged, no marker.
+2. Never store the secret: marker keyed on SHA-256 of credential; mode 0600 in client stateDir.
+3. No expiry: mode immutable, labels not reused, revoked → 401; a new credential gets a fresh attempt.
+4. Fail open toward retry: missing/corrupt/unreadable marker = not refused; marker write failure never changes exit code or output.
+5. AC-18 tests: N events with read token → one warning, one 403; credential change resets; corrupt marker → one retry and rewrite; read-write credential never creates a marker.
+Updated: ADR-004, ARCHITECTURE, SPEC FR-24a/AC-18, RTS R-17, ACCEPTANCE-MAP, IMPLEMENTATION-BRIEF, pseudocode C6c.

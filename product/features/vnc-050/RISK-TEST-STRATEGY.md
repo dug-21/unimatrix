@@ -24,7 +24,7 @@ Rework 1: aligned to HUMAN-DECISIONS 2-5 (token mode is a capability ceiling, AD
 | R-14 | Flag-matrix gaps: an accepted-but-ignored combination (`--trust` with `--list`, `--mode` without `--headless`); revoking another slug's label succeeds; I/O happens before validation | Med | Med | Medium |
 | R-15 | Legacy disable misbehaves. `UNIMATRIX_LEGACY_TOKEN_ENABLED` bad value does not fail boot; env does not override `http.legacy_token_enabled`; empty env treated as false; missing key not defaulting true; disabled body echoes the token; legacy affected by corrupt `tokens.json` | High | Low | High |
 | R-16 | The `http_access` audit is wrong. A denied request is written to the target slug's log (which reveals the slug exists); the audit write blocks the request path; a long SSE session produces unbounded rows | Med | Med | Medium |
-| R-17 | Read-token observe: server dispatches before the 403 (partial writes), or the client fails the job on 403, warns per event (log flood), stays silent, or the latch also suppresses read-write observe | High | Med | Critical |
+| R-17 | Read-token observe: server dispatches before the 403 (partial writes), or the client fails the job on 403, warns per event (log flood — one process per event), stays silent, latches on the wrong 403/401/network failure, stores the secret in the marker, fails closed on a corrupt marker, or the latch also suppresses read-write observe | High | Med | Critical |
 | R-18 | Bundle/env conflict list drifts from FR-20: one of URL/MCP_URL/TOKEN/FINGERPRINT accepted with the bundle (silent override), or `UNIMATRIX_REMOTE_HEADERS` wrongly rejected (breaks Cloudflare Access) | Med | Med | High |
 | R-20 | Residual gap (accepted): within a read-write (or legacy) token a caller claims any `agent_id`, including `human`, and gets that agent's non-Admin grants and attribution | Med | High | Accepted (documented, regression-pinned) |
 | R-21 | Backward-compat break: new server rejects or alters behavior for an unmodified pre-vnc-050 client (pinned v:2 bundle, `remote.json`, env-var observe, legacy token); new client mis-reads old artifacts or rewrites `remote.json` | High | Med | Critical |
@@ -123,8 +123,9 @@ A table test covers every invalid combination. Each exits 2, and no file is touc
 ### R-17 Read-token observe (Critical)
 1. Server: read token on `/v1/{slug}/observe` and every session telemetry route → 403 `token lacks SessionWrite`; a dispatcher spy records zero invocations; observations, sessions, signal_queue, cycle_events, cycle_tags, co_access, injection_log, query_log and entries unchanged after an extraction tick and channel drain.
 2. Client: spawn the real hook process with a read bundle, emit N≥3 hook events. Exactly one warning line on stderr; hook exit code and stdout identical to a no-remote run; after the first 403 no further observe POSTs reach a capturing proxy.
-3. Non-403 failures (500, connection refused) keep existing behavior (no latch).
-4. Read-write bundle: observe flows; no warning (latch not triggered).
+3. Non-403 failures (500, connection refused), 401, and other 403 bodies keep existing behavior; no marker written.
+4. Read-write bundle: observe flows; no warning; no marker ever created.
+5. Changing credential resets (fresh attempt); corrupt marker → one retry, one 403, marker rewritten; marker mode 0600 and contains no token; marker write failure leaves exit code/output unchanged.
 
 ### R-18 Bundle/env conflict list (High)
 1. `UNIMATRIX_BUNDLE` + each of `UNIMATRIX_REMOTE_MCP_URL`, `UNIMATRIX_REMOTE_URL`, `UNIMATRIX_REMOTE_TOKEN`, `UNIMATRIX_REMOTE_FINGERPRINT`: exit non-zero, stderr names the variable, value not echoed; through both the bridge and the hook.
@@ -166,7 +167,7 @@ The gate measures the net line delta for the four over-cap files.
 | Pinned trust unchanged | Fingerprint via bundle or `UNIMATRIX_REMOTE_FINGERPRINT` | Spawn the bridge against a self-signed server. A matching fp connects; a mismatched fp is refused with zero bytes sent |
 | Refused before any token leaves | No fp, bad cert | Spawn the bridge against the byte-capturing server (untrusted, then hostname mismatch). Zero bytes received |
 | Authorization error regardless of claimed agent_id; tables unchanged | A read token calls write tools (with `agent_id:"human"`), observe and session writes | Through the bridge spawned with a read bundle: each write tool with `agent_id:"human"` is denied; reads served; DB snapshot unchanged after search, lookup, get, briefing |
-| Observe denied; job not failed; one warning | Hook process with a read bundle in a CI-like job | Spawn hook for N events: exit 0, one stderr warning, zero DB observation rows, no POSTs after the first 403 |
+| Observe denied; job not failed; one warning | Hook process with a read bundle in a CI-like job | Spawn hook for N events (N processes): exit 0, one stderr warning, exactly one 403, zero DB observation rows, no POSTs after the first 403 (marker latch) |
 | Revoked label stays visible, never reusable | `client-bundle <slug> --revoke L` then mint `--label L` | Binary: revoke, `--list` shows L revoked, re-mint L exits non-zero |
 | Existing clients keep working | Pre-vnc-050 client (0.11.3) with pinned bundle / `remote.json` / env observe + legacy token | R-21 matrix against the new server binary |
 | 403 | A token bound to A calls `/v1/B/...` | curl with the A token against every B route (POST, SSE GET, DELETE, observe). All return 403 |

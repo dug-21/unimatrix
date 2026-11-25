@@ -41,7 +41,9 @@ R-02 step 0: over real HTTP in a stateful MCP session, prove `BearerPrincipal` (
 | C11 Docs + smoke (remote-access guide, scripted smoke) | pseudocode/docs-smoke.md | test-plan/docs-smoke.md |
 | Backward-compat matrix (cross-component, FR-34..39) | pseudocode/OVERVIEW.md (section) | test-plan/backward-compat.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+Stage 3b waves (from pseudocode/OVERVIEW.md): W0 = C4 types + C1 read + C2 + ceiling_from + R-02 step 0 test (gate; ADR-003 fallback if fail); W1 = C4b rest, C3, C5, C6, C1 writers, C8, C9; W2 = C7; W3 = C10, C6c; W4 = C11 + compat harness.
+
+### Cross-Cutting Artifacts (verified against Stage 3a output)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
@@ -50,7 +52,7 @@ R-02 step 0: over real HTTP in a stateful MCP session, prove `BearerPrincipal` (
 
 ## Resolved Decisions
 
-Unimatrix ADR IDs: ADR-001 #5814, ADR-002 #5806, ADR-003 #5819, ADR-004 #5820, ADR-005 #5815, ADR-006 #5818, ADR-007 #5817.
+Unimatrix ADR IDs: ADR-001 #5814, ADR-002 #5806, ADR-003 #5819, ADR-004 #5826, ADR-005 #5815, ADR-006 #5818, ADR-007 #5817.
 
 | Decision | Resolution | Source | ADR File |
 |----------|-----------|--------|----------|
@@ -68,7 +70,7 @@ Unimatrix ADR IDs: ADR-001 #5814, ADR-002 #5806, ADR-003 #5819, ADR-004 #5820, A
 | agent_id | Stays self-asserted (attribution, registry lookup); bearer-identity path (`server.rs:541`) dormant; residual spoofing gap within read-write accepted (R-20) | HD 1, HD 5 | architecture/ADR-003-token-mode-capability-ceiling.md |
 | Observe for read tokens | Server 403 `token lacks SessionWrite` before dispatcher on observe and session telemetry routes | HD 2 (V-1 rejected) | architecture/ADR-004-read-token-learning-suppression.md |
 | Learning suppression | `records_learning(ctx.cap_ceiling)` (None → true; ceiling → contains Write); `UsageContext.learning_allowed` early return in `record_access`; query_log insert guarded; gate before enqueue | AC-15, HD 5 | architecture/ADR-004-read-token-learning-suppression.md |
-| Client observe 403 | One stderr warning per process, latch off further observe POSTs, hook exit/stdout unchanged; other failures unchanged | HD 2 | architecture/ADR-004-read-token-learning-suppression.md |
+| Client observe 403 | Only 403 `token lacks SessionWrite` latches: one warning, marker `stateDir/observe-denied.json` (0600, SHA-256 of credential, no expiry); later processes skip silently; missing/corrupt marker = retry; marker write failure never changes exit/output; other 403/401/network unchanged | HD 2, HD 10 | architecture/ADR-004-read-token-learning-suppression.md |
 | CLI shape | `client-bundle <slug> [--headless --mode M --label L] [--trust pin|ca] | --list | --revoke L`; flag matrix validated before I/O, exit 2 | SR-05, SR-18 | architecture/ADR-005-client-bundle-headless.md |
 | Bundle format | Stays v:2, exact key set; `fp` becomes `string|null` (null = CA trust via `--trust ca`); old clients reject `fp:null` loudly; `init --bundle` accepts CA bundle, stores `fingerprint:null` | SR-06, Spec OQ-2/OQ-4 | architecture/ADR-005-client-bundle-headless.md |
 | Resolver precedence | `UNIMATRIX_BUNDLE` > env pair > credential store; per-consumer tiers; MCP env tier active only when `UNIMATRIX_REMOTE_MCP_URL` set | SR-13/15 | architecture/ADR-006-credential-resolution-and-ca-trust.md |
@@ -106,7 +108,7 @@ JS (`packages/unimatrix/lib/hook-client/`):
 - `bundle.js` — accept `fp:null`; reject all else as today.
 - `mcp-bridge.js`, `mcp-bridge/http-session.js` — consume resolver; pinned vs CA branch; extra headers.
 - `transport-http.js` — CA branch, extra headers on observe POST and `pingForInit`.
-- `config.js` — resolve via `remote-resolve.js`; observe 403 warn-once latch.
+- `config.js` — resolve via `remote-resolve.js`; observe 403 per-credential marker latch (ADR-004, HD 10).
 
 Docs / tests:
 - `docs/` remote-access guide (direct-HTTPS curl + generic MCP client recipe, GH Actions example).
