@@ -602,6 +602,7 @@ impl UnimatrixServer {
             audit_ctx,
             caller_id,
             client_type,
+            cap_ceiling: crate::mcp::cap_ceiling::ceiling_from(request_context),
         })
     }
 

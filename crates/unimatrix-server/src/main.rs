@@ -1521,7 +1521,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         // resolver owns (FR-X5, no fixed-adapter fallback). The `resolver` arg is
         // the sole swap point (R-01 sc.2).
         let path_router = PathRouter::new(resolver, observe_ctx);
-        let auth_layer = StaticTokenAuthLayer::new(token_array);
+        let auth_layer = StaticTokenAuthLayer::with_token_table(token_array, &paths.data_dir);
         let service = tower::Layer::layer(&auth_layer, path_router);
 
         // 5. Start HTTP listener
