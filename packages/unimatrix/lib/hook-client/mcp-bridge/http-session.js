@@ -8,6 +8,7 @@
 
 const https = require("https");
 const { applyCertPin, verifyPeerFingerprint } = require("../cert-pin.js");
+const { assertCaOptions, caVerifyError, applyExtraHeaders, isTlsVerifyCode } = require("../tls-guard.js");
 
 // rmcp 1.7.0 wire constants (OVERVIEW "VERIFIED WIRE VALUES"; CONFIRM LIVE).
 const SESSION_HEADER = "Mcp-Session-Id";
@@ -26,10 +27,11 @@ class HttpSession {
     return new HttpSession(opts);
   }
 
-  constructor({ mcpUrl, token, pinnedFp, exit, errOut, connectMs, idleMs }) {
+  constructor({ mcpUrl, token, pinnedFp, extraHeaders, exit, errOut, connectMs, idleMs }) {
     this.url = new URL(mcpUrl); // POSTed VERBATIM (AC-05)
     this.token = token;
-    this.pinnedFp = pinnedFp;
+    this.pinnedFp = pinnedFp; // null → CA trust (ADR-006)
+    this.extraHeaders = extraHeaders || []; // never logged (ADR-007)
     this.sessionId = null; // server-minted, captured on initialize (R-17)
     this.protocolVersion = null;
     this.exit = exit || ((c) => process.exit(c));
@@ -44,12 +46,12 @@ class HttpSession {
   }
 
   _headers(body, opts) {
-    const headers = {
+    const headers = Object.assign(applyExtraHeaders({}, this.extraHeaders), {
       "Content-Type": "application/json",
       "Content-Length": body.length,
       Accept: "application/json, text/event-stream",
       Authorization: "Bearer " + this.token,
-    };
+    });
     if (this.sessionId !== null) headers[SESSION_HEADER] = this.sessionId;
     if (this.protocolVersion !== null && !(opts && opts.isInitialize)) {
       headers["MCP-Protocol-Version"] = this.protocolVersion;
@@ -58,8 +60,7 @@ class HttpSession {
   }
 
   _options(method, headers) {
-    return applyCertPin(
-      {
+    const base = {
         protocol: "https:",
         hostname: stripIPv6Brackets(this.url.hostname),
         port: this.url.port || undefined,
@@ -68,10 +69,9 @@ class HttpSession {
         headers,
         agent: false, // no pool — fresh re-pinned socket per request (R-02)
         timeout: this.idleMs, // idle on an established socket; emits "timeout" only
-      },
-      true,
-      this.pinnedFp
-    );
+      };
+    // CA branch: no rejectUnauthorized key, no cert-pin agent (ADR-006).
+    return this.pinnedFp ? applyCertPin(base, true, this.pinnedFp) : assertCaOptions(Object.assign(base, { rejectUnauthorized: true }));
   }
 
   // Re-pin THIS socket on secureConnect, BEFORE any body byte. onPin() runs the
@@ -82,11 +82,13 @@ class HttpSession {
       s.once("secureConnect", () => {
         if (onConnect) onConnect(); // clear the connect/TLS deadline (F4)
         let err;
-        try {
-          err = verifyPeerFingerprint(s, this.pinnedFp);
-        } catch (_e) {
-          err = new Error("pinned certificate verification failed");
-        }
+        if (this.pinnedFp) {
+          try {
+            err = verifyPeerFingerprint(s, this.pinnedFp);
+          } catch (_e) {
+            err = new Error("pinned certificate verification failed");
+          }
+        } else err = caVerifyError(s);
         if (err) {
           req.destroy(err);
           onMismatch(err);
@@ -158,6 +160,11 @@ class HttpSession {
         // Swallow the post-pin-mismatch destroy (no body byte written), BUT never
         // swallow a timeout reject — gate on the error code, not `flushed` (F3).
         if (!flushed && this.pinnedFp && err.code !== "ETIMEDOUT") return;
+        // CA verify failure (pre-secureConnect, zero app bytes): loud, code only.
+        if (!flushed && !this.pinnedFp && isTlsVerifyCode(err.code)) {
+          try { this.errOut("mcp-bridge: TLS certificate verification failed (" + err.code + ")\n"); } catch (_e) {}
+          this.exit(1);
+        }
         settle(reject, err);
       });
     });
@@ -166,7 +173,8 @@ class HttpSession {
   // Best-effort re-pinned DELETE on stdin EOF; swallow errors (non-fatal).
   teardown() {
     if (this.sessionId === null) return Promise.resolve();
-    const headers = { [SESSION_HEADER]: this.sessionId, Authorization: "Bearer " + this.token };
+    const headers = Object.assign(applyExtraHeaders({}, this.extraHeaders),
+      { [SESSION_HEADER]: this.sessionId, Authorization: "Bearer " + this.token });
     return new Promise((resolve) => {
       let done = false;
       const finish = () => { if (!done) { done = true; resolve(); } };

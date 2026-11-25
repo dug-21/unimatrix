@@ -1,6 +1,6 @@
 # vnc-050 Pseudocode Overview — Headless Automation Access
 
-Sources: ARCHITECTURE.md, SPECIFICATION.md, RISK-TEST-STRATEGY.md, ADR-001..007 (#5814 #5806 #5819 #5826 #5815 #5818 #5817), HUMAN-DECISIONS 1-9.
+Sources: ARCHITECTURE.md, SPECIFICATION.md, RISK-TEST-STRATEGY.md, ADR-001..007 (#5814 #5806 #5819 #5826 #5815 #5829 #5817), HUMAN-DECISIONS 1-9.
 Rust root: `crates/unimatrix-server/src/`. JS root: `packages/unimatrix/lib/hook-client/`.
 
 ## Components

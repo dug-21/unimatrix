@@ -1,12 +1,12 @@
 "use strict";
 
 // mcp-bridge.js (C2 entry, Scope A — ADR-001/002/004). Pure-Node-stdlib
-// stdio<->Streamable-HTTP MCP bridge. argv: `node <bridge> <projectHash>`.
-// Reads the credential from the out-of-tree store at spawn (token NEVER on the
-// command line / logged — NFR-06), holds a fingerprint-pinned HTTPS connection
-// to mcp_url, proxies stdio JSON-RPC. FAIL-LOUD (persistent, not fail-open).
+// stdio<->Streamable-HTTP MCP bridge. argv: `node <bridge> [projectHash]`.
+// Resolves the credential via remote-resolve.js (bundle > env > store; token
+// NEVER on the command line / logged — NFR-06), holds a pinned or CA-verified
+// HTTPS connection to mcp_url, proxies stdio JSON-RPC. FAIL-LOUD (persistent, not fail-open).
 
-const credstore = require("./credstore.js");
+const { resolveRemote, ResolveError } = require("./remote-resolve.js");
 const { StdioFramer } = require("./mcp-bridge/stdio-frame.js");
 const { HttpSession } = require("./mcp-bridge/http-session.js");
 const { Lifecycle } = require("./mcp-bridge/lifecycle.js");
@@ -21,37 +21,20 @@ function buildSession(projectHash, deps) {
   const errOut = (deps && deps.errOut) || ((s) => process.stderr.write(s));
   const exit = (deps && deps.exit) || ((c) => process.exit(c));
 
-  let cred;
+  const env = (deps && deps.env) || process.env;
+  const fail = (m) => { errOut("mcp-bridge: " + m + "\n"); exit(1); return null; };
+  let r;
   try {
-    cred = credstore.read(projectHash);
+    r = resolveRemote(env, { projectHash });
   } catch (e) {
-    errOut("mcp-bridge: " + (e && e.message) + "\n");
-    exit(1);
-    return null;
+    if (e instanceof ResolveError) return fail(e.message);
+    throw e;
   }
-  if (cred === null) {
-    errOut("mcp-bridge: no credential for project " + projectHash + " (run init --bundle)\n");
-    exit(1);
-    return null;
-  }
-  if (!isNonEmptyString(cred.mcp_url) || !/^https:/.test(cred.mcp_url) || !isNonEmptyString(cred.token)) {
-    errOut("mcp-bridge: credential missing mcp_url or token\n");
-    exit(1);
-    return null;
-  }
-  if (cred.fingerprint === null || cred.fingerprint === undefined) {
-    errOut("mcp-bridge: this credential has no pinned fingerprint (cloud MCP requires a v:2 bundle)\n");
-    exit(1);
-    return null;
-  }
-
-  return HttpSession.create({
-    mcpUrl: cred.mcp_url,
-    token: cred.token,
-    pinnedFp: cred.fingerprint,
-    exit,
-    errOut,
-  });
+  const m = r.mcp;
+  if (m === null) return fail("no MCP credential (set UNIMATRIX_BUNDLE, UNIMATRIX_REMOTE_MCP_URL + UNIMATRIX_REMOTE_TOKEN, or run init --bundle)");
+  if (!/^https:/.test(m.url) || !isNonEmptyString(m.token)) return fail("credential missing https mcp_url or token");
+  // Null fingerprint = CA trust (ADR-006 supersedes vnc-039 ADR-005 refusal).
+  return HttpSession.create({ mcpUrl: m.url, token: m.token, pinnedFp: m.pinnedFp, extraHeaders: r.headers, exit, errOut });
 }
 
 // Wire the framer/lifecycle/session and run until stdin EOF. `deps` injectable.
@@ -89,8 +72,10 @@ function main(argv, deps) {
   argv = argv || process.argv;
   const errOut = (deps && deps.errOut) || ((s) => process.stderr.write(s));
   const exit = (deps && deps.exit) || ((c) => process.exit(c));
+  const env = (deps && deps.env) || process.env;
   const projectHash = argv[2];
-  if (!isNonEmptyString(projectHash)) {
+  // Headless (FR-21): bundle or env MCP URL alone needs no projectHash.
+  if (!isNonEmptyString(projectHash) && !isNonEmptyString(env.UNIMATRIX_BUNDLE) && !isNonEmptyString(env.UNIMATRIX_REMOTE_MCP_URL)) {
     errOut("usage: unimatrix mcp-bridge <projectHash>\n");
     exit(2);
     return;

@@ -995,7 +995,7 @@ describe("store-error posture (R-13) + no-leak (R-09)", () => {
       });
     });
     assert.strictEqual(code, 1);
-    assert.match(errs.join(""), /no credential for project/);
+    assert.match(errs.join(""), /no MCP credential/);
   });
 
   it("test_bridge_storeMalformed_exitsNonZeroLoud", () => {
@@ -1013,7 +1013,9 @@ describe("store-error posture (R-13) + no-leak (R-09)", () => {
     assert.match(errs.join(""), /malformed/);
   });
 
-  it("test_bridge_incompleteEntry_missingFingerprint_loudNotUnpinned", () => {
+  // vnc-050 ADR-006 (supersedes vnc-039 ADR-005 refusal): a stored null
+  // fingerprint selects the CA-trust branch — no pin, no trust override.
+  it("test_bridge_nullFingerprint_selectsCaTrust", () => {
     const home = tmpHome();
     const hash = "0123456789abcdef";
     const TOKEN = "tok_secret_value_unique";
@@ -1024,10 +1026,11 @@ describe("store-error posture (R-13) + no-leak (R-09)", () => {
       });
       let code = null;
       const errs = [];
-      bridge.main(["node", "bridge", hash], { exit: (c) => { code = c; }, errOut: (s) => errs.push(s) });
-      assert.strictEqual(code, 1, "legacy/null-fingerprint never runs unpinned");
-      assert.match(errs.join(""), /v:2 bundle/);
-      // R-09: the token never appears in the loud error.
+      const sess = bridge.buildSession(hash, { exit: (c) => { code = c; }, errOut: (s) => errs.push(s) });
+      assert.strictEqual(code, null, "no exit: CA trust attaches");
+      assert.strictEqual(sess.pinnedFp, null);
+      const o = sess._options("POST", {});
+      assert.ok(o.rejectUnauthorized === true && !("checkServerIdentity" in o), "CA branch verifies explicitly");
       assert.ok(!errs.join("").includes(TOKEN), "token absent from stderr");
     });
   });

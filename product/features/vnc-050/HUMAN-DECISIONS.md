@@ -54,3 +54,10 @@ APPROVED. Hook runs one process per event, so a per-process latch floods (R-17).
 4. Fail open toward retry: missing/corrupt/unreadable marker = not refused; marker write failure never changes exit code or output.
 5. AC-18 tests: N events with read token → one warning, one 403; credential change resets; corrupt marker → one retry and rewrite; read-write credential never creates a marker.
 Updated: ADR-004, ARCHITECTURE, SPEC FR-24a/AC-18, RTS R-17, ACCEPTANCE-MAP, IMPLEMENTATION-BRIEF, pseudocode C6c.
+
+## Decision 11 — Global TLS override ignored on CA path
+APPROVED. Unfingerprinted CA path passes `rejectUnauthorized: true` explicitly per connection, so `NODE_TLS_REJECT_UNAUTHORIZED=0` is ignored. Pinned behavior byte-identical. Rationale: the var lingers in CI/shells after proxy setup; honoring it silently disables verification, leaks the bearer token, and creates an undesigned third trust mode; it would break SR-01's guard. Supersedes "no `rejectUnauthorized` key on CA path". Test: var=0 + untrusted cert on CA path → refused, zero app bytes.
+Updated: ADR-006, ARCHITECTURE, SPEC FR-25, RTS R-01/SR-01, SCOPE-RISK-ASSESSMENT SR-01, IMPLEMENTATION-BRIEF, pseudocode/test-plan C10.
+
+## Decision 12 — Hook-client size cap raised to measured baseline
+APPROVED. Hook-client size cap set to the measured post-feature line counts; that becomes the new PL-10 no-grow baseline.

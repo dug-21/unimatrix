@@ -245,36 +245,11 @@ describe("printSummary", () => {
 
 // ── installSkills (ADR-004: non-destructive definition install) ─────────
 //
-// installSkills iterates the SHIPPED source tree (`<pkg>/skills`). To control
-// the shipped manifest deterministically we inject temp skills into that source
-// tree and remove them in `finally` (same idiom as init-integration.test.js).
+// installSkills iterates the SHIPPED source tree (`<pkg>/skills`). Fixture
+// skills are injected via an in-process fs overlay (never written into the real
+// package dir, which parallel test files read concurrently).
 
-const SKILLS_SOURCE = path.join(__dirname, "..", "skills");
-
-/**
- * Inject a temp shipped-skills manifest, run `fn`, then remove the injected
- * dirs. `manifest` is { skillDir: { fileName: content } }.
- */
-function withShippedSkills(manifest, fn) {
-  const names = Object.keys(manifest);
-  for (const name of names) {
-    const dir = path.join(SKILLS_SOURCE, name);
-    fs.mkdirSync(dir, { recursive: true });
-    for (const [file, content] of Object.entries(manifest[name])) {
-      fs.writeFileSync(path.join(dir, file), content);
-    }
-  }
-  try {
-    return fn();
-  } finally {
-    for (const name of names) {
-      fs.rmSync(path.join(SKILLS_SOURCE, name), {
-        recursive: true,
-        force: true,
-      });
-    }
-  }
-}
+const { withShippedSkills } = require("./helpers/shipped-skills");
 
 /** Reduce action lines to a per-file decision map (prefix/tense-insensitive). */
 function decisionSet(actions) {
@@ -516,17 +491,12 @@ describe("installSkills", () => {
   it("test_installSkills_rejects_path_traversal_filename", () => {
     const dir = makeTempProject();
     // A shipped skill dir containing a filename with `..` must throw.
-    const bad = path.join(SKILLS_SOURCE, "nan023-trav");
-    fs.mkdirSync(bad, { recursive: true });
-    fs.writeFileSync(path.join(bad, "a..b"), "x");
-    try {
+    withShippedSkills({ "nan023-trav": { "a..b": "x" } }, () => {
       assert.throws(
         () => installSkills(dir, { force: false, dryRun: false }),
         /Path traversal detected/
       );
-    } finally {
-      fs.rmSync(bad, { recursive: true, force: true });
-    }
+    });
   });
 
   it("test_installSkills_no_bundled_skills_dir_is_no_op", () => {

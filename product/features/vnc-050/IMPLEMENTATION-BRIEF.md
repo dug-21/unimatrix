@@ -52,7 +52,7 @@ Stage 3b waves (from pseudocode/OVERVIEW.md): W0 = C4 types + C1 read + C2 + cei
 
 ## Resolved Decisions
 
-Unimatrix ADR IDs: ADR-001 #5814, ADR-002 #5806, ADR-003 #5819, ADR-004 #5826, ADR-005 #5815, ADR-006 #5818, ADR-007 #5817.
+Unimatrix ADR IDs: ADR-001 #5814, ADR-002 #5806, ADR-003 #5819, ADR-004 #5826, ADR-005 #5815, ADR-006 #5829, ADR-007 #5817.
 
 | Decision | Resolution | Source | ADR File |
 |----------|-----------|--------|----------|
@@ -76,7 +76,7 @@ Unimatrix ADR IDs: ADR-001 #5814, ADR-002 #5806, ADR-003 #5819, ADR-004 #5826, A
 | Resolver precedence | `UNIMATRIX_BUNDLE` > env pair > credential store; per-consumer tiers; MCP env tier active only when `UNIMATRIX_REMOTE_MCP_URL` set | SR-13/15 | architecture/ADR-006-credential-resolution-and-ca-trust.md |
 | Bundle + env conflicts | Reject bundle + `UNIMATRIX_REMOTE_MCP_URL` / `_URL` / `_TOKEN` / `_FINGERPRINT` (exit 1, names var); allow bundle + `UNIMATRIX_REMOTE_HEADERS` | HD 3b | architecture/ADR-006-credential-resolution-and-ca-trust.md |
 | Empty-string env vars | Every `UNIMATRIX_*` empty value = unset (no trimming). Bundle + empty conflict var = no conflict. One pair half set + other empty = partial-pair error (FR-23): exit non-zero, stderr names the empty and the set variable, never prints any credential; both empty = pair unset, store used | HD 7.2, HD 8 | specification/SPECIFICATION.md (FR-40, FR-23) |
-| CA trust | No fp → plain `https` options, no `rejectUnauthorized` key, no `cert-pin.js` agent; guard throws if `rejectUnauthorized:false` reaches unpinned request; zero app bytes on verify failure; private CA via `NODE_EXTRA_CA_CERTS` only | SR-01 | architecture/ADR-006-credential-resolution-and-ca-trust.md |
+| CA trust | No fp → plain `https` options with explicit `rejectUnauthorized: true` (ignores `NODE_TLS_REJECT_UNAUTHORIZED=0` by design, Decision 11), no `cert-pin.js` agent; guard throws unless unpinned request has `rejectUnauthorized === true`; zero app bytes on verify failure; private CA via `NODE_EXTRA_CA_CERTS` only | SR-01 | architecture/ADR-006-credential-resolution-and-ca-trust.md |
 | vnc-039 ADR-005 (#5119) | Corrected via `context_correct`: cloud MCP = bundle, env pair, or store; unpinned = CA trust | SCOPE | architecture/ADR-006-credential-resolution-and-ca-trust.md |
 | Extra headers | Strict JSON object ≤32 entries; RFC 7230 names; string values ≤8 KiB, no CR/LF/NUL; reserved (case-insensitive): authorization, mcp-session-id, host, content-length, content-type, transfer-encoding, connection, accept; case-duplicates rejected; applied on initialize, POST, SSE GET, DELETE, observe, `pingForInit`; never logged | SR-04, SR-16 | architecture/ADR-007-extra-request-headers.md |
 | Auth-layer identity | `token:<label>` is the auth-layer/`http_access` audit identity only; never a tool-call agent_id, never enrolled. Omitted tool-call agent_id = today's default (`anonymous`). If `resolve_or_enroll` grants anonymous Write, a RW token with no agent_id writes as anonymous (R-22, accepted, pre-existing) | HD 7.1, FR-16, R-13, R-22 | architecture/ADR-003-token-mode-capability-ceiling.md |
@@ -170,7 +170,7 @@ Wire contracts: observe 403 body `{"error":"token lacks SessionWrite"}`; slug 40
 ## Constraints
 
 - Human constraint (SR-05): extend `client-bundle`; no `token` command, mint API, MCP admin tool, second bundle format or decoder. Gate fail on violation.
-- Pinned trust (vnc-039 ADR-001 #5115, vnc-034 ADR-002 #4948) byte-identical; existing pin test files have empty diff. CA path never `rejectUnauthorized:false`.
+- Pinned trust (vnc-039 ADR-001 #5115, vnc-034 ADR-002 #4948) byte-identical; existing pin test files have empty diff. CA path always explicit `rejectUnauthorized: true`; global TLS override ignored.
 - One capability check point (`require_cap`), one learning predicate, same `ctx.cap_ceiling` (#4453). Observe ceiling and tool ceiling derive from the same mode → capability table.
 - Intersection only narrows; absent principal on HTTP = empty ceiling, never `None`.
 - `/health` only unauthenticated route (#5571).

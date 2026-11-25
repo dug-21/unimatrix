@@ -13,6 +13,7 @@
 const http = require("http");
 const https = require("https");
 const { applyCertPin, verifyPeerFingerprint } = require("./cert-pin.js");
+const { assertCaOptions, caVerifyError, applyExtraHeaders } = require("./tls-guard.js");
 
 // ADR-005 defaults (config-overridable via unimatrix.remote.timeouts). config.js
 // supplies resolved values; these back pingForInit and override-less callers.
@@ -37,7 +38,9 @@ function classifyResponse(status, contentType, bodyBuf) {
     : status >= 400 && status < 500 ? "http_4xx"
     : status >= 500 ? "http_5xx"
     : "connect";
-  return { ok: false, status, contentType, body: null, failureClass: cls };
+  const r = { ok: false, status, contentType, body: null, failureClass: cls };
+  if (status === 403 && /"token lacks SessionWrite"/.test(bodyBuf)) r.deny = 1; // vnc-050 HD 10
+  return r;
 }
 
 /** Classify a socket/request error into a failure class. */
@@ -57,7 +60,7 @@ function classifyErrno(err) {
  * it posts to config.url's pathname (+ search) byte-for-byte. The `/observe`
  * append (the last client-side route-composition site, C-3) is GONE.
  *
- * @param {object} config  { url, token, timeouts: {connectMs, syncMs, fnfMs}, pinnedFp? }
+ * @param {object} config  { url, token, timeouts, pinnedFp?, extraHeaders? }
  * @param {object} frame   HookRequest object (ignored when opts.bodyBuf set)
  * @param {object} opts    { sync: boolean, bodyBuf?: Buffer }
  */
@@ -88,12 +91,13 @@ function post(config, frame, opts) {
   // ADR-001: post to the verbatim observe URL. No append, no trailing-slash
   // mutation, no route grammar — the server is the sole route-shape authority.
   const requestPath = u.pathname + u.search;
-  const headers = {
+  // Extra headers (ADR-007, never logged) first; reserved headers then win.
+  const headers = Object.assign(applyExtraHeaders({}, config.extraHeaders), {
     "Content-Type": "application/json",
     "Content-Length": body.length,
     "Authorization": "Bearer " + config.token,
     "Accept": options.sync ? "text/plain" : "application/json",
-  };
+  });
   const timeouts = config.timeouts || DEFAULT_TIMEOUTS;
   const totalMs = options.sync ? timeouts.syncMs : timeouts.fnfMs;
 
@@ -115,6 +119,7 @@ function post(config, frame, opts) {
     // fingerprint is verified on secureConnect. A mismatched/MITM server is
     // destroyed before it ever receives the token.
     const pinned = isTls && !!config.pinnedFp;
+    const caTls = isTls && !pinned; // CA trust (ADR-006): body deferred until verified
 
     let req;
     try {
@@ -134,6 +139,7 @@ function post(config, frame, opts) {
         isTls,
         config.pinnedFp
       );
+      if (caTls) assertCaOptions(Object.assign(reqOptions, { rejectUnauthorized: true }));
       req = mod.request(reqOptions);
     } catch (_err) {
       done(fail("connect", 0));
@@ -170,8 +176,19 @@ function post(config, frame, opts) {
           }
           if (!settled) req.end(body); // pin OK — now flush the token-bearing body
         });
+      } else if (caTls) {
+        s.once("secureConnect", () => {
+          clearTimeout(connectTimer);
+          const err = caVerifyError(s);
+          if (err) {
+            req.destroy(err);
+            done({ ok: false, status: 0, contentType: null, body: null, failureClass: "connect", message: err.message });
+            return;
+          }
+          if (!settled) req.end(body);
+        });
       } else {
-        s.once(isTls ? "secureConnect" : "connect", () => clearTimeout(connectTimer));
+        s.once("connect", () => clearTimeout(connectTimer));
       }
     });
 
@@ -210,10 +227,9 @@ function post(config, frame, opts) {
       });
     });
 
-    // Unpinned (plain http or https without a pin): flush immediately. The
-    // pinned path defers req.end(body) into the secureConnect handler so the
-    // token-bearing body is only ever written after the fingerprint matches.
-    if (!pinned) req.end(body);
+    // Plain http only: flush immediately. Both TLS branches defer req.end(body)
+    // into secureConnect so the token-bearing body is written only once trusted.
+    if (!isTls) req.end(body);
   });
 }
 
@@ -250,10 +266,10 @@ function actionable(failureClass, status, host) {
  * @param {object} [timeouts] { connectMs, syncMs, fnfMs }
  * @param {string} [pinnedFp] sha256:<64 hex> pin for the TLS request.
  */
-async function pingForInit(url, token, timeouts, pinnedFp) {
+async function pingForInit(url, token, timeouts, pinnedFp, extraHeaders) {
   const host = safeHost(url);
   const res = await post(
-    { url, token, timeouts: timeouts || DEFAULT_TIMEOUTS, pinnedFp: pinnedFp || null },
+    { url, token, timeouts: timeouts || DEFAULT_TIMEOUTS, pinnedFp: pinnedFp || null, extraHeaders },
     { type: "Ping" },
     { sync: true }
   );

@@ -38,7 +38,8 @@ Impact: the token is exfiltrated to a MITM, which compromises the slug.
 1. Run a byte-capturing raw TLS server with an untrusted self-signed cert. The bridge runs with no fingerprint. Assert zero application bytes are received, the exit code is 1, and stderr contains no token.
 2. Repeat with a cert signed by a trusted CA (`NODE_EXTRA_CA_CERTS`) but a hostname mismatch. Assert zero bytes.
 3. Repeat scenarios 1 and 2 for the observe POST (`transport-http.js`) and for `pingForInit`.
-4. Add a guard test: build an unpinned request with options that contain `rejectUnauthorized:false`. The guard must throw.
+4. Add a guard test: build an unpinned request with options that contain `rejectUnauthorized:false` (or omit the key). The guard must throw.
+5. Global TLS override is ignored by design (ADR-006, Decision 11): set `NODE_TLS_REJECT_UNAUTHORIZED=0`, no fingerprint, untrusted cert. Assert refusal and zero application bytes.
 Coverage: the real socket boundary on both transports (#4970). Shape-only assertions do not count.
 
 ### R-02 Capability ceiling (Critical)
@@ -226,7 +227,7 @@ Seam tests (`resolveRemote`, `slug_guard::check`, `require_cap`) do not discharg
 ## Scope Risk Traceability
 | Scope Risk | Arch Risk | Resolution |
 |---|---|---|
-| SR-01 | R-01 | ADR-006 separate CA branch plus guard; zero-byte tests |
+| SR-01 | R-01 | ADR-006 separate CA branch plus guard (explicit `rejectUnauthorized: true`; global TLS override ignored by design); zero-byte tests incl. `NODE_TLS_REJECT_UNAUTHORIZED=0` + untrusted cert |
 | SR-02 | R-06 | ADR-001 full scan with `ct_eq` |
 | SR-03 | R-05, R-12 | ADR-001 per-request stat reload, fail closed, flock with tmp+rename |
 | SR-04 | R-08 | ADR-007 strict validation |

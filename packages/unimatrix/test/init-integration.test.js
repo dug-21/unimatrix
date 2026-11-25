@@ -11,6 +11,7 @@ const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 // init.test.js.
 
 const { copySkills, installSkills } = require("../lib/init.js");
+const { withShippedSkills } = require("./helpers/shipped-skills");
 
 /** Create a temp directory that acts as a project root with .git */
 function makeTempProject() {
@@ -22,24 +23,16 @@ function makeTempProject() {
 // ── Skill File Copying ──────────────────────────────────────────────
 
 describe("copySkills", () => {
-  // We need to temporarily override __dirname for copySkills to find bundled skills.
-  // Instead, we'll create a bundled skills directory in the actual package location.
+  // Bundled fixture skills are injected via the in-process fs overlay (never
+  // written into the real package dir, which parallel test files read).
 
   it("test_copies_skill_dirs", () => {
     const dir = makeTempProject();
-    // Create bundled skills in the package's skills/ dir
-    const packageDir = path.join(__dirname, "..");
-    const skillsSource = path.join(packageDir, "skills");
-
-    // Create test skills
     const testSkills = ["test-skill-a", "test-skill-b"];
-    for (const name of testSkills) {
-      const skillDir = path.join(skillsSource, name);
-      fs.mkdirSync(skillDir, { recursive: true });
-      fs.writeFileSync(path.join(skillDir, "SKILL.md"), "# " + name);
-    }
 
-    try {
+    withShippedSkills(
+      Object.fromEntries(testSkills.map((n) => [n, { "SKILL.md": "# " + n }])),
+      () => {
       const actions = copySkills(dir, false);
       const targetDir = path.join(dir, ".claude", "skills");
 
@@ -61,12 +54,8 @@ describe("copySkills", () => {
         actions.some((a) => a.includes("Installed skill file: test-skill-a")),
         "Should report installed skill files"
       );
-    } finally {
-      // Clean up test skills from source
-      for (const name of testSkills) {
-        fs.rmSync(path.join(skillsSource, name), { recursive: true, force: true });
       }
-    }
+    );
   });
 
   // ADR-004 replaced the retired blanket-overwrite copySkills with install-if-absent
@@ -75,21 +64,13 @@ describe("copySkills", () => {
   // overwrites it with the shipped version.
   it("test_default_keeps_existing_skill_force_overwrites", () => {
     const dir = makeTempProject();
-    const packageDir = path.join(__dirname, "..");
-    const skillsSource = path.join(packageDir, "skills");
-
-    // Create a bundled (shipped) skill
-    const skillDir = path.join(skillsSource, "overwrite-test");
-    fs.mkdirSync(skillDir, { recursive: true });
-    fs.writeFileSync(path.join(skillDir, "SKILL.md"), "NEW CONTENT");
-
     // Pre-create the same skill in the project with edited (older) content
     const targetSkillDir = path.join(dir, ".claude", "skills", "overwrite-test");
     fs.mkdirSync(targetSkillDir, { recursive: true });
     const targetFile = path.join(targetSkillDir, "SKILL.md");
     fs.writeFileSync(targetFile, "OLD CONTENT");
 
-    try {
+    withShippedSkills({ "overwrite-test": { "SKILL.md": "NEW CONTENT" } }, () => {
       // Default (force:false) — install-if-absent: an existing edited skill SURVIVES
       // byte-for-byte (AC-01, the copySkills-clobber regression).
       const keptActions = installSkills(dir, { force: false, dryRun: false });
@@ -114,27 +95,17 @@ describe("copySkills", () => {
         forceActions.some((a) => a.includes("Overwrote (--force) skill file: overwrite-test")),
         "Should report the --force overwrite"
       );
-    } finally {
-      fs.rmSync(skillDir, { recursive: true, force: true });
-    }
+    });
   });
 
   it("test_preserves_non_unimatrix_skills", () => {
     const dir = makeTempProject();
-    const packageDir = path.join(__dirname, "..");
-    const skillsSource = path.join(packageDir, "skills");
-
-    // Create a bundled skill
-    const bundledSkill = path.join(skillsSource, "bundled-only");
-    fs.mkdirSync(bundledSkill, { recursive: true });
-    fs.writeFileSync(path.join(bundledSkill, "SKILL.md"), "bundled");
-
     // Pre-create a custom (non-unimatrix) skill in the project
     const customSkillDir = path.join(dir, ".claude", "skills", "custom-skill");
     fs.mkdirSync(customSkillDir, { recursive: true });
     fs.writeFileSync(path.join(customSkillDir, "SKILL.md"), "CUSTOM");
 
-    try {
+    withShippedSkills({ "bundled-only": { "SKILL.md": "bundled" } }, () => {
       copySkills(dir, false);
 
       // Custom skill should be untouched
@@ -148,21 +119,12 @@ describe("copySkills", () => {
       assert.ok(
         fs.existsSync(path.join(dir, ".claude", "skills", "bundled-only", "SKILL.md"))
       );
-    } finally {
-      fs.rmSync(bundledSkill, { recursive: true, force: true });
-    }
+    });
   });
 
   it("test_dry_run_does_not_copy_skills", () => {
     const dir = makeTempProject();
-    const packageDir = path.join(__dirname, "..");
-    const skillsSource = path.join(packageDir, "skills");
-
-    const skillDir = path.join(skillsSource, "dryrun-test");
-    fs.mkdirSync(skillDir, { recursive: true });
-    fs.writeFileSync(path.join(skillDir, "SKILL.md"), "content");
-
-    try {
+    withShippedSkills({ "dryrun-test": { "SKILL.md": "content" } }, () => {
       const actions = copySkills(dir, true);
       const targetDir = path.join(dir, ".claude", "skills", "dryrun-test");
       assert.ok(!fs.existsSync(targetDir), "Should NOT copy in dry-run");
@@ -171,9 +133,7 @@ describe("copySkills", () => {
         actions.some((a) => a.includes("[dry-run] Would install skill file: dryrun-test")),
         "Should report planned install actions"
       );
-    } finally {
-      fs.rmSync(skillDir, { recursive: true, force: true });
-    }
+    });
   });
 });
 

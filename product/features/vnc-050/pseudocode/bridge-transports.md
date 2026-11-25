@@ -1,12 +1,13 @@
 # C10 Bridge / Transports — `mcp-bridge.js`, `mcp-bridge/http-session.js`, `transport-http.js`, `config.js` (+ `init.js` ping call)
 
-ADR-006 (#5818), ADR-007 (#5817), FR-19..30. Depends on C8, C9. Each file stays ≤ 400 lines. Existing pin test files: zero diff (AC-05, R-11).
+ADR-006 (#5829), ADR-007 (#5817), FR-19..30. Depends on C8, C9. Each file stays ≤ 400 lines. Existing pin test files: zero diff (AC-05, R-11).
 
 ## Shared TLS Guard (new, in `cert-pin.js` is FORBIDDEN — keep cert-pin untouched; put in `lib/hook-client/tls-guard.js`, < 40 lines)
 ```
 /** Throws if an unpinned TLS request carries any trust override (SR-01, R-01.4). */
 function assertCaOptions(options) {
-  if (options.rejectUnauthorized === false) throw new Error("internal: unpinned request must not disable certificate verification")
+  // explicit true: ignores NODE_TLS_REJECT_UNAUTHORIZED=0 by design (ADR-006, Decision 11)
+  if (options.rejectUnauthorized !== true) throw new Error("internal: unpinned request must set rejectUnauthorized: true")
   if ("checkServerIdentity" in options) throw new Error("internal: unpinned request must not override hostname verification")
   return options
 }
@@ -39,7 +40,7 @@ return headers
 ```
 const base = { protocol, hostname, port, path, method, headers, agent: false, timeout: this.idleMs }   // as today
 if (this.pinnedFp) return applyCertPin(base, true, this.pinnedFp)      // UNCHANGED pinned branch
-return assertCaOptions(base)                                           // CA branch: no rejectUnauthorized key, no ca, no checkServerIdentity
+return assertCaOptions({ ...base, rejectUnauthorized: true })          // CA branch: explicit true, no ca, no checkServerIdentity
 ```
 `_pinThenFlush(req, onPin, onMismatch, onConnect)` — one added branch; pinned path statements unchanged:
 ```
@@ -138,7 +139,7 @@ return okHttp(r.observe.url, r.observe.token, mergeTimeouts(r.observe.timeouts),
 `index.js`: `describeReason("misconfig")` returns `config.detail` (token-free by construction); `classForReason("misconfig")` → `"auth"`. Hook keeps its exit-0 contract (C-05). Gap flagged: FR-20/FR-23 say "exit non-zero"; for the hook process this conflicts with the C-05 exit-0 guarantee and FR-24a "never fail the hook". Pseudocode: bridge exits 1; hook exits 0 with one stderr line naming the variable. Needs confirmation.
 
 ## Key Test Scenarios
-- R-01: byte-capturing raw TLS server, untrusted cert and hostname mismatch (CA via NODE_EXTRA_CA_CERTS): zero app bytes for bridge initialize, observe POST, pingForInit; bridge exit 1, no token in stderr. Guard throws when `rejectUnauthorized:false` reaches unpinned path.
+- R-01: byte-capturing raw TLS server, untrusted cert and hostname mismatch (CA via NODE_EXTRA_CA_CERTS): zero app bytes for bridge initialize, observe POST, pingForInit; bridge exit 1, no token in stderr. `NODE_TLS_REJECT_UNAUTHORIZED=0` + untrusted cert on CA path → refused, zero app bytes. Guard throws when `rejectUnauthorized !== true` reaches unpinned path.
 - AC-02: env MCP pair + local CA → initialize + tools/call succeed, no remote.json.
 - AC-05/R-11: existing pin test files unchanged and green; bundle fp, env fp, stored fp each select pinned branch vs real self-signed server; mismatched fp refused with zero bytes.
 - R-08: capturing proxy sees extra headers on initialize, POST, DELETE, observe POST, pingForInit; reserved names cannot be overridden even if parser bypassed (inject directly into `extraHeaders`).

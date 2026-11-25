@@ -1,6 +1,6 @@
 # C9 Remote Resolver — `lib/hook-client/remote-resolve.js` (new)
 
-ADR-006 (#5818), ADR-007 (#5817), FR-19..24, FR-28..30, FR-40, HD 3b/7.2/8. Depends on C8 (`decodeBundle`), `credstore.read`. Node stdlib only. Target < 250 lines.
+ADR-006 (#5829), ADR-007 (#5817), FR-19..24, FR-28..30, FR-40, HD 3b/7.2/8. Depends on C8 (`decodeBundle`), `credstore.read`. Node stdlib only. Target < 250 lines.
 
 ## Purpose
 Single credential resolution for both the MCP bridge and the observe path: bundle > env pair > credential store, per consumer; explicit conflict list; empty = unset; strict extra-header parsing. Never logs or embeds a token/header value in any error.

@@ -23,7 +23,7 @@ Extend the existing project register / client-bundle creation flow. No parallel 
 | **Label** | Operator-supplied unique name for a scoped token; used for `--list`, `--revoke`, audit, and agent identity. Never secret. |
 | **Mode** | `read` → capabilities {Read, Search}. `read-write` → {Read, Write, Search, SessionWrite}. |
 | **Read/write line** | "Mutates knowledge or feeds learning" is write (OQ-6). |
-| **Trust mode** | `pinned` (fingerprint present; vnc-039 ADR-001 behavior) or `ca` (no fingerprint; standard Node TLS, `rejectUnauthorized` true). |
+| **Trust mode** | `pinned` (fingerprint present; vnc-039 ADR-001 behavior) or `ca` (no fingerprint; standard Node TLS, explicit `rejectUnauthorized: true`; `NODE_TLS_REJECT_UNAUTHORIZED=0` ignored). |
 | **Credential resolver** | Single JS module shared by MCP bridge and observe path that resolves URL(s), token, fingerprint, extra headers, from env and credential store. |
 | **Env pair** | Low-level path: `UNIMATRIX_REMOTE_MCP_URL` + `UNIMATRIX_REMOTE_TOKEN` (MCP). `UNIMATRIX_REMOTE_URL` + `_TOKEN` keep their existing observe meaning. |
 | **Extra headers** | `UNIMATRIX_REMOTE_HEADERS`: JSON object of caller-owned headers (e.g. Cloudflare Access). Not in the bundle. |
@@ -85,7 +85,7 @@ Extend the existing project register / client-bundle creation flow. No parallel 
 - **FR-39** Server-side: no existing route, response shape, status code, or header changes for legacy-token requests, except the FR-13 slug guard (legacy is all-slugs, so no new 403) and the FR-11 disabled body. (AC-20–AC-22)
 
 ### Client: TLS (Goal 3)
-- **FR-25** No fingerprint → CA trust mode: Node default TLS, `rejectUnauthorized: true`, hostname verification on, built from the default `https` agent, not `cert-pin.js`. Untrusted cert or hostname mismatch → connection fails before any request bytes (headers, bearer token, body) are written. (AC-04, SR-01)
+- **FR-25** No fingerprint → CA trust mode: Node default TLS, `rejectUnauthorized: true` passed explicitly per connection (so `NODE_TLS_REJECT_UNAUTHORIZED=0` is ignored by design), hostname verification on, built from the default `https` agent, not `cert-pin.js`. Untrusted cert or hostname mismatch → connection fails before any request bytes (headers, bearer token, body) are written. (AC-04, SR-01)
 - **FR-26** Fingerprint present (store, bundle, or env) → existing pinned branch, byte-identical behavior; existing pin tests pass unmodified. (AC-05)
 - **FR-27** Private CAs supported only via `NODE_EXTRA_CA_CERTS`; no custom CA setting.
 
@@ -156,7 +156,7 @@ Compat permutation matrix (AC-20–AC-24): client {pre-vnc-050, new} × credenti
 
 ## Constraints
 
-- Pinned trust contract (vnc-039 ADR-001 #5115, vnc-034 ADR-002 #4948) must not regress; CA path never uses `rejectUnauthorized:false`.
+- Pinned trust contract (vnc-039 ADR-001 #5115, vnc-034 ADR-002 #4948) must not regress; CA path never uses `rejectUnauthorized:false` and always passes `rejectUnauthorized: true` explicitly.
 - vnc-039 ADR-005 (#5119, bundle-only cloud MCP) is relaxed by this feature: env pair permitted. Architect supersedes/corrects the ADR.
 - Pattern #5129 stands: pinned self-signed server is not registered as native http MCP.
 - Bundle remains server-composed (#5081, #5543): client derives nothing route-shaped.

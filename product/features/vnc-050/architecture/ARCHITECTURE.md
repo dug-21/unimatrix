@@ -4,7 +4,7 @@
 vnc-050 adds least-privilege, non-interactive access to the personal-cloud HTTPS listener, and it does this by extending the existing setup flow (`register` → `client-bundle` → attach). It adds no new creation mechanism.
 
 - **Server side**: a scoped token table sits behind the existing `BearerValidator` seam. One slug guard in `PathRouter` enforces `allowed_slugs`. HTTP layer enforces authentication, tombstone revocation, slug binding and the observe `SessionWrite` check. At the MCP layer the token mode is a capability ceiling intersected with the registry grants of the self-asserted `agent_id`; the intersection only narrows (ADR-003). Read-token tool calls record no learning (ADR-004).
-- **Client side**: one resolver module serves both the MCP bridge and the observe path. It handles `UNIMATRIX_BUNDLE`, the env pair and the credential store. When a fingerprint is present, the client pins it exactly as today. When there is none, the client uses standard CA validation.
+- **Client side**: one resolver module serves both the MCP bridge and the observe path. It handles `UNIMATRIX_BUNDLE`, the env pair and the credential store. When a fingerprint is present, the client pins it exactly as today. When there is none, the client uses standard CA validation with explicit `rejectUnauthorized: true`, ignoring `NODE_TLS_REJECT_UNAUTHORIZED=0` by design (ADR-006).
 - Local STDIO/UDS and `bridge.rs` are unchanged.
 
 ## Component Breakdown
@@ -71,7 +71,7 @@ vnc-050 adds least-privilege, non-interactive access to the personal-cloud HTTPS
 | `UNIMATRIX_REMOTE_MCP_URL` + `_TOKEN` | C9 tier 2. A partial pair exits 1. Messages never include the token. |
 | `UNIMATRIX_REMOTE_HEADERS` | ADR-007. Applied on initialize, POST, SSE GET, DELETE and observe. Reserved names fail loud. |
 | Fingerprint present (bundle or env) | The existing pinned branch is untouched, and the existing pin tests pass unchanged (AC-05). |
-| No fingerprint, bad cert | The CA branch rejects at the handshake, and the server receives zero app bytes (SR-01). |
+| No fingerprint, bad cert | The CA branch rejects at the handshake, and the server receives zero app bytes (SR-01), including when `NODE_TLS_REJECT_UNAUTHORIZED=0` is set. |
 | Read token → observe / session | 403 before the dispatcher (C6); client warns once, job continues (C6c). |
 | Read token → MCP write tool | `CapabilityDenied` regardless of claimed `agent_id` (ceiling, ADR-003). |
 | Read token → MCP read/search tool | Served; no usage, co-access or query_log rows (ADR-004). |
