@@ -18,7 +18,7 @@ vnc-050 adds least-privilege, non-interactive access to the personal-cloud HTTPS
 | C4b | Capability ceiling | `mcp/cap_ceiling.rs` (new); 1 line in `server.rs` `build_context_with_external_identity`, `require_cap` signature + ceiling call; `ToolContext.cap_ceiling` field in `mcp/context.rs`; `tools.rs` call-site arg swap + `learning_allowed` lines; `UsageContext.learning_allowed` + early return in `services/usage.rs` | Reads `BearerPrincipal` from rmcp `Parts.extensions`, intersects with registry in `require_cap`, gates usage/co-access/query_log recording | 003, 004 |
 | C5 | Legacy-token config | `infra/legacy_token_config.rs` (new); 3-line hook + 1 field in `infra/config.rs` | `http.legacy_token_enabled` (default true) + `UNIMATRIX_LEGACY_TOKEN_ENABLED` override | 001 |
 | C6 | Observe gate | `http/router/handlers.rs` | 403 on observe/session routes without `SessionWrite` | 004 |
-| C6c | Observe 403 handling (client) | `lib/hook-client` observe POST path | Warn once, latch off, never fail the hook | 004 |
+| C6c | Observe 403 handling (client) | `lib/hook-client` observe POST path | Warn once per credential, persistent marker latch, never fail the hook | 004 |
 | C7 | client-bundle CLI | `client_bundle.rs` → `client_bundle/{mod.rs,args.rs,tokens_cli.rs}`; `main.rs` variant swap | Handles `--headless/--mode/--label/--trust`, `--list` and `--revoke`. Enforces the flag matrix. Makes the bundle's `fp` nullable. | 005 |
 | C8 | JS bundle decoder | `packages/unimatrix/lib/hook-client/bundle.js` | Accepts `fp:null`. Rejects everything else exactly as today. | 005 |
 | C9 | Remote resolver | `packages/unimatrix/lib/hook-client/remote-resolve.js` (new) | Applies the bundle > env pair > store precedence, fails loud on conflicts, parses headers | 006, 007 |
@@ -108,7 +108,7 @@ vnc-050 adds least-privilege, non-interactive access to the personal-cloud HTTPS
 | `UsageContext.learning_allowed` | `pub(crate) learning_allowed: bool` | `services/usage.rs` |
 | Auth identity | `pub(crate) fn auth_identity(p:&BearerPrincipal) -> ResolvedIdentity` (`token:<label>` / existing `http-bearer`) | C4 |
 | Observe 403 | status 403, body `{"error":"token lacks SessionWrite"}` | C6 |
-| Client observe latch | module-level `observeDenied` flag; one stderr warning per process; hook exit code unchanged | C6c |
+| Client observe latch | `stateDir/observe-denied.json` (0600) holding SHA-256 of credential; latch only on 403 `token lacks SessionWrite`; one warning per credential across processes; no expiry; missing/corrupt marker = retry; write failure never changes exit/output | C6c |
 | CLI | `client-bundle <slug> [--headless --mode read\|read-write --label <L>] [--trust pin\|ca] \| --list \| --revoke <L>`; usage error exit 2 | C7 |
 | Bundle | v:2, keys unchanged `{v,mcp_url,observe_url,token,fp}`; `fp: "sha256:<64hex>" \| null` | C7/C8 |
 | Env vars | `UNIMATRIX_BUNDLE`, `UNIMATRIX_REMOTE_MCP_URL` (new), `UNIMATRIX_REMOTE_URL` (observe; unchanged), `UNIMATRIX_REMOTE_TOKEN`, `UNIMATRIX_REMOTE_FINGERPRINT` (new), `UNIMATRIX_REMOTE_HEADERS` (new) | C9 |
@@ -165,7 +165,7 @@ No existing artifact needs to change. Every row below is a required test permuta
 ## Test Strategy Hooks
 - Route × token matrix for the C3 guard: every route including observe, SSE GET and DELETE.
 - Read token on observe and every session route: 403, and observations/sessions/signal_queue/cycle_events/entries tables unchanged after draining background channels (AC-15 observe scope, SR-17).
-- JS: read-bundle hook run against a real server gets 403 → exactly one warning, hook exit 0, no second POST.
+- JS: read-bundle hook run against a real server gets 403 → exactly one warning, hook exit 0, no second POST across N hook processes.
 - R-01 first delivery step: `BearerPrincipal` visible at a tool via `Parts.extensions` on POST in a stateful session (else apply ADR-003 McpAdapter re-insert fallback).
 - Ceiling matrix: {read, read-write, legacy, stdio} × {Read, Search, Write, SessionWrite, Admin} × claimed `agent_id` {human, registered restricted}; read + `human` write → denied; HTTP with Parts but no principal → denied.
 - Read token search/lookup/get: usage, co_access and query_log tables unchanged after draining channels.
