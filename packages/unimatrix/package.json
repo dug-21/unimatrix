@@ -7,7 +7,7 @@
   },
   "scripts": {
     "postinstall": "node postinstall.js",
-    "test": "node --test",
+    "test": "node test/run-hook-client.js && node test/run-hook-client.js --only parity-layer2 && node test/run-hook-client.js --set package && node test/run-hook-client.js --set opencode-plugin && node test/run-hook-client.js --set audit",
     "test:hook-client": "node test/run-hook-client.js",
     "test:hook-client:layer2": "node test/run-hook-client.js --only parity-layer2",
     "test:package": "node test/run-hook-client.js --set package",
