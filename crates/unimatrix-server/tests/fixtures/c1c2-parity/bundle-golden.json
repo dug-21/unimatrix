@@ -28,5 +28,15 @@
       "fp": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
     },
     "wire": "unimatrix-bundle:eyJ2IjoyLCJtY3BfdXJsIjoiaHR0cHM6Ly9bMjAwMTpkYjg6OjFdOjg0NDMvdjEvZ2FtbWEtMiIsIm9ic2VydmVfdXJsIjoiaHR0cHM6Ly9bMjAwMTpkYjg6OjFdOjg0NDMvdjEvZ2FtbWEtMi9vYnNlcnZlIiwidG9rZW4iOiJhMWIyYzNkNGU1ZjZhMWIyYzNkNGU1ZjZhMWIyYzNkNGU1ZjZhMWIyYzNkNGU1ZjZhMWIyYzNkNGU1ZjZhMWIyIiwiZnAiOiJzaGEyNTY6MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMSJ9"
+  },
+  {
+    "fields": {
+      "v": 2,
+      "mcp_url": "https://cloud.example:8443/v1/alpha",
+      "observe_url": "https://cloud.example:8443/v1/alpha/observe",
+      "token": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "fp": null
+    },
+    "wire": "unimatrix-bundle:eyJ2IjoyLCJtY3BfdXJsIjoiaHR0cHM6Ly9jbG91ZC5leGFtcGxlOjg0NDMvdjEvYWxwaGEiLCJvYnNlcnZlX3VybCI6Imh0dHBzOi8vY2xvdWQuZXhhbXBsZTo4NDQzL3YxL2FscGhhL29ic2VydmUiLCJ0b2tlbiI6IjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYiLCJmcCI6bnVsbH0"
   }
 ]

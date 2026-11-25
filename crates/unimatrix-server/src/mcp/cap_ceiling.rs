@@ -84,6 +84,10 @@ mod deny_tests;
 mod learning_tests;
 
 #[cfg(test)]
+#[path = "legacy_token_http_tests.rs"]
+mod legacy_http_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::http::principal::TokenMode;

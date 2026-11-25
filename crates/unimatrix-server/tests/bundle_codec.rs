@@ -37,7 +37,8 @@ struct GoldenFields {
     mcp_url: String,
     observe_url: String,
     token: String,
-    fp: String,
+    /// `None` = CA trust (`null` on the wire, vnc-050 ADR-005).
+    fp: Option<String>,
 }
 
 /// One parity row: the canonical fields and their encoded wire form.
@@ -60,15 +61,17 @@ fn synthetic_fields() -> Vec<GoldenFields> {
             mcp_url: "https://cloud.example:8443/v1/alpha".to_string(),
             observe_url: "https://cloud.example:8443/v1/alpha/observe".to_string(),
             token: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string(),
-            fp: "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
-                .to_string(),
+            fp: Some(
+                "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+                    .to_string(),
+            ),
         },
         GoldenFields {
             v: 2,
             mcp_url: "https://host.internal:9000/v1/beta".to_string(),
             observe_url: "https://host.internal:9000/v1/beta/observe".to_string(),
             token: "f".repeat(64),
-            fp: format!("sha256:{}", "0".repeat(64)),
+            fp: Some(format!("sha256:{}", "0".repeat(64))),
         },
         GoldenFields {
             v: 2,
@@ -76,14 +79,24 @@ fn synthetic_fields() -> Vec<GoldenFields> {
             mcp_url: "https://[2001:db8::1]:8443/v1/gamma-2".to_string(),
             observe_url: "https://[2001:db8::1]:8443/v1/gamma-2/observe".to_string(),
             token: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
-            fp: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
-                .to_string(),
+            fp: Some(
+                "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+                    .to_string(),
+            ),
+        },
+        // vnc-050 ADR-005: CA trust — `fp: null` (key present). JS must accept.
+        GoldenFields {
+            v: 2,
+            mcp_url: "https://cloud.example:8443/v1/alpha".to_string(),
+            observe_url: "https://cloud.example:8443/v1/alpha/observe".to_string(),
+            token: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".to_string(),
+            fp: None,
         },
     ]
 }
 
 fn encode_fields(f: &GoldenFields) -> String {
-    encode_bundle(f.v, &f.mcp_url, &f.observe_url, &f.token, &f.fp).expect("encode")
+    encode_bundle(f.v, &f.mcp_url, &f.observe_url, &f.token, f.fp.as_deref()).expect("encode")
 }
 
 fn encode_json(json: &str) -> String {
@@ -101,7 +114,10 @@ fn test_encode_bundle_v2_composes_both_urls() {
     let json = String::from_utf8(json_bytes).expect("utf8");
     let expected = format!(
         "{{\"v\":2,\"mcp_url\":\"{}\",\"observe_url\":\"{}\",\"token\":\"{}\",\"fp\":\"{}\"}}",
-        f.mcp_url, f.observe_url, f.token, f.fp
+        f.mcp_url,
+        f.observe_url,
+        f.token,
+        f.fp.as_deref().expect("row 0 is pinned")
     );
     assert_eq!(
         json, expected,
@@ -389,7 +405,7 @@ fn test_generate_c1_bundle_golden() {
                 &fields.mcp_url,
                 &fields.observe_url,
                 &fields.token,
-                &fields.fp,
+                fields.fp.as_deref(),
             )
             .expect("encode");
             BundleRow { fields, wire }
@@ -426,7 +442,7 @@ fn test_c1_bundle_golden_is_stable() {
             &row.fields.mcp_url,
             &row.fields.observe_url,
             &row.fields.token,
-            &row.fields.fp,
+            row.fields.fp.as_deref(),
         )
         .expect("encode");
         assert_eq!(reencoded, row.wire, "row {i}: encoder drift");

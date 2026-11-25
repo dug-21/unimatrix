@@ -22,12 +22,8 @@
 //! - **stdout** = the opaque `unimatrix-bundle:…` blob ONLY. One line, pipeable,
 //!   zero contamination. The token lives ONLY inside this base64url blob — it is
 //!   the SOLE token-delivery channel (ADR-008).
-//! - **stderr** = human echo of `mcp_url` + `observe_url` + `cert-fingerprint`
-//!   ONLY. The token is NEVER printed to stderr, and never to any log line.
-//!
-//! `run_client_bundle` is a sync, pre-tokio subcommand (C-10), dispatched in the
-//! `main.rs` sync block alongside `health`/`version`. No tokio runtime, no token
-//! in any trace.
+//! - **stderr** = URL + fingerprint/trust (+ headless label/mode) echo ONLY; the
+//!   token is never printed there or logged. Sync, pre-tokio subcommand (C-10).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -37,9 +33,16 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::Serialize;
 
 use crate::error::ServerError;
+use crate::http::principal::TokenMode;
 use crate::http::public_url::{Env, derive_public_url};
 use crate::http::{ProjectSlug, fingerprint_leaf_der, leaf_der_from_pem};
 use crate::project;
+
+mod args;
+mod tokens_cli;
+
+pub use args::ClientBundleArgs;
+use args::{Action, Trust, USAGE, UsageError};
 
 /// Literal scheme prefix of the wire form (ADR-001). The client rejects anything
 /// without it.
@@ -82,8 +85,10 @@ pub struct Bundle {
     /// 64 lowercase-hex bearer token. Carried ONLY inside the encoded blob (the
     /// sole token-delivery channel, ADR-008).
     pub token: String,
-    /// Cert fingerprint `"sha256:<64hex>"` over the served leaf DER (C2).
-    pub fp: String,
+    /// Cert fingerprint `"sha256:<64hex>"` over the served leaf DER (C2), or
+    /// `None` (`null` on the wire, key always present) for CA trust (vnc-050
+    /// ADR-005/006).
+    pub fp: Option<String>,
 }
 
 /// Decode-side error variants (the shared trust-boundary contract, mirrored in JS).
@@ -136,35 +141,64 @@ fn compose_route_urls(public_base: &str, slug: &ProjectSlug) -> (String, String)
     (mcp_url, observe_url)
 }
 
-/// Run the `client-bundle <slug>` subcommand: emit the per-project connection bundle.
+/// Run the `client-bundle` subcommand (vnc-038 C1, vnc-050 ADR-005).
 ///
-/// Sync, no tokio (C-10). Resolves the same `data_dir` the listener uses, validates
-/// the `<slug>` at the edge, reads the bearer token + served leaf cert, fingerprints
-/// the leaf, derives the public base-url, composes the per-slug MCP + observe URLs
-/// (ADR-002), encodes the `v:2` bundle, and emits it per the stdout/stderr split.
-///
-/// The `<slug>` is mandatory: there is NO default-aliased bundle (ADR-001/004). An
-/// absent or invalid slug is a loud [`ServerError::Config`], never a silent default.
+/// Sync, no tokio (C-10). The flag matrix is validated BEFORE any I/O; a
+/// violation prints `error: <msg>` + usage to stderr and exits 2. Then the slug is
+/// validated, the data dir resolved, and the action dispatched: legacy bundle,
+/// headless mint, `--list`, or `--revoke`.
 ///
 /// # Errors
 ///
 /// Returns [`ServerError`] (naming the path/slug + a fix) when the slug is invalid
-/// or the data directory, token, or cert cannot be read/validated. No panic, no
-/// `.unwrap()`.
-pub fn run_client_bundle(project_dir: Option<PathBuf>, slug_arg: &str) -> Result<(), ServerError> {
-    let slug = ProjectSlug::try_from(slug_arg).map_err(|_| {
-        ServerError::Config(format!(
-            "client-bundle requires a registered <slug> matching ^[a-z0-9][a-z0-9-]{{0,62}}$; \
-             got {slug_arg:?}. Register a project first (unimatrix register <slug>)."
-        ))
-    })?;
+/// or the data directory, token, cert, or token table cannot be read/updated.
+pub fn run_client_bundle(
+    project_dir: Option<PathBuf>,
+    args: ClientBundleArgs,
+) -> Result<(), ServerError> {
+    let action = match args.action() {
+        Ok(a) => a,
+        Err(UsageError(m)) => {
+            eprintln!("error: {m}\n{USAGE}");
+            std::process::exit(2);
+        }
+    };
+    let slug = parse_slug(&args.slug)?;
 
     let paths = project::ensure_data_directory(project_dir.as_deref(), None)
         .map_err(|e| ServerError::ProjectInit(e.to_string()))?;
     let data_dir = paths.data_dir;
 
-    let token_hex = read_token_hex(&data_dir)?;
+    match action {
+        Action::Legacy { trust } => {
+            let fp = resolve_fp(&data_dir, trust)?;
+            let token_hex = read_token_hex(&data_dir)?;
+            emit_for(&slug, &token_hex, fp.as_deref(), None)
+        }
+        Action::Mint { mode, label, trust } => {
+            tokens_cli::run_mint(&data_dir, &slug, mode, &label, trust)
+        }
+        Action::List => tokens_cli::run_list(&data_dir, &slug),
+        Action::Revoke { label } => tokens_cli::run_revoke(&data_dir, &slug, &label),
+    }
+}
 
+/// Validate the `<slug>` at the edge (no default-aliased bundle, ADR-001/004).
+fn parse_slug(slug_arg: &str) -> Result<ProjectSlug, ServerError> {
+    ProjectSlug::try_from(slug_arg).map_err(|_| {
+        ServerError::Config(format!(
+            "client-bundle requires a registered <slug> matching ^[a-z0-9][a-z0-9-]{{0,62}}$; \
+             got {slug_arg:?}. Register a project first (unimatrix register <slug>)."
+        ))
+    })
+}
+
+/// `Pin` → fingerprint of the served leaf (`tls/cert.pem`); `Ca` → `None`, cert
+/// not read.
+fn resolve_fp(data_dir: &Path, trust: Trust) -> Result<Option<String>, ServerError> {
+    if trust == Trust::Ca {
+        return Ok(None);
+    }
     let cert_path = data_dir.join("tls").join("cert.pem");
     let cert_pem = fs::read(&cert_path).map_err(|e| {
         ServerError::Config(format!(
@@ -173,14 +207,21 @@ pub fn run_client_bundle(project_dir: Option<PathBuf>, slug_arg: &str) -> Result
         ))
     })?;
     let der = leaf_der_from_pem(&cert_pem)?;
-    let fp = fingerprint_leaf_der(&der);
+    Ok(Some(fingerprint_leaf_der(&der)))
+}
 
+/// Compose URLs, encode, and emit one bundle. `minted` carries the headless
+/// label + mode for the stderr echo.
+fn emit_for(
+    slug: &ProjectSlug,
+    token_hex: &str,
+    fp: Option<&str>,
+    minted: Option<(&str, TokenMode)>,
+) -> Result<(), ServerError> {
     let public_base = derive_public_url(&Env::from_process()).base_url;
-    let (mcp_url, observe_url) = compose_route_urls(&public_base, &slug);
-
-    let blob = encode_bundle(BUNDLE_VERSION, &mcp_url, &observe_url, &token_hex, &fp)?;
-
-    emit_bundle(&blob, &mcp_url, &observe_url, &fp);
+    let (mcp_url, observe_url) = compose_route_urls(&public_base, slug);
+    let blob = encode_bundle(BUNDLE_VERSION, &mcp_url, &observe_url, token_hex, fp)?;
+    emit_bundle(&blob, &mcp_url, &observe_url, fp, minted, slug);
     Ok(())
 }
 
@@ -189,8 +230,15 @@ pub fn run_client_bundle(project_dir: Option<PathBuf>, slug_arg: &str) -> Result
 /// stdout = the opaque blob ONLY. stderr = mcp-url + observe-url + fp echo, TOKEN
 /// OMITTED. The exact text is built by [`render_output`] so the contract (blob-only
 /// stdout, token-absent stderr) is unit-testable without capturing process fds.
-fn emit_bundle(blob: &str, mcp_url: &str, observe_url: &str, fp: &str) {
-    let (stdout_line, stderr_block) = render_output(blob, mcp_url, observe_url, fp);
+fn emit_bundle(
+    blob: &str,
+    mcp_url: &str,
+    observe_url: &str,
+    fp: Option<&str>,
+    minted: Option<(&str, TokenMode)>,
+    slug: &ProjectSlug,
+) {
+    let (stdout_line, stderr_block) = render_output(blob, mcp_url, observe_url, fp, minted, slug);
     // stdout: the opaque blob, nothing else (pipeable). The token is inside it only.
     println!("{stdout_line}");
     // stderr: human echo — URLs + cert-fingerprint ONLY. Token never printed.
@@ -203,12 +251,37 @@ fn emit_bundle(blob: &str, mcp_url: &str, observe_url: &str, fp: &str) {
 /// - stdout is EXACTLY the opaque blob (one line, no prose, pipeable).
 /// - stderr is the mcp-url + observe-url + cert-fingerprint echo ONLY; the token is
 ///   never placed in it. Each stderr line ends in `\n`.
-fn render_output(blob: &str, mcp_url: &str, observe_url: &str, fp: &str) -> (String, String) {
+fn render_output(
+    blob: &str,
+    mcp_url: &str,
+    observe_url: &str,
+    fp: Option<&str>,
+    minted: Option<(&str, TokenMode)>,
+    slug: &ProjectSlug,
+) -> (String, String) {
     let mut stderr = String::new();
-    stderr.push_str("unimatrix connection bundle (paste into: unimatrix init --bundle <bundle>)\n");
+    if minted.is_some() {
+        stderr.push_str(
+            "unimatrix headless bundle (set as UNIMATRIX_BUNDLE; shown once — store it now)\n",
+        );
+    } else {
+        stderr.push_str(
+            "unimatrix connection bundle (paste into: unimatrix init --bundle <bundle>)\n",
+        );
+    }
     stderr.push_str(&format!("  mcp-url     : {mcp_url}\n"));
     stderr.push_str(&format!("  observe-url : {observe_url}\n"));
-    stderr.push_str(&format!("  cert-fp     : {fp}\n"));
+    match fp {
+        Some(fp) => stderr.push_str(&format!("  cert-fp     : {fp}\n")),
+        None => {
+            stderr.push_str("  trust       : ca (no pin; server cert must chain to a trusted CA)\n")
+        }
+    }
+    if let Some((label, mode)) = minted {
+        stderr.push_str(&format!("  label       : {label}\n"));
+        stderr.push_str(&format!("  mode        : {}\n", mode.as_wire()));
+        stderr.push_str(&format!("  slug        : {slug}\n"));
+    }
     if mcp_url.contains("<EDIT-ME>") {
         stderr.push_str(
             "  WARNING     : UNIMATRIX_PUBLIC_URL is unset — the URLs carry a placeholder. \
@@ -262,14 +335,14 @@ pub fn encode_bundle(
     mcp_url: &str,
     observe_url: &str,
     token_hex: &str,
-    fp: &str,
+    fp: Option<&str>,
 ) -> Result<String, ServerError> {
     let bundle = Bundle {
         v,
         mcp_url: mcp_url.to_string(),
         observe_url: observe_url.to_string(),
         token: token_hex.to_string(),
-        fp: fp.to_string(),
+        fp: fp.map(str::to_string),
     };
     let json = serde_json::to_string(&bundle)
         .map_err(|e| ServerError::Config(format!("bundle JSON encode failed: {e}")))?;
@@ -382,22 +455,24 @@ fn validate_schema(value: serde_json::Value) -> Result<Bundle, BundleError> {
         ));
     }
 
-    let fp = obj
-        .get("fp")
-        .and_then(serde_json::Value::as_str)
-        .ok_or_else(|| BundleError::Schema("'fp' must be a string".to_string()))?;
-    if !is_fingerprint(fp) {
-        return Err(BundleError::Schema(
-            "'fp' must match sha256:<64 lowercase hex>".to_string(),
-        ));
-    }
+    // Nullable (vnc-050 ADR-005): `null` = CA trust; a string must be a valid
+    // fingerprint. The key itself stays mandatory (exact-5-key check above).
+    let fp = match obj.get("fp") {
+        Some(serde_json::Value::Null) => None,
+        Some(serde_json::Value::String(s)) if is_fingerprint(s) => Some(s.clone()),
+        _ => {
+            return Err(BundleError::Schema(
+                "'fp' must be null or match sha256:<64 lowercase hex>".to_string(),
+            ));
+        }
+    };
 
     Ok(Bundle {
         v: BUNDLE_VERSION,
         mcp_url: mcp_url.to_string(),
         observe_url: observe_url.to_string(),
         token: token.to_string(),
-        fp: fp.to_string(),
+        fp,
     })
 }
 
@@ -419,5 +494,4 @@ fn is_fingerprint(s: &str) -> bool {
 /// Unit tests for private helpers — split into a sibling file (via `#[path]`) to
 /// keep this source file under the 500-line cap (C-06).
 #[cfg(test)]
-#[path = "client_bundle_tests.rs"]
 mod tests;

@@ -105,6 +105,17 @@ pub(crate) fn resolve_slug_store(
     })
 }
 
+/// Whether `slug` is registered (routed) per the `[[projects]]` config in
+/// `data_dir` — the same source `project list` reads (vnc-050 C7 / FR-08).
+pub(crate) fn is_registered_slug(data_dir: &Path, slug: &crate::http::ProjectSlug) -> bool {
+    ProjectRegistry {
+        base_dir: data_dir.parent().unwrap_or(data_dir).to_path_buf(),
+        config_data_dir: data_dir.to_path_buf(),
+    }
+    .configured_slugs()
+    .contains(slug)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

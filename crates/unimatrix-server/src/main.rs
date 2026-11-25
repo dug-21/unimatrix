@@ -461,21 +461,9 @@ enum Command {
     /// Used by Docker HEALTHCHECK directive (nan-014, ADR-003).
     Health,
 
-    /// Emit the per-project client connection bundle (vnc-038, C1/ADR-002).
-    ///
-    /// Reads the provisioned bearer token + served leaf cert from the data
-    /// volume, fingerprints the leaf DER, derives the public base-url, composes
-    /// the per-slug MCP + observe URLs, and prints the opaque
-    /// `unimatrix-bundle:` `v:2` blob to stdout (pipeable) with a token-redacted
-    /// URL + fingerprint echo on stderr (ADR-008 / NFR-06).
-    ///
-    /// The `<slug>` is mandatory — there is no default-aliased bundle
-    /// (ADR-001/004). Sync, pre-tokio subcommand (C-10) — like `health`/`version`.
-    /// Run after the server has booted once to provision TLS + token.
-    ClientBundle {
-        /// Registered project slug the bundle targets (`^[a-z0-9][a-z0-9-]{0,62}$`).
-        slug: String,
-    },
+    /// Emit the per-project client connection bundle, or manage its scoped
+    /// headless tokens (vnc-038 C1, vnc-050 ADR-005).
+    ClientBundle(unimatrix_server::client_bundle::ClientBundleArgs),
 
     /// Stop the running background daemon.
     ///
@@ -634,13 +622,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // run() returns 0 (healthy) or 1 (unhealthy); matches run_stop pattern.
             std::process::exit(unimatrix_server::health::run(cli.project_dir.as_deref()));
         }
-        Some(Command::ClientBundle { slug }) => {
+        Some(Command::ClientBundle(args)) => {
             // Sync path: NO tokio (C-10, vnc-038 ADR-002). Like Health/Version,
             // dispatched before any runtime init. Validates <slug>, reads token +
             // leaf cert from the data volume, composes the per-slug URLs, and emits
             // the v:2 bundle (stdout = blob, stderr = url echo, token redacted —
             // ADR-008 / NFR-06).
-            unimatrix_server::client_bundle::run_client_bundle(cli.project_dir, &slug)
+            unimatrix_server::client_bundle::run_client_bundle(cli.project_dir, args)
                 .map_err(Into::into)
         }
         Some(Command::Stop) => {
