@@ -136,7 +136,7 @@ function rightsGrantWrite(r) {
 function defaultSpawn(exe, args, extraEnv) {
   const env = extraEnv ? Object.assign({}, process.env, extraEnv) : process.env;
   const r = require("node:child_process").spawnSync(exe, args, { encoding: "utf8", windowsHide: true, timeout: 20000, env });
-  return { status: r.status, stdout: r.stdout || "" };
+  return { status: r.status, stdout: r.stdout || "", stderr: r.stderr || "" };
 }
 
 function currentUserSid(run, sys32) {
@@ -176,7 +176,7 @@ function ownersOf(run, sys32, paths) {
     "$ErrorActionPreference='Stop';foreach($p in ($env:UNX_PATHS -split '\\|')){try{(Get-Acl -LiteralPath $p).GetOwner([System.Security.Principal.SecurityIdentifier]).Value}catch{''}}";
   const exe = path.win32.join(sys32, "WindowsPowerShell", "v1.0", "powershell.exe");
   const r = run(exe, ["-NoProfile", "-NonInteractive", "-Command", script], { UNX_PATHS: paths.join("|") });
-  if (!r || r.status !== 0) throw new TrustError("powershell", "cannot read owner");
+  if (!r || r.status !== 0) throw new TrustError("powershell", `cannot read owner (status ${r && r.status}; ${String((r && r.stderr) || "").slice(0, 160).replace(/\s+/g, " ")})`);
   const lines = String(r.stdout).split(/\r?\n/).map((l) => l.trim());
   const out = new Map();
   paths.forEach((p, i) => {
@@ -216,7 +216,7 @@ function fullCheckWindows(paths, opts) {
     if (!/^O:/.test(sd)) {
       owners = owners || ownersOf(run, sys32, paths);
       const sid = owners.get(p);
-      if (!sid) throw new TrustError(p, "cannot read owner");
+      if (!sid) throw new TrustError(p, `cannot read owner (got ${JSON.stringify(Array.from(owners.values()).length)} of ${paths.length})`);
       sd = `O:${sid}${sd}`;
     }
     checkSddl(p, sd, me, prot.has(normalizeKey(p)));
