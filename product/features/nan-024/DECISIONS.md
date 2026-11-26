@@ -1,0 +1,77 @@
+# nan-024 Decision Register
+
+Source of human scope: GH #1023 (issue body, authored by human).
+
+| ID | Phase | Question | Decision | Decided-by | Source | Rationale |
+|----|-------|----------|----------|------------|--------|-----------|
+| D-001 | design | Retire Rust hook client from shipped wiring? | Yes, now, without #682 four-week soak | human | #1023 | Human decision 2026-11-25 |
+| D-002 | design | Topology | Local: hooks→Node client→UDS→Rust daemon; MCP→Rust stdio. Cloud: hooks→Node→HTTPS; MCP→Node mcp-bridge→HTTPS. `unimatrix hook` routes to Node | human | #1023 | Local ≡ cloud parity |
+| D-003 | design | Wiring form | Decided in design against R1–R5 with trade-off table; if none meets all, human picks at design-review | human | #1023 | — |
+| D-004 | design | OpenCode | Deferred: init writes no plugin provisioning; keep opt-in `wire --harness opencode` retrieval MCP entry | human | #1023 | Plugin package unpublished |
+| D-005 | design | Dogfood mechanism | User-level redirect in `~/.unimatrix/`; one switch for all harnesses; no git diff on promote/rollback; DB backup before migrating binary | human | #1023 | #1006 outcome |
+| D-006 | design | Latency budget | p95 ≤ 25 ms local proposed; confirm at design-review | human | #1023 | ~2× #682 baseline |
+| D-007 | design | Out of scope | OpenCode hooks (#998), retiring hook.rs, native remote HTTP MCP, uninstall, Windows/macOS local, Gemini writer | human | #1023 | — |
+| D-008 | design | Supersedes nan-023 C-10 | Yes | human | #1023 | — |
+| D-009 | design | Dogfood in nan-024? | Out. Moved to a follow-up issue (see D-012). nan-024 covers production wiring only | human | scope-review | Dogfood is separate from the prod cleanup |
+| D-010 | design | No double-firing AC | Add. Unimatrix guarantees only its configuration: across all scopes it writes, at most one Unimatrix entry per event. The harness's own firing behaviour is outside Unimatrix's control | human | scope-review | The harness is the component that fires hooks |
+| D-011 | design | Scope gate | SCOPE.md approved with D-009 and D-010 applied | human | scope-review | — |
+| D-012 | design | Follow-up issue | Dogfood tracked in #1025 | uni-zero-design | D-009 | Executes D-009 |
+| D-013 | design | Dogfood seam in nan-024? | Keep in #1023. The released launcher honours a user-level override (redirect file in ~/.unimatrix/ or UNIMATRIX_BINARY). Binary and client resolve from it, proven by a test. Partially amends D-009; the rest of the dogfood work stays in #1025 | human | scope-review | Dogfood depends on the released launcher; without the seam it waits a release |
+| D-014 | design | OD-4 Codex shell/merge evidence | Gather the upstream evidence now, in design, before sign-off. Gate 3a is not waived | uni-zero-design | ADR-001 (5838); D-003 | ADR-001's fit depends on it |
+| D-015 | design | OD-1 exit codes | Failure exits 1. Not installed: exit 0 with a one-line hint | human | design-review | Exit 2 blocks Claude |
+| D-016 | design | OD-2 override source | UNIMATRIX_BINARY governs the binary only. Client resolves from redirect, then the installed package. No inference from beside the binary. D-013 unchanged | human | design-review | — |
+| D-017 | design | OD-3 latency budget | Relative: Node baseline p95 + 15 ms, floor 50 ms. Supersedes the 25 ms in D-006 | human | design-review | 25 ms unattainable (Node p95 33.6 ms) |
+| D-018 | design | OD-5 Claude hook target | settings.local.json. R5 waived for Claude hooks only; MCP stays portable | human | design-review | Committed hook would fail for cloners without the shim |
+| D-019 | design | OD-5 user-level footprint | Accept the shim and install.json. User-level edits remove only entries matching the ownership pattern, and every edit is listed in a dry-run. Where hooks are user-level (Codex), the shim no-ops silently in projects without Unimatrix | human | design-review | — |
+| D-020 | design | Trust check (shim, install.json, redirect) | File owned by the current user, not group- or world-writable, parent dir 0700. Fail closed, loudly | human | design-review | H1 |
+| D-021 | design | Node path | Recorded path, then PATH fallback, then a loud re-init hint. Re-recorded on init and on upgrade | human | design-review | — |
+| D-022 | design | Stable package copy | Versioned dirs under ~/.unimatrix, atomic pointer swap, old versions pruned. Used for local and cloud | human | design-review | Survives npx cache clean (R3) |
+| D-023 | design | OD-1 exit codes (supersedes D-015) | Three outcomes. Not a Unimatrix project: exit 0, silent. Unimatrix project with no install: exit 0 with a one-line hint. Broken: exit 1 | human | design-review | — |
+| D-024 | design | OD-2 (restates D-016) | UNIMATRIX_BINARY governs the binary only. Client resolves from redirect, then the installed package. D-013 unchanged | human | design-review | — |
+| D-025 | design | OD-3 (extends D-017) | Relative budget: baseline p95 + 15 ms, floor 50 ms. It also covers the not-a-Unimatrix-project path. Measure that path, and add a check that runs before Node starts if it is over budget | human | design-review | User-level Codex hooks fire in every project |
+| D-026 | design | OD-5 hook destinations (supersedes D-018, D-019) | Claude hooks go to settings.local.json. Codex hooks go to ~/.codex/hooks.json only, and project entries are removed. R5 waived for hook destinations only (neither is committed); MCP stays portable. User-level writes and removals are limited to Unimatrix-owned entries and listed in a dry-run | human | design-review | — |
+| D-027 | design | Q7 Windows | Do NOT drop Windows. Write the absolute resolved shim path into both hook destinations on every platform (no $HOME, no shell expansion). Add a Windows shim form. The shim handles spaces in paths (Windows quoting) | human | design-review | Keeps cloud Codex on Windows working (H5) |
+| D-028 | design | Q8 Codex approval | Accept the one-time approval. init prints the step. The hook command string stays byte-for-byte fixed across upgrades, tested | human | design-review | Codex requires it |
+| D-029 | design | Trust check (supersedes D-020) | Current-user owned, not group- or world-writable, parent dir 0700, refuse loudly on failure. Windows: define an ACL/owner equivalent or escalate the limitation; never skip silently | human | design-review | H1 |
+| D-030 | design | Node path (restates D-021) | Recorded path, then PATH fallback, then a loud re-init hint. Re-recorded on init and on upgrade | human | design-review | — |
+| D-031 | design | Stable copy (restates D-022) | Versioned dirs, atomic pointer swap, prune. Used for local and cloud | human | design-review | — |
+| D-032 | design | Platform model | macOS and Windows are cloud-only (no Rust binary). The hook and bridge path resolves the binary only when local transport is selected. "No binary on this platform" is a normal state. On non-Linux, "installed" means a bundle or credential store exists | human | design-review | — |
+| D-033 | design | DoD addition | Windows and macOS cloud attach, plus Claude and Codex hooks firing through the shim, are proven in CI | human | design-review | — |
+| D-034 | design | Q9 Windows MCP argv pass-through | Prove it in an early Windows CI run before implementation, as the first delivery task. If it fails, escalate and amend ADR-001's Windows MCP entry | uni-zero-design | D-014; ADR-001 (#5853) | Same evidence-first rule as OD-4 |
+| D-035 | design | OQ-6 legacy direct-path hooks | Audit in delivery Stage 1: search the repo, docs and installers for direct Rust `hook` invocations outside files that init writes. Escalate any found | uni-zero-design | D-001; ass-109 P1 | Factual check; no policy choice |
+| D-036 | design | L-1 Windows trust check cost | Full ACL check at init, recording file identity (size, mtime, file-id). Each event compares identity and reruns the full check on a mismatch | human | design-review | Mitigates R-22 |
+| D-037 | design | L-4 bundle present, no credential | Exit 0 with a hint; also surfaced in unimatrix status | human | design-review | — |
+| D-038 | design | L-5 Codex approval lost silently | status check, and init prints the approval step. If cheap, add a server-side signal: a session with MCP calls but zero hook events is surfaced in context_status/briefing | human | design-review | R3; mitigates R-19 |
+| D-039 | design | L-6 .gitignore append | Accept: no .gitignore append; dry-run warning instead | human | design-review | R1 |
+| D-040 | design | L-2 / AC-01 identical config | Accept "identical per OS family" | human | design-review | — |
+| D-041 | design | L-3 PowerShell as hook shell | Accept, document | human | design-review | — |
+| D-042 | design | Narrowing D-023's exit 1 | Accept: exit 1 only for binary/client/install resolution failures; connection errors keep their current codes | human | design-review | — |
+| D-043 | design | mcp-stdio with no install | Exit 1 only inside a Unimatrix project; silent outside one | human | design-review | Codex MCP is user-scope |
+| D-044 | design | Q8 dropped events, Codex-only | Reject the gap | human | design-review | — |
+| D-045 | design | Definition of "Unimatrix project here" | Local store at ~/.unimatrix/<hash>/, OR cloud credential ~/.unimatrix/<hash>/remote.json, OR headless env (UNIMATRIX_BUNDLE / UNIMATRIX_REMOTE_*). The hash is a local directory key only; cloud identity is the bundle's slug. One definition shared by hooks, MCP, L-4 and Q8 | human | design-review | — |
+| D-046 | design | R5 | Dropped as a requirement. Every install, local or cloud, is per-machine. Supersedes the R5 waivers in D-018 and D-026 | human | design-review | Each client runs its own install |
+| D-047 | design | ADR-001 Windows MCP fallback | Name it now: recorded node path + `shim-entry.js mcp-stdio`. If the D-034 CI proof fails, delivery swaps to it rather than stalling | uni-zero-design | D-034; ADR-001 (#5859) | Keeps task 1 from blocking |
+| D-048 | design | Repo .codex/hooks.json reference config (bare Rust form) | Goes to #1025, not AC-11 | uni-zero-design | D-009, D-012 | Resetting tracked configs was moved to dogfood |
+| D-049 | design | Alignment report stale | Rerun vision guardian against D-001..D-049 before sign-off | uni-zero-design | design protocol Phase 2b | Sign-off needs current artifacts |
+| D-050 | design | Missing-credential hint location (D-037 vs D-045/D-023) | Hint only in unimatrix status; hooks stay silent. Amends D-037 | human | design-review | User-level Codex hooks fire everywhere |
+| D-051 | design | Cloned repo, init never run (T-1) | Accept: mcp-stdio exits 0 silently; unimatrix status reports it | human | design-review | D-043, D-046 |
+| D-052 | design | Headless env cross-repo leak (T-2) | UNIMATRIX_BUNDLE / UNIMATRIX_REMOTE_* count as a project only with UNIMATRIX_PROJECT_ROOT set and cwd inside it. Applies to hooks AND the MCP bridge. Amends D-045 | human | design-review | H1: data routing |
+| D-053 | design | vnc-050 headless contract amendment | UNIMATRIX_PROJECT_ROOT joins the required headless variables. Update docs/client-setup.md and headless-smoke.test.js. No compat break (vnc-050 unreleased) | human | design-review | Follows from D-052 |
+| D-054 | design | D-038 server-side signal | Not cheap per architect (ADR-004), so deferred to https://github.com/dug-21/unimatrix/issues/1026. Meets D-038's "if cheap" condition | uni-zero-design | D-038; ADR-004 (#5865) | Condition not met |
+| D-055 | design | D-049 range | Guardian rerun covers D-001..D-053. Amends D-049 | uni-zero-design | D-049 | Register grew after D-049 |
+| D-056 | design | ADR-001 IDs in D-034/D-047 | Active ADR-001 is #5865; #5853 and #5859 are superseded | uni-zero-design | Unimatrix | ID drift |
+| D-057 | design | D-047 fallback node path staleness | The fallback MCP entry is rewritten whenever node is re-recorded (D-030). A stale path must fail loudly (exit 1 + re-init hint), never silently | uni-zero-design | D-030; R3; D-047 | R3 |
+| D-058 | design | D-035 audit vs D-048 | The repo .codex/hooks.json is exempt from the Stage 1 escalation (already decided in D-048) | uni-zero-design | D-048 | Avoid re-escalation |
+| D-059 | design | ADR id drift | Active ADR-001 is #5874 (amends D-056). Current set: ADR-001 #5874, ADR-002 #5875, ADR-003 #5861, ADR-004 #5877, ADR-005 #5878, ADR-006 #5868; vnc-050 ADR-006 #5869 | uni-zero-design | Unimatrix | ID drift |
+| D-060 | design | V-1/A-5 MCP entry placement | Unimatrix MCP is written only to per-machine scope: Claude local-scope MCP in ~/.claude.json (keyed by project), Codex user scope. Never a committed .mcp.json. init removes any Unimatrix entry from project .mcp.json, preserving foreign servers. Amends D-026 (MCP portable); resolves V-1 and A-5 so D-040, D-051 and D-057 hold as written | human | design-review | Follows D-046: every install is per-machine |
+| D-061 | design | Current ADR IDs (amends D-059) | ADR-001 #5879, ADR-002 #5875, ADR-003 #5880, ADR-004 #5881, ADR-005 #5878, ADR-006 #5882; vnc-050 ADR-006 #5869 | uni-zero-design | Unimatrix | ID drift |
+| D-062 | design | D-060 reading: project .codex/config.toml | init removes Unimatrix-owned MCP entries from the project .codex/config.toml; Codex MCP goes to user scope only | uni-zero-design | D-060; D-026 | Same per-machine rule as Codex hooks |
+| D-063 | design | D-060 reading: OpenCode MCP | The opt-in `wire --harness opencode` writes the retrieval MCP entry to ~/.config/opencode/opencode.json (user scope), and is silent outside a project per D-043 | uni-zero-design | D-060; D-046; D-004 | Every install is per-machine; D-004 kept the entry, not its location |
+| D-064 | design | Project opencode.json owned mcp.unimatrix | init removes it (add to FR-07i/AC-16) | uni-zero-design | D-060; D-063 | Per-machine MCP only |
+| D-065 | design | Foreign entry already at per-machine `unimatrix` key (R-40) | Leave it in place and warn; never overwrite | uni-zero-design | R4; FR-07i | Only Unimatrix-owned entries are written |
+| D-066 | design | D-057 gap: harness ENOENT on a stale Windows fallback node path | Accepted. Amends D-057: the loud signals are unimatrix status plus the init/upgrade preflight (exit 1); the harness startup failure is outside Unimatrix's control | human | design-review | Windows is cloud-only with no binary (D-032); H4 |
+| D-067 | design | ADR ID drift (amends D-061) | ADR-001 #5883, ADR-004 #5884; others as in D-061. From now on, ADRs are cited by ADR number; the Unimatrix ID is whichever entry is active for nan-024 (context_lookup), and the brief carries the snapshot | uni-zero-design | Unimatrix | Stops the register chasing corrections |
+| D-068 | design | status legacy: scope (R-40) | Extend it: report a leftover Unimatrix entry in the project .mcp.json, .codex/config.toml or opencode.json, naming the file | uni-zero-design | D-060; D-062; D-064 | Matches the removal set |
+| D-069 | design | Guardian rerun range (amends D-055) | Final pass covered D-001..D-068 | uni-zero-design | D-055; ALIGNMENT-REPORT.md | Register grew |
+| D-070 | design | OQ-6 audit breadth (extends D-035) | Also covers the packed npm tarball and the OpenCode plugin build | uni-zero-design | D-035 | Shipped artifacts are where legacy invocations would leak |
+| D-071 | design | Pass-through commands on macOS/Windows | Print "requires the local server (Linux only)" and exit 1 (FR-02) | uni-zero-design | D-032 | No binary on those platforms |
