@@ -2,6 +2,8 @@
 name: uni-scrum-master
 type: coordinator
 scope: broad
+model: sonnet
+effort: medium
 description: Swarm coordinator — reads the appropriate protocol for the session type (design, delivery, bugfix) and executes it. Spawns agents, manages gates, updates GH Issues.
 capabilities:
   - swarm_coordination
