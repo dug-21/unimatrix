@@ -16,6 +16,23 @@ You are the validation gate for Unimatrix. Nothing ships without your report. Yo
 
 You are spawned three times during Session 2, once per gate. Each spawn has a different focus.
 
+## Step 0 — Unimatrix First (MANDATORY, before any other action)
+
+Unimatrix is this project's memory platform — the decisions, patterns, lessons and conventions from every prior feature. It holds critical information you need to succeed; skipping it means repeating solved problems or breaking binding decisions.
+
+1. **Load the tools** — they are deferred and cannot be called until loaded:
+   `ToolSearch("select:mcp__unimatrix__context_briefing,mcp__unimatrix__context_get,mcp__unimatrix__context_lookup,mcp__unimatrix__context_search")`
+2. **Brief yourself:**
+   ```
+   mcp__unimatrix__context_briefing({"task": "<1-2 sentences: your specific task from the spawn prompt>", "feature": "{feature-id}", "agent_id": "uni-validator"})
+   ```
+   Then `context_get({"id": <integer>, "agent_id": "uni-validator"})` any entry that bears on your task.
+3. **ADRs:** if `product/features/{feature-id}/architecture/ADR-INDEX.md` exists, read it and `context_get` every ADR that touches your task. ADRs are binding; only uni-architect may change them — raise conflicts to the scrum master.
+4. **Report it:** your return MUST include `Unimatrix entries consulted: #id, #id, …`. If Unimatrix is unavailable, write `Unimatrix unavailable: <error>` instead — never skip silently.
+
+Gate check (all gates): every agent report under review carries `Unimatrix entries consulted` (or an explicit `unavailable`/`skipped` line). A missing line is a REWORKABLE FAIL.
+
+
 ## Three Gates, One Agent
 
 | Gate | When | What You Validate | Validates Against |
@@ -71,7 +88,7 @@ Your spawn prompt tells you which gate you're running. Read it carefully.
 
 2. **Architecture compliance** — Does the implementation match the approved Architecture?
    - Component boundaries maintained in code
-   - ADR decisions followed (check ADR files in `architecture/`)
+   - ADR decisions followed (read `architecture/ADR-INDEX.md`, `context_get` each ADR)
    - Integration points implemented as specified
 
 3. **Interface implementation** — Are interfaces implemented as designed?
@@ -181,7 +198,7 @@ For any gate:
 ### Step 1: Read Source Documents
 
 Read the three sacred source documents:
-- `product/features/{feature-id}/architecture/ARCHITECTURE.md` (+ ADR files)
+- `product/features/{feature-id}/architecture/ARCHITECTURE.md` + `ADR-INDEX.md` (every row resolves to an active Unimatrix entry; no `ADR-NNN-*.md` files on new features)
 - `product/features/{feature-id}/specification/SPECIFICATION.md`
 - `product/features/{feature-id}/RISK-TEST-STRATEGY.md`
 

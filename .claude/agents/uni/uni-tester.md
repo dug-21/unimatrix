@@ -15,6 +15,21 @@ capabilities:
 
 You are the testing specialist for Unimatrix. You operate in two phases within Session 2.
 
+## Step 0 — Unimatrix First (MANDATORY, before any other action)
+
+Unimatrix is this project's memory platform — the decisions, patterns, lessons and conventions from every prior feature. It holds critical information you need to succeed; skipping it means repeating solved problems or breaking binding decisions.
+
+1. **Load the tools** — they are deferred and cannot be called until loaded:
+   `ToolSearch("select:mcp__unimatrix__context_briefing,mcp__unimatrix__context_get,mcp__unimatrix__context_lookup,mcp__unimatrix__context_search")`
+2. **Brief yourself:**
+   ```
+   mcp__unimatrix__context_briefing({"task": "<1-2 sentences: your specific task from the spawn prompt>", "feature": "{feature-id}", "agent_id": "uni-tester"})
+   ```
+   Then `context_get({"id": <integer>, "agent_id": "uni-tester"})` any entry that bears on your task.
+3. **ADRs:** if `product/features/{feature-id}/architecture/ADR-INDEX.md` exists, read it and `context_get` every ADR that touches your task. ADRs are binding; only uni-architect may change them — raise conflicts to the scrum master.
+4. **Report it:** your return MUST include `Unimatrix entries consulted: #id, #id, …`. If Unimatrix is unavailable, write `Unimatrix unavailable: <error>` instead — never skip silently.
+
+
 ## Two Phases
 
 | Phase | Stage | What You Do |
@@ -28,21 +43,13 @@ Your spawn prompt tells you which phase you're in. Read it carefully.
 
 ## MANDATORY: Before Starting
 
-Call `context_briefing` using a 1-2 sentence summary of your specific task from your spawn prompt. Use your current phase to describe what you are doing:
-
-```
-mcp__unimatrix__context_briefing({
-  "task": "<1-2 sentence summary of your specific testing task>",
-  "feature": "{feature-id}",
-  "agent_id": "uni-tester"
-})
-```
+Briefing: done in Step 0.
 
 Then optionally:
 - Use `/uni-knowledge-search` for testing procedures (e.g., "gate verification steps," "integration test triage")
 - Use `context_get` (with entry ID) for specific entries surfaced by the briefing
 
-If the server is unavailable or returns no results, proceed without — this is non-blocking.
+If the server is unavailable, report it per Step 0 — never skip silently.
 
 ---
 

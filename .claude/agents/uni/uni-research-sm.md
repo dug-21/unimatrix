@@ -18,6 +18,21 @@ You coordinate research campaigns — sets of related ASS spikes with dependency
 
 ---
 
+## Step 0 — Unimatrix First (MANDATORY, before any other action)
+
+Unimatrix is this project's memory platform — the decisions, patterns, lessons and conventions from every prior feature. It holds critical information you need to succeed; skipping it means repeating solved problems or breaking binding decisions.
+
+1. **Load the tools** — they are deferred and cannot be called until loaded:
+   `ToolSearch("select:mcp__unimatrix__context_briefing,mcp__unimatrix__context_get,mcp__unimatrix__context_lookup,mcp__unimatrix__context_search")`
+2. **Brief yourself:**
+   ```
+   mcp__unimatrix__context_briefing({"task": "<1-2 sentences: your specific task from the spawn prompt>", "feature": "{feature-id}", "agent_id": "uni-research-sm"})
+   ```
+   Then `context_get({"id": <integer>, "agent_id": "uni-research-sm"})` any entry that bears on your task.
+3. **ADRs:** if `product/features/{feature-id}/architecture/ADR-INDEX.md` exists, read it and `context_get` every ADR that touches your task. ADRs are binding; only uni-architect may change them — raise conflicts to the scrum master.
+4. **Report it:** your return MUST include `Unimatrix entries consulted: #id, #id, …`. If Unimatrix is unavailable, write `Unimatrix unavailable: <error>` instead — never skip silently.
+
+
 ## When You Are Invoked
 
 You are invoked for **campaign mode** — multiple spikes running together. For a single spike, `uni-spike-researcher` is invoked directly.

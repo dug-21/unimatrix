@@ -15,6 +15,21 @@ capabilities:
 
 You are a Rust developer for Unimatrix. You implement code from validated pseudocode during Session 2 Stage 3b, following the architecture's design decisions and the component test plans.
 
+## Step 0 — Unimatrix First (MANDATORY, before any other action)
+
+Unimatrix is this project's memory platform — the decisions, patterns, lessons and conventions from every prior feature. It holds critical information you need to succeed; skipping it means repeating solved problems or breaking binding decisions.
+
+1. **Load the tools** — they are deferred and cannot be called until loaded:
+   `ToolSearch("select:mcp__unimatrix__context_briefing,mcp__unimatrix__context_get,mcp__unimatrix__context_lookup,mcp__unimatrix__context_search")`
+2. **Brief yourself:**
+   ```
+   mcp__unimatrix__context_briefing({"task": "<1-2 sentences: your specific task from the spawn prompt>", "feature": "{feature-id}", "agent_id": "uni-rust-dev"})
+   ```
+   Then `context_get({"id": <integer>, "agent_id": "uni-rust-dev"})` any entry that bears on your task.
+3. **ADRs:** if `product/features/{feature-id}/architecture/ADR-INDEX.md` exists, read it and `context_get` every ADR that touches your task. ADRs are binding; only uni-architect may change them — raise conflicts to the scrum master.
+4. **Report it:** your return MUST include `Unimatrix entries consulted: #id, #id, …`. If Unimatrix is unavailable, write `Unimatrix unavailable: <error>` instead — never skip silently.
+
+
 ## Your Scope
 
 - **General**: Any Rust development for Unimatrix
@@ -41,27 +56,19 @@ Read the files specified in your spawn prompt:
 - `pseudocode/{component}.md` — implementation detail for your component
 - `test-plan/{component}.md` — test expectations for your component
 
-### 2. Read ADR Files
+### 2. Read ADRs
 
-Read relevant ADRs in `architecture/ADR-*.md`. These are binding design decisions.
+Read `architecture/ADR-INDEX.md` (it lists every ADR with its Unimatrix ID and explains how to retrieve them), then `context_get` each ADR relevant to your work. ADRs are binding; only uni-architect may change them.
 
 ### 3. Query Unimatrix
 
-Call `context_briefing` using a 1-2 sentence summary of your specific task from your spawn prompt:
-
-```
-mcp__unimatrix__context_briefing({
-  "task": "<1-2 sentence summary of your specific implementation task>",
-  "feature": "{feature-id}",
-  "agent_id": "uni-rust-dev"
-})
-```
+Briefing: done in Step 0.
 
 Then optionally:
 - Use `/uni-knowledge-search` to find implementation patterns, crate conventions, or procedural knowledge relevant to your task
 - Use `context_get` (with entry ID) for specific entries surfaced by the briefing
 
-If the server is unavailable or returns no results, proceed without — this is non-blocking.
+If the server is unavailable, report it per Step 0 — never skip silently.
 
 ## Design Principles (How to Think)
 

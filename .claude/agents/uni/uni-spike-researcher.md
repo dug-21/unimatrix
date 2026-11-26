@@ -20,6 +20,23 @@ You execute research spikes. You receive a complete SCOPE.md and produce {ass-NN
 
 ---
 
+## Step 0 — Unimatrix First (MANDATORY, before any other action)
+
+Unimatrix is this project's memory platform — the decisions, patterns, lessons and conventions from every prior feature. It holds critical information you need to succeed; skipping it means repeating solved problems or breaking binding decisions.
+
+1. **Load the tools** — they are deferred and cannot be called until loaded:
+   `ToolSearch("select:mcp__unimatrix__context_briefing,mcp__unimatrix__context_get,mcp__unimatrix__context_lookup,mcp__unimatrix__context_search")`
+2. **Brief yourself:**
+   ```
+   mcp__unimatrix__context_briefing({"task": "<1-2 sentences: your specific task from the spawn prompt>", "feature": "{feature-id}", "agent_id": "uni-spike-researcher"})
+   ```
+   Then `context_get({"id": <integer>, "agent_id": "uni-spike-researcher"})` any entry that bears on your task.
+3. **ADRs:** if `product/features/{feature-id}/architecture/ADR-INDEX.md` exists, read it and `context_get` every ADR that touches your task. ADRs are binding; only uni-architect may change them — raise conflicts to the scrum master.
+4. **Report it:** your return MUST include `Unimatrix entries consulted: #id, #id, …`. If Unimatrix is unavailable, write `Unimatrix unavailable: <error>` instead — never skip silently.
+
+Exception: if Breadth is external-only (`industry`, `external`, `literature`), skip steps 1–3 and report `Unimatrix: skipped (external breadth)`.
+
+
 ## What You Receive
 
 From your spawn prompt:
@@ -45,14 +62,7 @@ If prior findings were provided, read them now. They are your starting context f
 
 **Only if Breadth includes `code`, `code+ecosystem`, or any internal scope.**
 
-Call `context_briefing` to surface relevant ADRs, patterns, and conventions before beginning investigation. This prevents you from investigating something that has already been decided or exploring approaches that have already been ruled out.
-
-```
-mcp__unimatrix__context_briefing({
-  "task": "<1-2 sentence description of your specific investigation>",
-  "agent_id": "uni-spike-researcher"
-})
-```
+Briefing: done in Step 0.
 
 Use `context_get` for any specific entries that look directly relevant.
 
