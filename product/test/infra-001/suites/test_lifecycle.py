@@ -259,8 +259,6 @@ def _run_shutdown_with_closed_stderr(tmp_path, close_stdout: bool):
     read ends, then EOF stdin; return (returncode, data_dir)."""
     import os
     import resource
-    import subprocess as _sp
-
     binary = get_binary_path()
     # Avoid core dumps if the pre-fix abort path fires (lesson #5895).
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
@@ -282,9 +280,9 @@ def _run_shutdown_with_closed_stderr(tmp_path, close_stdout: bool):
             client.close_stdout()
         client.close_stdin()
         rc = client.wait_exit(timeout=60.0)
-    except _sp.TimeoutExpired:
+    finally:
+        # No-op if the process already exited (shutdown() polls first).
         client.shutdown()
-        raise
     data_dir = os.path.dirname(_compute_db_path_lifecycle(str(tmp_path)))
     return rc, data_dir
 
