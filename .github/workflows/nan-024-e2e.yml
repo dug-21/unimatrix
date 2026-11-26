@@ -39,7 +39,7 @@ jobs:
           key: linux-x64-release-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: linux-x64-release-
       - name: Install ONNX Runtime (PyPI wheel; the GitHub release asset 404s)
-        run: bash .github/scripts/install-ort-linux.sh
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/install-ort-linux.sh"
       - name: cargo build --release
         run: cargo build --release
         env:
@@ -97,7 +97,7 @@ jobs:
           name: unimatrix-server-linux
           path: ${{ runner.temp }}/server
       - name: Install ONNX Runtime (PyPI wheel; the GitHub release asset 404s)
-        run: bash .github/scripts/install-ort-linux.sh
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/install-ort-linux.sh"
       - name: wiring-e2e set against the built server
         run: |
           chmod +x "$RUNNER_TEMP/server/unimatrix"
@@ -120,7 +120,7 @@ jobs:
           name: unimatrix-server-linux
           path: ${{ github.workspace }}/target/release
       - name: Install ONNX Runtime (PyPI wheel; the GitHub release asset 404s)
-        run: bash .github/scripts/install-ort-linux.sh
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/install-ort-linux.sh"
       - name: Layer 2 suites (parity-layer2*)
         run: |
           chmod +x "$GITHUB_WORKSPACE/target/release/unimatrix"
