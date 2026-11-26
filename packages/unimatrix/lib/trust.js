@@ -172,8 +172,10 @@ function readSddl(run, sys32, p) {
 // One PowerShell spawn resolves every owner SID (init / identity mismatch only).
 // Paths travel in an env var, one SID per output line, in input order.
 function ownersOf(run, sys32, paths) {
+  // .NET only: Get-Acl needs a module load that fails under a foreign PSModulePath.
   const script =
-    "$ErrorActionPreference='Stop';foreach($p in ($env:UNX_PATHS -split '\\|')){try{(Get-Acl -LiteralPath $p).GetOwner([System.Security.Principal.SecurityIdentifier]).Value}catch{'ERR '+$_.Exception.Message}}";
+    "$ErrorActionPreference='Stop';$o=[System.Security.AccessControl.AccessControlSections]::Owner;$t=[System.Security.Principal.SecurityIdentifier];" +
+    "foreach($p in ($env:UNX_PATHS -split '\\|')){try{if([System.IO.Directory]::Exists($p)){$a=(New-Object System.IO.DirectoryInfo $p).GetAccessControl($o)}else{$a=(New-Object System.IO.FileInfo $p).GetAccessControl($o)};$a.GetOwner($t).Value}catch{'ERR '+$_.Exception.Message}}";
   const exe = path.win32.join(sys32, "WindowsPowerShell", "v1.0", "powershell.exe");
   const r = run(exe, ["-NoProfile", "-NonInteractive", "-Command", script], { UNX_PATHS: paths.join("|") });
   if (!r || r.status !== 0) throw new TrustError("powershell", `cannot read owner (status ${r && r.status}; ${String((r && r.stderr) || "").slice(0, 160).replace(/\s+/g, " ")})`);
