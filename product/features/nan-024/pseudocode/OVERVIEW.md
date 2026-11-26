@@ -48,7 +48,7 @@ checkTrust(paths, platform, opts?) -> void          // throws TrustError
 isUnimatrixProject(cwd, env, home) -> Project | null
 isInstalled(project, platform, {env, home}) -> {installed, transport: "local"|"cloud"|null, reason?}
 effectiveEnv(env, cwd, home) -> env copy with UNIMATRIX_BUNDLE/UNIMATRIX_REMOTE_* removed unless headless-valid (D-052)   // PENDING H1
-codexHome(env, home) -> {dir, warning?} ; detectsCodex({root, env, home, harnessSel}) -> boolean     // codex-install.js (D-081; relative/invalid CODEX_HOME rule is DEFAULT, flagged)
+codexHome(env, home) -> {dir, warning?} ; detectsCodex({root, env, home, harnessSel}) -> boolean     // codex-install.js (D-081; relative/invalid CODEX_HOME rule decided, D-085)
 isUnimatrixCommand(cmd) -> boolean ; isUnimatrixMcpEntry(name, entry) -> boolean
 buildShimCommand(event, provider, platform, home) -> string
 buildMcpEntry(platform, home, node) -> {command, args, env}         // lib/mcp-entry.js
@@ -72,9 +72,9 @@ Test updates (`merge-settings.test.js`, `dogfood-effect.test.js`, `init-remote.t
 ## Cross-cutting design points (decisions made in pseudocode; see Open Questions)
 1. shim-entry is self-contained for pre-trust logic: it inlines `isUnimatrixProject` and the minimal installed decision (Node builtins only), and loads `trust.js` from a sibling copy in `~/.unimatrix/bin/` written by install-store. After the trust check passes it loads everything else from `packageRoot`.
 2. `bin/unimatrix.js` exports `run(args, ctx)` and only auto-runs under `require.main === module`, so shim-entry can call it in-process (R-04).
-3. `mcp-stdio` local transport (D-077): Node cannot `exec`; launcher spawns the Rust binary with inherited stdio and mirrors exit code AND signal; no Node stdout bytes before the spawn (R-07). This counts as ADR-004's "exec"; no ADR change.
+3. `mcp-stdio` local transport (D-077): Node cannot `exec`; launcher spawns the Rust binary with inherited stdio and mirrors the exit code; POSIX also re-raises the child's signal, Windows mirrors exit code only (D-086); no Node stdout bytes before the spawn (R-07). This counts as ADR-004's "exec"; no ADR change.
 3a. Pre-Node shell check (D-079): clause (d) ancestor `.git` file and the loosened headless clause exist ONLY in the shell pre-check; Node's predicate stays D-052 exact; superset parity test specified in shim.md.
-3b. Stable copy (D-078): install-store copies the Linux platform binary package into `pkg/<version>/node_modules`; size measured in Stage 3c.
+3b. Stable copy (D-078): install-store copies the Linux platform binary package into `pkg/<version>/node_modules`; no size cap (D-087); Stage 3c reports the size only.
 3c. Codex (D-081): one detection rule (`detectsCodex`) governs hooks and MCP; destination `$CODEX_HOME` (default `~/.codex`).
 3d. Node record (D-082): init exits 1 if node cannot be recorded (install-store); `wire`/upgrade-without-re-record use a separate path-exists preflight (wire-init).
 4. Env tier (D-052) is enforced by `isUnimatrixProject` (containment) everywhere; PENDING H1 adds an extra single-function strip (`effectiveEnv`), applied at the top of `remote-resolve.resolveRemote` (so hook-client config and mcp-bridge cannot forget it) and by the launcher. `project-state.js` lazy-requires `hook-client/config.js` to avoid a require cycle.
@@ -88,13 +88,13 @@ Resolved (by decision, applied in the files named):
 Still pending a human decision (H1), isolated so either answer has no ripple:
 - OQ-1 ADR-002 trust bootstrap (sibling `~/.unimatrix/bin/trust.js`): shim-entry.md, install-store.md, trust.md.
 - `effectiveEnv`: project-state.md (definition + removal recipe + three call sites).
-Open, flagged DEFAULT (conservative defaults chosen; unspecified by D-081):
-- Relative/invalid `$CODEX_HOME` -> ignored, `~/.codex` used, warning (codex-install.md).
-- Codex MCP write follows the same detection rule as hooks; the old `--harness codex-cli` opt-in gate for a new MCP entry is dropped (codex-install.md).
+Decided (D-084, D-085):
+- Relative/invalid `$CODEX_HOME` -> ignored, `~/.codex` used, warning; exists-but-not-dir = absent (D-085; codex-install.md).
+- Codex MCP write follows the same detection rule as hooks, limited to owned entries and listed in dry-run; the old `--harness codex-cli` opt-in gate for a new MCP entry is dropped (D-084; codex-install.md).
 Still open (no answer yet):
 - OQ-3: confirm `test/check-zero-deps.js` and `check-hook-client-size.js` accept `config.js`/`remote-resolve.js` requiring `../project-state.js`.
 - R-38: exact `~/.claude.json` project-key spelling (symlink/realpath, Windows drive case) unverified; CI check specified.
 - Trust check refuses symlinked redirect/install files (conservative); may affect #1025 dogfood.
 - Hook-client exit code: D-042 read as "unchanged" (client never sets nonzero for connection errors).
-- Windows pre-check: junction/symlinked cwd residual (R-29); keep pre-check disabled on Windows unless latency forces it.
-- Gemini reference form uses `$HOME` (Unix text only); Windows Gemini shell semantics unverified (architect flag).
+- Windows pre-check: junction/symlinked cwd residual (R-29); pre-check stays disabled on Windows (D-088); if the latency gate forces it on, ESCALATE the junction gap to the primary.
+- Gemini reference form uses `$HOME` (Unix text only; accepted, D-089: D-027 covers init-written destinations, not tracked Unix reference configs); README states Windows substitutes the `unimatrix.cmd` path.

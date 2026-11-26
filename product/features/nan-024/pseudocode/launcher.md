@@ -58,7 +58,7 @@ async function runMcpStdio(args, ctx):                // R-07: no stdout bytes b
   if d.transport == "cloud":
      require(join(rt.clientRoot,"lib","hook-client","mcp-bridge.js")).main(["node","mcp-bridge", project.hash], {env: effectiveEnv(env, cwd, home) /* PENDING H1: else `env` */})
      return                                           // bridge owns stdio loop and exits
-  // local (Linux) (D-077): Node has no exec. Spawn the Rust binary with INHERITED stdio and mirror exit code AND signal.
+  // local (Linux) (D-077): Node has no exec. Spawn the Rust binary with INHERITED stdio and mirror the exit code (D-086: Windows mirrors exit code only; POSIX also re-raises the child's signal).
   // ADR-004's "exec" is satisfied by this semantic; no ADR change. Nothing is written to stdout before the spawn (R-07);
   // the only pre-spawn output allowed is stderr on failure.
   childEnv = {...env, LD_LIBRARY_PATH: dirname(rt.binary) + (env.LD_LIBRARY_PATH ? ":"+env.LD_LIBRARY_PATH : "")}
@@ -67,7 +67,9 @@ async function runMcpStdio(args, ctx):                // R-07: no stdout bytes b
   for sig in ["SIGINT","SIGTERM","SIGHUP"]: process.on(sig, () => forward(sig))   // parent never dies first; the child decides
   child.on("error", e => { stderr("unimatrix: cannot start " + rt.binary + ": " + e.message); process.exitCode = 1 })   // ENOENT/EACCES
   child.on("exit", (code, sig) => {
-     if sig != null:                                  // child killed by signal: re-raise the SAME signal on ourselves after removing our handlers,
+     if platform == "win32":                          // D-086: no POSIX signals on Windows; exit code only
+        process.exitCode = code ?? 1
+     else if sig != null:                             // POSIX: child killed by signal: re-raise the SAME signal on ourselves after removing our handlers,
         for s in ["SIGINT","SIGTERM","SIGHUP"]: process.removeAllListeners(s)   // so our own exit status shows the signal (shell sees 128+n / WIFSIGNALED)
         process.kill(process.pid, sig)
         process.exitCode = 128 + signalNumber(sig)    // only reached if the signal is ignored/uncatchable on re-raise
@@ -106,5 +108,5 @@ Every thrown error is caught at the route boundary: stderr line, `process.exitCo
 - Exit matrix {not project, cloned repo, mac/Win no credential, Linux store no install, Linux installed no binary, trust failure, invalid redirect, client throw sync/async, connection error} x {hook, mcp-stdio} x OS (mock platform).
 - `unimatrix hook E` legacy L1 route with stub Rust binary: Node client executed, stub never exec'd (AC-03). Pass-through regression: `serve`/`version` still exec Rust with `LD_LIBRARY_PATH` on Linux (SR-12); override matrix (AC-14).
 - `status`: cloned repo -> `project: none (...)`; leftover legacy entries in each project file -> `legacy:` lines in order and `legacyProjectMcp`; Codex wired-never-fired prints approval step; stale Windows fallback node -> `mcp node: MISSING`; always exit 0 even with everything broken; corrupt `last-hook.json` does not crash.
-- `mcp-stdio` local (D-077): stub Rust binary exiting with code N -> launcher exits N; stub killed by SIGTERM/SIGKILL (self-signal) -> launcher process terminates by that same signal (assert via a parent harness: `signal` field in `child_process` result); SIGINT sent to the launcher reaches the stub; stdout bytes captured by a pipe before the stub writes its first byte = 0 (no Node stdout bytes before spawn); spawn ENOENT -> stderr + exit 1.
+- `mcp-stdio` local (D-077): stub Rust binary exiting with code N -> launcher exits N; POSIX: stub killed by SIGTERM/SIGKILL (self-signal) -> launcher process terminates by that same signal; Windows: exit code only, no signal assertion (D-086) (assert via a parent harness: `signal` field in `child_process` result); SIGINT sent to the launcher reaches the stub; stdout bytes captured by a pipe before the stub writes its first byte = 0 (no Node stdout bytes before spawn); spawn ENOENT -> stderr + exit 1.
 - `mcp-stdio`: first stdout byte is JSON-RPC `{` from the child; nothing written before; outside project exit 0 empty output, zero network; headless env + cwd outside root -> exit 0 silent.

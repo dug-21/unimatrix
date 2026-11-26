@@ -37,3 +37,12 @@ Remaining open: pending H1 (trust bootstrap; effectiveEnv); DEFAULT flagged (rel
 
 ## Knowledge Stewardship (rework)
 - Queried: mcp__unimatrix__context_briefing -- ADRs and stale-surface lessons; deviations from established patterns: none.
+
+## Rework 2 (D-084..D-089)
+- D-084/D-085: codex-install.md, OVERVIEW.md, wire-init.md: DEFAULT/flagged markers removed; stated as decided (same detection as hooks, owned entries only, listed in dry-run; invalid CODEX_HOME ignored with warning, non-dir = absent).
+- D-086: launcher.md (mcp-stdio exit handler and test hint), OVERVIEW.md: Windows mirrors exit code only; POSIX re-raises signal.
+- D-087: OVERVIEW.md: no size cap on D-078 package; Stage 3c reports size only.
+- D-088: shim.md, OVERVIEW.md: Windows pre-check stays disabled; latency-gate-forced enablement is an escalation trigger for the junction gap.
+- D-089: ci-and-docs.md, OVERVIEW.md: `$HOME` Gemini reference form accepted; flag wording removed.
+- H1-pending items (effectiveEnv, sibling trust.js) untouched.
+- Unimatrix entries consulted: briefing returned nothing relevant (#3612, #3611, #3614 procedural lessons on multi-doc consistency only).

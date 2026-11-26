@@ -28,7 +28,7 @@ function wire(projectRoot, opts):
      entry = buildMcpEntry(platform, home, node)
      c = writeClaudeMcp({home, projectRoot, entry, dryRun}) -> mcp leg (path ~/.claude.json) ; warning -> manifest leg reason
   // 4. Codex (D-081): maybeWireCodex decides via detectsCodex({root, env, home, harnessSel}) (project .codex/ | existing $CODEX_HOME dir | codex on PATH | --harness codex-cli)
-     legs = maybeWireCodex({home, env: process.env, platform, node, projectRoot, harnessSel, dryRun})      // hooks to <codexHome>/hooks.json, removal of owned project/config hooks, MCP to <codexHome>/config.toml (same detection rule, DEFAULT flagged)
+     legs = maybeWireCodex({home, env: process.env, platform, node, projectRoot, harnessSel, dryRun})      // hooks to <codexHome>/hooks.json, removal of owned project/config hooks, MCP to <codexHome>/config.toml (same detection rule, D-084)
   // 5. OpenCode (if detected or harnessSel=="opencode")
      writeOpencodeMcp({home, platform, node, harnessSelected: harnessSel=="opencode", dryRun})
   // 6. owned project-file MCP migration (always, independent of harness selection) (D-060/D-062/D-064)

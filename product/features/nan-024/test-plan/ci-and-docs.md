@@ -28,3 +28,6 @@ Rule (from ARCHITECTURE "Reference configs and docs"): over `README.md` and `.ge
 
 ### New assembled tests registered in `wiring-e2e`
 `shim-superset.test.js` (D-079), `mcp-stdio-spawn.test.js` (D-077), `init-preflight.test.js` (D-082), `codex-detect.test.js` (D-081), `pkg-binary-copy.test.js` (D-078, linux). Add to the explicit list in `run-hook-client.js`.
+
+## Rework 2 (D-089)
+`"$HOME/.unimatrix/bin/unimatrix" hook ... --provider gemini-cli` in tracked Unix `.gemini/settings.json` is accepted (D-027 covers init-written destinations only); keep it as a positive docs-grep fixture.

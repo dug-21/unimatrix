@@ -22,6 +22,16 @@ Hooks go to `$CODEX_HOME/hooks.json` (default `~/.codex`), MCP to `$CODEX_HOME/c
 | 7 | multiple triggers | rows 1+2 | single write to `$CODEX_HOME`, one owned entry per event |
 - No XDG: `XDG_CONFIG_HOME` set to a temp dir -> no write under it.
 - Owned entries removed from project `.codex/hooks.json` (when row 1) and from `$CODEX_HOME/config.toml [hooks]`; foreign preserved; byte-fixed string across upgrade at custom `$CODEX_HOME` (D-028).
-- Invalid `$CODEX_HOME` (relative path like `./x`, empty string, a path that is a regular file): DEFAULT = ignore and warn (flagged default, pending confirmation): stderr one warning naming the value, falls back to `~/.codex` only if another trigger fires, else no write; never writes relative to cwd (assert cwd tree unchanged). If the decision flips to hard error, only this bullet changes.
+- Invalid `$CODEX_HOME` (D-085, decided): relative path like `./x` or invalid value -> ignored with one stderr warning naming the value; `~/.codex` used (when a trigger fires, else no write); a non-directory (regular file) counts as absent (row 6 behaviour); empty string treated as unset/invalid per implementation, asserted. Never writes relative to cwd (assert cwd tree unchanged).
 - Re-detection idempotent: second init writes nothing (mtime unchanged).
 - `status` reads the same `$CODEX_HOME/hooks.json` for the approval/never-fired report.
+
+## Rework 2 (D-084): Codex MCP write gating
+Same detection as D-081 hooks, rows 1-7 reused for `$CODEX_HOME/config.toml [mcp_servers.unimatrix]`:
+| # | Case | Expected |
+|---|---|---|
+| M1 | any of rows 1-4 triggers | `[mcp_servers.unimatrix]` written to `$CODEX_HOME/config.toml` (owned entry only), listed in `--dry-run` output |
+| M2 | no Codex detected (row 5) and row 6 | no `config.toml` created or touched (tree snapshot equal); dry-run lists no Codex MCP write |
+| M3 | detected, foreign `unimatrix` table | left untouched + D-065 warning; dry-run notes skip |
+- Writes limited to owned entries (foreign tables/comments byte-preserved); dry-run list == actual writes (assert set equality of paths).
+- Hooks and MCP always agree: never hooks without MCP or vice versa for the same detection result.

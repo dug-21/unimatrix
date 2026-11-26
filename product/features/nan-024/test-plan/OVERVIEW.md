@@ -85,15 +85,15 @@ infra-001 drives the Rust `unimatrix-server` over MCP JSON-RPC. nan-024 changes 
 | D-078 platform binary in `pkg/<version>/node_modules`; resolver independent of npx cache | R-05, R-24, R-09, AC-10 | `pkg-binary-copy.test.js` (linux), size measurement | install-store, resolve-runtime |
 | D-079 pre-Node clause (d) + loosened headless; MANDATORY superset test (verdict != null => Node started); Node D-052-strict | R-28, R-29, R-34, R-21, AC-06 | `shim-superset.test.js` (fixture matrix + seeded property) | shim, shim-entry, project-state |
 | D-080 `allowSelf`, `buildShimCommand` home (space round trip), `isInstalled {env, home}` | R-17, R-03, R-23, AC-04 | resolve-runtime, merge-settings, project-state additions | per file |
-| D-081 Codex detection matrix + `$CODEX_HOME` destinations; invalid CODEX_HOME ignore+warn (flagged default) | R-19, R-20, R-02, AC-04/13 | `codex-detect.test.js` | codex-install, wire-init |
+| D-081 Codex detection matrix + `$CODEX_HOME` destinations; invalid CODEX_HOME ignore+warn (decided D-085); Codex MCP write uses same detection (D-084) | R-19, R-20, R-02, AC-04/13 | `codex-detect.test.js` | codex-install, wire-init |
 | D-082 init exit 1 if node unrecorded; wire/upgrade preflight | R-09, R-24, R-08 | `init-preflight.test.js` | install-store, wire-init |
 | D-083 AC-11 grep rule + PowerShell statement | R-16, R-25, AC-11 | `docs-grep.test.js` positive/negative fixtures | ci-and-docs |
 
 ### Pending human decision H1: separable test sections
-Marked `SEPARABLE` in component files; delete cleanly if H1 drops the feature: (1) `effectiveEnv` (resolve-runtime.md, project-state.md, launcher.md); (2) trust bootstrap via sibling `trust.js` (shim-entry.md, trust.md). Nothing outside those subsections depends on them. Flagged default (not H1): invalid/relative `$CODEX_HOME` -> ignore + warn (codex-install.md).
+Marked `SEPARABLE` in component files; delete cleanly if H1 drops the feature: (1) `effectiveEnv` (resolve-runtime.md, project-state.md, launcher.md); (2) trust bootstrap via sibling `trust.js` (shim-entry.md, trust.md). Nothing outside those subsections depends on them. Invalid/relative `$CODEX_HOME` -> ignore + warn is decided (D-085), not H1.
 
 ### Stage 3c additions
-- Measure `pkg/<version>` size and the platform-binary subtree on Linux (`test/measure-pkg-size.js`); RISK-COVERAGE-REPORT must carry a "D-078 package size" row with the numbers and whether install time/disk is acceptable (no pass/fail threshold set in 3a).
+- Measure `pkg/<version>` size and the platform-binary subtree on Linux (`test/measure-pkg-size.js`); RISK-COVERAGE-REPORT must carry a "D-078 package size" row reporting the numbers only (D-087: no cap, no pass/fail threshold).
 - RISK-COVERAGE-REPORT must list the superset-test fixture count and the seed used, and cite CI run IDs for Windows/macOS/latency jobs.
 
 ### Resolved earlier open questions
@@ -104,6 +104,14 @@ Marked `SEPARABLE` in component files; delete cleanly if H1 drops the feature: (
 
 ## Open questions
 1. H1 outcome (effectiveEnv, trust bootstrap) determines whether the SEPARABLE sections stay.
-2. Invalid `$CODEX_HOME` policy (ignore + warn assumed) needs confirmation.
-3. D-078 package size acceptance threshold: none set; decided after the Stage 3c measurement.
-4. Signal-mirroring semantics for Windows (no POSIX signals) rely on pseudocode; confirm 128+n vs exit-code-only after reading pseudocode/OVERVIEW.
+2. (Resolved) D-085 CODEX_HOME ignore+warn; D-087 no size cap; D-086 Windows exit-code-only.
+3. If the latency gate forces the Windows pre-Node check on (D-088), escalate to the primary.
+
+## Rework 2 (D-084..D-089)
+- D-084: Codex MCP write gated by D-081 detection (codex-install M1-M3).
+- D-085: invalid `$CODEX_HOME` ignore+warn, decided.
+- D-086: Windows exit code only; POSIX re-raises signal (launcher.md, win32 skip-guard).
+- D-087: package size reported only in RISK-COVERAGE-REPORT; no threshold.
+- D-088: Windows pre-Node check disabled; shim-cmd test asserts it (shim.md); escalate if latency gate forces on.
+- D-089: `$HOME` Gemini form accepted (ci-and-docs positive fixture retained; not an AC-11 narrowing).
+- SEPARABLE (H1-pending): effectiveEnv, trust bootstrap unchanged.

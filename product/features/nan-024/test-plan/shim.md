@@ -23,3 +23,8 @@ Clauses implemented in the shim (builtins only): (a) headless env set and `UNIMA
 - Clause (d) cases: `.git` regular file in cwd, in grandparent; `.git` directory (normal repo) alone does NOT trigger (0 spawns when nothing else matches); `.git` file with CRLF/garbage content: not evaluated, still triggers; symlink named `.git`: documented outcome asserted.
 - Node predicate unchanged (D-052 strict): same fixtures run end to end through shim -> real `shim-entry.js`: headless root var set + cwd outside root -> Node started, exits 0 silent, recording stub endpoint receives 0 requests; worktree cwd with no store -> Node started, exit 0 silent (clause d is a filter only, does not make it a project).
 - Markers/`.git` content never evaluated (`$(touch pwn)` content creates no file).
+
+## Rework 2 (D-088): Windows pre-Node check disabled
+- `test/shim-cmd.test.js` (win32): assert the shipped `unimatrix.cmd` has the pre-Node root-marker check DISABLED by default: not-a-project run spawns Node exactly once (spawn log 1 line), and the file contains no marker/`.git` scanning clauses (static assertion on the enabled-flag/clauses). Also assert the node-side predicate remains authoritative (silent exit 0 outside a project).
+- `shim-superset` `.cmd` twin passes trivially (always starts Node); keep it to guard against partial enablement.
+- Note: the POSIX `.sh` check (D-079) is unaffected. If the Stage 3c latency gate (3-OS) forces the Windows check on, this test must be updated and the case ESCALATED to the primary (junction/symlink gap, D-025); do not enable silently.

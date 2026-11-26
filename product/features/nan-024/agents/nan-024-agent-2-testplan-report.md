@@ -25,3 +25,8 @@ Applied D-077..D-083 to test-plan/ in place (appended "Rework" sections; OVERVIE
 - Remaining open: H1 outcome; CODEX_HOME policy confirmation; D-078 size threshold (post-measurement); Windows signal-mirror semantics vs pseudocode; pseudocode/OVERVIEW.md rework was in progress and not yet reflecting D-077..D-083 when read (re-read at end: still shows pre-rework text, e.g. no pre-Node clause (d)); a final alignment pass is needed once it lands.
 
 Unimatrix entries consulted: #5896, #5897, #5899, #5898, #5890, #5894 (via ADR-INDEX list in task), briefing results (no entries bearing on the rework).
+
+## Rework 2 (agent nan-024-agent-2-testplan-rework2)
+Applied D-084..D-089. Files changed: test-plan/OVERVIEW.md, codex-install.md, launcher.md, shim.md, ci-and-docs.md. Added Codex MCP gating rows M1-M3; CODEX_HOME ignore+warn decided; Windows exit-code-only with per-platform signal assertions; D-078 size report-only; Windows pre-Node-disabled assertion + escalation note. H1 items (effectiveEnv, trust bootstrap) remain SEPARABLE.
+Unimatrix entries consulted: briefing (no entries bearing on this rework).
+Knowledge Stewardship: Queried briefing; Stored nothing novel (in-place decision application).

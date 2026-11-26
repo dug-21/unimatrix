@@ -19,7 +19,9 @@ Local (Linux) `mcp-stdio` = spawn Rust with `stdio:'inherit'`, mirror exit code 
 - Zero Node stdout bytes before spawn: spawn the written MCP argv via real `child_process.spawn`, capture stdout; first byte is the stub's first byte, and a stub that writes nothing yields empty stdout (Node wrote none). Also stderr contains no banner on success.
 - Inherited stdio: stub echoes stdin line to stdout; bytes round-trip unchanged (large 1 MiB payload, no deadlock); stub's `process.stdin.isTTY`/fd identity equals parent's pipes (no extra buffering layer): assert via `fs.fstatSync(0)` ino equality with the harness-supplied pipe when exposed, else round-trip only.
 - Exit code mirrored: stub exits 0, 1, 7, 42 -> launcher exits identically.
-- Signal mirrored: stub kills itself with SIGTERM / SIGKILL (POSIX) -> launcher terminates with the same signal (parent observes `signal` set, not an exit code); harness sends SIGTERM/SIGINT to launcher -> forwarded to child, child gets it once, launcher exits after child (no orphan: pgrep child pid gone within 2 s). Documented 128+n fallback asserted if the pseudocode specifies it.
+- Signal handling, per platform (D-086):
+  - POSIX (skip on win32): stub kills itself with SIGTERM / SIGKILL -> launcher re-raises the same signal (parent observes `signal` set, `code` null); harness sends SIGTERM/SIGINT to launcher -> forwarded to child once, launcher exits after child (no orphan: child pid gone within 2 s).
+  - Windows (win32 only; skip-guard on POSIX): exit code mirrored only. Stub exits 0/1/7/42 -> identical code. Child terminated abnormally -> launcher exits with the child's numeric code; NO signal re-raise and NO 128+n expectation asserted. The signal-re-raise test carries a win32 skip-guard.
 - Spawn failure (ENOENT/EACCES binary) -> exit 1, one stderr line naming the path, stdout empty.
 - No-exec equivalence: process trace shows exactly one Node and one stub process alive during the session (launcher stays as the parent; documented per D-077); this is not a failure.
 - Windows MCP fallback entry written form `{command:<node>, args:[shim-entry.js,'mcp-stdio']}` executed by `spawn` on every OS using stub node paths: initialize round-trip works through shim-entry -> launcher -> (cloud) mcp-bridge stub.
@@ -27,3 +29,6 @@ Local (Linux) `mcp-stdio` = spawn Rust with `stdio:'inherit'`, mirror exit code 
 ## Rework: status additions
 - `status` reports Linux install with platform binary missing from `pkg/<version>/node_modules` (D-078) as `binary: MISSING <path>`; exit 0.
 - effectiveEnv-dependent launcher tests (if any) are SEPARABLE under H1 (see resolve-runtime.md).
+
+## Rework 2 (D-086)
+Per-platform signal assertions above replace the earlier 128+n wording; no 128+n assertion on any platform.
