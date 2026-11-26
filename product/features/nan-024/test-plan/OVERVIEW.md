@@ -89,8 +89,8 @@ infra-001 drives the Rust `unimatrix-server` over MCP JSON-RPC. nan-024 changes 
 | D-082 init exit 1 if node unrecorded; wire/upgrade preflight | R-09, R-24, R-08 | `init-preflight.test.js` | install-store, wire-init |
 | D-083 AC-11 grep rule + PowerShell statement | R-16, R-25, AC-11 | `docs-grep.test.js` positive/negative fixtures | ci-and-docs |
 
-### Pending human decision H1: separable test sections
-Marked `SEPARABLE` in component files; delete cleanly if H1 drops the feature: (1) `effectiveEnv` (resolve-runtime.md, project-state.md, launcher.md); (2) trust bootstrap via sibling `trust.js` (shim-entry.md, trust.md). Nothing outside those subsections depends on them. Invalid/relative `$CODEX_HOME` -> ignore + warn is decided (D-085), not H1.
+### H1 decided (Rework 3): D-090, D-091 are in scope
+`effectiveEnv` (D-091) and sibling `trust.js` (D-090) are normal contract tests. Invalid/relative `$CODEX_HOME` -> ignore + warn is D-085.
 
 ### Stage 3c additions
 - Measure `pkg/<version>` size and the platform-binary subtree on Linux (`test/measure-pkg-size.js`); RISK-COVERAGE-REPORT must carry a "D-078 package size" row reporting the numbers only (D-087: no cap, no pass/fail threshold).
@@ -103,7 +103,7 @@ Marked `SEPARABLE` in component files; delete cleanly if H1 drops the feature: (
 4. New CI jobs (`wiring-e2e`, `latency-gate`) land non-required until the full grid is green once, then promoted.
 
 ## Open questions
-1. H1 outcome (effectiveEnv, trust bootstrap) determines whether the SEPARABLE sections stay.
+1. (Resolved) H1: D-090 and D-091 accepted by human.
 2. (Resolved) D-085 CODEX_HOME ignore+warn; D-087 no size cap; D-086 Windows exit-code-only.
 3. If the latency gate forces the Windows pre-Node check on (D-088), escalate to the primary.
 
@@ -114,4 +114,12 @@ Marked `SEPARABLE` in component files; delete cleanly if H1 drops the feature: (
 - D-087: package size reported only in RISK-COVERAGE-REPORT; no threshold.
 - D-088: Windows pre-Node check disabled; shim-cmd test asserts it (shim.md); escalate if latency gate forces on.
 - D-089: `$HOME` Gemini form accepted (ci-and-docs positive fixture retained; not an AC-11 narrowing).
-- SEPARABLE (H1-pending): effectiveEnv, trust bootstrap unchanged.
+
+
+## Rework 3 (D-090, D-091)
+| Decision | Risk / AC | Tests | Component plan |
+|---|---|---|---|
+| D-090 sibling `trust.js`: self-contained (static no-non-builtin-require + empty-dir dynamic run), atomic tmp+rename refresh (interrupt leaves old intact, byte-identical to package), shim path/hook command byte-equal across upgrade (D-028 test extended) | R-06, R-22, R-30, R-09, R-24, AC-04 | `trust-selfcontained.test.js`, trust, install-store, merge-settings, codex-install, shim-entry | trust, shim-entry, install-store, merge-settings, codex-install |
+| D-091 `effectiveEnv` governs hooks + mcp-bridge; `status` cloud env text (4 variants) + `--json cloudEnv` (between transport and trust), sorted names, no values, raw shell env, exit 0 | R-29, R-34, R-35, R-28, AC-15, AC-10/14 | resolve-runtime, project-state parity, `headless-smoke.test.js`, `status-cloud-env.test.js` | resolve-runtime, project-state, launcher |
+- D-086 Windows exit-code-only launcher branch tests retained unchanged (launcher.md).
+- Headless-smoke (b)/(c) cases double as the bridge half of the D-091 effectiveEnv proof.

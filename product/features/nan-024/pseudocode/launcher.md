@@ -38,7 +38,7 @@ async function run(args, ctx):                      // args = ["hook", EVENT, ..
   if !d.installed:
      if platform == "linux": stderr("unimatrix: not attached on this machine; run 'npx unimatrix init'")   // exactly one line
      return                                          // exit 0
-  try rt = resolveRuntime({env: effectiveEnv(env, process.cwd(), home) /* PENDING H1: else `env` */, home, platform, transport: d.transport})
+  try rt = resolveRuntime({env: effectiveEnv(env, process.cwd(), home), home, platform, transport: d.transport})
   catch RuntimeResolutionError e: stderr(e.message); exitCode = 1; return     // Linux local + unresolvable binary lands here (Broken)
   try client = require(join(rt.clientRoot, "lib", "hook-client", "index.js"))
   catch e: stderr(`unimatrix: cannot load hook client at ${rt.clientRoot}: ${e.message}`); exitCode = 1; return
@@ -56,7 +56,7 @@ async function runMcpStdio(args, ctx):                // R-07: no stdout bytes b
   if !d.installed: stderr("unimatrix: not attached on this machine; run 'npx unimatrix init'"); exitCode = 1; return    // D-043, every OS
   try rt = resolveRuntime({... transport: d.transport}) catch -> stderr, exit 1
   if d.transport == "cloud":
-     require(join(rt.clientRoot,"lib","hook-client","mcp-bridge.js")).main(["node","mcp-bridge", project.hash], {env: effectiveEnv(env, cwd, home) /* PENDING H1: else `env` */})
+     require(join(rt.clientRoot,"lib","hook-client","mcp-bridge.js")).main(["node","mcp-bridge", project.hash], {env: effectiveEnv(env, cwd, home)})
      return                                           // bridge owns stdio loop and exits
   // local (Linux) (D-077): Node has no exec. Spawn the Rust binary with INHERITED stdio and mirror the exit code (D-086: Windows mirrors exit code only; POSIX also re-raises the child's signal).
   // ADR-004's "exec" is satisfied by this semantic; no ADR change. Nothing is written to stdout before the spawn (R-07);
@@ -67,7 +67,7 @@ async function runMcpStdio(args, ctx):                // R-07: no stdout bytes b
   for sig in ["SIGINT","SIGTERM","SIGHUP"]: process.on(sig, () => forward(sig))   // parent never dies first; the child decides
   child.on("error", e => { stderr("unimatrix: cannot start " + rt.binary + ": " + e.message); process.exitCode = 1 })   // ENOENT/EACCES
   child.on("exit", (code, sig) => {
-     if platform == "win32":                          // D-086: no POSIX signals on Windows; exit code only
+     if platform == "win32":                          // D-086: unreachable in practice (Windows mcp-stdio is cloud-only); kept deliberately: no POSIX signals on Windows; exit code only
         process.exitCode = code ?? 1
      else if sig != null:                             // POSIX: child killed by signal: re-raise the SAME signal on ourselves after removing our handlers,
         for s in ["SIGINT","SIGTERM","SIGHUP"]: process.removeAllListeners(s)   // so our own exit status shows the signal (shell sees 128+n / WIFSIGNALED)
@@ -91,12 +91,30 @@ function collect():
   legacy = []                                                       // order: .mcp.json, .codex/config.toml, opencode.json (project-relative, project root = root)
     for file in order: if projectFileHasOwnedMcp(root, file) legacy.push(file)       // uses hook-ownership.isUnimatrixMcpEntry; toml via codex-install.readTomlTable body->entry; parse failures -> not listed
   d = project ? isInstalled(project, platform, {env, home}) : {installed:false, transport:null, reason: project ? ... : "no install.json"}
+  cloudEnv = cloudEnvStatus(rawEnv = process.env, cwd)               // D-091/ADR-004: RAW shell env, never effectiveEnv
   trust = try checkTrust(trustSet(...)) -> {ok:true} catch TrustError e -> {ok:false, path:e.path, reason:e.reason}     // for win32 per-event path; informational
   mcpNode = platform=="win32": find owned D-047 fallback entry in ~/.claude.json projects[root].mcpServers.unimatrix or <codexHome>/config.toml; present -> exists(command) ? {status:"ok",path} : {status:"missing",path}; none -> {status:"n/a",path:null}.  non-win32 -> "n/a"
   hooks["claude-code"].wired = any owned command in <root>/.claude/settings.local.json (also checks isUnimatrixCommand); lastFired = read last-hook.json[provider] (corrupt/missing -> null; corrupt reported as "unknown")
   hooks["codex-cli"].wired  = any owned command in <codexHome>/hooks.json (codexHome(env, home) from codex-install.js, D-081; default ~/.codex) ; lastFired from last-hook.json["codex-cli"]
 ```
-Text order (exact keys): `project:`, zero or more `legacy: <file> has a Unimatrix MCP entry; re-run 'npx unimatrix init' to migrate`, `installed: yes|no[ (reason)]`, `transport: local|cloud|none`, `trust: ok|FAIL <path>: <reason>`, `mcp node: ok|n/a|MISSING <path>; run 'npx unimatrix init'`, `hook claude-code: wired, last fired <ISO>|wired, never fired|not wired`, `hook codex-cli: ...` followed (only for `wired, never fired`) by a line with the Codex `/hooks` approval step (same text as init prints: `codexApprovalStep()` exported from codex-install.js, no approval key named). `project:` when null: `none (this machine has no Unimatrix store or credential for <root>; run 'npx unimatrix init' to attach)`. `installed:` reason `missing credential` (macOS/Windows) or `no install.json`. JSON shape per brief. Never reads Codex trust hashes.
+Text order (exact keys): `project:`, zero or more `legacy: <file> has a Unimatrix MCP entry; re-run 'npx unimatrix init' to migrate`, `installed: yes|no[ (reason)]`, `transport: local|cloud|none`, `cloud env: ...` (see cloudEnvStatus), `trust: ok|FAIL <path>: <reason>`, `mcp node: ok|n/a|MISSING <path>; run 'npx unimatrix init'`, `hook claude-code: wired, last fired <ISO>|wired, never fired|not wired`, `hook codex-cli: ...` followed (only for `wired, never fired`) by a line with the Codex `/hooks` approval step (same text as init prints: `codexApprovalStep()` exported from codex-install.js, no approval key named). `project:` when null: `none (this machine has no Unimatrix store or credential for <root>; run 'npx unimatrix init' to attach)`. `installed:` reason `missing credential` (macOS/Windows) or `no install.json`. JSON shape per brief. Never reads Codex trust hashes.
+
+### cloudEnvStatus (D-091, ADR-004 #5901)
+```
+function cloudEnvStatus(env, cwd) -> {status, vars, reason, projectRoot}
+  vars = sorted names (never values) of UNIMATRIX_BUNDLE and every UNIMATRIX_REMOTE_* set (non-empty) in env
+  if vars is empty: return {status:"unset", vars:[], reason:null, projectRoot: env.UNIMATRIX_PROJECT_ROOT ?? null}
+  root = env.UNIMATRIX_PROJECT_ROOT
+  if root unset/empty:          return {status:"ignored", vars, reason:"project-root-unset", projectRoot:null}
+  if !headlessRootContains(env, cwd): return {status:"ignored", vars, reason:"cwd-outside-root", projectRoot: root}
+  return {status:"in-effect", vars, reason:null, projectRoot: root}
+```
+Text line directly after `transport:` (exact):
+- `cloud env: not set` (unset)
+- `cloud env: in effect` (in-effect)
+- `cloud env: IGNORED <NAMES>: UNIMATRIX_PROJECT_ROOT is unset; set it to the project root to use them` (NAMES = sorted, comma-separated)
+- `cloud env: IGNORED <NAMES>: cwd is not inside UNIMATRIX_PROJECT_ROOT <root>; set it to the project root to use them`
+JSON: `cloudEnv: {status:"unset"|"in-effect"|"ignored", vars:string[], reason:"project-root-unset"|"cwd-outside-root"|null, projectRoot:string|null}` placed between `transport` and `trust`. Values never printed. Wrapped in the per-field try/catch; exit 0.
 
 ## Exit outcome table implemented (ADR-004)
 not a project -> 0 silent; Linux project not installed -> 0 + one stderr line; macOS/Windows not installed -> 0 silent; resolution/trust/node failure -> 1 stderr; connection errors -> client's existing codes; `mcp-stdio` inside project not installed -> 1 + hint, outside -> 0 silent; pass-through macOS/Windows -> message + 1.
@@ -108,5 +126,6 @@ Every thrown error is caught at the route boundary: stderr line, `process.exitCo
 - Exit matrix {not project, cloned repo, mac/Win no credential, Linux store no install, Linux installed no binary, trust failure, invalid redirect, client throw sync/async, connection error} x {hook, mcp-stdio} x OS (mock platform).
 - `unimatrix hook E` legacy L1 route with stub Rust binary: Node client executed, stub never exec'd (AC-03). Pass-through regression: `serve`/`version` still exec Rust with `LD_LIBRARY_PATH` on Linux (SR-12); override matrix (AC-14).
 - `status`: cloned repo -> `project: none (...)`; leftover legacy entries in each project file -> `legacy:` lines in order and `legacyProjectMcp`; Codex wired-never-fired prints approval step; stale Windows fallback node -> `mcp node: MISSING`; always exit 0 even with everything broken; corrupt `last-hook.json` does not crash.
+- `status` cloud env: no vars -> `cloud env: not set` / `cloudEnv.status:"unset"`; vars + cwd inside root -> `in effect`; vars + root unset -> IGNORED text with names sorted, reason `project-root-unset`; vars + cwd outside root -> IGNORED text naming the root, reason `cwd-outside-root`; values never appear in output (text or JSON); reads raw env (not effectiveEnv); exit 0; JSON key order transport, cloudEnv, trust.
 - `mcp-stdio` local (D-077): stub Rust binary exiting with code N -> launcher exits N; POSIX: stub killed by SIGTERM/SIGKILL (self-signal) -> launcher process terminates by that same signal; Windows: exit code only, no signal assertion (D-086) (assert via a parent harness: `signal` field in `child_process` result); SIGINT sent to the launcher reaches the stub; stdout bytes captured by a pipe before the stub writes its first byte = 0 (no Node stdout bytes before spawn); spawn ENOENT -> stderr + exit 1.
 - `mcp-stdio`: first stdout byte is JSON-RPC `{` from the child; nothing written before; outside project exit 0 empty output, zero network; headless env + cwd outside root -> exit 0 silent.

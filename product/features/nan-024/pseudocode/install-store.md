@@ -3,8 +3,8 @@
 ## Purpose
 Writes the per-machine user-level footprint (ADR-001, D-030, D-031, D-036): stable package copy, shim + `shim-entry.js` + `trust.js`, `install.json` atomic swap, prune, root marker, explicit modes/ACLs, Windows `trust.json`. Used by wire-init for both local init and cloud attach (identical, D-040). Local and cloud both.
 
-## PENDING H1
-Step 4's copy of `trust.js` to `~/.unimatrix/bin/trust.js` (ADR-002 trust bootstrap, shim-entry.md) is PENDING a human decision (H1). Kept as written; it is a single line (step 4, second `atomicCopy`) plus its trust-set entry in trust.md, so it can be removed or changed without affecting other steps.
+## trust.js sibling (D-090 accepted)
+Step 4 copies the self-contained `trust.js` (no requires from the package dir) to `~/.unimatrix/bin/trust.js` atomically (write tmp in the same dir, then rename) on every init/upgrade; the shim path is unchanged; trust.md lists it in the trust set.
 
 ## Exports
 ```

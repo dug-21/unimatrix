@@ -46,3 +46,9 @@ Remaining open: pending H1 (trust bootstrap; effectiveEnv); DEFAULT flagged (rel
 - D-089: ci-and-docs.md, OVERVIEW.md: `$HOME` Gemini reference form accepted; flag wording removed.
 - H1-pending items (effectiveEnv, sibling trust.js) untouched.
 - Unimatrix entries consulted: briefing returned nothing relevant (#3612, #3611, #3614 procedural lessons on multi-doc consistency only).
+
+## Rework 3 (D-090, D-091)
+- D-090: trust.md, shim-entry.md, install-store.md, OVERVIEW.md: PENDING H1 removed; sibling `~/.unimatrix/bin/trust.js` stated as accepted (self-contained, no package-dir requires, atomic tmp+rename refresh on init/upgrade, shim path unchanged, loaded before any packageRoot code).
+- D-091: project-state.md, hook-client.md, launcher.md, ci-and-docs.md, OVERVIEW.md: PENDING H1 removed; effectiveEnv governs hooks and mcp-bridge. launcher.md status: `cloudEnvStatus` (raw shell env), text line after `transport:`, JSON `cloudEnv` between transport and trust, names sorted, never values, exit 0; test scenarios added.
+- D-086 note: unreachable Windows exit-code branch kept in launcher.md, commented as deliberate.
+- Unimatrix entries consulted: #5900, #5901 (briefing: #5869, #5896).

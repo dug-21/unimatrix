@@ -93,3 +93,5 @@ Source of human scope: GH #1023 (issue body, authored by human).
 | D-087 | delivery | D-078 size cap | No cap. Stage 3c reports the size | uni-zero-delivery | D-078 | No AC sets a cap |
 | D-088 | delivery | Windows pre-Node check | Disabled unless the latency gate requires it. If enabled, the junction/symlink gap comes back to the primary | uni-zero-delivery | D-025 | Only needed when over budget |
 | D-089 | delivery | D-083 $HOME in .gemini reference config | Accept. D-027 covers init-written destinations, not tracked Unix reference configs | uni-zero-delivery | D-027; D-007 | Out of D-027's scope |
+| D-090 | delivery | H1-1 trust bootstrap (ADR-002) | Accept the sibling ~/.unimatrix/bin/trust.js. It is self-contained, with no requires from the package dir. It is refreshed atomically on init/upgrade, and the shim path is unchanged. The architect amends ADR-002 | human | delivery H1 | — |
+| D-091 | delivery | H1-2 effectiveEnv | Accept. effectiveEnv governs both the hooks and the MCP bridge. When shell cloud variables are ignored (UNIMATRIX_PROJECT_ROOT unset or not containing cwd), unimatrix status reports it | human | delivery H1 | — |

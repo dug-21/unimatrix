@@ -18,3 +18,7 @@ Risks: R-24, R-09, R-08, R-30, R-06. File: `test/install-store.test.js` (modes t
 - Platform binary package absent in source (macOS/Windows or cloud-only Linux): copy step skipped, init succeeds (cloud); Linux local with the binary package missing -> exit 1 naming the package (no silent partial copy).
 - D-082: init exits 1 when the node path cannot be recorded (stub `process.execPath` unresolvable/not executable via injectable resolver): non-zero exit, stderr names the cause, `install.json` NOT swapped, prior pointer intact; no shim written pointing at nothing.
 - Size measurement (Stage 3c, not an assertion): script `test/measure-pkg-size.js` prints `du -sb pkg/<version>` and the platform-binary subtree size on Linux; value goes into RISK-COVERAGE-REPORT (see OVERVIEW). Soft guard only: fail if pkg copy > a limit recorded in the report after first measurement (limit set by Stage 3c, not guessed here).
+
+## Rework 3 (D-090)
+- `trust.js` copy: init/upgrade writes `~/.unimatrix/bin/trust.js` via tmp+rename (same atomicity assertions as `install.json`): interrupted write (fault injection) leaves previous `trust.js` intact and the pointer/`install.json` unswapped-or-consistent; bytes equal package `lib/trust.js` after success; mode asserted (POSIX); trust.js is in the trust set.
+- Shim path unchanged across upgrade: init v1, record shim command string, upgrade to v2 (trust.js refreshed, `pkg/` flips) -> `buildShimCommand` output and settings hook command byte-equal; no settings write occurs (merge reports no change).

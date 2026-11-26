@@ -28,7 +28,15 @@ Local (Linux) `mcp-stdio` = spawn Rust with `stdio:'inherit'`, mirror exit code 
 
 ## Rework: status additions
 - `status` reports Linux install with platform binary missing from `pkg/<version>/node_modules` (D-078) as `binary: MISSING <path>`; exit 0.
-- effectiveEnv-dependent launcher tests (if any) are SEPARABLE under H1 (see resolve-runtime.md).
+- D-091 launcher/bin: `effectiveEnv` is applied before transport selection: cloud vars set + cwd outside root -> launcher does not use remote (no network, exit 0 silent for hooks); inside root -> remote used. `status` cloud env (below).
+
+### `status` cloud env line (D-091; `test/status-cloud-env.test.js`)
+- Text output, line after `transport:`, all four variants (exact strings): `cloud env: not set` (no cloud vars); `cloud env: in effect` (vars set, root absolute and contains cwd); `cloud env: IGNORED <NAME>[, <NAME>...]: UNIMATRIX_PROJECT_ROOT is unset; set it to the project root to use them`; `cloud env: IGNORED <NAME>[, <NAME>...]: cwd is not inside UNIMATRIX_PROJECT_ROOT <root>; set it to the project root to use them`. (Relative/empty root -> assert the pseudocode's chosen variant.)
+- Names sorted alphabetically, comma-space separated; values NEVER printed: canary values (`secret-token-xyz`) absent from stdout and stderr in every variant and in `--json`.
+- `status` reads RAW shell env (not `effectiveEnv`): the IGNORED variants appear precisely because vars are present in the shell; assert not reported `not set` when ignored.
+- `--json`: `cloudEnv` key present, key order `transport` < `cloudEnv` < `trust` (assert via `Object.keys`); shape `{status:"unset"|"in-effect"|"ignored", vars:string[], reason:"project-root-unset"|"cwd-outside-root"|null, projectRoot:string|null}`; per variant: unset -> `vars:[]`, reason null; in-effect -> reason null, projectRoot set; ignored/root-unset -> reason `project-root-unset`, projectRoot null; ignored/outside -> reason `cwd-outside-root`, projectRoot = root; `vars` sorted, names only.
+- Exit code 0 in all four variants (text and JSON).
+
 
 ## Rework 2 (D-086)
 Per-platform signal assertions above replace the earlier 128+n wording; no 128+n assertion on any platform.

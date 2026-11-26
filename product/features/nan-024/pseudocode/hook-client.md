@@ -27,7 +27,7 @@ function recordLastHook(projectHash, provider):
 ```
 Provider key = canonical `input.provider` (`claude-code`, `codex-cli`). Lost-update between two providers is acceptable only if the merge re-reads right before rename (done above); test asserts both keys present after 20 concurrent events in the common case. Budget: ≤ 2 ms p95 (one small stat+read+write+rename); runs after the response is sent / fire-and-forget path so it never lengthens the request.
 
-### 3. D-052 env tier (config.js `resolve`) — the `effectiveEnv` parts are PENDING H1 (project-state.md lists the three call sites; this is site 2)
+### 3. D-052 env tier (config.js `resolve`) (`effectiveEnv`, D-091: project-state.md lists the three call sites; this is site 2)
 ```
 r = resolveRemote(env, {projectHash, cwd: startDir, readStore: env.UNIMATRIX_REMOTE_URL ? () => null : undefined})   // adds cwd
 ```
@@ -37,7 +37,7 @@ r = resolveRemote(env, {projectHash, cwd: startDir, readStore: env.UNIMATRIX_REM
 Shim predicate uses `process.cwd()`; client uses stdin `cwd` (`resolveCwd`). Harness hooks run with cwd in the project; any divergence is covered by the parity table (subdir/symlink cases) — no code change, test only.
 
 ## Error handling
-`recordLastHook` swallows every error. `main` keeps its last-resort try/catch (stderr only). `effectiveEnv` (PENDING H1) never throws.
+`recordLastHook` swallows every error. `main` keeps its last-resort try/catch (stderr only). `effectiveEnv` never throws.
 
 ## Key test scenarios
 - `main(["node","x","SessionStart"])` equals direct spawn behaviour; `--provider codex-cli` stamps codex-cli; `require()` does not auto-run.

@@ -11,10 +11,10 @@ Search for direct Rust `hook` invocations outside init-written files, covering: 
 
 ## Part B — Headless contract (D-052/D-053, AC-15, R-34, R-35) — NAMED TASK — owner: uni-js-dev
 Files: `packages/unimatrix/lib/hook-client/remote-resolve.js`, `.../mcp-bridge.js`, `bin/unimatrix.js` (mcp-bridge route, owned by launcher), `docs/client-setup.md`, `packages/unimatrix/test/headless-smoke.test.js`. (Paths in the brief omit `hook-client/`.)
-1. `remote-resolve.js` single enforcement point (**PENDING H1: the `effectiveEnv` line is the isolated pseudocode extension; see project-state.md for the call-site list and removal recipe. If H1 = drop, delete the first line of `resolveRemote` and the `cwd` option plumbing; Part B items 2-4 are unaffected, since the bridge gate below and the D-052 predicate carry the contract**):
+1. `remote-resolve.js` single enforcement point (D-091 accepted: the `effectiveEnv` line is part of the contract; call sites in project-state.md):
 ```
 resolveRemote(env, opts):
-  env = projectState.effectiveEnv(env, opts.cwd ?? process.cwd(), opts.home ?? os.homedir())   // PENDING H1; top of function; strips UNIMATRIX_BUNDLE / UNIMATRIX_REMOTE_* outside the root
+  env = projectState.effectiveEnv(env, opts.cwd ?? process.cwd(), opts.home ?? os.homedir())   // D-091; top of function; strips UNIMATRIX_BUNDLE / UNIMATRIX_REMOTE_* outside the root
   ...existing logic unchanged...
 ```
 `config.js resolve` passes `cwd: startDir`; the bridge passes `cwd: process.cwd()`. `project-state.js` lazy-requires `./hook-client/config.js` inside `isUnimatrixProject` to avoid a require cycle (config -> remote-resolve -> project-state).

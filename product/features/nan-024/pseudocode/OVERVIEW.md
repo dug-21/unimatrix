@@ -47,7 +47,7 @@ resolveRuntime({env, home, platform, transport, allowSelf?}) -> {binary|null, cl
 checkTrust(paths, platform, opts?) -> void          // throws TrustError
 isUnimatrixProject(cwd, env, home) -> Project | null
 isInstalled(project, platform, {env, home}) -> {installed, transport: "local"|"cloud"|null, reason?}
-effectiveEnv(env, cwd, home) -> env copy with UNIMATRIX_BUNDLE/UNIMATRIX_REMOTE_* removed unless headless-valid (D-052)   // PENDING H1
+effectiveEnv(env, cwd, home) -> env copy with UNIMATRIX_BUNDLE/UNIMATRIX_REMOTE_* removed unless headless-valid (D-052)   // D-091: governs hooks and mcp-bridge
 codexHome(env, home) -> {dir, warning?} ; detectsCodex({root, env, home, harnessSel}) -> boolean     // codex-install.js (D-081; relative/invalid CODEX_HOME rule decided, D-085)
 isUnimatrixCommand(cmd) -> boolean ; isUnimatrixMcpEntry(name, entry) -> boolean
 buildShimCommand(event, provider, platform, home) -> string
@@ -55,7 +55,7 @@ buildMcpEntry(platform, home, node) -> {command, args, env}         // lib/mcp-e
 main(argv) -> Promise<void>                          // hook-client; argv[2] = event (existing convention)
 ```
 Signature extensions (additive, ACCEPTED by D-080; contract text in ARCHITECTURE.md): `resolveRuntime` optional `allowSelf` (init-time, before an install exists); `buildShimCommand` takes `home`; `isInstalled` takes `{env, home}`.
-**PENDING H1 (not in the architecture contract):** `effectiveEnv(env, cwd, home)`: isolated in one function in project-state.md with three listed call sites (remote-resolve, hook-client config, launcher hook-route/mcp-stdio) and a removal recipe. Also PENDING H1: ADR-002 trust bootstrap (sibling `~/.unimatrix/bin/trust.js`) in shim-entry, install-store, trust.
+**Accepted (D-090, D-091):** `effectiveEnv(env, cwd, home)` governs hooks AND mcp-bridge (single function in project-state.md; call sites: remote-resolve, hook-client config, launcher hook-route/mcp-stdio); `unimatrix status` reports ignored cloud env (launcher.md). ADR-002 trust bootstrap: self-contained sibling `~/.unimatrix/bin/trust.js` (no requires from the package dir), refreshed atomically (tmp+rename) by install-store on init/upgrade; shim path unchanged; shim-entry loads it before anything from packageRoot.
 
 Constants: `UHOME(home) = join(home, ".unimatrix")`; shim path `UHOME/bin/unimatrix` (win32 `.cmd`); `UHOME/bin/shim-entry.js`; `UHOME/install.json`; `UHOME/redirect.json`; `UHOME/trust.json`; `UHOME/pkg/<version>/`; `UHOME/<hash>/root`, `remote.json`, `last-hook.json`. `OWNED_USER_FILES` list for dry-run: `~/.unimatrix/**`, `~/.claude/settings.json`, `~/.claude.json`, `$CODEX_HOME/hooks.json`, `$CODEX_HOME/config.toml` (default `~/.codex`, D-081), `~/.config/opencode/opencode.json`.
 Exit codes at fire time: 0 and 1 only (never 2). Hint/errors to stderr, never stdout.
@@ -63,7 +63,7 @@ Exit codes at fire time: 0 and 1 only (never 2). Hint/errors to stderr, never st
 ## Recommended wave plan (dependency order; components inside a wave are parallel)
 Wave 0 (tasks, no code deps): Q9 proof is DONE (D-072, workflow exists); OQ-6 audit (ci-and-docs Part A, read-only, CI/docs agent; results D-074/D-075 recorded).
 Wave 1 (leaves): hook-ownership, trust, project-state, resolve-runtime (+resolve-binary wrapper), hook-client (`main(argv)`, `last-hook.json`, config env sanitize needs project-state only as an interface; stub-free because project-state signature is fixed here).
-Wave 2: shim (templates), shim-entry (inlines predicate, requires trust sibling), install-store (needs trust + shim templates + project hash), merge-settings (+ claude-json, mcp-entry; needs hook-ownership), ci-and-docs Part B headless contract (uni-js-dev; needs project-state `headlessEnvSet`/`headlessRootContains`, and `effectiveEnv` only if H1 keeps it; includes the `docs/client-setup.md` edit).
+Wave 2: shim (templates), shim-entry (inlines predicate, requires trust sibling), install-store (needs trust + shim templates + project hash), merge-settings (+ claude-json, mcp-entry; needs hook-ownership), ci-and-docs Part B headless contract (uni-js-dev; needs project-state `headlessEnvSet`/`headlessRootContains`, and `effectiveEnv` (D-091); includes the `docs/client-setup.md` edit).
 Wave 3: launcher (hook-route, status, mcp-stdio; needs project-state, trust, resolve-runtime, hook-client, hook-ownership, claude-json readers), codex-install (needs hook-ownership, merge-settings, mcp-entry), opencode-install (needs mcp-entry, hook-ownership).
 Wave 4: wire-init (orchestrates all writers; needs install-store, merge-settings, codex-install, opencode-install).
 Wave 5: ci-and-docs Parts C (CI/docs agent; E2E matrix Linux/macOS/Windows, latency gate, `parity-layer2*` gating, README/.gemini/release notes). Latency result may flip `PRENODE_ENABLED` in install-store (feedback edge to Wave 2).
@@ -77,7 +77,7 @@ Test updates (`merge-settings.test.js`, `dogfood-effect.test.js`, `init-remote.t
 3b. Stable copy (D-078): install-store copies the Linux platform binary package into `pkg/<version>/node_modules`; no size cap (D-087); Stage 3c reports the size only.
 3c. Codex (D-081): one detection rule (`detectsCodex`) governs hooks and MCP; destination `$CODEX_HOME` (default `~/.codex`).
 3d. Node record (D-082): init exits 1 if node cannot be recorded (install-store); `wire`/upgrade-without-re-record use a separate path-exists preflight (wire-init).
-4. Env tier (D-052) is enforced by `isUnimatrixProject` (containment) everywhere; PENDING H1 adds an extra single-function strip (`effectiveEnv`), applied at the top of `remote-resolve.resolveRemote` (so hook-client config and mcp-bridge cannot forget it) and by the launcher. `project-state.js` lazy-requires `hook-client/config.js` to avoid a require cycle.
+4. Env tier (D-052) is enforced by `isUnimatrixProject` (containment) everywhere; D-091 adds an extra single-function strip (`effectiveEnv`), applied at the top of `remote-resolve.resolveRemote` (so hook-client config and mcp-bridge cannot forget it) and by the launcher. `project-state.js` lazy-requires `hook-client/config.js` to avoid a require cycle.
 
 ## Open questions and resolutions (rework)
 Resolved (by decision, applied in the files named):
@@ -85,9 +85,9 @@ Resolved (by decision, applied in the files named):
 - OQ-5 Codex detection / `$CODEX_HOME`: D-081 (codex-install `detectsCodex`, `codexHome`; wire-init).
 - OQ-2 D-066 preflight scope: D-082 (wire-init; install-store `NodeNotRecordableError`).
 - Prior items 6 (worktree/headless pre-check), 7 (binary in stable copy), 8 (additive signatures), 9 (`mcp-stdio` spawn): D-079, D-078, D-080, D-077.
-Still pending a human decision (H1), isolated so either answer has no ripple:
-- OQ-1 ADR-002 trust bootstrap (sibling `~/.unimatrix/bin/trust.js`): shim-entry.md, install-store.md, trust.md.
-- `effectiveEnv`: project-state.md (definition + removal recipe + three call sites).
+Decided (D-090, D-091):
+- OQ-1 ADR-002 trust bootstrap: sibling `~/.unimatrix/bin/trust.js` accepted (shim-entry.md, install-store.md, trust.md).
+- `effectiveEnv` accepted for hooks and mcp-bridge (project-state.md); `status` reports ignored cloud env (launcher.md).
 Decided (D-084, D-085):
 - Relative/invalid `$CODEX_HOME` -> ignored, `~/.codex` used, warning; exists-but-not-dir = absent (D-085; codex-install.md).
 - Codex MCP write follows the same detection rule as hooks, limited to owned entries and listed in dry-run; the old `--harness codex-cli` opt-in gate for a new MCP entry is dropped (D-084; codex-install.md).

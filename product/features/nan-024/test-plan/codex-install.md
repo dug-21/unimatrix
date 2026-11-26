@@ -35,3 +35,6 @@ Same detection as D-081 hooks, rows 1-7 reused for `$CODEX_HOME/config.toml [mcp
 | M3 | detected, foreign `unimatrix` table | left untouched + D-065 warning; dry-run notes skip |
 - Writes limited to owned entries (foreign tables/comments byte-preserved); dry-run list == actual writes (assert set equality of paths).
 - Hooks and MCP always agree: never hooks without MCP or vice versa for the same detection result.
+
+## Rework 3 (D-090)
+D-028 byte-fixed test (custom `$CODEX_HOME` upgrade) additionally asserts the hook command is byte-equal across a `bin/trust.js` refresh; shim path unchanged.

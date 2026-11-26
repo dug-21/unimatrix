@@ -9,7 +9,7 @@ isUnimatrixProject(cwd, env, home) -> Project | null
 isInstalled(project, platform, {env, home}) -> {installed, transport, reason}     // {env, home} accepted (D-080)
 headlessEnvSet(env) -> boolean
 headlessRootContains(env, cwd) -> boolean
-effectiveEnv(env, cwd, home) -> env             // PENDING H1 (isolated, see section below); not part of the architecture contract until decided
+effectiveEnv(env, cwd, home) -> env             // D-091 accepted: governs hooks and mcp-bridge
 storeDir(home, hash) -> join(home,".unimatrix",hash)
 HEADLESS_VARS  // ["UNIMATRIX_BUNDLE", ...all values of remote-resolve.VARS except HEADERS?]  -- built from remote-resolve.VARS; HEADERS alone does not make headless
 ```
@@ -53,19 +53,18 @@ function isInstalled(project, platform, {env, home}):
   return {installed:false, transport:null, reason:"no install.json"}
 ```
 ```
-### effectiveEnv — PENDING H1 (isolated; removable without ripple)
-Status: pseudocode extension, NOT in the ARCHITECTURE.md contract (D-080 left it to a human decision, H1). Kept so a decision to keep it needs no redesign; marked so a decision to drop it is a pure deletion.
-Single definition: this function (and its export). Single call sites (complete list):
+### effectiveEnv (D-091 accepted)
+Single definition: this function (and its export). Call sites (complete list):
   1. `lib/hook-client/remote-resolve.js` `resolveRemote` first line (ci-and-docs Part B)
-  2. `lib/hook-client/config.js` `resolve` (hook-client.md section 3) — passes the effective env on
+  2. `lib/hook-client/config.js` `resolve` (hook-client.md section 3) - passes the effective env on
   3. `lib/hook-route.js` `run` (resolveRuntime env arg) and `runMcpStdio` (bridge env arg) (launcher.md)
-Removal recipe if H1 = drop: delete this function and its export; at each of the three sites replace `effectiveEnv(env, cwd, home)` with `env`. Nothing else changes: `isUnimatrixProject` (D-052 containment) still gates every entry point, and the mcp-bridge gate in ci-and-docs Part B still exits 0 for headless env outside the root. What is lost on removal: with a store credential in a different initialised repo AND exported bundle env AND cwd outside `UNIMATRIX_PROJECT_ROOT`, the exported env would win over the store credential for that repo.
+`unimatrix status` reads the RAW shell env (never effectiveEnv) so it can report what was ignored (launcher.md).
 ```
 function effectiveEnv(env, cwd, home):
   if !headlessEnvSet(env) or headlessRootContains(env, cwd): return env
   copy = {...env}; delete UNIMATRIX_BUNDLE and every UNIMATRIX_REMOTE_* ; return copy    // outside root: env tier does not exist
 ```
-This closes the leak where bundle env would otherwise win over a store credential in a different initialised repo. (PENDING H1; see above.)
+This closes the leak where bundle env would otherwise win over a store credential in a different initialised repo.
 
 ## Error handling
 Never throws; filesystem errors map to "absent". `isInstalled` with unreadable `install.json` = not installed (reason "no install.json"); the launcher's trust check has already refused an unsafe one.
@@ -74,4 +73,4 @@ Never throws; filesystem errors map to "absent". `isInstalled` with unreadable `
 `shim-entry.js` inline copy must equal this module over the shared fixture table (root cwd, subdir, symlinked cwd, trailing slash, nested repos, worktree `.git` file, Windows drive-letter case and `\` vs `/`, store dir / remote.json / headless env with root containing / not containing / unset / empty / relative / symlinked root / none) and hash must equal `config.js` and the Rust store dir name.
 
 ## Key test scenarios
-D-045/D-052 table above; sibling shared-prefix cwd (`/fx/repoA-other` vs root `/fx/repoA`) is outside; [only if H1 keeps it] `effectiveEnv` strips env outside the root while keeping `UNIMATRIX_BINARY`, `UNIMATRIX_PROJECT_ROOT`; macOS/Windows installed table (no bundle, no credential => not installed, reason "missing credential"); Linux: valid install.json => local, credential => cloud, neither => reason "no install.json".
+D-045/D-052 table above; sibling shared-prefix cwd (`/fx/repoA-other` vs root `/fx/repoA`) is outside; `effectiveEnv` strips env outside the root while keeping `UNIMATRIX_BINARY`, `UNIMATRIX_PROJECT_ROOT`; macOS/Windows installed table (no bundle, no credential => not installed, reason "missing credential"); Linux: valid install.json => local, credential => cloud, neither => reason "no install.json".

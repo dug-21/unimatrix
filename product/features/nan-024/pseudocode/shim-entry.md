@@ -6,8 +6,8 @@ Version-independent entry run by the shim (and by the Windows D-047 MCP fallback
 ## Node predicate is unchanged (D-079, D-052)
 The inline `isUnimatrixProject` here has NO ancestor-`.git` clause and NO loosened headless clause; those exist only in the shell pre-check (shim.md). The superset test (shim.md) asserts pre-check ⊇ this predicate.
 
-## PENDING H1 — trust bootstrap (ADR-002)
-The sibling `~/.unimatrix/bin/trust.js` copy below is the pseudocode's resolution of the trust-bootstrap problem (trust code lives in the package it vets). It is PENDING a human decision (H1). Kept as written. If H1 changes it, the only affected lines are the two marked `PENDING H1` in `run` (the `require("./trust.js")` load) and the matching copy step in install-store.md; the order of checks is unchanged.
+## Trust bootstrap (ADR-002, D-090 accepted)
+The sibling `~/.unimatrix/bin/trust.js` is self-contained (no requires from the package dir); install-store refreshes it atomically (tmp+rename) on init/upgrade; shim path unchanged. `run` loads it before requiring anything from packageRoot; order of checks unchanged.
 
 ## Constraints
 - Only Node builtins. No `require` of package code before trust passes. Trust code is loaded from the sibling `./trust.js` (copied by install-store); everything else comes from `packageRoot` after the check.
@@ -24,7 +24,7 @@ function run(args):                       // args = e.g. ["hook","SessionStart"]
   if project == null: return                                    // exit 0 silent, BEFORE trust/require (R-06); process.exitCode untouched
   inst = readInstallJsonRaw(uh)                                 // may be null; no validation beyond JSON shape
   try:
-     trust = require("./trust.js")          // PENDING H1: sibling copy (ADR-002 trust bootstrap)
+     trust = require("./trust.js")          // sibling copy, self-contained (D-090)
      trust.checkTrust(trust.trustSet(home, {installJson: inst}), platform, {home})
   catch e (TrustError or require failure): stderr(e.message); process.exitCode = 1; return
   d = installedDecision(project, platform, env, home, inst)     // inline: {installed, transport, reason}

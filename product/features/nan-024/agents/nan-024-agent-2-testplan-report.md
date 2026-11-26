@@ -30,3 +30,8 @@ Unimatrix entries consulted: #5896, #5897, #5899, #5898, #5890, #5894 (via ADR-I
 Applied D-084..D-089. Files changed: test-plan/OVERVIEW.md, codex-install.md, launcher.md, shim.md, ci-and-docs.md. Added Codex MCP gating rows M1-M3; CODEX_HOME ignore+warn decided; Windows exit-code-only with per-platform signal assertions; D-078 size report-only; Windows pre-Node-disabled assertion + escalation note. H1 items (effectiveEnv, trust bootstrap) remain SEPARABLE.
 Unimatrix entries consulted: briefing (no entries bearing on this rework).
 Knowledge Stewardship: Queried briefing; Stored nothing novel (in-place decision application).
+
+## Rework 3 (agent nan-024-agent-2-testplan-rework3)
+Applied D-090 and D-091 (human-decided); removed all PENDING H1/SEPARABLE markers. Files changed: test-plan/OVERVIEW.md, shim-entry.md, trust.md, install-store.md, merge-settings.md, codex-install.md, resolve-runtime.md, project-state.md, launcher.md. New planned file: `test/trust-selfcontained.test.js`, `test/status-cloud-env.test.js`. D-086 Windows exit-code-only tests kept.
+Unimatrix entries consulted: #5900, #5901 (headers only returned by context_get), briefing (#5778, #5781 not bearing).
+Knowledge Stewardship: Queried briefing; Stored nothing novel (in-place decision application).
