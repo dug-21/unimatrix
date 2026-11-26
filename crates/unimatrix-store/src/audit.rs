@@ -13,8 +13,10 @@ use crate::schema::{AuditEvent, Outcome};
 impl SqlxStore {
     /// Append an audit event to the audit_log table.
     ///
-    /// Assigns `event_id` (monotonically increasing via the `AUDIT_EVENT_COUNTER`
-    /// counter, `"next_audit_id"`) and `timestamp` (current unix seconds).
+    /// Assigns `event_id` via [`counters::next_audit_event_id`] on this write
+    /// transaction: next id = `max(counter, MAX(event_id)) + 1`, where the counter
+    /// (`AUDIT_EVENT_COUNTER`, `"next_audit_id"`) holds the last id issued (#1003).
+    /// Also assigns `timestamp` (current unix seconds).
     /// Returns the assigned event_id.
     pub async fn log_audit_event(&self, event: AuditEvent) -> Result<u64> {
         let pool = self.write_pool_server();
@@ -23,7 +25,7 @@ impl SqlxStore {
             .await
             .map_err(|e| StoreError::Database(e.into()))?;
 
-        let id = counters::next_counter(&mut txn, counters::AUDIT_EVENT_COUNTER).await?;
+        let id = counters::next_audit_event_id(&mut txn).await?;
 
         let target_ids_json = serde_json::to_string(&event.target_ids)
             .map_err(|e| StoreError::Serialization(e.to_string()))?;
@@ -455,6 +457,130 @@ mod tests {
             .expect("read must succeed")
             .expect("event must be present");
         assert_eq!(stored.event_id, (n + 1) as u64);
+    }
+
+    // -- GH#1003: audit allocator reconciles a trailing counter with MAX(event_id) --
+
+    async fn seed_audit_rows(store: &SqlxStore, ids: std::ops::RangeInclusive<i64>) {
+        for i in ids {
+            sqlx::query(
+                "INSERT INTO audit_log
+                     (event_id, timestamp, session_id, agent_id, operation,
+                      target_ids, outcome, detail,
+                      credential_type, capability_used, agent_attribution, metadata)
+                 VALUES (?1, ?2, 's', 'a', 'context_store', '[]', 0, 'seeded',
+                         'none', '', '', '{}')",
+            )
+            .bind(i)
+            .bind(1_700_000_000_i64 + i)
+            .execute(store.write_pool_server())
+            .await
+            .expect("seed audit_log row");
+        }
+    }
+
+    fn gh1003_event() -> AuditEvent {
+        AuditEvent {
+            operation: "context_search".to_string(),
+            metadata: "{}".to_string(),
+            ..AuditEvent::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_log_audit_event_counter_trails_max_returns_max_plus_one() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+        let n: i64 = 5;
+        // Rows 1..=N+1 but counter = N (pre-#633 MAX+1 import row).
+        seed_audit_rows(&store, 1..=n + 1).await;
+        counters::set_counter(
+            store.write_pool_server(),
+            counters::AUDIT_EVENT_COUNTER,
+            n as u64,
+        )
+        .await
+        .unwrap();
+
+        let id1 = store
+            .log_audit_event(gh1003_event())
+            .await
+            .expect("no UNIQUE");
+        let id2 = store
+            .log_audit_event(gh1003_event())
+            .await
+            .expect("no UNIQUE");
+        assert_eq!(id1, (n + 2) as u64);
+        assert_eq!(id2, (n + 3) as u64);
+        let counter =
+            counters::read_counter(store.write_pool_server(), counters::AUDIT_EVENT_COUNTER)
+                .await
+                .unwrap();
+        assert_eq!(counter, (n + 3) as u64, "counter holds last issued id");
+    }
+
+    #[tokio::test]
+    async fn test_log_audit_event_counter_absent_returns_max_plus_one() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = open_test_store(&dir).await;
+        seed_audit_rows(&store, 1..=7).await;
+        sqlx::query("DELETE FROM counters WHERE name = ?1")
+            .bind(counters::AUDIT_EVENT_COUNTER)
+            .execute(store.write_pool_server())
+            .await
+            .unwrap();
+
+        let id = store
+            .log_audit_event(gh1003_event())
+            .await
+            .expect("no UNIQUE");
+        assert_eq!(id, 8);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+    async fn test_log_audit_event_concurrent_two_writers_no_unique_error() {
+        use crate::pool_config::PoolConfig;
+        use std::collections::HashSet;
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let config = PoolConfig {
+            write_max_connections: 2,
+            ..PoolConfig::default()
+        };
+        let store = std::sync::Arc::new(
+            SqlxStore::open(dir.path().join("test.db"), config)
+                .await
+                .expect("open store with write_max_connections=2"),
+        );
+        // Start from a trailing counter so reconciliation is exercised under contention.
+        seed_audit_rows(&store, 1..=3).await;
+        counters::set_counter(store.write_pool_server(), counters::AUDIT_EVENT_COUNTER, 1)
+            .await
+            .unwrap();
+
+        let mut handles = Vec::new();
+        for _ in 0..16 {
+            let s = std::sync::Arc::clone(&store);
+            handles.push(tokio::spawn(async move {
+                s.log_audit_event(gh1003_event()).await
+            }));
+        }
+        let mut ids = HashSet::new();
+        for h in handles {
+            match h.await.expect("join") {
+                Ok(id) => assert!(ids.insert(id), "duplicate id {id}"),
+                Err(e) => {
+                    let msg = e.to_string();
+                    assert!(
+                        !msg.contains("UNIQUE"),
+                        "concurrent audit write hit UNIQUE: {msg}"
+                    );
+                    panic!("unexpected error: {msg}");
+                }
+            }
+        }
+        assert_eq!(ids.len(), 16);
+        assert!(ids.iter().all(|&id| id > 3));
     }
 
     // -- AE-I-06: empty clientInfo.name → metadata = "{}" --

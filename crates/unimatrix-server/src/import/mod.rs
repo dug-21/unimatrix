@@ -1423,6 +1423,58 @@ mod tests {
         assert_eq!(id, 7, "next event_id must be 7 (counter 6 → 7)");
     }
 
+    /// Regression test for GH#1003: import restores counters verbatim, so a JSONL
+    /// whose next_audit_id trails the max imported event_id must not leave audit
+    /// writes failing on UNIQUE(event_id).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_gh1003_import_trailing_audit_counter_then_audit_write_succeeds() {
+        let (project_dir, base_dir) = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+        let db_path =
+            project::ensure_data_directory(Some(project_dir.path()), Some(base_dir.path()))
+                .unwrap()
+                .db_path;
+
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 1),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            make_counter_line("next_audit_id", 2),
+            make_entry_line(1, "Test entry", "Content", ""),
+            make_audit_log_line(1, "context_store", "row 1"),
+            make_audit_log_line(2, "context_store", "row 2"),
+            make_audit_log_line(3, "context_store", "row 3"),
+            make_audit_log_line(4, "import", "pre-#633 MAX+1 provenance row"),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        let result = run_import_with_base(
+            Some(project_dir.path()),
+            &input_path,
+            None,
+            false,
+            false,
+            base_dir.path(),
+        );
+        assert!(result.is_ok(), "import must succeed (GH#1003): {result:?}");
+
+        let store = open_test_store_at(&db_path).await;
+        let event = AuditEvent {
+            operation: "context_search".to_string(),
+            detail: "post-import GH#1003".to_string(),
+            ..AuditEvent::default()
+        };
+        let id = store
+            .log_audit_event(event)
+            .await
+            .expect("audit write after import must succeed (GH#1003)");
+        assert!(
+            id > 4,
+            "event_id must exceed max imported event_id: id={id}"
+        );
+    }
+
     // --- nxs-012: format_version validation (ADR-002) ---
 
     #[test]

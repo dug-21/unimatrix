@@ -22,6 +22,11 @@ use crate::error::{Result, StoreError};
 /// `"next_audit_event_id"` (introduced by nxs-011, fixed by #587) caused
 /// UNIQUE constraint failures because the phantom counter row started at 0
 /// while the live table had rows with event_id > 0.
+///
+/// Semantics: the value is the last event_id issued. It is allocated only via
+/// [`next_audit_event_id`], which returns `max(counter, MAX(audit_log.event_id)) + 1`
+/// so a counter that trails the table (e.g. pre-#633 import rows, or a counter
+/// restored verbatim by import) self-heals instead of failing UNIQUE forever (#1003).
 pub const AUDIT_EVENT_COUNTER: &str = "next_audit_id";
 
 /// Counter name for the Surface A compaction-event INSERT failure count (crt-054,
@@ -115,6 +120,40 @@ pub async fn next_counter(conn: &mut SqliteConnection, name: &str) -> Result<u64
 /// errors when the caller's future must be `Send` (e.g., inside `tokio::spawn`).
 pub async fn next_entry_id(conn: &mut SqliteConnection) -> Result<u64> {
     next_counter(conn, "next_entry_id").await
+}
+
+/// Table whose `event_id` column the audit allocator reconciles against.
+const AUDIT_LOG_TABLE: &str = "audit_log";
+/// Primary-key column of [`AUDIT_LOG_TABLE`].
+const AUDIT_LOG_ID_COLUMN: &str = "event_id";
+
+/// Atomically allocate the next audit_log event_id (#1003).
+///
+/// Returns `max(counter, MAX(audit_log.event_id)) + 1` and stores it as the new
+/// counter value (counter = last issued). Reconciling against the table in the
+/// same statement means a trailing counter can never yield an id that already
+/// exists, even though a rolled-back insert also reverts the counter bump.
+///
+/// Must be called on the same transaction connection as the audit_log INSERT.
+/// Only the counter name is bound; table/column names are module constants.
+pub async fn next_audit_event_id(conn: &mut SqliteConnection) -> Result<u64> {
+    let sql = format!(
+        "INSERT INTO counters (name, value) \
+         VALUES (?1, (SELECT COALESCE(MAX({col}), 0) FROM {tbl}) + 1) \
+         ON CONFLICT(name) DO UPDATE SET \
+         value = MAX(value, (SELECT COALESCE(MAX({col}), 0) FROM {tbl})) + 1 \
+         RETURNING value",
+        col = AUDIT_LOG_ID_COLUMN,
+        tbl = AUDIT_LOG_TABLE,
+    );
+    let val: Option<i64> = sqlx::query_scalar(&sql)
+        .bind(AUDIT_EVENT_COUNTER)
+        .fetch_optional(&mut *conn)
+        .await
+        .map_err(|e| StoreError::Database(e.into()))?;
+
+    val.map(|v| v as u64)
+        .ok_or_else(|| StoreError::Database("next_audit_event_id RETURNING returned no row".into()))
 }
 
 // ---------------------------------------------------------------------------
