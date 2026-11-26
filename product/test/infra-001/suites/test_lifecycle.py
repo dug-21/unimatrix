@@ -254,6 +254,56 @@ def test_data_persistence_across_restart(tmp_path):
     client2.shutdown()
 
 
+def _run_shutdown_with_closed_stderr(tmp_path, close_stdout: bool):
+    """GH#1028 helper: store one entry, close stderr (and optionally stdout)
+    read ends, then EOF stdin; return (returncode, data_dir)."""
+    import os
+    import resource
+    import subprocess as _sp
+
+    binary = get_binary_path()
+    # Avoid core dumps if the pre-fix abort path fires (lesson #5895).
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    # RUST_LOG=info kept deliberately: the bug needs a shutdown log line to
+    # pass the filter and hit the closed stderr.
+    client = UnimatrixClient(
+        binary, project_dir=str(tmp_path), drain_stderr=False,
+        extra_env={"RUST_LOG": "info"},
+    )
+    try:
+        client.initialize()
+        client.wait_until_ready()
+        extract_entry_id(client.context_store(
+            "gh1028 closed stderr shutdown persistence content",
+            "testing", "convention", agent_id="human", format="json",
+        ))
+        client.close_stderr()
+        if close_stdout:
+            client.close_stdout()
+        client.close_stdin()
+        rc = client.wait_exit(timeout=60.0)
+    except _sp.TimeoutExpired:
+        client.shutdown()
+        raise
+    data_dir = os.path.dirname(_compute_db_path_lifecycle(str(tmp_path)))
+    return rc, data_dir
+
+
+@pytest.mark.parametrize("close_stdout", [False, True], ids=["stderr_closed", "stderr_and_stdout_closed"])
+def test_shutdown_with_closed_stderr_persists_state(tmp_path, close_stdout):
+    """GH#1028: closed stderr at shutdown must not abort (SIGABRT, rc -6);
+    graceful shutdown must still dump the vector index and save adaptation
+    state (save_state is unconditional — the file exists even with no training)."""
+    import os
+
+    rc, data_dir = _run_shutdown_with_closed_stderr(tmp_path, close_stdout)
+    assert rc == 0, f"server exit code {rc} (expected 0; -6 = SIGABRT from EPIPE panic)"
+    meta = os.path.join(data_dir, "vector", "unimatrix-vector.meta")
+    assert os.path.exists(meta), f"vector meta not written: {meta}"
+    state = os.path.join(data_dir, "adaptation.state")
+    assert os.path.exists(state), f"adaptation state not written: {state}"
+
+
 def test_helpfulness_voting(server):
     """L-14: Helpful=true/false voting works."""
     store_resp = server.context_store(

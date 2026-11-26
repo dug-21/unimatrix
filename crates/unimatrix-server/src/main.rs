@@ -7,6 +7,7 @@ mod http_provision;
 
 use std::collections::HashSet;
 use std::io::Read as _;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -552,7 +553,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .location()
             .map(|loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()))
             .unwrap_or_else(|| "unknown location".to_string());
-        eprintln!("PANIC at {location}: {payload}");
+        // #1028: never panic inside the panic hook (closed stderr => EPIPE => abort).
+        let _ = writeln!(std::io::stderr(), "PANIC at {location}: {payload}");
     }));
 
     let cli = Cli::parse();
@@ -808,6 +810,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             Ok(file) => {
                 let writer = std::sync::Mutex::new(std::io::LineWriter::new(file));
                 tracing_subscriber::fmt()
+                    .log_internal_errors(false)
                     .with_env_filter(filter)
                     .with_writer(writer)
                     .with_ansi(false)
@@ -821,6 +824,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     paths.log_path.display()
                 );
                 tracing_subscriber::fmt()
+                    .log_internal_errors(false)
                     .with_env_filter(filter)
                     .with_writer(std::io::stderr)
                     .with_ansi(false)
@@ -830,6 +834,7 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     } else {
         // Foreground mode (serve --foreground) — log to stderr unchanged.
         tracing_subscriber::fmt()
+            .log_internal_errors(false)
             .with_env_filter(filter)
             .with_writer(std::io::stderr)
             .init();
@@ -1621,6 +1626,7 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         .map(|f| f.add_directive("unimatrix=info".parse().unwrap()))
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
     tracing_subscriber::fmt()
+        .log_internal_errors(false)
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
         .init();
@@ -2071,6 +2077,7 @@ async fn tokio_main_bridge(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         .map(|f| f.add_directive("unimatrix=info".parse().unwrap()))
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level));
     tracing_subscriber::fmt()
+        .log_internal_errors(false)
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
         .init();
