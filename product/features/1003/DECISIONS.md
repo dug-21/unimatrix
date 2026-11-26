@@ -17,3 +17,4 @@
 | D-013 | bugfix | File dropped-audit-count (context_status) follow-up | Yes | human | — | — |
 | D-014 | bugfix | Merge PR #1029 | Approved; timing to avoid disrupting feature/nan-024 delivery | human | — | — |
 | D-015 | bugfix | Merge timing | Merge now (nan-024 landed); first update branch with main and rerun cargo test --workspace since CI has no Rust jobs | human | D-014 | — |
+| D-016 | bugfix | eval test test_ac14_correlated_sweep_non_vacuous failure (H8) | Accepted as pre-existing flake (1/10 on main 2c7ea4ab); tracked in #1038; merge proceeds | human | D-015 | — |
