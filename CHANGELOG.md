@@ -3,6 +3,16 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Breaking changes (nan-024, #1023)
+- **Hooks run through a user-level shim**: the Rust `unimatrix hook` client is retired from shipped wiring. `init` writes `.claude/settings.local.json` (not committed) hooks that call `~/.unimatrix/bin/unimatrix` by absolute path, routed to the Node hook client. `.codex` hooks go to `$CODEX_HOME/hooks.json`. Re-run `npx unimatrix init` on every machine to migrate.
+- **MCP is per-machine**: `init`/`wire` register the `unimatrix` MCP server in user-level config (`~/.claude.json`, `$CODEX_HOME/config.toml`, `~/.config/opencode/opencode.json`) and remove owned entries from project `.mcp.json`, `.codex/config.toml`, and `opencode.json`.
+- **OpenCode is retrieval only**: `init` no longer writes OpenCode plugin provisioning; `wire --harness opencode` writes only the MCP retrieval entry. OpenCode hooks are deferred to #998.
+- **Headless contract**: any headless variable (`UNIMATRIX_BUNDLE`, `UNIMATRIX_REMOTE_*`) now requires `UNIMATRIX_PROJECT_ROOT`; without it hooks and the MCP bridge exit 0 silently.
+- **Platforms**: macOS and Windows are cloud-only; PowerShell is unsupported as a hook shell.
+- `.gemini/settings.json` reference config now uses the absolute shim form.
+
 ## [0.11.3] - 2026-07-10
 
 ### Fixes

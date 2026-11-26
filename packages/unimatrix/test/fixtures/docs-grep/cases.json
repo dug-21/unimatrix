@@ -1,0 +1,20 @@
+{
+  "mustFail": [
+    "unimatrix hook Stop",
+    "unimatrix-server hook X",
+    "\"unimatrix\" hook",
+    "'unimatrix' hook",
+    "/usr/bin/unimatrix hook",
+    "LD_LIBRARY_PATH=/x unimatrix hook",
+    "LD_LIBRARY_PATH=/x \\ hook",
+    "unimatrix   hook"
+  ],
+  "mustPass": [
+    "\"$HOME/.unimatrix/bin/unimatrix\" hook BeforeTool --provider gemini-cli",
+    "~/.unimatrix/bin/unimatrix hook Stop",
+    "\"C:/Users/x/.unimatrix/bin/unimatrix.cmd\" hook E",
+    "the launcher's `hook` verb",
+    "npx unimatrix mcp-stdio",
+    "unimatrix.cmd\" hook"
+  ]
+}
