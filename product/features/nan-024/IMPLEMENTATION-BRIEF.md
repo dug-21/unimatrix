@@ -52,55 +52,55 @@ All paths relative to `packages/unimatrix/` unless noted. Pseudocode and test-pl
 
 ## Resolved Decisions
 
-| Decision | Resolution | Source | ADR File |
+| Decision | Resolution | Source | ADR (Unimatrix ID; see architecture/ADR-INDEX.md) |
 |----------|-----------|--------|----------|
 | Retire Rust hook client | Yes, now; #682 soak removed | D-001 | — |
-| Topology | Local: hook→Node→UDS→daemon, MCP→Rust stdio. Cloud: hook→Node→HTTPS, MCP→mcp-bridge→HTTPS | D-002 | architecture/ADR-004-launcher-hook-route.md |
-| Wiring form | User-level shim, invoked by absolute resolved path; no `$HOME`, no shell expansion in hook destinations | D-003, D-027 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| Exit codes (OD-1) | Not a project → 0 silent; project not installed → 0 + one-line hint (Linux); resolution failure → 1 + stderr. Never 2. Connection errors keep current codes | D-023 (supersedes D-015), D-042 | architecture/ADR-004-launcher-hook-route.md |
-| Override source (OD-2) | `UNIMATRIX_BINARY` = binary only. Client: redirect > install. No inference from beside binary; no `UNIMATRIX_CLIENT_ROOT` | D-024, D-016, D-013 | architecture/ADR-002-single-runtime-resolver.md |
-| Latency budget (OD-3) | p95 ≤ max(`node -e 0` p95 + 15 ms, 50 ms), same CI job; covers not-a-project path; pre-Node shell check iff that path breaches. Cloud + RTT | D-025 (supersedes D-006, extends D-017) | architecture/ADR-005-latency-budget.md |
+| Topology | Local: hook→Node→UDS→daemon, MCP→Rust stdio. Cloud: hook→Node→HTTPS, MCP→mcp-bridge→HTTPS | D-002 | ADR-004 #5901 |
+| Wiring form | User-level shim, invoked by absolute resolved path; no `$HOME`, no shell expansion in hook destinations | D-003, D-027 | ADR-001 #5896 |
+| Exit codes (OD-1) | Not a project → 0 silent; project not installed → 0 + one-line hint (Linux); resolution failure → 1 + stderr. Never 2. Connection errors keep current codes | D-023 (supersedes D-015), D-042 | ADR-004 #5901 |
+| Override source (OD-2) | `UNIMATRIX_BINARY` = binary only. Client: redirect > install. No inference from beside binary; no `UNIMATRIX_CLIENT_ROOT` | D-024, D-016, D-013 | ADR-002 #5900 |
+| Latency budget (OD-3) | Absolute p95 budgets in ms (cloud / not-a-project): Linux 74/50, macOS 126/85, Windows 164/81; covers the not-a-project path. CI latency job is report-only and never fails the build; AC-06 is evidenced by medians plus a p95 table. Pre-Node shell check ships disabled on every OS | D-094 (supersedes D-025 numbers), D-096, D-088; D-025 (supersedes D-006, extends D-017) | ADR-005 #5924 |
 | Codex shell/merge (OD-4) | Evidence gathered: `$SHELL -lc` / `%COMSPEC% /C`; layers merge additively | D-014 | architecture/ARCHITECTURE.md (Addendum), research/codex-hooks-evidence.md |
-| Hook destinations (OD-5) | Claude → `.claude/settings.local.json`; Codex → `~/.codex/hooks.json` only; owned entries removed from other scopes | D-026 (supersedes D-018/D-019) | architecture/ADR-003-ownership-predicate-and-cross-scope-dedupe.md |
-| Windows | Kept. `.cmd` shim; quoted absolute path, forward slashes; spaces handled | D-027 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| Codex approval | One-time approval accepted; init prints step, writes no trust hashes; hook string byte-fixed across upgrades | D-028 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| Trust check | Current-user owned, not g/o-writable, parent 0700; refuse loudly; never skip. Windows: full ACL check at init, identity `{size, mtimeMs, ino}` in `trust.json`, per-event compare, full recheck on mismatch | D-029 (supersedes D-020), D-036 | architecture/ADR-002-single-runtime-resolver.md |
-| Node path | Recorded → PATH → loud re-init hint; re-recorded on init/upgrade | D-030 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| Stable package copy | `~/.unimatrix/pkg/<version>/`, atomic `install.json` rename, prune to current + previous; local and cloud | D-031 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| Platform model | macOS/Windows cloud-only; binary resolved only for local transport; "no binary" normal | D-032 | architecture/ADR-004-launcher-hook-route.md |
+| Hook destinations (OD-5) | Claude → `.claude/settings.local.json`; Codex → `~/.codex/hooks.json` only; owned entries removed from other scopes | D-026 (supersedes D-018/D-019) | ADR-003 #5897 |
+| Windows | Kept. `.cmd` shim; quoted absolute path, forward slashes; spaces handled | D-027 | ADR-001 #5896 |
+| Codex approval | One-time approval accepted; init prints step, writes no trust hashes; hook string byte-fixed across upgrades | D-028 | ADR-001 #5896 |
+| Trust check | Current-user owned, not g/o-writable, parent 0700; refuse loudly; never skip. Windows: full ACL check at init, identity `{size, mtimeMs, ino}` in `trust.json`, per-event compare, full recheck on mismatch | D-029 (supersedes D-020), D-036 | ADR-002 #5900 |
+| Node path | Recorded → PATH → loud re-init hint; re-recorded on init/upgrade | D-030 | ADR-001 #5896 |
+| Stable package copy | `~/.unimatrix/pkg/<version>/`, atomic `install.json` rename, prune to current + previous; local and cloud | D-031 | ADR-001 #5896 |
+| Platform model | macOS/Windows cloud-only; binary resolved only for local transport; "no binary" normal | D-032 | ADR-004 #5901 |
 | CI DoD | macOS + Windows cloud attach and Claude/Codex hooks through shim proven in CI | D-033 | architecture/ARCHITECTURE.md (Testing Requirements), RISK-TEST-STRATEGY.md (R-26) |
-| R5 portability | Dropped; every install per-machine; supersedes R5 waivers in D-018/D-026 | D-046 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| "Unimatrix project here" | Local store `~/.unimatrix/<hash>/`, or `~/.unimatrix/<hash>/remote.json`, or headless env (`UNIMATRIX_BUNDLE`/`UNIMATRIX_REMOTE_*`) only with `UNIMATRIX_PROJECT_ROOT` set and realpath(cwd) inside it; one predicate for hooks, MCP bridge, L-4, Q8 | D-045, D-052 | architecture/ADR-004-launcher-hook-route.md |
-| Q9 Windows MCP argv | First delivery task: Windows CI proof; on failure swap to fallback and proceed (no stall) | D-034, D-047 | architecture/ADR-001-user-level-shim-wiring-form.md |
+| R5 portability | Dropped; every install per-machine; supersedes R5 waivers in D-018/D-026 | D-046 | ADR-001 #5896 |
+| "Unimatrix project here" | Local store `~/.unimatrix/<hash>/`, or `~/.unimatrix/<hash>/remote.json`, or headless env (`UNIMATRIX_BUNDLE`/`UNIMATRIX_REMOTE_*`) only with `UNIMATRIX_PROJECT_ROOT` set and realpath(cwd) inside it; one predicate for hooks, MCP bridge, L-4, Q8 | D-045, D-052 | ADR-004 #5901 |
+| Q9 Windows MCP argv | First delivery task: Windows CI proof; on failure swap to fallback and proceed (no stall) | D-034, D-047 | ADR-001 #5896 |
 | OQ-6 legacy direct-path | Stage 1 audit incl. packed npm tarball and OpenCode plugin dist; escalate any found | D-035 | — |
-| Windows MCP fallback | Recorded node path + `<abs home>/.unimatrix/bin/shim-entry.js mcp-stdio`; same CI job pre-proves it. Per-machine scope only (D-060) | D-047 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| L-4 package present, no credential | macOS/Windows: package copy present (`install.json` → `pkg/<version>`) but no `UNIMATRIX_BUNDLE` and no credential for this project → hook exit 0 silent; hint only in `status`. Same outcome when not installed at all (no bundle, no credential) | D-037 as amended by D-050 | architecture/ADR-004-launcher-hook-route.md |
-| L-5 lost Codex approval | `unimatrix status` (`last-hook.json`) + init-printed step. Server-side signal deferred to #1026 | D-038, D-054 | architecture/ADR-004-launcher-hook-route.md |
-| L-6 `.gitignore` | No append; warning in dry-run/init output when `settings.local.json` not ignored | D-039 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| L-2 / AC-01 identity | Identical per OS family | D-040 | architecture/ADR-001-user-level-shim-wiring-form.md |
+| Windows MCP fallback | Recorded node path + `<abs home>/.unimatrix/bin/shim-entry.js mcp-stdio`; same CI job pre-proves it. Per-machine scope only (D-060) | D-047 | ADR-001 #5896 |
+| L-4 package present, no credential | macOS/Windows: package copy present (`install.json` → `pkg/<version>`) but no `UNIMATRIX_BUNDLE` and no credential for this project → hook exit 0 silent; hint only in `status`. Same outcome when not installed at all (no bundle, no credential) | D-037 as amended by D-050 | ADR-004 #5901 |
+| L-5 lost Codex approval | `unimatrix status` (`last-hook.json`) + init-printed step. Server-side signal deferred to #1026 | D-038, D-054 | ADR-004 #5901 |
+| L-6 `.gitignore` | No append; warning in dry-run/init output when `settings.local.json` not ignored | D-039 | ADR-001 #5896 |
+| L-2 / AC-01 identity | Identical per OS family | D-040 | ADR-001 #5896 |
 | L-3 PowerShell hook shell | Unsupported, documented | D-041 | architecture/ARCHITECTURE.md |
-| `mcp-stdio` no install | Exit 1 inside a D-045 project; silent 0 outside | D-043 | architecture/ADR-004-launcher-hook-route.md |
-| Cloned repo, init never run (T-1) | Not a project: hooks and `mcp-stdio` exit 0 silent; `status` reports it | D-051 | architecture/ADR-004-launcher-hook-route.md |
-| Headless cross-repo leak (T-2) | Env tier requires `UNIMATRIX_PROJECT_ROOT` containing cwd, in hooks AND `mcp-bridge`/`remote-resolve.js` | D-052 | architecture/ADR-004-launcher-hook-route.md |
-| vnc-050 headless contract | `UNIMATRIX_PROJECT_ROOT` required; update `docs/client-setup.md`, `headless-smoke.test.js`; no compat break (unreleased). Amends vnc-050 ADR-006 | D-053 | architecture/ADR-004-launcher-hook-route.md |
-| Installed / transport | Linux: valid `install.json` or credential; macOS/Windows: `UNIMATRIX_BUNDLE` ("bundle" means this env var only) or credential. Credential/headless → cloud; else Linux installed → local, unresolvable binary = Broken (exit 1) | D-032, D-042 | architecture/ADR-004-launcher-hook-route.md |
+| `mcp-stdio` no install | Exit 1 inside a D-045 project; silent 0 outside | D-043 | ADR-004 #5901 |
+| Cloned repo, init never run (T-1) | Not a project: hooks and `mcp-stdio` exit 0 silent; `status` reports it | D-051 | ADR-004 #5901 |
+| Headless cross-repo leak (T-2) | Env tier requires `UNIMATRIX_PROJECT_ROOT` containing cwd, in hooks AND `mcp-bridge`/`remote-resolve.js` | D-052 | ADR-004 #5901 |
+| vnc-050 headless contract | `UNIMATRIX_PROJECT_ROOT` required; update `docs/client-setup.md`, `headless-smoke.test.js`; no compat break (unreleased). Amends vnc-050 ADR-006 | D-053 | ADR-004 #5901 |
+| Installed / transport | Linux: valid `install.json` or credential; macOS/Windows: `UNIMATRIX_BUNDLE` ("bundle" means this env var only) or credential. Credential/headless → cloud; else Linux installed → local, unresolvable binary = Broken (exit 1) | D-032, D-042 | ADR-004 #5901 |
 | Repo `.codex/hooks.json` reference config | Reset in #1025, not AC-11 | D-048 | — |
 | Alignment rerun | Vision guardian rerun before sign-off; final pass covered D-001..D-068 | D-049, D-055 | — |
-| D-038 server signal | Not cheap; deferred to #1026 | D-054 | architecture/ADR-004-launcher-hook-route.md |
-| ADR ID drift | ADRs cited by number; Unimatrix IDs only in the snapshot below | D-056, D-059, D-061, D-067 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| Fallback node staleness | Fallback MCP entry rewritten whenever node is re-recorded; stale path → `status` reports it (exit 0), init/upgrade preflight exit 1 + re-init hint. Harness spawn ENOENT on a stale path accepted (outside Unimatrix's control) | D-057 as amended by D-066 | architecture/ADR-001-user-level-shim-wiring-form.md |
+| D-038 server signal | Not cheap; deferred to #1026 | D-054 | ADR-004 #5901 |
+| ADR ID drift | ADRs cited by number; Unimatrix IDs only in the snapshot below | D-056, D-059, D-061, D-067 | ADR-001 #5896 |
+| Fallback node staleness | Fallback MCP entry rewritten whenever node is re-recorded; stale path → `status` reports it (exit 0), init/upgrade preflight exit 1 + re-init hint. Harness spawn ENOENT on a stale path accepted (outside Unimatrix's control) | D-057 as amended by D-066 | ADR-001 #5896 |
 | OQ-6 audit vs repo `.codex/hooks.json` | Exempt from Stage 1 escalation; listed as exempt | D-058 | architecture/ARCHITECTURE.md |
-| Q8 Codex-only drop | Gap rejected; predicate independent of config location | D-044 | architecture/ADR-004-launcher-hook-route.md |
-| OpenCode | init writes no provisioning; `wire --harness opencode` writes `mcp.unimatrix` to `~/.config/opencode/opencode.json` | D-004, D-060 | architecture/ADR-006-opencode-init-removal.md |
-| C-10 byte-identity | Superseded; tests updated, not deleted | D-008 | architecture/ADR-001-user-level-shim-wiring-form.md |
-| MCP placement (V-1/A-5) | Per-machine only: Claude `~/.claude.json` `projects["<abs root>"].mcpServers.unimatrix`; Codex `~/.codex/config.toml` `[mcp_servers.unimatrix]`; OpenCode `~/.config/opencode/opencode.json`. Never a committed `.mcp.json`; init removes owned entries from project `.mcp.json`, `.codex/config.toml` (D-062) and `opencode.json` (D-064), preserving foreign servers. D-040, D-051, D-057 hold as written | D-060 (amends D-026) | architecture/ADR-001-user-level-shim-wiring-form.md, architecture/ADR-003-ownership-predicate-and-cross-scope-dedupe.md |
-| Project `.codex/config.toml` MCP | init removes owned entries; Codex MCP user scope only | D-062 | architecture/ADR-003-ownership-predicate-and-cross-scope-dedupe.md |
-| OpenCode MCP location | `wire --harness opencode` writes `~/.config/opencode/opencode.json`; silent outside a project (D-043) | D-063 | architecture/ADR-006-opencode-init-removal.md |
-| Project `opencode.json` owned `mcp.unimatrix` | init removes it, preserving foreign entries (FR-07i/AC-16) | D-064 | architecture/ADR-003-ownership-predicate-and-cross-scope-dedupe.md |
-| `status` legacy scope | Report leftover Unimatrix MCP entry in project `.mcp.json`, `.codex/config.toml` or `opencode.json`, naming the file | D-068 | architecture/ADR-004-launcher-hook-route.md |
-| Foreign entry at per-machine `unimatrix` key | Leave in place, never overwrite, write no Unimatrix entry for that harness; init and `--dry-run` warn `unimatrix: <file> key <key> holds a non-Unimatrix entry; left unchanged, Unimatrix MCP not written` | D-065 | architecture/ADR-003-ownership-predicate-and-cross-scope-dedupe.md |
+| Q8 Codex-only drop | Gap rejected; predicate independent of config location | D-044 | ADR-004 #5901 |
+| OpenCode | init writes no provisioning; `wire --harness opencode` writes `mcp.unimatrix` to `~/.config/opencode/opencode.json` | D-004, D-060 | ADR-006 #5894 |
+| C-10 byte-identity | Superseded; tests updated, not deleted | D-008 | ADR-001 #5896 |
+| MCP placement (V-1/A-5) | Per-machine only: Claude `~/.claude.json` `projects["<abs root>"].mcpServers.unimatrix`; Codex `~/.codex/config.toml` `[mcp_servers.unimatrix]`; OpenCode `~/.config/opencode/opencode.json`. Never a committed `.mcp.json`; init removes owned entries from project `.mcp.json`, `.codex/config.toml` (D-062) and `opencode.json` (D-064), preserving foreign servers. D-040, D-051, D-057 hold as written | D-060 (amends D-026) | ADR-001 #5896, ADR-003 #5897 |
+| Project `.codex/config.toml` MCP | init removes owned entries; Codex MCP user scope only | D-062 | ADR-003 #5897 |
+| OpenCode MCP location | `wire --harness opencode` writes `~/.config/opencode/opencode.json`; silent outside a project (D-043) | D-063 | ADR-006 #5894 |
+| Project `opencode.json` owned `mcp.unimatrix` | init removes it, preserving foreign entries (FR-07i/AC-16) | D-064 | ADR-003 #5897 |
+| `status` legacy scope | Report leftover Unimatrix MCP entry in project `.mcp.json`, `.codex/config.toml` or `opencode.json`, naming the file | D-068 | ADR-004 #5901 |
+| Foreign entry at per-machine `unimatrix` key | Leave in place, never overwrite, write no Unimatrix entry for that harness; init and `--dry-run` warn `unimatrix: <file> key <key> holds a non-Unimatrix entry; left unchanged, Unimatrix MCP not written` | D-065 | ADR-003 #5897 |
 | Dogfood | Out (#1025) except override seam | D-009, D-012, D-013 | — |
-| No double-firing | At most one owned entry per event across written scopes | D-010 | architecture/ADR-003-ownership-predicate-and-cross-scope-dedupe.md |
+| No double-firing | At most one owned entry per event across written scopes | D-010 | ADR-003 #5897 |
 
 Unimatrix ADR ID snapshot (D-067; ADRs are cited by number elsewhere; the active entry is whichever `context_lookup` returns for nan-024): ADR-001 #5888, ADR-002 #5875, ADR-003 #5887, ADR-004 #5886, ADR-005 #5878, ADR-006 #5882; vnc-050 ADR-006 #5869.
 

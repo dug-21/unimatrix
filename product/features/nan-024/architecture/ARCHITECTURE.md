@@ -104,7 +104,7 @@ No file exceeds 1,000 code lines: `init.js` 763 (shrinks), `codex-install.js` 62
 |---|---|---|
 | OD-1 exit codes | 0 silent / 0 hint / 1 resolution failure; connection errors unchanged | D-023, D-042 |
 | OD-2 override | `UNIMATRIX_BINARY` binary only; client redirect > install | D-024 |
-| OD-3 latency | Relative budget incl. not-a-project; conditional lossless pre-Node check | D-025 |
+| OD-3 latency | Absolute p95 budgets (ms, cloud / not-a-project): Linux 74/50, macOS 126/85, Windows 164/81, incl. not-a-project; CI report-only; lossless pre-Node check ships disabled on every OS | D-094, D-096, D-088 (D-025 numbers superseded) |
 | OD-4 Codex shell/merge | Addendum | D-014 |
 | OD-5 destinations | Claude `settings.local.json`, Codex `$CODEX_HOME/hooks.json` | D-026, D-081 |
 | R5 | Dropped; all installs per-machine | D-046 |

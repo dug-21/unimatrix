@@ -24,13 +24,13 @@ Unimatrix entries consulted: #5894, #5896, #5897, #5898, #5900, #5901, #5902-#59
 
 ## ADR status
 - Validated: ADR-001 #5896 (with D-072), ADR-002 #5900 (D-090), ADR-003 #5897, ADR-004 #5901, ADR-006 #5894.
-- Flagged for supersession: ADR-005 #5898. It contradicts D-094 (absolute per-OS budgets) and D-096 (report-only). The pre-check shipped on POSIX and is disabled on Windows (D-088).
+- ADR-005 #5898 contradicted D-094 (absolute per-OS budgets) and D-096 (report-only). The pre-Node check is disabled on every OS (`lib/install-store.js` `PRENODE_ENABLED = false`); the POSIX filter runs only on the node-not-found path. Corrected as #5924 at the coordinator's direction (commit 37f249fd).
 - Flag: architecture/ADR-00N-*.md files exist on main, against the Unimatrix-only rule; ADR-001.md lacks D-072.
 
 ## Edges
 - #5914 -> Supports -> #5896
-- #5916 -> Contradicts -> #5898 (remove when ADR-005 is corrected)
+- #5916 -> Contradicts -> #5898: asserted, then removed after the ADR-005 correction (#5924) carried it forward
 
 ## Knowledge Stewardship
 - Queried: mcp__unimatrix__context_briefing -- nan-024 ADRs and nan-023 wiring ADRs; prior lessons #4796/#5788/#5790 showed the post-3c CI failure was a recurrence.
-- Stored: #5913, #5914 (patterns); #5916 (lesson); corrected #5910, #5911, #5912, #5915, #5918, #5919. No new ADRs.
+- Stored: #5913, #5914 (patterns); #5916 (lesson); corrected #5910, #5911, #5912, #5915, #5918, #5919; ADR-005 corrected #5898 -> #5924 via context_correct. No new ADRs.
