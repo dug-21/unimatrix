@@ -1,5 +1,7 @@
 ---
 name: uni-vision-guardian
+model: opus
+effort: medium
 type: specialist
 scope: broad
 description: Vision alignment reviewer that checks source documents against product vision. Produces ALIGNMENT-REPORT.md with variance classification.

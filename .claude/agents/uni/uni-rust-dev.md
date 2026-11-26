@@ -1,5 +1,7 @@
 ---
 name: uni-rust-dev
+model: opus
+effort: low
 type: developer
 scope: general
 description: General Rust developer for Unimatrix. Implements code from validated pseudocode in Session 2 Stage 3b.

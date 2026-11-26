@@ -1,5 +1,7 @@
 ---
 name: uni-tester
+model: opus
+effort: low
 type: specialist
 scope: specialized
 description: Dual-phase testing specialist. Stage 3a — test plan design rooted in Risk Strategy. Stage 3c — test execution with RISK-COVERAGE-REPORT.md.

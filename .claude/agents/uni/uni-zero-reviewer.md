@@ -1,5 +1,7 @@
 ---
 name: uni-zero-reviewer
+model: opus
+effort: medium
 type: specialist
 scope: broad
 description: Independent product-lens reviewer spawned at protocol human gates. Fresh-context advisory review — vision/roadmap fit, approach guidance, recommended answers to open questions. Posts to the PR at pr-review, otherwise the GH issue; human makes the final call.

@@ -1,5 +1,7 @@
 ---
 name: uni-researcher
+model: opus
+effort: medium
 type: specialist
 scope: broad
 description: Problem space explorer. Phase 1 — explores problem space, codebase, constraints. Works interactively with human. Writes SCOPE.md.

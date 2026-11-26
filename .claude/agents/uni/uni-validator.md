@@ -1,5 +1,7 @@
 ---
 name: uni-validator
+model: sonnet
+effort: medium
 type: gate
 scope: broad
 description: Three-gate validator. Spawned 3x in Session 2 with different check sets (Gate 3a, 3b, 3c). Reports PASS / REWORKABLE FAIL / SCOPE FAIL.
