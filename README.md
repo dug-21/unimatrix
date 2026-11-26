@@ -33,12 +33,9 @@ Built for agentic software delivery. Configurable for any workflow-centric domai
 
 **Install ONNX Runtime (Linux):**
 ```bash
-# Download the release for your architecture (x64 or aarch64) from:
-# https://github.com/microsoft/onnxruntime/releases
-# Extract and install the shared library:
-tar xzf onnxruntime-linux-*.tgz
-sudo cp onnxruntime-linux-*/lib/libonnxruntime.so* /usr/lib/
-sudo ldconfig
+# From a repo checkout: installs the hash-pinned PyPI wheel's libonnxruntime
+# (x86_64/aarch64) into /usr/local/lib and runs ldconfig. Needs python3 + pip.
+bash .github/scripts/install-ort-linux.sh
 ```
 
 ```bash
@@ -102,8 +99,8 @@ Prerequisites:
 
 **Linux (manual):**
 ```bash
-# Download from https://github.com/microsoft/onnxruntime/releases
-# Extract and set ORT_DYLIB_PATH or install to /usr/lib
+# Hash-pinned PyPI wheel -> /usr/local/lib (ORT_PREFIX overrides the target dir)
+bash .github/scripts/install-ort-linux.sh
 ```
 
 **Devcontainer:** ONNX Runtime pre-installed. No setup needed.

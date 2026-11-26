@@ -2,7 +2,7 @@
 #
 # Three-stage cargo-chef build:
 #   1. planner  — extract dependency recipe
-#   2. builder  — compile, install ORT (SHA-256 verified)
+#   2. builder  — compile, install ORT (from ort-download stage, SHA-256 verified)
 #   3. runtime  — distroless, nonroot, air-gap capable
 #
 # Build:  docker build -t unimatrix .
@@ -13,11 +13,16 @@ ARG RUST_VERSION=1.89
 ARG ORT_VERSION=1.20.1
 ARG CHEF_VERSION=0.1.71
 
-# ORT SHA-256 hashes (ADR-002). Captured from GitHub Releases.
-# Update when bumping ORT_VERSION:
-#   curl -fsSL <tarball-url> | sha256sum
-ARG ORT_SHA256_X64=67db4dc1561f1e3fd42e619575c82c601ef89849afc7ea85a003abbac1a1a105
-ARG ORT_SHA256_ARM64=ae4fedbdc8c18d688c01306b4b50c63de3445cdf2dbd720e01a2fa3810b8106a
+# ORT is pinned + SHA-256 verified (ADR-002) in .github/scripts/ort-requirements.txt,
+# the single source shared with release.yml, CI and infra-001. ORT_VERSION must match it.
+
+# =============================================================================
+# Stage 0: ort-download — hash-pinned PyPI wheel -> libonnxruntime (GH #1031)
+# =============================================================================
+FROM python:3.12-slim-bookworm AS ort-download
+ARG ORT_VERSION
+COPY .github/scripts/install-ort-linux.sh .github/scripts/ort-requirements.txt /ort/
+RUN ORT_PREFIX=/opt/ort/lib ORT_LDCONFIG=0 bash /ort/install-ort-linux.sh
 
 # =============================================================================
 # Stage 1: Planner — extract cargo-chef recipe
@@ -53,24 +58,9 @@ RUN cargo install cargo-chef --version ${CHEF_VERSION} --locked
 
 WORKDIR /src
 
-# --- ORT install with SHA-256 verification (ADR-002) ---
-# TARGETARCH is injected by BuildKit: "amd64" or "arm64".
-ARG TARGETARCH
-ARG ORT_VERSION
-ARG ORT_SHA256_X64
-ARG ORT_SHA256_ARM64
-
-RUN set -e && \
-    ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "aarch64" || echo "x64") && \
-    HASH=$([ "$TARGETARCH" = "arm64" ] && echo "$ORT_SHA256_ARM64" || echo "$ORT_SHA256_X64") && \
-    curl -fsSL \
-      "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-${ARCH}-${ORT_VERSION}.tgz" \
-      -o ort.tgz && \
-    echo "${HASH}  ort.tgz" | sha256sum -c - && \
-    tar xzf ort.tgz && \
-    cp onnxruntime-linux-${ARCH}-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/ && \
-    ldconfig && \
-    rm -rf ort.tgz onnxruntime-linux-*
+# --- ORT from the ort-download stage (SHA-256 verified, ADR-002) ---
+COPY --from=ort-download /opt/ort/lib/ /usr/local/lib/
+RUN ldconfig && test -e /usr/local/lib/libonnxruntime.so
 
 # ORT build environment for cargo (matches .cargo/config.toml defaults).
 ENV ORT_LIB_LOCATION=/usr/local/lib \

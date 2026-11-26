@@ -47,10 +47,7 @@ jobs:
           fi
 
       - name: Install ONNX Runtime
-        run: |
-          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
-          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
-          sudo ldconfig
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/install-ort-linux.sh"
 
       - name: Build
         run: cargo build --release
@@ -120,6 +117,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ubuntu-22.04-arm does not guarantee python3 + pip (install-ort-linux.sh needs pip).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - uses: dtolnay/rust-toolchain@1.89
 
       - uses: actions/cache@v4
@@ -139,10 +141,7 @@ jobs:
           fi
 
       - name: Install ONNX Runtime
-        run: |
-          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-aarch64-${ORT_VERSION}.tgz" | tar xz
-          sudo cp onnxruntime-linux-aarch64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
-          sudo ldconfig
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/install-ort-linux.sh"
 
       - name: Build
         run: cargo build --release
