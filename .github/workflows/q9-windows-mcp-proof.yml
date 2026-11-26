@@ -23,9 +23,30 @@ jobs:
       - name: Build Rust spawn harness
         shell: bash
         run: rustc -O .github/q9-proof/spawn.rs -o "$RUNNER_TEMP/spawn.exe"
-      - name: MCP primary form (cmd /d /s /c)
+      # D-072: the primary form is an EXPECTED-NEGATIVE proof (it must fail on Windows; that is why the
+      # D-047 fallback form ships). continue-on-error keeps the step's failure from reddening the job;
+      # the next step asserts it really failed and fails the job only if it unexpectedly PASSED.
+      - name: MCP primary form (cmd /d /s /c) - expected negative (D-072)
+        id: primary
         if: always()
+        continue-on-error: true
         run: node .github/q9-proof/driver.js mcp-primary
+      - name: Assert MCP primary form failed as expected (D-072)
+        if: always()
+        shell: bash
+        env:
+          PRIMARY_OUTCOME: ${{ steps.primary.outcome }}
+        run: |
+          echo "primary form outcome: $PRIMARY_OUTCOME"
+          if [ "$PRIMARY_OUTCOME" = "success" ]; then
+            echo "::error::MCP primary form unexpectedly PASSED on Windows; D-072/D-073 evidence no longer holds"
+            exit 1
+          fi
+          if [ "$PRIMARY_OUTCOME" != "failure" ]; then
+            echo "::error::MCP primary form step did not run to a verdict (outcome=$PRIMARY_OUTCOME)"
+            exit 1
+          fi
+          echo "expected negative confirmed"
       - name: MCP fallback form (D-047 node + shim-entry.js)
         if: always()
         run: node .github/q9-proof/driver.js mcp-fallback
