@@ -4,6 +4,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { assertTmpHome } = require("./home-guard");
 
 function makeProject(prefix) {
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix || "unimatrix-wire-test-")));
@@ -12,11 +13,12 @@ function makeProject(prefix) {
 }
 
 function makeHome() {
-  return fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-wire-home-")));
+  return assertTmpHome(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-wire-home-"))));
 }
 
 /** Options for wire(): isolated home, no platform-binary copy, local (binaryPath) or cloud. */
 function wireOpts(home, extra) {
+  assertTmpHome(home);
   return Object.assign({ home, requireBinary: false, env: { PATH: process.env.PATH, HOME: home } }, extra || {});
 }
 

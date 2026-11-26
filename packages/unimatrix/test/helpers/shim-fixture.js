@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { assertTmpHome } = require("./home-guard");
 require("../../lib/project-state.js"); // load before config.js (circular require quirk)
 const { computeProjectHash } = require("../../lib/hook-client/config.js");
 
@@ -79,6 +80,7 @@ function runShim(shim, cwd, env, args, input) {
 }
 
 function baseEnv(home, extra) {
+  assertTmpHome(home);
   return Object.assign({ PATH: process.env.PATH, HOME: home }, extra || {});
 }
 

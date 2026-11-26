@@ -6,6 +6,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { assertTmpHome } = require("./home-guard");
 const https = require("https");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
@@ -82,6 +83,7 @@ function bundleFor(stub, cert) {
 function makeFixture() {
   const base = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "uni e2e ")));
   const f = { root: base, home: path.join(base, "home dir"), proj: path.join(base, "proj"), other: path.join(base, "other"), codex: path.join(base, "codex home") };
+  assertTmpHome(f.home);
   fs.mkdirSync(f.home);
   fs.mkdirSync(f.other);
   fs.mkdirSync(f.codex);
@@ -93,6 +95,7 @@ function makeFixture() {
 function baseEnv(f, cert, extra) {
   const env = Object.assign({}, process.env);
   for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k) || k === "CODEX_HOME") delete env[k];
+  assertTmpHome(f.home);
   Object.assign(env, { HOME: f.home, USERPROFILE: f.home, NODE_EXTRA_CA_CERTS: cert.certPath }, extra || {});
   return env;
 }

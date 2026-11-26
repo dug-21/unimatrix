@@ -4,6 +4,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { assertTmpHome } = require("./home-guard");
 const { spawnSync, spawn } = require("child_process");
 const { computeProjectHash, walkToProjectRoot } = require("../../lib/hook-client/config.js");
 
@@ -19,7 +20,7 @@ function w(p, c, m) {
 function fixture(o) {
   o = o || {};
   const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "launch-")));
-  const home = path.join(base, "home");
+  const home = assertTmpHome(path.join(base, "home"));
   const uh = path.join(home, ".unimatrix");
   const pkg = path.join(uh, "pkg", "1.0.0");
   for (const d of [uh, path.join(uh, "bin"), path.join(uh, "pkg"), pkg]) fs.mkdirSync(d, { recursive: true });
