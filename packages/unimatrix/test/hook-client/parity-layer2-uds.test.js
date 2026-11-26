@@ -85,18 +85,77 @@ function compactFrame(sessionId) {
   };
 }
 
-/** Register a session and stream `bytes` as one transcript_delta over UDS (FNF). */
+const SETUP_DEADLINE_MS = 5000;
+const SETUP_POLL_MS = 50;
+
+/**
+ * Register a session SYNC (reply is written after register_session runs), with
+ * bounded retry: the sync reply is bounded by the fixed 40 ms transport deadline,
+ * which a warm embed can exceed (#1032 F1). Retry is safe only BEFORE any delta is
+ * sent — re-registration replaces the buffer. An FNF register would race the delta
+ * (per-connection tasks are unordered; a delta for an unregistered session is a
+ * silent no-op, and a late register wipes the merged buffer).
+ */
+async function udsRegisterSync(sessionId) {
+  const frame = { type: "SessionRegister", session_id: sessionId, cwd: "/x", agent_role: null, feature: null };
+  const deadline = Date.now() + SETUP_DEADLINE_MS;
+  for (;;) {
+    const reg = await server.udsPost(frame, { sync: true });
+    if (reg.ok) return reg;
+    if (Date.now() >= deadline) {
+      throw new Error(
+        "PRECONDITION: setup did not converge — sync SessionRegister never acked within " +
+          SETUP_DEADLINE_MS + " ms (register failed)"
+      );
+    }
+    await sleep(SETUP_POLL_MS);
+  }
+}
+
+/**
+ * Deadline-poll `read()` (returns {text,...}) until text includes `marker`; returns
+ * the converged read so callers assert on it without a second read (#4879/#4884).
+ * FNF success is client-local (ACK before apply, ADR #4741), so a fixed sleep races.
+ * CAUTION: each CompactPayload read is NOT pure — it records a compaction_events row
+ * and increments the compaction counter. Do NOT seed entries into this daemon (the
+ * body would vary per call and break AC-06/AC-11 byte-identity); keep the 50 ms
+ * spacing and stop at the first hit. Positive checks only — negative checks keep a
+ * bounded fixed wait.
+ */
+async function pollUntilContains(read, marker, what) {
+  const deadline = Date.now() + SETUP_DEADLINE_MS;
+  for (;;) {
+    const out = await read();
+    if (out && typeof out.text === "string" && out.text.includes(marker)) return out;
+    if (Date.now() >= deadline) {
+      throw new Error(
+        "PRECONDITION: setup did not converge — " + what + " never showed " + JSON.stringify(marker) +
+          " within " + SETUP_DEADLINE_MS + " ms (merge late, or delta dropped / register lost)"
+      );
+    }
+    await sleep(SETUP_POLL_MS);
+  }
+}
+
+/** Poll the UDS restoration block of `sessionId` until `marker` appears. */
+function udsAwaitCompact(sessionId, marker) {
+  return pollUntilContains(() => udsCompactBody(sessionId), marker, "UDS CompactPayload(" + sessionId + ")");
+}
+
+/**
+ * Register a session (sync), stream `bytes` as one transcript_delta over UDS (FNF),
+ * then wait until the last line's text (the final assistant turn) is in the buffer.
+ * Returns the converged {res, text}.
+ */
 async function udsPrepopulate(sessionId, bytes) {
-  const reg = await server.udsPost(
-    { type: "SessionRegister", session_id: sessionId, cwd: "/x", agent_role: null, feature: null },
-    { sync: false }
-  );
+  const reg = await udsRegisterSync(sessionId);
   assert.ok(reg.ok, "UDS SessionRegister accepted");
   const d = await server.udsPost(deltaFrame(sessionId, 0, bytes), { sync: false });
   assert.ok(d.ok, "UDS transcript_delta accepted (FNF status 0)");
   assert.strictEqual(d.status, 0, "FNF success is status 0 (ADR-002 §2)");
-  // Give the daemon a beat to apply the buffered write before a sync read.
-  await sleep(150);
+  const lines = bytes.trim().split("\n");
+  const marker = JSON.parse(lines[lines.length - 1]).message.content[0].text;
+  return udsAwaitCompact(sessionId, marker);
 }
 
 /** Read a session's PreCompact restoration block over UDS (raw id). */
@@ -249,9 +308,7 @@ describe("AC-07 — transcript_delta over UDS merges into the F2 buffer (content
     const sid = "ac07-merge";
     let bytes = "";
     for (let i = 0; i < 4; i += 1) bytes += exchange("AC07", i);
-    await udsPrepopulate(sid, bytes);
-
-    const { res, text } = await udsCompactBody(sid);
+    const { res, text } = await udsPrepopulate(sid, bytes);
     assert.ok(res.ok && res.status === 200 && res.contentType === "text/plain", "UDS CompactPayload → Text body");
     assert.ok(text.includes("AC07 user 3"), "buffer CONTENT (not just acceptance) reflects the UDS-streamed delta");
     assert.ok(text.includes("AC07 assistant 3"), "assistant turn also merged");
@@ -266,10 +323,8 @@ describe("AC-06 / R-17 — PreCompact single server-built block over UDS", { ski
     const sid = "ac06-single";
     let bytes = "";
     for (let i = 0; i < 4; i += 1) bytes += exchange("AC06", i);
-    await udsPrepopulate(sid, bytes);
-
-    // Oracle: the daemon's restoration body read over UDS (raw id).
-    const { text: body } = await udsCompactBody(sid);
+    // Oracle: the daemon's restoration body read over UDS (raw id), converged.
+    const { text: body } = await udsPrepopulate(sid, bytes);
     assert.ok(body.length > 0, "daemon built a non-empty restoration block");
 
     // Client over UDS: prints the server body VERBATIM + one newline; never
@@ -366,16 +421,11 @@ describe("R-01 / R-18 — FNF frame size + truncation contract", { skip: IS_WIND
     assert.ok(Buffer.byteLength(bytes, "utf8") > 600 * 1024, "payload is large (~>600 KiB)");
     assert.ok(framedLen < transportUds.MAX_PAYLOAD_SIZE, "framed payload stays under the 1 MiB wire cap");
 
-    const reg = await server.udsPost(
-      { type: "SessionRegister", session_id: sid, cwd: "/x", agent_role: null, feature: null },
-      { sync: false }
-    );
+    const reg = await udsRegisterSync(sid);
     assert.ok(reg.ok);
     const d = await server.udsPost(deltaFrame(sid, 0, bytes), { sync: false });
     assert.ok(d.ok && d.status === 0, "large FNF delta flushed (status 0)");
-    await sleep(250);
-
-    const { text } = await udsCompactBody(sid);
+    const { text } = await udsAwaitCompact(sid, sentinel);
     assert.ok(text.includes(sentinel), "tail sentinel of the large frame reached the buffer — recorded complete");
   });
 
@@ -384,10 +434,7 @@ describe("R-01 / R-18 — FNF frame size + truncation contract", { skip: IS_WIND
     // destroy mid-write. The daemon must reject the incomplete frame (early eof)
     // and NEVER record a silently-truncated event (R-01 s2 / ADR-003 §6).
     const sid = "r01-trunc";
-    const reg = await server.udsPost(
-      { type: "SessionRegister", session_id: sid, cwd: "/x", agent_role: null, feature: null },
-      { sync: false }
-    );
+    const reg = await udsRegisterSync(sid);
     assert.ok(reg.ok);
 
     const payload = Buffer.from(JSON.stringify(deltaFrame(sid, 0, "TRUNCATED_POISON".repeat(80))), "utf8");
@@ -413,20 +460,15 @@ describe("AC-08 / R-12 — full lifecycle with SubagentStop NEVER sent", { skip:
     const logBefore = server.serverLog();
 
     // SessionRegister → deltas → SessionClose, all over UDS; SubagentStop omitted.
-    const reg = await server.udsPost(
-      { type: "SessionRegister", session_id: sid, cwd: "/x", agent_role: null, feature: null },
-      { sync: false }
-    );
+    const reg = await udsRegisterSync(sid);
     assert.ok(reg.ok, "session opens");
 
     let bytes = "";
     for (let i = 0; i < 3; i += 1) bytes += exchange("LIFE", i);
     const d = await server.udsPost(deltaFrame(sid, 0, bytes), { sync: false });
     assert.ok(d.ok, "deltas merge without any SubagentStop dependency");
-    await sleep(150);
-
     // Buffer finalized & servable before close — no SubagentStop was needed.
-    const { text } = await udsCompactBody(sid);
+    const { text } = await udsAwaitCompact(sid, "LIFE assistant 2");
     assert.ok(text.includes("LIFE user 2"), "buffer finalizes/serves with SubagentStop absent");
 
     const close = await server.udsPost(
@@ -471,10 +513,12 @@ describe("AC-04 / R-10 — cross-transport replay (both directions), session-id 
     });
     assert.strictEqual(res.status, 0);
     assert.strictEqual(queueDepth(sd), 0, "both queued frames replayed and deleted (HTTP ingest accepted)");
-    await sleep(150);
-
     // Session-id split: HTTP ingest keyed http-{sid}; read it back over HTTP.
-    const pc = await server.precompact(sid, { token_limit: 4000 });
+    const pc = await pollUntilContains(
+      () => server.precompact(sid, { token_limit: 4000 }),
+      "XHTTP assistant 2",
+      "HTTP precompact(" + sid + ")"
+    );
     assert.strictEqual(pc.status, 200);
     assert.ok(pc.text.includes("XHTTP user 2"), "replayed delta content recorded at the HTTP ingest (http-{sid})");
     rmAll(home, proj);
@@ -498,10 +542,8 @@ describe("AC-04 / R-10 — cross-transport replay (both directions), session-id 
     const res = await spawnClient("Stop", stdin); // no remote env → UDS transport
     assert.strictEqual(res.status, 0);
     assert.strictEqual(queueDepth(sd), 0, "queued frames replayed and deleted (UDS ingest accepted)");
-    await sleep(200);
-
     // Raw {sid} over UDS shows the content...
-    const { text } = await udsCompactBody(sid);
+    const { text } = await udsAwaitCompact(sid, "XUDS assistant 2");
     assert.ok(text.includes("XUDS user 2"), "replayed delta recorded at the UDS ingest (raw {sid})");
 
     // ...and the SAME id read over HTTP (which mints http-{sid}) does NOT —
