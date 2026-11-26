@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -19,10 +20,15 @@ function requireFresh() {
 
 describe("resolve-binary", () => {
   let savedEnv;
+  let savedHome;
+  let tmpHome;
 
   beforeEach(() => {
     savedEnv = process.env.UNIMATRIX_BINARY;
     delete process.env.UNIMATRIX_BINARY;
+    savedHome = process.env.HOME;
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "uni-home-"));
+    process.env.HOME = tmpHome;
   });
 
   afterEach(() => {
@@ -31,6 +37,9 @@ describe("resolve-binary", () => {
     } else {
       delete process.env.UNIMATRIX_BINARY;
     }
+    if (savedHome !== undefined) process.env.HOME = savedHome;
+    else delete process.env.HOME;
+    fs.rmSync(tmpHome, { recursive: true, force: true });
     // Restore platform/arch if overridden
     if (originalPlatform) {
       Object.defineProperty(process, "platform", originalPlatform);
@@ -51,11 +60,11 @@ describe("resolve-binary", () => {
   });
 
   describe("UNIMATRIX_BINARY Env Fallback", () => {
-    it("test_env_override_takes_precedence", () => {
+    it("test_env_override_takes_precedence", linuxLocal, () => {
       // Create a temporary file to use as the binary
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-test-"));
       const fakeBinary = path.join(tmpDir, "unimatrix");
-      fs.writeFileSync(fakeBinary, "fake");
+      fs.writeFileSync(fakeBinary, "fake", { mode: 0o755 });
 
       try {
         process.env.UNIMATRIX_BINARY = fakeBinary;
@@ -71,7 +80,7 @@ describe("resolve-binary", () => {
       }
     });
 
-    it("test_env_override_with_nonexistent_path_throws", () => {
+    it("test_env_override_with_nonexistent_path_throws", linuxLocal, () => {
       process.env.UNIMATRIX_BINARY = "/nonexistent/path/unimatrix";
       const { resolveBinary } = requireFresh();
       assert.throws(
@@ -92,7 +101,7 @@ describe("resolve-binary", () => {
   });
 
   describe("Error Cases", () => {
-    it("test_unsupported_platform_throws", () => {
+    it("test_win32_returns_null_without_throwing", () => {
       Object.defineProperty(process, "platform", {
         value: "win32",
         configurable: true,
@@ -114,30 +123,18 @@ describe("resolve-binary", () => {
       assert.strictEqual(osModule.platform(), "win32");
       assert.strictEqual(osModule.arch(), "x64");
 
+      // D-032: macOS/Windows never resolve a binary; no throw (R-15).
       const { resolveBinary } = requireFresh();
-      assert.throws(
-        () => resolveBinary(),
-        (err) => {
-          assert.ok(
-            err.message.includes("Unsupported platform: win32-x64"),
-            "Error should mention the unsupported platform"
-          );
-          assert.ok(
-            err.message.includes("Supported platforms"),
-            "Error should list supported platforms"
-          );
-          return true;
-        }
-      );
+      assert.strictEqual(resolveBinary(), null);
     });
 
     it("test_error_message_lists_all_supported_platforms", () => {
       Object.defineProperty(process, "platform", {
-        value: "freebsd",
+        value: "linux",
         configurable: true,
       });
       Object.defineProperty(process, "arch", {
-        value: "arm64",
+        value: "ia32",
         configurable: true,
       });
 
@@ -157,7 +154,7 @@ describe("resolve-binary", () => {
       );
     });
 
-    it("test_missing_package_throws_with_platform_info", () => {
+    it("test_missing_package_throws_with_platform_info", linuxLocal, () => {
       // On linux-x64 (our CI), the platform package is not installed,
       // so require.resolve will fail. This tests the error path naturally.
       // If this test runs on linux-x64 without the package:
@@ -206,11 +203,11 @@ describe("resolve-binary", () => {
       );
     });
 
-    it("test_resolved_path_is_absolute", () => {
+    it("test_resolved_path_is_absolute", linuxLocal, () => {
       // Use UNIMATRIX_BINARY to test the absolute path guarantee
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-test-"));
       const fakeBinary = path.join(tmpDir, "unimatrix");
-      fs.writeFileSync(fakeBinary, "fake");
+      fs.writeFileSync(fakeBinary, "fake", { mode: 0o755 });
 
       try {
         process.env.UNIMATRIX_BINARY = fakeBinary;
@@ -226,11 +223,11 @@ describe("resolve-binary", () => {
       }
     });
 
-    it("test_env_override_resolves_symlinks", () => {
+    it("test_env_override_resolves_symlinks", linuxLocal, () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-test-"));
       const realBinary = path.join(tmpDir, "unimatrix-real");
       const symlinkBinary = path.join(tmpDir, "unimatrix-link");
-      fs.writeFileSync(realBinary, "fake");
+      fs.writeFileSync(realBinary, "fake", { mode: 0o755 });
       fs.symlinkSync(realBinary, symlinkBinary);
 
       try {

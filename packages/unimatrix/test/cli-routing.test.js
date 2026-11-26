@@ -103,7 +103,7 @@ function runShim(args, env = {}) {
     };
 
     process.argv = ["node", "unimatrix.js"].concat(JSON.parse(process.env._TEST_ARGS || "[]"));
-    require(${JSON.stringify(shimPath)});
+    require(${JSON.stringify(shimPath)}).run(process.argv.slice(2));
   `;
 
   const mergedEnv = {

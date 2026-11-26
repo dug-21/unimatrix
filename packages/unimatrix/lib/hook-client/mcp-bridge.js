@@ -6,6 +6,7 @@
 // NEVER on the command line / logged — NFR-06), holds a pinned or CA-verified
 // HTTPS connection to mcp_url, proxies stdio JSON-RPC. FAIL-LOUD (persistent, not fail-open).
 
+const ps = require("../project-state");
 const { resolveRemote, ResolveError } = require("./remote-resolve.js");
 const { StdioFramer } = require("./mcp-bridge/stdio-frame.js");
 const { HttpSession } = require("./mcp-bridge/http-session.js");
@@ -25,7 +26,7 @@ function buildSession(projectHash, deps) {
   const fail = (m) => { errOut("mcp-bridge: " + m + "\n"); exit(1); return null; };
   let r;
   try {
-    r = resolveRemote(env, { projectHash });
+    r = resolveRemote(env, { projectHash, cwd: deps && deps.cwd });
   } catch (e) {
     if (e instanceof ResolveError) return fail(e.message);
     throw e;
@@ -83,8 +84,14 @@ function main(argv, deps) {
   const exit = (deps && deps.exit) || ((c) => process.exit(c));
   const env = (deps && deps.env) || process.env;
   const projectHash = argv[2];
+  const headless = ps.headlessEnvSet(env);
+  // D-052/D-053: headless launch outside UNIMATRIX_PROJECT_ROOT = not a project.
+  if (!isNonEmptyString(projectHash) && headless && !ps.headlessRootContains(env, (deps && deps.cwd) || process.cwd())) {
+    exit(0);
+    return;
+  }
   // Headless (FR-21): bundle or env MCP URL alone needs no projectHash.
-  if (!isNonEmptyString(projectHash) && !isNonEmptyString(env.UNIMATRIX_BUNDLE) && !isNonEmptyString(env.UNIMATRIX_REMOTE_MCP_URL)) {
+  if (!isNonEmptyString(projectHash) && !headless) {
     errOut("usage: unimatrix mcp-bridge <projectHash>\n");
     exit(2);
     return;

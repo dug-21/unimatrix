@@ -640,6 +640,7 @@ function runEntry(event, stdin, opts) {
   const home = options.home || tmpRoot;
   env.HOME = home;
   env.USERPROFILE = home;
+  env.UNIMATRIX_PROJECT_ROOT = options.cwd || tmpRoot; // D-052
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [ENTRY, event], {
       cwd: options.cwd || tmpRoot,

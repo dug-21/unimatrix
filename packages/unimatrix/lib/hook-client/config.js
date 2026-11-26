@@ -272,8 +272,9 @@ function resolve(cwd) {
   try {
     // Env observe pair wins outright: the store is never read (a broken HOME
     // must not block it — fail-open). The bridge-only MCP tuple is not needed.
-    const env = process.env;
-    r = resolveRemote(env, { projectHash, readStore: env.UNIMATRIX_REMOTE_URL ? () => null : undefined });
+    let env = process.env; // D-091 strip, once
+    try { env = require("../project-state.js").effectiveEnv(env, startDir, os.homedir()); } catch (_e) { /* raw env */ }
+    r = resolveRemote(env, { projectHash, cwd: startDir, readStore: env.UNIMATRIX_REMOTE_URL ? () => null : undefined });
   } catch (e) {
     const c = e instanceof ResolveError ? e.code : "store_malformed";
     const reason = c === "partial_pair" ? "partial_env" : c === "store_malformed" ? "malformed" : "misconfig";

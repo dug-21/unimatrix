@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 "use strict";
 
-const { execFileSync } = require("child_process");
-
 // The only harnesses `--harness` accepts (ADR-005 §2). Any other value is
 // ambiguous → help, never a fall-through write (AC-16).
 const VALID_HARNESSES = ["claude-code", "opencode", "codex-cli"];
@@ -59,10 +57,17 @@ function printWireSummary(actions, dryRun) {
  * @returns {{binaryPath?:string, mcp?:{url:string, token:string}}}
  */
 function resolveWireTransport(projectRoot) {
+  let binaryPath = null;
   try {
-    const { resolveBinary } = require("../lib/resolve-binary.js");
-    return { binaryPath: resolveBinary() };
+    // null is normal on macOS/Windows (cloud-only); a throw means unresolvable.
+    binaryPath = require("../lib/resolve-binary.js").resolveBinary() || null;
   } catch (_binaryErr) {
+    binaryPath = null;
+  }
+  if (binaryPath) {
+    return { binaryPath };
+  }
+  {
     // No local binary — try the out-of-tree cloud credential (keyed by hash).
     try {
       const { computeProjectHash } = require("../lib/hook-client/config.js");
@@ -153,19 +158,22 @@ function routeWire(args) {
       Object.assign({ harness: harness || undefined, clientPath, dryRun }, transport)
     );
   } catch (error) {
-    // Wire legs never throw; a throw here is the reused claude loud-checkpoint
-    // (malformed .mcp.json/settings.json) — surface it, parity with init.
+    // Hard failures (unsafe shim path, unparseable config, missing recorded node)
+    // throw: surface them, parity with init (exit 1).
     process.stderr.write("unimatrix wire failed: " + error.message + "\n");
     process.exitCode = 1;
     return;
   }
 
   printWireSummary(result.actions, dryRun);
+  if (result.manifest.some((l) => l.harness === "codex-cli" && l.surface === "hooks" && /^(created|updated|unchanged)$/.test(l.action))) {
+    console.log(require("../lib/codex-install.js").codexApprovalStep());
+  }
   process.exitCode = 0;
 }
 
-function main() {
-  const args = process.argv.slice(2);
+function run(args, ctx) {
+  ctx = ctx || {};
 
   // Route "init" to JS implementation (ADR-003)
   if (args[0] === "init") {
@@ -226,8 +234,7 @@ function main() {
     const projectHash = args[1];
     // vnc-050 FR-21: headless launch (UNIMATRIX_BUNDLE or the env MCP URL)
     // needs no projectHash; the bridge resolves the credential from env.
-    const headless =
-      !!process.env.UNIMATRIX_BUNDLE || !!process.env.UNIMATRIX_REMOTE_MCP_URL;
+    const headless = require("../lib/project-state.js").headlessEnvSet(process.env);
     if (!headless && (!projectHash || typeof projectHash !== "string")) {
       process.stderr.write("usage: unimatrix mcp-bridge <projectHash>\n");
       process.exitCode = 2;
@@ -246,12 +253,58 @@ function main() {
     return;
   }
 
-  // All other subcommands: resolve binary and exec
+  // Node-routed verbs (ADR-004): in-process hook client, mcp-stdio, status.
+  if (args[0] === "hook") {
+    return require("../lib/hook-route.js").run(args, ctx);
+  }
+  if (args[0] === "mcp-stdio") {
+    return require("../lib/hook-route.js").runMcpStdio(args, ctx);
+  }
+  if (args[0] === "status") {
+    require("../lib/status.js").run(args);
+    return;
+  }
+  return passThrough(args);
+}
+
+// All other subcommands: Linux-only Rust pass-through (D-071, ADR-002/004).
+function passThrough(args) {
+  if (process.platform !== "linux") {
+    process.stderr.write(
+      "unimatrix: " + (args[0] || "") + " requires the local server (Linux only)\n"
+    );
+    process.exitCode = 1;
+    return;
+  }
+  // The redirect is the one user-controlled pointer here: trust-check it first.
+  try {
+    const os = require("os");
+    const fs = require("fs");
+    const home = os.homedir();
+    if (fs.existsSync(require("path").join(home, ".unimatrix", "redirect.json"))) {
+      const t = require("../lib/trust.js");
+      let inst = null;
+      try {
+        inst = JSON.parse(fs.readFileSync(require("path").join(home, ".unimatrix", "install.json"), "utf8"));
+      } catch (_e) { /* trust set tolerates no install */ }
+      t.checkTrust(t.trustSet(home, { installJson: inst, platform: "linux" }), "linux", { home });
+    }
+  } catch (error) {
+    process.stderr.write(error.message + "\n");
+    process.exitCode = 1;
+    return;
+  }
+
   let binaryPath;
   try {
     binaryPath = require("../lib/resolve-binary.js").resolveBinary();
   } catch (error) {
     process.stderr.write(error.message + "\n");
+    process.exitCode = 1;
+    return;
+  }
+  if (!binaryPath) {
+    process.stderr.write("unimatrix: no local binary available (sources tried: UNIMATRIX_BINARY, redirect, install)\n");
     process.exitCode = 1;
     return;
   }
@@ -264,7 +317,7 @@ function main() {
   });
 
   try {
-    execFileSync(binaryPath, args, { stdio: "inherit", env: env });
+    require("child_process").execFileSync(binaryPath, args, { stdio: "inherit", env: env });
   } catch (error) {
     // execFileSync throws on non-zero exit code
     // error.status contains the exit code from the child process
@@ -280,4 +333,8 @@ function main() {
   }
 }
 
-main();
+module.exports = { run };
+
+if (require.main === module) {
+  run(process.argv.slice(2));
+}

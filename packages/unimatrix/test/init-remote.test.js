@@ -21,11 +21,13 @@ const {
   mergeSettings,
   isUnimatrixHook,
   buildHookClientCommand,
+  buildShimCommand,
   normalizeCommandSource,
-  UNIMATRIX_PATTERNS,
   HOOK_EVENTS,
   EVENT_MATCHERS,
 } = require("../lib/merge-settings.js");
+
+const { isUnimatrixCommand, OWNED_FORMS } = require("../lib/hook-ownership.js");
 
 const initModule = require("../lib/init.js");
 const { initRemote, LEGACY_MCP_UNSUPPORTED_MESSAGE } = initModule;
@@ -88,7 +90,7 @@ function writeSubagentOptIn(projectRoot) {
 }
 
 function readSettings(projectRoot) {
-  const fp = path.join(projectRoot, ".claude", "settings.json");
+  const fp = path.join(projectRoot, ".claude", "settings.local.json");
   return JSON.parse(fs.readFileSync(fp, "utf8"));
 }
 
@@ -180,11 +182,19 @@ describe("detectProjectRoot worktree parity", () => {
   });
 });
 
+function binSource(binary) {
+  const binDir = path.dirname(binary);
+  return {
+    events: HOOK_EVENTS,
+    commandForEvent: (e) => "LD_LIBRARY_PATH=" + binDir + " " + binary + " hook " + e,
+  };
+}
+
 // ── Ownership Pattern Table (R-11 — the only open gate note) ─────────
 
 describe("ownership pattern (R-11 spaced-path table)", () => {
   function matches(cmd) {
-    return UNIMATRIX_PATTERNS.some((p) => p.test(cmd));
+    return isUnimatrixCommand(cmd);
   }
 
   it("test_pattern_table_positive", () => {
@@ -224,7 +234,7 @@ describe("ownership pattern (R-11 spaced-path table)", () => {
 
   it("test_unimatrix_hook_legacy_not_matched_by_node_pattern", () => {
     // `unimatrix hook X` matches a legacy pattern, NOT the node pattern.
-    const nodePattern = UNIMATRIX_PATTERNS[UNIMATRIX_PATTERNS.length - 1];
+    const nodePattern = OWNED_FORMS.find((f) => f.name === "L3-node-client").re;
     assert.ok(!nodePattern.test("unimatrix hook SessionStart"));
   });
 });
@@ -277,14 +287,14 @@ describe("mergeSettings commandSource generalization", () => {
     // These tests iterate the full HOOK_EVENTS set; opt in to SubagentStop
     // (vnc-027 ADR-004 §2 default-off otherwise drops it).
     writeSubagentOptIn(dir);
-    return path.join(dir, ".claude", "settings.json");
+    return path.join(dir, ".claude", "settings.local.json");
   }
 
   it("test_commandsource_backcompat_wrapper_byte_identical", () => {
     // The legacy string call site must produce the exact LD_LIBRARY_PATH form.
     const fp = tempSettingsPath();
     const binary = "/abs/path/to/unimatrix";
-    const result = mergeSettings(fp, binary, {});
+    const result = mergeSettings(fp, binSource(binary), {});
     const binDir = path.dirname(binary);
     for (const event of HOOK_EVENTS) {
       const group = result.content.hooks[event].find(
@@ -296,6 +306,10 @@ describe("mergeSettings commandSource generalization", () => {
         "LD_LIBRARY_PATH=" + binDir + " " + binary + " hook " + event
       );
     }
+  });
+
+  it("test_normalize_string_arm_deleted", () => {
+    assert.throws(() => normalizeCommandSource("/abs/unimatrix"), TypeError);
   });
 
   it("test_normalize_passthrough_object", () => {
@@ -343,9 +357,9 @@ describe("FR-21 9-event set", () => {
     // two new event entries — nothing else changes (SR-07 / C-10 gate).
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-blast-"));
     writeSubagentOptIn(dir); // assert the full 9-event blast radius (ADR-004 §2)
-    const fp = path.join(dir, ".claude", "settings.json");
+    const fp = path.join(dir, ".claude", "settings.local.json");
     const binary = "/abs/path/to/unimatrix";
-    const result = mergeSettings(fp, binary, {});
+    const result = mergeSettings(fp, binSource(binary), {});
     const SEVEN = [
       "SessionStart", "Stop", "UserPromptSubmit",
       "PreToolUse", "PostToolUse", "SubagentStart", "SubagentStop",
@@ -360,7 +374,7 @@ describe("FR-21 9-event set", () => {
     // existing recognized, no duplicates.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-rerun-"));
     writeSubagentOptIn(dir); // retain the seeded SubagentStop entry (ADR-004 §2)
-    const fp = path.join(dir, ".claude", "settings.json");
+    const fp = path.join(dir, ".claude", "settings.local.json");
     const binary = "/abs/path/to/unimatrix";
     const binDir = path.dirname(binary);
     // Seed a legacy 7-event config (pre-FR-21).
@@ -383,9 +397,10 @@ describe("FR-21 9-event set", () => {
       ];
     }
     fs.mkdirSync(path.dirname(fp), { recursive: true });
+    seed.unimatrix = { hooks: { subagent_stop: true } };
     fs.writeFileSync(fp, JSON.stringify(seed, null, 2), "utf8");
 
-    const result = mergeSettings(fp, binary, {});
+    const result = mergeSettings(fp, binSource(binary), {});
     assert.strictEqual(Object.keys(result.content.hooks).length, 9);
     for (const event of HOOK_EVENTS) {
       assert.strictEqual(
@@ -415,7 +430,7 @@ describe("initRemote matrix (AC-11)", () => {
       const uni = group.hooks.find((h) => isUnimatrixHook(h));
       assert.strictEqual(
         uni.command,
-        buildHookClientCommand(CLIENT_PATH, event)
+        buildShimCommand(event, undefined, process.platform, tempHome)
       );
     }
     // Matchers spot-check.
@@ -442,7 +457,7 @@ describe("initRemote matrix (AC-11)", () => {
   it("test_foreign_hooks_preserved_incl_foreign_node", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
-    const fp = path.join(dir, ".claude", "settings.json");
+    const fp = path.join(dir, ".claude", "settings.local.json");
     fs.mkdirSync(path.dirname(fp), { recursive: true });
     const foreign = {
       hooks: {
@@ -474,7 +489,7 @@ describe("initRemote matrix (AC-11)", () => {
     // SR-08: config with old-style `unimatrix hook` entries -> replaced.
     stubPing(okPing);
     const dir = makeTempProject();
-    const fp = path.join(dir, ".claude", "settings.json");
+    const fp = path.join(dir, ".claude", "settings.local.json");
     fs.mkdirSync(path.dirname(fp), { recursive: true });
     const old = {
       hooks: {
@@ -495,7 +510,7 @@ describe("initRemote matrix (AC-11)", () => {
     assert.strictEqual(countUnimatrixHooks(content, "SessionStart"), 1);
     const group = content.hooks.SessionStart.find((g) => g.matcher === "");
     const uni = group.hooks.find((h) => isUnimatrixHook(h));
-    assert.strictEqual(uni.command, buildHookClientCommand(CLIENT_PATH, "SessionStart"));
+    assert.strictEqual(uni.command, buildShimCommand("SessionStart", undefined, process.platform, tempHome));
     assert.ok(!uni.command.includes("unimatrix hook"));
   });
 
@@ -504,7 +519,7 @@ describe("initRemote matrix (AC-11)", () => {
     // and replaced, not duplicated.
     stubPing(okPing);
     const dir = makeTempProject();
-    const fp = path.join(dir, ".claude", "settings.json");
+    const fp = path.join(dir, ".claude", "settings.local.json");
     fs.mkdirSync(path.dirname(fp), { recursive: true });
     const old = {
       hooks: {
@@ -528,39 +543,40 @@ describe("initRemote matrix (AC-11)", () => {
     assert.strictEqual(countUnimatrixHooks(content, "Stop"), 1);
     const group = content.hooks.Stop.find((g) => g.matcher === "");
     const uni = group.hooks.find((h) => isUnimatrixHook(h));
-    assert.strictEqual(uni.command, buildHookClientCommand(CLIENT_PATH, "Stop"));
+    assert.strictEqual(uni.command, buildShimCommand("Stop", undefined, process.platform, tempHome));
   });
 });
 
 // ── AC-01 — .mcp.json stdio bridge entry (Scope A, R-10) ─────────────
 
-describe("AC-01 — .mcp.json stdio bridge entry", () => {
+// Per-machine destination (nan-024 D-060): projects[<realpath root>].mcpServers in ~/.claude.json.
+function readClaudeEntry(dir) {
+  const cj = JSON.parse(fs.readFileSync(path.join(tempHome, ".claude.json"), "utf8"));
+  return cj.projects[fs.realpathSync(dir)].mcpServers;
+}
+const { buildMcpEntry } = require("../lib/mcp-entry.js");
+
+describe("AC-01 — per-machine stdio MCP entry (~/.claude.json)", () => {
   it("test_initBundle_writesStdioUnimatrixEntry", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
     await initRemote({ bundle: makeBundle(), projectDir: dir });
-    const mcp = JSON.parse(
-      fs.readFileSync(path.join(dir, ".mcp.json"), "utf8")
+    assert.deepStrictEqual(
+      readClaudeEntry(dir).unimatrix,
+      buildMcpEntry(process.platform, tempHome, process.execPath)
     );
-    assert.deepStrictEqual(mcp.mcpServers.unimatrix, {
-      command: "node",
-      args: [BRIDGE_PATH, computeProjectHash(dir)],
-      env: {},
-    });
+    assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")), "no committed project .mcp.json");
   });
 
   it("test_initBundle_bridgeCommandNotRustBinary", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
     await initRemote({ bundle: makeBundle(), projectDir: dir });
-    const mcp = JSON.parse(
-      fs.readFileSync(path.join(dir, ".mcp.json"), "utf8")
-    );
-    const entry = mcp.mcpServers.unimatrix;
-    // The command invokes node + the resolved JS bridge module, never the Rust
-    // platform binary (no LD_LIBRARY_PATH env, no binary path as command).
-    assert.strictEqual(entry.command, "node");
-    assert.ok(entry.args[0].endsWith("mcp-bridge.js"));
+    const entry = readClaudeEntry(dir).unimatrix;
+    // The entry invokes the per-machine shim (mcp-stdio), never the Rust platform
+    // binary directly: no LD_LIBRARY_PATH env, no token, no URL.
+    assert.ok(JSON.stringify(entry).includes(".unimatrix/bin/"), "shim path: " + JSON.stringify(entry));
+    assert.ok(JSON.stringify(entry).includes("mcp-stdio"));
     assert.deepStrictEqual(entry.env, {});
   });
 
@@ -585,31 +601,26 @@ describe("AC-01 — .mcp.json stdio bridge entry", () => {
 
 // ── AC-07 — idempotent + merge-preserving + dry-run (R-10) ──────────
 
-describe("AC-07 — .mcp.json idempotent + merge-preserving + dry-run", () => {
+describe("AC-07 — ~/.claude.json idempotent + merge-preserving + dry-run", () => {
   it("test_initBundle_reInit_doesNotDuplicateUnimatrix", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
     const mcpPath = path.join(dir, ".mcp.json");
-    // Pre-seed a co-resident MCP server that must survive verbatim.
+    // Co-resident foreign project server must survive byte-for-byte (never touched).
+    const seed = JSON.stringify({ mcpServers: { other: { command: "other-bin", args: [] } } }, null, 2);
+    fs.writeFileSync(mcpPath, seed, "utf8");
     fs.writeFileSync(
-      mcpPath,
-      JSON.stringify(
-        { mcpServers: { other: { command: "other-bin", args: [] } } },
-        null,
-        2
-      ),
+      path.join(tempHome, ".claude.json"),
+      JSON.stringify({ projects: { [fs.realpathSync(dir)]: { mcpServers: { peer: { command: "p" } } } } }),
       "utf8"
     );
     await initRemote({ bundle: makeBundle(), projectDir: dir });
     await initRemote({ bundle: makeBundle(), projectDir: dir });
-    const mcp = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-    // Co-resident preserved; unimatrix present exactly once (object key).
-    assert.deepStrictEqual(mcp.mcpServers.other, {
-      command: "other-bin",
-      args: [],
-    });
-    assert.ok(mcp.mcpServers.unimatrix);
-    assert.strictEqual(Object.keys(mcp.mcpServers).length, 2);
+    assert.strictEqual(fs.readFileSync(mcpPath, "utf8"), seed, "foreign-only .mcp.json unchanged");
+    const servers = readClaudeEntry(dir);
+    assert.deepStrictEqual(servers.peer, { command: "p" });
+    assert.ok(servers.unimatrix);
+    assert.strictEqual(Object.keys(servers).length, 2);
   });
 
   it("test_initBundle_dryRun_noMcpJsonWrite", async () => {
@@ -624,23 +635,25 @@ describe("AC-07 — .mcp.json idempotent + merge-preserving + dry-run", () => {
       console.log = origLogLocal;
     }
     assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")), "no write in dry-run");
+    assert.ok(!fs.existsSync(path.join(tempHome, ".claude.json")), "~/.claude.json untouched in dry-run");
+    assert.ok(!fs.existsSync(path.join(tempHome, ".unimatrix", "bin")), "no store written in dry-run");
     assert.ok(
-      actions.some((a) => a.includes("[dry-run]") && a.includes(".mcp.json")),
-      "intended .mcp.json change reported in dry-run"
+      actions.some((a) => a.includes("[dry-run]") && a.includes(".claude.json")),
+      "intended ~/.claude.json change reported in dry-run"
     );
   });
 
-  it("test_initBundle_malformedExistingMcpJson_throws", async () => {
+  it("test_initBundle_malformedExistingClaudeJson_throws", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
-    const mcpPath = path.join(dir, ".mcp.json");
-    fs.writeFileSync(mcpPath, "{ not json", "utf8");
+    const cjPath = path.join(tempHome, ".claude.json");
+    fs.writeFileSync(cjPath, "{ not json", "utf8");
     await assert.rejects(
       () => initRemote({ bundle: makeBundle(), projectDir: dir }),
-      (err) => err.message.includes("Malformed .mcp.json")
+      (err) => err.message.includes("not valid JSON")
     );
     // Not silently overwritten.
-    assert.strictEqual(fs.readFileSync(mcpPath, "utf8"), "{ not json");
+    assert.strictEqual(fs.readFileSync(cjPath, "utf8"), "{ not json");
   });
 });
 
@@ -776,17 +789,19 @@ describe("AC-08 migration — stale in-tree creds cleanup", () => {
     );
   });
 
-  it("test_initBundle_migrationBestEffort_doesNotAbortInit", async () => {
+  it("test_initBundle_malformedSettingsLocal_abortsUntouched", async () => {
     stubPing(okPing);
     const dir = makeTempProject();
     const slPath = path.join(dir, ".claude", "settings.local.json");
     fs.mkdirSync(path.dirname(slPath), { recursive: true });
-    // Malformed settings.local.json: the migration clean must NOT abort init.
+    // settings.local.json is now the hook-wiring target (nan-024 D-039): a malformed
+    // file is never clobbered; init aborts loudly and leaves it byte-unchanged.
     fs.writeFileSync(slPath, "{ not json", "utf8");
-    await initRemote({ bundle: makeBundle(), projectDir: dir });
-    // init completed: hooks + .mcp.json written despite the unclean file.
-    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
-    assert.ok(fs.existsSync(path.join(dir, ".mcp.json")));
+    await assert.rejects(
+      () => initRemote({ bundle: makeBundle(), projectDir: dir }),
+      (err) => err.message.includes("Malformed")
+    );
+    assert.strictEqual(fs.readFileSync(slPath, "utf8"), "{ not json");
   });
 
   it("test_initBundle_gitignoreWarningRemoved", async () => {
@@ -848,13 +863,12 @@ describe("AC-09 — no token in any init surface", () => {
     stubPing(okPing);
     const dir = makeTempProject();
     await initRemote({ bundle: makeBundle(), projectDir: dir });
-    const raw = fs.readFileSync(path.join(dir, ".mcp.json"), "utf8");
-    assert.ok(!raw.includes(BUNDLE_TOKEN), "token in .mcp.json");
-    assert.ok(!raw.includes(BUNDLE_MCP_URL), "mcp_url in .mcp.json");
-    assert.ok(!raw.includes(BUNDLE_FP), "fp in .mcp.json");
-    const mcp = JSON.parse(raw);
-    // Only command/args:[bridge,hash]/env:{} — AC-09 / FR-17.
-    assert.deepStrictEqual(Object.keys(mcp.mcpServers.unimatrix).sort(), [
+    const raw = fs.readFileSync(path.join(tempHome, ".claude.json"), "utf8");
+    assert.ok(!raw.includes(BUNDLE_TOKEN), "token in ~/.claude.json");
+    assert.ok(!raw.includes(BUNDLE_MCP_URL), "mcp_url in ~/.claude.json");
+    assert.ok(!raw.includes(BUNDLE_FP), "fp in ~/.claude.json");
+    // Only command/args/env — AC-09 / FR-17.
+    assert.deepStrictEqual(Object.keys(readClaudeEntry(dir).unimatrix).sort(), [
       "args",
       "command",
       "env",
@@ -915,7 +929,7 @@ describe("AC-10 — legacy bundle-only boundary", () => {
     await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
     // Legacy observe path is preserved: the store entry is written so the hook
     // client can post; hooks are wired into settings.json.
-    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
+    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.local.json")));
     const stored = readStore(dir);
     assert.strictEqual(stored.observe_url, REMOTE.replace(/\/+$/, "") + "/observe");
     assert.strictEqual(stored.token, TOKEN);
@@ -955,8 +969,8 @@ describe("remote skips + dry-run", () => {
     }
     const joined = actions.join("\n");
     assert.ok(joined.includes("Skipped binary/database steps"));
-    // The bundle path DOES write .mcp.json now (the bridge entry).
-    assert.ok(fs.existsSync(path.join(dir, ".mcp.json")));
+    // The bundle path writes the per-machine MCP entry (~/.claude.json).
+    assert.ok(readClaudeEntry(dir).unimatrix);
   });
 
   it("test_dry_run_writes_nothing_and_skips_network", async () => {
@@ -973,7 +987,7 @@ describe("remote skips + dry-run", () => {
       dryRun: true,
     });
     assert.ok(!pingCalled, "Ping should be skipped in dry-run");
-    assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.json")));
+    assert.ok(!fs.existsSync(path.join(dir, ".claude", "settings.local.json")));
     assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")));
     // No store file written in dry-run.
     assert.ok(!fs.existsSync(storePath(dir)), "no store write in dry-run");
@@ -1029,7 +1043,7 @@ describe("Ping validation (R-18)", () => {
     const dir = makeTempProject();
     await initRemote({ remote: REMOTE, token: TOKEN, projectDir: dir });
     // No throw == success; settings written.
-    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
+    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.local.json")));
   });
 
   it("test_ping_wrong_token_loud_auth_failure", async () => {
@@ -1080,8 +1094,8 @@ describe("Ping validation (R-18)", () => {
         err.message.includes("cannot reach") &&
         err.message.includes("Configuration files were written")
     );
-    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.json")));
-    assert.ok(fs.existsSync(path.join(dir, ".mcp.json")));
+    assert.ok(fs.existsSync(path.join(dir, ".claude", "settings.local.json")));
+    assert.ok(readClaudeEntry(dir).unimatrix);
     assert.ok(fs.existsSync(storePath(dir)), "store written before Ping");
   });
 });
@@ -1099,12 +1113,12 @@ describe("vnc-050 C8 — init --bundle with a CA (fp:null) bundle", () => {
     assert.strictEqual(rec.fingerprint, null);
     assert.strictEqual(rec.token, BUNDLE_TOKEN);
     assert.strictEqual(pinArg, null, "Ping uses CA trust (no pin)");
-    const mcp = JSON.parse(fs.readFileSync(path.join(dir, ".mcp.json"), "utf8"));
+    const mcp = readClaudeEntry(dir);
     assert.ok(
-      JSON.stringify(mcp).includes(path.basename(BRIDGE_PATH)),
-      "CA bundle registers the stdio bridge like a pinned bundle"
+      JSON.stringify(mcp).includes("mcp-stdio"),
+      "CA bundle registers the stdio entry like a pinned bundle"
     );
-    assert.ok(!JSON.stringify(mcp).includes(BUNDLE_TOKEN), ".mcp.json token-free");
+    assert.ok(!JSON.stringify(mcp).includes(BUNDLE_TOKEN), "MCP entry token-free");
   });
 
   it("init_bundle_pinned_unchanged", async () => {

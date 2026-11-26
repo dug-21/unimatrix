@@ -6,8 +6,8 @@
 // ----------------------------------------------------------------------------
 // Two independent limits over lib/hook-client/**/*.js (decimal bytes):
 //
-//   PRIMARY  : comment-stripped total <= 113,639 bytes
-//   BACKSTOP : raw (on-disk) total    <= 201,399 bytes
+//   PRIMARY  : comment-stripped total <= 115,012 bytes
+//   BACKSTOP : raw (on-disk) total    <= 203,058 bytes
 //
 // The PRIMARY limit measures shipped logic only — line and block comments are
 // removed before counting so the oracle-citation comment style this client
@@ -57,8 +57,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const PRIMARY_LIMIT = 113639; // comment-stripped bytes (decimal) — raised 110000→113137 = as-measured after vnc-050 C9/C10/C6c; 113137→113639 as-measured after vnc-050 #1010 F1 (https-only env URLs) + #1021 (bridge EOF drain). No headroom (PL-10 no-grow). Human decision, vnc-050 #1010.
-const BACKSTOP_LIMIT = 201399; // raw bytes (decimal) — raised 200000→200623 = as-measured after vnc-050; 200623→201399 as-measured after vnc-050 #1010 F1 + #1021. No headroom (PL-10 no-grow). Human decision, vnc-050 #1010.
+const PRIMARY_LIMIT = 115012; // comment-stripped bytes (decimal) — raised 110000→113137 = as-measured after vnc-050 C9/C10/C6c; 113137→113639 as-measured after vnc-050 #1010 F1 (https-only env URLs) + #1021 (bridge EOF drain). No headroom (PL-10 no-grow). Human decision, vnc-050 #1010; 113639→115012 as-measured after nan-024 (new logic per ADR vnc-027 ADR-005 policy), human decision D-092, nan-024 #1023, baseline reset. No headroom.
+const BACKSTOP_LIMIT = 203058; // raw bytes (decimal) — raised 200000→200623 = as-measured after vnc-050; 200623→201399 as-measured after vnc-050 #1010 F1 + #1021. No headroom (PL-10 no-grow). Human decision, vnc-050 #1010; 201399→203058 as-measured after nan-024, human decision D-092, nan-024 #1023, baseline reset. No headroom.
 const ROOT = path.resolve(__dirname, "..", "lib", "hook-client");
 
 // Lexer states.

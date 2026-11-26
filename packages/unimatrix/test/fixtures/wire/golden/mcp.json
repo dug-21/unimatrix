@@ -1,10 +1,15 @@
 {
-  "mcpServers": {
-    "unimatrix": {
-      "command": "/opt/unimatrix/bin/unimatrix",
-      "args": [],
-      "env": {
-        "LD_LIBRARY_PATH": "/opt/unimatrix/bin"
+  "projects": {
+    "@@ROOT@@": {
+      "mcpServers": {
+        "unimatrix": {
+          "command": "sh",
+          "args": [
+            "-c",
+            "exec \"$HOME/.unimatrix/bin/unimatrix\" mcp-stdio"
+          ],
+          "env": {}
+        }
       }
     }
   }

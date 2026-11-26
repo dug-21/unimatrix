@@ -777,8 +777,12 @@ describe("dogfood-effect: AC-02 switchover by effect", () => {
       );
     }
 
-    // ── ROLLBACK arm (string commandSource) — P2/P3/P5/P7/P8 ──
+    // ── ROLLBACK arm (legacy Rust command, object source; string arm deleted D-008) ──
     {
+      const rustSource = {
+        events: installed.merge.HOOK_EVENTS,
+        commandForEvent: (event) => "LD_LIBRARY_PATH=" + binDir + " " + rustBinary + " hook " + event,
+      };
       const { settingsPath } = makeScratchRoot();
       // First repoint to node-client form (promote) WITHOUT the script, so the
       // rollback faces a genuine stale node-client uni hook to prune (P2) — again
@@ -793,7 +797,7 @@ describe("dogfood-effect: AC-02 switchover by effect", () => {
       );
 
       // Rollback = legacy Rust binary STRING arm (normalizeCommandSource legacy form).
-      const result = installed.merge.mergeSettings(settingsPath, rustBinary, { dryRun: true });
+      const result = installed.merge.mergeSettings(settingsPath, rustSource, { dryRun: true });
       const s = result.content;
       const all = uniHooks(s);
 
@@ -828,7 +832,7 @@ describe("dogfood-effect: AC-02 switchover by effect", () => {
       );
 
       // Idempotent: a second mergeSettings rollback is a no-op on content.
-      const r2 = installed.merge.mergeSettings(settingsPath, rustBinary, { dryRun: true });
+      const r2 = installed.merge.mergeSettings(settingsPath, rustSource, { dryRun: true });
       assert.deepStrictEqual(
         r2.content,
         s,

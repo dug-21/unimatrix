@@ -1,0 +1,83 @@
+name: Q9 Windows MCP argv proof (nan-024 D-034)
+
+# Non-required proof job. The driver.js steps use a stub shim; the final `real` steps (nan-024 D-072/D-073)
+# run the REAL init output: the written MCP entry must equal the D-047 fallback form and the written .cmd hook
+# command must run via cmd.exe /C (raw, Codex wrapping) and Git Bash.
+# Claude Code is approximated by Node child_process.spawn (shell:false); Codex by a
+# compiled Rust std::process::Command harness. Real harness binaries are not run
+# (no auth / MCP session available in CI) -- documented limitation.
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/nan-024]
+    paths: ['.github/q9-proof/**', '.github/workflows/q9-windows-mcp-proof.yml', 'packages/unimatrix/lib/**', 'packages/unimatrix/test/helpers/e2e-harness.js']
+
+permissions:
+  contents: read
+
+jobs:
+  q9:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build Rust spawn harness
+        shell: bash
+        run: rustc -O .github/q9-proof/spawn.rs -o "$RUNNER_TEMP/spawn.exe"
+      # D-072: the primary form is an EXPECTED-NEGATIVE proof (it must fail on Windows; that is why the
+      # D-047 fallback form ships). continue-on-error keeps the step's failure from reddening the job;
+      # the next step asserts it really failed and fails the job only if it unexpectedly PASSED.
+      - name: MCP primary form (cmd /d /s /c) - expected negative (D-072)
+        id: primary
+        if: always()
+        continue-on-error: true
+        run: node .github/q9-proof/driver.js mcp-primary
+      - name: Assert MCP primary form failed as expected (D-072)
+        if: always()
+        shell: bash
+        env:
+          PRIMARY_OUTCOME: ${{ steps.primary.outcome }}
+        run: |
+          echo "primary form outcome: $PRIMARY_OUTCOME"
+          if [ "$PRIMARY_OUTCOME" = "success" ]; then
+            echo "::error::MCP primary form unexpectedly PASSED on Windows; D-072/D-073 evidence no longer holds"
+            exit 1
+          fi
+          if [ "$PRIMARY_OUTCOME" != "failure" ]; then
+            echo "::error::MCP primary form step did not run to a verdict (outcome=$PRIMARY_OUTCOME)"
+            exit 1
+          fi
+          echo "expected negative confirmed"
+      - name: MCP fallback form (D-047 node + shim-entry.js)
+        if: always()
+        run: node .github/q9-proof/driver.js mcp-fallback
+      - name: Hook form (.cmd via cmd.exe /C and Git Bash)
+        if: always()
+        run: node .github/q9-proof/driver.js hook
+      - name: Generate TLS test cert
+        if: always()
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir e2e-cert && cd e2e-cert
+          MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 2 \
+            -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+          echo "E2E_CERT_DIR=$(pwd -W 2>/dev/null || pwd)" >> "$GITHUB_ENV"
+      - name: ACL diagnostic (icacls /save format, whoami)
+        if: always()
+        shell: pwsh
+        run: |
+          $d = Join-Path $env:RUNNER_TEMP 'acl diag'
+          New-Item -ItemType Directory -Force -Path $d | Out-Null
+          icacls $d /save "$env:RUNNER_TEMP\acl.txt"
+          Write-Host "--- icacls /save output (hex) ---"
+          Format-Hex -Path "$env:RUNNER_TEMP\acl.txt" | Select-Object -First 30 | Out-String | Write-Host
+          Write-Host "--- as text ---"
+          Get-Content "$env:RUNNER_TEMP\acl.txt" -Encoding Unicode | Write-Host
+          whoami /user /fo csv /nh
+          (Get-Acl $d).Owner
+      - name: REAL init output - MCP D-047 fallback form + .cmd hook via cmd /C and Git Bash (D-072, D-073)
+        if: always()
+        run: node .github/q9-proof/real.js

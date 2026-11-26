@@ -131,6 +131,7 @@ function runEntry(event, stdin, opts) {
   const home = options.home || tmpRoot;
   env.HOME = home;
   env.USERPROFILE = home; // Windows home
+  env.UNIMATRIX_PROJECT_ROOT = options.cwd || tmpRoot; // D-052: remote env honoured inside root
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [ENTRY, event].concat(options.args || []), {
       cwd: options.cwd || tmpRoot,

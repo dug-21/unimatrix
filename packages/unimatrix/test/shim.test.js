@@ -2,10 +2,12 @@
 
 const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 const assert = require("node:assert/strict");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const path = require("node:path");
 const fs = require("node:fs");
 const { execFileSync } = require("node:child_process");
 
+const ISO_HOME = require("node:fs").mkdtempSync(require("node:path").join(require("node:os").tmpdir(), "uni-home-"));
 const shimPath = path.resolve(__dirname, "../bin/unimatrix.js");
 
 // Resolve a coreutil (true/false/echo) to its real absolute path. macOS ships
@@ -95,11 +97,12 @@ function runShim(args, env = {}) {
     // Override argv
     process.argv = ["node", "unimatrix.js"].concat(JSON.parse(process.env._TEST_ARGS || "[]"));
 
-    require(${JSON.stringify(shimPath)});
+    require(${JSON.stringify(shimPath)}).run(process.argv.slice(2));
   `;
 
   const mergedEnv = {
     ...process.env,
+    HOME: ISO_HOME, // isolate from the developer's real ~/.unimatrix (trust check)
     _TEST_ARGS: JSON.stringify(args),
     ...env,
   };
@@ -145,32 +148,30 @@ describe("JS Shim — Argument Routing", () => {
     assert.equal(options.dryRun, true);
   });
 
-  it("test_hook_arg_routes_to_binary", () => {
-    // Use 'echo' as the mock binary — it will succeed and print args
+  it("test_hook_arg_routes_to_node_not_binary", () => {
+    // AC-03: `hook` is Node-routed (ADR-004). Outside a Unimatrix project it is a
+    // silent exit 0 and the Rust binary is never resolved or exec'd.
     const result = runShim(["hook", "SessionStart"], {
       _TEST_BINARY_PATH: ECHO_BIN,
     });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
-    // echo prints its args to stdout
-    assert.ok(
-      result.stdout.includes("hook SessionStart"),
-      "Binary should receive forwarded args"
-    );
+    assert.ok(!result.stdout.includes("hook SessionStart"));
+    assert.ok(!result.stdout.includes("RESOLVE_BINARY_CALLED"));
   });
 
-  it("test_export_arg_routes_to_binary", () => {
+  it("test_export_arg_routes_to_binary", linuxLocal, () => {
     const result = runShim(["export"], { _TEST_BINARY_PATH: ECHO_BIN });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     assert.ok(result.stdout.includes("export"));
   });
 
-  it("test_no_args_routes_to_binary", () => {
+  it("test_no_args_routes_to_binary", linuxLocal, () => {
     // 'true' binary exits 0 with no output
     const result = runShim([], { _TEST_BINARY_PATH: TRUE_BIN });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
   });
 
-  it("test_version_arg_routes_to_binary", () => {
+  it("test_version_arg_routes_to_binary", linuxLocal, () => {
     const result = runShim(["version"], { _TEST_BINARY_PATH: ECHO_BIN });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);
     assert.ok(result.stdout.includes("version"));
@@ -178,7 +179,7 @@ describe("JS Shim — Argument Routing", () => {
     assert.ok(!result.stdout.includes("INIT_CALLED:"));
   });
 
-  it("test_dash_dash_version_routes_to_binary", () => {
+  it("test_dash_dash_version_routes_to_binary", linuxLocal, () => {
     // echo with --version may not print the flag literally.
     // Use `true` to confirm the binary is invoked (not init), and verify
     // init was NOT called.
@@ -190,7 +191,7 @@ describe("JS Shim — Argument Routing", () => {
 });
 
 describe("JS Shim — Exit Code Passthrough", () => {
-  it("test_binary_exit_0_propagates", () => {
+  it("test_binary_exit_0_propagates", linuxLocal, () => {
     const result = runShim([], { _TEST_BINARY_PATH: TRUE_BIN });
     assert.equal(result.exitCode, 0);
   });
@@ -200,7 +201,7 @@ describe("JS Shim — Exit Code Passthrough", () => {
     assert.equal(result.exitCode, 1);
   });
 
-  it("test_binary_exit_signal_propagates", () => {
+  it("test_binary_exit_signal_propagates", linuxLocal, () => {
     // Use a script that exits with a specific code to simulate signal-like failure
     // We can't easily send a signal to a sync child, so test spawn failure instead
     const result = runShim([], {
@@ -222,7 +223,7 @@ describe("JS Shim — Error Handling", () => {
     assert.equal(result.exitCode, 1);
   });
 
-  it("test_binary_not_found_prints_platforms", () => {
+  it("test_binary_not_found_prints_platforms", linuxLocal, () => {
     const errorMsg =
       "No platform binary found. Supported platforms: linux-x64";
     const result = runShim(["version"], { _TEST_BINARY_ERROR: errorMsg });
