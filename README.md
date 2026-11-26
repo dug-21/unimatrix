@@ -182,6 +182,9 @@ Hooks are written to `.claude/settings.local.json` (not committed) as an absolut
 - Linux supports local (UDS) and cloud attach. macOS and Windows are cloud-only (bundle attach; no platform binary).
 - PowerShell is unsupported as a hook shell (D-041); use `sh`, `cmd.exe`, or Git Bash.
 - Headless/CI use requires `UNIMATRIX_PROJECT_ROOT` (see `docs/client-setup.md`).
+- `npx unimatrix init --dry-run` lists every planned edit, including user-level files, and writes nothing.
+- Codex hooks stay inactive until approved: after `init`, run `/hooks` in Codex and approve the Unimatrix hooks (Codex asks again after hooks change). `init` writes no trust hashes.
+- `unimatrix status [--json]` is read-only and always exits 0. It reports the project, install and transport, a `cloud env:` line (in effect, or ignored because `UNIMATRIX_PROJECT_ROOT` is unset or the working directory is outside it), trust, the recorded Node path for MCP, whether each harness's hook is wired and when it last fired, leftover project-level MCP entries (`.mcp.json`, `.codex/config.toml`, `opencode.json`), and the Codex approval step when a wired hook has never fired.
 
 When the operator rotates the server certificate, re-run `client-bundle <slug>` and re-run `init --bundle <blob>` on each client with the new bundle. See [docs/cert-rotation.md](docs/cert-rotation.md) for the operator rotation procedure.
 

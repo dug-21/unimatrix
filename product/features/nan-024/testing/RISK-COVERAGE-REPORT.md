@@ -5,7 +5,7 @@ Stage 3c, HEAD 0139b312 (+ `packages/unimatrix/test/measure-pkg-size.js`). Linux
 ## Headline
 - Local: all green (unit, package, wiring-e2e, opencode-plugin, audit, size/zero-dep/test-count, cargo workspace, link smoke, infra-001 smoke + planned suites). 0 failures, 0 new xfails.
 - CI: `wiring-e2e` 6/6 cells green x2 runs, `wiring-e2e` linux-local green, `parity-layer2` green, test-count guard green. **`latency-gate` breached the D-094 p95 figures in 5 of 6 cell-runs (different cells each run); per D-096 it is now REPORT-ONLY (AC-06 evidenced, not enforced); Q9 job is red by construction (primary-form step is a designed FAIL).** See CI table.
-- Gaps: 4 test files named in the plan (rework set) do not exist under those names; equivalent coverage located in other files (see Gaps).
+- Gaps: the 4 plan-named test files now exist and pass (commit 7628b623: mcp-stdio-spawn 4, init-preflight 3, codex-detect 7, pkg-binary-copy 2); the earlier figures below predate them (measured at 0139b312).
 
 ## Test Results
 
@@ -187,9 +187,9 @@ Result = suite-level result for the named files (all PASS locally); Coverage per
 | R-04 | in-process shim-entry argv/hang | shim, shim-entry, launcher-hook, fire-time-parity | PASS | Full |
 | R-05 | override source | resolve-runtime | PASS | Full |
 | R-06 | trust matrix | trust, trust-selfcontained | PASS | Full (Windows ACL: CI only, via Q9 diag) |
-| R-07 | mcp-stdio stdout before exec / cwd | launcher-hook (D-077 spawn, signal), wiring-e2e (E) | PASS | Full |
+| R-07 | mcp-stdio stdout before exec / cwd | launcher-hook (D-077 spawn, signal), mcp-stdio-spawn (4 tests), wiring-e2e (E) | PASS | Full |
 | R-08 | user-level rewrite fidelity | wire, merge-settings (claude-json lib), codex-install, opencode-install | PASS | Full |
-| R-09 | node path / init preflight | install-store, wire, shim-entry (D-082 branches) | PASS | Partial (planned `init-preflight.test.js` absent) |
+| R-09 | node path / init preflight | install-store, wire, shim-entry (D-082 branches), init-preflight | PASS | Full (`init-preflight.test.js`, 3 tests) |
 | R-10 | pass-through / LD_LIBRARY_PATH | launcher-hook | PASS | Full |
 | R-11 | latency measured via literal command | benchmark-wiring (CI) | Measured; report-only (D-096) | Evidenced, not enforced (D-096) |
 | R-12 | local vs cloud identity | wire-init, wiring-e2e byte-compare (E) | PASS | Full |
@@ -200,11 +200,11 @@ Result = suite-level result for the named files (all PASS locally); Coverage per
 | R-17 | shim quoting across shells/OS | shim, merge-settings, wiring-e2e (E, space-in-HOME) | PASS | Full |
 | R-18 | `.cmd` exit/stdin | shim (win32), wiring-e2e (windows E), Q9 hook step | PASS | Full (CI) |
 | R-19 | Codex approval lost | status / launcher-status, last-hook | PASS | Full (mitigated) |
-| R-20 | detection false negative | project-state, wire (CODEX_HOME) | PASS | Partial (`codex-detect.test.js` absent) |
+| R-20 | detection false negative | project-state, wire (CODEX_HOME), codex-detect | PASS | Full (`codex-detect.test.js`, 7 tests) |
 | R-21 | pre-Node check cost | shim-superset, benchmark-wiring | PASS / CI latency report-only (D-096) | Evidenced, not enforced (D-096) |
 | R-22 | Windows trust cost | trust, trust-selfcontained, latency (win) | PASS | Evidenced, not enforced (D-096; win latency report-only) |
 | R-23 | macOS/Windows no bundle/credential | launcher-status, project-state | PASS | Full |
-| R-24 | stable copy / prune / concurrent | install-store | PASS | Partial (`pkg-binary-copy.test.js` absent; Win rename EPERM CI-only) |
+| R-24 | stable copy / prune / concurrent | install-store, pkg-binary-copy | PASS | Full (`pkg-binary-copy.test.js`, 2 tests; Win rename EPERM CI-only) |
 | R-25 | Windows MCP argv re-escaped | Q9 job (D-034/D-047), docs-grep | Q9 primary FAIL as designed; fallback PASS | Full (CI) |
 | R-26 | CI matrix emulates vs literal | wiring-e2e 3 OS x 2 Node | PASS (CI) | Full |
 | R-27 | .gitignore not edited | init, install-store | PASS | Full |
@@ -244,7 +244,7 @@ Result = suite-level result for the named files (all PASS locally); Coverage per
 
 ## Gaps
 1. AC-06 / R-11 / R-21 / R-22: resolved by D-096 (human): latency job report-only; evidenced, not enforced against the D-094 figures.
-2. Four rework-set test files named in the test plan are absent: `mcp-stdio-spawn`, `init-preflight`, `codex-detect`, `pkg-binary-copy` (run-hook-client prints "not present yet, skipped"). Equivalent assertions found in `launcher-hook` (D-077 signal/exit), `install-store`/`wire`/`shim-entry` (D-082), `codex-install`/`wire`/`wiring-e2e` (CODEX_HOME), `install-store`/`resolve-runtime` (D-078 npx-cache removal, BinaryPackageMissing). A dedicated D-078 "init, delete npx cache, literal hook command still stores an event" assembled test was not located; `resolve-runtime.test.js:164` covers the resolver half only.
+2. Resolved at 7628b623: the four plan-named files `mcp-stdio-spawn` (4), `init-preflight` (3), `codex-detect` (7) and `pkg-binary-copy` (2) exist and pass. `pkg-binary-copy.test.js` is the D-078 assembled test (init, delete npx cache, literal hook command still stores an event). Unit/package totals above were measured at 0139b312 and exclude these 16 tests.
 3. Q9 workflow concludes red by design; no stable green gate.
 4. R-39 per-harness display: not observable. R-38: no live-Claude verification (stated residual). Windows trust/ACL and rename-over-open: CI-only. Release-notes OpenCode statement (AC-11) manual.
 5. `ci.yml` has not run for this branch (PR-only trigger).
