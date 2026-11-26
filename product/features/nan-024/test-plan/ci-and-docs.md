@@ -10,3 +10,21 @@ Risks: R-26, R-11, R-13, R-16, R-35, R-02, R-25, AC-06/07/08/11/12. Files: `test
 - Headless negative case: see OVERVIEW (D-053); `headless-smoke.test.js` fails when the variable is removed.
 - NFR-04: `check-test-count.js` compares per-file test counts for touched suites vs baseline; any decrease fails. Orphan audit (`--set audit`) passes with new files and new set; `npm test` includes `wiring-e2e`.
 - Windows/macOS evidence is CI-only: Stage 3c report cites job run IDs, not local results.
+
+## Rework (D-083, D-077, D-078, D-079, OQ resolutions)
+### AC-11 grep rule test (`test/docs-grep.test.js`, expands the Docs grep bullet above)
+Rule (from ARCHITECTURE "Reference configs and docs"): over `README.md` and `.gemini/settings.json`, FAIL on any match of `(?<!\.unimatrix/bin/)(?<![\w.-])unimatrix(-server)?["']?\s+hook\b` and on any line containing both `LD_LIBRARY_PATH=` and `hook`. The test uses the rule as a regex under test with a fixtures table in `test/fixtures/docs-grep/`:
+- Negative fixtures (MUST fail the rule): `unimatrix hook Stop`, `unimatrix-server hook`, `"unimatrix" hook`, `'unimatrix' hook`, `/usr/bin/unimatrix hook`, `LD_LIBRARY_PATH=/x unimatrix hook`, `LD_LIBRARY_PATH=/x \` + `hook` on one line, line-start `unimatrix   hook`.
+- Positive fixtures (MUST pass): `"$HOME/.unimatrix/bin/unimatrix" hook BeforeTool --provider gemini-cli`, `~/.unimatrix/bin/unimatrix hook Stop`, `"C:/Users/x/.unimatrix/bin/unimatrix.cmd" hook E`, `the launcher's `hook` verb`, `npx unimatrix mcp-stdio`, `unimatrix.cmd" hook`.
+- Real-file run: the rule passes on the real README and `.gemini/settings.json`; `.gemini/settings.json` parses as JSON, has exactly four hook commands (`BeforeTool`, `AfterTool`, `SessionStart`, `SessionEnd`), each equal to the D-083 string, no `_comment` key; README lines ~252/254/280 contain the D-083 replacement wording (match on the phrase "launcher's `hook` verb").
+- Guard: the test asserts the rule does not narrow AC-11 by also running the plain AC-11 check (no `isUnimatrixCommand` match of Rust-form L1/L2 arms in those files); `isUnimatrixCommand` is NOT used as the AC check (shim form is owned).
+- Docs state PowerShell is unsupported as hook shell (D-041): grep README or `docs/` for a line containing both `PowerShell` and `unsupported`; absent -> fail. Also states Windows users substitute the absolute `unimatrix.cmd` path.
+- OQ-6 audit script treats this rule as its Rust-hook detector; exempt list unchanged (D-058, D-074 now fixed, D-075).
+
+### CI/test-infra decisions (resolved)
+- `wiring-e2e` files run ONLY in the `wiring-e2e` set/job (not double-run in `package`); `package` set audit claims exclusion explicitly; orphan audit asserts each file claimed by exactly one set.
+- Test-count baseline: `test/fixtures/test-counts.json` + `test/check-test-count.js` diff script (per-file counts, fails on decrease; baseline updated only in a commit that states why).
+- New CI jobs (`wiring-e2e`, `latency-gate`) land NON-required; `ci-config.test.js` asserts jobs exist and are not `continue-on-error`; promotion to required is a post-green-grid follow-up (not asserted as required in this PR).
+
+### New assembled tests registered in `wiring-e2e`
+`shim-superset.test.js` (D-079), `mcp-stdio-spawn.test.js` (D-077), `init-preflight.test.js` (D-082), `codex-detect.test.js` (D-081), `pkg-binary-copy.test.js` (D-078, linux). Add to the explicit list in `run-hook-client.js`.

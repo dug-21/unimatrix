@@ -25,3 +25,15 @@ Wave plan: in OVERVIEW.md.
 ## Knowledge Stewardship
 - Queried: mcp__unimatrix__context_briefing, context_search (pattern: hook client shim wiring; decision: nan-024), context_get on ADR-001..006 -- ADRs consulted and applied; nan-023 patterns #5770 (mapToCanonical for --provider) and #5774 (codex-install fail-safe legs) respected.
 - Deviations from established patterns: none (ADR deviations flagged above as open questions, not applied silently).
+
+## Rework (agent nan-024-agent-1-pseudocode-rework)
+
+Unimatrix entries consulted: #5896 (ADR-001), #5897 (ADR-003), #5899 (ADR-004), #5898 (ADR-005), #5890 (ADR-002), #5894 (ADR-006) via DECISIONS.md/ARCHITECTURE.md/ADR-INDEX.md; briefing for nan-024 (#3611, #3612 stale-surface lessons applied: every signature change propagated to all files).
+
+Files changed (pseudocode/): OVERVIEW.md, shim.md, shim-entry.md, install-store.md, trust.md, resolve-runtime.md, project-state.md, launcher.md, hook-client.md, merge-settings.md, wire-init.md, codex-install.md, ci-and-docs.md.
+Applied: D-077 (launcher mcp-stdio spawn, exit code + signal mirrored, no stdout before spawn); D-078 (install-store copies Linux platform binary package into pkg/<version>/node_modules; size in 3c); D-079 (pre-check-only clauses; Node predicate unchanged; superset test specified in shim.md); D-080 (allowSelf/home/{env,home} accepted; effectiveEnv isolated and flagged PENDING H1 with call sites and removal recipe); D-081 (detectsCodex, codexHome, $CODEX_HOME destinations; DEFAULT flagged cases); D-082 (NodeNotRecordableError for init; separate path-exists preflight for wire/upgrade); D-083 (architect forms and AC-11 grep verbatim); ADR-002 trust bootstrap marked PENDING H1 in shim-entry, install-store, trust; ci-and-docs split Part B -> uni-js-dev, Parts A/C -> CI/docs agent, wave plan updated.
+
+Remaining open: pending H1 (trust bootstrap; effectiveEnv); DEFAULT flagged (relative/invalid CODEX_HOME; Codex MCP follows hooks detection, opt-in gate dropped); OQ-3 (zero-deps/size checks vs project-state require); R-38 key spelling; symlinked redirect refusal vs #1025; Windows pre-check junction residual; Gemini Windows shell semantics.
+
+## Knowledge Stewardship (rework)
+- Queried: mcp__unimatrix__context_briefing -- ADRs and stale-surface lessons; deviations from established patterns: none.

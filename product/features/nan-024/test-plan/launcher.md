@@ -13,3 +13,17 @@ Spawn the written MCP argv, send `initialize`: first stdout byte is `{`; from su
 
 ## status (FR-12g, R-19, R-32, R-33, R-40)
 Always exit 0 even when all checks fail; no network, no writes (fixture mtime snapshot). Text output field order exact; `--json` schema keys exact. Cases: `project: none (...)`; each leftover project file -> one `legacy:` line in order `.mcp.json`, `.codex/config.toml`, `opencode.json`, `legacyProjectMcp` same order, none after re-init; `installed: no (missing credential)`; `trust: FAIL <path>`; `mcp node: MISSING <path>` on Windows fallback entry with deleted node; Codex wired never fired -> approval step printed; with `last-hook.json` entry -> time; corrupt `last-hook.json` -> "unknown", no crash. Clone of initialised fixture: no tracked Unimatrix MCP entry; status says not attached + `npx unimatrix init`.
+
+## Rework (D-077): mcp-stdio process model (R-07)
+Local (Linux) `mcp-stdio` = spawn Rust with `stdio:'inherit'`, mirror exit code AND signal. Tests (stub binary = `process.execPath` script, POSIX; Windows row uses the D-047 fallback form, see below):
+- Zero Node stdout bytes before spawn: spawn the written MCP argv via real `child_process.spawn`, capture stdout; first byte is the stub's first byte, and a stub that writes nothing yields empty stdout (Node wrote none). Also stderr contains no banner on success.
+- Inherited stdio: stub echoes stdin line to stdout; bytes round-trip unchanged (large 1 MiB payload, no deadlock); stub's `process.stdin.isTTY`/fd identity equals parent's pipes (no extra buffering layer): assert via `fs.fstatSync(0)` ino equality with the harness-supplied pipe when exposed, else round-trip only.
+- Exit code mirrored: stub exits 0, 1, 7, 42 -> launcher exits identically.
+- Signal mirrored: stub kills itself with SIGTERM / SIGKILL (POSIX) -> launcher terminates with the same signal (parent observes `signal` set, not an exit code); harness sends SIGTERM/SIGINT to launcher -> forwarded to child, child gets it once, launcher exits after child (no orphan: pgrep child pid gone within 2 s). Documented 128+n fallback asserted if the pseudocode specifies it.
+- Spawn failure (ENOENT/EACCES binary) -> exit 1, one stderr line naming the path, stdout empty.
+- No-exec equivalence: process trace shows exactly one Node and one stub process alive during the session (launcher stays as the parent; documented per D-077); this is not a failure.
+- Windows MCP fallback entry written form `{command:<node>, args:[shim-entry.js,'mcp-stdio']}` executed by `spawn` on every OS using stub node paths: initialize round-trip works through shim-entry -> launcher -> (cloud) mcp-bridge stub.
+
+## Rework: status additions
+- `status` reports Linux install with platform binary missing from `pkg/<version>/node_modules` (D-078) as `binary: MISSING <path>`; exit 0.
+- effectiveEnv-dependent launcher tests (if any) are SEPARABLE under H1 (see resolve-runtime.md).

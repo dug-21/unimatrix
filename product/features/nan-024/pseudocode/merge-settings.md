@@ -23,7 +23,7 @@ buildShimCommand(event, provider, platform, home) -> string
      base = `'${shim}' hook ${event}`
   return provider ? base + " --provider " + provider : base       // Codex passes "codex-cli"
 ```
-`UnsafeShimPathError` imported from `./install-store.js`. Claude never passes a provider. The string depends only on `home` + event + provider (byte-fixed, D-028).
+`home` parameter is accepted as additive (D-080). `UnsafeShimPathError` imported from `./install-store.js`. Claude never passes a provider. The string depends only on `home` + event + provider (byte-fixed, D-028).
 
 ### mergeSettings(filePath, commandSource, options) — now targets settings.local.json
 ```

@@ -38,7 +38,7 @@ async function run(args, ctx):                      // args = ["hook", EVENT, ..
   if !d.installed:
      if platform == "linux": stderr("unimatrix: not attached on this machine; run 'npx unimatrix init'")   // exactly one line
      return                                          // exit 0
-  try rt = resolveRuntime({env: effectiveEnv(env, process.cwd(), home), home, platform, transport: d.transport})
+  try rt = resolveRuntime({env: effectiveEnv(env, process.cwd(), home) /* PENDING H1: else `env` */, home, platform, transport: d.transport})
   catch RuntimeResolutionError e: stderr(e.message); exitCode = 1; return     // Linux local + unresolvable binary lands here (Broken)
   try client = require(join(rt.clientRoot, "lib", "hook-client", "index.js"))
   catch e: stderr(`unimatrix: cannot load hook client at ${rt.clientRoot}: ${e.message}`); exitCode = 1; return
@@ -56,13 +56,24 @@ async function runMcpStdio(args, ctx):                // R-07: no stdout bytes b
   if !d.installed: stderr("unimatrix: not attached on this machine; run 'npx unimatrix init'"); exitCode = 1; return    // D-043, every OS
   try rt = resolveRuntime({... transport: d.transport}) catch -> stderr, exit 1
   if d.transport == "cloud":
-     require(join(rt.clientRoot,"lib","hook-client","mcp-bridge.js")).main(["node","mcp-bridge", project.hash], {env: effectiveEnv(env, cwd, home)})
+     require(join(rt.clientRoot,"lib","hook-client","mcp-bridge.js")).main(["node","mcp-bridge", project.hash], {env: effectiveEnv(env, cwd, home) /* PENDING H1: else `env` */})
      return                                           // bridge owns stdio loop and exits
-  // local (Linux): Node cannot exec; spawn with inherited stdio, mirror code and signals
-  child = spawn(rt.binary, [], {stdio:"inherit", env: {...env, LD_LIBRARY_PATH: dirname(rt.binary) + (existing ? ":"+existing : "")}})
-  child.on("exit", (code, sig) => process.exitCode = code ?? 1 ; if sig: process.kill(process.pid, sig))
-  child.on("error", e => { stderr(...); exitCode = 1 })
-  forward SIGINT/SIGTERM to child
+  // local (Linux) (D-077): Node has no exec. Spawn the Rust binary with INHERITED stdio and mirror exit code AND signal.
+  // ADR-004's "exec" is satisfied by this semantic; no ADR change. Nothing is written to stdout before the spawn (R-07);
+  // the only pre-spawn output allowed is stderr on failure.
+  childEnv = {...env, LD_LIBRARY_PATH: dirname(rt.binary) + (env.LD_LIBRARY_PATH ? ":"+env.LD_LIBRARY_PATH : "")}
+  child = spawn(rt.binary, [], {stdio: "inherit", env: childEnv})            // no shell, no args (matches args: [] of the old entry)
+  forward = sig => { try child.kill(sig) catch {} }
+  for sig in ["SIGINT","SIGTERM","SIGHUP"]: process.on(sig, () => forward(sig))   // parent never dies first; the child decides
+  child.on("error", e => { stderr("unimatrix: cannot start " + rt.binary + ": " + e.message); process.exitCode = 1 })   // ENOENT/EACCES
+  child.on("exit", (code, sig) => {
+     if sig != null:                                  // child killed by signal: re-raise the SAME signal on ourselves after removing our handlers,
+        for s in ["SIGINT","SIGTERM","SIGHUP"]: process.removeAllListeners(s)   // so our own exit status shows the signal (shell sees 128+n / WIFSIGNALED)
+        process.kill(process.pid, sig)
+        process.exitCode = 128 + signalNumber(sig)    // only reached if the signal is ignored/uncatchable on re-raise
+     else process.exitCode = code                     // mirrored exactly (never remapped, never 2 added by us)
+  })
+  return new Promise(resolve => child.on("close", resolve))   // keep the in-process caller alive until the child is done
 ```
 Rust stdio server is started with no args (matches existing `writeMcpJson` entry `args: []`). Project cwd identification for the Rust server is by its cwd (unchanged).
 
@@ -79,9 +90,9 @@ function collect():
     for file in order: if projectFileHasOwnedMcp(root, file) legacy.push(file)       // uses hook-ownership.isUnimatrixMcpEntry; toml via codex-install.readTomlTable body->entry; parse failures -> not listed
   d = project ? isInstalled(project, platform, {env, home}) : {installed:false, transport:null, reason: project ? ... : "no install.json"}
   trust = try checkTrust(trustSet(...)) -> {ok:true} catch TrustError e -> {ok:false, path:e.path, reason:e.reason}     // for win32 per-event path; informational
-  mcpNode = platform=="win32": find owned D-047 fallback entry in ~/.claude.json projects[root].mcpServers.unimatrix or ~/.codex/config.toml; present -> exists(command) ? {status:"ok",path} : {status:"missing",path}; none -> {status:"n/a",path:null}.  non-win32 -> "n/a"
+  mcpNode = platform=="win32": find owned D-047 fallback entry in ~/.claude.json projects[root].mcpServers.unimatrix or <codexHome>/config.toml; present -> exists(command) ? {status:"ok",path} : {status:"missing",path}; none -> {status:"n/a",path:null}.  non-win32 -> "n/a"
   hooks["claude-code"].wired = any owned command in <root>/.claude/settings.local.json (also checks isUnimatrixCommand); lastFired = read last-hook.json[provider] (corrupt/missing -> null; corrupt reported as "unknown")
-  hooks["codex-cli"].wired  = any owned command in ~/.codex/hooks.json ; lastFired from last-hook.json["codex-cli"]
+  hooks["codex-cli"].wired  = any owned command in <codexHome>/hooks.json (codexHome(env, home) from codex-install.js, D-081; default ~/.codex) ; lastFired from last-hook.json["codex-cli"]
 ```
 Text order (exact keys): `project:`, zero or more `legacy: <file> has a Unimatrix MCP entry; re-run 'npx unimatrix init' to migrate`, `installed: yes|no[ (reason)]`, `transport: local|cloud|none`, `trust: ok|FAIL <path>: <reason>`, `mcp node: ok|n/a|MISSING <path>; run 'npx unimatrix init'`, `hook claude-code: wired, last fired <ISO>|wired, never fired|not wired`, `hook codex-cli: ...` followed (only for `wired, never fired`) by a line with the Codex `/hooks` approval step (same text as init prints: `codexApprovalStep()` exported from codex-install.js, no approval key named). `project:` when null: `none (this machine has no Unimatrix store or credential for <root>; run 'npx unimatrix init' to attach)`. `installed:` reason `missing credential` (macOS/Windows) or `no install.json`. JSON shape per brief. Never reads Codex trust hashes.
 
@@ -95,4 +106,5 @@ Every thrown error is caught at the route boundary: stderr line, `process.exitCo
 - Exit matrix {not project, cloned repo, mac/Win no credential, Linux store no install, Linux installed no binary, trust failure, invalid redirect, client throw sync/async, connection error} x {hook, mcp-stdio} x OS (mock platform).
 - `unimatrix hook E` legacy L1 route with stub Rust binary: Node client executed, stub never exec'd (AC-03). Pass-through regression: `serve`/`version` still exec Rust with `LD_LIBRARY_PATH` on Linux (SR-12); override matrix (AC-14).
 - `status`: cloned repo -> `project: none (...)`; leftover legacy entries in each project file -> `legacy:` lines in order and `legacyProjectMcp`; Codex wired-never-fired prints approval step; stale Windows fallback node -> `mcp node: MISSING`; always exit 0 even with everything broken; corrupt `last-hook.json` does not crash.
+- `mcp-stdio` local (D-077): stub Rust binary exiting with code N -> launcher exits N; stub killed by SIGTERM/SIGKILL (self-signal) -> launcher process terminates by that same signal (assert via a parent harness: `signal` field in `child_process` result); SIGINT sent to the launcher reaches the stub; stdout bytes captured by a pipe before the stub writes its first byte = 0 (no Node stdout bytes before spawn); spawn ENOENT -> stderr + exit 1.
 - `mcp-stdio`: first stdout byte is JSON-RPC `{` from the child; nothing written before; outside project exit 0 empty output, zero network; headless env + cwd outside root -> exit 0 silent.

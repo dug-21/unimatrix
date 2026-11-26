@@ -1,6 +1,6 @@
 # nan-024 Test Strategy Overview
 
-Feature: Every harness on the Node client, portable wiring (GH #1023). Source: RISK-TEST-STRATEGY.md rev 6, ACCEPTANCE-MAP.md, DECISIONS.md D-001..D-075 (later wins; D-072 = Windows MCP is the D-047 fallback form; D-073 = Codex passes the hook string raw to `cmd.exe /C`).
+Feature: Every harness on the Node client, portable wiring (GH #1023). Source: RISK-TEST-STRATEGY.md rev 6, ACCEPTANCE-MAP.md, DECISIONS.md D-001..D-083 (later wins; D-077..D-083 are the rework set; D-072 = Windows MCP is the D-047 fallback form; D-073 = Codex passes the hook string raw to `cmd.exe /C`).
 ADRs consulted (binding): ADR-001..ADR-006 (#5889, #5892, #5893, #5891, #5894, plus #5888/#5875/#5887/#5886/#5878/#5882 via ADR-INDEX).
 
 ## Strategy
@@ -16,7 +16,7 @@ Fixture rule (NFR-05): every test builds its own `HOME`/`USERPROFILE`/`XDG_*` te
 ## Test-infra registration (lessons #5790, #5781, #4779)
 
 - All new suites are `.test.js` at top level of `test/` (auto-claimed by `package` set, non-recursive) or in `test/hook-client/` (default set). No new subdirectory (would be an orphan).
-- **Windows gap**: `--set package` and `opencode-plugin` exit 0 on win32 by design. Windows coverage therefore needs a NEW explicit file-list set `wiring-e2e` in `test/run-hook-client.js` (serial, cross-platform, no Unix-shape fakes: stubs are `process.execPath` scripts). Files in `wiring-e2e` are listed explicitly and ALSO excluded/claimed in `package` so they are not double-run on ubuntu/macOS (or run there too, decision in open question 1). Audit set updated so every new file is claimed by exactly one set; `npm test` script and `test:wiring-e2e` script added.
+- **Windows gap**: `--set package` and `opencode-plugin` exit 0 on win32 by design. Windows coverage therefore needs a NEW explicit file-list set `wiring-e2e` in `test/run-hook-client.js` (serial, cross-platform, no Unix-shape fakes: stubs are `process.execPath` scripts). Files in `wiring-e2e` are listed explicitly and ALSO excluded/claimed in `package` so they are not double-run on ubuntu/macOS (resolved: exclusive). Audit set updated so every new file is claimed by exactly one set; `npm test` script and `test:wiring-e2e` script added.
 - POSIX-only cases (sh shim, UDS, umask, mode bits, symlinks) carry `process.platform === 'win32'` skip-guards; `.cmd`/icacls cases carry `!== 'win32'` skip-guards with a visible skip reason. Byte-compare/fixture suites stay unguarded.
 - macOS traps (#5784): resolve coreutils by PATH, no `realpath -m`, UDS path <104B (use short `os.tmpdir()` roots), `/tmp` symlink to `/private/tmp` (realpath fixtures).
 - async `spawn`, never `spawnSync`, when a stub server runs in-process (#4774). Explicit `node:test` imports.
@@ -76,9 +76,34 @@ infra-001 drives the Rust `unimatrix-server` over MCP JSON-RPC. nan-024 changes 
 
 1. `cargo test --workspace` (hardened convention) 2. `bash product/test/infra-002/check-workspace-link-smoke.sh` 3. `cargo build --release` + infra-001 smoke + suites above 4. `npm test` in `packages/unimatrix` (all sets incl. `wiring-e2e`, `audit`) 5. read CI results for the Windows/macOS/latency jobs (cannot be run locally: report as CI-evidence, not local PASS).
 
-## Open questions
+## Rework (D-077..D-083)
 
-1. Should `wiring-e2e` files also run in `package` on ubuntu/macOS (double-run) or be solely in `wiring-e2e` (preferred; exclusion documented in audit)?
-2. Where does the test-count baseline live (fixtures JSON vs git-diff step in CI)? Plan assumes script + fixtures JSON.
-3. R-38: "key Claude Code uses" cannot be verified against a real Claude in CI; plan asserts documented normalisation plus compare against a key fixture captured from a real `~/.claude.json`.
-4. Latency job flakiness: land non-required for one green grid, then promote (per #5790).
+### Added risk/AC mapping
+| Decision | Risk / AC | Tests | Component plan |
+|---|---|---|---|
+| D-077 mcp-stdio spawn, inherited stdio, exit code + signal mirrored, zero Node stdout bytes pre-spawn | R-07, R-39, AC-07 | `mcp-stdio-spawn.test.js` | launcher, shim-entry |
+| D-078 platform binary in `pkg/<version>/node_modules`; resolver independent of npx cache | R-05, R-24, R-09, AC-10 | `pkg-binary-copy.test.js` (linux), size measurement | install-store, resolve-runtime |
+| D-079 pre-Node clause (d) + loosened headless; MANDATORY superset test (verdict != null => Node started); Node D-052-strict | R-28, R-29, R-34, R-21, AC-06 | `shim-superset.test.js` (fixture matrix + seeded property) | shim, shim-entry, project-state |
+| D-080 `allowSelf`, `buildShimCommand` home (space round trip), `isInstalled {env, home}` | R-17, R-03, R-23, AC-04 | resolve-runtime, merge-settings, project-state additions | per file |
+| D-081 Codex detection matrix + `$CODEX_HOME` destinations; invalid CODEX_HOME ignore+warn (flagged default) | R-19, R-20, R-02, AC-04/13 | `codex-detect.test.js` | codex-install, wire-init |
+| D-082 init exit 1 if node unrecorded; wire/upgrade preflight | R-09, R-24, R-08 | `init-preflight.test.js` | install-store, wire-init |
+| D-083 AC-11 grep rule + PowerShell statement | R-16, R-25, AC-11 | `docs-grep.test.js` positive/negative fixtures | ci-and-docs |
+
+### Pending human decision H1: separable test sections
+Marked `SEPARABLE` in component files; delete cleanly if H1 drops the feature: (1) `effectiveEnv` (resolve-runtime.md, project-state.md, launcher.md); (2) trust bootstrap via sibling `trust.js` (shim-entry.md, trust.md). Nothing outside those subsections depends on them. Flagged default (not H1): invalid/relative `$CODEX_HOME` -> ignore + warn (codex-install.md).
+
+### Stage 3c additions
+- Measure `pkg/<version>` size and the platform-binary subtree on Linux (`test/measure-pkg-size.js`); RISK-COVERAGE-REPORT must carry a "D-078 package size" row with the numbers and whether install time/disk is acceptable (no pass/fail threshold set in 3a).
+- RISK-COVERAGE-REPORT must list the superset-test fixture count and the seed used, and cite CI run IDs for Windows/macOS/latency jobs.
+
+### Resolved earlier open questions
+1. `wiring-e2e` files run only in their own set/job (no double-run in `package`; audit claims each file once).
+2. Test-count baseline: `test/fixtures/test-counts.json` + `test/check-test-count.js` diff script.
+3. R-38 key normalisation: still verified against a captured fixture, not a live Claude (residual, stated in the report).
+4. New CI jobs (`wiring-e2e`, `latency-gate`) land non-required until the full grid is green once, then promoted.
+
+## Open questions
+1. H1 outcome (effectiveEnv, trust bootstrap) determines whether the SEPARABLE sections stay.
+2. Invalid `$CODEX_HOME` policy (ignore + warn assumed) needs confirmation.
+3. D-078 package size acceptance threshold: none set; decided after the Stage 3c measurement.
+4. Signal-mirroring semantics for Windows (no POSIX signals) rely on pseudocode; confirm 128+n vs exit-code-only after reading pseudocode/OVERVIEW.

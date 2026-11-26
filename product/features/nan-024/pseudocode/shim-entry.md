@@ -3,6 +3,12 @@
 ## Purpose
 Version-independent entry run by the shim (and by the Windows D-047 MCP fallback: `<node> <home>/.unimatrix/bin/shim-entry.js mcp-stdio`). Order (ADR-002/004): inline project predicate -> trust check -> inline installed decision -> read `install.json` -> `require(<packageRoot>/bin/unimatrix.js).run(args, {preflight})` in-process. One Node process per event.
 
+## Node predicate is unchanged (D-079, D-052)
+The inline `isUnimatrixProject` here has NO ancestor-`.git` clause and NO loosened headless clause; those exist only in the shell pre-check (shim.md). The superset test (shim.md) asserts pre-check ⊇ this predicate.
+
+## PENDING H1 — trust bootstrap (ADR-002)
+The sibling `~/.unimatrix/bin/trust.js` copy below is the pseudocode's resolution of the trust-bootstrap problem (trust code lives in the package it vets). It is PENDING a human decision (H1). Kept as written. If H1 changes it, the only affected lines are the two marked `PENDING H1` in `run` (the `require("./trust.js")` load) and the matching copy step in install-store.md; the order of checks is unchanged.
+
 ## Constraints
 - Only Node builtins. No `require` of package code before trust passes. Trust code is loaded from the sibling `./trust.js` (copied by install-store); everything else comes from `packageRoot` after the check.
 - Installed layout: `~/.unimatrix/bin/shim-entry.js`; home dir = `path.resolve(__dirname, "..", "..")`, uhome = `path.resolve(__dirname, "..")`. HOME for predicate = `os.homedir()` (tests override via env HOME/USERPROFILE).
@@ -18,7 +24,7 @@ function run(args):                       // args = e.g. ["hook","SessionStart"]
   if project == null: return                                    // exit 0 silent, BEFORE trust/require (R-06); process.exitCode untouched
   inst = readInstallJsonRaw(uh)                                 // may be null; no validation beyond JSON shape
   try:
-     trust = require("./trust.js")
+     trust = require("./trust.js")          // PENDING H1: sibling copy (ADR-002 trust bootstrap)
      trust.checkTrust(trust.trustSet(home, {installJson: inst}), platform, {home})
   catch e (TrustError or require failure): stderr(e.message); process.exitCode = 1; return
   d = installedDecision(project, platform, env, home, inst)     // inline: {installed, transport, reason}
@@ -35,7 +41,7 @@ function run(args):                       // args = e.g. ["hook","SessionStart"]
      .catch(e => { stderr("unimatrix: " + e.message); process.exitCode = 1 })
   // no process.exit(): let the event loop drain (R-04)
 ```
-`installedDecision` is the exact `isInstalled` logic of project-state.md, using `inst` shape validity (`version`, `packageRoot`, `node` strings; `fs.existsSync(packageRoot)`) instead of requiring package code.
+`installedDecision(project, platform, env, home, inst)` mirrors the accepted `isInstalled(project, platform, {env, home})` signature (D-080) and is the exact logic of project-state.md, using `inst` shape validity (`version`, `packageRoot`, `node` strings; `fs.existsSync(packageRoot)`) instead of requiring package code.
 
 Redirect override: shim-entry always loads the INSTALLED launcher; if `redirect.client` is set the launcher's `run` resolves the client via `resolveRuntime` (so the redirect client governs hook execution, not the launcher itself). The redirect file is in the trust set (via `trustSet`).
 
@@ -46,4 +52,5 @@ Any failure before the launcher: stderr + exit 1 (inside a project). Outside a p
 - Parity table vs `lib/project-state.js` and `config.js` hash, importing the built `shim-entry.js` copy.
 - `require` trace: outside a project with every trust input broken -> no package module loaded.
 - Inside project: group-writable install.json -> exit 1, stderr names path; `packageRoot` deleted -> exit 1; Linux store without install -> exit 0 + one stderr line; macOS/Windows w/o credential -> exit 0 silent; `mcp-stdio` not installed -> exit 1 with hint, empty stdout.
+- Superset: the pre-check (shim.md) is a lossless superset of THIS inline predicate over the shared fixture table (D-079); this copy has no clause (d).
 - Same event via `node hook-client/index.js E`, `bin/unimatrix.js hook E`, literal shim command stores an identical record (R-04).

@@ -6,31 +6,32 @@ Hook config points at the user-level shim by its absolute resolved path (D-027).
 ## Component Breakdown
 | Component | File | Responsibility | ADR |
 |---|---|---|---|
-| Shim script | `lib/shim/unimatrix.sh`, `lib/shim/unimatrix.cmd` -> `~/.unimatrix/bin/unimatrix[.cmd]` | Recorded node -> PATH node -> loud hint; optional pre-Node check; exec `shim-entry.js` | 001, 005 |
+| Shim script | `lib/shim/unimatrix.sh`, `lib/shim/unimatrix.cmd` -> `~/.unimatrix/bin/unimatrix[.cmd]` | Recorded node -> PATH node -> loud hint; optional pre-Node check (ADR-005: root marker, headless env, ancestor `.git` file); exec `shim-entry.js` | 001, 005 |
 | Shim entry | `lib/shim-entry.js` -> `~/.unimatrix/bin/shim-entry.js` | Project predicate, trust check, read `install.json`, require launcher in-process | 001, 002, 004 |
-| Stable copy | `lib/install-store.js` (new) | `pkg/<version>/`, atomic `install.json` swap, prune, record node path, write `root` markers | 001, 005 |
+| Stable copy | `lib/install-store.js` (new) | `pkg/<version>/` (Linux: incl. platform binary package in `node_modules/`, D-078), atomic `install.json` swap, prune, record node path (init exits 1 if it cannot, D-082), write `root` markers | 001, 005 |
 | Runtime resolver | `lib/resolve-runtime.js` (new) | Client: redirect > install. Binary (local only): env > redirect > install | 002 |
 | Trust check | `lib/trust.js` (new) | POSIX uid/mode per event; Windows full ACL at init + identity compare per event | 002 |
 | Project state | `lib/project-state.js` (new) | `isUnimatrixProject` (D-045), `isInstalled`, transport | 004 |
-| Launcher | `bin/unimatrix.js` | Routes `hook`, `mcp-stdio` (new), `status` (new), init/wire/mcp-bridge; pass-through (Linux) | 004 |
+| Launcher | `bin/unimatrix.js` | Routes `hook`, `mcp-stdio` (new; local = spawn Rust with inherited stdio, mirror exit code/signal, this is ADR-004's "exec", D-077), `status` (new), init/wire/mcp-bridge; pass-through (Linux) | 004 |
 | Ownership predicate | `lib/hook-ownership.js` (new) | Single owned-command test; table of forms | 003 |
 | Settings merge | `lib/merge-settings.js` | Shim-form hooks to `settings.local.json`; cross-scope removal | 003 |
 | Wire/init | `lib/wire.js`, `lib/init.js` | Install shim + store; dry-run lists user-level edits; gitignore warning; print Codex approval step | 001, 003 |
-| Codex writer | `lib/codex-install.js` | Hooks to `~/.codex/hooks.json`; project-scope removal; MCP | 001, 003 |
+| Codex writer | `lib/codex-install.js` | Hooks to `$CODEX_HOME/hooks.json` (default `~/.codex`) when Codex is detected (D-081); project-scope removal; MCP to `$CODEX_HOME/config.toml` | 001, 003 |
 | OpenCode | `lib/opencode-install.js` | Provisioning removed from init; MCP only | 006 |
 | Hook client | `lib/hook-client/index.js` (canonical: `packages/unimatrix/lib/hook-client/index.js`; bare `hook-client/index.js` in ADR-001/003 is the suffix matched in legacy commands) | Export `main(argv)`; guard auto-run; write `last-hook.json` | 004 |
 
 ## Component Interactions
-1. `init`/`wire` -> `install-store` copies package, records node path, writes shim + `shim-entry.js` + `install.json` + `~/.unimatrix/<hash>/root` with explicit modes/ACLs (Windows: full ACL check, write `trust.json`) -> `buildShimCommand(event, provider?, platform)` -> `mergeSettings` removes all `isUnimatrixCommand` entries across managed scopes, inserts one per event in the destination (D-026).
+1. `init`/`wire` -> `install-store` copies package, records node path, writes shim + `shim-entry.js` + `install.json` + `~/.unimatrix/<hash>/root` with explicit modes/ACLs (Windows: full ACL check, write `trust.json`) -> `buildShimCommand(event, provider?, platform, home)` -> `mergeSettings` removes all `isUnimatrixCommand` entries across managed scopes, inserts one per event in the destination (D-026).
 2. Harness -> shell runs `'<abs>/.unimatrix/bin/unimatrix' hook E` (Windows `"<abs>/.unimatrix/bin/unimatrix.cmd" hook E`) -> shim -> [pre-Node check if enabled] -> node `shim-entry.js` -> `isUnimatrixProject` (null: exit 0 silent) -> trust check -> `isInstalled` -> `resolveRuntime` -> launcher `hook` -> `client.main(argv)` over UDS or HTTPS -> `last-hook.json`.
 3. Exits: ADR-004 table.
 
 ## Integration Surface
 | Point | Signature / shape | Source |
 |---|---|---|
+| Pre-Node check (shim) | Filter only, builtins only; starts Node on: (a) headless env set and `UNIMATRIX_PROJECT_ROOT` non-empty (no containment test), (b) cwd equal/inside a `root` marker, (c) store dir without `root`, (d) ancestor `.git` regular file (worktrees). Else exit 0. Must be a lossless superset of `isUnimatrixProject`; superset proof test required (D-079). Node's predicate is unchanged (D-052) | `lib/shim/unimatrix.sh`/`.cmd`, ADR-005 |
 | `isUnimatrixProject` | `(cwd, env, home) -> {hash, kind: "local"\|"cloud"\|"headless"} \| null`; project iff `~/.unimatrix/<hash>/` or `~/.unimatrix/<hash>/remote.json` exists, or `UNIMATRIX_BUNDLE`/`UNIMATRIX_REMOTE_*` set with `UNIMATRIX_PROJECT_ROOT` containing cwd (D-052) | `lib/project-state.js`, inlined in `shim-entry.js` |
-| `isInstalled` | `(project, platform) -> {installed: boolean, transport: "local"\|"cloud"\|null}`. macOS/Windows: bundle or credential store entry (D-032). Linux: valid `install.json` or credential. Mode: credential/headless -> cloud; else Linux and installed -> local, unresolvable binary = Broken (exit 1) | `lib/project-state.js` |
-| `resolveRuntime` | `({env, home, platform, transport}) -> {binary: string\|null, clientRoot: string, binarySource: "env"\|"redirect"\|"install"\|null, clientSource: "redirect"\|"install"}`; throws `RuntimeResolutionError{code, source, path}` | `lib/resolve-runtime.js` |
+| `isInstalled` | `(project, platform, {env, home}) -> {installed: boolean, transport: "local"\|"cloud"\|null}`. macOS/Windows: bundle or credential store entry (D-032). Linux: valid `install.json` or credential. Mode: credential/headless -> cloud; else Linux and installed -> local, unresolvable binary = Broken (exit 1) | `lib/project-state.js` |
+| `resolveRuntime` | `({env, home, platform, transport, allowSelf?}) -> {binary: string\|null, clientRoot: string, binarySource: "env"\|"redirect"\|"install"\|null, clientSource: "redirect"\|"install"}`; throws `RuntimeResolutionError{code, source, path}`. `allowSelf` is additive and init-time only (resolve before an install exists; D-080). Not in ADR-002's signature text; ADR-002 is intentionally unchanged pending the trust-bootstrap decision. **Pending human decision (H1): `effectiveEnv(env, cwd, home)` (pseudocode extension that strips headless env outside a valid root). It is NOT part of this contract until decided.** | `lib/resolve-runtime.js` |
 | `checkTrust` | `(paths: string[], platform) -> void`; throws `TrustError{path, reason}` | `lib/trust.js` |
 | Redirect | `~/.unimatrix/redirect.json` = `{"binary"?: abs, "client"?: abs}` | ADR-002 |
 | Install pointer | `~/.unimatrix/install.json` = `{"version", "packageRoot": abs pkg/<version>, "node": abs}`; replaced by rename | ADR-001 |
@@ -38,14 +39,15 @@ Hook config points at the user-level shim by its absolute resolved path (D-027).
 | Root marker | `~/.unimatrix/<hash>/root` = project root, one line | ADR-005 |
 | Hook evidence | `~/.unimatrix/<hash>/last-hook.json` = `{"<provider>": ISO time}` | ADR-004 |
 | Env | `UNIMATRIX_BINARY` (binary only); `UNIMATRIX_PROJECT_ROOT` (required with headless env, hooks and bridge) | ADR-002, ADR-004 |
-| Hook command (Unix/macOS) | `'<abs shim>' hook <EVENT>` (+ ` --provider codex-cli`) | `buildShimCommand` in `merge-settings.js` |
+| Package copy (Linux) | `pkg/<version>/node_modules/<platform binary pkg>`; the resolver's installed-binary source (D-078) | `lib/install-store.js` |
+| Hook command (Unix/macOS) | `'<abs shim>' hook <EVENT>` (+ ` --provider codex-cli`) | `buildShimCommand(event, provider, platform, home)` in `merge-settings.js` (`home` additive, D-080) |
 | Hook command (Windows) | `"<abs shim, forward slashes>.cmd" hook <EVENT>` (+ ` --provider codex-cli`) | same |
-| MCP placement | Claude `~/.claude.json` `projects[<abs root>].mcpServers.unimatrix`; Codex `~/.codex/config.toml` `[mcp_servers.unimatrix]`; OpenCode `~/.config/opencode/opencode.json`. Owned entries removed from project `.mcp.json` / `.codex/config.toml` / `opencode.json`, foreign servers preserved (D-060) | ADR-003 |
+| MCP placement | Claude `~/.claude.json` `projects[<abs root>].mcpServers.unimatrix`; Codex `$CODEX_HOME/config.toml` `[mcp_servers.unimatrix]` (default `~/.codex`; D-081); OpenCode `~/.config/opencode/opencode.json`. Owned entries removed from project `.mcp.json` / `.codex/config.toml` / `opencode.json`, foreign servers preserved (D-060) | ADR-003 |
 | MCP ownership | `isUnimatrixMcpEntry(name, entry): boolean`; a foreign entry at a per-machine `unimatrix` key is left in place with a warning naming file and key, and no Unimatrix entry is written (D-065) | `lib/hook-ownership.js`, ADR-003 |
 | MCP (Unix/macOS) | `command: "sh", args: ["-c", "exec \"$HOME/.unimatrix/bin/unimatrix\" mcp-stdio"]` | ADR-001 |
 | MCP (Windows) | `command: "cmd", args: ["/d", "/s", "/c", "\"\"%USERPROFILE%\\.unimatrix\\bin\\unimatrix.cmd\" mcp-stdio\""]` (proven by D-034); fallback `command: <recorded node>, args: ["<abs home>/.unimatrix/bin/shim-entry.js", "mcp-stdio"]` (D-047) | ADR-001 |
 | Expansion rule | D-027 no-expansion applies to hook destinations only | ADR-001 |
-| Hook destinations | Claude `.claude/settings.local.json`; Codex `~/.codex/hooks.json` | ADR-003, D-026 |
+| Hook destinations | Claude `.claude/settings.local.json`; Codex `$CODEX_HOME/hooks.json` (default `~/.codex`), written whenever Codex is detected: project `.codex/` exists, `$CODEX_HOME` dir exists, `codex` on PATH, or `--harness codex-cli`; no XDG (D-081) | ADR-003, D-026 |
 | Launcher verbs | `hook <EVENT> [--provider p]`, `mcp-stdio`, `status`, init/wire/mcp-bridge, pass-through (Linux) | `bin/unimatrix.js` |
 | Ownership | `isUnimatrixCommand(cmd): boolean`, `OWNED_FORMS: {name, re}[]` | `lib/hook-ownership.js` |
 | Client entry | `main(argv: string[]): Promise<void>` | `lib/hook-client/index.js` |
@@ -60,6 +62,7 @@ Hook config points at the user-level shim by its absolute resolved path (D-027).
 | Re-run over committed `.mcp.json` entry | Owned entry removed, foreign servers preserved (D-060) |
 | Re-run over legacy | `isUnimatrixCommand` table; cross-scope removal (AC-05/13) |
 | Harness-fired hook | Shim -> in-process Node; ADR-004 outcomes |
+| Codex hooks without project `.codex/` | Written to `$CODEX_HOME/hooks.json` when Codex is detected (D-081) |
 | Codex in non-Unimatrix project | Silent exit 0 for hook and `mcp-stdio`; in budget (ADR-005, D-043) |
 | Codex-only project, MCP relocated | Still a project via D-045 predicate (D-044) |
 | Legacy `unimatrix hook` | Launcher `hook` route (AC-03) |
@@ -83,7 +86,11 @@ Hook config points at the user-level shim by its absolute resolved path (D-027).
 - Trust: POSIX umask 002 init passes; group-writable / foreign-owned refused. Windows: extra-writer ACE refused at init; identity mismatch triggers full recheck; matching path spawns no process.
 - `status`: wired-never-fired Codex hook prints approval step; bundle without credential reported.
 - Byte-fixed Codex string across simulated upgrade (D-028).
-- Pre-Node check never silences a D-045 project (lossless) when enabled.
+- Pre-Node check superset proof (D-079): fixture matrix {local, remote.json, headless valid/without root/outside root, worktree cwd, nested subdir, prefix sibling, legacy store without `root`, none} against the real shim with a stub node; `isUnimatrixProject != null` implies Node started.
+- Preflight (D-082): `wire` and upgrade-without-re-record exit 1 on a missing recorded node; init exits 1 if node cannot be recorded.
+- Codex detection (D-081): each trigger writes `$CODEX_HOME/hooks.json`; none -> not written; custom `$CODEX_HOME` honoured.
+- `mcp-stdio` local (D-077): exit code and signal mirrored; no Node stdout bytes before spawn (R-07).
+- Linux install: `pkg/<version>/node_modules` contains the platform binary; resolver works after the npx cache is removed (D-078).
 - Latency: ADR-005.
 - CI DoD (D-033): Windows and macOS runners: cloud attach, plus Claude and Codex hooks firing through the shim, observation stored. Linux: local + cloud. `parity-layer2*` as a gate (AC-08). Fixture repos only.
 
@@ -97,7 +104,7 @@ No file exceeds 1,000 code lines: `init.js` 763 (shrinks), `codex-install.js` 62
 | OD-2 override | `UNIMATRIX_BINARY` binary only; client redirect > install | D-024 |
 | OD-3 latency | Relative budget incl. not-a-project; conditional lossless pre-Node check | D-025 |
 | OD-4 Codex shell/merge | Addendum | D-014 |
-| OD-5 destinations | Claude `settings.local.json`, Codex `~/.codex/hooks.json` | D-026 |
+| OD-5 destinations | Claude `settings.local.json`, Codex `$CODEX_HOME/hooks.json` | D-026, D-081 |
 | R5 | Dropped; all installs per-machine | D-046 |
 | R-06 trust | POSIX per event; Windows full ACL at init + identity compare | D-029, D-036 |
 | R-09 node | Recorded -> PATH -> loud hint | D-030 |
@@ -121,8 +128,24 @@ No file exceeds 1,000 code lines: `init.js` 763 (shrinks), `codex-install.js` 62
 | L-6 gitignore | No append; dry-run warning | D-039 |
 | `mcp-stdio` no install | Exit 1 inside project, silent outside | D-043 |
 | Q8 Codex-only drop | Gap rejected; predicate independent of config location | D-044 |
-| Q9 Windows MCP argv | First delivery task, Windows CI | D-034 |
+| Q9 Windows MCP argv | Proof failed; D-047 fallback form for every Windows install | D-034, D-072 |
+| `mcp-stdio` "exec" | Spawn, inherited stdio, mirrored code/signal counts as ADR-004's exec | D-077 |
+| Binary in stable copy | Linux platform binary package copied into `pkg/<version>/node_modules` | D-078 |
+| Pre-Node check scope | Adds ancestor `.git` file clause and loosened headless clause, pre-check only; superset test | D-079 |
+| Additive signatures | `resolveRuntime.allowSelf`, `buildShimCommand home`, `isInstalled {env, home}`; `effectiveEnv` pending H1 | D-080 |
+| Codex hook destination | `$CODEX_HOME/hooks.json` when Codex detected | D-081 |
+| D-066 preflight | wire + upgrade-without-re-record; init exits 1 if node unrecorded | D-082 |
+| Gemini/README Rust `hook` replacement | Absolute-shim form, see below | D-083 |
 | OQ-6 legacy direct-path | Stage 1 audit | D-035 |
+
+## Reference configs and docs: replacement for Rust `unimatrix hook` (D-083, AC-11)
+`.gemini/settings.json` (four commands; Gemini writer stays out of scope, D-007) becomes, per event:
+`"command": "\"$HOME/.unimatrix/bin/unimatrix\" hook BeforeTool --provider gemini-cli"` (same for `AfterTool`, `SessionStart`, `SessionEnd`). No `_comment` key (JSON has no comments and Gemini's schema tolerance is unverified); the explanation lives in the README. The path resolves to the Node shim, which routes to the Node client (ADR-001, ADR-004). The form is Unix reference text; Windows users substitute the absolute `unimatrix.cmd` path (README states this). It is a documented reference config, not init-written.
+README (lines ~252, ~254, ~280) never writes the literal `unimatrix hook`; it names the verb as the launcher's `hook` verb:
+- ~252: "...the `--provider codex-cli` flag on the launcher's `hook` verb disambiguates attribution. ... Reference configurations are provided at `.gemini/settings.json` (absolute-shim form, `"$HOME/.unimatrix/bin/unimatrix" hook <Event> --provider gemini-cli`; on Windows use the absolute path of `unimatrix.cmd`) and `.codex/hooks.json`; ..." The `hook` verb routes to the Node hook client.
+- ~254: "...maps its typed hooks and event bus to Claude-shaped frames and invokes the launcher's `hook <EVENT> --provider opencode` verb (routed to the Node client)..."
+- ~280: "...OpenCode events pass `--provider opencode` from the plugin shim..., and may carry `--model <providerID/modelID>` on the launcher's `hook` verb..."
+**AC-11 check (unchanged wording; a grep over README and `.gemini/settings.json`, not `isUnimatrixCommand`, because the absolute shim form is itself owned):** fail on any match of `(?<!\.unimatrix/bin/)(?<![\w.-])unimatrix(-server)?["']?\s+hook\b`, and on any line containing both `LD_LIBRARY_PATH=` and `hook`. The shim forms pass: `.unimatrix/bin/unimatrix" hook` is excluded by the lookbehind, and `unimatrix.cmd" hook` does not match. The check may be added as a test; it must not narrow AC-11 (it enforces the AC, it does not redefine it). Require the PowerShell-unsupported statement (D-041) in docs.
 
 ## Limitations
 None open.
@@ -134,8 +157,8 @@ None open.
 Evidence: `research/codex-hooks-evidence.md` (openai/codex @ 06f334aa).
 
 - **Execution.** Codex runs hook `command` via `$SHELL -lc` (fallback `/bin/sh`) on Unix, `%COMSPEC% /C` (fallback `cmd.exe`) on Windows, line wrapped in quotes. The absolute quoted shim path needs no expansion on either (D-027); Codex hooks are supported on Windows. Single quotes are valid in fish.
-- **Merge.** Layers merge additively; project `.codex/` disabled when untrusted. Hooks go to `~/.codex/hooks.json` only; owned entries removed from project `.codex/hooks.json` and `~/.codex/config.toml` `[hooks]` (D-026, ADR-003).
+- **Merge.** Layers merge additively; project `.codex/` disabled when untrusted. Hooks go to `$CODEX_HOME/hooks.json` (default `~/.codex`) only; owned entries removed from project `.codex/hooks.json` and `$CODEX_HOME/config.toml` `[hooks]` (D-026, ADR-003).
 - **Trust.** Each hook needs approval; init prints the step; `unimatrix status` reports a wired hook that has not fired (D-038); no hash reads or writes; spec must not name an approval key (unverified).
 - **String stability.** Byte-fixed across upgrades (D-028); test asserts it.
 - **Cross-project firing.** Hook and `mcp-stdio` exit 0 silently outside a D-045 project, in budget, even with stale install or missing node (D-025, D-043, ADR-005).
-- **MCP.** argv, not shell; unaffected by hook trust. User scope `~/.codex/config.toml` (D-060); silent outside a project (D-043).
+- **MCP.** argv, not shell; unaffected by hook trust. User scope `$CODEX_HOME/config.toml` (D-060, D-081); silent outside a project (D-043).

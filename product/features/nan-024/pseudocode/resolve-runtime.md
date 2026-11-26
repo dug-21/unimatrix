@@ -33,9 +33,9 @@ function resolveRuntime(p):
 ```
 - `validateBinary(path, source)`: absolute, `fs.statSync(...).isFile()`, executable (`fs.accessSync(X_OK)` on POSIX), return `realpathSync`. Invalid -> throw (present-but-invalid never falls through, SR-20).
 - `UNIMATRIX_BINARY` never affects client (D-024): the client branch does not read env.
-- `allowSelf`: used ONLY by init/wire/`resolveBinary()` running from an npx cache before any install exists; `clientRoot = path.resolve(__dirname,"..")`, `clientSource = "install"`. Never passed at fire time.
+- `allowSelf` (additive, accepted D-080; not in ADR-002's signature text, contract text is in ARCHITECTURE.md): used ONLY by init/wire/`resolveBinary()` running from an npx cache before any install exists; `clientRoot = path.resolve(__dirname,"..")`, `clientSource = "install"`. Never passed at fire time.
 - Trust is not checked here (callers run `checkTrust` first; redirect path set is in `trustSet`).
-- Platform-package binary at fire time: install-store copies the platform package into `pkg/<version>/node_modules/` (see install-store.md) so `require.resolve(..., {paths:[clientRoot]})` finds it.
+- Platform-package binary at fire time (D-078): install-store copies the platform package into `pkg/<version>/node_modules/` (see install-store.md) so `require.resolve(..., {paths:[clientRoot]})` finds it. The resolver never looks at the original npx-cache location when `clientSource == "install"` and not `allowSelf`. With a `redirect.client`, the binary is still resolved from the install's `packageRoot` (not the redirected client root) unless `redirect.binary` is set. Key test: after the source package dir is removed, the install binary still resolves (D-078).
 
 ## resolve-binary.js (thin wrapper)
 ```

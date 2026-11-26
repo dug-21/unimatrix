@@ -10,3 +10,15 @@ Risks: R-08, R-36, R-37, R-38, R-40, R-14, R-16, R-19, R-27, R-35, AC-01/02/09/1
 - Windows MCP entry == D-047 form (D-072); Unix == `sh -c exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio`. Node re-recorded -> fallback entry rewritten, otherwise byte-identical (D-057); stale node: init/upgrade preflight exit 1 + re-init hint.
 - init with `.opencode/` + `opencode.json`: before/after diff shows no new files, `plugin[]` byte-equal (R-14/AC-09).
 - No file in `lib/` > 1000 code lines (cheap size assertion).
+
+## Rework (D-077, D-078, D-082, D-080)
+- D-082 preflight (exit codes assert, assembled via real CLI process): 
+  - `init` where node cannot be recorded -> exit 1, stderr names cause, no files changed except nothing partial (tree snapshot equal to pre-run).
+  - `wire` with recorded node missing (deleted after a good init) -> exit 1 preflight, message tells to re-run `init`, no hook/MCP file modified.
+  - upgrade that does NOT re-record node (version bump path) with recorded node missing -> exit 1; upgrade that re-records succeeds and rewrites the Windows fallback MCP entry (D-057).
+  - `--dry-run` with missing node: reports the failure and exits 1 (or documented non-zero), writes nothing.
+  - Preflight passing path unchanged: exit 0, outputs identical to prior run.
+- D-078: Linux local init leaves `pkg/<version>/node_modules/<platform pkg>`; cloud attach on Linux without local mode does not require it.
+- D-080: init passes `home` explicitly to `buildShimCommand`/`isInstalled`; run init with `process.env.HOME` decoy different from the injected test HOME and assert nothing is written under the decoy (HOME guard, NFR-05).
+- D-081 end to end: see codex-install.md; init output prints the Codex path actually written (`$CODEX_HOME/hooks.json`).
+- Windows MCP entry in D-047 form for every Windows install (D-072); `command` equals `install.json.node` byte-for-byte.

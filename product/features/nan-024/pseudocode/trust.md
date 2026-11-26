@@ -3,6 +3,9 @@
 ## Purpose
 Ownership/permission trust check for shim, `install.json`, `redirect.json`, `trust.json`, resolved `packageRoot` (ADR-002, D-029, D-036; FR-12b/12c/12c1). Refuse loudly, never skip. The same file is copied by install-store to `~/.unimatrix/bin/trust.js` so `shim-entry.js` can run it BEFORE any `packageRoot` code is loaded (design point 1 in OVERVIEW). The file therefore must be dependency-free (Node builtins only) and must not `require` anything relative.
 
+## PENDING H1
+The sibling-copy mechanism (install-store writes this file to `~/.unimatrix/bin/trust.js`; `~/.unimatrix/bin/trust.js` is a trust-set member; shim-entry loads it before any package code) is the pseudocode's resolution of ADR-002's trust bootstrap and is PENDING a human decision (H1). The function bodies below do not depend on it; only the copy location and the `trust.js` entry in `trustSet` do.
+
 ## Exports
 ```
 class TrustError extends Error { constructor(path, reason) ; this.path, this.reason; message = `unimatrix: trust check failed for ${path}: ${reason}; run 'npx unimatrix init'` }
@@ -17,7 +20,7 @@ statIdentity(p) -> {size, mtimeMs, ino}
 ```
 function trustSet(home, ctx):
   u = join(home, ".unimatrix")
-  set = [u, join(u,"bin"), shimPath(platform), join(u,"bin","shim-entry.js"), join(u,"bin","trust.js")]
+  set = [u, join(u,"bin"), shimPath(platform), join(u,"bin","shim-entry.js"), join(u,"bin","trust.js")]     // trust.js entry: PENDING H1
   add each of install.json, redirect.json (if exists), trust.json (if exists, win32 & posix)
   if ctx.installJson?.packageRoot: add packageRoot and its parent (pkg dir)
   if redirect has client: add that client root (directory) too

@@ -3,6 +3,9 @@
 ## Purpose
 Writes the per-machine user-level footprint (ADR-001, D-030, D-031, D-036): stable package copy, shim + `shim-entry.js` + `trust.js`, `install.json` atomic swap, prune, root marker, explicit modes/ACLs, Windows `trust.json`. Used by wire-init for both local init and cloud attach (identical, D-040). Local and cloud both.
 
+## PENDING H1
+Step 4's copy of `trust.js` to `~/.unimatrix/bin/trust.js` (ADR-002 trust bootstrap, shim-entry.md) is PENDING a human decision (H1). Kept as written; it is a single line (step 4, second `atomicCopy`) plus its trust-set entry in trust.md, so it can be removed or changed without affecting other steps.
+
 ## Exports
 ```
 installStore({home, platform, nodePath, sourcePackageRoot, projectRoot, dryRun}) -> {actions: string[], shimPath, version, prunedVersions: string[], rerecordedNode: boolean}
@@ -19,6 +22,8 @@ function installStore(o):
   uh = join(o.home,".unimatrix"); bin = join(uh,"bin"); pkgDir = join(uh,"pkg")
   shim = platform=="win32" ? join(bin,"unimatrix.cmd") : join(bin,"unimatrix")
   checkShimPathSafe(shim, platform)                                  // posix: no "'" ; win32: no "%" and no '"' -> throw, init exits 1 (FR-07g). also refuse nodePath with same chars
+  // D-082: init exits 1 if node cannot be recorded. Validate BEFORE any write (before dry-run list too, so dry-run fails the same way):
+  if !isAbsolute(o.nodePath) or !isFile(o.nodePath): throw NodeNotRecordableError(o.nodePath)    // "unimatrix: cannot record node (<path> missing or not absolute); install Node and re-run 'npx unimatrix init'" -> wire-init exit 1
   version = JSON.parse(read(join(o.sourcePackageRoot,"package.json"))).version
   prev = readInstallJson(o.home)
   rerecorded = (prev == null) or prev.node != o.nodePath
@@ -30,7 +35,7 @@ function installStore(o):
      if !isCompleteCopy(dest):                                       // .complete marker file written last
         tmp = dest + ".tmp-" + process.pid
         rmrf(tmp); copyTree(o.sourcePackageRoot -> tmp, include: ["bin","lib","package.json"], exclude: node_modules, test, opencode-plugin)
-        linux: copy platform binary package (resolve @dug-21/unimatrix-<plat>-<arch> from sourcePackageRoot; copy dir to tmp/node_modules/@dug-21/<name>) so resolve-runtime finds the binary + libonnxruntime from clientRoot; absent platform pkg (cloud-only linux) -> skip silently
+        linux (D-078): copy the platform binary package INTO the stable copy: locate it with require.resolve("@dug-21/unimatrix-<plat>-<arch>/package.json", {paths:[sourcePackageRoot]}) (one lookup at install time, in the npx cache), copy that whole dir (binary + libonnxruntime) to tmp/node_modules/@dug-21/unimatrix-<plat>-<arch>. Fire time NEVER reads the original package location (it does not survive an npx cache clean); resolve-runtime's installedBinary resolves with paths:[packageRoot] and finds this copy. Platform package absent (cloud-only Linux attach): skip silently. Size is not constrained here; measured in Stage 3c (D-078) and reported, not asserted.
         write tmp/.complete; rmrf(dest); rename(tmp, dest)           // killed mid-copy leaves only tmp; pointer still on previous version (R-24)
   3. render shim: template = read(lib/shim/unimatrix.sh | .cmd); substitute placeholders (see shim.md); if !PRENODE_ENABLED @@PRENODE_CALL@@ = ""
      atomicWrite(shim, text, mode 0o700)    // tmp in same dir + rename; windows .cmd uses CRLF
@@ -52,10 +57,12 @@ function installStore(o):
 - Hook command string is unaffected by anything written here except the shim PATH (byte-fixed, D-028).
 
 ## Error handling
-`UnsafeShimPathError` -> wire-init prints and exits 1 before any write. Copy failure: remove tmp, keep previous `install.json`, throw (init exit 1). Prune failures ignored. Windows rename contention after retries -> throw with clear message; pointer remains on previous version.
+`UnsafeShimPathError` and `NodeNotRecordableError` (D-082) -> wire-init prints and exits 1 before any write. Copy failure: remove tmp, keep previous `install.json`, throw (init exit 1). Prune failures ignored. Windows rename contention after retries -> throw with clear message; pointer remains on previous version.
 
 ## Key test scenarios
 - Modes 0700/0600 under umask 002; `install.json` never partially written (kill between tmp and rename); upgrade keeps current+previous, prunes older; interrupted copy leaves pointer on previous and no `.complete` dir; two concurrent runs produce one consistent pointer.
+- D-082: `nodePath` missing / relative -> `NodeNotRecordableError`, exit 1, nothing written (also in dry-run).
+- D-078: after install on Linux, `pkg/<version>/node_modules/@dug-21/unimatrix-<plat>-<arch>/bin/unimatrix` exists; remove the source package dir (simulated npx cache clean) and `resolveRuntime({transport:"local"})` still returns that copy; macOS/Windows/cloud-only Linux: no `node_modules` copy and no error; Stage 3c records the directory size.
 - Unsafe path refused (`'` posix; `%`/`"` win32) with nothing written.
 - `root` marker content = one line, hash dir 0700; legacy dir without marker gets one on init.
 - Dry-run action list equals real-run changed files (FR-12d).
