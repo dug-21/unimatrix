@@ -16,475 +16,610 @@ const {
   maybeWireCodex,
   writeCodexMcpToml,
   writeCodexHooks,
+  removeOwnedCodexHooks,
+  removeOwnedHooksToml,
+  removeOwnedCodexProjectMcp,
   requireProviderFlag,
-  resolveCodexTransport,
+  codexHome,
+  detectsCodex,
+  codexApprovalStep,
   CODEX_EVENTS,
-  CONFIG_FILE,
-  HOOKS_FILE,
 } = require("../lib/codex-install.js");
-const { PRETOOLUSE_CYCLE_MATCHER } = require("../lib/merge-settings.js");
+const { PRETOOLUSE_CYCLE_MATCHER, buildShimCommand } = require("../lib/merge-settings.js");
 
-/** Temp project root with .git (matches init.test.js / opencode idiom). */
-function makeTempProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-codex-test-"));
-  fs.mkdirSync(path.join(dir, ".git"), { recursive: true });
-  return dir;
-}
+const PLAT = "linux";
 
-function cfgPath(dir) {
-  return path.join(dir, CONFIG_FILE);
+/** Isolated fixture: temp HOME + project root; PATH stripped of codex. */
+function fixture(extraEnv) {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-codex-test-"));
+  const home = path.join(base, "home");
+  const root = path.join(base, "proj");
+  const bin = path.join(base, "bin");
+  fs.mkdirSync(home, { recursive: true });
+  fs.mkdirSync(path.join(root, ".git"), { recursive: true });
+  fs.mkdirSync(bin, { recursive: true });
+  const env = Object.assign({ PATH: bin }, extraEnv || {});
+  const o = { home, env, platform: PLAT, node: "/usr/bin/node", projectRoot: root, dryRun: false };
+  return { base, home, root, bin, env, o };
 }
-function hooksPath(dir) {
-  return path.join(dir, HOOKS_FILE);
-}
-function writeCfg(dir, raw) {
-  fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-  fs.writeFileSync(cfgPath(dir), raw, "utf8");
-}
-function writeHooks(dir, obj) {
-  fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-  fs.writeFileSync(hooksPath(dir), JSON.stringify(obj, null, 2) + "\n", "utf8");
-}
-
-const BIN = "/abs/path/unimatrix";
-const CLIENT = "/abs/path/lib/hook-client/index.js";
-
-// Minimal TOML BASIC-string decoder — R-10 read-back oracle (mirrors the Wave A
-// test). Proves an escaped value re-parses to the intended value.
-function parseTomlBasicString(literal) {
-  assert.ok(literal.startsWith('"') && literal.endsWith('"'), "not a basic string: " + literal);
-  const inner = literal.slice(1, -1);
-  let out = "";
-  for (let i = 0; i < inner.length; i++) {
-    const ch = inner[i];
-    if (ch !== "\\") {
-      out += ch;
-      continue;
+const hooksOf = (dir) => path.join(dir, "hooks.json");
+const cfgOf = (dir) => path.join(dir, "config.toml");
+const rd = (p) => fs.readFileSync(p, "utf8");
+function snapshot(dir) {
+  const out = [];
+  (function walk(d) {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { out.push("D " + p); walk(p); } else out.push("F " + p + " " + rd(p));
     }
-    const esc = inner[i + 1];
-    i += 1;
-    switch (esc) {
-      case "\\": out += "\\"; break;
-      case '"': out += '"'; break;
-      case "b": out += "\b"; break;
-      case "t": out += "\t"; break;
-      case "n": out += "\n"; break;
-      case "f": out += "\f"; break;
-      case "r": out += "\r"; break;
-      case "u":
-        out += String.fromCodePoint(parseInt(inner.slice(i + 1, i + 5), 16));
-        i += 4;
-        break;
-      default: assert.fail("unknown escape \\" + esc);
-    }
+  })(dir);
+  return out.sort();
+}
+function quiet(fn) {
+  const orig = process.stderr.write;
+  const lines = [];
+  process.stderr.write = (s) => { lines.push(String(s)); return true; };
+  try { return { result: fn(), stderr: lines }; } finally { process.stderr.write = orig; }
+}
+function seedOwnedHooks(file, home) {
+  const hooks = {};
+  for (const ev of CODEX_EVENTS) {
+    hooks[ev] = [{ matcher: "", hooks: [
+      { type: "command", command: "unimatrix hook " + ev },
+      { type: "command", command: "/usr/bin/foreign-" + ev },
+    ] }];
   }
-  return out;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ hooks }, null, 2) + "\n");
 }
 
 // ---------------------------------------------------------------------------
-// writeCodexMcpToml — MCP TOML (AC-06, R-04)
+// codexHome / detectsCodex (D-081, D-085)
 // ---------------------------------------------------------------------------
 
-describe("writeCodexMcpToml", () => {
-  it("test_writeCodexMcpToml_fresh_creates_owned_table", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const l = writeCodexMcpToml(
-      dir,
-      { transport: { kind: "stdio-binary", binaryPath: BIN }, harnessSel: "codex-cli" },
-      false
-    );
-    assert.strictEqual(l.surface, "mcp");
-    assert.strictEqual(l.action, "created");
-    assert.strictEqual(l.path, cfgPath(dir));
-    assert.deepStrictEqual(l.entry, { command: BIN });
-    const disk = fs.readFileSync(cfgPath(dir), "utf8");
-    assert.ok(disk.includes("[mcp_servers.unimatrix]"));
-    assert.ok(disk.includes('command = "' + BIN + '"'));
+describe("codexHome", () => {
+  it("defaults to ~/.codex; no XDG", () => {
+    assert.deepStrictEqual(codexHome({ XDG_CONFIG_HOME: "/x" }, "/h"), { dir: path.join("/h", ".codex") });
   });
-
-  it("test_writeCodexMcpToml_local_command_shape", () => {
-    const dir = makeTempProject();
-    writeCfg(dir, "");
-    writeCodexMcpToml(
-      dir,
-      { transport: { kind: "stdio-binary", binaryPath: BIN }, harnessSel: "codex-cli" },
-      false
-    );
-    const disk = fs.readFileSync(cfgPath(dir), "utf8");
-    assert.ok(disk.includes('command = "' + BIN + '"'));
-    assert.ok(!/^\s*url\s*=/m.test(disk));
+  it("honours an absolute CODEX_HOME", () => {
+    assert.deepStrictEqual(codexHome({ CODEX_HOME: "/abs/ch" }, "/h"), { dir: "/abs/ch" });
   });
-
-  it("test_writeCodexMcpToml_cloud_bridge_shape (no url, no token — Q1/Principle 8)", () => {
-    const dir = makeTempProject();
-    writeCfg(dir, "");
-    const secret = "SECRET-BEARER-TOKEN";
-    const l = writeCodexMcpToml(
-      dir,
-      {
-        transport: { kind: "stdio-bridge", bridgePath: "/abs/mcp-bridge.js", projectHash: "abc123" },
-        harnessSel: "codex-cli",
-      },
-      false
-    );
-    assert.deepStrictEqual(l.entry, {
-      command: "node",
-      args: ["/abs/mcp-bridge.js", "abc123"],
-    });
-    const disk = fs.readFileSync(cfgPath(dir), "utf8");
-    assert.ok(disk.includes('command = "node"'));
-    assert.ok(disk.includes('args = ["/abs/mcp-bridge.js", "abc123"]'));
-    assert.ok(!/^\s*url\s*=/m.test(disk), "must NEVER emit url =");
-    assert.ok(!disk.includes(secret));
-  });
-
-  it("test_writeCodexMcpToml_preserves_foreign_tables_comments_order", () => {
-    const dir = makeTempProject();
-    const raw = [
-      "# header",
-      "[tools]",
-      "zeta = 1",
-      "alpha = 2",
-      "",
-      "[mcp_servers.other]",
-      'command = "other-bin"',
-      "",
-    ].join("\n");
-    writeCfg(dir, raw);
-    const l = writeCodexMcpToml(
-      dir,
-      { transport: { kind: "stdio-binary", binaryPath: BIN }, harnessSel: "codex-cli" },
-      false
-    );
-    assert.strictEqual(l.action, "created"); // owned absent → created
-    const disk = fs.readFileSync(cfgPath(dir), "utf8");
-    assert.ok(disk.startsWith(raw)); // every foreign byte survives as a prefix
-    assert.ok(disk.includes("[mcp_servers.other]"));
-    assert.ok(disk.includes("zeta = 1"));
-    assert.ok(disk.includes("[mcp_servers.unimatrix]"));
-  });
-
-  it("test_writeCodexMcpToml_update_in_place_stale_value", () => {
-    const dir = makeTempProject();
-    const raw =
-      '[tools]\na = 1\n\n[mcp_servers.unimatrix]\ncommand = "STALE"\n\n[mcp_servers.other]\ncommand = "keep"\n';
-    writeCfg(dir, raw);
-    const l = writeCodexMcpToml(
-      dir,
-      { transport: { kind: "stdio-binary", binaryPath: BIN }, harnessSel: undefined },
-      false
-    );
-    // Present → intent gate does not fire even without harnessSel; updated.
-    assert.strictEqual(l.action, "updated");
-    const disk = fs.readFileSync(cfgPath(dir), "utf8");
-    assert.ok(disk.includes('command = "' + BIN + '"'));
-    assert.ok(!disk.includes("STALE"));
-    assert.ok(disk.endsWith('[mcp_servers.other]\ncommand = "keep"\n'));
-  });
-
-  it("test_writeCodexMcpToml_idempotent", () => {
-    const dir = makeTempProject();
-    writeCfg(dir, "");
-    const opts = {
-      transport: { kind: "stdio-binary", binaryPath: BIN },
-      harnessSel: "codex-cli",
-    };
-    writeCodexMcpToml(dir, opts, false);
-    const first = fs.readFileSync(cfgPath(dir), "utf8");
-    const l2 = writeCodexMcpToml(dir, opts, false);
-    assert.strictEqual(l2.action, "unchanged");
-    const second = fs.readFileSync(cfgPath(dir), "utf8");
-    assert.strictEqual(first, second); // byte-identical (AC-04)
-  });
-
-  it("test_writeCodexMcpToml_intent_gate_blocks_new_entry_without_harness (AC-11)", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const l = writeCodexMcpToml(
-      dir,
-      { transport: { kind: "stdio-binary", binaryPath: BIN }, harnessSel: undefined },
-      false
-    );
-    assert.strictEqual(l.action, "skipped-intent");
-    assert.ok(/--harness codex-cli/.test(l.reason));
-    assert.ok(!fs.existsSync(cfgPath(dir)), "must not write on intent-skip");
-  });
-
-  it("test_codex_toml_quote_metacharacter_path (R-10)", () => {
-    const dir = makeTempProject();
-    writeCfg(dir, "");
-    const evil = '/opt/my apps/uni"; command = "pwned';
-    writeCodexMcpToml(
-      dir,
-      { transport: { kind: "stdio-binary", binaryPath: evil }, harnessSel: "codex-cli" },
-      false
-    );
-    const disk = fs.readFileSync(cfgPath(dir), "utf8");
-    const m = /^command\s*=\s*(".*?")\s*$/m.exec(disk.split("[mcp_servers.unimatrix]")[1]);
-    assert.ok(m, "command line not found");
-    assert.strictEqual(parseTomlBasicString(m[1]), evil); // re-parses to intended
-    // The injected `command = "pwned` fragment is NOT a second real key.
-    assert.strictEqual(
-      (disk.match(/^command\s*=/gm) || []).length,
-      1
-    );
-  });
-
-  it("test_maybeWireCodex_malformed_toml_skips_preserves (AC-15)", () => {
-    const dir = makeTempProject();
-    const raw = "[tools]\nnote = \"\"\"\nunclosed\n"; // unterminated multi-line string
-    writeCfg(dir, raw);
-    let threw = false;
-    let legs;
-    try {
-      legs = maybeWireCodex(dir, {
-        clientPath: CLIENT,
-        binaryPath: BIN,
-        harnessSel: "codex-cli",
-        dryRun: false,
-      });
-    } catch (_e) {
-      threw = true;
+  it("relative / NUL CODEX_HOME -> ~/.codex + warning (D-085)", () => {
+    for (const bad of ["./x", "rel/dir", "/a\0b"]) {
+      const r = codexHome({ CODEX_HOME: bad }, "/h");
+      assert.strictEqual(r.dir, path.join("/h", ".codex"));
+      assert.ok(/not an absolute path/.test(r.warning));
     }
-    assert.strictEqual(threw, false, "never throws");
-    const mcpLeg = legs.find((l) => l.surface === "mcp");
-    assert.strictEqual(mcpLeg.action, "skipped-malformed");
-    assert.strictEqual(fs.readFileSync(cfgPath(dir), "utf8"), raw); // byte-preserved
   });
+  it("empty CODEX_HOME is treated as unset (no warning)", () => {
+    assert.deepStrictEqual(codexHome({ CODEX_HOME: "" }, "/h"), { dir: path.join("/h", ".codex") });
+  });
+});
 
-  it("dry-run writes nothing (AC-14)", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const l = writeCodexMcpToml(
-      dir,
-      { transport: { kind: "stdio-binary", binaryPath: BIN }, harnessSel: "codex-cli" },
-      true
-    );
-    assert.strictEqual(l.action, "created");
-    assert.deepStrictEqual(l.entry, { command: BIN });
-    assert.ok(!fs.existsSync(cfgPath(dir)), "dry-run must not write");
+describe("detectsCodex", () => {
+  it("row 5: no trigger -> false", () => {
+    const f = fixture();
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home }), false);
+  });
+  it("row 1: project .codex/", () => {
+    const f = fixture();
+    fs.mkdirSync(path.join(f.root, ".codex"));
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home }), true);
+  });
+  it("row 2: existing $CODEX_HOME dir; row 6: absent dir -> false", () => {
+    const f = fixture({ CODEX_HOME: null });
+    const ch = path.join(f.base, "ch");
+    f.env.CODEX_HOME = ch;
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home }), false);
+    fs.mkdirSync(ch);
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home }), true);
+  });
+  it("$CODEX_HOME that is a regular file counts as absent", () => {
+    const f = fixture();
+    const ch = path.join(f.base, "chfile");
+    fs.writeFileSync(ch, "x");
+    f.env.CODEX_HOME = ch;
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home }), false);
+  });
+  it("existing default ~/.codex counts", () => {
+    const f = fixture();
+    fs.mkdirSync(path.join(f.home, ".codex"));
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home }), true);
+  });
+  it("row 3: codex on PATH (stat only)", () => {
+    const f = fixture();
+    fs.writeFileSync(path.join(f.bin, "codex"), "#!/bin/sh\n", { mode: 0o755 });
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home, platform: "linux" }), true);
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home, platform: "win32" }), false);
+  });
+  it("row 4: --harness codex-cli", () => {
+    const f = fixture();
+    assert.strictEqual(detectsCodex({ root: f.root, env: f.env, home: f.home, harnessSel: "codex-cli" }), true);
   });
 });
 
 // ---------------------------------------------------------------------------
-// writeCodexHooks — hooks JSON (AC-07, AC-08, R-05)
+// writeCodexHooks
 // ---------------------------------------------------------------------------
 
 describe("writeCodexHooks", () => {
-  it("test_writeCodexHooks_writes_seven_event_set", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const legs = writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
+  it("writes the seven-event set to <codexHome>/hooks.json with shim commands", () => {
+    const f = fixture();
+    const legs = writeCodexHooks(f.o);
     assert.strictEqual(legs.length, 7);
-    const disk = JSON.parse(fs.readFileSync(hooksPath(dir), "utf8"));
-    const keys = Object.keys(disk.hooks).sort();
-    assert.deepStrictEqual(keys, CODEX_EVENTS.slice().sort());
-    assert.ok(!("PostToolUseFailure" in disk.hooks));
-    assert.ok(!("SubagentStop" in disk.hooks));
-    // PreToolUse carries the cycle matcher; PostToolUse/SubagentStart carry "*".
+    const hp = hooksOf(path.join(f.home, ".codex"));
+    const disk = JSON.parse(rd(hp));
+    assert.deepStrictEqual(Object.keys(disk.hooks).sort(), CODEX_EVENTS.slice().sort());
     assert.strictEqual(disk.hooks.PreToolUse[0].matcher, PRETOOLUSE_CYCLE_MATCHER);
-    assert.strictEqual(disk.hooks.PostToolUse[0].matcher, "*");
-    assert.strictEqual(disk.hooks.SubagentStart[0].matcher, "*");
     assert.strictEqual(disk.hooks.SessionStart[0].matcher, "");
-  });
-
-  it("test_writeCodexHooks_every_command_targets_hook_client_not_binary (AC-08/C-03)", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
-    const disk = JSON.parse(fs.readFileSync(hooksPath(dir), "utf8"));
-    for (const event of CODEX_EVENTS) {
-      const cmd = disk.hooks[event][0].hooks[0].command;
-      assert.ok(cmd.includes("hook-client/index.js"), event + " must target the JS client");
-      assert.ok(!/\bunimatrix\s+hook\b/.test(cmd), event + " must NOT target the binary");
-      assert.ok(cmd.startsWith("node "), event + " must invoke node");
+    for (const ev of CODEX_EVENTS) {
+      const cmd = disk.hooks[ev][0].hooks[0].command;
+      assert.strictEqual(cmd, buildShimCommand(ev, "codex-cli", PLAT, f.home));
+      assert.ok(cmd.includes("--provider codex-cli"));
+      assert.ok(!cmd.includes("hook-client"));
     }
+    for (const l of legs) assert.strictEqual(l.path, hp);
   });
 
-  it("test_writeCodexHooks_every_command_carries_provider_flag (AC-07/NFR-07)", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const legs = writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
-    const disk = JSON.parse(fs.readFileSync(hooksPath(dir), "utf8"));
-    for (const event of CODEX_EVENTS) {
-      assert.ok(
-        disk.hooks[event][0].hooks[0].command.includes("--provider codex-cli"),
-        event + " missing --provider codex-cli"
-      );
-    }
-    for (const l of legs) {
-      assert.ok(l.command.includes("--provider codex-cli"));
-    }
+  it("custom absolute CODEX_HOME honoured; ~/.codex untouched", () => {
+    const f = fixture();
+    const ch = path.join(f.base, "ch");
+    f.o.env.CODEX_HOME = ch;
+    writeCodexHooks(f.o);
+    assert.ok(fs.existsSync(hooksOf(ch)));
+    assert.ok(!fs.existsSync(path.join(f.home, ".codex")));
   });
 
-  it("test_writeCodexHooks_command_is_exact_wireleg_command", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const legs = writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
-    const disk = JSON.parse(fs.readFileSync(hooksPath(dir), "utf8"));
-    // Every leg's command equals the byte-exact string on disk for its event.
-    const onDisk = new Set();
-    for (const event of CODEX_EVENTS) {
-      onDisk.add(disk.hooks[event][0].hooks[0].command);
-    }
-    for (const l of legs) {
-      assert.ok(onDisk.has(l.command), "leg command not found on disk: " + l.command);
-    }
-  });
-
-  it("test_writeCodexHooks_provider_flag_fail_loud (NFR-07)", () => {
-    // The mandatory-flag invariant throws on a flag-less command.
-    assert.throws(
-      () => requireProviderFlag("node /x/index.js PreToolUse"),
-      /missing --provider codex-cli/
-    );
-    assert.doesNotThrow(() =>
-      requireProviderFlag("node /x/index.js PreToolUse --provider codex-cli")
-    );
-  });
-
-  it("test_writeCodexHooks_preserves_foreign_hooks", () => {
-    const dir = makeTempProject();
-    const foreign = {
-      hooks: {
-        PostToolUse: [
-          { matcher: "*", hooks: [{ type: "command", command: "/usr/bin/foreign-tool" }] },
-        ],
-        Notification: [{ matcher: "", hooks: [{ type: "command", command: "beep" }] }],
-      },
-    };
-    writeHooks(dir, foreign);
-    writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
-    const disk = JSON.parse(fs.readFileSync(hooksPath(dir), "utf8"));
-    // Foreign entries preserved.
-    assert.ok(
-      disk.hooks.PostToolUse.some((g) =>
-        g.hooks.some((h) => h.command === "/usr/bin/foreign-tool")
-      )
-    );
-    assert.ok(disk.hooks.Notification[0].hooks[0].command === "beep");
-    // Uni entry added alongside in the "*" group.
-    assert.ok(
-      disk.hooks.PostToolUse.some((g) =>
-        g.hooks.some((h) => h.command.includes("hook-client/index.js"))
-      )
-    );
-  });
-
-  it("test_writeCodexHooks_idempotent_unchanged", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
-    const first = fs.readFileSync(hooksPath(dir), "utf8");
-    const legs2 = writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
+  it("byte-identical across re-init and 'upgrade' (D-028); re-run does not rewrite", () => {
+    const f = fixture();
+    const ch = path.join(f.base, "ch");
+    f.o.env.CODEX_HOME = ch;
+    writeCodexHooks(f.o);
+    const first = rd(hooksOf(ch));
+    const m1 = fs.statSync(hooksOf(ch)).mtimeMs;
+    fs.mkdirSync(path.join(f.home, ".unimatrix", "bin"), { recursive: true });
+    fs.writeFileSync(path.join(f.home, ".unimatrix", "bin", "trust.js"), "// refreshed\n");
+    const legs2 = writeCodexHooks(f.o);
     assert.ok(legs2.every((l) => l.action === "unchanged"));
-    const second = fs.readFileSync(hooksPath(dir), "utf8");
-    assert.strictEqual(first, second); // byte-identical (AC-04)
+    assert.strictEqual(rd(hooksOf(ch)), first);
+    assert.strictEqual(fs.statSync(hooksOf(ch)).mtimeMs, m1);
   });
 
-  it("test_writeCodexHooks_spaced_clientPath_is_quoted (R-10)", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const spaced = "/opt/my apps/lib/hook-client/index.js";
-    const legs = writeCodexHooks(dir, { clientPath: spaced, dryRun: false });
-    const disk = JSON.parse(fs.readFileSync(hooksPath(dir), "utf8"));
-    const cmd = disk.hooks.PreToolUse[0].hooks[0].command;
-    assert.ok(cmd.includes('"' + spaced + '"'), "spaced path must be double-quoted");
-    // WireLeg carries the exact string written.
-    assert.ok(legs.some((l) => l.command === cmd));
-  });
-
-  it("test_writeCodexHooks_malformed_json_skips_preserves (AC-15)", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const raw = "{ not valid json ";
-    fs.writeFileSync(hooksPath(dir), raw, "utf8");
-    let threw = false;
-    let legs;
-    try {
-      legs = writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
-    } catch (_e) {
-      threw = true;
+  it("preserves foreign hooks; owned deduped to one per event", () => {
+    const f = fixture();
+    const hp = hooksOf(path.join(f.home, ".codex"));
+    seedOwnedHooks(hp, f.home);
+    writeCodexHooks(f.o);
+    const disk = JSON.parse(rd(hp));
+    for (const ev of CODEX_EVENTS) {
+      const hs = disk.hooks[ev].flatMap((g) => g.hooks);
+      assert.strictEqual(hs.filter((h) => /\.unimatrix\/bin\/unimatrix/.test(h.command)).length, 1);
+      assert.strictEqual(hs.filter((h) => h.command === "/usr/bin/foreign-" + ev).length, 1);
+      assert.ok(!hs.some((h) => h.command === "unimatrix hook " + ev), "legacy owned replaced");
     }
-    assert.strictEqual(threw, false);
+  });
+
+  it("provider flag is fail-loud", () => {
+    assert.throws(() => requireProviderFlag("x PreToolUse"), /missing --provider codex-cli/);
+    assert.doesNotThrow(() => requireProviderFlag("x PreToolUse --provider codex-cli"));
+  });
+
+  it("malformed hooks.json -> skipped-malformed, untouched, no throw", () => {
+    const f = fixture();
+    const hp = hooksOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(hp), { recursive: true });
+    fs.writeFileSync(hp, "{ nope ");
+    const legs = writeCodexHooks(f.o);
     assert.strictEqual(legs.length, 1);
     assert.strictEqual(legs[0].action, "skipped-malformed");
-    assert.strictEqual(fs.readFileSync(hooksPath(dir), "utf8"), raw);
+    assert.strictEqual(rd(hp), "{ nope ");
   });
 
-  it("skips when `hooks` key is not an object", () => {
-    const dir = makeTempProject();
-    writeHooks(dir, { hooks: "nope" });
-    const legs = writeCodexHooks(dir, { clientPath: CLIENT, dryRun: false });
-    assert.strictEqual(legs[0].action, "skipped-malformed");
+  it("non-object `hooks` key -> skipped-malformed", () => {
+    const f = fixture();
+    const hp = hooksOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(hp), { recursive: true });
+    fs.writeFileSync(hp, '{"hooks":"nope"}');
+    assert.strictEqual(writeCodexHooks(f.o)[0].action, "skipped-malformed");
   });
 
-  it("dry-run writes nothing", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const legs = writeCodexHooks(dir, { clientPath: CLIENT, dryRun: true });
+  it("dry-run lists every event, writes nothing", () => {
+    const f = fixture();
+    f.o.dryRun = true;
+    const legs = writeCodexHooks(f.o);
     assert.strictEqual(legs.length, 7);
     assert.strictEqual(legs[0].action, "created");
-    assert.ok(!fs.existsSync(hooksPath(dir)), "dry-run must not write");
+    assert.ok(!fs.existsSync(path.join(f.home, ".codex")));
   });
 });
 
 // ---------------------------------------------------------------------------
-// maybeWireCodex — fan-out + trust surface
+// removeOwnedCodexHooks
+// ---------------------------------------------------------------------------
+
+describe("removeOwnedCodexHooks", () => {
+  it("removes owned from project hooks.json; foreign kept; emptied events dropped", () => {
+    const f = fixture();
+    const ph = path.join(f.root, ".codex", "hooks.json");
+    seedOwnedHooks(ph, f.home);
+    const r = removeOwnedCodexHooks(f.o);
+    const disk = JSON.parse(rd(ph));
+    for (const ev of CODEX_EVENTS) {
+      assert.deepStrictEqual(disk.hooks[ev][0].hooks, [{ type: "command", command: "/usr/bin/foreign-" + ev }]);
+    }
+    assert.ok(r.legs.some((l) => l.action === "removed" && l.path === ph));
+  });
+
+  it("only-owned project file loses every event; foreign-only file not rewritten", () => {
+    const f = fixture();
+    const ph = path.join(f.root, ".codex", "hooks.json");
+    fs.mkdirSync(path.dirname(ph), { recursive: true });
+    const foreign = JSON.stringify({ hooks: { Stop: [{ matcher: "", hooks: [{ type: "command", command: "beep" }] }] } }) + "\n";
+    fs.writeFileSync(ph, foreign);
+    const m = fs.statSync(ph).mtimeMs;
+    const r = removeOwnedCodexHooks(f.o);
+    assert.strictEqual(rd(ph), foreign);
+    assert.strictEqual(fs.statSync(ph).mtimeMs, m);
+    assert.deepStrictEqual(r.legs, []);
+  });
+
+  it("dry-run lists removal and leaves files untouched", () => {
+    const f = fixture();
+    const ph = path.join(f.root, ".codex", "hooks.json");
+    seedOwnedHooks(ph, f.home);
+    const before = rd(ph);
+    f.o.dryRun = true;
+    const r = removeOwnedCodexHooks(f.o);
+    assert.ok(r.actions.length > 0 && r.actions.every((a) => a.startsWith("[dry-run] ")));
+    assert.strictEqual(rd(ph), before);
+  });
+
+  it("malformed project hooks.json -> skipped-malformed leg, untouched", () => {
+    const f = fixture();
+    const ph = path.join(f.root, ".codex", "hooks.json");
+    fs.mkdirSync(path.dirname(ph), { recursive: true });
+    fs.writeFileSync(ph, "{ bad");
+    const r = removeOwnedCodexHooks(f.o);
+    assert.strictEqual(r.legs[0].action, "skipped-malformed");
+    assert.strictEqual(rd(ph), "{ bad");
+  });
+
+  it("project root == home: the user-level hooks file is not stripped", () => {
+    const f = fixture();
+    f.o.projectRoot = f.home;
+    writeCodexHooks(f.o);
+    const before = rd(hooksOf(path.join(f.home, ".codex")));
+    removeOwnedCodexHooks(f.o);
+    assert.strictEqual(rd(hooksOf(path.join(f.home, ".codex"))), before);
+  });
+
+  it("removes owned [[hooks.X]] tables from <codexHome>/config.toml; foreign + comments preserved", () => {
+    const f = fixture();
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(cfg), { recursive: true });
+    const raw = [
+      "# top comment",
+      "[tools]",
+      "a = 1",
+      "",
+      "[[hooks.Stop]]",
+      'matcher = ""',
+      "[[hooks.Stop.hooks]]",
+      'type = "command"',
+      "command = \"'/home/x/.unimatrix/bin/unimatrix' hook Stop --provider codex-cli\"",
+      "",
+      "[[hooks.PreToolUse]]",
+      'matcher = "*"',
+      "[[hooks.PreToolUse.hooks]]",
+      'type = "command"',
+      'command = "/usr/bin/foreign"',
+      "",
+      "[mcp_servers.other]",
+      'command = "keep"',
+      "",
+    ].join("\n");
+    fs.writeFileSync(cfg, raw);
+    const r = removeOwnedCodexHooks(f.o);
+    assert.ok(r.legs.some((l) => l.action === "removed" && l.path === cfg));
+    const disk = rd(cfg);
+    assert.ok(!/unimatrix\/bin\/unimatrix/.test(disk));
+    assert.ok(!disk.includes("[[hooks.Stop]]"), "emptied parent group removed");
+    assert.ok(disk.startsWith("# top comment\n[tools]\na = 1\n\n"));
+    assert.ok(disk.includes('[[hooks.PreToolUse.hooks]]\ntype = "command"\ncommand = "/usr/bin/foreign"\n'));
+    assert.ok(disk.endsWith('[mcp_servers.other]\ncommand = "keep"\n'));
+  });
+
+  it("config.toml with no owned hooks is not rewritten; CRLF preserved; malformed skipped", () => {
+    assert.strictEqual(removeOwnedHooksToml('[[hooks.A.hooks]]\r\ncommand = "foreign"\r\n').changed, false);
+    const crlf = '[x]\r\na=1\r\n\r\n[[hooks.A]]\r\n[[hooks.A.hooks]]\r\ncommand = "unimatrix hook Stop"\r\n\r\n[y]\r\nb=2\r\n';
+    const r = removeOwnedHooksToml(crlf);
+    assert.strictEqual(r.text, "[x]\r\na=1\r\n\r\n[y]\r\nb=2\r\n");
+    assert.strictEqual(removeOwnedHooksToml('[a\nx=1\n').malformed, true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MCP (user scope + project removal)
+// ---------------------------------------------------------------------------
+
+describe("writeCodexMcpToml", () => {
+  it("creates the owned table at <codexHome>/config.toml (D-084, no opt-in gate)", () => {
+    const f = fixture();
+    const l = writeCodexMcpToml(f.o);
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    assert.strictEqual(l.action, "created");
+    assert.strictEqual(l.path, cfg);
+    assert.deepStrictEqual(l.entry, { command: "sh", args: ["-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio'] });
+    const disk = rd(cfg);
+    assert.ok(disk.includes("[mcp_servers.unimatrix]"));
+    assert.ok(disk.includes('command = "sh"'));
+    assert.ok(disk.includes('args = ["-c", "exec \\"$HOME/.unimatrix/bin/unimatrix\\" mcp-stdio"]'));
+    assert.ok(!/^\s*(url|env)/m.test(disk));
+  });
+
+  it("win32 entry records node + shim-entry.js; stale owned entry updated in place", () => {
+    const f = fixture();
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(cfg), { recursive: true });
+    const old = '[tools]\na = 1\n\n[mcp_servers.unimatrix]\ncommand = "node"\nargs = ["/old/home/.unimatrix/bin/shim-entry.js", "mcp-stdio"]\n\n[mcp_servers.other]\ncommand = "keep"\n';
+    fs.writeFileSync(cfg, old);
+    f.o.platform = "win32";
+    f.o.node = "C:/node/node.exe";
+    const l = writeCodexMcpToml(f.o);
+    assert.strictEqual(l.action, "updated");
+    const disk = rd(cfg);
+    assert.ok(disk.includes('command = "C:/node/node.exe"'));
+    assert.ok(disk.startsWith("[tools]\na = 1\n\n"));
+    assert.ok(disk.endsWith('[mcp_servers.other]\ncommand = "keep"\n'));
+  });
+
+  it("idempotent: second run writes nothing", () => {
+    const f = fixture();
+    writeCodexMcpToml(f.o);
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    const first = rd(cfg);
+    const m = fs.statSync(cfg).mtimeMs;
+    assert.strictEqual(writeCodexMcpToml(f.o).action, "unchanged");
+    assert.strictEqual(rd(cfg), first);
+    assert.strictEqual(fs.statSync(cfg).mtimeMs, m);
+  });
+
+  it("foreign unimatrix table untouched + D-065 warning in leg.reason", () => {
+    const f = fixture();
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(cfg), { recursive: true });
+    const raw = '# mine\n[mcp_servers.unimatrix]\ncommand = "/opt/custom-server"\n';
+    fs.writeFileSync(cfg, raw);
+    const l = writeCodexMcpToml(f.o);
+    assert.strictEqual(l.action, "skipped-foreign");
+    assert.ok(/non-Unimatrix entry; left unchanged/.test(l.reason));
+    assert.strictEqual(rd(cfg), raw);
+  });
+
+  it("preserves foreign tables, comments, CRLF when appending", () => {
+    const f = fixture();
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(cfg), { recursive: true });
+    const raw = "# c\r\n[mcp_servers.other]\r\ncommand = \"o\"\r\n";
+    fs.writeFileSync(cfg, raw);
+    writeCodexMcpToml(f.o);
+    const disk = rd(cfg);
+    assert.ok(disk.startsWith(raw));
+    assert.ok(disk.includes("[mcp_servers.unimatrix]\r\n"));
+  });
+
+  it("malformed TOML -> skipped-malformed, byte-preserved", () => {
+    const f = fixture();
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(cfg), { recursive: true });
+    const raw = '[tools]\nnote = """\nunclosed\n';
+    fs.writeFileSync(cfg, raw);
+    assert.strictEqual(writeCodexMcpToml(f.o).action, "skipped-malformed");
+    assert.strictEqual(rd(cfg), raw);
+  });
+
+  it("dry-run writes nothing", () => {
+    const f = fixture();
+    f.o.dryRun = true;
+    assert.strictEqual(writeCodexMcpToml(f.o).action, "created");
+    assert.ok(!fs.existsSync(path.join(f.home, ".codex")));
+  });
+});
+
+describe("removeOwnedCodexProjectMcp", () => {
+  const cfgIn = (f) => path.join(f.root, ".codex", "config.toml");
+  function seed(f, raw) {
+    fs.mkdirSync(path.dirname(cfgIn(f)), { recursive: true });
+    fs.writeFileSync(cfgIn(f), raw);
+  }
+  const OWNED = '[mcp_servers.unimatrix]\ncommand = "sh"\nargs = ["-c", "exec \\"$HOME/.unimatrix/bin/unimatrix\\" mcp-stdio"]\n';
+
+  it("removes owned; foreign [mcp_servers.other] byte-preserved; file kept", () => {
+    const f = fixture();
+    const other = '[mcp_servers.other]\ncommand = "keep"\n';
+    seed(f, "# c\n" + other + "\n" + OWNED);
+    const r = removeOwnedCodexProjectMcp(f.root, false);
+    assert.strictEqual(r.actions.length, 1);
+    assert.strictEqual(rd(cfgIn(f)), "# c\n" + other);
+  });
+
+  it("owned legacy bridge form removed", () => {
+    const f = fixture();
+    seed(f, '[mcp_servers.unimatrix]\ncommand = "node"\nargs = ["/x/mcp-bridge.js", "abc"]\n');
+    assert.strictEqual(removeOwnedCodexProjectMcp(f.root, false).actions.length, 1);
+    assert.strictEqual(rd(cfgIn(f)), "");
+  });
+
+  it("foreign unimatrix: warning, untouched; only-foreign file not rewritten", () => {
+    const f = fixture();
+    const raw = '[mcp_servers.unimatrix]\ncommand = "/opt/mine"\n';
+    seed(f, raw);
+    const r = removeOwnedCodexProjectMcp(f.root, false);
+    assert.strictEqual(r.actions.length, 0);
+    assert.ok(/non-Unimatrix/.test(r.warnings[0]));
+    assert.strictEqual(rd(cfgIn(f)), raw);
+  });
+
+  it("dry-run lists, does not write; absent file is a no-op", () => {
+    const f = fixture();
+    assert.deepStrictEqual(removeOwnedCodexProjectMcp(f.root, false), { actions: [], warnings: [] });
+    seed(f, OWNED);
+    const r = removeOwnedCodexProjectMcp(f.root, true);
+    assert.ok(r.actions[0].startsWith("[dry-run] "));
+    assert.strictEqual(rd(cfgIn(f)), OWNED);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// maybeWireCodex — detection matrix, orchestration, fail-safe
 // ---------------------------------------------------------------------------
 
 describe("maybeWireCodex", () => {
-  it("fans out to mcp + 7 hook legs; every leg surfaces the trust note (NFR-09)", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const legs = maybeWireCodex(dir, {
-      clientPath: CLIENT,
-      binaryPath: BIN,
-      harnessSel: "codex-cli",
-      dryRun: false,
-    });
-    assert.strictEqual(legs.length, 8); // 1 mcp + 7 hooks
-    assert.strictEqual(legs.filter((l) => l.surface === "mcp").length, 1);
+  const written = (f, dir) => fs.existsSync(hooksOf(dir)) && fs.existsSync(cfgOf(dir));
+
+  it("row 1: project .codex/ -> hooks + MCP in ~/.codex", () => {
+    const f = fixture();
+    fs.mkdirSync(path.join(f.root, ".codex"));
+    const legs = maybeWireCodex(f.o);
+    assert.ok(written(f, path.join(f.home, ".codex")));
     assert.strictEqual(legs.filter((l) => l.surface === "hooks").length, 7);
-    for (const l of legs) {
-      assert.ok(/trusted \.codex\/ layer/.test(l.note), "trust note missing on a leg");
+    assert.strictEqual(legs.filter((l) => l.surface === "mcp").length, 1);
+  });
+
+  it("row 2: existing $CODEX_HOME only -> written there, ~/.codex NOT created", () => {
+    const f = fixture();
+    const ch = path.join(f.base, "ch");
+    fs.mkdirSync(ch);
+    f.o.env.CODEX_HOME = ch;
+    maybeWireCodex(f.o);
+    assert.ok(written(f, ch));
+    assert.ok(!fs.existsSync(path.join(f.home, ".codex")));
+  });
+
+  it("row 3: codex on PATH only", () => {
+    const f = fixture();
+    fs.writeFileSync(path.join(f.bin, "codex"), "#!/bin/sh\n", { mode: 0o755 });
+    maybeWireCodex(f.o);
+    assert.ok(written(f, path.join(f.home, ".codex")));
+  });
+
+  it("row 4: --harness codex-cli only -> ~/.codex created", () => {
+    const f = fixture();
+    f.o.harnessSel = "codex-cli";
+    maybeWireCodex(f.o);
+    assert.ok(written(f, path.join(f.home, ".codex")));
+  });
+
+  it("rows 5/6: no trigger (or absent $CODEX_HOME) -> nothing written, one skipped-not-detected leg", () => {
+    const f = fixture({ XDG_CONFIG_HOME: null });
+    f.env.XDG_CONFIG_HOME = path.join(f.base, "xdg");
+    fs.mkdirSync(f.env.XDG_CONFIG_HOME);
+    for (const ch of [undefined, path.join(f.base, "absent")]) {
+      if (ch) f.o.env.CODEX_HOME = ch;
+      const before = snapshot(f.base);
+      const legs = maybeWireCodex(f.o);
+      assert.deepStrictEqual(snapshot(f.base), before);
+      assert.strictEqual(legs.length, 1);
+      assert.strictEqual(legs[0].action, "skipped-not-detected");
     }
   });
 
-  it("test_maybeWireCodex_untrusted_surfaces_precondition (R-06)", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    const legs = maybeWireCodex(dir, {
-      clientPath: CLIENT,
-      binaryPath: BIN,
-      harnessSel: "codex-cli",
-      dryRun: true,
-    });
-    // Wiring cannot establish trust — the precondition is surfaced, never silent.
-    assert.ok(legs.every((l) => typeof l.note === "string" && l.note.length > 0));
+  it("row 7: multiple triggers -> single write, one owned entry per event", () => {
+    const f = fixture();
+    const ch = path.join(f.base, "ch");
+    fs.mkdirSync(ch);
+    fs.mkdirSync(path.join(f.root, ".codex"));
+    f.o.env.CODEX_HOME = ch;
+    maybeWireCodex(f.o);
+    const disk = JSON.parse(rd(hooksOf(ch)));
+    for (const ev of CODEX_EVENTS) assert.strictEqual(disk.hooks[ev].flatMap((g) => g.hooks).length, 1);
+    assert.ok(!fs.existsSync(path.join(f.home, ".codex")));
   });
 
-  it("resolveCodexTransport: binaryPath → stdio-binary; bridge → stdio-bridge; else none", () => {
-    assert.strictEqual(resolveCodexTransport({ binaryPath: BIN }).kind, "stdio-binary");
-    assert.strictEqual(
-      resolveCodexTransport({ bridgePath: "/b.js", projectHash: "h" }).kind,
-      "stdio-bridge"
-    );
-    assert.strictEqual(resolveCodexTransport({}).kind, "none");
-    // url is intentionally NOT a transport source (never emits url=).
-    assert.strictEqual(resolveCodexTransport({ url: "https://x" }).kind, "none");
+  it("no XDG write; relative CODEX_HOME -> ~/.codex + one stderr warning, cwd untouched", () => {
+    const f = fixture();
+    f.o.harnessSel = "codex-cli";
+    f.o.env.CODEX_HOME = "./x";
+    f.o.env.XDG_CONFIG_HOME = path.join(f.base, "xdg");
+    const cwdBefore = snapshot(process.cwd() === "/" ? f.base : f.base);
+    const { result: legs, stderr } = quiet(() => maybeWireCodex(f.o));
+    assert.ok(written(f, path.join(f.home, ".codex")));
+    assert.ok(!fs.existsSync(f.o.env.XDG_CONFIG_HOME));
+    assert.ok(!fs.existsSync(path.join(process.cwd(), "x", "hooks.json")));
+    assert.strictEqual(stderr.filter((s) => /not an absolute path/.test(s)).length, 1);
+    assert.ok(legs.every((l) => /not an absolute path/.test(l.reason || "")));
+    assert.ok(cwdBefore.length >= 0);
   });
 
-  it("mcp WireLeg invariants: skipped-* carry reason, success carry entry", () => {
-    const dir = makeTempProject();
-    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    // No transport → skipped-undetected with reason, no entry.
-    const legs = maybeWireCodex(dir, { clientPath: CLIENT, harnessSel: "codex-cli", dryRun: true });
-    const mcp = legs.find((l) => l.surface === "mcp");
-    assert.strictEqual(mcp.action, "skipped-undetected");
-    assert.ok(typeof mcp.reason === "string");
-    assert.strictEqual(mcp.entry, undefined);
-    assert.strictEqual(mcp.command, undefined);
+  it("removes owned legacy entries across scopes; hooks and MCP always agree", () => {
+    const f = fixture();
+    fs.mkdirSync(path.join(f.root, ".codex"));
+    seedOwnedHooks(path.join(f.root, ".codex", "hooks.json"), f.home);
+    fs.writeFileSync(path.join(f.root, ".codex", "config.toml"),
+      '[mcp_servers.unimatrix]\ncommand = "node"\nargs = ["/x/mcp-bridge.js", "h"]\n');
+    const legs = maybeWireCodex(f.o);
+    const user = JSON.parse(rd(hooksOf(path.join(f.home, ".codex"))));
+    const proj = JSON.parse(rd(path.join(f.root, ".codex", "hooks.json")));
+    for (const ev of CODEX_EVENTS) {
+      assert.strictEqual(user.hooks[ev].flatMap((g) => g.hooks).length, 1);
+      assert.deepStrictEqual(proj.hooks[ev][0].hooks.map((h) => h.command), ["/usr/bin/foreign-" + ev]);
+    }
+    assert.strictEqual(rd(path.join(f.root, ".codex", "config.toml")), "");
+    assert.ok(legs.some((l) => l.surface === "mcp" && l.action === "removed"));
+  });
+
+  it("dry-run lists user-level writes; set of paths equals the real run (AC-13)", () => {
+    const f = fixture();
+    f.o.harnessSel = "codex-cli";
+    fs.mkdirSync(path.join(f.root, ".codex"));
+    seedOwnedHooks(path.join(f.root, ".codex", "hooks.json"), f.home);
+    f.o.dryRun = true;
+    const before = snapshot(f.base);
+    const dry = maybeWireCodex(f.o);
+    assert.deepStrictEqual(snapshot(f.base), before);
+    f.o.dryRun = false;
+    const real = maybeWireCodex(f.o);
+    const paths = (ls) => Array.from(new Set(ls.filter((l) => l.action !== "unchanged").map((l) => l.path))).sort();
+    assert.deepStrictEqual(paths(dry), paths(real));
+  });
+
+  it("foreign unimatrix MCP: leg skipped-foreign and warning on stderr; hooks still written", () => {
+    const f = fixture();
+    f.o.harnessSel = "codex-cli";
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(cfg), { recursive: true });
+    fs.writeFileSync(cfg, '[mcp_servers.unimatrix]\ncommand = "/opt/mine"\n');
+    const { result: legs, stderr } = quiet(() => maybeWireCodex(f.o));
+    assert.ok(legs.some((l) => l.action === "skipped-foreign"));
+    assert.ok(stderr.some((s) => /non-Unimatrix entry/.test(s)));
+    assert.ok(fs.existsSync(hooksOf(path.join(f.home, ".codex"))));
+  });
+
+  it("never throws: unsafe shim path becomes a skipped leg", () => {
+    const f = fixture();
+    f.o.harnessSel = "codex-cli";
+    f.o.home = path.join(f.base, "it's");
+    fs.mkdirSync(f.o.home);
+    let legs;
+    assert.doesNotThrow(() => { legs = maybeWireCodex(f.o); });
+    assert.ok(legs.some((l) => l.action === "skipped-malformed" && /codex wiring error/.test(l.reason)));
+  });
+
+  it("malformed config.toml: MCP leg skipped-malformed, file preserved", () => {
+    const f = fixture();
+    f.o.harnessSel = "codex-cli";
+    const cfg = cfgOf(path.join(f.home, ".codex"));
+    fs.mkdirSync(path.dirname(cfg), { recursive: true });
+    fs.writeFileSync(cfg, '[tools]\nnote = """\nunclosed\n');
+    const legs = maybeWireCodex(f.o);
+    assert.ok(legs.some((l) => l.surface === "mcp" && l.action === "skipped-malformed"));
+    assert.strictEqual(rd(cfg), '[tools]\nnote = """\nunclosed\n');
+  });
+});
+
+describe("codexApprovalStep", () => {
+  it("is constant text naming /hooks", () => {
+    assert.strictEqual(codexApprovalStep(), codexApprovalStep());
+    assert.ok(codexApprovalStep().includes("/hooks"));
   });
 });

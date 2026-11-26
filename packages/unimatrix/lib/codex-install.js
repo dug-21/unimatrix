@@ -1,479 +1,150 @@
 "use strict";
 
 /**
- * Codex installer — `lib/codex-install.js` (nan-023, C14 codex-cli parity).
- *
- * WAVE A (this file, ADR-002 / toml-surgical.md): the minimal, dependency-free
- * SURGICAL TOML block writer. It manages EXACTLY ONE owned table
- * (`[mcp_servers.unimatrix]`) as text and copies every byte outside the owned
- * region verbatim. Foreign `[mcp_servers.*]` tables, comments, blank lines, key
- * order, quoting and CRLF/LF endings survive BY CONSTRUCTION — they are never
- * parsed, normalized, reordered or re-quoted. This is the structural advantage
- * over a round-trip TOML library that ADR-002 rejects. No new dependency.
- *
- * These are PURE string functions: no fs access, no throw on normal input. An
- * ambiguous file (unterminated header / multi-line string) is signalled with a
- * structured `{ malformed: true }` result — never an exception, never a partial
- * write. The fs/skip decision lives in the writers (Wave B), which turn a
- * malformed signal into a `skipped-malformed` WireLeg with the file preserved.
- *
- * WAVE B (added later in this same file — DO NOT remove the Wave A exports):
- *   maybeWireCodex, writeCodexMcpToml, writeCodexHooks — the fs-touching writers
- *   that return WireLegs. `buildTomlBody` (Wave B) MUST build every string value
- *   through `tomlString` below (R-10 command-injection guard) — never naive
- *   concatenation of a raw path into `command = ...`.
+ * Codex installer (nan-023 C14, nan-024 D-026/D-060/D-062/D-081/D-084/D-085).
+ * Hooks -> `$CODEX_HOME/hooks.json` (default ~/.codex), MCP ->
+ * `$CODEX_HOME/config.toml [mcp_servers.unimatrix]`; owned entries are removed
+ * from the project `.codex/` files and `$CODEX_HOME/config.toml [hooks]`.
+ * Fail-safe: nothing throws out of `maybeWireCodex`; malformed files are left
+ * byte-intact. Surgical TOML helpers live in `codex-toml.js` (re-exported).
  */
 
 const fs = require("fs");
 const path = require("path");
-// Wave B reuse (do not reinvent — codex-install.md §Module constants / reuse):
 const { isWithinProject, readJsonSafe, detectIndent } = require("./opencode-install.js");
 const {
-  buildHookClientCommand,
+  buildShimCommand,
   isUnimatrixHook,
+  removeOwnedHooks,
   EVENT_MATCHERS,
 } = require("./merge-settings.js");
+const { isUnimatrixCommand, isUnimatrixMcpEntry } = require("./hook-ownership.js");
+const { buildMcpEntry } = require("./mcp-entry.js");
+const { atomicWriteText } = require("./claude-json.js");
+const toml = require("./codex-toml.js");
+
+const {
+  readTomlTable,
+  upsertTomlTable,
+  removeTomlTable,
+  removeTablePositions,
+  tomlTableToEntry,
+  tomlString,
+  scanTables,
+  ownedRegion,
+  splitKeepEndings,
+  readTomlString,
+} = toml;
 
 const OWNED_TABLE = "mcp_servers.unimatrix";
-
-// ---------------------------------------------------------------------------
-// Line / ending primitives — preserve the file's exact bytes.
-// ---------------------------------------------------------------------------
-
-/**
- * Split `raw` into lines, each still carrying its own trailing "\n"/"\r\n" (the
- * final line may carry none). `splitKeepEndings(raw).join("") === raw` for all
- * inputs, including "" -> []. This is what makes verbatim re-join possible.
- */
-function splitKeepEndings(raw) {
-  const lines = [];
-  let start = 0;
-  for (let i = 0; i < raw.length; i++) {
-    if (raw[i] === "\n") {
-      lines.push(raw.slice(start, i + 1));
-      start = i + 1;
-    }
-  }
-  if (start < raw.length) lines.push(raw.slice(start));
-  return lines;
-}
-
-/** Strip a single trailing "\r\n" or "\n" from a line (leaves inner bytes). */
-function stripLineEnding(line) {
-  return line.replace(/\r?\n$/, "");
-}
-
-/** Dominant line ending: "\r\n" if the file is CRLF-majority, else "\n". */
-function dominantLineEnding(raw) {
-  const crlf = (raw.match(/\r\n/g) || []).length;
-  const lf = (raw.match(/\n/g) || []).length - crlf; // bare-LF count
-  return crlf > lf ? "\r\n" : "\n";
-}
-
-/** True iff `s` ends with a blank line (two consecutive newlines at the tail). */
-function endsWithBlankLine(s) {
-  return /(?:\r?\n)[ \t]*(?:\r?\n)$/.test(s);
-}
-
-// ---------------------------------------------------------------------------
-// Boundary scanner (multi-line-string aware).
-// ---------------------------------------------------------------------------
-
-/**
- * Advance triple-quoted-string state across one line's content (ending already
- * stripped). Returns the new state: null | '"""' | "'''". Minimal but correct:
- * the only job is to avoid treating a `[` that lives inside a multi-line string
- * as a table header. Outside a string, an unescaped `#` starts a comment to
- * end-of-line, so any triple-quote-looking bytes after it are ignored (TOML).
- */
-function updateTripleState(content, state) {
-  let inTriple = state;
-  let i = 0;
-  while (i < content.length) {
-    if (inTriple === null) {
-      if (content.startsWith('"""', i)) { inTriple = '"""'; i += 3; continue; }
-      if (content.startsWith("'''", i)) { inTriple = "'''"; i += 3; continue; }
-      if (content[i] === "#") break; // comment to EOL — nothing after it opens a string
-      i += 1;
-    } else {
-      if (content.startsWith(inTriple, i)) { inTriple = null; i += 3; continue; }
-      i += 1;
-    }
-  }
-  return inTriple;
-}
-
-/**
- * Scan `lines` for TOML table headers. A line is a header iff — when it does NOT
- * begin inside a multi-line string — its first non-whitespace char is `[`. Both
- * `[table]` and `[[array.of.tables]]` bound a region. `bracketContent` is the
- * exact inner string (NO normalization): the owned table is matched with `===`,
- * so spaced/quoted foreign dotted keys are treated as not-ours (safe: we append
- * our canonical table). Returns `{ tables }` or `{ error }` when the file cannot
- * be parsed unambiguously (fail-safe → caller skips, file preserved).
- */
-function scanTables(lines) {
-  const tables = [];
-  let inTriple = null;
-  for (let i = 0; i < lines.length; i++) {
-    const content = stripLineEnding(lines[i]);
-    const beganInString = inTriple !== null;
-    inTriple = updateTripleState(content, inTriple);
-    if (beganInString) continue; // a `[` inside a multi-line string is not a header
-    const trimmed = content.replace(/^[ \t]+/, "");
-    if (trimmed.startsWith("[[")) {
-      const close = trimmed.indexOf("]]");
-      if (close < 0) return { error: "unterminated array-of-tables header" };
-      tables.push({ headerIndex: i, bracketContent: trimmed.slice(2, close), isArrayOfTables: true });
-    } else if (trimmed.startsWith("[")) {
-      const close = trimmed.indexOf("]");
-      if (close < 0) return { error: "unterminated table header" };
-      tables.push({ headerIndex: i, bracketContent: trimmed.slice(1, close), isArrayOfTables: false });
-    }
-  }
-  if (inTriple !== null) return { error: "unterminated multi-line string" };
-  return { tables };
-}
-
-/** Index into `tables` of the owned (non-array) table, or -1 if absent. */
-function findOwned(tables, tablePath) {
-  for (let i = 0; i < tables.length; i++) {
-    if (!tables[i].isArrayOfTables && tables[i].bracketContent === tablePath) return i;
-  }
-  return -1;
-}
-
-/**
- * Region for the owned table at `tables[pos]`: [start, end) line indices. The
- * region body is every line after the header up to (but not including) the next
- * table header of ANY kind, or EOF.
- */
-function ownedRegion(tables, pos, lineCount) {
-  const start = tables[pos].headerIndex + 1;
-  const end = pos + 1 < tables.length ? tables[pos + 1].headerIndex : lineCount;
-  return { start, end };
-}
-
-// ---------------------------------------------------------------------------
-// Body equality (idempotence) — meaningful content, not whitespace noise.
-// ---------------------------------------------------------------------------
-
-/** Normalize a body: strip each line's trailing whitespace/ending, drop trailing blanks. */
-function normalizeBody(lines) {
-  const arr = lines.map((l) => l.replace(/\s+$/, ""));
-  while (arr.length && arr[arr.length - 1] === "") arr.pop();
-  return arr;
-}
-
-/**
- * Compare two bodies after normalizing trailing whitespace/endings and ignoring
- * trailing all-blank lines on both sides. Key ORDER is significant (our body is
- * fixed-order, so order stability is part of idempotence).
- */
-function bodyEquals(a, b) {
-  const na = normalizeBody(a);
-  const nb = normalizeBody(b);
-  if (na.length !== nb.length) return false;
-  for (let i = 0; i < na.length; i++) if (na[i] !== nb[i]) return false;
-  return true;
-}
-
-// ---------------------------------------------------------------------------
-// Public (internal) surgical helpers — ADR-002 integration surface.
-// ---------------------------------------------------------------------------
-
-/**
- * Read the owned table's body as text, copying nothing else.
- * @param {string} raw       full file contents ("" for a missing/empty file)
- * @param {string} tablePath dotted table name without brackets, e.g. "mcp_servers.unimatrix"
- * @returns {{present: boolean, body: string, malformed?: boolean}}
- */
-function readTomlTable(raw, tablePath) {
-  const lines = splitKeepEndings(raw);
-  const scan = scanTables(lines);
-  if (scan.error) return { present: false, body: "", malformed: true };
-
-  const pos = findOwned(scan.tables, tablePath);
-  if (pos < 0) return { present: false, body: "" };
-
-  const { start, end } = ownedRegion(scan.tables, pos, lines.length);
-  return { present: true, body: lines.slice(start, end).join("") };
-}
-
-/**
- * Upsert the owned table. Present → replace ONLY its body (idempotent when the
- * desired body already matches). Absent → append the table, preceded by exactly
- * one blank-line separator iff the file is non-empty and does not already end in
- * a blank line. Every byte outside the owned region is preserved verbatim.
- * @param {string}   raw        full file contents ("" for missing/empty)
- * @param {string}   tablePath  dotted table name without brackets
- * @param {string[]} bodyLines  key-line strings for under the header (no endings)
- * @returns {{text: string, changed: boolean, malformed?: boolean}}
- */
-function upsertTomlTable(raw, tablePath, bodyLines) {
-  const lines = splitKeepEndings(raw);
-  const scan = scanTables(lines);
-  if (scan.error) return { text: raw, changed: false, malformed: true };
-
-  const nl = dominantLineEnding(raw);
-  const desiredBody = bodyLines.map((l) => l + nl);
-  const header = "[" + tablePath + "]" + nl;
-
-  const pos = findOwned(scan.tables, tablePath);
-  if (pos >= 0) {
-    const { start, end } = ownedRegion(scan.tables, pos, lines.length);
-    const currentBody = lines.slice(start, end);
-    if (bodyEquals(currentBody, desiredBody)) return { text: raw, changed: false };
-    const newLines = lines.slice(0, start).concat(desiredBody, lines.slice(end));
-    return { text: newLines.join(""), changed: true };
-  }
-
-  // Append the owned table, preserving every existing byte.
-  let prefix = raw;
-  let sep = "";
-  if (raw.length > 0) {
-    if (!prefix.endsWith(nl)) prefix += nl; // ensure the file ends with a newline first
-    if (!endsWithBlankLine(prefix)) sep = nl; // exactly one blank-line separator
-  }
-  return { text: prefix + sep + header + desiredBody.join(""), changed: true };
-}
-
-/**
- * Emit a TOML BASIC string with proper escaping — the security-critical guard
- * (R-10). A path/value containing spaces, quotes, backslashes or control chars
- * produces a valid TOML string that re-parses to the exact intended value.
- * Wave B's `buildTomlBody` MUST route every emitted value through this; never
- * naive-concatenate a raw path into `command = ...`.
- * @param {string} s
- * @returns {string} the value wrapped in double quotes, escaped per TOML spec
- */
-function tomlString(s) {
-  let out = '"';
-  for (const ch of String(s)) {
-    const code = ch.codePointAt(0);
-    if (ch === "\\") out += "\\\\";
-    else if (ch === '"') out += '\\"';
-    else if (ch === "\b") out += "\\b";
-    else if (ch === "\t") out += "\\t";
-    else if (ch === "\n") out += "\\n";
-    else if (ch === "\f") out += "\\f";
-    else if (ch === "\r") out += "\\r";
-    else if (code < 0x20 || code === 0x7f) out += "\\u" + code.toString(16).padStart(4, "0");
-    else out += ch;
-  }
-  return out + '"';
-}
-
-// ===========================================================================
-// WAVE B — fs-touching writers (codex-install.md; ADR-001/003/006).
-//
-// Bring codex-cli to C14 parity: write `[mcp_servers.unimatrix]` into
-// `.codex/config.toml` (surgical, foreign-preserving) and Claude-like hooks into
-// `.codex/hooks.json` targeting the JS hook client with `--provider codex-cli` on
-// EVERY command. Fail-safe: warn-and-skip, NEVER throw out of `maybeWireCodex`
-// (AC-15). Every TOML value routes through the Wave A `tomlString` escaper (R-10).
-// ===========================================================================
-
-const CONFIG_FILE = ".codex/config.toml";
-const HOOKS_FILE = ".codex/hooks.json";
 const CODEX_HARNESS = "codex-cli";
-const CODEX_PROVIDER = "codex-cli"; // mandatory hook hint (C-04, NFR-07)
-const TOML_MALFORMED_REASON =
-  "config.toml has an ambiguous table boundary — preserved unchanged";
-
-// ADR-003 §3 / Q4 — the 7 emitted events. Excludes PostToolUseFailure
-// (Claude-specific arm) and SubagentStop (opt-in). Matchers reused from
-// EVENT_MATCHERS so codex and claude stay in step (PreToolUse = cycle matcher).
+const CODEX_PROVIDER = "codex-cli";
+const TOML_MALFORMED_REASON = "config.toml has an ambiguous table boundary - preserved unchanged";
 const CODEX_EVENTS = [
-  "SessionStart",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "PreCompact",
-  "SubagentStart",
-  "Stop",
+  "SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse",
+  "PreCompact", "SubagentStart", "Stop",
 ];
 
-/** Best-effort text read; a missing/unreadable file is treated as "" (fail-safe). */
-function readTextSafe(filePath) {
+function readTextSafe(p) {
   try {
-    return fs.readFileSync(filePath, "utf8");
-  } catch (_err) {
+    return fs.readFileSync(p, "utf8");
+  } catch (_) {
     return "";
   }
 }
 
-/**
- * Surfaced trust precondition (ADR-006 §3, NFR-09). `.codex/` config + hooks
- * only load for a TRUSTED layer; wiring cannot make it trusted, so we state the
- * conditionality on every codex leg — never a silent inert pass.
- */
-function codexTrustNote() {
-  return "codex wiring is active only in a trusted .codex/ layer (mark .codex/ trusted in Codex)";
+function isDir(p) {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch (_) {
+    return false;
+  }
 }
 
-/** Structured WireLeg builder; `extra` carries command/entry/reason/note. */
+function isFile(p) {
+  try {
+    return fs.statSync(p).isFile();
+  } catch (_) {
+    return false;
+  }
+}
+
 function leg(surface, action, legPath, extra) {
-  return Object.assign(
-    { harness: CODEX_HARNESS, surface: surface, action: action, path: legPath },
-    extra || {}
+  return Object.assign({ harness: CODEX_HARNESS, surface, action, path: legPath }, extra || {});
+}
+
+/** Constant text printed by init and status (no trust hash is ever written). */
+function codexApprovalStep() {
+  return "Codex: run /hooks in Codex and approve the Unimatrix hooks (they stay inactive until approved)";
+}
+
+/** D-081/D-085: the Codex home dir; invalid/relative $CODEX_HOME is ignored with a warning. */
+function codexHome(env, home) {
+  const c = env && env.CODEX_HOME;
+  if (typeof c === "string" && c !== "") {
+    if (path.isAbsolute(c) && !c.includes("\0")) return { dir: c };
+    return {
+      dir: path.join(home, ".codex"),
+      warning: "unimatrix: CODEX_HOME is not an absolute path; ignoring it and using ~/.codex",
+    };
+  }
+  return { dir: path.join(home, ".codex") };
+}
+
+function onPath(name, pathVar, platform) {
+  const win = platform === "win32";
+  const dirs = String(pathVar || "").split(win ? ";" : ":").filter(Boolean);
+  const names = win ? [name + ".exe", name + ".cmd", name + ".bat"] : [name];
+  return dirs.some((d) => names.some((n) => isFile(path.join(d, n))));
+}
+
+/** D-081: any one trigger suffices. */
+function detectsCodex(o) {
+  const env = o.env || {};
+  return (
+    o.harnessSel === CODEX_HARNESS ||
+    isDir(path.join(o.root, ".codex")) ||
+    isDir(codexHome(env, o.home).dir) ||
+    (typeof o.pathLookup === "function"
+      ? !!o.pathLookup("codex")
+      : onPath("codex", env.PATH, o.platform || process.platform))
   );
 }
 
-/**
- * Resolve the emit shape. Q1: cloud is the token-free stdio bridge; a bearer
- * token / `url =` is NEVER written to TOML (Principle 8, R-03). Prefers an
- * explicit `transport` descriptor from the orchestrator, then `binaryPath`
- * (local), then `bridgePath` + `projectHash` (cloud). `url` is intentionally
- * NOT mapped to a `url =` entry — the orchestrator resolves cloud to a bridge.
- * @returns {{kind:string, binaryPath?:string, bridgePath?:string, projectHash?:string}}
- */
-function resolveCodexTransport(opts) {
-  const o = opts || {};
-  if (o.transport && typeof o.transport.kind === "string") {
-    return o.transport;
-  }
-  if (typeof o.binaryPath === "string" && o.binaryPath) {
-    return { kind: "stdio-binary", binaryPath: o.binaryPath };
-  }
-  if (
-    typeof o.bridgePath === "string" &&
-    o.bridgePath &&
-    typeof o.projectHash === "string" &&
-    o.projectHash
-  ) {
-    return { kind: "stdio-bridge", bridgePath: o.bridgePath, projectHash: o.projectHash };
-  }
-  return { kind: "none" };
-}
-
-/**
- * Owned-table key lines (TOML-escaped via `tomlString`, R-10) plus a structured
- * `entry` mirror for the WireLeg (the C14 verifier spawns/connects from it).
- * Returns null for `kind === "none"` (caller emits a skipped leg).
- */
-function buildTomlEmit(transport) {
-  if (transport.kind === "stdio-binary") {
-    return {
-      bodyLines: ["command = " + tomlString(transport.binaryPath)],
-      entry: { command: transport.binaryPath },
-    };
-  }
-  if (transport.kind === "stdio-bridge") {
-    return {
-      bodyLines: [
-        'command = "node"',
-        "args = [" +
-          tomlString(transport.bridgePath) +
-          ", " +
-          tomlString(transport.projectHash) +
-          "]",
-      ],
-      entry: { command: "node", args: [transport.bridgePath, transport.projectHash] },
-    };
-  }
-  return null;
-}
-
-/**
- * Surgical TOML MCP writer. Self-gates the intent decision (AC-11) and never
- * throws on malformed input — the file is byte-preserved and the leg is skipped
- * (AC-15). Malformed is checked BEFORE the intent gate.
- * @returns {object} a single WireLeg
- */
-function writeCodexMcpToml(dir, opts, dryRun) {
-  const options = opts || {};
-  const cfgPath = path.join(dir, CONFIG_FILE);
-  const S = "mcp";
-
-  if (!isWithinProject(dir, cfgPath)) {
-    return leg(S, "skipped-undetected", cfgPath, { reason: "path escapes project root" }); // AC-12
-  }
-
-  const raw = readTextSafe(cfgPath);
-  const existing = readTomlTable(raw, OWNED_TABLE);
-  if (existing.malformed) {
-    return leg(S, "skipped-malformed", cfgPath, { reason: TOML_MALFORMED_REASON });
-  }
-
-  // Intent gate (self-gating): a NEW entry into a user-owned config needs opt-in.
-  if (!existing.present && options.harnessSel !== CODEX_HARNESS) {
-    return leg(S, "skipped-intent", cfgPath, {
-      reason: "new codex entry needs opt-in: run `unimatrix wire --harness codex-cli`",
-    }); // AC-11
-  }
-
-  const emit = buildTomlEmit(options.transport || { kind: "none" });
-  if (!emit) {
-    return leg(S, "skipped-undetected", cfgPath, {
-      reason: "no transport source (binaryPath / bridge absent) — nothing to wire",
-    });
-  }
-
-  const result = upsertTomlTable(raw, OWNED_TABLE, emit.bodyLines);
-  if (result.malformed) {
-    return leg(S, "skipped-malformed", cfgPath, { reason: TOML_MALFORMED_REASON });
-  }
-  if (!result.changed) {
-    return leg(S, "unchanged", cfgPath, { entry: emit.entry }); // idempotent — no write (AC-04)
-  }
-
-  const action = existing.present ? "updated" : "created";
-  if (!dryRun) {
-    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
-    fs.writeFileSync(cfgPath, result.text, "utf8");
-  }
-  return leg(S, action, cfgPath, { entry: emit.entry });
-}
-
-/**
- * Fail-loud invariant (NFR-07, C-04): a codex hook command MUST carry
- * `--provider codex-cli`. A missing flag is a defect, not a silent degrade.
- */
 function requireProviderFlag(command) {
   if (typeof command !== "string" || !command.includes("--provider " + CODEX_PROVIDER)) {
-    throw new Error(
-      "codex hook command missing --provider codex-cli (fail-loud, NFR-07/C-04)"
-    );
+    throw new Error("codex hook command missing --provider codex-cli (fail-loud, NFR-07/C-04)");
   }
   return command;
 }
 
-/**
- * Non-clobbering matcher-group upsert for one event, scoped to Unimatrix-owned
- * entries (isUnimatrixHook). Mirrors mergeSettings Step 3: find the matcher
- * group, update/append the uni-owned hook, dedup extra uni hooks. Foreign hook
- * entries and foreign matcher groups are NEVER touched. Mutates `hooksObj`;
- * returns true iff it changed.
- */
+/** Owned-scoped matcher-group upsert for one event; dedups extra owned hooks. */
 function upsertHookEntry(hooksObj, event, matcher, command) {
-  const newEntry = { type: "command", command: command };
-  if (!Array.isArray(hooksObj[event])) {
-    hooksObj[event] = [];
+  const newEntry = { type: "command", command };
+  if (!Array.isArray(hooksObj[event])) hooksObj[event] = [];
+  let stripped = false;
+  for (const g of hooksObj[event]) {
+    if (!g || g.matcher === matcher || !Array.isArray(g.hooks)) continue;
+    const n = g.hooks.length;
+    g.hooks = g.hooks.filter((h) => !isUnimatrixHook(h));
+    if (g.hooks.length !== n) stripped = true;
   }
+  if (stripped) hooksObj[event] = hooksObj[event].filter((g) => g && !(Array.isArray(g.hooks) && g.hooks.length === 0));
   const groups = hooksObj[event];
   for (const group of groups) {
-    if (!group || group.matcher !== matcher) {
-      continue;
-    }
-    if (!Array.isArray(group.hooks)) {
-      group.hooks = [];
-    }
+    if (!group || group.matcher !== matcher) continue;
+    if (!Array.isArray(group.hooks)) group.hooks = [];
     let idx = -1;
     const dups = [];
     for (let i = 0; i < group.hooks.length; i++) {
-      if (isUnimatrixHook(group.hooks[i])) {
-        if (idx === -1) {
-          idx = i;
-        } else {
-          dups.push(i);
-        }
-      }
+      if (!isUnimatrixHook(group.hooks[i])) continue;
+      if (idx === -1) idx = i;
+      else dups.push(i);
     }
-    let changed = false;
+    let changed = stripped;
     for (let j = dups.length - 1; j >= 0; j--) {
       group.hooks.splice(dups[j], 1);
-      changed = true; // dedup on re-run
+      changed = true;
     }
     if (idx >= 0) {
       const cur = group.hooks[idx];
@@ -487,135 +158,232 @@ function upsertHookEntry(hooksObj, event, matcher, command) {
     }
     return changed;
   }
-  groups.push({ matcher: matcher, hooks: [newEntry] });
+  groups.push({ matcher, hooks: [newEntry] });
   return true;
 }
 
-/**
- * Write `.codex/hooks.json` (same matcher-group shape as `.claude/settings.json`)
- * targeting the JS hook client — NEVER the unimatrix binary (C-03, AC-08) — with
- * `--provider codex-cli` on every command (C-04, AC-07). Returns ONE WireLeg per
- * event so the manifest carries every exact command string (SR-09, R-02).
- * @returns {object[]} WireLeg[]
- */
-function writeCodexHooks(dir, opts) {
-  const options = opts || {};
-  const hooksPath = path.join(dir, HOOKS_FILE);
-  const S = "hooks";
-
-  if (!isWithinProject(dir, hooksPath)) {
-    return [leg(S, "skipped-undetected", hooksPath, { reason: "path escapes project root" })]; // AC-12
-  }
-
+/** One WireLeg per event; hooks only ever land in `<codexHome>/hooks.json`. */
+function writeCodexHooks(o) {
+  const { home, env, platform, dryRun } = o;
+  const hooksPath = path.join(codexHome(env || {}, home).dir, "hooks.json");
+  const skip = (reason) => [leg("hooks", "skipped-malformed", hooksPath, { reason })];
   const read = readJsonSafe(hooksPath);
-  if (read.malformed) {
-    return [
-      leg(S, "skipped-malformed", hooksPath, {
-        reason: ".codex/hooks.json is not valid JSON — preserved unchanged",
-      }),
-    ];
-  }
+  if (read.malformed) return skip("hooks.json is not valid JSON - preserved unchanged");
   const content = read.parsed || {};
-  if (
-    content.hooks !== undefined &&
-    (typeof content.hooks !== "object" || Array.isArray(content.hooks))
-  ) {
-    return [
-      leg(S, "skipped-malformed", hooksPath, {
-        reason: "`hooks` key is not an object — preserved unchanged",
-      }),
-    ];
+  if (content.hooks !== undefined && (typeof content.hooks !== "object" || content.hooks === null || Array.isArray(content.hooks))) {
+    return skip("`hooks` key is not an object - preserved unchanged");
   }
-  if (content.hooks === undefined) {
-    content.hooks = {};
-  }
-
+  if (content.hooks === undefined) content.hooks = {};
   let changed = false;
   const commands = [];
   for (const event of CODEX_EVENTS) {
-    const matcher = EVENT_MATCHERS[event];
-    const command = requireProviderFlag(
-      buildHookClientCommand(options.clientPath, event, CODEX_PROVIDER)
-    );
-    commands.push({ event: event, command: command });
-    if (upsertHookEntry(content.hooks, event, matcher, command)) {
-      changed = true;
-    }
+    const command = requireProviderFlag(buildShimCommand(event, CODEX_PROVIDER, platform, home));
+    commands.push(command);
+    if (upsertHookEntry(content.hooks, event, EVENT_MATCHERS[event], command)) changed = true;
   }
-
-  let action = read.present ? "updated" : "created";
-  if (!changed && read.present) {
-    action = "unchanged";
+  const action = read.present ? (changed ? "updated" : "unchanged") : "created";
+  if (!dryRun && action !== "unchanged") {
+    atomicWriteText(hooksPath, JSON.stringify(content, null, detectIndent(read.raw || "")) + "\n");
   }
-
-  if (!options.dryRun && action !== "unchanged") {
-    fs.mkdirSync(path.dirname(hooksPath), { recursive: true });
-    fs.writeFileSync(
-      hooksPath,
-      JSON.stringify(content, null, detectIndent(read.raw || "")) + "\n",
-      "utf8"
-    );
-  }
-
-  // One WireLeg per event — each carries its own exact command (manifest fidelity).
-  return commands.map((c) => leg(S, action, hooksPath, { command: c.command }));
+  return commands.map((command) => leg("hooks", action, hooksPath, { command }));
 }
 
 /**
- * Top-level codex fan-out: MCP TOML + hooks. Fail-safe — never throws out of the
- * wire layer (AC-15); an unexpected throw becomes a skipped leg. The trust
- * precondition is surfaced on every codex leg (NFR-09), never a silent no-op.
+ * Remove owned `hooks.*` tables from a Codex config.toml text. A table is owned
+ * iff it has a `command = "<string>"` line satisfying isUnimatrixCommand. Emptied
+ * `[[hooks.X]]` parent groups (no children, only `matcher`) are removed too.
+ * @returns {{text: string, changed: boolean, malformed?: boolean}}
+ */
+function removeOwnedHooksToml(raw) {
+  const lines = splitKeepEndings(raw);
+  const scan = scanTables(lines);
+  if (scan.error) return { text: raw, changed: false, malformed: true };
+  const tables = scan.tables;
+  const isHooks = (t) => t.bracketContent === "hooks" || t.bracketContent.startsWith("hooks.");
+  const owned = new Set();
+  tables.forEach((t, pos) => {
+    if (!isHooks(t)) return;
+    const { start, end } = ownedRegion(tables, pos, lines.length);
+    for (let i = start; i < end; i++) {
+      const m = /^[ \t]*command[ \t]*=[ \t]*(.*?)[ \t]*(#.*)?\r?\n?$/.exec(lines[i]);
+      const r = m && readTomlString(m[1], 0);
+      if (r && isUnimatrixCommand(r.value)) { owned.add(pos); break; }
+    }
+  });
+  if (owned.size === 0) return { text: raw, changed: false };
+  // Drop emptied parent array-of-tables groups.
+  for (const pos of Array.from(owned)) {
+    const segs = tables[pos].bracketContent.split(".");
+    if (segs.length < 3) continue;
+    const parentPath = segs.slice(0, -1).join(".");
+    for (let p = pos - 1; p >= 0; p--) {
+      if (!tables[p].bracketContent.startsWith(parentPath)) continue;
+      if (tables[p].bracketContent !== parentPath || !tables[p].isArrayOfTables) break;
+      let alive = false;
+      for (let q = p + 1; q < tables.length && tables[q].bracketContent.startsWith(parentPath + "."); q++) {
+        if (!owned.has(q)) alive = true;
+      }
+      const { start, end } = ownedRegion(tables, p, lines.length);
+      const onlyMatcher = lines.slice(start, end).every((l) => /^[ \t]*(matcher[ \t]*=.*)?(#.*)?\r?\n?$/.test(l));
+      if (!alive && onlyMatcher) owned.add(p);
+      break;
+    }
+  }
+  return { text: removeTablePositions(lines, tables, Array.from(owned)), changed: true };
+}
+
+function pre(dryRun, s) {
+  return dryRun ? "[dry-run] " + s : s;
+}
+
+/** Remove owned hooks from project `.codex/hooks.json` and `<codexHome>/config.toml [hooks]`. */
+function removeOwnedCodexHooks(o) {
+  const { home, env, projectRoot, dryRun } = o;
+  const actions = [];
+  const legs = [];
+  const homeDir = codexHome(env || {}, home).dir;
+  const userHooks = path.join(homeDir, "hooks.json");
+  const projHooks = path.join(projectRoot, ".codex", "hooks.json");
+  // Never strip the user-level file we just wrote (project root == home).
+  if (path.resolve(projHooks) !== path.resolve(userHooks) && isWithinProject(projectRoot, projHooks)) {
+    try {
+      const r = removeOwnedHooks(projHooks, { dryRun });
+      for (const a of r.actions) actions.push(pre(dryRun, a));
+      if (r.changed) legs.push(leg("hooks", "removed", projHooks, { reason: "owned project hooks removed" }));
+    } catch (e) {
+      legs.push(leg("hooks", "skipped-malformed", projHooks, { reason: "hooks.json is not valid JSON - preserved unchanged" }));
+    }
+  }
+  const cfg = path.join(homeDir, "config.toml");
+  const raw = readTextSafe(cfg);
+  if (raw) {
+    const r = removeOwnedHooksToml(raw);
+    if (r.malformed) {
+      legs.push(leg("hooks", "skipped-malformed", cfg, { reason: TOML_MALFORMED_REASON }));
+    } else if (r.changed) {
+      if (!dryRun) atomicWriteText(cfg, r.text);
+      actions.push(pre(dryRun, "Removed unimatrix hooks from " + cfg + " [hooks]"));
+      legs.push(leg("hooks", "removed", cfg, { reason: "owned [hooks] tables removed" }));
+    }
+  }
+  return { actions, legs };
+}
+
+function foreignWarning(cfg) {
+  return "unimatrix: " + cfg + " key mcp_servers.unimatrix holds a non-Unimatrix entry; left unchanged, Unimatrix MCP not written";
+}
+
+/** MCP at `<codexHome>/config.toml`; written whenever Codex is detected (D-084). */
+function writeCodexMcpToml(o) {
+  const { home, env, platform, node, dryRun } = o;
+  const cfg = path.join(codexHome(env || {}, home).dir, "config.toml");
+  const raw = readTextSafe(cfg);
+  const existing = readTomlTable(raw, OWNED_TABLE);
+  if (existing.malformed) return leg("mcp", "skipped-malformed", cfg, { reason: TOML_MALFORMED_REASON });
+  if (existing.present) {
+    const cur = tomlTableToEntry(existing.body);
+    if (!cur || !isUnimatrixMcpEntry("unimatrix", cur)) {
+      return leg("mcp", "skipped-foreign", cfg, { reason: foreignWarning(cfg) });
+    }
+  }
+  const e = buildMcpEntry(platform, home, node);
+  const entry = { command: e.command, args: e.args };
+  const body = [
+    "command = " + tomlString(entry.command),
+    "args = [" + entry.args.map(tomlString).join(", ") + "]",
+  ];
+  const result = upsertTomlTable(raw, OWNED_TABLE, body);
+  if (result.malformed) return leg("mcp", "skipped-malformed", cfg, { reason: TOML_MALFORMED_REASON });
+  if (!result.changed) return leg("mcp", "unchanged", cfg, { entry });
+  if (!dryRun) atomicWriteText(cfg, result.text);
+  return leg("mcp", existing.present ? "updated" : "created", cfg, { entry });
+}
+
+/** Remove an owned `[mcp_servers.unimatrix]` from project `.codex/config.toml`. */
+function removeOwnedCodexProjectMcp(projectRoot, dryRun, userCfg) {
+  const out = { actions: [], warnings: [] };
+  const cfg = path.join(projectRoot, ".codex", "config.toml");
+  if (userCfg && path.resolve(cfg) === path.resolve(userCfg)) return out;
+  if (!isWithinProject(projectRoot, cfg)) return out;
+  const raw = readTextSafe(cfg);
+  if (!raw) return out;
+  const existing = readTomlTable(raw, OWNED_TABLE);
+  if (existing.malformed) {
+    out.warnings.push("unimatrix: " + cfg + " is not parseable TOML; left unchanged");
+    return out;
+  }
+  if (!existing.present) return out;
+  const cur = tomlTableToEntry(existing.body);
+  if (!cur || !isUnimatrixMcpEntry("unimatrix", cur)) {
+    out.warnings.push(foreignWarning(cfg));
+    return out;
+  }
+  const r = removeTomlTable(raw, OWNED_TABLE);
+  if (!r.changed) return out;
+  if (!dryRun) atomicWriteText(cfg, r.text);
+  out.actions.push(pre(dryRun, "Removed unimatrix MCP entry from " + cfg));
+  return out;
+}
+
+/**
+ * Top-level Codex fan-out. Not detected -> one skipped-not-detected leg and no
+ * file touched. Never throws; warnings go to stderr once and onto leg reasons.
  * @returns {object[]} WireLeg[]
  */
-function maybeWireCodex(dir, opts) {
-  const options = opts || {};
-  const transport = resolveCodexTransport(options);
-  const legs = [];
+function maybeWireCodex(opts) {
+  const o = opts || {};
+  const env = o.env || process.env;
+  const home = o.home;
+  const platform = o.platform || process.platform;
+  const dryRun = !!o.dryRun;
+  let legs = [];
+  const warnings = [];
+  const ch = codexHome(env, home);
+  if (ch.warning) warnings.push(ch.warning);
   try {
-    legs.push(
-      writeCodexMcpToml(
-        dir,
-        { transport: transport, harnessSel: options.harnessSel },
-        options.dryRun
-      )
-    );
-    const hookLegs = writeCodexHooks(dir, {
-      clientPath: options.clientPath,
-      dryRun: options.dryRun,
-    });
-    for (const l of hookLegs) {
-      legs.push(l);
+    if (!detectsCodex({ root: o.projectRoot, env, home, harnessSel: o.harnessSel, platform, pathLookup: o.pathLookup })) {
+      legs.push(leg("codex", "skipped-not-detected", ch.dir, {
+        reason: "no Codex signal (.codex/, $CODEX_HOME dir, codex on PATH, --harness codex-cli)",
+      }));
+    } else {
+      const base = { home, env, platform, node: o.node, dryRun };
+      legs = legs.concat(writeCodexHooks(base));
+      legs.push(writeCodexMcpToml(base));
+      const rh = removeOwnedCodexHooks({ home, env, projectRoot: o.projectRoot, dryRun });
+      legs = legs.concat(rh.legs);
+      const pm = removeOwnedCodexProjectMcp(o.projectRoot, dryRun, path.join(ch.dir, "config.toml"));
+      for (const a of pm.actions) legs.push(leg("mcp", "removed", path.join(o.projectRoot, ".codex", "config.toml"), { reason: a }));
+      for (const w of pm.warnings) warnings.push(w);
     }
   } catch (e) {
-    legs.push(
-      leg("mcp", "skipped-malformed", path.join(dir, CONFIG_FILE), {
-        reason: "codex wiring error: " + e.message,
-      })
-    );
+    legs.push(leg("mcp", "skipped-malformed", path.join(ch.dir, "config.toml"), { reason: "codex wiring error: " + e.message }));
   }
-  const note = codexTrustNote();
-  for (const l of legs) {
-    l.note = note;
+  for (const l of legs) if (l.action === "skipped-foreign" && l.reason) warnings.push(l.reason);
+  if (ch.warning) for (const l of legs) l.reason = l.reason ? l.reason + "; " + ch.warning : ch.warning;
+  for (const w of warnings) {
+    try { process.stderr.write(w + "\n"); } catch (_) { /* best effort */ }
   }
   return legs;
 }
 
 module.exports = {
-  // Wave A — surgical TOML helpers (ADR-002, toml-surgical.md). DO NOT remove.
   upsertTomlTable,
   readTomlTable,
+  removeTomlTable,
+  tomlTableToEntry,
   tomlString,
   OWNED_TABLE,
-  // Wave B — fs-touching writers (codex-install.md, ADR-001/003/006).
+  codexHome,
+  detectsCodex,
   maybeWireCodex,
   writeCodexMcpToml,
   writeCodexHooks,
-  resolveCodexTransport,
+  removeOwnedCodexHooks,
+  removeOwnedHooksToml,
+  removeOwnedCodexProjectMcp,
+  codexApprovalStep,
   requireProviderFlag,
-  codexTrustNote,
   CODEX_EVENTS,
   CODEX_PROVIDER,
   CODEX_HARNESS,
-  CONFIG_FILE,
-  HOOKS_FILE,
 };
