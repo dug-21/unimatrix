@@ -133,8 +133,9 @@ function rightsGrantWrite(r) {
   return false;
 }
 
-function defaultSpawn(exe, args) {
-  const r = require("node:child_process").spawnSync(exe, args, { encoding: "utf8", windowsHide: true, timeout: 10000 });
+function defaultSpawn(exe, args, extraEnv) {
+  const env = extraEnv ? Object.assign({}, process.env, extraEnv) : process.env;
+  const r = require("node:child_process").spawnSync(exe, args, { encoding: "utf8", windowsHide: true, timeout: 20000, env });
   return { status: r.status, stdout: r.stdout || "" };
 }
 
@@ -156,7 +157,8 @@ function readSddl(run, sys32, p) {
       text = b.length > 1 && b[0] === 0xff && b[1] === 0xfe ? b.toString("utf16le") : b.toString("utf8");
     } catch (_) {}
     text = String(text || r.stdout || "").replace(/^\uFEFF/, "");
-    const m = /O:[^\r\n]*/.exec(text);
+    // icacls /save emits the DACL only (no O:); the owner comes from ownersOf.
+    const m = /^[ \t]*(?:O:|D:)[^\r\n]*/m.exec(text);
     if (!m) throw new TrustError(p, "cannot read ACL");
     return m[0].trim();
   } finally {
@@ -164,6 +166,22 @@ function readSddl(run, sys32, p) {
       fs.unlinkSync(tmp);
     } catch (_) {}
   }
+}
+
+// One PowerShell spawn resolves every owner SID (init / identity mismatch only).
+// Paths travel in an env var, one SID per output line, in input order.
+function ownersOf(run, sys32, paths) {
+  const script =
+    "$ErrorActionPreference='Stop';foreach($p in ($env:UNX_PATHS -split '\\|')){try{(Get-Acl -LiteralPath $p).GetOwner([System.Security.Principal.SecurityIdentifier]).Value}catch{''}}";
+  const exe = path.win32.join(sys32, "WindowsPowerShell", "v1.0", "powershell.exe");
+  const r = run(exe, ["-NoProfile", "-NonInteractive", "-Command", script], { UNX_PATHS: paths.join("|") });
+  if (!r || r.status !== 0) throw new TrustError("powershell", "cannot read owner");
+  const lines = String(r.stdout).split(/\r?\n/).map((l) => l.trim());
+  const out = new Map();
+  paths.forEach((p, i) => {
+    if (/^S-1-[\d-]+$/.test(lines[i] || "")) out.set(p, lines[i]);
+  });
+  return out;
 }
 
 function checkSddl(p, sddl, me, protect) {
@@ -190,9 +208,17 @@ function fullCheckWindows(paths, opts) {
   const u = normalizeKey(udir(homeOf(o)));
   const prot = new Set([u, normalizeKey(path.join(udir(homeOf(o)), "bin"))]);
   const me = currentUserSid(run, sys32);
+  let owners = null;
   for (const p of paths) {
     lstatOrThrow(p);
-    checkSddl(p, readSddl(run, sys32, p), me, prot.has(normalizeKey(p)));
+    let sd = readSddl(run, sys32, p);
+    if (!/^O:/.test(sd)) {
+      owners = owners || ownersOf(run, sys32, paths);
+      const sid = owners.get(p);
+      if (!sid) throw new TrustError(p, "cannot read owner");
+      sd = `O:${sid}${sd}`;
+    }
+    checkSddl(p, sd, me, prot.has(normalizeKey(p)));
   }
 }
 

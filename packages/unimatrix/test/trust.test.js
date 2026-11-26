@@ -102,12 +102,20 @@ test("rightsGrantWrite", () => {
 function sddl(owner, aces, flags) {
   return `O:${owner}G:${owner}D:${flags === undefined ? "P" : flags}${aces.map((a) => `(A;OICI;${a[0]};;;${a[1]})`).join("")}`;
 }
+// Captured from windows-latest: icacls <dir> /save f (UTF-16LE file: name line, then DACL only).
+const DACL_ONLY = "acl diag\r\nD:(A;;FA;;;BA)(A;OICIID;FA;;;BA)(A;OICIID;FA;;;SY)(A;OICIIOID;GA;;;CO)(A;OICIID;0x1200a9;;;BU)(A;CIID;LC;;;BU)(A;CIID;DC;;;BU)\r\n";
+const PROTECTED = "acl diag\r\nD:PAI(A;OICI;FA;;;BA)(A;OICI;FA;;;SY)(A;OICIIOID;GA;;;CO)(A;OICI;0x1200a9;;;BU)\r\n";
 function fakeSpawn(opts = {}) {
   const calls = [];
-  const fn = (exe, args) => {
+  const fn = (exe, args, env) => {
     calls.push([exe, args]);
+    if (/powershell/i.test(exe)) {
+      const ps = (env.UNX_PATHS || "").split("|");
+      return { status: 0, stdout: ps.map((p) => (opts.owner ? opts.owner(p) : ME)).join("\r\n") + "\r\n" };
+    }
     if (/whoami/i.test(exe)) return { status: 0, stdout: `"HOST\\me","${ME}"\r\n` };
     const p = args[0];
+    if (opts.daclOnly) return { status: 0, stdout: typeof opts.daclOnly === "string" ? opts.daclOnly : DACL_ONLY };
     const s = (opts.sddl && opts.sddl(p)) || sddl(ME, [["FA", ME], ["FA", "SY"], ["FA", "BA"]]);
     return { status: 0, stdout: s };
   };
@@ -129,6 +137,24 @@ test("win: first event full check, trust.json written; next event spawns nothing
   const before = sp.calls.length;
   checkTrust(trustSet(h.home, { platform: "win32" }), "win32", w(h, sp)); // set now includes trust.json
   assert.strictEqual(sp.calls.length, before);
+});
+
+test("win: real DACL-only icacls output + PowerShell owner SID passes; one owner spawn", () => {
+  const h = mkHome();
+  const sp = fakeSpawn({ daclOnly: PROTECTED, owner: () => "S-1-5-32-544" });
+  checkTrust(set(h, "win32"), "win32", w(h, sp));
+  assert.strictEqual(sp.calls.filter((c) => /powershell/i.test(c[0])).length, 1);
+  const n = sp.calls.length;
+  checkTrust(trustSet(h.home, { platform: "win32" }), "win32", w(h, sp));
+  assert.strictEqual(sp.calls.length, n); // matching per-event path spawns nothing
+});
+
+test("win: DACL-only + foreign owner SID refused; missing owner refused", () => {
+  const h = mkHome();
+  assert.throws(() => checkTrust(set(h, "win32"), "win32", w(h, fakeSpawn({ daclOnly: PROTECTED, owner: () => "S-1-5-21-7-7-7-1001" }))), /owner is not current user/);
+  assert.throws(() => checkTrust(set(h, "win32"), "win32", w(h, fakeSpawn({ daclOnly: PROTECTED, owner: () => "" }))), /cannot read owner/);
+  const bad = (exe, a, e) => (/powershell/i.test(exe) ? { status: 1, stdout: "" } : fakeSpawn({ daclOnly: PROTECTED })(exe, a, e));
+  assert.throws(() => checkTrust(set(h, "win32"), "win32", w(h, bad)), /cannot read owner/);
 });
 
 test("win: extra writer ACE refused", () => {

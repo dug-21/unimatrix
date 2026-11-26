@@ -179,7 +179,7 @@ describe("vnc-050 R-21 compat matrix", { skip: SKIP }, () => {
       // AC-24: new client, pre-vnc-050 pinned bundle via env — pinned branch, no CA store involved
       // (the self-signed cert would fail any CA verification).
       const eb = await bridge(process.execPath, [NEW_BIN, "mcp-bridge"],
-        { cwd: tmp, env: clientEnv(path.join(tmp, "en-home2"), { UNIMATRIX_BUNDLE: legacy }) }, reqs);
+        { cwd: tmp, env: clientEnv(path.join(tmp, "en-home2"), { UNIMATRIX_BUNDLE: legacy, UNIMATRIX_PROJECT_ROOT: tmp }) }, reqs);
       assert.ok(ok(eb.responses.get(2)), "new bridge pinned UNIMATRIX_BUNDLE: " + eb.stderr);
       assert.equal(typeof newBundle.decodeBundle(legacy).fp, "string");
     });
