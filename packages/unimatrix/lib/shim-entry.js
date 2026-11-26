@@ -7,7 +7,6 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const crypto = require("crypto");
 
 const RP = "UNIMATRIX_REMOTE_";
 const nz = (v) => typeof v === "string" && v.trim() !== "";
@@ -48,7 +47,7 @@ function walkToProjectRoot(startDir) {
 }
 
 const computeProjectHash = (root) =>
-  crypto.createHash("sha256").update(String(root), "utf8").digest("hex").slice(0, 16);
+  require("crypto").createHash("sha256").update(String(root), "utf8").digest("hex").slice(0, 16);
 
 function headlessEnvSet(env) {
   if (!env || typeof env !== "object") return false;

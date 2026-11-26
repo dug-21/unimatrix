@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 "use strict";
 
-const { execFileSync } = require("child_process");
-
 // The only harnesses `--harness` accepts (ADR-005 §2). Any other value is
 // ambiguous → help, never a fall-through write (AC-16).
 const VALID_HARNESSES = ["claude-code", "opencode", "codex-cli"];
@@ -319,7 +317,7 @@ function passThrough(args) {
   });
 
   try {
-    execFileSync(binaryPath, args, { stdio: "inherit", env: env });
+    require("child_process").execFileSync(binaryPath, args, { stdio: "inherit", env: env });
   } catch (error) {
     // execFileSync throws on non-zero exit code
     // error.status contains the exit code from the child process

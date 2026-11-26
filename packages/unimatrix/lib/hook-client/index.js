@@ -23,7 +23,6 @@ const buildRequestMod = require("./build-request");
 const cycles = require("./cycles");
 const transcript = require("./transcript");
 const transportHttp = require("./transport-http");
-const transportUds = require("./transport-uds");
 const transform = require("./transform");
 const delta = require("./delta");
 const queue = require("./queue");
@@ -44,7 +43,7 @@ const cycleDecoration = require("./cycle-decoration");
  * whenever remote config resolved.
  */
 function selectTransport(config) {
-  return config && config.mode === "uds" ? transportUds : transportHttp;
+  return config && config.mode === "uds" ? require("./transport-uds") : transportHttp;
 }
 
 /** stdin hard cap — parity with hook.rs read_stdin take(1 MiB). */

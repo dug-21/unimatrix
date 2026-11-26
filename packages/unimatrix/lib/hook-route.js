@@ -5,9 +5,7 @@
 const os = require("os");
 const path = require("path");
 const fs = require("fs");
-const { spawn } = require("child_process");
 const ps = require("./project-state.js");
-const trustMod = require("./trust.js");
 const { resolveRuntime } = require("./resolve-runtime.js");
 
 const NOT_ATTACHED_HINT = "unimatrix: not attached on this machine; run 'npx unimatrix init'";
@@ -50,6 +48,7 @@ function prepare(ctx, mcp) {
   if (!d.installed && !(platform === "linux" && instFile)) return notAttached();
   if (!(pre && pre.trustChecked)) {
     try {
+      const trustMod = require("./trust.js");
       trustMod.checkTrust(
         trustMod.trustSet(home, { installJson: readInstallJson(home), platform }), platform, { home });
     } catch (e) { fail(e && e.message); return null; }
@@ -91,7 +90,7 @@ function spawnRust(binary, env) {
     LD_LIBRARY_PATH: path.dirname(binary) + (env.LD_LIBRARY_PATH ? ":" + env.LD_LIBRARY_PATH : ""),
   });
   const platform = process.platform;
-  const child = spawn(binary, [], { stdio: "inherit", env: childEnv });
+  const child = require("child_process").spawn(binary, [], { stdio: "inherit", env: childEnv });
   const handlers = SIGNALS.map((sig) => {
     const h = () => { try { child.kill(sig); } catch (_e) { /* ignore */ } };
     process.on(sig, h);
