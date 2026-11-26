@@ -46,6 +46,7 @@ function run(token, url) {
   const env = Object.assign({}, process.env, {
     HOME: root,
     USERPROFILE: root,
+    UNIMATRIX_PROJECT_ROOT: root, // D-052: remote env honoured only inside the root
     UNIMATRIX_REMOTE_URL: url || stub.url + "/observe",
     UNIMATRIX_REMOTE_TOKEN: token,
     NODE_EXTRA_CA_CERTS: ca ? ca.caPath : "",

@@ -115,12 +115,15 @@ function makeWorktree(opts) {
 let savedUrl;
 let savedTok;
 let tmpHome;
+let savedRoot;
 let origHomedir;
 beforeEach(function () {
   savedUrl = process.env[ENV_URL];
   savedTok = process.env[ENV_TOKEN];
   delete process.env[ENV_URL];
   delete process.env[ENV_TOKEN];
+  savedRoot = process.env.UNIMATRIX_PROJECT_ROOT;
+  process.env.UNIMATRIX_PROJECT_ROOT = fs.realpathSync(os.tmpdir()); // D-052: temp roots are inside
   tmpHome = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-config-home-")));
   origHomedir = os.homedir;
   os.homedir = function () {
@@ -132,6 +135,8 @@ afterEach(function () {
   else process.env[ENV_URL] = savedUrl;
   if (savedTok === undefined) delete process.env[ENV_TOKEN];
   else process.env[ENV_TOKEN] = savedTok;
+  if (savedRoot === undefined) delete process.env.UNIMATRIX_PROJECT_ROOT;
+  else process.env.UNIMATRIX_PROJECT_ROOT = savedRoot;
   os.homedir = origHomedir;
   try {
     fs.rmSync(tmpHome, { recursive: true, force: true });
