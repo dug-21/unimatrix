@@ -1,0 +1,84 @@
+# nan-024 Test Strategy Overview
+
+Feature: Every harness on the Node client, portable wiring (GH #1023). Source: RISK-TEST-STRATEGY.md rev 6, ACCEPTANCE-MAP.md, DECISIONS.md D-001..D-075 (later wins; D-072 = Windows MCP is the D-047 fallback form; D-073 = Codex passes the hook string raw to `cmd.exe /C`).
+ADRs consulted (binding): ADR-001..ADR-006 (#5889, #5892, #5893, #5891, #5894, plus #5888/#5875/#5887/#5886/#5878/#5882 via ADR-INDEX).
+
+## Strategy
+
+Three layers, all in `packages/unimatrix/` (node:test, zero new deps):
+
+1. **Unit** (per component, file-per-component under `test/`): pure functions, fixture dirs only.
+2. **Assembled-path integration** (new set `wiring-e2e`): run `init`/`wire` into a temp HOME + fixture repo, read the written command *from the written file*, execute it through the real harness shell (`sh -c`, `$SHELL -lc`, `cmd.exe /C`, Git Bash), assert stored observation / exit code / stdout / stderr. This is the floor test for AC-01/02/04/07; hand-built command strings or direct `main()` calls are NOT acceptable proof (principle 6: #917/#918/#930).
+3. **CI-only platform proof** (Linux-local gates cannot see Windows/macOS): E2E matrix, latency gate, Q9 proof job, parity-layer2 gate.
+
+Fixture rule (NFR-05): every test builds its own `HOME`/`USERPROFILE`/`XDG_*` temp dir and fixture repo via `test/helpers/` (extend, do not fork); never touches this repo's `.codex/hooks.json`, `.mcp.json`, `.opencode/`, or real `~/.unimatrix`. A guard helper asserts `HOME` under `os.tmpdir()` at test start.
+
+## Test-infra registration (lessons #5790, #5781, #4779)
+
+- All new suites are `.test.js` at top level of `test/` (auto-claimed by `package` set, non-recursive) or in `test/hook-client/` (default set). No new subdirectory (would be an orphan).
+- **Windows gap**: `--set package` and `opencode-plugin` exit 0 on win32 by design. Windows coverage therefore needs a NEW explicit file-list set `wiring-e2e` in `test/run-hook-client.js` (serial, cross-platform, no Unix-shape fakes: stubs are `process.execPath` scripts). Files in `wiring-e2e` are listed explicitly and ALSO excluded/claimed in `package` so they are not double-run on ubuntu/macOS (or run there too, decision in open question 1). Audit set updated so every new file is claimed by exactly one set; `npm test` script and `test:wiring-e2e` script added.
+- POSIX-only cases (sh shim, UDS, umask, mode bits, symlinks) carry `process.platform === 'win32'` skip-guards; `.cmd`/icacls cases carry `!== 'win32'` skip-guards with a visible skip reason. Byte-compare/fixture suites stay unguarded.
+- macOS traps (#5784): resolve coreutils by PATH, no `realpath -m`, UDS path <104B (use short `os.tmpdir()` roots), `/tmp` symlink to `/private/tmp` (realpath fixtures).
+- async `spawn`, never `spawnSync`, when a stub server runs in-process (#4774). Explicit `node:test` imports.
+- NFR-04 / R-13: a CI step records `it(` / test counts of touched suites on the base commit vs PR and fails on decrease (script `test/check-test-count.js`, base counts committed in `test/fixtures/test-counts.json`). Old-string tests are updated, not deleted (C-10 superseded D-008).
+- Size gates: `lib/hook-client/` additions (last-hook write) must stay under the 100 KB / zero-dep gates (`check-hook-client-size.js`, `check-zero-deps.js`).
+
+## CI jobs (the only proof for Windows/macOS) 
+
+| Job | OS x Node | Required | Proves |
+|---|---|---|---|
+| `q9-windows-mcp-proof` (exists) | windows | gate, first | D-047 fallback MCP argv via real Claude/Codex spawners, USERPROFILE with space; hook `.cmd` form via `cmd /C` (D-073). Add: assert Windows MCP written entry == D-047 form |
+| `wiring-e2e` | {ubuntu, macos, windows} x Node {20, 24} (18/22 optional) | required once green (land non-required first per #5790) | AC-01/04/07, R-17/18/26/34/37/38/39 literal-command E2E, HTTPS test endpoint + `NODE_EXTRA_CA_CERTS`, space-in-home case |
+| `latency-gate` | 3 OS | required | AC-06/ADR-005: `node -e 0` baseline same job; hook p95 <= max(base+15, 50) ms; not-a-project path; `mcp-stdio` not-a-project start-to-exit; 50 iters + 5 warmups, cold, through `sh -c`/`cmd /C` |
+| `parity-layer2` | ubuntu | required (AC-08) | UDS, PreCompact, concurrency; needs cargo server build |
+| `package-suite`, `hook-client-matrix`, `hook-client-audit` (exist) | existing grid | existing | updated suites, orphan audit, size/zero-dep, test-count diff |
+| linux local E2E (UDS) | ubuntu | required | local transport, zero Rust exec (process trace), `LD_LIBRARY_PATH` pass-through |
+
+Windows/macOS runners must NOT depend on a Rust binary (cloud-only, D-032): HTTPS stub endpoint is a Node `https` server in the test process with a generated CA passed via `NODE_EXTRA_CA_CERTS`.
+
+## Risk-to-test mapping (component file in parentheses)
+
+| Risk | Pri | Primary tests | Component plan |
+|---|---|---|---|
+| R-03 | Crit | positive/negative/property tables, round-trip with `buildShimCommand`, L1-L6 seeded re-init | hook-ownership, merge-settings |
+| R-04, R-18 | High | same event via 3 paths -> identical record; `.cmd` exit/stdin | shim, shim-entry, hook-client |
+| R-07, R-39 | High | spawn written MCP entry, first byte `{`; not-a-project silent + zero network | launcher, wire-init |
+| R-08, R-36, R-37, R-38, R-40 | High/Med | foreign preservation, dry-run == real, concurrent writer, key normalisation table, migration | wire-init, merge-settings, codex-install, opencode-install |
+| R-17 | High | quoting matrix across shells/OS, refused chars | shim, merge-settings |
+| R-26, R-11, R-21, R-22 | High/Med | CI config check test + E2E/latency jobs | ci-and-docs, trust |
+| R-28, R-29, R-34 | High | shared fixture table across 3 predicate copies + shell pre-check; headless cross-repo | project-state, shim-entry, shim |
+| R-01, R-23 | Med | exit-outcome matrix (never 2; stdout empty) | launcher |
+| R-05, R-10, R-15 | Low/Med | resolver precedence matrix, pass-through env | resolve-runtime, launcher |
+| R-06, R-30, R-09, R-24 | Med | trust matrix, install-store atomicity | trust, install-store |
+| R-12, R-13, R-14, R-16, R-19, R-20, R-25, R-27, R-31..R-33, R-35 | Low/Med | see component files | per file |
+| R-02 | Low | shell matrix in wiring-e2e (bash/zsh/fish/sh/cmd), PowerShell documented | codex-install, ci-and-docs |
+
+All 40 risks are mapped in component files; none uncovered.
+
+## Acceptance map -> tests
+
+AC-01 wiring-e2e byte-compare (wire-init); AC-02 spawn trace + scan (wire-init, ci-and-docs audit); AC-03 launcher-hook; AC-04 spread (shim, trust, launcher, install-store, merge-settings); AC-05 hook-ownership + merge-settings table; AC-06 latency-gate; AC-07 wiring-e2e matrix; AC-08 workflow gating check (ci-and-docs); AC-09 opencode-install; AC-10/14 resolve-runtime + launcher; AC-11 docs grep test; AC-12 suite list + count diff; AC-13 cross-scope dedupe; AC-15 headless; AC-16 migration tests.
+
+## Headless contract negative case (D-053, AC-15, R-35)
+
+`headless-smoke.test.js`: (a) positive: env with `UNIMATRIX_BUNDLE`/`UNIMATRIX_REMOTE_*` + `UNIMATRIX_PROJECT_ROOT=<fixture>` + cwd inside -> `initialize` + search OK; (b) NEW negative: same env, `UNIMATRIX_PROJECT_ROOT` removed -> `mcp-bridge` exit 0, empty stdout/stderr, recording stub endpoint receives 0 requests (test FAILS if variable is not honoured); (c) cwd outside root, sibling-prefix (`/fx/repoA-other`), empty, relative, symlinked root. Plus grep test that `docs/client-setup.md` lists `UNIMATRIX_PROJECT_ROOT`.
+
+## Integration harness plan (product/test/infra-001)
+
+infra-001 drives the Rust `unimatrix-server` over MCP JSON-RPC. nan-024 changes no Rust server, tool, schema, or confidence logic (Rust `hook.rs` and MCP stdio/daemon unmodified). The behavior is JS client/installer, exercised by the `packages/unimatrix` node suites above, not infra-001.
+
+- **Mandatory gate**: `cd product/test/infra-001 && python -m pytest suites/ -v -m smoke --timeout=60` (needs `cargo build --release`). Regression only.
+- **Relevant suites to run**: `protocol` (MCP handshake unchanged; Rust stdio still the MCP server), `tools` + `lifecycle` (store->search, restart persistence; the Node client now writes the hook records these read), `test_headless_access.py` and `test_project_isolation.py` (vnc-050 scoped tokens and slug isolation: D-052 changes the headless env tier client-side; must stay green), `test_https_uds_parity*.py` and `test_transport_health.py` (HTTPS/UDS parity: client is the only change). `security` quick run (trust/PII unchanged).
+- **Gaps / new infra-001 tests**: none required; MCP-visible behavior is unchanged and the new behavior is not reachable through the Python harness (no Node shim, no harness shells, no Windows). Optional single addition if cheap: in `test_headless_access.py`, a case that a recording request from the Node bridge with `UNIMATRIX_PROJECT_ROOT` unset reaches zero slugs; only if the existing fixture already spawns the Node bridge (check in Stage 3c; otherwise covered by `headless-smoke.test.js`). Not planned as mandatory.
+- Triage per USAGE-PROTOCOL: pre-existing failures -> GH issue + xfail, never fixed in this PR.
+
+## Stage 3c local run order (Linux)
+
+1. `cargo test --workspace` (hardened convention) 2. `bash product/test/infra-002/check-workspace-link-smoke.sh` 3. `cargo build --release` + infra-001 smoke + suites above 4. `npm test` in `packages/unimatrix` (all sets incl. `wiring-e2e`, `audit`) 5. read CI results for the Windows/macOS/latency jobs (cannot be run locally: report as CI-evidence, not local PASS).
+
+## Open questions
+
+1. Should `wiring-e2e` files also run in `package` on ubuntu/macOS (double-run) or be solely in `wiring-e2e` (preferred; exclusion documented in audit)?
+2. Where does the test-count baseline live (fixtures JSON vs git-diff step in CI)? Plan assumes script + fixtures JSON.
+3. R-38: "key Claude Code uses" cannot be verified against a real Claude in CI; plan asserts documented normalisation plus compare against a key fixture captured from a real `~/.claude.json`.
+4. Latency job flakiness: land non-required for one green grid, then promote (per #5790).
