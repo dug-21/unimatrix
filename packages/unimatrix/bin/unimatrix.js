@@ -226,8 +226,7 @@ function main() {
     const projectHash = args[1];
     // vnc-050 FR-21: headless launch (UNIMATRIX_BUNDLE or the env MCP URL)
     // needs no projectHash; the bridge resolves the credential from env.
-    const headless =
-      !!process.env.UNIMATRIX_BUNDLE || !!process.env.UNIMATRIX_REMOTE_MCP_URL;
+    const headless = require("../lib/project-state.js").headlessEnvSet(process.env);
     if (!headless && (!projectHash || typeof projectHash !== "string")) {
       process.stderr.write("usage: unimatrix mcp-bridge <projectHash>\n");
       process.exitCode = 2;

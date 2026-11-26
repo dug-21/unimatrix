@@ -18,7 +18,7 @@ const {
 /** Create a temp directory and return a settings.json path inside it. */
 function tempSettingsPath() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-test-"));
-  return path.join(dir, ".claude", "settings.json");
+  return path.join(dir, ".claude", "settings.local.json");
 }
 
 /** Write content to a settings file, creating parent dirs. */
@@ -33,19 +33,20 @@ function writeSettings(filePath, content) {
  * type-confusion cases can be exercised.
  */
 function writeOptIn(settingsPath, value) {
-  const localPath = path.join(path.dirname(settingsPath), "settings.local.json");
-  fs.mkdirSync(path.dirname(localPath), { recursive: true });
-  fs.writeFileSync(
-    localPath,
-    JSON.stringify({ unimatrix: { hooks: { subagent_stop: value } } }, null, 2),
-    "utf8"
-  );
+  let cur = {};
+  try { cur = JSON.parse(fs.readFileSync(settingsPath, "utf8")); } catch (_) { /* absent */ }
+  cur.unimatrix = { hooks: { subagent_stop: value } };
+  fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+  fs.writeFileSync(settingsPath, JSON.stringify(cur, null, 2), "utf8");
 }
 
 const BINARY = "/abs/path/to/unimatrix";
 
 // ADR-004 §2: SubagentStop is opt-in (default off). The default registered set
 // is HOOK_EVENTS minus SubagentStop unless settings.local.json opts in.
+// commandSource object (the legacy string arm is deleted, D-008).
+const SRC = { events: HOOK_EVENTS, commandForEvent: (e) => expectedLocalCommand(e) };
+
 const DEFAULT_EVENTS = HOOK_EVENTS.filter((e) => e !== "SubagentStop");
 
 // Byte-exact local-mode command the back-compat wrapper produces (AC-16).
@@ -62,7 +63,7 @@ describe("mergeSettings", function () {
     it("test_merge_into_empty_file", function () {
       const fp = tempSettingsPath();
       // File does not exist
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       assert.ok(result.content.hooks);
       // ADR-004 §2: SubagentStop opt-in default off — registered set is 8 events.
       for (const event of DEFAULT_EVENTS) {
@@ -83,7 +84,7 @@ describe("mergeSettings", function () {
     it("test_merge_preserves_permissions_block", function () {
       const fp = tempSettingsPath();
       writeSettings(fp, { permissions: { allow: ["Read"], deny: [] } });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       assert.deepStrictEqual(result.content.permissions, { allow: ["Read"], deny: [] });
       assert.ok(result.content.hooks);
       // ADR-004 §2: SubagentStop opt-in default off — 8 of the 9 events register.
@@ -104,7 +105,7 @@ describe("mergeSettings", function () {
           ],
         },
       });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       const preToolUse = result.content.hooks.PreToolUse;
       // ADR-004 §1: the unimatrix PreToolUse hook lands in the narrowed cycle
       // matcher group, NOT the foreign "*" group. The "*" group keeps only the
@@ -133,7 +134,7 @@ describe("mergeSettings", function () {
           ],
         },
       });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       const group = result.content.hooks.SessionStart[0];
       assert.strictEqual(group.hooks.length, 1);
       assert.strictEqual(group.hooks[0].command, expectedLocalCommand("SessionStart"));
@@ -153,7 +154,7 @@ describe("mergeSettings", function () {
           ],
         },
       });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       const group = result.content.hooks.SessionStart[0];
       assert.strictEqual(group.hooks.length, 1);
       assert.strictEqual(group.hooks[0].command, expectedLocalCommand("SessionStart"));
@@ -164,7 +165,7 @@ describe("mergeSettings", function () {
     it("test_merge_preserves_extra_top_level_keys", function () {
       const fp = tempSettingsPath();
       writeSettings(fp, { customKey: "value", hooks: {} });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       assert.strictEqual(result.content.customKey, "value");
     });
   });
@@ -172,8 +173,8 @@ describe("mergeSettings", function () {
   describe("R-01/R-04: idempotent round trip", function () {
     it("test_merge_idempotent_round_trip", function () {
       const fp = tempSettingsPath();
-      const first = mergeSettings(fp, BINARY, {});
-      const second = mergeSettings(fp, BINARY, {});
+      const first = mergeSettings(fp, SRC, {});
+      const second = mergeSettings(fp, SRC, {});
       assert.deepStrictEqual(first.content, second.content);
     });
   });
@@ -183,7 +184,7 @@ describe("mergeSettings", function () {
   describe("hook event coverage", function () {
     it("test_default_8_events_present", function () {
       const fp = tempSettingsPath();
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       // ADR-004 §2: SubagentStop opt-in default off; the other 8 register.
       const expected = [
         "SessionStart", "Stop", "UserPromptSubmit",
@@ -198,9 +199,9 @@ describe("mergeSettings", function () {
 
     it("test_each_event_has_exactly_one_unimatrix_entry", function () {
       const fp = tempSettingsPath();
-      mergeSettings(fp, BINARY, {});
-      mergeSettings(fp, BINARY, {});
-      const result = mergeSettings(fp, BINARY, {});
+      mergeSettings(fp, SRC, {});
+      mergeSettings(fp, SRC, {});
+      const result = mergeSettings(fp, SRC, {});
       for (const event of DEFAULT_EVENTS) {
         let count = 0;
         for (const group of result.content.hooks[event]) {
@@ -220,7 +221,7 @@ describe("mergeSettings", function () {
   describe("matcher values", function () {
     it("test_session_events_use_empty_matcher", function () {
       const fp = tempSettingsPath();
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       // FR-21: PreCompact joins the session-level ("") matcher group.
       for (const event of ["SessionStart", "Stop", "UserPromptSubmit", "PreCompact"]) {
         assert.strictEqual(result.content.hooks[event][0].matcher, "");
@@ -229,7 +230,7 @@ describe("mergeSettings", function () {
 
     it("test_tool_events_use_star_matcher", function () {
       const fp = tempSettingsPath();
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       // ADR-004 §1: PreToolUse narrowed to the cycle matcher (asserted
       // separately); SubagentStop is opt-in. The remaining tool-level events keep
       // the "*" matcher unchanged.
@@ -276,7 +277,7 @@ describe("mergeSettings", function () {
       const fp = tempSettingsPath();
       writeSettings(fp, "{invalid json");
       assert.throws(
-        () => mergeSettings(fp, BINARY, {}),
+        () => mergeSettings(fp, SRC, {}),
         (err) => err.message.includes("Malformed") && err.message.includes(fp)
       );
       // File NOT modified
@@ -286,7 +287,7 @@ describe("mergeSettings", function () {
     it("test_empty_file_treated_as_empty_object", function () {
       const fp = tempSettingsPath();
       writeSettings(fp, "");
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       assert.ok(result.content.hooks);
       // ADR-004 §2: SubagentStop opt-in default off — 8 events register.
       assert.strictEqual(Object.keys(result.content.hooks).length, 8);
@@ -296,7 +297,7 @@ describe("mergeSettings", function () {
       const fp = tempSettingsPath();
       writeSettings(fp, { hooks: "string" });
       assert.throws(
-        () => mergeSettings(fp, BINARY, {}),
+        () => mergeSettings(fp, SRC, {}),
         (err) => err.message.includes("not an object")
       );
     });
@@ -305,7 +306,7 @@ describe("mergeSettings", function () {
       const fp = tempSettingsPath();
       writeSettings(fp, { hooks: [1, 2, 3] });
       assert.throws(
-        () => mergeSettings(fp, BINARY, {}),
+        () => mergeSettings(fp, SRC, {}),
         (err) => err.message.includes("not an object")
       );
     });
@@ -316,7 +317,7 @@ describe("mergeSettings", function () {
   describe("output format", function () {
     it("test_output_uses_2_space_indentation", function () {
       const fp = tempSettingsPath();
-      mergeSettings(fp, BINARY, {});
+      mergeSettings(fp, SRC, {});
       const written = fs.readFileSync(fp, "utf8");
       // Second line should start with 2 spaces (not tabs, not 4 spaces)
       const lines = written.split("\n");
@@ -326,7 +327,7 @@ describe("mergeSettings", function () {
 
     it("test_actions_array_describes_changes", function () {
       const fp = tempSettingsPath();
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       assert.ok(Array.isArray(result.actions));
       assert.ok(result.actions.length > 0);
       // Should mention creating or adding hooks
@@ -339,7 +340,7 @@ describe("mergeSettings", function () {
   describe("dry run", function () {
     it("test_dry_run_does_not_write_file", function () {
       const fp = tempSettingsPath();
-      const result = mergeSettings(fp, BINARY, { dryRun: true });
+      const result = mergeSettings(fp, SRC, { dryRun: true });
       assert.ok(!fs.existsSync(fp));
       assert.ok(result.content.hooks);
       assert.ok(result.actions.every((a) => a.startsWith("[dry-run]")));
@@ -347,7 +348,7 @@ describe("mergeSettings", function () {
 
     it("test_dry_run_returns_actions_and_content", function () {
       const fp = tempSettingsPath();
-      const result = mergeSettings(fp, BINARY, { dryRun: true });
+      const result = mergeSettings(fp, SRC, { dryRun: true });
       assert.ok(result.actions.length > 0);
       // ADR-004 §2: SubagentStop opt-in default off — 8 events register.
       assert.strictEqual(Object.keys(result.content.hooks).length, 8);
@@ -359,9 +360,9 @@ describe("mergeSettings", function () {
   describe("dedup across multiple runs", function () {
     it("test_three_consecutive_merges_no_growth", function () {
       const fp = tempSettingsPath();
-      mergeSettings(fp, BINARY, {});
-      mergeSettings(fp, BINARY, {});
-      const result = mergeSettings(fp, BINARY, {});
+      mergeSettings(fp, SRC, {});
+      mergeSettings(fp, SRC, {});
+      const result = mergeSettings(fp, SRC, {});
       for (const event of DEFAULT_EVENTS) {
         let uniCount = 0;
         for (const group of result.content.hooks[event]) {
@@ -391,7 +392,7 @@ describe("mergeSettings", function () {
           ],
         },
       });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       const group = result.content.hooks.SessionStart[0];
       const uniHooks = group.hooks.filter((h) => isUnimatrixHook(h));
       assert.strictEqual(uniHooks.length, 1);
@@ -415,7 +416,7 @@ describe("mergeSettings", function () {
           ],
         },
       });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       const writeGroup = result.content.hooks.PreToolUse.find((g) => g.matcher === "Write");
       assert.ok(writeGroup, "Write matcher group should be preserved");
       assert.strictEqual(writeGroup.hooks[0].command, "my-linter check");
@@ -439,7 +440,7 @@ describe("mergeSettings", function () {
           ],
         },
       });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       const group = result.content.hooks.SessionStart[0];
       // URL hook preserved, unimatrix appended
       assert.strictEqual(group.hooks.length, 2);
@@ -465,17 +466,19 @@ describe("mergeSettings", function () {
           ],
         },
       });
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
+      // ADR-003: the ownership predicate is end-anchored, so a tee pipeline is a
+      // foreign (user-authored) command: preserved, and the managed entry is added.
       const group = result.content.hooks.UserPromptSubmit[0];
-      assert.strictEqual(group.hooks.length, 1);
-      // No tee pipeline — back-compat local command format (AC-16)
-      assert.strictEqual(group.hooks[0].command, expectedLocalCommand("UserPromptSubmit"));
+      assert.strictEqual(group.hooks.length, 2);
+      assert.ok(group.hooks[0].command.includes("| tee -a"));
+      assert.strictEqual(group.hooks[1].command, expectedLocalCommand("UserPromptSubmit"));
     });
 
     it("test_file_not_exist_creates_directory_and_file", function () {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-test-"));
-      const fp = path.join(dir, "deep", "nested", ".claude", "settings.json");
-      const result = mergeSettings(fp, BINARY, {});
+      const fp = path.join(dir, "deep", "nested", ".claude", "settings.local.json");
+      const result = mergeSettings(fp, SRC, {});
       assert.ok(fs.existsSync(fp));
       assert.ok(result.actions.some((a) => a.includes("Created")));
     });
@@ -483,7 +486,7 @@ describe("mergeSettings", function () {
     it("test_whitespace_only_file_treated_as_empty", function () {
       const fp = tempSettingsPath();
       writeSettings(fp, "   \n  \t  ");
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       assert.ok(result.content.hooks);
       // ADR-004 §2: SubagentStop opt-in default off — 8 events register.
       assert.strictEqual(Object.keys(result.content.hooks).length, 8);
@@ -495,7 +498,7 @@ describe("mergeSettings", function () {
   describe("command format", function () {
     it("test_all_hooks_use_backcompat_command_format", function () {
       const fp = tempSettingsPath();
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       for (const event of DEFAULT_EVENTS) {
         for (const group of result.content.hooks[event]) {
           for (const hook of group.hooks) {
@@ -527,7 +530,7 @@ describe("ADR-004 PreToolUse matcher narrowing", function () {
 
   it("test_pretooluse_matcher_exactly_cycle_tools", function () {
     const fp = tempSettingsPath();
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const group = unimatrixPreToolUseGroup(result.content);
     assert.ok(group, "expected a unimatrix-owned PreToolUse matcher group");
     // EXACTLY the cycle tools — no longer "*". The hook no longer spawns for
@@ -572,7 +575,7 @@ describe("ADR-004 PreToolUse matcher narrowing", function () {
     // The matcher narrows; the event is NOT dropped from the table.
     assert.ok(HOOK_EVENTS.includes("PreToolUse"));
     const fp = tempSettingsPath();
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.ok(result.content.hooks.PreToolUse, "PreToolUse still registered");
   });
 
@@ -580,7 +583,7 @@ describe("ADR-004 PreToolUse matcher narrowing", function () {
     // Output snapshot: every other registered event's unimatrix entry keeps its
     // F3 matcher byte-for-byte.
     const fp = tempSettingsPath();
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const expectedMatchers = {
       SessionStart: "",
       Stop: "",
@@ -605,21 +608,21 @@ describe("ADR-004 PreToolUse matcher narrowing", function () {
 describe("ADR-004 SubagentStop opt-in matrix", function () {
   it("test_subagentstop_absent_by_default", function () {
     const fp = tempSettingsPath();
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.ok(!result.content.hooks.SubagentStop, "SubagentStop must be opt-in");
   });
 
   it("test_subagentstop_missing_local_file_absent", function () {
     // No settings.local.json at all → absent, no throw.
     const fp = tempSettingsPath();
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.ok(!result.content.hooks.SubagentStop);
   });
 
   it("test_subagentstop_registered_when_key_true", function () {
     const fp = tempSettingsPath();
     writeOptIn(fp, true);
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.ok(result.content.hooks.SubagentStop, "SubagentStop should register when opted in");
     assert.strictEqual(result.content.hooks.SubagentStop[0].matcher, "*");
     const uni = result.content.hooks.SubagentStop[0].hooks.find((h) => isUnimatrixHook(h));
@@ -631,7 +634,7 @@ describe("ADR-004 SubagentStop opt-in matrix", function () {
   it("test_subagentstop_key_false_absent", function () {
     const fp = tempSettingsPath();
     writeOptIn(fp, false);
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.ok(!result.content.hooks.SubagentStop);
   });
 
@@ -641,7 +644,7 @@ describe("ADR-004 SubagentStop opt-in matrix", function () {
     for (const value of ["true", 1, 0, null, {}, [], "yes"]) {
       const fp = tempSettingsPath();
       writeOptIn(fp, value);
-      const result = mergeSettings(fp, BINARY, {});
+      const result = mergeSettings(fp, SRC, {});
       assert.ok(
         !result.content.hooks.SubagentStop,
         "SubagentStop must be absent for non-boolean value: " + JSON.stringify(value)
@@ -691,7 +694,7 @@ describe("ADR-004 SubagentStop opt-out pruning", function () {
     seedWithSubagentStop(fp, false);
     // No opt-in key → re-init must strip the previously-registered entry, and the
     // now-empty event key is removed.
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.ok(!result.content.hooks.SubagentStop, "stale SubagentStop entry must be pruned");
     assert.ok(result.actions.some((a) => a.includes("opt-out")));
   });
@@ -699,7 +702,7 @@ describe("ADR-004 SubagentStop opt-out pruning", function () {
   it("test_subagentstop_optout_preserves_foreign_hook", function () {
     const fp = tempSettingsPath();
     seedWithSubagentStop(fp, true);
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     // The foreign hook survives; only the unimatrix entry is stripped.
     assert.ok(result.content.hooks.SubagentStop, "foreign SubagentStop group must remain");
     const cmds = result.content.hooks.SubagentStop.flatMap((g) =>
@@ -712,8 +715,8 @@ describe("ADR-004 SubagentStop opt-out pruning", function () {
   it("test_subagentstop_optout_idempotent", function () {
     const fp = tempSettingsPath();
     seedWithSubagentStop(fp, false);
-    const first = mergeSettings(fp, BINARY, {});
-    const second = mergeSettings(fp, BINARY, {});
+    const first = mergeSettings(fp, SRC, {});
+    const second = mergeSettings(fp, SRC, {});
     assert.deepStrictEqual(first.content, second.content);
   });
 
@@ -721,11 +724,11 @@ describe("ADR-004 SubagentStop opt-out pruning", function () {
     const fp = tempSettingsPath();
     // Opt in → registered.
     writeOptIn(fp, true);
-    let result = mergeSettings(fp, BINARY, {});
+    let result = mergeSettings(fp, SRC, {});
     assert.ok(result.content.hooks.SubagentStop);
     // Opt out (flip key to false) → pruned.
     writeOptIn(fp, false);
-    result = mergeSettings(fp, BINARY, {});
+    result = mergeSettings(fp, SRC, {});
     assert.ok(!result.content.hooks.SubagentStop);
   });
 });
@@ -756,7 +759,7 @@ describe("ADR-004 reduced set applies to both command shapes", function () {
   it("test_reduced_set_applies_to_rust_hook_reinit", function () {
     // Legacy local-binary (string commandSource) gets the same reduced set.
     const fp = tempSettingsPath();
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.strictEqual(Object.keys(result.content.hooks).length, 8);
     assert.ok(!result.content.hooks.SubagentStop);
     const group = result.content.hooks.PreToolUse.find((g) =>
@@ -839,7 +842,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const cycleGroup = result.content.hooks.PreToolUse.find(
       (g) => g.matcher === PRETOOLUSE_CYCLE_MATCHER
     );
@@ -873,7 +876,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "SessionStart");
     assert.strictEqual(sole.matcher, EVENT_MATCHERS.SessionStart);
     assert.strictEqual(sole.command, expectedLocalCommand("SessionStart"));
@@ -909,7 +912,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "PreToolUse");
     assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
     assert.strictEqual(sole.command, expectedLocalCommand("PreToolUse"));
@@ -922,7 +925,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
       // Shape-varying twin: a substring/includes keep-rule would mis-handle this.
       staleCommand: "unimatrix   hook    PreToolUse",
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "PreToolUse");
     assert.strictEqual(sole.command, expectedLocalCommand("PreToolUse")); // exact, not includes
     assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
@@ -948,7 +951,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
       ];
     }
     writeSettings(fp, { hooks });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     for (const event of DEFAULT_EVENTS) {
       const count = countUni(result.content, event);
       assert(count !== 0, "managed event " + event + " dropped to zero uni hooks");
@@ -974,7 +977,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "Stop");
     assert.strictEqual(sole.matcher, EVENT_MATCHERS.Stop);
     assert.strictEqual(sole.command, expectedLocalCommand("Stop"));
@@ -1001,7 +1004,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "SessionStart");
     assert.strictEqual(sole.matcher, EVENT_MATCHERS.SessionStart);
     assert.strictEqual(sole.command, expectedLocalCommand("SessionStart"));
@@ -1032,7 +1035,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "PostToolUse");
     assert.strictEqual(sole.matcher, "*");
     assert.strictEqual(sole.command, expectedLocalCommand("PostToolUse"));
@@ -1051,7 +1054,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
       staleMatcher: "*",
       foreign: "my-tool pre-check",
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const star = result.content.hooks.PreToolUse.find((g) => g.matcher === "*");
     assert.ok(star, "foreign-retaining group must NOT be dropped");
     assert.ok(!star.hooks.some(isUnimatrixHook), "stale uni hook gone from '*'");
@@ -1070,7 +1073,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
       staleMatcher: "Foreign",
       staleCommand: nearMiss,
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const foreignGroup = result.content.hooks.PreToolUse.find((g) => g.matcher === "Foreign");
     assert.ok(foreignGroup, "near-miss foreign group must survive");
     assert.strictEqual(foreignGroup.hooks.length, 1);
@@ -1093,7 +1096,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const foreignGroup = result.content.hooks.PreToolUse.find((g) => g.matcher === "Foreign");
     assert.ok(foreignGroup, "non-command entry group must survive");
     assert.strictEqual(foreignGroup.hooks.length, 1);
@@ -1106,7 +1109,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
   it("test_cross_group_drops_emptied_group_keeps_event", function () {
     const fp = tempSettingsPath();
     seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.ok(result.content.hooks.PreToolUse, "event key retained");
     const star = result.content.hooks.PreToolUse.find((g) => g.matcher === "*");
     assert.strictEqual(star, undefined, "emptied '*' group dropped");
@@ -1123,7 +1126,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
       staleMatcher: "*",
       foreign: "my-tool pre-check",
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const star = result.content.hooks.PreToolUse.find((g) => g.matcher === "*");
     assert.ok(star, "group with surviving foreign hook not dropped");
     assert.strictEqual(star.hooks.length, 1);
@@ -1135,8 +1138,8 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
   it("test_cross_group_migration_idempotent", function () {
     const fp = tempSettingsPath();
     seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
-    const first = mergeSettings(fp, BINARY, {});
-    const second = mergeSettings(fp, BINARY, {});
+    const first = mergeSettings(fp, SRC, {});
+    const second = mergeSettings(fp, SRC, {});
     assert.deepStrictEqual(first.content, second.content);
   });
 
@@ -1171,9 +1174,9 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    mergeSettings(fp, BINARY, {});
-    const second = mergeSettings(fp, BINARY, {});
-    const third = mergeSettings(fp, BINARY, {});
+    mergeSettings(fp, SRC, {});
+    const second = mergeSettings(fp, SRC, {});
+    const third = mergeSettings(fp, SRC, {});
     assert.ok(
       !second.actions.some((a) => a.includes("(cross-matcher migration)")),
       "run 2 emits no cross-matcher action"
@@ -1186,7 +1189,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
   it("test_cross_group_migration_string_arm", function () {
     const fp = tempSettingsPath();
     seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "PreToolUse");
     assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
     assert.strictEqual(sole.command, expectedLocalCommand("PreToolUse"));
@@ -1231,7 +1234,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     assert.ok(!result.content.hooks.SubagentStop, "SubagentStop opt-out pruned");
     assert.strictEqual(countUni(result.content, "PreToolUse"), 1);
     const sole = soleUniHook(result.content, "PreToolUse");
@@ -1251,14 +1254,13 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
   it("test_cross_group_pretooluse_survivor_under_cycle_matcher", function () {
     const fp = tempSettingsPath();
     seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "PreToolUse");
     assert.strictEqual(sole.matcher, PRETOOLUSE_CYCLE_MATCHER);
   });
 
   it("test_cross_group_subagentstop_optin_composes", function () {
     const fp = tempSettingsPath();
-    writeOptIn(fp, true);
     writeSettings(fp, {
       hooks: {
         SubagentStop: [
@@ -1269,7 +1271,8 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    writeOptIn(fp, true);
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "SubagentStop");
     // SubagentStop is opted in → managed "*" survivor; stale cross-group pruned.
     assert.strictEqual(sole.matcher, "*");
@@ -1283,7 +1286,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
   it("test_cross_group_emits_action_and_dry_run_prefix", function () {
     const fp = tempSettingsPath();
     seedWithCrossGroupStale(fp, { event: "PreToolUse", staleMatcher: "*" });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const phrase = "Removed stale unimatrix hook: PreToolUse (cross-matcher migration)";
     assert.ok(result.actions.includes(phrase), "exact cross-matcher action present");
     // Disjoint from the other action phrases.
@@ -1297,7 +1300,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
     const fp2 = tempSettingsPath();
     seedWithCrossGroupStale(fp2, { event: "PreToolUse", staleMatcher: "*" });
     const before = fs.readFileSync(fp2, "utf8");
-    const dry = mergeSettings(fp2, BINARY, { dryRun: true });
+    const dry = mergeSettings(fp2, SRC, { dryRun: true });
     assert.ok(dry.actions.includes("[dry-run] " + phrase), "dry-run prefixed action");
     assert.strictEqual(fs.readFileSync(fp2, "utf8"), before, "dry-run must not write");
   });
@@ -1353,7 +1356,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
         ],
       },
     });
-    const result = mergeSettings(fp, BINARY, {});
+    const result = mergeSettings(fp, SRC, {});
     const sole = soleUniHook(result.content, "SessionStart");
     assert.strictEqual(sole.matcher, EVENT_MATCHERS.SessionStart);
     const foreign = result.content.hooks.SessionStart.find((g) => g.matcher === "Foreign");
@@ -1378,7 +1381,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
     });
     let result;
     assert.doesNotThrow(() => {
-      result = mergeSettings(fp, BINARY, {});
+      result = mergeSettings(fp, SRC, {});
     });
     const foreign = result.content.hooks.SessionStart.find((g) => g.matcher === "Foreign");
     assert.ok(foreign, "malformed-entry group untouched");
@@ -1401,7 +1404,7 @@ describe("vnc-031 Step 3c cross-matcher-group prune", function () {
     });
     let result;
     assert.doesNotThrow(() => {
-      result = mergeSettings(fp, BINARY, {});
+      result = mergeSettings(fp, SRC, {});
     });
     assert.strictEqual(countUni(result.content, "SessionStart"), 1);
   });
@@ -1459,5 +1462,207 @@ describe("nan-023 buildHookClientCommand provider hint", function () {
       const cmd = buildHookClientCommand(P, event, "codex-cli");
       assert.ok(cmd.endsWith(" --provider codex-cli"), event + " missing provider flag");
     }
+  });
+});
+
+// ── nan-024: shim command, settings.local.json, cross-scope, per-machine MCP ──
+
+describe("nan-024 buildShimCommand (D-080)", function () {
+  const { buildShimCommand, normalizeCommandSource } = require("../lib/merge-settings");
+  const { isUnimatrixCommand } = require("../lib/hook-ownership");
+  const cp = require("child_process");
+
+  it("unix and windows byte forms", function () {
+    assert.strictEqual(buildShimCommand("Stop", null, "linux", "/tmp/fx/h"), "'/tmp/fx/h/.unimatrix/bin/unimatrix' hook Stop");
+    assert.strictEqual(buildShimCommand("Stop", "codex-cli", "linux", "/tmp/fx/my home"), "'/tmp/fx/my home/.unimatrix/bin/unimatrix' hook Stop --provider codex-cli");
+    assert.strictEqual(buildShimCommand("Stop", null, "win32", "C:\\Users\\My User"), '"C:/Users/My User/.unimatrix/bin/unimatrix.cmd" hook Stop');
+  });
+  it("home omitted falls back to os.homedir()", function () {
+    assert.strictEqual(buildShimCommand("Stop", null, "linux"), "'" + path.posix.join(os.homedir(), ".unimatrix/bin/unimatrix") + "' hook Stop");
+  });
+  it("refuses unsafe characters", function () {
+    assert.throws(() => buildShimCommand("Stop", null, "linux", "/tmp/o'x"));
+    assert.throws(() => buildShimCommand("Stop", null, "win32", "C:\\a%b"));
+    assert.throws(() => buildShimCommand("Stop", null, "win32", 'C:\\a"b'));
+  });
+  it("pure and owned for every event x provider x platform x home", function () {
+    for (const ev of HOOK_EVENTS) for (const pv of [null, "codex-cli"]) {
+      for (const [pl, h] of [["linux", "/tmp/my home"], ["darwin", "/Users/a"], ["win32", "C:\\Users\\My User"]]) {
+        const c = buildShimCommand(ev, pv, pl, h);
+        assert.strictEqual(c, buildShimCommand(ev, pv, pl, h));
+        assert.ok(isUnimatrixCommand(c), c);
+      }
+    }
+  });
+  it("space survives single quotes under sh -c", function () {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "um my home-"));
+    fs.mkdirSync(path.join(home, ".unimatrix", "bin"), { recursive: true });
+    const shim = path.join(home, ".unimatrix", "bin", "unimatrix");
+    fs.writeFileSync(shim, '#!/bin/sh\necho "$@"\n', { mode: 0o755 });
+    const out = cp.execFileSync("sh", ["-c", buildShimCommand("Stop", null, "linux", home)]).toString().trim();
+    assert.strictEqual(out, "hook Stop");
+  });
+  it("normalizeCommandSource string arm removed", function () {
+    assert.throws(() => normalizeCommandSource("/bin/unimatrix"), TypeError);
+    assert.strictEqual(require("../lib/merge-settings").UNIMATRIX_PATTERNS, undefined);
+  });
+});
+
+describe("nan-024 cross-scope dedupe (AC-13, D-010)", function () {
+  const { buildShimCommand } = require("../lib/merge-settings");
+  function fixture() {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "um-xs-"));
+    return {
+      local: path.join(dir, ".claude", "settings.local.json"),
+      proj: path.join(dir, ".claude", "settings.json"),
+      user: path.join(dir, "home", ".claude", "settings.json"),
+    };
+  }
+  const src = (home) => ({ events: HOOK_EVENTS, commandForEvent: (e) => buildShimCommand(e, null, "linux", home) });
+  const own = (cmd) => ({ matcher: "", hooks: [{ type: "command", command: cmd }, { type: "command", command: "foreign-tool" }] });
+
+  it("exactly one owned entry per event, in settings.local.json; foreign preserved", function () {
+    const f = fixture();
+    const legacy = [
+      "unimatrix hook Stop", "/abs/unimatrix hook Stop", "node /x/hook-client/index.js Stop",
+      "npx unimatrix hook Stop", "$HOME/.unimatrix/bin/unimatrix hook Stop", "'/a/.unimatrix/bin/unimatrix' hook Stop",
+    ];
+    writeSettings(f.proj, { permissions: { allow: ["Read"] }, hooks: { Stop: legacy.map(own) } });
+    writeSettings(f.user, { hooks: { Stop: [own("unimatrix hook Stop")] } });
+    writeSettings(f.local, { hooks: { Stop: [own("unimatrix hook Stop")] } });
+    for (let i = 0; i < 2; i++) mergeSettings(f.local, src("/h"), { crossScopeFiles: [f.proj, f.user] });
+    const count = (file) => {
+      const j = JSON.parse(fs.readFileSync(file, "utf8"));
+      return Object.values(j.hooks || {}).flat().flatMap((g) => g.hooks).filter(isUnimatrixHook).length;
+    };
+    assert.strictEqual(count(f.proj), 0);
+    assert.strictEqual(count(f.user), 0);
+    const local = JSON.parse(fs.readFileSync(f.local, "utf8"));
+    for (const ev of DEFAULT_EVENTS) assert.strictEqual(local.hooks[ev].flatMap((g) => g.hooks).filter(isUnimatrixHook).length, 1, ev);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(f.proj, "utf8")).permissions, { allow: ["Read"] });
+    assert.ok(JSON.parse(fs.readFileSync(f.proj, "utf8")).hooks.Stop.every((g) => g.hooks.some((h) => h.command === "foreign-tool")));
+  });
+  it("foreign-only cross-scope file not rewritten; malformed aborts untouched", function () {
+    const f = fixture();
+    writeSettings(f.proj, '{"hooks":{"Stop":[{"matcher":"","hooks":[{"type":"command","command":"x"}]}]}}');
+    const old = new Date(2020, 1, 1);
+    fs.utimesSync(f.proj, old, old);
+    const before = fs.readFileSync(f.proj);
+    mergeSettings(f.local, src("/h"), { crossScopeFiles: [f.proj] });
+    assert.ok(before.equals(fs.readFileSync(f.proj)));
+    assert.strictEqual(fs.statSync(f.proj).mtimeMs, old.getTime());
+    writeSettings(f.user, "{ not json");
+    assert.throws(() => mergeSettings(f.local, src("/h"), { crossScopeFiles: [f.user] }), /Malformed/);
+    assert.strictEqual(fs.readFileSync(f.user, "utf8"), "{ not json");
+  });
+  it("re-merge over current entry writes nothing (mtime stable); exposes commands", function () {
+    const f = fixture();
+    const r = mergeSettings(f.local, src("/h"), {});
+    assert.ok(r.commands.some((c) => c.event === "Stop" && c.command === "'/h/.unimatrix/bin/unimatrix' hook Stop"));
+    const old = new Date(2020, 1, 1);
+    fs.utimesSync(f.local, old, old);
+    mergeSettings(f.local, src("/h"), {});
+    assert.strictEqual(fs.statSync(f.local).mtimeMs, old.getTime());
+  });
+});
+
+describe("nan-024 per-machine Claude MCP (claude-json, mcp-entry)", function () {
+  const { writeClaudeMcp, removeOwnedMcpJson, resolveProjectKey, ClaudeJsonError } = require("../lib/claude-json");
+  const { buildMcpEntry, buildMcpArgv, isFallbackMcpEntry } = require("../lib/mcp-entry");
+  const { isUnimatrixMcpEntry } = require("../lib/hook-ownership");
+  const mk = () => fs.mkdtempSync(path.join(os.tmpdir(), "um-cj-"));
+  const entry = buildMcpEntry("linux", "/h", "/n/node");
+
+  it("buildMcpEntry shapes and ownership", function () {
+    assert.deepStrictEqual(entry, { command: "sh", args: ["-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio'], env: {} });
+    const w = buildMcpEntry("win32", "C:\\Users\\a", "C:\\n\\node.exe");
+    assert.strictEqual(w.args[0], "C:/Users/a/.unimatrix/bin/shim-entry.js");
+    assert.ok(isFallbackMcpEntry(w) && !isFallbackMcpEntry(entry));
+    assert.ok(isUnimatrixMcpEntry("unimatrix", w) && isUnimatrixMcpEntry("unimatrix", entry));
+    assert.deepStrictEqual(buildMcpArgv("linux", "/h", "n"), ["sh", "-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio']);
+  });
+  it("writes only projects[root].mcpServers.unimatrix; idempotent; other keys untouched", function () {
+    const home = mk(), root = mk();
+    const file = path.join(home, ".claude.json");
+    const other = { projects: { "/other": { mcpServers: { x: { command: "y" } }, allowedTools: [] } }, theme: "dark" };
+    fs.writeFileSync(file, JSON.stringify(other, null, 4));
+    assert.strictEqual(writeClaudeMcp({ home, projectRoot: root, entry }).action, "created");
+    const j = JSON.parse(fs.readFileSync(file, "utf8"));
+    assert.deepStrictEqual(j.projects["/other"], other.projects["/other"]);
+    assert.strictEqual(j.theme, "dark");
+    assert.deepStrictEqual(j.projects[fs.realpathSync(root)].mcpServers.unimatrix, entry);
+    const old = new Date(2020, 1, 1);
+    fs.utimesSync(file, old, old);
+    assert.strictEqual(writeClaudeMcp({ home, projectRoot: root, entry }).action, "unchanged");
+    assert.strictEqual(fs.statSync(file).mtimeMs, old.getTime());
+    assert.strictEqual(writeClaudeMcp({ home, projectRoot: root, entry: { ...entry, args: ["-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio '] } }).action, "updated");
+    assert.deepStrictEqual(fs.readdirSync(home).filter((n) => n.endsWith(".tmp")), []);
+  });
+  it("foreign entry left with warning; malformed aborts byte-equal", function () {
+    const home = mk(), root = mk();
+    const file = path.join(home, ".claude.json");
+    const key = fs.realpathSync(root);
+    fs.writeFileSync(file, JSON.stringify({ projects: { [key]: { mcpServers: { unimatrix: { command: "mine" } } } } }));
+    const before = fs.readFileSync(file);
+    const r = writeClaudeMcp({ home, projectRoot: root, entry });
+    assert.strictEqual(r.action, "skipped-foreign");
+    assert.ok(/non-Unimatrix/.test(r.warning));
+    assert.ok(before.equals(fs.readFileSync(file)));
+    fs.writeFileSync(file, "{oops");
+    assert.throws(() => writeClaudeMcp({ home, projectRoot: root, entry }), ClaudeJsonError);
+    assert.strictEqual(fs.readFileSync(file, "utf8"), "{oops");
+    assert.deepStrictEqual(fs.readdirSync(home).filter((n) => n.endsWith(".tmp")), []);
+  });
+  it("project key table: reuse spelling for trailing slash, symlink; win32 case", function () {
+    const root = mk();
+    const link = root + "-link";
+    fs.symlinkSync(root, link);
+    assert.strictEqual(resolveProjectKey({ [root + "/"]: {} }, root, "linux"), root + "/");
+    assert.strictEqual(resolveProjectKey({ [link]: {} }, root, "linux"), link);
+    assert.strictEqual(resolveProjectKey({}, link, "linux"), fs.realpathSync(root));
+    assert.strictEqual(resolveProjectKey({ "c:/Users/a": {} }, "C:\\Users\\a", "win32"), "c:/Users/a");
+    assert.strictEqual(resolveProjectKey({}, "C:\\Users\\a", "win32"), "C:/Users/a");
+  });
+  it("dry-run writes nothing", function () {
+    const home = mk(), root = mk();
+    assert.strictEqual(writeClaudeMcp({ home, projectRoot: root, entry, dryRun: true }).action, "created");
+    assert.ok(!fs.existsSync(path.join(home, ".claude.json")));
+  });
+  it("concurrent writer: result stays valid JSON", function () {
+    const home = mk(), root = mk();
+    const file = path.join(home, ".claude.json");
+    fs.writeFileSync(file, JSON.stringify({ n: 0 }));
+    for (let i = 1; i <= 50; i++) {
+      writeClaudeMcp({ home, projectRoot: root, entry: { ...entry, env: { i: String(i) } } });
+      const j = JSON.parse(fs.readFileSync(file, "utf8"));
+      j.n = i;
+      fs.writeFileSync(file, JSON.stringify(j));
+    }
+    const j = JSON.parse(fs.readFileSync(file, "utf8"));
+    assert.strictEqual(j.n, 50);
+    assert.strictEqual(j.projects[fs.realpathSync(root)].mcpServers.unimatrix.env.i, "50");
+  });
+  it(".mcp.json removal preserving foreign servers", function () {
+    const root = mk();
+    const file = path.join(root, ".mcp.json");
+    const own = { command: "sh", args: ["-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio'] };
+    fs.writeFileSync(file, JSON.stringify({ mcpServers: { unimatrix: own, other: { command: "o" } }, extra: 1 }, null, 2));
+    assert.deepStrictEqual(removeOwnedMcpJson(root, true).actions.length, 1);
+    assert.ok(JSON.parse(fs.readFileSync(file, "utf8")).mcpServers.unimatrix);
+    const r = removeOwnedMcpJson(root, false);
+    assert.ok(r.changed);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, "utf8")), { mcpServers: { other: { command: "o" } }, extra: 1 });
+    fs.writeFileSync(file, JSON.stringify({ mcpServers: { unimatrix: own } }));
+    removeOwnedMcpJson(root, false);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(file, "utf8")), { mcpServers: {} });
+    // foreign-only: untouched, foreign "unimatrix" warns
+    fs.writeFileSync(file, '{"mcpServers":{"unimatrix":{"command":"mine"}}}');
+    const old = new Date(2020, 1, 1);
+    fs.utimesSync(file, old, old);
+    const r2 = removeOwnedMcpJson(root, false);
+    assert.ok(!r2.changed && r2.warnings.length === 1);
+    assert.strictEqual(fs.statSync(file).mtimeMs, old.getTime());
+    fs.writeFileSync(file, "{bad");
+    assert.throws(() => removeOwnedMcpJson(root, false), ClaudeJsonError);
   });
 });
