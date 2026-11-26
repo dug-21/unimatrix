@@ -2,7 +2,8 @@
 name: uni-bug-investigator
 type: specialist
 scope: broad
-model: fable
+model: opus
+effort: low
 description: Diagnoses bug root causes through codebase exploration and proposes targeted fixes
 capabilities:
   - root_cause_analysis
