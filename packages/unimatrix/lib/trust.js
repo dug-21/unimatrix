@@ -173,12 +173,13 @@ function readSddl(run, sys32, p) {
 // Paths travel in an env var, one SID per output line, in input order.
 function ownersOf(run, sys32, paths) {
   const script =
-    "$ErrorActionPreference='Stop';foreach($p in ($env:UNX_PATHS -split '\\|')){try{(Get-Acl -LiteralPath $p).GetOwner([System.Security.Principal.SecurityIdentifier]).Value}catch{''}}";
+    "$ErrorActionPreference='Stop';foreach($p in ($env:UNX_PATHS -split '\\|')){try{(Get-Acl -LiteralPath $p).GetOwner([System.Security.Principal.SecurityIdentifier]).Value}catch{'ERR '+$_.Exception.Message}}";
   const exe = path.win32.join(sys32, "WindowsPowerShell", "v1.0", "powershell.exe");
   const r = run(exe, ["-NoProfile", "-NonInteractive", "-Command", script], { UNX_PATHS: paths.join("|") });
   if (!r || r.status !== 0) throw new TrustError("powershell", `cannot read owner (status ${r && r.status}; ${String((r && r.stderr) || "").slice(0, 160).replace(/\s+/g, " ")})`);
   const lines = String(r.stdout).split(/\r?\n/).map((l) => l.trim());
   const out = new Map();
+  out.raw = r.stdout;
   paths.forEach((p, i) => {
     if (/^S-1-[\d-]+$/.test(lines[i] || "")) out.set(p, lines[i]);
   });
@@ -216,7 +217,7 @@ function fullCheckWindows(paths, opts) {
     if (!/^O:/.test(sd)) {
       owners = owners || ownersOf(run, sys32, paths);
       const sid = owners.get(p);
-      if (!sid) throw new TrustError(p, `cannot read owner (got ${JSON.stringify(Array.from(owners.values()).length)} of ${paths.length})`);
+      if (!sid) throw new TrustError(p, `cannot read owner (${String(owners.raw).slice(0, 200).replace(/\s+/g, " ")})`);
       sd = `O:${sid}${sd}`;
     }
     checkSddl(p, sd, me, prot.has(normalizeKey(p)));
