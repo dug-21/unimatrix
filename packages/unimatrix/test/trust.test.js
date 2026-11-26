@@ -162,6 +162,15 @@ test("win: readSddl decodes BOM-less UTF-16LE icacls file (captured bytes)", () 
   checkTrust(set(h, "win32"), "win32", w(h, inner));
 });
 
+test("win: LA alias allowed only when current user is RID 500", () => {
+  const h = mkHome();
+  const la = "acl diag\r\nD:PAI(A;OICI;FA;;;LA)(A;OICI;FA;;;SY)\r\n";
+  const run = (me) => (exe, a, e) => (/whoami/i.test(exe) ? { status: 0, stdout: `"H\\u","${me}"\r\n` } : fakeSpawn({ daclOnly: la, owner: () => me })(exe, a, e));
+  checkTrust(set(h, "win32"), "win32", w(h, run("S-1-5-21-1-2-3-500")));
+  const h2 = mkHome();
+  assert.throws(() => checkTrust(set(h2, "win32"), "win32", w(h2, run("S-1-5-21-1-2-3-1001"))), /extra writer LA/);
+});
+
 test("win: DACL-only + foreign owner SID refused; missing owner refused", () => {
   const h = mkHome();
   assert.throws(() => checkTrust(set(h, "win32"), "win32", w(h, fakeSpawn({ daclOnly: PROTECTED, owner: () => "S-1-5-21-7-7-7-1001" }))), /owner is not current user/);

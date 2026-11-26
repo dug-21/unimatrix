@@ -123,7 +123,7 @@ function recordTrustIdentity(paths, home) {
   } catch (_) {}
 }
 
-const SID_ALLOW_BASE = ["S-1-5-18", "S-1-5-32-544", "S-1-3-0", "SY", "BA", "CO"];
+const SID_ALLOW_BASE = ["S-1-5-18", "S-1-5-32-544", "S-1-3-0", "SY", "BA", "CO", "OW"];
 const WRITE_BITS = 0x2 | 0x4 | 0x40 | 0x10000 | 0x40000 | 0x80000 | 0x10000000 | 0x40000000;
 const WRITE_ALIAS = new Set(["GA", "GW", "FA", "FW", "WD", "AD", "WO", "DE", "DC", "SD", "WP", "DT"]);
 
@@ -196,7 +196,8 @@ function checkSddl(p, sddl, me, protect) {
   const dacl = sddl.slice(di).split("S:")[0];
   const flags = dacl.slice(2).split("(")[0];
   if (protect && !flags.includes("P")) throw new TrustError(p, "inheritance not disabled");
-  const allowed = new Set(SID_ALLOW_BASE.concat([me]));
+  // SDDL alias LA = the machine's RID-500 account; it is "me" when me ends in -500.
+  const allowed = new Set(SID_ALLOW_BASE.concat(/-500$/.test(me) ? [me, "LA"] : [me]));
   for (const m of dacl.matchAll(/\(([^()]*)\)/g)) {
     const f = m[1].split(";");
     if (f[0] !== "A" && f[0] !== "OA") continue;
