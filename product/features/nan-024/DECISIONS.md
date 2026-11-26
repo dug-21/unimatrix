@@ -100,3 +100,6 @@ Source of human scope: GH #1023 (issue body, authored by human).
 | D-094 | delivery | Latency budgets (supersedes D-025 numbers) | Set to the high end of measured p95: Ubuntu cloud 74, macOS cloud 126, macOS not-project 85, Windows cloud 164, Windows not-project 81, Ubuntu not-project 50 (ms). The pre-Node check stays as decided (D-088); no bundling | human | delivery Gate 3b | The budgets were a guess; these are measured |
 | D-095 | delivery | ~/.codex/config.toml incident | Leave as is | human | delivery | — |
 | D-096 | delivery | AC-06 latency gate in CI | Report only. The latency job is informational and never fails the build. AC-06 is evidenced, not enforced, by the recorded local and CI medians plus the p95 table against the D-094 figures | human | delivery Gate 3c | CI runner tail noise has no ceiling |
+| D-097 | delivery | D-066 gap now covers every Windows install (D-072) | D-066 holds | human | independence check | — |
+| D-098 | delivery | D-085 rejected $CODEX_HOME may drop events silently | Follow-up 1034: status should report all environment errors and questions; out of nan-024 scope | human | independence check | — |
+| D-099 | delivery | Security residuals F2, F4, temp name | Accepted as follow-up 1035 | human | security review | H1/H4 |
