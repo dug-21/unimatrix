@@ -12,6 +12,9 @@ on:
     branches: [feature/nan-024]
     paths: ['.github/q9-proof/**', '.github/workflows/q9-windows-mcp-proof.yml', 'packages/unimatrix/lib/**', 'packages/unimatrix/test/helpers/e2e-harness.js']
 
+permissions:
+  contents: read
+
 jobs:
   q9:
     runs-on: windows-latest

@@ -183,7 +183,7 @@ function writeCodexHooks(o) {
   }
   const action = read.present ? (changed ? "updated" : "unchanged") : "created";
   if (!dryRun && action !== "unchanged") {
-    atomicWriteText(hooksPath, JSON.stringify(content, null, detectIndent(read.raw || "")) + "\n");
+    atomicWriteText(hooksPath, JSON.stringify(content, null, detectIndent(read.raw || "")) + "\n", 0o600);
   }
   return commands.map((command) => leg("hooks", action, hooksPath, { command }));
 }
@@ -295,7 +295,7 @@ function writeCodexMcpToml(o) {
   const result = upsertTomlTable(raw, OWNED_TABLE, body);
   if (result.malformed) return leg("mcp", "skipped-malformed", cfg, { reason: TOML_MALFORMED_REASON });
   if (!result.changed) return leg("mcp", "unchanged", cfg, { entry });
-  if (!dryRun) atomicWriteText(cfg, result.text);
+  if (!dryRun) atomicWriteText(cfg, result.text, 0o600);
   return leg("mcp", existing.present ? "updated" : "created", cfg, { entry });
 }
 

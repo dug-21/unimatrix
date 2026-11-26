@@ -7,6 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const { isUnimatrixMcpEntry } = require("./hook-ownership.js");
 const { detectIndent } = require("./opencode-install.js");
+const { atomicWrite } = require("./atomic-write.js");
 
 class ClaudeJsonError extends Error {}
 
@@ -36,18 +37,8 @@ function deepEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** tmp + rename; tmp removed on failure. */
-function atomicWriteText(file, text, mode) {
-  const tmp = file + "." + process.pid + ".tmp";
-  try {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(tmp, text, { encoding: "utf8", mode: mode || 0o644 });
-    fs.renameSync(tmp, file);
-  } catch (e) {
-    try { fs.unlinkSync(tmp); } catch (_) { /* best effort */ }
-    throw e;
-  }
-}
+/** tmp + rename preserving an existing file's mode; `mode` applies to new files only. */
+const atomicWriteText = atomicWrite;
 
 function normalizeKey(k, platform) {
   let s = String(k);
@@ -141,7 +132,7 @@ function removeOwnedMcpJson(projectRoot, dryRun) {
   if (owned.length === 0) return { actions: [], warnings, changed: false };
   for (const k of owned) delete servers[k];
   if (!dryRun) {
-    atomicWriteText(file, JSON.stringify(parsed, null, detectIndent(raw)) + "\n", (statOrNull(file) || {}).mode);
+    atomicWriteText(file, JSON.stringify(parsed, null, detectIndent(raw)) + "\n");
   }
   const msg = "Removed Unimatrix MCP entry from .mcp.json";
   return { actions: [dryRun ? "[dry-run] " + msg : msg], warnings, changed: true };

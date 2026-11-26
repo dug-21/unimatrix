@@ -25,6 +25,9 @@ concurrency:
 env:
   ORT_VERSION: "1.20.1"
 
+permissions:
+  contents: read
+
 jobs:
   build-server:
     name: Build server (linux, release)

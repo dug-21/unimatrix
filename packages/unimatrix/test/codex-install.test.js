@@ -623,3 +623,41 @@ describe("codexApprovalStep", () => {
     assert.ok(codexApprovalStep().includes("/hooks"));
   });
 });
+
+// ---------------------------------------------------------------------------
+// F1: user-level file modes preserved / new files 0600 (POSIX only)
+// ---------------------------------------------------------------------------
+
+describe("codex user-level file modes", { skip: process.platform === "win32" }, () => {
+  const modeOf = (p) => fs.statSync(p).mode & 0o777;
+  it("0600 config.toml stays 0600 after writeCodexMcpToml; new file is 0600", () => {
+    const f = fixture();
+    const dir = path.join(f.home, ".codex");
+    fs.mkdirSync(dir);
+    fs.writeFileSync(cfgOf(dir), 'model = "x"\n', { mode: 0o600 });
+    fs.chmodSync(cfgOf(dir), 0o600);
+    assert.strictEqual(writeCodexMcpToml(f.o).action, "created");
+    assert.strictEqual(modeOf(cfgOf(dir)), 0o600);
+    const g = fixture();
+    assert.strictEqual(writeCodexMcpToml(g.o).action, "created");
+    assert.strictEqual(modeOf(cfgOf(path.join(g.home, ".codex"))), 0o600);
+  });
+  it("0600 hooks.json stays 0600; 0640 preserved; new hooks.json is 0600", () => {
+    const f = fixture();
+    const dir = path.join(f.home, ".codex");
+    fs.mkdirSync(dir);
+    fs.writeFileSync(hooksOf(dir), "{}\n");
+    fs.chmodSync(hooksOf(dir), 0o640);
+    writeCodexHooks(f.o);
+    assert.strictEqual(modeOf(hooksOf(dir)), 0o640);
+    fs.chmodSync(hooksOf(dir), 0o600);
+    f.o.dryRun = false;
+    fs.writeFileSync(hooksOf(dir), "{}\n");
+    fs.chmodSync(hooksOf(dir), 0o600);
+    writeCodexHooks(f.o);
+    assert.strictEqual(modeOf(hooksOf(dir)), 0o600);
+    const g = fixture();
+    writeCodexHooks(g.o);
+    assert.strictEqual(modeOf(hooksOf(path.join(g.home, ".codex"))), 0o600);
+  });
+});

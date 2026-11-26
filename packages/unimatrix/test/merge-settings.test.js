@@ -1666,3 +1666,30 @@ describe("nan-024 per-machine Claude MCP (claude-json, mcp-entry)", function () 
     assert.throws(() => removeOwnedMcpJson(root, false), ClaudeJsonError);
   });
 });
+
+describe("file-mode preservation (F1)", { skip: process.platform === "win32" }, function () {
+  const modeOf = (p) => fs.statSync(p).mode & 0o777;
+  it("mergeSettings keeps an existing 0600 settings file at 0600", function () {
+    const fp = tempSettingsPath();
+    writeSettings(fp, { theme: "dark" });
+    fs.chmodSync(fp, 0o600);
+    mergeSettings(fp, SRC, {});
+    assert.ok(fs.readFileSync(fp, "utf8").includes("hooks"));
+    assert.strictEqual(modeOf(fp), 0o600);
+  });
+  it("claude-json write keeps 0600 on ~/.claude.json and removeOwnedMcpJson keeps .mcp.json mode", function () {
+    const { writeClaudeMcp, removeOwnedMcpJson } = require("../lib/claude-json.js");
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-cj-mode-"));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-cj-mode-"));
+    const file = path.join(home, ".claude.json");
+    fs.writeFileSync(file, "{}\n");
+    fs.chmodSync(file, 0o600);
+    writeClaudeMcp({ home, projectRoot: root, entry: { command: "sh", args: ["-c", "x"], env: {} } });
+    assert.strictEqual(modeOf(file), 0o600);
+    const mcp = path.join(root, ".mcp.json");
+    fs.writeFileSync(mcp, JSON.stringify({ mcpServers: { unimatrix: { command: "sh", args: ["-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio'], env: {} } } }));
+    fs.chmodSync(mcp, 0o640);
+    removeOwnedMcpJson(root, false);
+    assert.strictEqual(modeOf(mcp), 0o640);
+  });
+});

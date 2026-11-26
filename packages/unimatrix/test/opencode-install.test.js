@@ -439,3 +439,19 @@ describe("helpers", () => {
     assert.strictEqual(l.entry, undefined);
   });
 });
+
+describe("opencode user-level file modes (F1)", { skip: process.platform === "win32" }, () => {
+  const modeOf = (p) => fs.statSync(p).mode & 0o777;
+  it("0600 opencode.json stays 0600 after writeOpencodeMcp", () => {
+    const home = tmp("unimatrix-opencode-mode-");
+    writeUser(home, { theme: "x" });
+    fs.chmodSync(cfgPathOf(home), 0o600);
+    assert.strictEqual(wr(home, { harnessSelected: true }).action, "created");
+    assert.strictEqual(modeOf(cfgPathOf(home)), 0o600);
+  });
+  it("new user-level opencode.json is created 0600", () => {
+    const home = tmp("unimatrix-opencode-mode-");
+    assert.strictEqual(wr(home, { harnessSelected: true }).action, "created");
+    assert.strictEqual(modeOf(cfgPathOf(home)), 0o600);
+  });
+});

@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { isUnimatrixMcpEntry } = require("./hook-ownership.js");
 const { buildMcpArgv } = require("./mcp-entry.js");
+const { atomicWrite } = require("./atomic-write.js");
 
 /**
  * OpenCode MCP wiring (nan-024 ADR-006). `init` provisions no OpenCode plugin;
@@ -181,16 +182,8 @@ function buildOpencodeEntry(o) {
   return { type: "local", command: buildMcpArgv(o.platform, o.home, o.node) };
 }
 
-function atomicWriteJson(file, obj, indent) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = file + "." + process.pid + ".tmp";
-  try {
-    fs.writeFileSync(tmp, JSON.stringify(obj, null, indent) + "\n", "utf8");
-    fs.renameSync(tmp, file);
-  } catch (e) {
-    try { fs.unlinkSync(tmp); } catch (_) { /* best effort */ }
-    throw e;
-  }
+function atomicWriteJson(file, obj, indent, newMode) {
+  atomicWrite(file, JSON.stringify(obj, null, indent) + "\n", newMode);
 }
 
 /** Per-machine writer: ~/.config/opencode/opencode.json mcp.unimatrix only. */
@@ -232,7 +225,7 @@ function writeOpencodeMcp(o) {
   cfg.mcp = cfg.mcp || {};
   cfg.mcp.unimatrix = entry;
   try {
-    atomicWriteJson(cfgPath, cfg, read.present ? detectIndent(read.raw) : 2);
+    atomicWriteJson(cfgPath, cfg, read.present ? detectIndent(read.raw) : 2, 0o600);
   } catch (e) {
     return opencodeLeg("skipped", cfgPath, { reason: "write failed: " + e.message });
   }
