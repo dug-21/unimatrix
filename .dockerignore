@@ -17,6 +17,9 @@ product/
 # Development tooling
 .claude/
 .github/
+# ...except the shared ORT installer + hash-pinned requirements (GH #1031)
+!.github/scripts/install-ort-linux.sh
+!.github/scripts/ort-requirements.txt
 .vscode/
 .devcontainer/
 .devcontainer.json
