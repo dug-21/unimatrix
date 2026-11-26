@@ -12,7 +12,7 @@ Matrix {redirect only, `UNIMATRIX_BINARY` only, both, none, invalid redirect, ma
 - Redirect removal reverts to install; fixture `git status` clean (no repo writes).
 
 ## Rework (D-078, D-080; effectiveEnv D-091)
-- `allowSelf` (D-080, init-time): `resolveRuntime({..., allowSelf:true})` with no `install.json` returns clientRoot = the running package root (`clientSource:"install"` or documented `"self"` per pseudocode; assert the pseudocode value), binary per normal rules; `allowSelf` omitted/false with no install -> throws `RuntimeResolutionError`. Additive: all existing matrix rows pass unchanged with the field absent. `allowSelf:true` never overrides a valid redirect or env (precedence preserved).
+- `allowSelf` (D-080, init-time): `resolveRuntime({..., allowSelf:true})` with no `install.json` returns clientRoot = the running package root (`clientSource === "install"` exactly), binary per normal rules; `allowSelf` omitted/false with no install -> throws `RuntimeResolutionError`. Additive: all existing matrix rows pass unchanged with the field absent. `allowSelf:true` never overrides a valid redirect or env (precedence preserved).
 - D-078: installed binary source is `pkg/<version>/node_modules/<platform pkg>`; deleting the original package location does not change the result.
 ### `effectiveEnv(env, cwd, home)` (D-091, accepted)
 - Headless env set and cwd outside valid `UNIMATRIX_PROJECT_ROOT` (unset, relative, or not containing realpath(cwd)) -> returned env lacks `UNIMATRIX_BUNDLE` and all `UNIMATRIX_REMOTE_*`; inside root -> unchanged; input object not mutated; other vars untouched. Same fixture table as project-state D-052 rows (prefix sibling, symlinked root, empty).

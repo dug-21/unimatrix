@@ -31,3 +31,8 @@ Rule (from ARCHITECTURE "Reference configs and docs"): over `README.md` and `.ge
 
 ## Rework 2 (D-089)
 `"$HOME/.unimatrix/bin/unimatrix" hook ... --provider gemini-cli` in tracked Unix `.gemini/settings.json` is accepted (D-027 covers init-written destinations only); keep it as a positive docs-grep fixture.
+
+## Rework 4
+- AC-07 local Linux E2E ("linux local E2E (UDS)") uses the BUILT `unimatrix-server` (`cargo build --release`), not a stub: a stub cannot store an observation over UDS. Stubs remain only for macOS/Windows cloud-path rows and exit/argv tests.
+- AC-12 suite list (ci-config test asserts each is claimed by a CI job/set, and `check-test-count.js` non-decreasing per file): skills install; DB pre-create; postinstall model; bundle decode; credential 0600; ping; pinned/CA TLS; headless `npx -y @dug-21/unimatrix mcp-bridge` (`headless-smoke.test.js`); Codex TOML upsert; MCP removal preserving foreign servers; SubagentStop opt-in; Rust pass-through `LD_LIBRARY_PATH`; `[hc]`, `[pkg]`, `[oc]` sets; orphan audit. Old-string tests are updated, never deleted.
+- R-39 harness-display evidence: Stage 3c records, for each harness, what is shown for an MCP server exiting 0 outside a project (CI job log or manual screenshot/notes); included in RISK-COVERAGE-REPORT, not a pass/fail gate beyond exit 0 + empty stdout.

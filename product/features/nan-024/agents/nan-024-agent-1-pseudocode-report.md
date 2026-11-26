@@ -52,3 +52,12 @@ Remaining open: pending H1 (trust bootstrap; effectiveEnv); DEFAULT flagged (rel
 - D-091: project-state.md, hook-client.md, launcher.md, ci-and-docs.md, OVERVIEW.md: PENDING H1 removed; effectiveEnv governs hooks and mcp-bridge. launcher.md status: `cloudEnvStatus` (raw shell env), text line after `transport:`, JSON `cloudEnv` between transport and trust, names sorted, never values, exit 0; test scenarios added.
 - D-086 note: unreachable Windows exit-code branch kept in launcher.md, commented as deliberate.
 - Unimatrix entries consulted: #5900, #5901 (briefing: #5869, #5896).
+
+## Rework 4
+Gate 3a iteration 1 fixes (pseudocode/ in place):
+- F4 trust.md: win32 per-event loop null-checks `tj` first, skips trust.json self-identity, compares parent `~/.unimatrix` dir identity (ino+mode; size/mtime excluded because tmp+rename rewrites change dir mtime) per ADR-002; unused parentId removed; recordTrustIdentity skips trust.json.
+- F3 wire-init.md: explicit D-082 preflight rule (win32 missing recorded node/fallback entry -> exit 1; non-win32 missing + PATH node -> warn, missing + no PATH node -> exit 1; init exits 1 if node not recordable); ambiguous phrase removed.
+- W1 OVERVIEW.md: D-001..D-091, ADRs cited by number (D-067).
+- W3 ci-and-docs.md: Linux local E2E uses built server (cargo build --release).
+Note for tester: trust test plan should cover dir ino/mode mismatch -> one full check.
+Unimatrix entries consulted: briefing (#2958, #5751, #5705, #5768, #4796, #5745); ADR #5900 via gate report.

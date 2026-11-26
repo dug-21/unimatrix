@@ -27,7 +27,7 @@ Local (Linux) `mcp-stdio` = spawn Rust with `stdio:'inherit'`, mirror exit code 
 - Windows MCP fallback entry written form `{command:<node>, args:[shim-entry.js,'mcp-stdio']}` executed by `spawn` on every OS using stub node paths: initialize round-trip works through shim-entry -> launcher -> (cloud) mcp-bridge stub.
 
 ## Rework: status additions
-- `status` reports Linux install with platform binary missing from `pkg/<version>/node_modules` (D-078) as `binary: MISSING <path>`; exit 0.
+- `status` field set is exactly FR-12g/ADR-004 (no `binary:` line exists): Linux install with platform binary missing from `pkg/<version>/node_modules` (D-078) -> `status` still exits 0 with the same field set; the missing binary surfaces at fire time (hook exit 1 naming the path), asserted in the exit matrix.
 - D-091 launcher/bin: `effectiveEnv` is applied before transport selection: cloud vars set + cwd outside root -> launcher does not use remote (no network, exit 0 silent for hooks); inside root -> remote used. `status` cloud env (below).
 
 ### `status` cloud env line (D-091; `test/status-cloud-env.test.js`)

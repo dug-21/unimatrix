@@ -35,3 +35,12 @@ Knowledge Stewardship: Queried briefing; Stored nothing novel (in-place decision
 Applied D-090 and D-091 (human-decided); removed all PENDING H1/SEPARABLE markers. Files changed: test-plan/OVERVIEW.md, shim-entry.md, trust.md, install-store.md, merge-settings.md, codex-install.md, resolve-runtime.md, project-state.md, launcher.md. New planned file: `test/trust-selfcontained.test.js`, `test/status-cloud-env.test.js`. D-086 Windows exit-code-only tests kept.
 Unimatrix entries consulted: #5900, #5901 (headers only returned by context_get), briefing (#5778, #5781 not bearing).
 Knowledge Stewardship: Queried briefing; Stored nothing novel (in-place decision application).
+
+## Rework 4 (gate 3a iteration 1)
+Files changed (test-plan/): install-store.md (F1 size guard removed, report-only D-087), launcher.md (F2 `binary: MISSING` removed; status field set per FR-12g), trust.md (F5 symlinks refused), wire-init.md (F3 D-082 branch matrix warn/fail-no-PATH/fail-Windows with PATH fixtures, init exits 1 only if node unrecordable; R-37 init may exit 1 after 3 retries, assert no corruption), OVERVIEW.md (W1 D-001..D-091, ADRs by number; R-39 harness-display item), ci-and-docs.md (W3 built server for Linux UDS E2E; AC-12 suites enumerated; R-39 evidence), project-state.md (third arg required), resolve-runtime.md (`clientSource === "install"`), hook-ownership.md (legacy MCP forms 1-3), opencode-install.md (XDG fixture isolation only).
+Re-read pseudocode/wire-init.md D-082 rule: aligned (win32: any missing recorded node -> exit 1; non-win32: warn if PATH node, else exit 1; init exit 1 if unrecordable).
+
+## Knowledge Stewardship
+- Queried: mcp__unimatrix__context_briefing -- lessons on multi-doc consistency (#3611, #3612); no new entries.
+- Stored: nothing novel to store -- text-level consistency fixes.
+Unimatrix entries consulted: #3611, #3612, #3598

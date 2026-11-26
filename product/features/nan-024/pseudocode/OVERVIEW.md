@@ -1,6 +1,6 @@
 # nan-024 Pseudocode Overview
 
-Binding inputs: DECISIONS.md D-001..D-083 (later wins), ADR-001..006, ARCHITECTURE.md, SPECIFICATION.md, RISK-TEST-STRATEGY.md rev 6, research/codex-hooks-evidence.md.
+Binding inputs: DECISIONS.md D-001..D-091 (later wins), ADR-001..ADR-006 (cited by number per D-067), ARCHITECTURE.md, SPECIFICATION.md, RISK-TEST-STRATEGY.md rev 6, research/codex-hooks-evidence.md.
 D-072: Windows MCP entry is ALWAYS the D-047 fallback (`{command:<recorded abs node>, args:[<abs home>/.unimatrix/bin/shim-entry.js,"mcp-stdio"], env:{}}`); D-057/D-066 apply to every Windows install. D-073: Codex passes the hook string raw to `cmd.exe /C`; Windows hook form `"<abs>.cmd" hook E` stands.
 All paths are under `packages/unimatrix/` unless noted. No component touches `crates/`; Rust (`hook.rs`, daemon, stdio, store hash) is read-only oracle.
 

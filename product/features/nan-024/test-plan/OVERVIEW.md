@@ -1,7 +1,7 @@
 # nan-024 Test Strategy Overview
 
-Feature: Every harness on the Node client, portable wiring (GH #1023). Source: RISK-TEST-STRATEGY.md rev 6, ACCEPTANCE-MAP.md, DECISIONS.md D-001..D-083 (later wins; D-077..D-083 are the rework set; D-072 = Windows MCP is the D-047 fallback form; D-073 = Codex passes the hook string raw to `cmd.exe /C`).
-ADRs consulted (binding): ADR-001..ADR-006 (#5889, #5892, #5893, #5891, #5894, plus #5888/#5875/#5887/#5886/#5878/#5882 via ADR-INDEX).
+Feature: Every harness on the Node client, portable wiring (GH #1023). Source: RISK-TEST-STRATEGY.md rev 6, ACCEPTANCE-MAP.md, DECISIONS.md D-001..D-091 (later wins; D-077..D-091 are the rework set; D-072 = Windows MCP is the D-047 fallback form; D-073 = Codex passes the hook string raw to `cmd.exe /C`).
+ADRs consulted (binding): ADR-001..ADR-006 (cited by number per D-067; Unimatrix IDs per architecture/ADR-INDEX.md).
 
 ## Strategy
 
@@ -123,3 +123,8 @@ infra-001 drives the Rust `unimatrix-server` over MCP JSON-RPC. nan-024 changes 
 | D-091 `effectiveEnv` governs hooks + mcp-bridge; `status` cloud env text (4 variants) + `--json cloudEnv` (between transport and trust), sorted names, no values, raw shell env, exit 0 | R-29, R-34, R-35, R-28, AC-15, AC-10/14 | resolve-runtime, project-state parity, `headless-smoke.test.js`, `status-cloud-env.test.js` | resolve-runtime, project-state, launcher |
 - D-086 Windows exit-code-only launcher branch tests retained unchanged (launcher.md).
 - Headless-smoke (b)/(c) cases double as the bridge half of the D-091 effectiveEnv proof.
+
+## Rework 4 (gate 3a iteration 1)
+- R-39 evidence item: record, per harness (Claude Code, Codex, OpenCode, Gemini), what is displayed for an MCP server that exits 0 outside a project (stderr silent, exit 0, before `initialize`). Captured as CI log excerpts / manual notes in RISK-COVERAGE-REPORT; observation only, no pass/fail beyond exit 0 + empty stdout (launcher.md, opencode-install.md).
+- AC-12 suites enumerated in ci-and-docs.md "AC-12 suite list".
+- D-082 branch matrix (warn / fail-no-PATH / fail-Windows) in wire-init.md; D-087 size report-only; symlinked trust inputs refused (trust.md).

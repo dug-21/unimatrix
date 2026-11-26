@@ -48,13 +48,21 @@ Per event, no process spawn on the matching path:
 ```
 function checkTrustWindowsPerEvent(paths, opts):
   tj = readTrustJson(home)                // missing / unparseable / not plain object -> null
-  parentId = statIdentity(~/.unimatrix) compared with tj[~/.unimatrix]   // trust.json integrity via its parent dir (ADR-002)
-  if tj == null: return fullAndRewrite(paths)
+  if tj == null: return fullAndRewrite(paths)      // null-check BEFORE any use of tj
+  tjPath = normalizeKey(join(~/.unimatrix, "trust.json"))
   for p in paths:
+    if normalizeKey(p) == tjPath: continue         // trust.json is NOT compared by its own identity: recordTrustIdentity
+                                                   // records identities BEFORE rewriting trust.json, so a self-entry could never match
     cur = statIdentity(p)                 // ENOENT -> TrustError(p,"missing")
     rec = tj[normalizeKey(p)]
+    if p is ~/.unimatrix:                 // trust.json integrity is covered by its PARENT dir identity (ADR-002 #5900)
+       // dir identity = {ino, mode, uid-equivalent}; size/mtime EXCLUDED because every legitimate trust.json
+       // rewrite (tmp+rename) changes the dir mtime. Any add/replace of trust.json by someone else without
+       // going through fullAndRewrite is not detectable by mtime here, so dir ino/mode mismatch OR missing rec -> full check.
+       if !rec or rec.ino!=cur.ino or rec.mode!=cur.mode: return fullAndRewrite(paths)
+       continue
     if !rec or rec.size!=cur.size or rec.mtimeMs!=cur.mtimeMs or rec.ino!=cur.ino: return fullAndRewrite(paths)
-  // all matched: pass
+  // all matched: pass, zero process spawn
 function fullAndRewrite(paths):
   fullCheckWindows(paths)                 // throws TrustError on failure
   recordTrustIdentity(paths, home)        // tmp (unique name) + rename; failure to write is NOT fatal (next event re-checks)
@@ -69,7 +77,7 @@ function fullCheckWindows(paths, opts):
     // rightsGrantWrite: hex mask or aliases (GA,GW,FA,FW,WD,AD,WO,WDAC,DE,DC) where mask & (0x2|0x4|0x40|0x10000|0x40000|0x80000|0x10000000|0x40000000) != 0
     if p in {~/.unimatrix, bin}: require SDDL protected (P flag in DACL "D:P") // inheritance disabled
 ```
-`recordTrustIdentity(paths, home)`: build `{normalizedPath: statIdentity(p)}` including the `~/.unimatrix` dir itself; write `trust.json` tmp+rename; if rename EPERM/EBUSY retry 3x with 10 ms sleep (Atomics.wait) then give up silently (logged to stderr only at init).
+`recordTrustIdentity(paths, home)`: build (skipping the `trust.json` path itself; `statIdentity` includes `mode`) `{normalizedPath: statIdentity(p)}` including the `~/.unimatrix` dir itself; write `trust.json` tmp+rename; if rename EPERM/EBUSY retry 3x with 10 ms sleep (Atomics.wait) then give up silently (logged to stderr only at init).
 Key normalisation: forward slashes, lowercase drive letter.
 
 ## Error handling
