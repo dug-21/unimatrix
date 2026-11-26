@@ -1,7 +1,7 @@
 ---
 name: uni-research-sm
-model: sonnet
-effort: medium
+model: opus
+effort: high
 type: coordinator
 scope: broad
 description: Research campaign coordinator. Validates scope completeness, dispatches spike researchers in dependency order, routes findings between dependent spikes, updates planning documents. Campaign mode only — single spikes invoke uni-spike-researcher directly.
