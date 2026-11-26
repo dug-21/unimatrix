@@ -663,11 +663,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // No launcher, no child spawn, no setsid. PID 1 container mode.
             tokio_main_daemon(cli)
         }
-        Some(Command::Serve {
-            daemon: true,
-            stdio: _,
-            ..
-        }) => {
+        Some(Command::Serve { daemon: true, .. }) => {
             // Daemon path — launcher or child (ADR-001 / C-01).
             //
             // If --daemon-child is set: we are the spawned child process.
@@ -687,11 +683,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(())
             }
         }
-        Some(Command::Serve {
-            daemon: false,
-            stdio: _,
-            ..
-        }) => {
+        Some(Command::Serve { daemon: false, .. }) => {
             // Stdio mode: serve --stdio or bare `serve` with no flags.
             // Identical to pre-vnc-005 default behavior (R-12 regression gate).
             tokio_main_stdio(cli)
