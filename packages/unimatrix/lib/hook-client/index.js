@@ -23,12 +23,12 @@ const buildRequestMod = require("./build-request");
 const cycles = require("./cycles");
 const transcript = require("./transcript");
 const transportHttp = require("./transport-http");
-const transportUds = require("./transport-uds");
 const transform = require("./transform");
 const delta = require("./delta");
 const queue = require("./queue");
 const state = require("./state");
 const observeLatch = require("./observe-latch");
+const { recordLastHook } = require("./last-hook");
 // vnc-030 ADR-002: FNF cycle-stamp decoration seam (lifecycle dispatch, stamp
 // attach, suppression strip, subagent-gated canary). Split out for the
 // modular-file limit; mutates `request` upstream of selectTransport.
@@ -43,7 +43,7 @@ const cycleDecoration = require("./cycle-decoration");
  * whenever remote config resolved.
  */
 function selectTransport(config) {
-  return config && config.mode === "uds" ? transportUds : transportHttp;
+  return config && config.mode === "uds" ? require("./transport-uds") : transportHttp;
 }
 
 /** stdin hard cap — parity with hook.rs read_stdin take(1 MiB). */
@@ -366,9 +366,9 @@ function parseHookArgs(argv) {
  * main — top-level pipeline. Always resolves; never exits nonzero; never writes
  * stdout on a failure path.
  */
-async function main() {
+async function main(argv = process.argv) {
   try {
-    const parsed = parseHookArgs(process.argv);
+    const parsed = parseHookArgs(argv);
     const rawEvent = parsed.event;
     const providerHint = parsed.providerHint;
     const raw = readStdin(); // never throws
@@ -470,6 +470,7 @@ async function main() {
     } else {
       await runSync(request, reqSource, config, transport);
     }
+    recordLastHook(config.projectHash, input.provider); // nan-024 ADR-004; best-effort
   } catch (e) {
     // Last-resort guard: NEVER stdout, NEVER nonzero exit.
     stderrLine("internal", String((e && e.message) || e));

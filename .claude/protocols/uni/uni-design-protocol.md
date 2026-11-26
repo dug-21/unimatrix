@@ -187,14 +187,14 @@ Phase 2 has five sequential steps: 2a (architect + spec parallel) → 2a+ (risk 
 
 The Design Leader spawns two specialists in parallel:
 
-**uni-architect → Architecture** (`architecture/ARCHITECTURE.md` + `ADR-NNN-{name}.md`)
+**uni-architect → Architecture** (`architecture/ARCHITECTURE.md` + `architecture/ADR-INDEX.md`; ADR content in Unimatrix only)
 
 - High-level system design, component breakdown and boundaries
 - How components interact (interfaces, contracts, data flow)
 - Technology decisions with rationale
 - Integration points and dependencies
-- ADRs as individual files in `architecture/`
-- **Store each ADR in Unimatrix** immediately after writing the file — `context_store(category: "decision", topic: "{feature-id}", feature_cycle: "{feature-id}", title: "{ADR title}", tags: ["adr", "{feature-id}"])` — so delivery agents can retrieve decisions via search without reading every ADR file
+- ADRs stored **only in Unimatrix**, with no ADR files. `ADR-INDEX.md` lists each ADR's Unimatrix ID and one-line decision, and explains how to retrieve them.
+- **Store each ADR in Unimatrix** — `context_store(category: "decision", topic: "{feature-id}", feature_cycle: "{feature-id}", title: "{ADR title}", tags: ["adr", "{feature-id}"])` — then add its row to `ADR-INDEX.md`
 - **Modularity accounting (capability PL-10, standard #693)** — identify any source file this design will push over the **1,000 code-line cap** (tests excluded), and any already-over-cap file the feature modifies. Account for each in ARCHITECTURE.md: new logic goes in a new focused module with thin wiring at the host call site; if a host file must itself be decomposed, schedule it as a tracked `refactor(...)` feature with a test plan (reference or open its `tech-debt, goal:platform` issue) — never an ad-hoc mid-delivery split.
 
 **uni-specification → Specification** (`specification/SPECIFICATION.md`)
@@ -227,7 +227,7 @@ Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-archit
     a scheduled decomposition with a test plan. Never plan an ad-hoc mid-delivery
     refactor of a monolith.
 
-    After writing each ADR file, store it in Unimatrix:
+    Store each ADR in Unimatrix only (no ADR files), then add its row to architecture/ADR-INDEX.md:
     context_store(category: 'decision', topic: '{feature-id}', feature_cycle: '{feature-id}',
       title: '{ADR title}', tags: ['adr', '{feature-id}'], content: '{full ADR content}')
     ...")
@@ -266,7 +266,7 @@ Task(
     Read these artifacts for context:
     - SCOPE.md: product/features/{id}/SCOPE.md
     - Architecture: product/features/{id}/architecture/ARCHITECTURE.md
-    - ADRs: {list ADR file paths from architect's return}
+    - ADRs: product/features/{id}/architecture/ADR-INDEX.md (context_get the IDs it lists)
     - Specification: product/features/{id}/specification/SPECIFICATION.md
     - Scope Risk Assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
 
@@ -333,11 +333,11 @@ Task(
     - product/features/{id}/SCOPE-RISK-ASSESSMENT.md
     - product/features/{id}/specification/SPECIFICATION.md
     - product/features/{id}/architecture/ARCHITECTURE.md
-    - product/features/{id}/architecture/ADR-*.md (all ADR files)
+    - product/features/{id}/architecture/ADR-INDEX.md (context_get every ADR it lists)
     - product/features/{id}/RISK-TEST-STRATEGY.md
     - product/features/{id}/ALIGNMENT-REPORT.md
 
-    ADR file paths from architect: {list from architect's return}
+    ADR Unimatrix IDs from architect: {list from architect's return}
     Vision variances: {from vision guardian's return}
 
     Produce: IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md, GH Issue.
@@ -365,7 +365,7 @@ Task(
     - product/features/{id}/SCOPE.md
     - product/features/{id}/SCOPE-RISK-ASSESSMENT.md
     - product/features/{id}/architecture/ARCHITECTURE.md
-    - product/features/{id}/architecture/ADR-*.md
+    - product/features/{id}/architecture/ADR-INDEX.md (context_get every ADR it lists)
     - product/features/{id}/specification/SPECIFICATION.md
     - product/features/{id}/RISK-TEST-STRATEGY.md
     - product/features/{id}/ALIGNMENT-REPORT.md

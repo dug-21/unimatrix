@@ -61,6 +61,7 @@ function runEntry(event, stdin) {
   const env = Object.assign({}, process.env, {
     HOME: tmpRoot,
     USERPROFILE: tmpRoot,
+    UNIMATRIX_PROJECT_ROOT: tmpRoot, // D-052
     UNIMATRIX_REMOTE_URL: server.url,
     UNIMATRIX_REMOTE_TOKEN: server.token,
     // vnc-050: HTTPS-only self-signed listener → pin its leaf via the env

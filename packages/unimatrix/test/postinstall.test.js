@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -31,7 +32,7 @@ function runPostinstall(env) {
 
 describe("postinstall", () => {
   describe("test_postinstall_with_binary_calls_model_download", () => {
-    it("calls model-download and prints success when binary exists", () => {
+    it("calls model-download and prints success when binary exists", linuxLocal, () => {
       // Create a fake binary that exits 0
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-post-"));
       const fakeBinary = path.join(tmpDir, "unimatrix");
@@ -55,7 +56,7 @@ describe("postinstall", () => {
   });
 
   describe("test_postinstall_network_failure_exits_0", () => {
-    it("exits 0 and warns when model-download fails", () => {
+    it("exits 0 and warns when model-download fails", linuxLocal, () => {
       // Create a fake binary that exits 1 (simulating download failure)
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-post-"));
       const fakeBinary = path.join(tmpDir, "unimatrix");
@@ -115,7 +116,7 @@ describe("postinstall", () => {
   });
 
   describe("test_postinstall_model_already_cached_succeeds", () => {
-    it("exits 0 when model-download succeeds quickly (already cached)", () => {
+    it("exits 0 when model-download succeeds quickly (already cached)", linuxLocal, () => {
       // Create a binary that exits immediately (model already present)
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-post-"));
       const fakeBinary = path.join(tmpDir, "unimatrix");

@@ -40,7 +40,7 @@ mcp__unimatrix__context_store({
 
 ### Step 3: Record the entry ID
 
-Note the Unimatrix entry ID returned. Pass it to the coordinator — downstream agents and the synthesizer need ADR entry IDs to reference decisions.
+Note the Unimatrix entry ID returned and add (or update) its row in `product/features/{feature-id}/architecture/ADR-INDEX.md` (format: uni-architect definition). Never write an ADR file. Pass it to the coordinator — downstream agents and the synthesizer need ADR entry IDs to reference decisions.
 
 ### Step 4: Reference in ARCHITECTURE.md
 

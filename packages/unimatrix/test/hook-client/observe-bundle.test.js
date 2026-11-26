@@ -49,7 +49,7 @@ let root;
 function run(extraEnv) {
   const env = Object.assign({}, process.env);
   for (const v of REMOTE_VARS) delete env[v];
-  Object.assign(env, { HOME: root, USERPROFILE: root }, extraEnv);
+  Object.assign(env, { HOME: root, USERPROFILE: root, UNIMATRIX_PROJECT_ROOT: root }, extraEnv); // D-052
   return new Promise((resolve, reject) => {
     const c = spawn(process.execPath, [ENTRY, "Stop"], { cwd: root, env });
     const out = [];

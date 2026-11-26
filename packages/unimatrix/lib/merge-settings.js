@@ -1,30 +1,11 @@
 "use strict";
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
-
-/**
- * Regex patterns to identify Unimatrix-owned hook entries (ADR-004).
- * Matches both current "unimatrix" and pre-rename "unimatrix-server" commands
- * (local binary mode), whether bare names or absolute paths, AND the remote
- * node-client command form (vnc-026).
- *
- * The fifth (node-client) pattern resolves the Alignment WARN 2 spaced-path
- * defect: the defective `\S*\/hook-client\/index\.js` form could not cross a
- * space inside a spaced install path and never matched backslash separators.
- * The replacement uses three alternations (double-quoted / single-quoted /
- * bare path) and accepts both `/` and `\` separators. We only ever WRITE an
- * unquoted command when the path has no whitespace (buildHookClientCommand),
- * so `\S+` is correct for the bare arm. See pseudocode/init-remote.md §1.
- */
-const UNIMATRIX_PATTERNS = [
-  /^unimatrix\s+hook\s/,
-  /^unimatrix-server\s+hook\s/,
-  /\/unimatrix\s+hook\s/,
-  /\/unimatrix-server\s+hook\s/,
-  // node <path>/hook-client/index.js <EVENT> — quoted or bare, / or \ separators.
-  /(^|[\s"'/\\])node(\.exe)?\s+("[^"]*[/\\]hook-client[/\\]index\.js"|'[^']*[/\\]hook-client[/\\]index\.js'|\S+[/\\]hook-client[/\\]index\.js)\s/,
-];
+const { isUnimatrixCommand } = require("./hook-ownership.js");
+const { detectIndent } = require("./opencode-install.js");
+const { atomicWriteText } = require("./claude-json.js");
 
 const HOOK_EVENTS = [
   "SessionStart",
@@ -105,29 +86,45 @@ function buildHookClientCommand(clientPath, event, providerHint) {
 }
 
 /**
- * Normalize a commandSource into the canonical
- * { events: string[], commandForEvent(event) -> string } shape.
- *
- * Back-compat: a string argument is the legacy local binaryPath call site.
- * It is mapped to the EXACT command string the pre-generalization
- * implementation produced — `LD_LIBRARY_PATH=<binDir> <binary> hook <event>` —
- * over the full HOOK_EVENTS set. This preserves byte-identical local output
- * (AC-16), except for the two NEW events FR-21 adds, which is the intended fix.
- *
- * @param {object|string} cs - commandSource object, or legacy binaryPath string.
- * @returns {{ events: string[], commandForEvent: function }}
+ * commandSource must be { events, commandForEvent }. The legacy binaryPath
+ * string arm is deleted (D-008, FR-09): a string throws.
  */
 function normalizeCommandSource(cs) {
   if (typeof cs === "string") {
-    const binaryPath = cs;
-    const binDir = path.dirname(binaryPath);
-    return {
-      events: HOOK_EVENTS,
-      commandForEvent: (event) =>
-        "LD_LIBRARY_PATH=" + binDir + " " + binaryPath + " hook " + event,
-    };
+    throw new TypeError("commandSource must be an object { events, commandForEvent }");
   }
   return cs;
+}
+
+/**
+ * Build the per-machine shim hook command (D-028, D-080). Pure in
+ * (event, provider, platform, home); byte-fixed across upgrades.
+ */
+function buildShimCommand(event, provider, platform, home) {
+  const plat = platform || process.platform;
+  const h = home || os.homedir();
+  let base;
+  if (plat === "win32") {
+    const p = path.win32.join(h, ".unimatrix", "bin", "unimatrix.cmd").replace(/\\/g, "/");
+    const bad = p.includes("%") ? "%" : p.includes('"') ? '"' : null;
+    if (bad) throw unsafePath(p, bad);
+    base = '"' + p + '" hook ' + event;
+  } else {
+    const p = path.posix.join(h, ".unimatrix", "bin", "unimatrix");
+    if (p.includes("'")) throw unsafePath(p, "'");
+    base = "'" + p + "' hook " + event;
+  }
+  return provider ? base + " --provider " + provider : base;
+}
+
+function unsafePath(p, ch) {
+  try {
+    const { UnsafeShimPathError } = require("./install-store.js");
+    if (typeof UnsafeShimPathError === "function") return new UnsafeShimPathError(p, ch);
+  } catch (_) { /* install-store not available: fall through */ }
+  const e = new Error("unsafe character " + JSON.stringify(ch) + " in shim path");
+  e.name = "UnsafeShimPathError";
+  return e;
 }
 
 /**
@@ -138,10 +135,7 @@ function normalizeCommandSource(cs) {
  * @returns {boolean}
  */
 function isUnimatrixHook(hookEntry) {
-  if (!hookEntry || !hookEntry.command || typeof hookEntry.command !== "string") {
-    return false;
-  }
-  return UNIMATRIX_PATTERNS.some((pattern) => pattern.test(hookEntry.command));
+  return !!hookEntry && typeof hookEntry.command === "string" && isUnimatrixCommand(hookEntry.command);
 }
 
 /**
@@ -207,7 +201,53 @@ function pruneUnimatrixEvent(content, event, actions) {
 }
 
 /**
- * Merge Unimatrix hook configuration into .claude/settings.json.
+ * Remove every Unimatrix-owned hook entry from a cross-scope settings file
+ * (all event keys). Foreign entries untouched; unchanged file is not rewritten.
+ * @returns {{ actions: string[], changed: boolean }}
+ */
+function removeOwnedHooks(file, opts) {
+  const dryRun = !!(opts && opts.dryRun);
+  const none = { actions: [], changed: false };
+  let raw;
+  try {
+    raw = fs.readFileSync(file, "utf8");
+  } catch (_) {
+    return none;
+  }
+  if (raw.trim() === "") return none;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw new Error("Malformed " + file + ": " + e.message + "\nFix the JSON syntax manually and re-run 'npx unimatrix init'.");
+  }
+  const hooks = parsed && typeof parsed === "object" ? parsed.hooks : undefined;
+  if (!hooks || typeof hooks !== "object" || Array.isArray(hooks)) return none;
+  const actions = [];
+  for (const event of Object.keys(hooks)) {
+    const arr = hooks[event];
+    if (!Array.isArray(arr)) continue;
+    let removed = false;
+    for (const group of arr) {
+      if (!group || !Array.isArray(group.hooks)) continue;
+      const before = group.hooks.length;
+      group.hooks = group.hooks.filter((h) => !isUnimatrixHook(h));
+      if (group.hooks.length !== before) removed = true;
+    }
+    if (!removed) continue;
+    hooks[event] = arr.filter((g) => g && Array.isArray(g.hooks) && g.hooks.length > 0);
+    if (hooks[event].length === 0) delete hooks[event];
+    actions.push("Removed unimatrix hook from " + file + ": " + event);
+  }
+  if (actions.length === 0) return none;
+  if (!dryRun) {
+    atomicWriteText(file, JSON.stringify(parsed, null, detectIndent(raw)) + "\n");
+  }
+  return { actions, changed: true };
+}
+
+/**
+ * Merge Unimatrix hook configuration into .claude/settings.local.json.
  *
  * Implements ADR-004 prefix-match identification. Preserves all non-unimatrix
  * hooks, permissions, and other top-level keys. Idempotent: running twice
@@ -234,25 +274,27 @@ function mergeSettings(filePath, commandSource, options) {
   // ADR-004 §2: SubagentStop is opt-in. Resolve the durable key from the
   // settings.local.json sibling of filePath (dirname(filePath) is {root}/.claude)
   // and filter it out of the registered event list unless explicitly enabled.
-  const optInFile = path.join(path.dirname(filePath), "settings.local.json");
+  const optInFile = filePath; // subagent_stop key lives in settings.local.json itself
   let events = source.events;
   if (events.includes(SUBAGENT_STOP_EVENT) && !subagentStopEnabled(optInFile)) {
     events = events.filter((event) => event !== SUBAGENT_STOP_EVENT);
   }
 
   // Step 1: Read existing file
+  let rawExisting = null;
   if (fs.existsSync(filePath)) {
-    const raw = fs.readFileSync(filePath, "utf8").trim();
+    rawExisting = fs.readFileSync(filePath, "utf8");
+    const raw = rawExisting.trim();
 
     if (raw === "") {
       content = {};
-      actions.push("settings.json was empty, initializing");
+      actions.push("settings.local.json was empty, initializing");
     } else {
       try {
         content = JSON.parse(raw);
       } catch (parseError) {
         throw new Error(
-          "Malformed .claude/settings.json: " +
+          "Malformed " + filePath + ": " +
             parseError.message +
             "\nFix the JSON syntax manually and re-run 'npx unimatrix init'." +
             "\nFile: " +
@@ -261,7 +303,7 @@ function mergeSettings(filePath, commandSource, options) {
       }
     }
   } else {
-    actions.push("Created .claude/settings.json");
+    actions.push("Created .claude/settings.local.json");
   }
 
   // Step 2: Ensure hooks key exists
@@ -272,7 +314,7 @@ function mergeSettings(filePath, commandSource, options) {
   // Validate hooks is an object (not array, not primitive)
   if (typeof content.hooks !== "object" || Array.isArray(content.hooks)) {
     throw new Error(
-      ".claude/settings.json 'hooks' key is not an object." +
+      ".claude/settings.local.json 'hooks' key is not an object." +
         '\nExpected: { "hooks": { "EventName": [...] } }' +
         "\nFile: " +
         filePath
@@ -404,15 +446,22 @@ function mergeSettings(filePath, commandSource, options) {
   }
 
   // Step 4: Write file (or prefix actions with [dry-run])
-  if (!dryRun) {
-    const dir = path.dirname(filePath);
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(filePath, JSON.stringify(content, null, 2) + "\n", "utf8");
+  const serialized =
+    JSON.stringify(content, null, rawExisting ? detectIndent(rawExisting) : 2) + "\n";
+  if (!dryRun && serialized !== rawExisting) {
+    atomicWriteText(filePath, serialized);
+  }
+
+  // Cross-scope removal of owned entries (D-010, AC-13).
+  const crossFiles = (options && options.crossScopeFiles) || [];
+  for (const file of crossFiles) {
+    actions.push(...removeOwnedHooks(file, { dryRun }).actions);
   }
 
   const finalActions = dryRun ? actions.map((a) => "[dry-run] " + a) : actions;
+  const commands = events.map((event) => ({ event, command: keptEntryByEvent[event].command }));
 
-  return { actions: finalActions, content };
+  return { actions: finalActions, content, commands };
 }
 
 module.exports = {
@@ -423,6 +472,7 @@ module.exports = {
   subagentStopEnabled,
   HOOK_EVENTS,
   EVENT_MATCHERS,
-  UNIMATRIX_PATTERNS,
+  buildShimCommand,
+  removeOwnedHooks,
   PRETOOLUSE_CYCLE_MATCHER,
 };

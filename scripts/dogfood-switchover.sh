@@ -165,19 +165,23 @@ process.stdout.write(JSON.stringify({ actions: result.actions, dryRun }));
 NODE
 }
 
-# run_rollback: STRING commandSource (legacy arm). The shipped
-# normalizeCommandSource owns the exact `LD_LIBRARY_PATH=<binDir> <binary> hook
+# run_rollback: object commandSource building the exact `LD_LIBRARY_PATH=<binDir> <binary> hook
 # <EVENT>` form over HOOK_EVENTS, so promote<->rollback round-trips cannot drift
 # (no bespoke revert string). mergeSettings Step 3c keeps the just-written legacy
 # command by object identity (no dirname heuristic) and prunes any stale
 # node-client uni hook, then owns the write. Idempotent; foreign preserved.
 run_rollback() {
   node - <<NODE
-const { mergeSettings } = require(process.env.MERGE_JS);
+const path = require("path");
+const { mergeSettings, HOOK_EVENTS } = require(process.env.MERGE_JS);
 const settingsPath = process.env.SETTINGS;
 const dryRun = process.env.DRYRUN === "true";
 const rustBinary = process.env.RUST_BINARY;
-const result = mergeSettings(settingsPath, rustBinary, { dryRun });
+const binDir = path.dirname(rustBinary);
+const result = mergeSettings(settingsPath, {
+  events: HOOK_EVENTS,
+  commandForEvent: (event) => "LD_LIBRARY_PATH=" + binDir + " " + rustBinary + " hook " + event,
+}, { dryRun });
 process.stdout.write(JSON.stringify({ actions: result.actions, dryRun }));
 NODE
 }

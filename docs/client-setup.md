@@ -129,11 +129,13 @@ The bridge and the observe client read the bundle straight from the environment;
 | Variable | Meaning |
 |---|---|
 | `UNIMATRIX_BUNDLE` | The headless bundle. Takes precedence over every other credential source. |
+| `UNIMATRIX_PROJECT_ROOT` | Required with any headless variable. Absolute path of the repository the headless credential belongs to; headless env applies only when the working directory is inside it. Without it, hooks and the MCP bridge treat every directory as not a Unimatrix project and exit 0 silently. |
 | `UNIMATRIX_REMOTE_HEADERS` | JSON object of extra request headers, e.g. for an access proxy. |
 | `NODE_EXTRA_CA_CERTS` | Private CA bundle for `--trust ca` bundles. |
 
 - `UNIMATRIX_BUNDLE` cannot be combined with `UNIMATRIX_REMOTE_MCP_URL`, `UNIMATRIX_REMOTE_URL`, `UNIMATRIX_REMOTE_TOKEN` or `UNIMATRIX_REMOTE_FINGERPRINT`; the client exits with an error naming the conflicting variable.
 - An empty value is treated as unset (no trimming).
+- PowerShell is not supported as a hook shell.
 - `UNIMATRIX_REMOTE_MCP_URL` and `UNIMATRIX_REMOTE_URL` must be `https://` URLs; any other scheme is rejected (the token is never sent in cleartext). The hook logs one stderr line and exits 0; the bridge exits 1.
 
 ### Extra headers (`UNIMATRIX_REMOTE_HEADERS`)
@@ -183,7 +185,7 @@ Any MCP client that launches a stdio server can use the bridge with the bundle i
     "unimatrix": {
       "command": "npx",
       "args": ["-y", "@dug-21/unimatrix", "mcp-bridge"],
-      "env": { "UNIMATRIX_BUNDLE": "<bundle>" }
+      "env": { "UNIMATRIX_BUNDLE": "<bundle>", "UNIMATRIX_PROJECT_ROOT": "/absolute/path/to/repo" }
     }
   }
 }
@@ -201,6 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       UNIMATRIX_BUNDLE: ${{ secrets.UNIMATRIX_BUNDLE_CI_READ }}
+      UNIMATRIX_PROJECT_ROOT: ${{ github.workspace }}
     steps:
       - uses: actions/setup-node@v4
         with:

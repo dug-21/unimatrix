@@ -115,6 +115,7 @@ function spawnClient(event, stdin, extraEnv) {
   // fingerprint (real pinned TLS). UDS spawns (no UNIMATRIX_REMOTE_URL) unaffected.
   delete env.UNIMATRIX_REMOTE_FINGERPRINT;
   if (env.UNIMATRIX_REMOTE_URL) env.UNIMATRIX_REMOTE_FINGERPRINT = server.pinnedFp;
+  if (env.UNIMATRIX_REMOTE_URL && !env.UNIMATRIX_PROJECT_ROOT) env.UNIMATRIX_PROJECT_ROOT = server.projectDir; // D-052
   return runProc(process.execPath, [ENTRY, event], stdin, env);
 }
 
@@ -464,6 +465,7 @@ describe("AC-04 / R-10 — cross-transport replay (both directions), session-id 
     const res = await spawnClient("Stop", stdin, {
       HOME: home,
       USERPROFILE: home,
+      UNIMATRIX_PROJECT_ROOT: proj, // D-052
       UNIMATRIX_REMOTE_URL: server.url,
       UNIMATRIX_REMOTE_TOKEN: server.token,
     });

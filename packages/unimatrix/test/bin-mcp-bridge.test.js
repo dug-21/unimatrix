@@ -15,10 +15,12 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const path = require("node:path");
 const fs = require("node:fs");
 const { execFileSync } = require("node:child_process");
 
+const ISO_HOME = require("node:fs").mkdtempSync(require("node:path").join(require("node:os").tmpdir(), "uni-home-"));
 const shimPath = path.resolve(__dirname, "../bin/unimatrix.js");
 
 // Resolve a coreutil (true/echo) to its real absolute path. macOS ships `true`
@@ -114,11 +116,12 @@ function runShim(args, env = {}) {
     };
 
     process.argv = ["node", "unimatrix.js"].concat(JSON.parse(process.env._TEST_ARGS || "[]"));
-    require(${JSON.stringify(shimPath)});
+    require(${JSON.stringify(shimPath)}).run(process.argv.slice(2));
   `;
 
   const mergedEnv = {
     ...process.env,
+    HOME: ISO_HOME, // isolate from the developer's real ~/.unimatrix (trust check)
     _TEST_ARGS: JSON.stringify(args),
     ...env,
   };
@@ -227,10 +230,10 @@ describe("bin/unimatrix.js — mcp-bridge subcommand (AC-13)", () => {
 });
 
 describe("bin/unimatrix.js — non-regression of existing routing", () => {
-  it("test_bin_otherSubcommands_stillExecRustBinary", () => {
+  it("test_bin_otherSubcommands_stillExecRustBinary", linuxLocal, () => {
     // A non-mcp-bridge, non-init subcommand still routes to the Rust exec block
     // (the early-return is scoped to mcp-bridge, not a blanket bypass).
-    const result = runShim(["hook", "SessionStart"], {
+    const result = runShim(["serve"], {
       _TEST_BINARY_PATH: ECHO_BIN,
     });
     assert.equal(result.exitCode, 0, `stderr: ${result.stderr}`);

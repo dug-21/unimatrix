@@ -2,9 +2,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { UnimatrixObservePlugin } from "../unimatrix.js";
-import { PLUGIN_PACKAGE, PLUGIN_EXPORT, PLUGIN_ENTRY_FILE } from "../../lib/opencode-install.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+
+// Plugin identity (provisioning removed, ADR-006: the plugin owns its own identity constants).
+const PLUGIN_PACKAGE = "@dug-21/unimatrix-opencode-plugin";
+const PLUGIN_EXPORT = "UnimatrixObservePlugin";
+const PLUGIN_ENTRY_FILE = "unimatrix.js";
 
 // Plugin identity + C9 provisioning contract (MANDATORY coordination).
 
@@ -30,5 +34,5 @@ test("package identity matches C9 installer constants exactly", () => {
   assert.equal(pkg.name, PLUGIN_PACKAGE);
   assert.equal(pkg.main, PLUGIN_ENTRY_FILE);
   // The named export the C9 re-export shim imports must exist.
-  assert.equal(PLUGIN_EXPORT, "UnimatrixObservePlugin");
+  assert.equal(UnimatrixObservePlugin.name, PLUGIN_EXPORT);
 });

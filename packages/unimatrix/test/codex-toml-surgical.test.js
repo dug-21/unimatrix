@@ -373,3 +373,34 @@ describe("injection / string escaping (R-10)", () => {
     assert.strictEqual(parseTomlBasicString(m[2]), hash);
   });
 });
+
+describe("removeTomlTable / tomlTableToEntry (nan-024)", () => {
+  const { removeTomlTable, tomlTableToEntry } = require("../lib/codex-install.js");
+  it("round-trips upsert -> remove (LF and CRLF)", () => {
+    for (const raw of ["a = 1\n", "# c\r\n[x]\r\ny = 2\r\n", ""]) {
+      const up = upsertTomlTable(raw, TABLE, ['command = "x"']);
+      assert.strictEqual(removeTomlTable(up.text, TABLE).text, raw);
+    }
+  });
+  it("absent -> unchanged; malformed -> malformed, text intact", () => {
+    assert.strictEqual(removeTomlTable("a = 1\n", TABLE).changed, false);
+    const bad = "[a\n";
+    const r = removeTomlTable(bad, TABLE);
+    assert.ok(r.malformed);
+    assert.strictEqual(r.text, bad);
+  });
+  it("removes mid-file region, leaves neighbours byte-equal", () => {
+    const raw = "[a]\nx = 1\n\n[mcp_servers.unimatrix]\ncommand = \"c\"\n\n[b]\ny = 2\n";
+    assert.strictEqual(removeTomlTable(raw, TABLE).text, "[a]\nx = 1\n\n[b]\ny = 2\n");
+  });
+  it("tomlTableToEntry parses escapes, literal strings; null on non-string command / multiline args", () => {
+    assert.deepStrictEqual(
+      tomlTableToEntry(['command = "a\\"b"', "args = ['x', \"y\"] # c"]),
+      { command: 'a"b', args: ["x", "y"] }
+    );
+    assert.strictEqual(tomlTableToEntry(["command = 5"]), null);
+    assert.strictEqual(tomlTableToEntry(['command = "x"', "args = ["]), null);
+    assert.strictEqual(tomlTableToEntry(["args = []"]), null);
+    assert.deepStrictEqual(tomlTableToEntry('command = "x"\n'), { command: "x" });
+  });
+});

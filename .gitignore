@@ -27,3 +27,6 @@ product/research/**/__pycache__/
 
 # Claude Code runtime session state
 .claude/scheduled_tasks.lock
+
+# Node core dumps recur when tests are terminated; known issue
+packages/unimatrix/core.*

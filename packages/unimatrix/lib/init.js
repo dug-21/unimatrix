@@ -4,17 +4,12 @@ const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 const { resolveBinary } = require("./resolve-binary.js");
-const {
-  mergeSettings,
-  buildHookClientCommand,
-  HOOK_EVENTS,
-} = require("./merge-settings.js");
 const transport = require("./hook-client/transport-http.js");
 const { resolveGitFile, computeProjectHash } = require("./hook-client/config.js");
 const { decodeBundle } = require("./hook-client/bundle.js");
 const credstore = require("./hook-client/credstore.js");
 const { parseExtraHeaders } = require("./hook-client/remote-resolve.js");
-const { maybeProvisionOpenCode } = require("./opencode-install.js");
+const { codexApprovalStep } = require("./codex-install.js");
 const { wire } = require("./wire.js");
 
 /**
@@ -62,62 +57,6 @@ function detectProjectRoot(startDir) {
     }
     current = parent;
   }
-}
-
-/**
- * Write or merge .mcp.json with the unimatrix server entry.
- * Preserves existing servers. Malformed JSON causes an error (ADR-004).
- *
- * @param {string} projectRoot - Absolute path to project root.
- * @param {string} binaryPath - Absolute path to the unimatrix binary.
- * @param {boolean} dryRun - If true, do not write the file.
- * @returns {string[]} Actions taken.
- */
-function writeMcpJson(projectRoot, binaryPath, dryRun) {
-  const mcpPath = path.join(projectRoot, ".mcp.json");
-  const actions = [];
-  let existing = {};
-
-  if (fs.existsSync(mcpPath)) {
-    try {
-      existing = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-    } catch (parseError) {
-      throw new Error(
-        "Malformed .mcp.json at " +
-          mcpPath +
-          ": " +
-          parseError.message +
-          "\nFix the JSON syntax and re-run 'npx unimatrix init'."
-      );
-    }
-    actions.push("Updated .mcp.json (preserved existing servers)");
-  } else {
-    actions.push("Created .mcp.json");
-  }
-
-  if (!existing.mcpServers) {
-    existing.mcpServers = {};
-  }
-
-  existing.mcpServers.unimatrix = {
-    command: binaryPath,
-    args: [],
-    env: {
-      LD_LIBRARY_PATH: path.dirname(binaryPath),
-    },
-  };
-
-  if (!dryRun) {
-    fs.writeFileSync(
-      mcpPath,
-      JSON.stringify(existing, null, 2) + "\n",
-      "utf8"
-    );
-  } else {
-    actions[actions.length - 1] = "[dry-run] " + actions[actions.length - 1];
-  }
-
-  return actions;
 }
 
 /**
@@ -258,67 +197,6 @@ function readJsonOrEmpty(filePath, label) {
         "\nFix the JSON syntax and re-run 'npx unimatrix init'."
     );
   }
-}
-
-/**
- * Write or merge the TOKEN-FREE stdio `unimatrix` bridge entry into .mcp.json
- * (AC-09 / FR-17). Remote analogue of writeMcpJson: same idempotent,
- * merge-preserving, dry-run-aware, malformed-throws contract (R-10/AC-07). The
- * entry invokes the JS bridge (`node <bridgePath> <projectHash>`); the bridge
- * resolves the credential from the out-of-tree store by projectHash — so the
- * entry carries no token, no mcp_url, and no fingerprint.
- *
- * @param {string} projectRoot - Absolute path to project root.
- * @param {string} bridgePath - Absolute path to the mcp-bridge.js module.
- * @param {string} projectHash - The store key (16 hex), the bridge's only arg.
- * @param {boolean} dryRun - If true, do not write the file.
- * @returns {string[]} Actions taken.
- */
-function writeMcpBridgeEntry(projectRoot, bridgePath, projectHash, dryRun) {
-  const mcpPath = path.join(projectRoot, ".mcp.json");
-  const actions = [];
-  let existing = {};
-
-  if (fs.existsSync(mcpPath)) {
-    try {
-      existing = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-    } catch (parseError) {
-      throw new Error(
-        "Malformed .mcp.json at " +
-          mcpPath +
-          ": " +
-          parseError.message +
-          "\nFix the JSON syntax and re-run 'npx unimatrix init'."
-      );
-    }
-    actions.push("Updated .mcp.json (preserved existing servers)");
-  } else {
-    actions.push("Created .mcp.json");
-  }
-
-  if (!existing.mcpServers) {
-    existing.mcpServers = {};
-  }
-
-  // TOKEN-FREE stdio entry (AC-09 / FR-17): the bridge reads the credential from
-  // the store at spawn time; projectHash is the only argument it needs.
-  existing.mcpServers.unimatrix = {
-    command: "node",
-    args: [bridgePath, projectHash],
-    env: {},
-  };
-
-  if (!dryRun) {
-    fs.writeFileSync(
-      mcpPath,
-      JSON.stringify(existing, null, 2) + "\n",
-      "utf8"
-    );
-  } else {
-    actions[actions.length - 1] = "[dry-run] " + actions[actions.length - 1];
-  }
-
-  return actions;
 }
 
 /**
@@ -498,15 +376,20 @@ async function initRemote(options) {
   // creds are STILL relocated out of tree, but stay unpinned and get no MCP).
   const isBundlePath = !!options.bundle;
 
-  // Step 2: resolve the installed client path (absolute, platform-native).
-  // require.resolve is the contract (ADR/pseudocode); the computed-path
-  // fallback yields the identical absolute path once index.js exists.
-  let clientPath;
-  try {
-    clientPath = require.resolve("./hook-client/index.js");
-  } catch (_err) {
-    clientPath = path.join(__dirname, "hook-client", "index.js");
-  }
+  // Step 2: per-machine wiring (shim, hooks, MCP) through the shared wire()
+  // flow BEFORE any credential is written, so a refused install writes nothing.
+  // Bundle path: hooks + token-free bridge MCP; legacy: hooks only (no MCP).
+  const wireResult = wire(projectRoot, {
+    cloud: true,
+    mcp: isBundlePath,
+    hooksOnly: !isBundlePath,
+    dryRun,
+    rerecord: true,
+    home: options.home,
+    platform: options.platform,
+    node: options.node,
+    env: options.env,
+  });
 
   // Step 3: write the credential to the out-of-tree store (Scope B). The token
   // and fingerprint NEVER land in the repo tree (closes the commit-leak). The
@@ -529,37 +412,12 @@ async function initRemote(options) {
   // in-tree credential write (ADR-004 §migration). Best-effort; never aborts.
   actions.push(...cleanStaleRemoteSubtree(projectRoot, dryRun));
 
-  // Step 3b: wire the MCP surface.
-  if (isBundlePath) {
-    // Bundle path (Scope A): write the TOKEN-FREE stdio .mcp.json bridge entry.
-    let bridgePath;
-    try {
-      bridgePath = require.resolve("./hook-client/mcp-bridge.js");
-    } catch (_err) {
-      bridgePath = path.join(__dirname, "hook-client", "mcp-bridge.js");
-    }
-    actions.push(
-      ...writeMcpBridgeEntry(projectRoot, bridgePath, projectHash, dryRun)
-    );
-  } else {
-    // Legacy path (ADR-005 bundle-only boundary): NO bridge entry; emit a loud,
-    // deterministic unsupported message (AC-10, R-11). Not a failure — legacy
-    // observe still works; init continues to hooks + skills + Ping.
+  // Step 3b: wiring actions; the legacy path adds the loud unsupported-MCP note.
+  actions.push(...wireResult.actions);
+  if (wireResult.manifest.some(isCodexHooksLeg)) actions.push(codexApprovalStep());
+  if (!isBundlePath) {
     actions.push(LEGACY_MCP_UNSUPPORTED_MESSAGE);
   }
-
-  // Step 4: merge hooks (full 9-event remote set; idempotent; preserves
-  // foreign hooks). Command is ONLY `node <path> <EVENT>` (RQ-3 / R-16).
-  const settingsPath = path.join(projectRoot, ".claude", "settings.json");
-  const settingsResult = mergeSettings(
-    settingsPath,
-    {
-      events: HOOK_EVENTS,
-      commandForEvent: (event) => buildHookClientCommand(clientPath, event),
-    },
-    { dryRun }
-  );
-  actions.push(...settingsResult.actions);
 
   // Step 5: install skills (FR-B7); remote mode DOES install skills. Non-
   // destructive install-if-absent (ADR-004); `--force` overwrites owned skills
@@ -606,6 +464,11 @@ async function initRemote(options) {
   printSummary(actions, dryRun);
 }
 
+/** A Codex hooks leg that wrote or kept owned hooks (the approval step applies). */
+function isCodexHooksLeg(l) {
+  return l.harness === "codex-cli" && l.surface === "hooks" && /^(created|updated|unchanged)$/.test(l.action);
+}
+
 /**
  * Print summary of all actions taken during init.
  *
@@ -637,6 +500,7 @@ function printSummary(actions, dryRun) {
  * @param {object} options
  * @param {boolean} [options.dryRun=false] - Print actions without modifying files.
  * @param {string} [options.projectDir] - Override project root (skip .git walk).
+ * @param {string} [options.home] - Test seam: per-machine home (default os.homedir()).
  */
 async function init(options) {
   const opts = options || {};
@@ -659,8 +523,17 @@ async function init(options) {
   }
   actions.push("Project root: " + projectRoot);
 
-  // Step 2: Resolve binary path
+  // Step 2: Resolve binary path (local init is Linux-only, D-032)
+  const platform = opts.platform || process.platform;
+  if (platform !== "linux") {
+    throw new Error(
+      "local init requires Linux; macOS/Windows are cloud-only (use `init --bundle <bundle>`)"
+    );
+  }
   const binaryPath = resolveBinary();
+  if (!binaryPath) {
+    throw new Error("Could not resolve the unimatrix binary for this platform");
+  }
   actions.push("Binary: " + binaryPath);
 
   // Step 3: Install skill files (ADR-004: install-if-absent; `--force`
@@ -671,15 +544,20 @@ async function init(options) {
   });
   actions.push(...skillActions);
 
-  // Step 4: Wiring layer (nan-023, ADR-005 §1) — claude MCP + hooks (reused
-  // writers, byte-for-byte common path, SR-07), opencode plugin + retrieval, and
-  // codex all run through ONE `wire()` call so `init` and the `wire` verb share
-  // one path and cannot drift. `--force` is NEVER forwarded here (C-12): wiring
-  // is always-additive. No `--harness` from init → opencode/codex NEW user-owned
-  // entries are intent-gated (skipped-intent) until the user opts in.
-  const clientPath = resolveClientPath();
-  const wireResult = wire(projectRoot, { clientPath, binaryPath, dryRun });
+  // Step 4: one wire() call shared with the `wire` verb and cloud attach.
+  // `--force` is never forwarded (definitions only). Node is always re-recorded.
+  const wireResult = wire(projectRoot, {
+    binaryPath,
+    dryRun,
+    rerecord: true,
+    home: opts.home,
+    platform,
+    node: opts.node,
+    env: opts.env,
+    requireBinary: opts.requireBinary,
+  });
   actions.push(...wireResult.actions);
+  if (wireResult.manifest.some(isCodexHooksLeg)) actions.push(codexApprovalStep());
 
   // Shared env for all binary invocations: libonnxruntime lives next to the binary
   const binDir = path.dirname(binaryPath);
@@ -751,13 +629,10 @@ module.exports = {
   resolveClientPath,
   resolveRemoteTarget,
   detectProjectRoot,
-  writeMcpJson,
-  writeMcpBridgeEntry,
   cleanStaleRemoteSubtree,
   installSkills,
   copySkills,
   printSummary,
   readJsonOrEmpty,
-  maybeProvisionOpenCode,
   LEGACY_MCP_UNSUPPORTED_MESSAGE,
 };

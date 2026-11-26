@@ -43,7 +43,7 @@ function childPost(port, extra, fn, extraEnv) {
 function runBridge(port, extraEnv, eofNow) {
   return new Promise((resolve) => {
     const c = spawn(process.execPath, [path.join(LIB, "mcp-bridge.js")], {
-      env: { ...process.env, HOME: fx.dir, NODE_EXTRA_CA_CERTS: fx.caPath,
+      env: { ...process.env, HOME: fx.dir, NODE_EXTRA_CA_CERTS: fx.caPath, UNIMATRIX_PROJECT_ROOT: process.cwd(),
         UNIMATRIX_REMOTE_MCP_URL: `https://127.0.0.1:${port}/v1/s/mcp`, UNIMATRIX_REMOTE_TOKEN: TOKEN,
         UNIMATRIX_REMOTE_HEADERS: JSON.stringify({ "X-Sentinel": HDR }), ...extraEnv },
     });

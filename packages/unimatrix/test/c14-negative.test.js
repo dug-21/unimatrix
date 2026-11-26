@@ -12,31 +12,31 @@ const { describe, it, before, after } = require("node:test");
 const assert = require("assert");
 const path = require("path");
 
-const { wire } = require("../lib/wire.js");
+const fs = require("fs");
 const V = require("./c14-verifier.js");
-
-const CLIENT = path.resolve(__dirname, "../lib/hook-client/index.js");
 
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+// Wires an isolated machine (HOME + project) through wire(); `root` is the machine
+// handle (cleanupMachine) and its `home`/`root` feed the executor's cwd/env.
 function realManifest(harness, opts, extraDirs, prep) {
-  const root = V.makeTempProject(extraDirs);
-  if (prep) prep(root);
-  const res = wire(root, Object.assign({ harness, clientPath: CLIENT, binaryPath: V.STDIO_FIXTURE }, opts));
-  return { root, manifest: res.manifest };
+  const m = V.makeMachine(extraDirs);
+  if (prep) prep(m.root);
+  m.manifest = V.wireMachine(m, Object.assign({ harness, binaryPath: V.STDIO_FIXTURE }, opts));
+  return Object.assign({ root: m, manifest: m.manifest }, { machine: m });
 }
 
 // ── AC-10 retrieval mutation controls (one per behavioral leg) ────────────
 
 describe("AC-10 retrieval mutation controls (R-02)", () => {
-  async function assertFailsToReturn(leg) {
+  async function assertFailsToReturn(leg, machine) {
     // Manifest string is INTACT (entry present); only the wired TARGET is broken.
     assert.ok(leg.entry, "leg still carries an entry (presence check would pass)");
     let threw = false;
     try {
-      await V.assertRetrievalReturns(leg, { timeoutMs: 2500 });
+      await V.assertRetrievalReturns(leg, { timeoutMs: 2500, cwd: machine.root, env: V.machineEnv(machine) });
     } catch (_e) {
       threw = true;
     }
@@ -44,38 +44,37 @@ describe("AC-10 retrieval mutation controls (R-02)", () => {
   }
 
   it("test_verify_retrieval_mutation_broken_entry_fails_claude", async () => {
-    const { root, manifest } = realManifest("claude-code", {}, [".claude"]);
+    const { root, manifest, machine } = realManifest("claude-code", {}, [".claude"]);
     const leg = clone(manifest.find((l) => l.harness === "claude-code" && l.surface === "mcp"));
     leg.entry.command = "/nonexistent/unimatrix-binary"; // broken target, entry shape intact
-    await assertFailsToReturn(leg);
-    V.cleanupDir(root);
+    await assertFailsToReturn(leg, machine);
+    V.cleanupMachine(root);
   });
 
   it("test_verify_retrieval_mutation_broken_entry_fails_codex", async () => {
-    const { root, manifest } = realManifest("codex-cli", {}, [".codex"]);
+    const { root, manifest, machine } = realManifest("codex-cli", {}, [".codex"]);
     const leg = clone(manifest.find((l) => l.harness === "codex-cli" && l.surface === "mcp"));
     leg.entry.command = "/nonexistent/unimatrix-binary";
-    await assertFailsToReturn(leg);
-    V.cleanupDir(root);
+    await assertFailsToReturn(leg, machine);
+    V.cleanupMachine(root);
   });
 
   it("test_verify_retrieval_mutation_broken_entry_fails_opencode", async () => {
-    const fs = require("fs");
-    const { root, manifest } = realManifest("opencode", {}, [], (r) => {
+    const { root, manifest, machine } = realManifest("opencode", {}, [], (r) => {
       fs.writeFileSync(path.join(r, "opencode.json"), "{}\n", "utf8");
     });
     const leg = clone(manifest.find((l) => l.harness === "opencode" && l.surface === "retrieval"));
     leg.entry.command = ["/nonexistent/unimatrix-binary"]; // opencode argv-array shape, still present
-    await assertFailsToReturn(leg);
-    V.cleanupDir(root);
+    await assertFailsToReturn(leg, machine);
+    V.cleanupMachine(root);
   });
 
   it("test_verify_retrieval_fails_when_entry_target_blanked (negative control)", async () => {
-    const { root, manifest } = realManifest("codex-cli", {}, [".codex"]);
+    const { root, manifest, machine } = realManifest("codex-cli", {}, [".codex"]);
     const leg = clone(manifest.find((l) => l.harness === "codex-cli" && l.surface === "mcp"));
     leg.entry.command = ""; // target gone; manifest still has an `entry` object
-    await assertFailsToReturn(leg);
-    V.cleanupDir(root);
+    await assertFailsToReturn(leg, machine);
+    V.cleanupMachine(root);
   });
 });
 
@@ -83,11 +82,15 @@ describe("AC-10 retrieval mutation controls (R-02)", () => {
 
 describe("AC-09 hook mutation control (R-02)", () => {
   let ingress;
-  before(async () => { ingress = await V.makeHttpIngress(); });
+  let machine;
+  let manifest;
+  before(async () => {
+    ({ machine, manifest } = realManifest("codex-cli", { binaryPath: undefined, mcp: true }, []));
+    ingress = await V.makeHttpIngress(machine);
+  });
   after(async () => { if (ingress) await ingress.close(); });
 
   it("test_verify_codex_hook_fire_mutation_broken_client_fails", async () => {
-    const { root, manifest } = realManifest("codex-cli", {}, [".codex"]);
     const good = manifest.find(
       (l) => l.harness === "codex-cli" && l.surface === "hooks" && V.eventOf(l.command) === "UserPromptSubmit"
     );
@@ -95,12 +98,12 @@ describe("AC-09 hook mutation control (R-02)", () => {
     const okOut = await V.observeHookFire(good, ingress, {});
     assert.strictEqual(okOut.fired, true, "intact wired command fires (control baseline)");
 
-    // Break the client path; the command string STILL looks like a hook command.
-    const broken = { command: good.command.replace(CLIENT, "/nonexistent/hook-client/index.js") };
-    assert.ok(broken.command.indexOf("--provider codex-cli") !== -1, "string still intact (presence would pass)");
-    const badOut = await V.observeHookFire(broken, ingress, {});
+    // Break the installed hook client behind the shim; the command string is untouched.
+    const inst = JSON.parse(fs.readFileSync(path.join(machine.home, ".unimatrix", "install.json"), "utf8"));
+    fs.rmSync(path.join(inst.packageRoot, "lib", "hook-client", "index.js"), { force: true });
+    assert.ok(good.command.indexOf("--provider codex-cli") !== -1, "string still intact (presence would pass)");
+    const badOut = await V.observeHookFire(good, ingress, {});
     assert.strictEqual(badOut.fired, false, "no ingress → verifier FAILS (executes, not string-matches)");
-    V.cleanupDir(root);
   });
 });
 
@@ -108,7 +111,7 @@ describe("AC-09 hook mutation control (R-02)", () => {
 
 describe("Tautology guard: presence passes but execution must fail (SR-09)", () => {
   it("test_broken_artifact_would_pass_a_presence_check_yet_fails_execution", async () => {
-    const { root, manifest } = realManifest("codex-cli", {}, [".codex"]);
+    const { root, manifest, machine } = realManifest("codex-cli", {}, [".codex"]);
     const leg = clone(manifest.find((l) => l.harness === "codex-cli" && l.surface === "mcp"));
     leg.entry.command = "/nonexistent/unimatrix-binary";
 
@@ -119,11 +122,11 @@ describe("Tautology guard: presence passes but execution must fail (SR-09)", () 
     // The behavioral executor does NOT:
     let executionFailed = false;
     try {
-      await V.assertRetrievalReturns(leg, { timeoutMs: 2500 });
+      await V.assertRetrievalReturns(leg, { timeoutMs: 2500, cwd: machine.root, env: V.machineEnv(machine) });
     } catch (_e) {
       executionFailed = true;
     }
     assert.strictEqual(executionFailed, true, "behavioral verifier fails where the presence proxy passes");
-    V.cleanupDir(root);
+    V.cleanupMachine(root);
   });
 });

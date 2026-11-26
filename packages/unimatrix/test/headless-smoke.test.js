@@ -65,9 +65,9 @@ function sh(script, env, cwd) {
  * Drive a stdio MCP server (the bridge) with JSON-RPC requests in order;
  * resolves { responses: Map<id,msg>, stderr, code }.
  */
-function mcpSession(cmd, args, env, requests) {
+function mcpSession(cmd, args, env, requests, cwd) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { env, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(cmd, args, { env, cwd, stdio: ["pipe", "pipe", "pipe"] });
     const responses = new Map();
     const wanted = requests.filter((r) => r.id !== undefined).map((r) => r.id);
     let buf = "";
@@ -132,6 +132,7 @@ describe("vnc-050 C11 headless smoke (docs recipe, local CA, real server)", { sk
   let tmp;
   let readBundle;
   let rwBundle;
+  let proj; // project dir == UNIMATRIX_PROJECT_ROOT; cwd of every bridge/hook run
   let env; // client env: PATH with npx shim, clean HOME, CA for curl + node
   const md = fs.readFileSync(DOC, "utf8");
 
@@ -164,7 +165,10 @@ describe("vnc-050 C11 headless smoke (docs recipe, local CA, real server)", { sk
         process.execPath + '" "' + BIN + '" "$@"\n',
       { mode: 0o755 }
     );
+    proj = path.join(tmp, "proj");
+    fs.mkdirSync(proj);
     env = {
+      UNIMATRIX_PROJECT_ROOT: proj,
       PATH: shimDir + path.delimiter + process.env.PATH,
       HOME: home,
       USERPROFILE: home,
@@ -187,7 +191,7 @@ describe("vnc-050 C11 headless smoke (docs recipe, local CA, real server)", { sk
 
   it("curl_recipe_runs_unmodified (AC-12)", async () => {
     const curlBlocks = blocks(md, "sh smoke");
-    const r = await sh(curlBlocks.join("\n"), Object.assign({}, env, { UNIMATRIX_BUNDLE: readBundle }), tmp);
+    const r = await sh(curlBlocks.join("\n"), Object.assign({}, env, { UNIMATRIX_BUNDLE: readBundle }), proj);
     assert.equal(r.code, 0, r.stderr);
     assert.match(r.stdout, /"id":2,"result"/);
     assert.doesNotMatch(r.stdout, /"isError":true/);
@@ -195,10 +199,24 @@ describe("vnc-050 C11 headless smoke (docs recipe, local CA, real server)", { sk
 
   it("generic_mcp_client_recipe (JSON config)", async () => {
     const cfg = JSON.parse(blocks(md, "json mcp-config")[0]).mcpServers.unimatrix;
-    const cfgEnv = Object.assign({}, env, cfg.env, { UNIMATRIX_BUNDLE: readBundle });
-    const s = await mcpSession(cfg.command, cfg.args, cfgEnv, [INIT, INITIALIZED, call(2, "context_status", {})]);
+    const cfgEnv = Object.assign({}, env, cfg.env, { UNIMATRIX_BUNDLE: readBundle, UNIMATRIX_PROJECT_ROOT: proj });
+    const s = await mcpSession(cfg.command, cfg.args, cfgEnv, [INIT, INITIALIZED, call(2, "context_status", {})], proj);
     assert.ok(isToolOk(s.responses.get(2)), s.stderr);
     assert.ok(!fs.existsSync(path.join(env.HOME, ".unimatrix")), "headless attach must not write remote.json");
+  });
+
+  it("bridge_without_project_root_or_outside_it_exits_0_silent (D-053)", async () => {
+    const e = Object.assign({}, env, { UNIMATRIX_BUNDLE: readBundle });
+    const noRoot = Object.assign({}, e);
+    delete noRoot.UNIMATRIX_PROJECT_ROOT;
+    const sibling = proj + "-sibling";
+    fs.mkdirSync(sibling);
+    for (const [ev, cwd] of [[noRoot, proj], [e, sibling]]) {
+      const s = await mcpSession(process.execPath, [BIN, "mcp-bridge"], ev, [], cwd);
+      assert.equal(s.code, 0);
+      assert.equal(s.stderr, "");
+      assert.equal(s.responses.size, 0);
+    }
   });
 
   it("ac13_local_read_bundle_search_ok_write_denied", async () => {
@@ -207,7 +225,7 @@ describe("vnc-050 C11 headless smoke (docs recipe, local CA, real server)", { sk
       INITIALIZED,
       call(2, "context_lookup", { query: "smoke" }),
       call(3, "context_store", { title: "denied", content: "read token must not write", topic: "smoke", category: "pattern", agent_id: "human" }),
-    ]);
+    ], proj);
     assert.ok(isToolOk(s.responses.get(2)), "read lookup: " + JSON.stringify(s.responses.get(2)));
     const denied = s.responses.get(3);
     assert.ok(!isToolOk(denied), "read token store must be denied");
@@ -222,7 +240,7 @@ describe("vnc-050 C11 headless smoke (docs recipe, local CA, real server)", { sk
         INIT,
         INITIALIZED,
         call(2, "context_store", { title: "smoke rw", content: "rw token writes alpha", topic: "smoke", category: "pattern", agent_id: "human" }),
-      ]);
+      ], proj);
       if (!/initializing/.test(JSON.stringify(s.responses.get(2))) || Date.now() > deadline) break;
       await new Promise((r) => setTimeout(r, 1000));
     }
@@ -278,6 +296,7 @@ describe("vnc-050 C11 headless smoke (docs recipe, local CA, real server)", { sk
   });
 
   it("docs_contain_legacy_baseline_and_gh_actions_example", () => {
+    assert.match(md, /UNIMATRIX_PROJECT_ROOT/);
     assert.match(md, /legacy_token_enabled = false/);
     assert.match(md, /UNIMATRIX_LEGACY_TOKEN_ENABLED=false/);
     assert.match(md, /```yaml\n[\s\S]*UNIMATRIX_BUNDLE: \$\{\{ secrets\./);

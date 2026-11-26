@@ -6,7 +6,7 @@
           {
             "type": "command",
             "matcher": "mcp_unimatrix_.*",
-            "command": "unimatrix hook BeforeTool --provider gemini-cli"
+            "command": "\"$HOME/.unimatrix/bin/unimatrix\" hook BeforeTool --provider gemini-cli"
           }
         ]
       }
@@ -17,7 +17,7 @@
           {
             "type": "command",
             "matcher": "mcp_unimatrix_.*",
-            "command": "unimatrix hook AfterTool --provider gemini-cli"
+            "command": "\"$HOME/.unimatrix/bin/unimatrix\" hook AfterTool --provider gemini-cli"
           }
         ]
       }
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook SessionStart --provider gemini-cli"
+            "command": "\"$HOME/.unimatrix/bin/unimatrix\" hook SessionStart --provider gemini-cli"
           }
         ]
       }
@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook SessionEnd --provider gemini-cli"
+            "command": "\"$HOME/.unimatrix/bin/unimatrix\" hook SessionEnd --provider gemini-cli"
           }
         ]
       }

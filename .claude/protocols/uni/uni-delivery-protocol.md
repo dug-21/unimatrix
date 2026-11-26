@@ -103,7 +103,7 @@ Task(subagent_type: "uni-pseudocode",
     Before starting, search Unimatrix for relevant patterns and this feature's ADRs:
     - context_search(query: '{feature area} patterns conventions', category: 'pattern')
     - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
-    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
+    Also read product/features/{id}/architecture/ADR-INDEX.md and context_get the ADRs it lists.
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md
@@ -128,7 +128,7 @@ Task(subagent_type: "uni-tester",
     Before starting, search Unimatrix for this feature's ADRs and relevant test patterns:
     - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
     - context_search(query: '{feature area} testing patterns edge cases')
-    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
+    Also read product/features/{id}/architecture/ADR-INDEX.md and context_get the ADRs it lists.
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md
@@ -161,10 +161,10 @@ After Stage 3a agents return, the Delivery Leader MUST update the IMPLEMENTATION
 1. Collect component lists and file paths from both agents' returns
 2. Update the **Component Map** table in `product/features/{id}/IMPLEMENTATION-BRIEF.md`:
    ```
-   | Component | Pseudocode | Test Plan |
-   |-----------|-----------|-----------|
-   | {component-1} | pseudocode/{component-1}.md | test-plan/{component-1}.md |
-   | {component-2} | pseudocode/{component-2}.md | test-plan/{component-2}.md |
+   | Component | Tier | Pseudocode | Test Plan |
+   |-----------|------|-----------|-----------|
+   | {component-1} | hard | pseudocode/{component-1}.md | test-plan/{component-1}.md |
+   | {component-2} | routine | pseudocode/{component-2}.md | test-plan/{component-2}.md |
    ```
 3. Update the **Cross-Cutting Artifacts** section with actual paths:
    ```
@@ -231,6 +231,15 @@ Each component's target files are listed in the IMPLEMENTATION-BRIEF Component M
 | Rust source (`crates/**/*.rs`) | `uni-rust-dev` |
 | JS/TS edge client + Node tooling (`packages/unimatrix/**/*.{js,mjs,cjs,ts}`) | `uni-js-dev` |
 
+**Model by tier.** Each agent's definition sets its default model/effort, and you use that default unless the table below overrides it:
+
+| Agent | Tier `hard` | Tier `routine` |
+|-------|-------------|----------------|
+| `uni-rust-dev` | definition default (Opus, low) | definition default (Opus, low). Rust never downgrades. |
+| `uni-js-dev` | definition default (Opus, low) | spawn with `model: "haiku"`, `effort: "low"` |
+
+Tier comes from the Component Map, which takes it from ARCHITECTURE.md. A missing tier means `hard`. Never mark a component `routine` yourself; only the architect assigns tiers.
+
 A single wave commonly mixes both (e.g., a server-side `.rs` component and a hook-client `.js` component): spawn the matching agent type per component in the **same** message. A well-formed component is single-language (one-component-one-concern); if a component genuinely spans both `crates/` and `packages/`, that is a Stage 3a split defect — flag it rather than routing one agent across both.
 
 ### Wave Planning (MANDATORY — before spawning any agent)
@@ -257,7 +266,7 @@ Task(subagent_type: "uni-rust-dev",      ← Rust component (crates/**/*.rs)
     Before implementing, search Unimatrix for relevant patterns and this feature's ADRs:
     - context_search(query: '{component area} implementation patterns', category: 'pattern')
     - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
-    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
+    Also read product/features/{id}/architecture/ADR-INDEX.md and context_get the ADRs it lists.
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md

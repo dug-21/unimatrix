@@ -63,8 +63,11 @@ function parseExtraHeaders(raw) {
 // Returns { mcp, observe, headers, source }; tuples are
 // { url, token, pinnedFp, tier } and observe also carries `timeouts`.
 function resolveRemote(env, opts) {
-  env = env || {};
   const o = opts || {};
+  env = env || {};
+  try { // lazy: config<->project-state cycle; fail-open to raw env (homedir may throw)
+    env = require("../project-state").effectiveEnv(env, o.cwd || process.cwd(), o.home || require("os").homedir()); // D-091
+  } catch (_e) { /* raw env */ }
   const headers = parseExtraHeaders(env[HEADERS]);
   const t = (url, token, pinnedFp, tier) => ({ url, token, pinnedFp, tier });
   const obs = (u, k, f, tier, timeouts) => Object.assign(t(u, k, f, tier), { timeouts: timeouts || null });

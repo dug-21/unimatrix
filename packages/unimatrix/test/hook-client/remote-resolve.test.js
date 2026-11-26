@@ -7,8 +7,11 @@
 const { describe, it } = require("node:test");
 const assert = require("assert");
 const {
-  resolveRemote, parseExtraHeaders, ResolveError, RESERVED_HEADERS, VARS,
+  resolveRemote: resolveRaw, parseExtraHeaders, ResolveError, RESERVED_HEADERS, VARS,
 } = require("../../lib/hook-client/remote-resolve.js");
+
+// D-091: resolveRemote strips headless vars unless UNIMATRIX_PROJECT_ROOT contains cwd.
+const resolveRemote = (env, opts) => resolveRaw({ UNIMATRIX_PROJECT_ROOT: process.cwd(), ...env }, opts);
 
 const TOKEN = "ab".repeat(32);
 const FP = "sha256:" + "cd".repeat(32);
@@ -233,4 +236,17 @@ describe("parseExtraHeaders", () => {
   for (const [label, ch] of [["e-acute", "é"], ["euro", "€"], ["emoji", "\u{1F600}"], ["DEL", "\x7f"], ["SOH", "\x01"]]) {
     it(`non-printable-ASCII ${label} rejected`, () => reject(H({ "X-U": HSENT + ch }), "X-U"));
   }
+});
+
+describe("D-091 effectiveEnv gate in resolveRemote", () => {
+  const e = { [VARS.MCP_URL]: "https://x.example/m", [VARS.TOKEN]: TOKEN };
+  it("headless env without UNIMATRIX_PROJECT_ROOT is ignored", () => {
+    assert.equal(resolveRaw(e, {}).mcp, null);
+  });
+  it("cwd outside the root ignores the env tier", () => {
+    assert.equal(resolveRaw({ ...e, UNIMATRIX_PROJECT_ROOT: __dirname }, { cwd: require("os").tmpdir() }).mcp, null);
+  });
+  it("cwd inside the root honours it", () => {
+    assert.equal(resolveRaw({ ...e, UNIMATRIX_PROJECT_ROOT: __dirname }, { cwd: __dirname }).mcp.tier, "env");
+  });
 });

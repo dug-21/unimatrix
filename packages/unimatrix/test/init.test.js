@@ -1,18 +1,18 @@
 "use strict";
 
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 
-// We test the internal functions directly (detectProjectRoot, writeMcpJson,
+// We test the internal functions directly (detectProjectRoot,
 // printSummary) and keep skill-copying and full init integration tests in
 // init-integration.test.js.
 
 const {
   detectProjectRoot,
-  writeMcpJson,
   printSummary,
   installSkills,
 } = require("../lib/init.js");
@@ -86,114 +86,101 @@ describe("detectProjectRoot", () => {
 
 // ── .mcp.json Writing ───────────────────────────────────────────────
 
-describe("writeMcpJson", () => {
-  it("test_creates_mcp_json_on_clean_project", () => {
+describe("per-machine MCP wiring (replaces writeMcpJson)", () => {
+  const { wire } = require("../lib/wire.js");
+  const { buildMcpEntry } = require("../lib/mcp-entry.js");
+  const { makeHome, wireOpts } = require("./helpers/wire-fixture.js");
+  const run = (dir, home, extra) =>
+    wire(dir, wireOpts(home, Object.assign({ binaryPath: BINARY, platform: "linux" }, extra || {})));
+
+  it("test_creates_mcp_json_on_clean_project", linuxLocal, () => {
     const dir = makeTempProject();
-    const actions = writeMcpJson(dir, BINARY, false);
-
-    const mcpPath = path.join(dir, ".mcp.json");
-    assert.ok(fs.existsSync(mcpPath), ".mcp.json should be created");
-
-    const content = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-    assert.strictEqual(content.mcpServers.unimatrix.command, BINARY);
-    assert.deepStrictEqual(content.mcpServers.unimatrix.args, []);
-    assert.deepStrictEqual(content.mcpServers.unimatrix.env, {
-      LD_LIBRARY_PATH: path.dirname(BINARY),
-    });
-
-    assert.ok(
-      actions.some((a) => a.includes("Created .mcp.json")),
-      "Should report creation"
+    const home = makeHome();
+    const res = run(dir, home);
+    const cj = JSON.parse(fs.readFileSync(path.join(home, ".claude.json"), "utf8"));
+    assert.deepStrictEqual(
+      cj.projects[dir].mcpServers.unimatrix,
+      buildMcpEntry("linux", home, process.execPath)
     );
+    assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")), "no committed project .mcp.json");
+    assert.ok(res.actions.some((a) => a.includes("claude-code mcp: created")), "reports creation");
   });
 
   it("test_preserves_existing_servers", () => {
     const dir = makeTempProject();
-    const mcpPath = path.join(dir, ".mcp.json");
-    const existing = {
-      mcpServers: {
-        filesystem: { command: "/usr/bin/fs-server", args: ["--ro"] },
-      },
-    };
-    fs.writeFileSync(mcpPath, JSON.stringify(existing, null, 2), "utf8");
-
-    writeMcpJson(dir, BINARY, false);
-
-    const content = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-    assert.strictEqual(
-      content.mcpServers.filesystem.command,
-      "/usr/bin/fs-server",
-      "Filesystem server should be preserved"
+    const home = makeHome();
+    const existing = { mcpServers: { filesystem: { command: "/usr/bin/fs-server", args: ["--ro"] } } };
+    fs.writeFileSync(path.join(dir, ".mcp.json"), JSON.stringify(existing, null, 2), "utf8");
+    fs.writeFileSync(
+      path.join(home, ".claude.json"),
+      JSON.stringify({ other: 1, projects: { [dir]: { mcpServers: { fs2: { command: "x" } } } } }),
+      "utf8"
     );
-    assert.deepStrictEqual(content.mcpServers.filesystem.args, ["--ro"]);
-    assert.strictEqual(content.mcpServers.unimatrix.command, BINARY);
+    run(dir, home);
+    const content = JSON.parse(fs.readFileSync(path.join(dir, ".mcp.json"), "utf8"));
+    assert.deepStrictEqual(content.mcpServers.filesystem, existing.mcpServers.filesystem);
+    const cj = JSON.parse(fs.readFileSync(path.join(home, ".claude.json"), "utf8"));
+    assert.strictEqual(cj.other, 1);
+    assert.strictEqual(cj.projects[dir].mcpServers.fs2.command, "x");
+    assert.ok(cj.projects[dir].mcpServers.unimatrix);
   });
 
   it("test_updates_existing_unimatrix_entry", () => {
     const dir = makeTempProject();
-    const mcpPath = path.join(dir, ".mcp.json");
-    const existing = {
-      mcpServers: {
-        unimatrix: { command: "/old/path/to/unimatrix", args: [] },
-      },
-    };
-    fs.writeFileSync(mcpPath, JSON.stringify(existing, null, 2), "utf8");
-
-    writeMcpJson(dir, BINARY, false);
-
-    const content = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-    assert.strictEqual(
-      content.mcpServers.unimatrix.command,
-      BINARY,
-      "Should update to new binary path"
+    const home = makeHome();
+    fs.writeFileSync(
+      path.join(home, ".claude.json"),
+      JSON.stringify({ projects: { [dir]: { mcpServers: { unimatrix: { command: "/old/path/to/unimatrix", args: [] } } } } }),
+      "utf8"
+    );
+    run(dir, home);
+    const cj = JSON.parse(fs.readFileSync(path.join(home, ".claude.json"), "utf8"));
+    assert.deepStrictEqual(
+      cj.projects[dir].mcpServers.unimatrix,
+      buildMcpEntry("linux", home, process.execPath),
+      "owned legacy entry replaced by the shim form"
     );
   });
 
   it("test_preserves_nested_env_args_in_other_servers", () => {
     const dir = makeTempProject();
-    const mcpPath = path.join(dir, ".mcp.json");
+    const home = makeHome();
     const existing = {
       mcpServers: {
-        other: {
-          command: "/usr/bin/other",
-          args: ["--flag", "value"],
-          env: { API_KEY: "secret123" },
-          cwd: "/some/dir",
-        },
+        other: { command: "/usr/bin/other", args: ["--flag", "value"], env: { API_KEY: "secret123" }, cwd: "/some/dir" },
+        unimatrix: { command: "/old/unimatrix", args: [] },
       },
     };
-    fs.writeFileSync(mcpPath, JSON.stringify(existing, null, 2), "utf8");
-
-    writeMcpJson(dir, BINARY, false);
-
-    const content = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
+    fs.writeFileSync(path.join(dir, ".mcp.json"), JSON.stringify(existing, null, 2), "utf8");
+    run(dir, home);
+    const content = JSON.parse(fs.readFileSync(path.join(dir, ".mcp.json"), "utf8"));
     assert.deepStrictEqual(content.mcpServers.other, existing.mcpServers.other);
+    assert.strictEqual(content.mcpServers.unimatrix, undefined, "owned project entry removed");
   });
 
   it("test_malformed_mcp_json_throws", () => {
     const dir = makeTempProject();
-    const mcpPath = path.join(dir, ".mcp.json");
-    fs.writeFileSync(mcpPath, "{ invalid json }", "utf8");
-
+    const home = makeHome();
+    fs.writeFileSync(path.join(dir, ".mcp.json"), "{ invalid json }", "utf8");
     assert.throws(
-      () => writeMcpJson(dir, BINARY, false),
+      () => run(dir, home),
       (error) => {
-        assert.ok(error.message.includes("Malformed .mcp.json"));
+        assert.ok(error.message.includes(".mcp.json"));
+        assert.ok(error.message.includes("not valid JSON"));
         return true;
       }
     );
+    assert.strictEqual(fs.readFileSync(path.join(dir, ".mcp.json"), "utf8"), "{ invalid json }");
   });
 
   it("test_dry_run_does_not_write_mcp_json", () => {
     const dir = makeTempProject();
-    const mcpPath = path.join(dir, ".mcp.json");
-    const actions = writeMcpJson(dir, BINARY, true);
-
-    assert.ok(!fs.existsSync(mcpPath), ".mcp.json should NOT be created in dry-run");
-    assert.ok(
-      actions.some((a) => a.includes("[dry-run]")),
-      "Actions should be prefixed with [dry-run]"
-    );
+    const home = makeHome();
+    const res = run(dir, home, { dryRun: true });
+    assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")), ".mcp.json should NOT be created in dry-run");
+    assert.ok(!fs.existsSync(path.join(home, ".claude.json")), "~/.claude.json untouched in dry-run");
+    assert.ok(!fs.existsSync(path.join(home, ".unimatrix")), "no store written in dry-run");
+    assert.ok(res.actions.some((a) => a.startsWith("[dry-run] claude-code mcp: created")));
   });
 });
 
