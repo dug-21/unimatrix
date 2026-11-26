@@ -1,6 +1,8 @@
 name: Q9 Windows MCP argv proof (nan-024 D-034)
 
-# Non-required proof job. Stub shim stands in for the real one (not yet written).
+# Non-required proof job. The driver.js steps use a stub shim; the final `real` steps (nan-024 D-072/D-073)
+# run the REAL init output: the written MCP entry must equal the D-047 fallback form and the written .cmd hook
+# command must run via cmd.exe /C (raw, Codex wrapping) and Git Bash.
 # Claude Code is approximated by Node child_process.spawn (shell:false); Codex by a
 # compiled Rust std::process::Command harness. Real harness binaries are not run
 # (no auth / MCP session available in CI) -- documented limitation.
@@ -8,7 +10,7 @@ on:
   workflow_dispatch:
   push:
     branches: [feature/nan-024]
-    paths: ['.github/q9-proof/**', '.github/workflows/q9-windows-mcp-proof.yml']
+    paths: ['.github/q9-proof/**', '.github/workflows/q9-windows-mcp-proof.yml', 'packages/unimatrix/lib/**', 'packages/unimatrix/test/helpers/e2e-harness.js']
 
 jobs:
   q9:
@@ -30,3 +32,15 @@ jobs:
       - name: Hook form (.cmd via cmd.exe /C and Git Bash)
         if: always()
         run: node .github/q9-proof/driver.js hook
+      - name: Generate TLS test cert
+        if: always()
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir e2e-cert && cd e2e-cert
+          MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 2 \
+            -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+          echo "E2E_CERT_DIR=$(pwd -W 2>/dev/null || pwd)" >> "$GITHUB_ENV"
+      - name: REAL init output - MCP D-047 fallback form + .cmd hook via cmd /C and Git Bash (D-072, D-073)
+        if: always()
+        run: node .github/q9-proof/real.js

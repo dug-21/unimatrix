@@ -24,6 +24,14 @@
 //                            c14-verifier.js, check-*.js, fixtures/, helpers/.
 //   opencode-plugin       -> opencode-plugin/test/*.test.js (ESM type:module),
 //                            also serial for consistency.
+//   wiring-e2e            -> nan-024 assembled-path suites: init -> read the written
+//                            command -> run it through the harness shell. EXPLICIT file
+//                            list (WIRING_E2E below), serial, runs on ubuntu + macos +
+//                            WINDOWS (no Unix-shape fakes; POSIX-only cases carry their
+//                            own win32 skip-guards). These files are claimed here ONLY
+//                            and are excluded from `package` (no double-run).
+//                            wiring-e2e-local.test.js needs the cargo-built server
+//                            (E2E_REQUIRE_LOCAL=1 in CI makes a missing binary a failure).
 //   audit                 -> ORPHAN-SUITE GUARD (bug #995 / lesson #5781): walk
 //                            every *.test.js under test/ and opencode-plugin/test/
 //                            and assert each is claimed by a selection set or a
@@ -64,6 +72,20 @@ const setName = setIdx >= 0 ? argv[setIdx + 1] : "hook-client";
 
 const DEFAULT_EXCLUDE = [/^parity-layer2/, /^benchmark-spawn\.test\.js$/];
 
+// nan-024 `wiring-e2e` selection (explicit, not discovered; lesson #4779/#5790). Names are
+// top-level test/ files. Entries whose file does not exist yet are reported and skipped, so
+// suites landing in parallel waves do not break the set; the test-count guard pins them once present.
+const WIRING_E2E = [
+  "wiring-e2e.test.js",
+  "wiring-e2e-local.test.js",
+  "shim-superset.test.js",
+  "shim-cmd.test.js",
+  "mcp-stdio-spawn.test.js",
+  "init-preflight.test.js",
+  "codex-detect.test.js",
+  "pkg-binary-copy.test.js",
+];
+
 function isTestFile(name) {
   return name.endsWith(".test.js");
 }
@@ -88,7 +110,36 @@ function listTestFiles(dir) {
     .map((name) => path.join(dir, name));
 }
 
-function runSerial(label, dir) {
+function wiringFiles() {
+  return WIRING_E2E.map((n) => path.join(PACKAGE_TEST_DIR, n));
+}
+
+// `package` set: top-level suites minus the wiring-e2e files (claimed by exactly one set).
+function packageFiles() {
+  const w = new Set(wiringFiles());
+  return listTestFiles(PACKAGE_TEST_DIR).filter((f) => !w.has(f));
+}
+
+function runWiring() {
+  const present = wiringFiles().filter((f) => fs.existsSync(f));
+  for (const f of wiringFiles()) {
+    if (!fs.existsSync(f)) console.error("run-hook-client: wiring-e2e: not present yet, skipped: " + path.relative(__dirname, f));
+  }
+  if (present.length === 0) {
+    console.error("run-hook-client: no test files selected for set 'wiring-e2e'");
+    process.exit(1);
+  }
+  console.error("run-hook-client: set 'wiring-e2e' selected " + present.length + " suite(s):");
+  for (const f of present) console.error("  " + path.relative(__dirname, f));
+  const result = spawnSync(process.execPath, ["--test", "--test-concurrency=1", ...present], { stdio: "inherit" });
+  if (result.error) {
+    console.error("run-hook-client: failed to spawn node --test: " + result.error.message);
+    process.exit(1);
+  }
+  process.exit(result.status === null ? 1 : result.status);
+}
+
+function runSerial(label, dir, filesOverride) {
   if (process.platform === "win32") {
     // Durable Windows exclusion (#5781): these suites hard-code Unix shapes
     // (#!/bin/sh, chmod, /bin/true, bash). Skip cleanly instead of failing.
@@ -100,7 +151,7 @@ function runSerial(label, dir) {
   }
   let files;
   try {
-    files = listTestFiles(dir);
+    files = filesOverride ? filesOverride() : listTestFiles(dir);
   } catch (err) {
     console.error("run-hook-client: cannot read " + dir + ": " + err.message);
     process.exit(1);
@@ -160,7 +211,9 @@ function runAudit() {
 
   // Files claimed by a running selection set.
   const claimed = new Set();
-  for (const f of listTestFiles(PACKAGE_TEST_DIR)) claimed.add(f); // --set package
+  for (const f of packageFiles()) claimed.add(f); // --set package (minus wiring-e2e)
+  const wiring = wiringFiles().filter((f) => fs.existsSync(f));
+  for (const f of wiring) claimed.add(f); // --set wiring-e2e (exclusive of package)
   for (const f of fs.readdirSync(HOOK_CLIENT_DIR).filter(isTestFile)) {
     // --set hook-client (default) + parity-layer2 via --only/--include-layer2.
     claimed.add(path.join(HOOK_CLIENT_DIR, f));
@@ -175,6 +228,14 @@ function runAudit() {
     ...walkTestFiles(OPENCODE_TEST_DIR),
   ];
   const orphans = all.filter((f) => !claimed.has(f)).sort();
+  // Exclusive claim: a file in wiring-e2e must not also be in package.
+  const pkgSet = new Set(packageFiles());
+  const doubled = wiring.filter((f) => pkgSet.has(f));
+  if (doubled.length > 0) {
+    console.error("run-hook-client: FAIL — suite(s) claimed by both package and wiring-e2e:");
+    for (const f of doubled) console.error("  " + path.relative(__dirname, f));
+    process.exit(1);
+  }
 
   console.error(
     "run-hook-client: orphan-suite audit — " + all.length + " suite(s) found, " +
@@ -192,7 +253,8 @@ function runAudit() {
   process.exit(0);
 }
 
-if (setName === "package") runSerial("package", PACKAGE_TEST_DIR);
+if (setName === "package") runSerial("package", PACKAGE_TEST_DIR, packageFiles);
+if (setName === "wiring-e2e") runWiring();
 if (setName === "opencode-plugin") runSerial("opencode-plugin", OPENCODE_TEST_DIR);
 if (setName === "audit") runAudit();
 if (setName !== "hook-client") {

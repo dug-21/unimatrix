@@ -116,3 +116,6 @@ jobs:
       # need not repeat across the matrix.
       - name: Orphan-suite audit (every *.test.js is CI-selected)
         run: npm run test:audit-suites
+      # NFR-04 (nan-024): per-suite test counts must not decrease vs test/fixtures/test-counts.json.
+      - name: Test-count non-decrease guard
+        run: node test/check-test-count.js

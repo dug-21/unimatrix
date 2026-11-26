@@ -1,0 +1,181 @@
+name: nan-024 E2E matrix + latency gate
+
+# nan-024 (#1023): the only proof for Windows/macOS wiring. Per #5790 these jobs land NON-REQUIRED
+# (not in branch protection) until one full grid is green; promotion is a human follow-up.
+#  - wiring-e2e       : init -> read the WRITTEN command -> run it through the harness shell(s); HOME with a
+#                       space; HTTPS stub + NODE_EXTRA_CA_CERTS; ubuntu/macos/windows x Node 20/24.
+#  - wiring-e2e-local : linux local transport against the BUILT server (AC-07; a stub cannot store an observation).
+#  - latency-gate     : hook p95 <= max(node -e 0 p95 + 15 ms, 50 ms), same job baseline, incl. not-a-project (AC-06).
+#  - parity-layer2    : Layer 2 against the built server, gating (AC-08). Not continue-on-error.
+#  - test-count       : NFR-04 per-suite test-count non-decrease guard.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feature/nan-024]
+    paths: ['packages/unimatrix/**', '.github/workflows/nan-024-e2e.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: nan-024-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ORT_VERSION: "1.20.1"
+
+jobs:
+  build-server:
+    name: Build server (linux, release)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-x64-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: linux-x64-release-
+      - name: Install ONNX Runtime
+        run: |
+          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
+          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
+          sudo ldconfig
+      - name: cargo build --release
+        run: cargo build --release
+        env:
+          ORT_LIB_LOCATION: /usr/local/lib
+          ORT_PREFER_DYNAMIC_LINK: "1"
+          RUSTFLAGS: "-C link-arg=-Wl,-rpath,$ORIGIN"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unimatrix-server-linux
+          path: target/release/unimatrix
+          if-no-files-found: error
+          retention-days: 3
+
+  wiring-e2e:
+    name: wiring-e2e (Node ${{ matrix.node }} / ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "24"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Generate TLS test cert (NODE_EXTRA_CA_CERTS source)
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir e2e-cert && cd e2e-cert
+          MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 2 \
+            -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+          echo "E2E_CERT_DIR=$(pwd -W 2>/dev/null || pwd)" >> "$GITHUB_ENV"
+      - name: wiring-e2e set (serial, literal command through the harness shells)
+        run: npm run test:wiring-e2e
+
+  wiring-e2e-local:
+    name: wiring-e2e linux local (built server, UDS)
+    needs: build-server
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/download-artifact@v4
+        with:
+          name: unimatrix-server-linux
+          path: ${{ runner.temp }}/server
+      - name: Install ONNX Runtime
+        run: |
+          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
+          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
+          sudo ldconfig
+      - name: wiring-e2e set against the built server
+        run: |
+          chmod +x "$RUNNER_TEMP/server/unimatrix"
+          E2E_REQUIRE_LOCAL=1 E2E_SERVER_BINARY="$RUNNER_TEMP/server/unimatrix" npm run test:wiring-e2e
+
+  parity-layer2:
+    name: parity-layer2 gating (AC-08)
+    needs: build-server
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/download-artifact@v4
+        with:
+          name: unimatrix-server-linux
+          path: ${{ github.workspace }}/target/release
+      - name: Install ONNX Runtime
+        run: |
+          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
+          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
+          sudo ldconfig
+      - name: Layer 2 suites (parity-layer2*)
+        run: |
+          chmod +x "$GITHUB_WORKSPACE/target/release/unimatrix"
+          npm run test:hook-client:layer2
+
+  latency-gate:
+    name: latency-gate (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Generate TLS test cert
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir e2e-cert && cd e2e-cert
+          MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 2 \
+            -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+          echo "E2E_CERT_DIR=$(pwd -W 2>/dev/null || pwd)" >> "$GITHUB_ENV"
+      - name: Latency gate (node -e 0 baseline in this job; 50 iters + 5 warm-ups)
+        run: node test/hook-client/benchmark-wiring.js --out "${{ runner.temp }}/latency-${{ matrix.os }}.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: latency-${{ matrix.os }}
+          path: ${{ runner.temp }}/latency-${{ matrix.os }}.json
+          if-no-files-found: warn
+
+  test-count:
+    name: Test-count non-decrease guard (NFR-04)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/unimatrix
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node test/check-test-count.js
