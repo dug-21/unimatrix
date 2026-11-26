@@ -29,7 +29,7 @@ Fixture rule (NFR-05): every test builds its own `HOME`/`USERPROFILE`/`XDG_*` te
 |---|---|---|---|
 | `q9-windows-mcp-proof` (exists) | windows | gate, first | D-047 fallback MCP argv via real Claude/Codex spawners, USERPROFILE with space; hook `.cmd` form via `cmd /C` (D-073). Add: assert Windows MCP written entry == D-047 form |
 | `wiring-e2e` | {ubuntu, macos, windows} x Node {20, 24} (18/22 optional) | required once green (land non-required first per #5790) | AC-01/04/07, R-17/18/26/34/37/38/39 literal-command E2E, HTTPS test endpoint + `NODE_EXTRA_CA_CERTS`, space-in-home case |
-| `latency-gate` | 3 OS | required | AC-06/ADR-005: `node -e 0` baseline same job; hook p95 <= absolute per-OS per-path budget (D-094 supersedes this relative formula; baseline reported only); not-a-project path; `mcp-stdio` not-a-project start-to-exit; 50 iters + 5 warmups, cold, through `sh -c`/`cmd /C` |
+| `latency-gate` | 3 OS | report-only (D-096: informational, never fails the build; AC-06 evidenced, not enforced) | AC-06/ADR-005: `node -e 0` baseline same job; hook p95 <= absolute per-OS per-path budget (D-094 supersedes this relative formula; baseline reported only); not-a-project path; `mcp-stdio` not-a-project start-to-exit; 50 iters + 5 warmups, cold, through `sh -c`/`cmd /C` |
 | `parity-layer2` | ubuntu | required (AC-08) | UDS, PreCompact, concurrency; needs cargo server build |
 | `package-suite`, `hook-client-matrix`, `hook-client-audit` (exist) | existing grid | existing | updated suites, orphan audit, size/zero-dep, test-count diff |
 | linux local E2E (UDS) | ubuntu | required | local transport, zero Rust exec (process trace), `LD_LIBRARY_PATH` pass-through |

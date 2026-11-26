@@ -4,7 +4,7 @@ Stage 3c, HEAD 0139b312 (+ `packages/unimatrix/test/measure-pkg-size.js`). Linux
 
 ## Headline
 - Local: all green (unit, package, wiring-e2e, opencode-plugin, audit, size/zero-dep/test-count, cargo workspace, link smoke, infra-001 smoke + planned suites). 0 failures, 0 new xfails.
-- CI: `wiring-e2e` 6/6 cells green x2 runs, `wiring-e2e` linux-local green, `parity-layer2` green, test-count guard green. **`latency-gate` FAILS on every OS in every run (different cells breach each run); Q9 job is red by construction (primary-form step is a designed FAIL).** See CI table.
+- CI: `wiring-e2e` 6/6 cells green x2 runs, `wiring-e2e` linux-local green, `parity-layer2` green, test-count guard green. **`latency-gate` breached the D-094 p95 figures in 5 of 6 cell-runs (different cells each run); per D-096 it is now REPORT-ONLY (AC-06 evidenced, not enforced); Q9 job is red by construction (primary-form step is a designed FAIL).** See CI table.
 - Gaps: 4 test files named in the plan (rework set) do not exist under those names; equivalent coverage located in other files (see Gaps).
 
 ## Test Results
@@ -78,6 +78,87 @@ Runs: A = 45745887970 (push, 16c73608), B = 45746445823 (workflow_dispatch trigg
 
 Why failing: the budgets are p95 over 50 samples on shared runners; the breach set changes run to run (ubuntu breaches in A, passes in B; macOS `node -e 0` baseline itself had p95 208.9 ms in B, 58.7 in A). Medians are within budget in every cell (e.g. win cloud FNF median 128-152, macOS NAP median 53-55). Only macOS `mcp-stdio` not-a-project breached in both runs (100.7, 104.5 vs 85; median 66.4). This is a tail-noise / budget-tightness question for the primary (D-094), not a deterministic regression. Latency-gate cannot be called green; the AC-06 CI proof is therefore not satisfied on any OS by a stable run (ubuntu run B only).
 
+### Full per-cell latency tables (D-096 evidence; ms, n=50, 5 warm-ups; limit = D-094 figure)
+Breach = p95 over limit (informational only). Source: CI job logs of runs A and B.
+
+**Run A** (45745887970)
+
+ubuntu:
+
+| case | n | median | p95 | limit | result |
+|---|---|---|---|---|---|
+| NOT-A-PROJECT hook (PostToolUse) | 50 | 29.6 | 32.5 | 50 | PASS |
+| cloud project, FNF event (PostToolUse) | 50 | 64.6 | 71.2 | 74 | PASS |
+| cloud project, sync event (UserPromptSubmit) | 50 | 67.3 | 104.3 | 74 | BREACH |
+| mcp-stdio NOT-A-PROJECT start-to-exit | 50 | 29.2 | 31.1 | 50 | PASS |
+| mcp-stdio in-project start-to-initialize (info) | 50 | 62.7 | 66.5 | - | info |
+| node -e 0 (baseline) | 50 | 23.7 | 27.7 | - | baseline |
+| node -e 0 via sh -c (info) | 50 | 24.2 | 27.2 | - | info |
+
+macos:
+
+| case | n | median | p95 | limit | result |
+|---|---|---|---|---|---|
+| NOT-A-PROJECT hook (PostToolUse) | 50 | 55.2 | 96.6 | 85 | BREACH |
+| cloud project, FNF event (PostToolUse) | 50 | 61.8 | 72 | 126 | PASS |
+| cloud project, sync event (UserPromptSubmit) | 50 | 66.2 | 109.5 | 126 | PASS |
+| mcp-stdio NOT-A-PROJECT start-to-exit | 50 | 66.2 | 100.7 | 85 | BREACH |
+| mcp-stdio in-project start-to-initialize (info) | 50 | 117.4 | 154.1 | - | info |
+| node -e 0 (baseline) | 50 | 43.8 | 58.7 | - | baseline |
+| node -e 0 via sh -c (info) | 50 | 54.8 | 66.3 | - | info |
+
+windows:
+
+| case | n | median | p95 | limit | result |
+|---|---|---|---|---|---|
+| NOT-A-PROJECT hook (PostToolUse) | 50 | 87.6 | 96.1 | 81 | BREACH |
+| cloud project, FNF event (PostToolUse) | 50 | 152.1 | 160.4 | 164 | PASS |
+| cloud project, sync event (UserPromptSubmit) | 50 | 145.8 | 167 | 164 | BREACH |
+| mcp-stdio NOT-A-PROJECT start-to-exit | 50 | 71.8 | 78.7 | 81 | PASS |
+| mcp-stdio in-project start-to-initialize (info) | 50 | 121.8 | 135.8 | - | info |
+| node -e 0 (baseline) | 50 | 55.5 | 63.1 | - | baseline |
+| node -e 0 via cmd.exe /C <line> (info) | 50 | 64.8 | 68.4 | - | info |
+
+**Run B** (45746445823)
+
+ubuntu:
+
+| case | n | median | p95 | limit | result |
+|---|---|---|---|---|---|
+| NOT-A-PROJECT hook (PostToolUse) | 50 | 25.9 | 28.9 | 50 | PASS |
+| cloud project, FNF event (PostToolUse) | 50 | 55.9 | 61.5 | 74 | PASS |
+| cloud project, sync event (UserPromptSubmit) | 50 | 57.1 | 70.5 | 74 | PASS |
+| mcp-stdio NOT-A-PROJECT start-to-exit | 50 | 25.5 | 28.5 | 50 | PASS |
+| mcp-stdio in-project start-to-initialize (info) | 50 | 54.9 | 66.4 | - | info |
+| node -e 0 (baseline) | 50 | 21 | 22.9 | - | baseline |
+| node -e 0 via sh -c (info) | 50 | 21.7 | 23.5 | - | info |
+
+macos:
+
+| case | n | median | p95 | limit | result |
+|---|---|---|---|---|---|
+| NOT-A-PROJECT hook (PostToolUse) | 50 | 52.8 | 75.2 | 85 | PASS |
+| cloud project, FNF event (PostToolUse) | 50 | 91.9 | 132.2 | 126 | BREACH |
+| cloud project, sync event (UserPromptSubmit) | 50 | 78 | 115.9 | 126 | PASS |
+| mcp-stdio NOT-A-PROJECT start-to-exit | 50 | 66.4 | 104.5 | 85 | BREACH |
+| mcp-stdio in-project start-to-initialize (info) | 50 | 117.3 | 191.2 | - | info |
+| node -e 0 (baseline) | 50 | 75.3 | 208.9 | - | baseline |
+| node -e 0 via sh -c (info) | 50 | 52 | 79.2 | - | info |
+
+windows:
+
+| case | n | median | p95 | limit | result |
+|---|---|---|---|---|---|
+| NOT-A-PROJECT hook (PostToolUse) | 50 | 71.6 | 75.5 | 81 | PASS |
+| cloud project, FNF event (PostToolUse) | 50 | 128.2 | 240.5 | 164 | BREACH |
+| cloud project, sync event (UserPromptSubmit) | 50 | 120.8 | 127.8 | 164 | PASS |
+| mcp-stdio NOT-A-PROJECT start-to-exit | 50 | 56.3 | 61 | 81 | PASS |
+| mcp-stdio in-project start-to-initialize (info) | 50 | 93.5 | 108.7 | - | info |
+| node -e 0 (baseline) | 50 | 52.5 | 64.3 | - | baseline |
+| node -e 0 via cmd.exe /C <line> (info) | 50 | 60.3 | 87.1 | - | info |
+
+Medians are within the D-094 limit in every gated cell of both runs; p95 breaches vary run to run (runner tail noise; macOS `node -e 0` baseline p95 58.7 in A vs 208.9 in B).
+
 ### Q9 job (45745887909)
 Red because the step "MCP primary form (cmd /d /s /c)" is expected to FAIL (D-034 proof that the primary form breaks: `The network path was not found.`, both Node spawn and Rust `Command.args`). The fallback (D-047), hook `.cmd` (cmd /C + Git Bash), TLS cert, ACL diagnostic and REAL-init steps pass. The workflow has no expected-failure handling for the primary step, so the job conclusion is `failure` on every run. Recommend `continue-on-error` or inverted assertion on that step so the job is a usable gate.
 
@@ -110,7 +191,7 @@ Result = suite-level result for the named files (all PASS locally); Coverage per
 | R-08 | user-level rewrite fidelity | wire, merge-settings (claude-json lib), codex-install, opencode-install | PASS | Full |
 | R-09 | node path / init preflight | install-store, wire, shim-entry (D-082 branches) | PASS | Partial (planned `init-preflight.test.js` absent) |
 | R-10 | pass-through / LD_LIBRARY_PATH | launcher-hook | PASS | Full |
-| R-11 | latency measured via literal command | benchmark-wiring (CI) | CI FAIL (budget) | Partial (harness runs real path; gate unstable) |
+| R-11 | latency measured via literal command | benchmark-wiring (CI) | Measured; report-only (D-096) | Evidenced, not enforced (D-096) |
 | R-12 | local vs cloud identity | wire-init, wiring-e2e byte-compare (E) | PASS | Full |
 | R-13 | old tests deleted / parity advisory | check-test-count, parity-layer2 CI gating | PASS | Full |
 | R-14 | OpenCode removal | opencode-install, c14-opencode, opencode-plugin set | PASS | Full |
@@ -120,8 +201,8 @@ Result = suite-level result for the named files (all PASS locally); Coverage per
 | R-18 | `.cmd` exit/stdin | shim (win32), wiring-e2e (windows E), Q9 hook step | PASS | Full (CI) |
 | R-19 | Codex approval lost | status / launcher-status, last-hook | PASS | Full (mitigated) |
 | R-20 | detection false negative | project-state, wire (CODEX_HOME) | PASS | Partial (`codex-detect.test.js` absent) |
-| R-21 | pre-Node check cost | shim-superset, benchmark-wiring | PASS / CI latency FAIL | Partial |
-| R-22 | Windows trust cost | trust, trust-selfcontained, latency (win) | PASS | Partial (win latency gate failing) |
+| R-21 | pre-Node check cost | shim-superset, benchmark-wiring | PASS / CI latency report-only (D-096) | Evidenced, not enforced (D-096) |
+| R-22 | Windows trust cost | trust, trust-selfcontained, latency (win) | PASS | Evidenced, not enforced (D-096; win latency report-only) |
 | R-23 | macOS/Windows no bundle/credential | launcher-status, project-state | PASS | Full |
 | R-24 | stable copy / prune / concurrent | install-store | PASS | Partial (`pkg-binary-copy.test.js` absent; Win rename EPERM CI-only) |
 | R-25 | Windows MCP argv re-escaped | Q9 job (D-034/D-047), docs-grep | Q9 primary FAIL as designed; fallback PASS | Full (CI) |
@@ -149,7 +230,7 @@ Result = suite-level result for the named files (all PASS locally); Coverage per
 | AC-03 | PASS | launcher-hook |
 | AC-04 | PASS (Windows ACL/identity parts CI-only) | shim, trust, launcher-*, install-store, merge-settings, wiring-e2e |
 | AC-05 | PASS | hook-ownership L1-L5 + prior-shim table, foreign negatives |
-| AC-06 | **NOT SATISFIED in CI** | latency-gate breaches in 5 of 6 cell-runs (see table); local benchmark tests pass |
+| AC-06 | **Evidenced, not enforced (D-096)** | latency job report-only; medians/p95 vs D-094 recorded in the full tables below (runs A, B) |
 | AC-07 | PASS | wiring-e2e 3 OS x 2 Node; linux-local against built server (E2E_REQUIRE_LOCAL) |
 | AC-08 | PASS | parity-layer2 job green (A, B), gating, not continue-on-error |
 | AC-09 | PASS | opencode-install, c14-opencode |
@@ -162,7 +243,7 @@ Result = suite-level result for the named files (all PASS locally); Coverage per
 | AC-16 | PASS | wire, codex-install, opencode-install, status legacy |
 
 ## Gaps
-1. AC-06 / R-11 / R-21 / R-22: latency-gate unstable at D-094 p95 budgets (above). Needs primary decision (re-budget, more samples/median-based, or retry), not a code fix by tester.
+1. AC-06 / R-11 / R-21 / R-22: resolved by D-096 (human): latency job report-only; evidenced, not enforced against the D-094 figures.
 2. Four rework-set test files named in the test plan are absent: `mcp-stdio-spawn`, `init-preflight`, `codex-detect`, `pkg-binary-copy` (run-hook-client prints "not present yet, skipped"). Equivalent assertions found in `launcher-hook` (D-077 signal/exit), `install-store`/`wire`/`shim-entry` (D-082), `codex-install`/`wire`/`wiring-e2e` (CODEX_HOME), `install-store`/`resolve-runtime` (D-078 npx-cache removal, BinaryPackageMissing). A dedicated D-078 "init, delete npx cache, literal hook command still stores an event" assembled test was not located; `resolve-runtime.test.js:164` covers the resolver half only.
 3. Q9 workflow concludes red by design; no stable green gate.
 4. R-39 per-harness display: not observable. R-38: no live-Claude verification (stated residual). Windows trust/ACL and rename-over-open: CI-only. Release-notes OpenCode statement (AC-11) manual.

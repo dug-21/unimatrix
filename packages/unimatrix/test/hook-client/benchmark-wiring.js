@@ -16,6 +16,8 @@ const arg = (n, d) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : d);
 const ITERS = Number(arg("--iters", 50));
 const WARM = Number(arg("--warmups", 5));
 const OUT = arg("--out", null);
+// D-096: report-only (CI) never fails on breach; strict (default, local) exits 1 on breach.
+const REPORT_ONLY = argv.includes("--report-only") || process.env.LATENCY_REPORT_ONLY === "1";
 
 // D-094 budgets (ms p95). Unlisted mcp-stdio not-a-project uses that OS's not-a-project figure (noted, not measured).
 const BUDGETS = {
@@ -117,6 +119,7 @@ function rttOnce(stub, cert) {
   await stub.close();
   f.cleanup();
   const breaches = rows.filter((m) => !m.pass);
-  if (breaches.length) { console.error("benchmark-wiring: BREACH: " + breaches.map((m) => m.label + " p95 " + m.p95 + " > " + m.limit).join("; ")); process.exit(1); }
+  if (REPORT_ONLY) console.log("REPORT-ONLY (D-096): breaches are informational" + (breaches.length ? ": " + breaches.map((m) => m.label + " p95 " + m.p95 + " > " + m.limit).join("; ") : " (none)"));
+  else if (breaches.length) { console.error("benchmark-wiring: BREACH: " + breaches.map((m) => m.label + " p95 " + m.p95 + " > " + m.limit).join("; ")); process.exit(1); }
   process.exit(0);
-})().catch((e) => { console.error("benchmark-wiring: " + (e && e.stack || e)); process.exit(1); });
+})().catch((e) => { console.error("benchmark-wiring: " + (e && e.stack || e)); process.exit(REPORT_ONLY ? 0 : 1); });

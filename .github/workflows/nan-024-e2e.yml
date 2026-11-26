@@ -129,7 +129,9 @@ jobs:
           npm run test:hook-client:layer2
 
   latency-gate:
+    # D-096: report-only. Breaches never fail the build; AC-06 is evidenced, not enforced.
     name: latency-gate (${{ matrix.os }})
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -151,8 +153,8 @@ jobs:
           MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 2 \
             -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
           echo "E2E_CERT_DIR=$(pwd -W 2>/dev/null || pwd)" >> "$GITHUB_ENV"
-      - name: Latency gate (D-094 absolute budgets; node -e 0 baseline reported; 50 iters + 5 warm-ups)
-        run: node test/hook-client/benchmark-wiring.js --out "${{ runner.temp }}/latency-${{ matrix.os }}.json"
+      - name: Latency report, REPORT-ONLY D-096 (D-094 reference budgets; node -e 0 baseline reported; 50 iters + 5 warm-ups)
+        run: node test/hook-client/benchmark-wiring.js --report-only --out "${{ runner.temp }}/latency-${{ matrix.os }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
