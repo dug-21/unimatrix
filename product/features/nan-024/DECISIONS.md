@@ -103,3 +103,5 @@ Source of human scope: GH #1023 (issue body, authored by human).
 | D-097 | delivery | D-066 gap now covers every Windows install (D-072) | D-066 holds | human | independence check | — |
 | D-098 | delivery | D-085 rejected $CODEX_HOME may drop events silently | Follow-up 1034: status should report all environment errors and questions; out of nan-024 scope | human | independence check | — |
 | D-099 | delivery | Security residuals F2, F4, temp name | Accepted as follow-up 1035 | human | security review | H1/H4 |
+| D-100 | delivery | R-38 (~/.claude.json key unverified live) and R-39 (harness display of MCP exit 0) | Accepted as residuals | human | merge recommendation | H4 |
+| D-101 | delivery | Merge PR #1033 | Approved | human | merge recommendation | H6 |
