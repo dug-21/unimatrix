@@ -13,3 +13,7 @@
 | D-009 | bugfix | Rerun integration suites before gate? | No — final tester report shows complete coverage (lifecycle 108+6xf+1xp, volume 11, tools 1–176 + 170–231 rerun = all 231); timed-out runs were superseded | uni-zero-bugfix | issuecomment-7178497630 | coverage already complete |
 | D-010 | bugfix | Delete 3 worktree core dumps | Yes, after diagnosis complete | uni-zero-bugfix | issuecomment-7179125716 | evidence captured in comment + Unimatrix #5895 |
 | D-011 | bugfix | Shutdown abort on closed stderr (main.rs panic hook/log writer) | Out of scope; new GH issue with D-008 findings; #1003 proceeds to gate + PR | human | D-008 | — |
+| D-012 | bugfix | Security finding: import audit event_id range validation (H1) | Follow-up GH issue; not fixed in PR #1029 | human | pullrequestreview-6067281429 | — |
+| D-013 | bugfix | File dropped-audit-count (context_status) follow-up | Yes | human | — | — |
+| D-014 | bugfix | Merge PR #1029 | Approved; timing to avoid disrupting feature/nan-024 delivery | human | — | — |
+| D-015 | bugfix | Merge timing | Merge now (nan-024 landed); first update branch with main and rerun cargo test --workspace since CI has no Rust jobs | human | D-014 | — |
