@@ -183,3 +183,31 @@ test("two concurrent inits give one consistent install.json", posixOnly, () => {
     assert.equal(ij(home).version, "1.0.0");
   });
 });
+
+test("stress: 12 concurrent inits + reader never observe a missing pkg dir", posixOnly, () => {
+  const home = tmp("is-home-"), src = mkSource("1.0.0"), proj = mkProject();
+  const code = `require(${JSON.stringify(path.join(__dirname, "..", "lib", "install-store.js"))}).installStore(${JSON.stringify(opts(home, src, proj))})`;
+  const { spawn } = require("node:child_process");
+  const run = () => new Promise((res) => spawn(process.execPath, ["-e", code], { stdio: "inherit" }).on("exit", res));
+  let done = false, bad = 0, seen = 0;
+  const reader = new Promise((res) => {
+    const tick = () => {
+      const j = S.readInstallJson(home);
+      if (j && j.packageRoot) {
+        seen++;
+        if (!fs.existsSync(path.join(j.packageRoot, ".complete"))) bad++;
+      }
+      done ? res() : setImmediate(tick);
+    };
+    tick();
+  });
+  return Promise.all(Array.from({ length: 12 }, run)).then((codes) => {
+    done = true;
+    return reader.then(() => {
+      assert.deepEqual(codes, new Array(12).fill(0));
+      assert.equal(bad, 0);
+      assert.ok(seen > 0);
+      assert.equal(ij(home).version, "1.0.0");
+    });
+  });
+});

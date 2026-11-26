@@ -148,8 +148,7 @@ function isCompleteCopy(dest) {
 }
 
 function copyPackage(o, dest, platform, fault) {
-  const tmp = `${dest}.tmp-${process.pid}`;
-  rmrf(tmp);
+  const tmp = tmpName(dest);
   try {
     fs.mkdirSync(tmp, { recursive: true });
     for (const name of ["bin", "lib", "package.json"]) {
@@ -165,13 +164,22 @@ function copyPackage(o, dest, platform, fault) {
     copyBinaryPackage(o.sourcePackageRoot, tmp, platform, o.arch || process.arch, o.requireBinary);
     if (platform !== "win32") chmodTree(tmp);
     fs.writeFileSync(path.join(tmp, ".complete"), "");
-    rmrf(dest);
-    try {
-      fs.renameSync(tmp, dest);
-    } catch (e) {
-      if (!isCompleteCopy(dest)) throw e; // concurrent run won; its copy is identical
-      rmrf(tmp);
+    // Never delete a valid dest (install.json may point at it): keep it, drop ours.
+    for (let i = 0; i < 5 && !isCompleteCopy(dest); i++) {
+      try {
+        renameWithRetry(tmp, dest, platform);
+        return;
+      } catch (e) {
+        if (isCompleteCopy(dest)) break; // concurrent run won; its copy is identical
+        if (!fs.existsSync(dest)) continue; // dest vanished mid-race; retry
+        // invalid dest: atomically move it aside (never rm in place), then retry
+        try {
+          fs.renameSync(dest, tmpName(dest));
+        } catch (_) {}
+      }
     }
+    if (!isCompleteCopy(dest)) throw new Error("unimatrix: could not install package copy");
+    rmrf(tmp);
   } catch (e) {
     rmrf(tmp);
     throw e;
