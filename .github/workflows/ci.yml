@@ -26,10 +26,10 @@ jobs:
   # zero runtime deps. These jobs prove it across the supported runtimes/OSes.
   #
   # The committed 83-case parity corpus IS the CI contract: CI replays the
-  # goldens (Layer 1) but does not regenerate them or run Layer 2. Oracle
-  # regeneration/drift checks (scripts/check-parity-drift.sh) and Layer 2
-  # integration runs against the cargo-built server stay local protocol steps
-  # executed at Gate 3c.
+  # goldens (Layer 1) here but does not regenerate them. Layer 2 (integration
+  # against the cargo-built server) runs in .github/workflows/nan-024-e2e.yml,
+  # job parity-layer2, as a gating job (nan-024 AC-08). Oracle regeneration/drift
+  # checks (scripts/check-parity-drift.sh) stay local protocol steps at Gate 3c.
 
   hook-client-matrix:
     name: Hook client suite (Node ${{ matrix.node }} / ${{ matrix.os }})
@@ -38,8 +38,8 @@ jobs:
     # including the fd-0 stdin path (index.test.js spawns the real client with a
     # piped fd 0), which MUST execute on Windows to honour R-14 (fs.readFileSync(0),
     # never '/dev/stdin'). Layer 2 (needs a cargo-built server) and the AC-13
-    # benchmark (machine-variant perf gate) are excluded here — Layer 2 runs as
-    # a local protocol step at Gate 3c, not in CI; see test/run-hook-client.js
+    # benchmark (machine-variant perf gate) are excluded here — Layer 2 runs in
+    # nan-024-e2e.yml (job parity-layer2); see test/run-hook-client.js
     # for the exclusion list and rationale.
     strategy:
       fail-fast: false

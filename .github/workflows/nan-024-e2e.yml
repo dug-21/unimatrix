@@ -5,7 +5,9 @@ name: nan-024 E2E matrix + latency gate
 #  - wiring-e2e       : init -> read the WRITTEN command -> run it through the harness shell(s); HOME with a
 #                       space; HTTPS stub + NODE_EXTRA_CA_CERTS; ubuntu/macos/windows x Node 20/24.
 #  - wiring-e2e-local : linux local transport against the BUILT server (AC-07; a stub cannot store an observation).
-#  - latency-gate     : hook p95 <= max(node -e 0 p95 + 15 ms, 50 ms), same job baseline, incl. not-a-project (AC-06).
+#  - latency-gate     : absolute per-OS per-path p95 budgets (D-094, supersedes D-025 relative formula), incl. not-a-project (AC-06).
+#                       ms p95: ubuntu cloud 74 / not-a-project 50; macOS cloud 126 / 85; Windows cloud 164 / 81.
+#                       mcp-stdio not-a-project uses that OS's not-a-project figure. node -e 0 baseline reported for info.
 #  - parity-layer2    : Layer 2 against the built server, gating (AC-08). Not continue-on-error.
 #  - test-count       : NFR-04 per-suite test-count non-decrease guard.
 on:
@@ -149,7 +151,7 @@ jobs:
           MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 2 \
             -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
           echo "E2E_CERT_DIR=$(pwd -W 2>/dev/null || pwd)" >> "$GITHUB_ENV"
-      - name: Latency gate (node -e 0 baseline in this job; 50 iters + 5 warm-ups)
+      - name: Latency gate (D-094 absolute budgets; node -e 0 baseline reported; 50 iters + 5 warm-ups)
         run: node test/hook-client/benchmark-wiring.js --out "${{ runner.temp }}/latency-${{ matrix.os }}.json"
       - uses: actions/upload-artifact@v4
         if: always()

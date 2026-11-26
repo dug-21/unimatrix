@@ -1,7 +1,8 @@
 "use strict";
 // nan-024 latency gate (AC-06 / ADR-005). Not a *.test.js: run by the `latency-gate` CI job.
 //   node test/hook-client/benchmark-wiring.js [--out <json>] [--iters 50] [--warmups 5]
-// Budget: hook p95 <= max(`node -e 0` p95 + 15 ms, 50 ms), baseline measured in the same process/job.
+// Budget (D-094, supersedes the D-025 relative formula): absolute per-OS per-path p95 ms, see BUDGETS.
+// The `node -e 0` baseline is still measured and reported for information only.
 // Paths: cloud project (FNF + sync event class), NOT-A-PROJECT hook, mcp-stdio not-a-project
 // (start-to-exit; gated) and mcp-stdio in-project (start-to-initialize; reported only).
 // The literal command read from the written config runs through the harness shell, cold, one process per sample.
@@ -15,6 +16,14 @@ const arg = (n, d) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : d);
 const ITERS = Number(arg("--iters", 50));
 const WARM = Number(arg("--warmups", 5));
 const OUT = arg("--out", null);
+
+// D-094 budgets (ms p95). Unlisted mcp-stdio not-a-project uses that OS's not-a-project figure (noted, not measured).
+const BUDGETS = {
+  linux: { cloud: 74, notProject: 50 },
+  darwin: { cloud: 126, notProject: 85 },
+  win32: { cloud: 164, notProject: 81 },
+};
+const BUDGET = BUDGETS[process.platform] || BUDGETS.linux;
 
 function p95(xs) {
   const s = xs.slice().sort((a, b) => a - b);
@@ -75,7 +84,6 @@ function rttOnce(stub, cert) {
 
   const base = await measure("node -e 0 (baseline)", () => H.run(process.execPath, ["-e", "0"], { spawn: { env } }));
   const shellBase = await measure("node -e 0 via " + sh.name + " (info)", () => H.runLine(sh, '"' + process.execPath + '" -e 0', f.other, env, ""));
-  const limit = Math.max(base.p95 + 15, 50);
   const rtts = [];
   for (let i = 0; i < WARM; i++) await rttOnce(stub, cert);
   for (let i = 0; i < ITERS; i++) rtts.push(await rttOnce(stub, cert));
@@ -89,15 +97,15 @@ function rttOnce(stub, cert) {
   ];
   for (const [label, fn, check] of gated) {
     const m = await measure(label, fn, check);
-    // ADR-005: cloud adds the measured RTT p95; the not-a-project paths make no request (no RTT).
-    m.limit = round(limit + (/^cloud project/.test(label) ? rtt : 0));
+    // D-094: absolute per-OS budget; cloud paths vs not-a-project paths (mcp-stdio not-a-project uses the not-a-project figure).
+    m.limit = /^cloud project/.test(label) ? BUDGET.cloud : BUDGET.notProject;
     m.pass = m.p95 <= m.limit;
     rows.push(m);
   }
   // reported only: mcp-stdio in-project, start to initialize response
   const init1 = await measure("mcp-stdio in-project start-to-initialize (info)", () => H.mcpInitialize(entry, f.proj, env));
 
-  const report = { platform: process.platform, node: process.version, shell: sh.name, baseline: base, shellBaseline: shellBase, limitMs: round(limit), rttP95Ms: rtt, rows, info: [shellBase, init1] };
+  const report = { platform: process.platform, node: process.version, shell: sh.name, baseline: base, shellBaseline: shellBase, budgetsMs: BUDGET, rttP95Ms: rtt, rows, info: [shellBase, init1] };
   const lines = ["| case | n | median ms | p95 ms | limit ms | result |", "|---|---|---|---|---|---|"];
   lines.push("| " + base.label + " | " + base.n + " | " + base.median + " | " + base.p95 + " | - | baseline |");
   for (const m of rows) lines.push("| " + m.label + " | " + m.n + " | " + m.median + " | " + m.p95 + " | " + m.limit + " | " + (m.pass ? "PASS" : "BREACH") + " |");

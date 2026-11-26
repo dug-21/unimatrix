@@ -454,13 +454,14 @@ describe("initRemote — token hygiene (R-12 / NFR-06)", () => {
 });
 
 // ============================================================================
-// Install footprint < 380 KB (AC-W1-C3 / NFR-01 / R-12) — HARD GATE
-// Cap raised 290KB→380KB, human-approved on GH #994: nan-023 per-harness wiring
+// Install footprint < 440 KB (AC-W1-C3 / NFR-01 / R-12) — HARD GATE
+// Cap raised 380KB→440KB, human decision D-093 (nan-024 #1023; precedent GH #994).
+// Prior raise 290KB→380KB, human-approved on GH #994: nan-023 per-harness wiring
 // added ~48KB of legitimate footprint (post-merge main footprint ~359,908 bytes),
 // leaving ~20KB headroom. Supersedes the #775 250→290KB raise (vnc-039 bridge).
 // ============================================================================
 describe("remote install footprint (AC-W1-C3 / NFR-01)", () => {
-  const SIZE_LIMIT = 380000; // 380 KB (raised from 290000, GH #994; prior #775 250→290)
+  const SIZE_LIMIT = 440000; // 440 KB (D-093, raised from 380000; GH #994 290→380; #775 250→290)
 
   // The shipped remote install is the pure-JS client (lib/) + skills/, with NO
   // native binary and NO model. Walk both trees and sum file bytes.
@@ -487,10 +488,10 @@ describe("remote install footprint (AC-W1-C3 / NFR-01)", () => {
     return total;
   }
 
-  // Active guard: the 380KB cap was human-approved on GH #994 after nan-023's
+  // Active guard: the 440KB cap is human decision D-093 (nan-024 #1023; precedent GH #994, 380KB) after nan-023's
   // per-harness wiring added ~48KB of legitimate footprint (post-merge main
   // ~359,908 bytes, ~20KB headroom). Supersedes the #775 250→290KB raise.
-  it("test_remote_install_under_380kb — lib/ + skills/ shipped footprint", () => {
+  it("test_remote_install_under_440kb — lib/ + skills/ shipped footprint", () => {
     const pkgRoot = path.join(__dirname, "..");
     const libBytes = dirBytes(path.join(pkgRoot, "lib"));
     const skillsBytes = dirBytes(path.join(pkgRoot, "skills"));
