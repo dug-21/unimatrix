@@ -15,6 +15,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const path = require("node:path");
 const fs = require("node:fs");
 const { execFileSync } = require("node:child_process");
@@ -229,7 +230,7 @@ describe("bin/unimatrix.js — mcp-bridge subcommand (AC-13)", () => {
 });
 
 describe("bin/unimatrix.js — non-regression of existing routing", () => {
-  it("test_bin_otherSubcommands_stillExecRustBinary", () => {
+  it("test_bin_otherSubcommands_stillExecRustBinary", linuxLocal, () => {
     // A non-mcp-bridge, non-init subcommand still routes to the Rust exec block
     // (the early-return is scoped to mcp-bridge, not a blanket bypass).
     const result = runShim(["serve"], {

@@ -8,6 +8,7 @@
 
 const { describe, it, before, after } = require("node:test");
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const V = require("./c14-verifier.js");
 
 function claudeLeg(manifest, surface) {
@@ -15,7 +16,7 @@ function claudeLeg(manifest, surface) {
 }
 
 describe("C14 claude retrieval-returns (AC-10, required local + cloud)", () => {
-  it("test_verify_claude_retrieval_returns_local", async () => {
+  it("test_verify_claude_retrieval_returns_local", linuxLocal, async () => {
     const m = V.makeMachine([".claude"]);
     const manifest = V.wireMachine(m, { binaryPath: V.STDIO_FIXTURE });
     const leg = claudeLeg(manifest, "mcp");
@@ -52,13 +53,39 @@ describe("C14 claude hook-fires through the shim", () => {
     if (ingress) await ingress.close();
   });
 
-  it("test_verify_claude_hook_fires — ingress observed", async () => {
+  it("test_verify_claude_hook_fires — ingress observed", linuxLocal, async () => {
     const legs = ctx.manifest.filter((l) => l.harness === "claude-code" && l.surface === "hooks");
     assert.ok(legs.length > 0, "claude hooks legs present");
     const leg = legs.find((l) => V.eventOf(l.command) === "UserPromptSubmit") || legs[0];
     const out = await V.observeHookFire(leg, ingress, {});
     assert.strictEqual(out.fired, true, "claude hook event reached the JS hook client via the shim");
     // claude commands carry no --provider → inferred claude-code (never codex-cli).
+    if (out.provider !== undefined) {
+      assert.notStrictEqual(out.provider, "codex-cli", "claude leg is not mislabeled codex-cli");
+    }
+  });
+});
+
+// D-032: macOS/Windows are cloud-only, so the hook-fires leg also runs through the shim to a
+// stub HTTPS endpoint (credential in the per-machine store) on every OS.
+describe("C14 claude hook-fires through the shim (cloud)", () => {
+  let ingress;
+  let ctx;
+  before(async () => {
+    ctx = V.makeMachine([".claude"]);
+    ctx.manifest = V.wireMachine(ctx, { mcp: true });
+    ingress = await V.makeHttpIngress(ctx);
+  });
+  after(async () => {
+    if (ingress) await ingress.close();
+  });
+
+  it("test_verify_claude_hook_fires_cloud — ingress observed", async () => {
+    const legs = ctx.manifest.filter((l) => l.harness === "claude-code" && l.surface === "hooks");
+    assert.ok(legs.length > 0, "claude hooks legs present");
+    const leg = legs.find((l) => V.eventOf(l.command) === "UserPromptSubmit") || legs[0];
+    const out = await V.observeHookFire(leg, ingress, {});
+    assert.strictEqual(out.fired, true, "claude hook event reached the JS hook client via the shim over the cloud transport");
     if (out.provider !== undefined) {
       assert.notStrictEqual(out.provider, "codex-cli", "claude leg is not mislabeled codex-cli");
     }

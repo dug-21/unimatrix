@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -92,7 +93,7 @@ describe("per-machine MCP wiring (replaces writeMcpJson)", () => {
   const run = (dir, home, extra) =>
     wire(dir, wireOpts(home, Object.assign({ binaryPath: BINARY, platform: "linux" }, extra || {})));
 
-  it("test_creates_mcp_json_on_clean_project", () => {
+  it("test_creates_mcp_json_on_clean_project", linuxLocal, () => {
     const dir = makeTempProject();
     const home = makeHome();
     const res = run(dir, home);

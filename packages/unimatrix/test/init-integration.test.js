@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -149,7 +150,7 @@ describe("init (integration with mocks)", () => {
   // We test the full init flow by setting UNIMATRIX_BINARY to a script
   // that just prints a version string.
 
-  it("test_dry_run_does_not_write_files", () => {
+  it("test_dry_run_does_not_write_files", linuxLocal, () => {
     const dir = makeTempProject();
 
     // Create a fake binary
@@ -213,7 +214,7 @@ describe("init (integration with mocks)", () => {
     })();
   });
 
-  it("test_full_init_creates_mcp_and_settings", () => {
+  it("test_full_init_creates_mcp_and_settings", linuxLocal, () => {
     const dir = makeTempProject();
 
     // Create a fake binary that exits 0
@@ -286,7 +287,7 @@ describe("init (integration with mocks)", () => {
     })();
   });
 
-  it("test_init_idempotent", () => {
+  it("test_init_idempotent", linuxLocal, () => {
     const dir = makeTempProject();
 
     // vnc-027 ADR-004 §2: SubagentStop is opt-in. This dedup check covers the
@@ -368,7 +369,7 @@ describe("init (integration with mocks)", () => {
     })();
   });
 
-  it("test_reports_diagnostic_on_validation_failure", () => {
+  it("test_reports_diagnostic_on_validation_failure", linuxLocal, () => {
     const dir = makeTempProject();
 
     // Create a fake binary that fails
@@ -439,7 +440,7 @@ describe("init (nan-024 wiring)", () => {
     })();
   }
 
-  it("test_init_prints_codex_approval_step_and_no_trust_hashes", () => {
+  it("test_init_prints_codex_approval_step_and_no_trust_hashes", linuxLocal, () => {
     const dir = makeTempProject();
     fs.mkdirSync(path.join(dir, ".codex"));
     const home = makeHome();
@@ -464,7 +465,7 @@ describe("init (nan-024 wiring)", () => {
     });
   });
 
-  it("test_init_ignores_decoy_home_env", () => {
+  it("test_init_ignores_decoy_home_env", linuxLocal, () => {
     const dir = makeTempProject();
     const home = makeHome();
     const decoy = makeHome();

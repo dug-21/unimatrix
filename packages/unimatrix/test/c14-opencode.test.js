@@ -8,6 +8,7 @@
 
 const { describe, it } = require("node:test");
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const fs = require("fs");
 const path = require("path");
 
@@ -46,7 +47,7 @@ function opencodeLeg(manifest) {
 }
 
 describe("C14 opencode retrieval-returns + sentinel (AC-05, SR-06)", () => {
-  it("test_verify_opencode_retrieval_returns_local", async () => {
+  it("test_verify_opencode_retrieval_returns_local", linuxLocal, async () => {
     const m = opencodeProject({ binaryPath: V.STDIO_FIXTURE });
     const leg = opencodeLeg(m.manifest);
     assert.ok(leg.entry, "opencode retrieval leg carries the wired mcp.unimatrix entry");
@@ -66,7 +67,12 @@ describe("C14 opencode retrieval-returns + sentinel (AC-05, SR-06)", () => {
   });
 
   it("test_verify_opencode_sentinel_byte_preserved_then_returns", async () => {
-    const m = opencodeProject({ binaryPath: V.STDIO_FIXTURE });
+    // D-032: local entry on Linux; token-free cloud entry (stub bridge) on macOS/Windows.
+    const m = process.platform === "linux" ? opencodeProject({ binaryPath: V.STDIO_FIXTURE }) : opencodeProject({ mcp: true });
+    if (process.platform !== "linux") {
+      V.writeCloudCredential(m, "https://cloud.example/v1/p/observe");
+      V.installStubBridge(m);
+    }
     const after = fs.readFileSync(m.cfg, "utf8");
     // vnc-049 sentinel regions survive byte-for-byte (additive merge only).
     assert.ok(after.indexOf('"ollama"') !== -1, "Ollama provider block preserved");

@@ -32,6 +32,10 @@ function fixture(o) {
   const proj = path.join(base, "proj");
   fs.mkdirSync(path.join(proj, ".git"), { recursive: true });
   if (!o.noStore) fs.mkdirSync(path.join(uh, computeProjectHash(walkToProjectRoot(proj))), { recursive: true });
+  // D-032: macOS/Windows are cloud-only; "installed" there means a credential is present.
+  if (!o.noStore && o.install === undefined && process.platform !== "linux") {
+    w(path.join(uh, computeProjectHash(walkToProjectRoot(proj)), "remote.json"), "{}", 0o600);
+  }
   return { base, home, uh, bin, pkg, proj, out, entry: path.join(bin, "shim-entry.js") };
 }
 

@@ -38,6 +38,11 @@ function fixture(o) {
   fs.mkdirSync(path.join(proj, ".git"), { recursive: true });
   const hash = computeProjectHash(walkToProjectRoot(proj));
   if (!o.noStore) fs.mkdirSync(path.join(uh, hash), { recursive: true });
+  // D-032: macOS/Windows are cloud-only, so an "installed" project there is one holding a
+  // credential (remote.json). The same installed-path assertions then run on every POSIX OS.
+  if (!o.noStore && !o.noInstall && o.cred !== false && process.platform !== "linux") {
+    w(path.join(uh, hash, "remote.json"), "{}", 0o600);
+  }
   const stubLog = path.join(base, "stub-ran.json");
   const stub = path.join(base, "stub-bin");
   w(stub, `#!${process.execPath}\n${o.stub || `require("fs").writeFileSync(${JSON.stringify(stubLog)}, JSON.stringify({argv: process.argv.slice(2), ld: process.env.LD_LIBRARY_PATH}));`}\n`, 0o755);
@@ -66,4 +71,7 @@ function spawnLauncher(f, args, extra) {
   return spawn(process.execPath, [BIN].concat(args), { cwd: f.proj, env: envFor(f, extra), stdio: ["pipe", "pipe", "pipe"] });
 }
 
-module.exports = { fixture, run, runAs, spawnLauncher, BIN, w };
+// Skip option for tests of the Linux-only local transport (D-032).
+const { linuxLocal } = require("./linux-local");
+
+module.exports = { linuxLocal, fixture, run, runAs, spawnLauncher, BIN, w };

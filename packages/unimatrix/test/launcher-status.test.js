@@ -7,6 +7,8 @@ const path = require("path");
 const { fixture, run, runAs, w } = require("./helpers/launcher-fixture.js");
 
 const posix = process.platform === "win32" ? { skip: "posix only" } : {};
+// D-032: macOS/Windows are cloud-only; the fixture's "installed" project holds a credential there.
+const KIND = process.platform === "linux" ? "local" : "cloud";
 const OWNED_MCP = { command: "unimatrix", args: ["serve"] };
 
 function snapshot(dir) {
@@ -28,9 +30,9 @@ test("status: installed local project, field order exact, exit 0, no writes", po
   assert.equal(r.status, 0, r.stderr);
   const keys = r.stdout.split("\n").filter(Boolean).map((l) => l.split(":")[0]);
   assert.deepEqual(keys, ["project", "installed", "transport", "cloud env", "trust", "mcp node", "hook claude-code", "hook codex-cli"]);
-  assert.match(r.stdout, /^project: local [0-9a-f]{16}$/m);
+  assert.match(r.stdout, new RegExp("^project: " + KIND + " [0-9a-f]{16}$", "m"));
   assert.match(r.stdout, /^installed: yes$/m);
-  assert.match(r.stdout, /^transport: local$/m);
+  assert.match(r.stdout, new RegExp("^transport: " + KIND + "$", "m"));
   assert.match(r.stdout, /^trust: ok$/m);
   assert.match(r.stdout, /^mcp node: n\/a$/m);
   assert.match(r.stdout, /^hook claude-code: not wired$/m);
@@ -42,7 +44,7 @@ test("status: cloned repo (no store) -> project: none (...), installed no, exit 
   const r = run(f, ["status"]);
   assert.equal(r.status, 0);
   assert.ok(r.stdout.includes(`project: none (this machine has no Unimatrix store or credential for ${f.proj}; run 'npx unimatrix init' to attach)`));
-  assert.match(r.stdout, /^installed: no \(no install.json\)$/m);
+  assert.match(r.stdout, process.platform === "linux" ? /^installed: no \(no install.json\)$/m : /^installed: no \(missing credential\)$/m);
   assert.match(r.stdout, /^transport: none$/m);
 });
 
@@ -124,7 +126,7 @@ test("status --json: key order and shape", posix, () => {
   const j = JSON.parse(run(f, ["status", "--json"]).stdout);
   assert.deepEqual(Object.keys(j), ["project", "legacyProjectMcp", "installed", "reason", "transport", "cloudEnv", "trust", "mcpNode", "hooks"]);
   assert.deepEqual(Object.keys(j.hooks), ["claude-code", "codex-cli"]);
-  assert.equal(j.transport, "local");
+  assert.equal(j.transport, KIND);
 });
 
 // ---- cloud env (D-091) ----

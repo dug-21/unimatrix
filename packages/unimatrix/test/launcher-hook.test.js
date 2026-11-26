@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
-const { fixture, run, runAs, spawnLauncher } = require("./helpers/launcher-fixture.js");
+const { fixture, run, runAs, spawnLauncher, linuxLocal } = require("./helpers/launcher-fixture.js");
 
 const posix = process.platform === "win32" ? { skip: "posix only" } : {};
 const lines = (s) => s.split("\n").filter(Boolean);
@@ -24,7 +24,7 @@ test("hook installed: Node client main runs with EVENT + --provider; Rust stub n
   assert.ok(!fs.existsSync(f.stubLog));
 });
 
-test("hook: Linux project not installed -> exit 0, empty stdout, exactly one stderr line", posix, () => {
+test("hook: Linux project not installed -> exit 0, empty stdout, exactly one stderr line", linuxLocal, () => {
   const f = fixture({ noInstall: true });
   const r = run(f, ["hook", "Stop"]);
   assert.equal(r.status, 0);
@@ -69,7 +69,7 @@ test("hook: client package without entry -> exit 1 naming path", posix, () => {
   assert.ok(r.stderr.includes(f.pkg));
 });
 
-test("hook: Linux local with unresolvable binary -> exit 1 (Broken)", posix, () => {
+test("hook: Linux local with unresolvable binary -> exit 1 (Broken)", linuxLocal, () => {
   const f = fixture();
   const r = run(f, ["hook", "Stop"], { UNIMATRIX_BINARY: f.base + "/missing" });
   assert.equal(r.status, 1);
@@ -96,7 +96,7 @@ test("hook: preflight ctx skips the redundant checks", posix, async () => {
 });
 
 // ---- pass-through ----
-test("pass-through serve: Linux argv + LD_LIBRARY_PATH preserved (R-10)", posix, () => {
+test("pass-through serve: Linux argv + LD_LIBRARY_PATH preserved (R-10)", linuxLocal, () => {
   const f = fixture({ noStore: true });
   const r = run(f, ["serve", "--flag", "x"], { UNIMATRIX_BINARY: f.stub, LD_LIBRARY_PATH: "/prev" });
   assert.equal(r.status, 0, r.stderr);
@@ -105,19 +105,19 @@ test("pass-through serve: Linux argv + LD_LIBRARY_PATH preserved (R-10)", posix,
   assert.equal(rec.ld, f.base + ":/prev");
 });
 
-test("pass-through: exit status propagates", posix, () => {
+test("pass-through: exit status propagates", linuxLocal, () => {
   const f = fixture({ noStore: true, stub: "process.exit(7)" });
   assert.equal(run(f, ["version"], { UNIMATRIX_BINARY: f.stub }).status, 7);
 });
 
-test("pass-through: unresolvable binary -> exit 1 with sources tried", posix, () => {
+test("pass-through: unresolvable binary -> exit 1 with sources tried", linuxLocal, () => {
   const f = fixture({ noStore: true });
   const r = run(f, ["serve"], { UNIMATRIX_BINARY: f.base + "/nope" });
   assert.equal(r.status, 1);
   assert.ok(r.stderr.includes("UNIMATRIX_BINARY"));
 });
 
-test("pass-through: untrusted redirect -> exit 1", posix, () => {
+test("pass-through: untrusted redirect -> exit 1", linuxLocal, () => {
   const f = fixture({ noStore: true });
   fs.writeFileSync(f.uh + "/redirect.json", "{}");
   fs.chmodSync(f.uh + "/redirect.json", 0o666);
@@ -162,7 +162,7 @@ test("mcp-stdio inside project, not installed: exit 1, one stderr line, empty st
   }
 });
 
-test("mcp-stdio local: stub exit codes mirrored exactly", posix, () => {
+test("mcp-stdio local: stub exit codes mirrored exactly", linuxLocal, () => {
   for (const n of [0, 1, 7, 42]) {
     const f = fixture({ stub: `process.exit(${n})` });
     const r = run(f, ["mcp-stdio"], { UNIMATRIX_BINARY: f.stub });
@@ -171,7 +171,7 @@ test("mcp-stdio local: stub exit codes mirrored exactly", posix, () => {
   }
 });
 
-test("mcp-stdio local: no stdout before the stub's first byte; started with no args + LD_LIBRARY_PATH", posix, () => {
+test("mcp-stdio local: no stdout before the stub's first byte; started with no args + LD_LIBRARY_PATH", linuxLocal, () => {
   const f = fixture({ stub: `process.stdout.write("{" + JSON.stringify([process.argv.length, process.env.LD_LIBRARY_PATH]).slice(1))` });
   const r = run(f, ["mcp-stdio"], { UNIMATRIX_BINARY: f.stub });
   assert.equal(r.status, 0);
@@ -179,7 +179,7 @@ test("mcp-stdio local: no stdout before the stub's first byte; started with no a
   assert.equal(r.stderr, "");
 });
 
-test("mcp-stdio local: inherited stdio round-trips 1 MiB unchanged", posix, () => {
+test("mcp-stdio local: inherited stdio round-trips 1 MiB unchanged", linuxLocal, () => {
   const f = fixture({ stub: `let b=[];process.stdin.on("data",d=>b.push(d));process.stdin.on("end",()=>process.stdout.write(Buffer.concat(b)))` });
   const input = Buffer.alloc(1024 * 1024, "a");
   const r = run(f, ["mcp-stdio"], { UNIMATRIX_BINARY: f.stub }, { input, encoding: "buffer", maxBuffer: 8 << 20 });
@@ -187,7 +187,7 @@ test("mcp-stdio local: inherited stdio round-trips 1 MiB unchanged", posix, () =
   assert.ok(Buffer.compare(r.stdout, input) === 0);
 });
 
-test("mcp-stdio local POSIX: child killed by SIGTERM/SIGKILL -> launcher dies by same signal (D-086)", posix, () => {
+test("mcp-stdio local POSIX: child killed by SIGTERM/SIGKILL -> launcher dies by same signal (D-086)", linuxLocal, () => {
   for (const sig of ["SIGTERM", "SIGKILL"]) {
     const f = fixture({ stub: `process.kill(process.pid, ${JSON.stringify(sig)})` });
     const r = run(f, ["mcp-stdio"], { UNIMATRIX_BINARY: f.stub });
@@ -196,7 +196,7 @@ test("mcp-stdio local POSIX: child killed by SIGTERM/SIGKILL -> launcher dies by
   }
 });
 
-test("mcp-stdio local POSIX: SIGTERM to launcher reaches the stub; launcher exits after it", posix, async () => {
+test("mcp-stdio local POSIX: SIGTERM to launcher reaches the stub; launcher exits after it", linuxLocal, async () => {
   const f = fixture({ stub: `process.on("SIGTERM",()=>{require("fs").writeFileSync(${JSON.stringify("/dev/null")},"");process.stdout.write("got-term");process.exit(0)});process.stdout.write("ready");setInterval(()=>{},1000)` });
   const p = spawnLauncher(f, ["mcp-stdio"], { UNIMATRIX_BINARY: f.stub });
   let out = "";
@@ -206,7 +206,7 @@ test("mcp-stdio local POSIX: SIGTERM to launcher reaches the stub; launcher exit
   assert.equal(code.c, 0);
 });
 
-test("mcp-stdio local: spawn failure (non-executable stub) -> exit 1 naming path, stdout empty", posix, () => {
+test("mcp-stdio local: spawn failure (non-executable stub) -> exit 1 naming path, stdout empty", linuxLocal, () => {
   const f = fixture();
   const r = run(f, ["mcp-stdio"], { UNIMATRIX_BINARY: f.base + "/nope" });
   assert.equal(r.status, 1);

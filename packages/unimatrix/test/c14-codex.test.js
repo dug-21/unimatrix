@@ -16,6 +16,7 @@
 
 const { describe, it, before, after } = require("node:test");
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const path = require("path");
 
 const V = require("./c14-verifier.js");
@@ -44,7 +45,7 @@ function codexHookLegs(manifest) {
 // ── AC-10: retrieval RETURNS (local + cloud, never url=) ──────────────────
 
 describe("C14 codex retrieval-returns (AC-10, C-06)", () => {
-  it("test_verify_codex_retrieval_returns_local", async () => {
+  it("test_verify_codex_retrieval_returns_local", linuxLocal, async () => {
     const m = codexManifest({ binaryPath: V.STDIO_FIXTURE });
     const leg = codexLeg(m.manifest, "mcp");
     assert.strictEqual(leg.action, "created", "codex mcp table written at $CODEX_HOME/config.toml");
@@ -95,7 +96,7 @@ describe("C14 codex hook-fires + per-event evidence (AC-09, Q4)", () => {
     if (udsIngress) await udsIngress.close();
   });
 
-  it("test_verify_codex_hook_fires_local — ingress + provider=codex-cli", async () => {
+  it("test_verify_codex_hook_fires_local — ingress + provider=codex-cli", linuxLocal, async () => {
     // UserPromptSubmit → RecordEvent frame, which carries provider (probe-confirmed).
     const leg = codexHookLegs(ctx.manifest).find((l) => V.eventOf(l.command) === "UserPromptSubmit");
     const out = await V.observeHookFire(leg, udsIngress, {});

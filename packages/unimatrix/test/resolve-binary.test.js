@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const { linuxLocal } = require("./helpers/linux-local.js");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -59,7 +60,7 @@ describe("resolve-binary", () => {
   });
 
   describe("UNIMATRIX_BINARY Env Fallback", () => {
-    it("test_env_override_takes_precedence", () => {
+    it("test_env_override_takes_precedence", linuxLocal, () => {
       // Create a temporary file to use as the binary
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-test-"));
       const fakeBinary = path.join(tmpDir, "unimatrix");
@@ -79,7 +80,7 @@ describe("resolve-binary", () => {
       }
     });
 
-    it("test_env_override_with_nonexistent_path_throws", () => {
+    it("test_env_override_with_nonexistent_path_throws", linuxLocal, () => {
       process.env.UNIMATRIX_BINARY = "/nonexistent/path/unimatrix";
       const { resolveBinary } = requireFresh();
       assert.throws(
@@ -153,7 +154,7 @@ describe("resolve-binary", () => {
       );
     });
 
-    it("test_missing_package_throws_with_platform_info", () => {
+    it("test_missing_package_throws_with_platform_info", linuxLocal, () => {
       // On linux-x64 (our CI), the platform package is not installed,
       // so require.resolve will fail. This tests the error path naturally.
       // If this test runs on linux-x64 without the package:
@@ -202,7 +203,7 @@ describe("resolve-binary", () => {
       );
     });
 
-    it("test_resolved_path_is_absolute", () => {
+    it("test_resolved_path_is_absolute", linuxLocal, () => {
       // Use UNIMATRIX_BINARY to test the absolute path guarantee
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-test-"));
       const fakeBinary = path.join(tmpDir, "unimatrix");
@@ -222,7 +223,7 @@ describe("resolve-binary", () => {
       }
     });
 
-    it("test_env_override_resolves_symlinks", () => {
+    it("test_env_override_resolves_symlinks", linuxLocal, () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "uni-test-"));
       const realBinary = path.join(tmpDir, "unimatrix-real");
       const symlinkBinary = path.join(tmpDir, "unimatrix-link");
