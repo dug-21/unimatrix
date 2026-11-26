@@ -79,7 +79,12 @@ class UnimatrixClient:
         project_dir: str | Path | None = None,
         timeout: float = DEFAULT_TIMEOUT,
         extra_env: dict[str, str] | None = None,
+        drain_stderr: bool = True,
     ):
+        """drain_stderr=False (GH#1028): no background drain thread; stderr is
+        read on the caller's thread by wait_until_ready() so the test can later
+        close the read end via close_stderr() (a blocked drain thread would hold it).
+        """
         self._binary_path = str(binary_path)
         self._timeout = timeout
         self._request_id = 0
@@ -109,8 +114,11 @@ class UnimatrixClient:
             env=env,
         )
 
-        self._stderr_thread = threading.Thread(target=self._drain_stderr, daemon=True)
-        self._stderr_thread.start()
+        self._drain = drain_stderr
+        self._stderr_thread = None
+        if drain_stderr:
+            self._stderr_thread = threading.Thread(target=self._drain_stderr, daemon=True)
+            self._stderr_thread.start()
 
     def _drain_stderr(self):
         """Continuously read stderr to prevent buffer deadlock (R-09)."""
@@ -330,6 +338,8 @@ class UnimatrixClient:
         the -32004 error that occurs when context_store is called before the
         model finishes initializing.
         """
+        if not self._drain:
+            return self._wait_until_ready_inline(timeout)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             with self._stderr_lock:
@@ -340,6 +350,53 @@ class UnimatrixClient:
                 raise ServerDied(self._process.returncode, self.get_stderr())
             time.sleep(0.2)
         raise TimeoutError("wait_until_ready", timeout)
+
+    def _wait_until_ready_inline(self, timeout: float):
+        """drain_stderr=False variant: select()-read stderr on this thread."""
+        import select
+
+        assert self._process.stderr is not None
+        fd = self._process.stderr.fileno()
+        buf = b""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            ready, _, _ = select.select([fd], [], [], 0.2)
+            if ready:
+                chunk = os.read(fd, 65536)
+                if not chunk:
+                    self._process.wait(timeout=5.0)
+                    raise ServerDied(self._process.returncode, self.get_stderr())
+                buf += chunk
+                *lines, buf = buf.split(b"\n")
+                with self._stderr_lock:
+                    for raw in lines:
+                        self._stderr_lines.append(raw.decode("utf-8", errors="replace").rstrip())
+                if "embedding model loaded" in self.get_stderr():
+                    return
+            elif self._process.poll() is not None:
+                raise ServerDied(self._process.returncode, self.get_stderr())
+        raise TimeoutError("wait_until_ready", timeout)
+
+    def close_stderr(self):
+        """Close the parent's stderr read end (GH#1028). Requires drain_stderr=False."""
+        if self._drain:
+            raise ClientError("close_stderr() requires drain_stderr=False")
+        if self._process.stderr is not None and not self._process.stderr.closed:
+            self._process.stderr.close()
+
+    def close_stdin(self):
+        """Close the server's stdin (EOF on the stdio transport)."""
+        if self._process.stdin is not None and not self._process.stdin.closed:
+            self._process.stdin.close()
+
+    def close_stdout(self):
+        """Close the parent's stdout read end."""
+        if self._process.stdout is not None and not self._process.stdout.closed:
+            self._process.stdout.close()
+
+    def wait_exit(self, timeout: float = 30.0) -> int:
+        """Wait for the server process to exit; return its returncode."""
+        return self._process.wait(timeout=timeout)
 
     # -- Context Manager -----------------------------------------------
 
