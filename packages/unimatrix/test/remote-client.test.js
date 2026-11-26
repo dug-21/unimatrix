@@ -253,10 +253,13 @@ describe("initRemote — bundle path verbatim store (R-01 / ADR-001)", () => {
     assert.strictEqual(store.token, GOLDEN_BUNDLE.fields.token);
     assert.strictEqual(store.fingerprint, GOLDEN_BUNDLE.fields.fp);
     // The credential is NOT written into the repo tree (closes the commit-leak).
-    assert.ok(
-      !fs.existsSync(path.join(dir, ".claude", "settings.local.json")),
-      "no in-tree settings.local.json credential is written"
-    );
+    // settings.local.json now holds the per-machine hook wiring (nan-024 D-039): it
+    // must carry no credential.
+    const sl = path.join(dir, ".claude", "settings.local.json");
+    const slRaw = fs.existsSync(sl) ? fs.readFileSync(sl, "utf8") : "";
+    assert.ok(!slRaw.includes(GOLDEN_BUNDLE.fields.token), "no token in settings.local.json");
+    assert.ok(!slRaw.includes(GOLDEN_BUNDLE.fields.mcp_url), "no mcp_url in settings.local.json");
+    assert.ok(!/"remote"/.test(slRaw), "no in-tree credential subtree is written");
   });
 
   it("test_observe_url_stored_verbatim — store observe_url == bundle.observe_url byte-for-byte", async () => {

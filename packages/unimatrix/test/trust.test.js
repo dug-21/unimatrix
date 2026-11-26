@@ -242,3 +242,11 @@ test("residual: changes nested inside packageRoot are not detected by root-dir i
   checkTrust(trustSet(h.home, ctx), "win32", w(h, sp));
   assert.strictEqual(sp.full(), 1);
 });
+
+test("trustSet always lists install.json; missing member is a TrustError (callers decide installed-ness first)", posixOnly, () => {
+  const h = mkHome();
+  assert.ok(set(h).includes(path.join(h.u, "install.json")));
+  fs.unlinkSync(path.join(h.u, "install.json"));
+  assert.ok(set(h).includes(path.join(h.u, "install.json")));
+  assert.throws(() => checkTrust(set(h), "linux", { home: h.home }), (e) => e instanceof TrustError && /install\.json$/.test(e.path) && e.reason === "missing");
+});

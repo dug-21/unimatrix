@@ -160,14 +160,17 @@ function routeWire(args) {
       Object.assign({ harness: harness || undefined, clientPath, dryRun }, transport)
     );
   } catch (error) {
-    // Wire legs never throw; a throw here is the reused claude loud-checkpoint
-    // (malformed .mcp.json/settings.json) — surface it, parity with init.
+    // Hard failures (unsafe shim path, unparseable config, missing recorded node)
+    // throw: surface them, parity with init (exit 1).
     process.stderr.write("unimatrix wire failed: " + error.message + "\n");
     process.exitCode = 1;
     return;
   }
 
   printWireSummary(result.actions, dryRun);
+  if (result.manifest.some((l) => l.harness === "codex-cli" && l.surface === "hooks" && /^(created|updated|unchanged)$/.test(l.action))) {
+    console.log(require("../lib/codex-install.js").codexApprovalStep());
+  }
   process.exitCode = 0;
 }
 

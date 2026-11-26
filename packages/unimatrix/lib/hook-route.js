@@ -34,20 +34,27 @@ function prepare(ctx, mcp) {
   const pre = ctx && ctx.preflight;
   const project = pre ? pre.project : ps.isUnimatrixProject(cwd, env, home);
   if (!project) return null;
-  // Decide installed-ness first (read-only): a machine with no install.json has no
-  // trust set to verify, and must reach the exit-table outcome, not a trust error.
+  // Installed-ness is decided read-only before trust (same order as shim-entry.js):
+  // no install.json -> no trust set to verify -> exit-table outcome, not a trust
+  // error. Trust runs when installed, or on Linux when install.json exists (a
+  // half-removed install is refused loudly); always before packageRoot code loads.
   const d = pre && pre.decision ? pre.decision : ps.isInstalled(project, platform, { env, home });
-  if (!d.installed) {
+  const notAttached = () => {
     if (mcp) fail(NOT_ATTACHED_HINT);
     else if (platform === "linux") err(NOT_ATTACHED_HINT);
     return null;
-  }
+  };
+  const instFile = (() => {
+    try { return fs.statSync(path.join(home, ".unimatrix", "install.json")).isFile(); } catch (_e) { return false; }
+  })();
+  if (!d.installed && !(platform === "linux" && instFile)) return notAttached();
   if (!(pre && pre.trustChecked)) {
     try {
       trustMod.checkTrust(
         trustMod.trustSet(home, { installJson: readInstallJson(home), platform }), platform, { home });
     } catch (e) { fail(e && e.message); return null; }
   }
+  if (!d.installed) return notAttached();
   const eff = ps.effectiveEnv(env, cwd, home);
   let rt;
   try {

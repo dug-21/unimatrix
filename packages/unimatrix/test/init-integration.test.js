@@ -7,11 +7,17 @@ const path = require("path");
 const { describe, it, beforeEach, afterEach, mock } = require("node:test");
 
 // Integration tests for copySkills and the full init() flow.
-// Core unit tests (detectProjectRoot, writeMcpJson, printSummary) are in
+// Core unit tests (detectProjectRoot, per-machine MCP wiring, printSummary) are in
 // init.test.js.
 
 const { copySkills, installSkills } = require("../lib/init.js");
 const { withShippedSkills } = require("./helpers/shipped-skills");
+
+/** Isolated per-machine home + injected env: init must never touch the real HOME. */
+function makeHome() {
+  return fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-init-home-")));
+}
+const seam = (home) => ({ home, requireBinary: false, env: { PATH: process.env.PATH, HOME: home } });
 
 /** Create a temp directory that acts as a project root with .git */
 function makeTempProject() {
@@ -169,7 +175,8 @@ describe("init (integration with mocks)", () => {
         delete require.cache[resolveModPath];
         const { init: freshInit } = require("../lib/init.js");
 
-        await freshInit({ dryRun: true, projectDir: dir });
+        const home = makeHome();
+        await freshInit(Object.assign({ dryRun: true, projectDir: dir }, seam(home)));
 
         // Assert no files were created
         const mcpPath = path.join(dir, ".mcp.json");
@@ -178,11 +185,12 @@ describe("init (integration with mocks)", () => {
           ".mcp.json should NOT be created in dry-run"
         );
 
-        const settingsPath = path.join(dir, ".claude", "settings.json");
         assert.ok(
-          !fs.existsSync(settingsPath),
-          "settings.json should NOT be created in dry-run"
+          !fs.existsSync(path.join(dir, ".claude", "settings.local.json")),
+          "settings.local.json should NOT be created in dry-run"
         );
+        assert.ok(!fs.existsSync(path.join(home, ".claude.json")), "~/.claude.json untouched");
+        assert.ok(!fs.existsSync(path.join(home, ".unimatrix")), "no user-level store written");
 
         // Assert summary was printed with dry-run actions
         const output = logs.join("\n");
@@ -231,20 +239,19 @@ describe("init (integration with mocks)", () => {
         delete require.cache[resolveModPath];
         const { init: freshInit } = require("../lib/init.js");
 
-        await freshInit({ dryRun: false, projectDir: dir });
+        const home = makeHome();
+        await freshInit(Object.assign({ dryRun: false, projectDir: dir }, seam(home)));
 
-        // .mcp.json should exist with correct binary path
-        const mcpPath = path.join(dir, ".mcp.json");
-        assert.ok(fs.existsSync(mcpPath), ".mcp.json should be created");
-        const mcpContent = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-        assert.ok(
-          mcpContent.mcpServers.unimatrix.command.includes("fake-unimatrix"),
-          "Should reference the binary"
-        );
+        // Per-machine MCP entry in ~/.claude.json; no committed project .mcp.json.
+        assert.ok(!fs.existsSync(path.join(dir, ".mcp.json")), "no project .mcp.json");
+        const cj = JSON.parse(fs.readFileSync(path.join(home, ".claude.json"), "utf8"));
+        const entry = cj.projects[fs.realpathSync(dir)].mcpServers.unimatrix;
+        assert.ok(JSON.stringify(entry).includes(".unimatrix/bin/unimatrix"), "shim entry");
+        assert.ok(fs.existsSync(path.join(home, ".unimatrix", "bin", "unimatrix")), "shim installed");
 
-        // .claude/settings.json should exist with hook entries
-        const settingsPath = path.join(dir, ".claude", "settings.json");
-        assert.ok(fs.existsSync(settingsPath), "settings.json should be created");
+        // .claude/settings.local.json holds the hook entries (shim commands)
+        const settingsPath = path.join(dir, ".claude", "settings.local.json");
+        assert.ok(fs.existsSync(settingsPath), "settings.local.json should be created");
         const settingsContent = JSON.parse(
           fs.readFileSync(settingsPath, "utf8")
         );
@@ -252,6 +259,10 @@ describe("init (integration with mocks)", () => {
         assert.ok(
           settingsContent.hooks.SessionStart,
           "Should have SessionStart hook"
+        );
+        assert.ok(
+          settingsContent.hooks.SessionStart[0].hooks[0].command.includes(path.join(home, ".unimatrix", "bin", "unimatrix")),
+          "hook command invokes the per-machine shim by absolute path"
         );
 
         // Summary should mention init complete
@@ -314,23 +325,22 @@ describe("init (integration with mocks)", () => {
         const { init: freshInit } = require("../lib/init.js");
 
         // Run init twice
-        await freshInit({ dryRun: false, projectDir: dir });
-        await freshInit({ dryRun: false, projectDir: dir });
+        const home = makeHome();
+        await freshInit(Object.assign({ dryRun: false, projectDir: dir }, seam(home)));
+        await freshInit(Object.assign({ dryRun: false, projectDir: dir }, seam(home)));
 
-        // .mcp.json should have exactly one unimatrix entry
-        const mcpContent = JSON.parse(
-          fs.readFileSync(path.join(dir, ".mcp.json"), "utf8")
-        );
+        // ~/.claude.json should have exactly one unimatrix entry for the project
+        const cj = JSON.parse(fs.readFileSync(path.join(home, ".claude.json"), "utf8"));
         assert.strictEqual(
-          Object.keys(mcpContent.mcpServers).length,
+          Object.keys(cj.projects[fs.realpathSync(dir)].mcpServers).length,
           1,
           "Should have exactly one server entry"
         );
 
-        // settings.json hooks should not be duplicated
+        // settings.local.json hooks should not be duplicated
         const settingsContent = JSON.parse(
           fs.readFileSync(
-            path.join(dir, ".claude", "settings.json"),
+            path.join(dir, ".claude", "settings.local.json"),
             "utf8"
           )
         );
@@ -384,7 +394,7 @@ describe("init (integration with mocks)", () => {
         const { init: freshInit } = require("../lib/init.js");
 
         await assert.rejects(
-          () => freshInit({ dryRun: false, projectDir: dir }),
+          () => freshInit(Object.assign({ dryRun: false, projectDir: dir }, seam(makeHome()))),
           (error) => {
             assert.ok(
               error.message.includes("Database creation failed") ||
@@ -403,5 +413,65 @@ describe("init (integration with mocks)", () => {
         }
       }
     })();
+  });
+});
+
+describe("init (nan-024 wiring)", () => {
+  function withFakeBinary(dir, fn) {
+    const fakeBinary = path.join(dir, "fake-unimatrix");
+    fs.writeFileSync(fakeBinary, '#!/bin/sh\necho "unimatrix 0.5.0"\n');
+    fs.chmodSync(fakeBinary, 0o755);
+    const orig = process.env.UNIMATRIX_BINARY;
+    process.env.UNIMATRIX_BINARY = fakeBinary;
+    const logs = [];
+    const origLog = console.log;
+    console.log = (...a) => logs.push(a.join(" "));
+    return (async () => {
+      try {
+        delete require.cache[require.resolve("../lib/init.js")];
+        delete require.cache[require.resolve("../lib/resolve-binary.js")];
+        return await fn(require("../lib/init.js"), logs);
+      } finally {
+        console.log = origLog;
+        if (orig !== undefined) process.env.UNIMATRIX_BINARY = orig;
+        else delete process.env.UNIMATRIX_BINARY;
+      }
+    })();
+  }
+
+  it("test_init_prints_codex_approval_step_and_no_trust_hashes", () => {
+    const dir = makeTempProject();
+    fs.mkdirSync(path.join(dir, ".codex"));
+    const home = makeHome();
+    return withFakeBinary(dir, async ({ init }, logs) => {
+      await init(Object.assign({ dryRun: false, projectDir: dir }, seam(home)));
+      const out = logs.join("\n");
+      assert.ok(out.includes("run /hooks in Codex and approve"), "approval step printed");
+      assert.ok(out.includes(path.join(home, ".codex", "hooks.json")), "prints the Codex path actually written");
+      assert.ok(!/hooks\.state|trusted_hash|sha256:/i.test(fs.readFileSync(path.join(home, ".codex", "hooks.json"), "utf8")));
+      assert.ok(!fs.existsSync(path.join(dir, ".codex", "hooks.json")), "no project-level Codex hooks");
+    });
+  });
+
+  it("test_init_local_refused_off_linux", () => {
+    const dir = makeTempProject();
+    return withFakeBinary(dir, async ({ init }) => {
+      await assert.rejects(
+        () => init(Object.assign({ dryRun: false, projectDir: dir, platform: "darwin" }, seam(makeHome()))),
+        /local init requires Linux/
+      );
+      assert.ok(!fs.existsSync(path.join(dir, ".claude")), "nothing written");
+    });
+  });
+
+  it("test_init_ignores_decoy_home_env", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const decoy = makeHome();
+    return withFakeBinary(dir, async ({ init }) => {
+      await init({ dryRun: false, projectDir: dir, home, requireBinary: false, env: { PATH: process.env.PATH, HOME: decoy } });
+      assert.deepStrictEqual(fs.readdirSync(decoy), [], "nothing written under the decoy HOME");
+      assert.ok(fs.existsSync(path.join(home, ".unimatrix")));
+    });
   });
 });

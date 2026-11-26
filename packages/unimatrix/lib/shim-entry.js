@@ -132,6 +132,18 @@ function run(args) {
     const project = isUnimatrixProject(process.cwd(), env, home);
     if (project === null) return;
     const inst = readInstallJsonRaw(uh);
+    // Installed-ness is decided read-only BEFORE trust (ADR-004): a project machine
+    // with no install.json has no trust set to verify and must reach the exit-table
+    // outcome, not a trust error. Trust runs whenever install.json exists on Linux
+    // (so a half-removed install is refused loudly) or the machine is installed, and
+    // always before any packageRoot load.
+    const d = installedDecision(project, platform, env, home, inst);
+    const notAttached = () => {
+      const hint = "unimatrix: not attached on this machine; run 'npx unimatrix init'";
+      if (verb === "mcp-stdio") { err(hint); process.exitCode = 1; return; }
+      if (platform === "linux") err(hint);
+    };
+    if (!d.installed && !(platform === "linux" && isFile(path.join(uh, "install.json")))) return notAttached();
     try {
       const trust = loadTrust(platform);
       trust.checkTrust(trust.trustSet(home, { installJson: inst, platform }), platform, { home });
@@ -140,13 +152,7 @@ function run(args) {
       process.exitCode = 1;
       return;
     }
-    const d = installedDecision(project, platform, env, home, inst);
-    if (!d.installed) {
-      const hint = "unimatrix: not attached on this machine; run 'npx unimatrix init'";
-      if (verb === "mcp-stdio") { err(hint); process.exitCode = 1; return; }
-      if (platform === "linux") err(hint);
-      return;
-    }
+    if (!d.installed) return notAttached();
     if (!inst || typeof inst.packageRoot !== "string") {
       err("unimatrix: install pointer missing or invalid; run 'npx unimatrix init'");
       process.exitCode = 1;

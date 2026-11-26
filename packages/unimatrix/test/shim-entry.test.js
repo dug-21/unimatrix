@@ -107,8 +107,22 @@ test("packageRoot deleted -> exit 1 naming path", posix, () => {
   assert.match(r.stderr, /1\.0\.0|pkg/);
 });
 
-test("install.json missing -> trust refuses (required member), exit 1 naming path", posix, () => {
+test("install.json missing (Linux project, not installed) -> hint exit 0, no trust failure; mcp-stdio exit 1", posix, () => {
   const f = fixture({ install: null });
+  const r = exec(f, ["hook", "Stop"]);
+  assert.equal(r.status, 0);
+  assert.equal(r.stdout, "");
+  if (process.platform === "linux") assert.equal(r.stderr, "unimatrix: not attached on this machine; run 'npx unimatrix init'\n");
+  assert.doesNotMatch(r.stderr, /trust check failed/);
+  const m = exec(f, ["mcp-stdio"]);
+  assert.equal(m.status, 1);
+  assert.match(m.stderr, /not attached/);
+});
+
+test("installed (credential) but install.json missing -> trust refuses required member, exit 1", posix, () => {
+  const f = fixture({ install: null });
+  const hash = fs.readdirSync(f.uh).find((n) => /^[0-9a-f]{16}$/.test(n));
+  fs.writeFileSync(path.join(f.uh, hash, "remote.json"), "{}");
   const r = exec(f, ["hook", "Stop"]);
   assert.equal(r.status, 1);
   assert.equal(r.stdout, "");

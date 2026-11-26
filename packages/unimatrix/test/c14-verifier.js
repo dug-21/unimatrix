@@ -33,21 +33,27 @@ const DEFAULT_TIMEOUT_MS = 5000;
 
 // ── command-string parsing (quote-aware) ─────────────────────────────────
 //
-// The wired hook command is exactly `node <clientPath|"quoted path"> <EVENT>
-// --provider codex-cli` (merge-settings.buildHookClientCommand). We split it
-// respecting double-quotes so a project path containing spaces re-parses to the
-// intended argv (R-10 command-injection fixture).
+// The wired hook command is `'<home>/.unimatrix/bin/unimatrix' hook <EVENT>
+// [--provider codex-cli]` (merge-settings.buildShimCommand; double quotes on
+// Windows). We split it respecting single and double quotes so a path containing
+// spaces re-parses to the intended argv (R-10 command-injection fixture).
 
 function splitCommand(commandString) {
   const argv = [];
   let cur = "";
   let inQuote = false;
+  let quoteChar = "";
   let sawToken = false;
   for (let i = 0; i < commandString.length; i++) {
     const c = commandString[i];
-    if (c === '"') {
-      inQuote = !inQuote;
+    if (!inQuote && (c === '"' || c === "'")) {
+      inQuote = true;
+      quoteChar = c;
       sawToken = true;
+      continue;
+    }
+    if (inQuote && c === quoteChar) {
+      inQuote = false;
       continue;
     }
     if (!inQuote && (c === " " || c === "\t")) {
@@ -76,7 +82,7 @@ function eventOf(commandString) {
 /** Normalize any wired entry shape into a spawn descriptor.
  *  claude/codex:  { command: "<bin>", args?: [...] }
  *  opencode:      { command: ["node", bridge, hash] | ["<bin>"], environment? } */
-function spawnDescriptorFor(entry) {
+function spawnDescriptorFor(entry, extraEnv) {
   if (!entry || typeof entry !== "object") {
     throw new Error("entry missing");
   }
@@ -92,7 +98,7 @@ function spawnDescriptorFor(entry) {
   } else {
     throw new Error("entry.command not a string or array");
   }
-  const env = Object.assign({}, process.env, entry.env || entry.environment || {});
+  const env = Object.assign({}, process.env, entry.env || entry.environment || {}, extraEnv || {});
   return { cmd, args, env };
 }
 
@@ -105,12 +111,12 @@ function mcpCallFromEntry(entry, opts) {
   const options = opts || {};
   const tool = options.tool || "context_status";
   const timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
-  const desc = spawnDescriptorFor(entry);
+  const desc = spawnDescriptorFor(entry, options.env);
 
   return new Promise((resolve, reject) => {
     let child;
     try {
-      child = spawn(desc.cmd, desc.args, { env: desc.env, stdio: ["pipe", "pipe", "pipe"] });
+      child = spawn(desc.cmd, desc.args, { env: desc.env, cwd: options.cwd, stdio: ["pipe", "pipe", "pipe"] });
     } catch (e) {
       reject(new Error("spawn failed: " + e.message));
       return;
@@ -268,16 +274,11 @@ function buildSyntheticEventFor(event, sessionId) {
 function runHookCommand(commandString, stdinStr, spawnOpts) {
   const options = spawnOpts || {};
   const argv = splitCommand(commandString);
-  assert.ok(argv.length >= 3, "hook command has [node, clientPath, EVENT]");
+  assert.ok(argv.length >= 3, "hook command has [shim, hook, EVENT]");
   const cmd = argv[0] === "node" ? process.execPath : argv[0];
   const args = argv.slice(1);
   const env = Object.assign({}, process.env, options.env || {});
-  delete env.UNIMATRIX_REMOTE_URL;
-  delete env.UNIMATRIX_REMOTE_TOKEN;
-  if (options.env) {
-    if (options.env.UNIMATRIX_REMOTE_URL) env.UNIMATRIX_REMOTE_URL = options.env.UNIMATRIX_REMOTE_URL;
-    if (options.env.UNIMATRIX_REMOTE_TOKEN) env.UNIMATRIX_REMOTE_TOKEN = options.env.UNIMATRIX_REMOTE_TOKEN;
-  }
+  for (const k of Object.keys(env)) if (/^UNIMATRIX_(REMOTE|BUNDLE)/.test(k)) delete env[k];
   const timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
 
   return new Promise((resolve, reject) => {
@@ -347,23 +348,20 @@ function sleep(ms) {
  * body is a wire frame carrying `provider`. Deployment-representative and CI-
  * robust (no binary; local test CA).
  */
-async function makeHttpIngress() {
-  // F1 (vnc-050 #1010): env URLs must be https — TLS stub + locally trusted CA.
+async function makeHttpIngress(machine) {
+  // F1 (vnc-050 #1010): https only — TLS stub + locally trusted CA. The cloud
+  // credential lives in the per-machine store (remote.json) of `machine`, exactly
+  // where `init --bundle` writes it (D-052: env vars alone never select cloud).
   caFx = caFx || makeCaFixture();
   if (!caFx) throw new Error("openssl unavailable: cloud-http ingress needs a TLS fixture");
   const stub = await startStubServer({ tls: { cert: caFx.good.cert, key: caFx.good.key } });
   stub.respondWith({ status: 204 });
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), "c14-http-home-"));
+  const m = machine || makeMachine();
+  writeCloudCredential(m, stub.url);
   return {
     kind: "cloud-http",
-    cwd: home,
-    env: {
-      UNIMATRIX_REMOTE_URL: stub.url,
-      UNIMATRIX_REMOTE_TOKEN: "c14-token",
-      NODE_EXTRA_CA_CERTS: caFx.caPath,
-      HOME: home,
-      USERPROFILE: home,
-    },
+    cwd: m.root,
+    env: Object.assign(machineEnv(m), { NODE_EXTRA_CA_CERTS: caFx.caPath }),
     frameCount() { return stub.requests.length; },
     framesSince(n) {
       return stub.requests.slice(n).map((r) => {
@@ -373,7 +371,7 @@ async function makeHttpIngress() {
     settle() { return sleep(150); },
     async close() {
       await stub.close();
-      try { fs.rmSync(home, { recursive: true, force: true }); } catch (_e) {}
+      cleanupMachine(m);
     },
   };
 }
@@ -411,11 +409,10 @@ function shortUdsTmpBase() {
  * absolute socket path stays well under the macOS sun_path limit; per-run
  * isolation is preserved by mkdtemp's unique suffix. See shortUdsTmpBase.
  */
-async function makeUdsIngress() {
-  const base = shortUdsTmpBase();
-  const home = fs.mkdtempSync(path.join(base, "uc14h-"));
-  const projectRoot = fs.mkdtempSync(path.join(base, "uc14p-"));
-  fs.mkdirSync(path.join(projectRoot, ".git"), { recursive: true });
+async function makeUdsIngress(machine) {
+  const m = machine || makeMachine();
+  const home = m.home;
+  const projectRoot = m.root;
   const root = config.walkToProjectRoot(projectRoot);
   const hash = config.computeProjectHash(root);
   const socketPath = path.join(home, ".unimatrix", hash, "unimatrix.sock");
@@ -452,7 +449,7 @@ async function makeUdsIngress() {
   return {
     kind: "local-uds",
     cwd: projectRoot,
-    env: { HOME: home, USERPROFILE: home },
+    env: machineEnv(m),
     socketPath,
     frameCount() { return frames.length; },
     framesSince(n) { return frames.slice(n); },
@@ -460,11 +457,82 @@ async function makeUdsIngress() {
     async close() {
       for (const s of sockets) { try { s.destroy(); } catch (_e) {} }
       await new Promise((res) => server.close(() => res()));
-      for (const d of [home, projectRoot]) {
-        try { fs.rmSync(d, { recursive: true, force: true }); } catch (_e) {}
-      }
+      cleanupMachine(m);
     },
   };
+}
+
+// ── per-machine fixtures (nan-024) ────────────────────────────────────────
+//
+// A "machine" is an isolated HOME plus a git project root, under a SHORT base so
+// the UDS socket path stays under sun_path limits. Hook/MCP commands are executed
+// exactly as wired: through the per-machine shim (`~/.unimatrix/bin/unimatrix`),
+// with HOME pointing at the machine and the stub Rust binary supplied through
+// UNIMATRIX_BINARY (the resolver's highest-precedence source).
+
+function makeMachine(extraDirs) {
+  const base = shortUdsTmpBase();
+  const home = fs.realpathSync(fs.mkdtempSync(path.join(base, "uc14h-")));
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(base, "uc14p-")));
+  fs.mkdirSync(path.join(root, ".git"), { recursive: true });
+  for (const rel of extraDirs || []) fs.mkdirSync(path.join(root, rel), { recursive: true });
+  return { home, root };
+}
+
+/** Environment a wired command runs under on `machine` (stub binary as the Rust side). */
+function machineEnv(machine, extra) {
+  return Object.assign(
+    { HOME: machine.home, USERPROFILE: machine.home, UNIMATRIX_BINARY: STDIO_FIXTURE },
+    extra || {}
+  );
+}
+
+/** Wire `machine` through the shared wire() flow; returns the manifest. */
+function wireMachine(machine, opts) {
+  const { wire } = require("../lib/wire.js");
+  const res = wire(machine.root, Object.assign(
+    { home: machine.home, platform: process.platform, requireBinary: false, rerecord: true,
+      env: { PATH: process.env.PATH, HOME: machine.home } },
+    opts || {}
+  ));
+  return res.manifest;
+}
+
+/** Write the out-of-tree cloud credential (remote.json) where init --bundle writes it. */
+function writeCloudCredential(machine, observeUrl) {
+  const credstore = require("../lib/hook-client/credstore.js");
+  const orig = os.homedir;
+  os.homedir = () => machine.home;
+  try {
+    credstore.write(config.computeProjectHash(config.walkToProjectRoot(machine.root)), {
+      mcp_url: observeUrl, observe_url: observeUrl, token: "c14-token", fingerprint: null,
+    });
+  } finally {
+    os.homedir = orig;
+  }
+}
+
+/**
+ * Cloud mcp-stdio loads `<clientRoot>/lib/hook-client/mcp-bridge.js` (no remote server in CI).
+ * Point the machine's redirect.json at a stub client whose bridge runs the stdio fixture.
+ */
+function installStubBridge(machine) {
+  const client = path.join(machine.home, "stub-client");
+  fs.mkdirSync(path.join(client, "lib", "hook-client"), { recursive: true });
+  fs.writeFileSync(path.join(client, "lib", "hook-client", "index.js"), "exports.main = async () => {};\n");
+  fs.writeFileSync(
+    path.join(client, "lib", "hook-client", "mcp-bridge.js"),
+    "exports.main = () => { require('child_process').spawn(process.execPath, [" +
+      JSON.stringify(STDIO_FIXTURE) + "], { stdio: 'inherit' }).on('exit', (c) => process.exit(c || 0)); };\n"
+  );
+  const rd = path.join(machine.home, ".unimatrix", "redirect.json");
+  fs.writeFileSync(rd, JSON.stringify({ client }), { mode: 0o600 });
+}
+
+function cleanupMachine(m) {
+  for (const d of [m.home, m.root]) {
+    try { fs.rmSync(d, { recursive: true, force: true }); } catch (_e) {}
+  }
 }
 
 // ── temp project fixtures (shared with the wire tests' idiom) ─────────────
@@ -497,4 +565,10 @@ module.exports = {
   makeUdsIngress,
   makeTempProject,
   cleanupDir,
+  makeMachine,
+  machineEnv,
+  wireMachine,
+  writeCloudCredential,
+  installStubBridge,
+  cleanupMachine,
 };

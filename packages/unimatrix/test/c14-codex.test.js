@@ -3,9 +3,12 @@
 // C14 verifier — codex-cli leg (nan-023, ADR-006 / ADR-003). Retrieval-RETURNS
 // and hook-FIRES executed from the WireLeg manifest, never from config presence.
 //
+// nan-024: Codex hooks and MCP are per-machine (`$CODEX_HOME`, default `~/.codex`),
+// invoked through the shim by absolute path; commands run against an isolated machine.
+//
 // Gate-0 (test-plan/OVERVIEW §2): seeding a trusted, codex-FIRING `.codex/` in CI
 // is NOT feasible (codex-cli absent from the env). The C14 discharge here
-// therefore EXECUTES the exact wired manifest command (`node <client> <EVENT>
+// therefore EXECUTES the exact wired manifest command (`'<shim>' hook <EVENT>
 // --provider codex-cli`) with synthetic stdin — bypassing codex — so command-
 // level firing, local firing, and BOTH retrieval-return arms stay HARD. Codex
 // SELF-firing the 7 events in a real trusted `.codex/` is a DOCUMENTED CONDITIONAL,
@@ -15,11 +18,8 @@ const { describe, it, before, after } = require("node:test");
 const assert = require("assert");
 const path = require("path");
 
-const { wire } = require("../lib/wire.js");
 const V = require("./c14-verifier.js");
-
-const CLIENT = path.resolve(__dirname, "../lib/hook-client/index.js");
-const BRIDGE = path.resolve(__dirname, "../lib/hook-client/mcp-bridge.js");
+const { codexApprovalStep } = require("../lib/codex-install.js");
 const CODEX_EVENTS = [
   "SessionStart", "UserPromptSubmit", "PreToolUse",
   "PostToolUse", "PreCompact", "SubagentStart", "Stop",
@@ -29,9 +29,9 @@ const CODEX_EVENTS = [
 // do not carry it — asserted only where present (R-05 no-mislabel).
 
 function codexManifest(opts) {
-  const root = V.makeTempProject([".codex"]);
-  const res = wire(root, Object.assign({ harness: "codex-cli", clientPath: CLIENT }, opts));
-  return { root, manifest: res.manifest };
+  const m = V.makeMachine();
+  m.manifest = V.wireMachine(m, Object.assign({ harness: "codex-cli" }, opts));
+  return m;
 }
 
 function codexLeg(manifest, surface) {
@@ -45,38 +45,34 @@ function codexHookLegs(manifest) {
 
 describe("C14 codex retrieval-returns (AC-10, C-06)", () => {
   it("test_verify_codex_retrieval_returns_local", async () => {
-    const { root, manifest } = codexManifest({ binaryPath: V.STDIO_FIXTURE });
-    const leg = codexLeg(manifest, "mcp");
-    assert.strictEqual(leg.action, "created", "codex mcp table written (intent opt-in)");
-    await V.assertRetrievalReturns(leg, {}); // spawns entry.command VERBATIM
-    V.cleanupDir(root);
+    const m = codexManifest({ binaryPath: V.STDIO_FIXTURE });
+    const leg = codexLeg(m.manifest, "mcp");
+    assert.strictEqual(leg.action, "created", "codex mcp table written at $CODEX_HOME/config.toml");
+    assert.ok(leg.path.startsWith(m.home), "per-machine destination: " + leg.path);
+    await V.assertRetrievalReturns(leg, { cwd: m.root, env: V.machineEnv(m) }); // spawns entry VERBATIM
+    V.cleanupMachine(m);
   });
 
   it("test_verify_codex_retrieval_returns_cloud", async () => {
-    // Cloud entry = command="node", args=[bridge, hash] (Q1) — bridge stubbed by
-    // the stdio fixture (arg-agnostic). Executes the manifest entry verbatim.
-    const { root, manifest } = codexManifest({
-      mcp: { url: "https://cloud.example", token: "secret-token" },
-      bridgePath: V.STDIO_FIXTURE,
-    });
-    const leg = codexLeg(manifest, "mcp");
-    assert.strictEqual(leg.entry.command, "node", "cloud codex entry command is node");
-    assert.strictEqual(leg.entry.args[0], V.STDIO_FIXTURE, "bridge path is args[0]");
-    await V.assertRetrievalReturns(leg, {});
-    V.cleanupDir(root);
+    // Cloud entry = the same token-free shim entry (mcp-stdio); the bridge is stubbed
+    // by the stdio fixture through the machine's client redirect.
+    const m = codexManifest({ mcp: true });
+    V.writeCloudCredential(m, "https://cloud.example/v1/p/observe");
+    V.installStubBridge(m);
+    const leg = codexLeg(m.manifest, "mcp");
+    assert.ok(JSON.stringify(leg.entry).includes("mcp-stdio"), "codex entry runs mcp-stdio");
+    await V.assertRetrievalReturns(leg, { cwd: m.root, env: V.machineEnv(m) });
+    V.cleanupMachine(m);
   });
 
   it("test_verify_codex_cloud_entry_carries_no_token_or_url (Q1 security)", () => {
-    const { root, manifest } = codexManifest({
-      mcp: { url: "https://cloud.example", token: "secret-token" },
-      bridgePath: BRIDGE,
-    });
-    const leg = codexLeg(manifest, "mcp");
+    const m = codexManifest({ mcp: true });
+    const leg = codexLeg(m.manifest, "mcp");
     const serialized = JSON.stringify(leg.entry);
     assert.ok(!/\burl\b/i.test(serialized), "no url= in the cloud codex entry");
     assert.ok(serialized.indexOf("secret-token") === -1, "no bearer token in the entry (Principle 8)");
     assert.ok(serialized.indexOf("https://cloud.example") === -1, "no mcp url in the entry");
-    V.cleanupDir(root);
+    V.cleanupMachine(m);
   });
 });
 
@@ -85,17 +81,18 @@ describe("C14 codex retrieval-returns (AC-10, C-06)", () => {
 describe("C14 codex hook-fires + per-event evidence (AC-09, Q4)", () => {
   let httpIngress;
   let udsIngress;
-  let ctx;
+  let ctx; // local machine (UDS ingress)
+  let cctx; // cloud machine (HTTP ingress)
 
   before(async () => {
     ctx = codexManifest({ binaryPath: V.STDIO_FIXTURE });
-    httpIngress = await V.makeHttpIngress();
-    udsIngress = await V.makeUdsIngress();
+    udsIngress = await V.makeUdsIngress(ctx);
+    cctx = codexManifest({ mcp: true });
+    httpIngress = await V.makeHttpIngress(cctx);
   });
   after(async () => {
     if (httpIngress) await httpIngress.close();
     if (udsIngress) await udsIngress.close();
-    if (ctx) V.cleanupDir(ctx.root);
   });
 
   it("test_verify_codex_hook_fires_local — ingress + provider=codex-cli", async () => {
@@ -107,14 +104,14 @@ describe("C14 codex hook-fires + per-event evidence (AC-09, Q4)", () => {
   });
 
   it("test_verify_codex_hook_fires_cloud — command-level, deployment-independent", async () => {
-    const leg = codexHookLegs(ctx.manifest).find((l) => V.eventOf(l.command) === "PostToolUse");
+    const leg = codexHookLegs(cctx.manifest).find((l) => V.eventOf(l.command) === "PostToolUse");
     const out = await V.observeHookFire(leg, httpIngress, {});
     assert.strictEqual(out.fired, true, "wired command reached the client over the cloud transport");
     assert.strictEqual(out.provider, "codex-cli", "provider stamped codex-cli");
   });
 
   it("test_verify_codex_per_event_firing_records (all 7 events)", async () => {
-    const legs = codexHookLegs(ctx.manifest);
+    const legs = codexHookLegs(cctx.manifest);
     assert.strictEqual(legs.length, 7, "manifest carries all 7 codex hook events");
 
     const table = [];
@@ -161,12 +158,14 @@ describe("C14 codex hook-fires + per-event evidence (AC-09, Q4)", () => {
 
 describe("C14 codex trust precondition (R-06)", () => {
   it("test_verify_untrusted_codex_surfaces_precondition_note", () => {
-    // The codex writer attaches a trust precondition note to its legs (fail-loud
-    // / warn), so a consumer's untrusted `.codex/` is never read as silent success.
-    const { root, manifest } = codexManifest({ binaryPath: V.STDIO_FIXTURE });
-    const legs = manifest.filter((l) => l.harness === "codex-cli");
-    const withNote = legs.filter((l) => typeof l.note === "string" && /trust/i.test(l.note));
-    assert.ok(withNote.length > 0, "codex legs surface a trust precondition note (not a silent no-op)");
-    V.cleanupDir(root);
+    // Codex hooks stay inactive until approved in /hooks; init prints that step
+    // (D-028) and writes no trust hash, so an unapproved install is never read as
+    // silent success.
+    const m = codexManifest({ binaryPath: V.STDIO_FIXTURE });
+    assert.ok(codexHookLegs(m.manifest).length > 0, "codex hooks legs present");
+    assert.ok(/\/hooks/.test(codexApprovalStep()) && /approve/i.test(codexApprovalStep()), "approval step text");
+    const hooksFile = require("fs").readFileSync(codexHookLegs(m.manifest)[0].path, "utf8");
+    assert.ok(!/trusted_hash|hooks\.state|sha256/i.test(hooksFile), "no trust hash is ever written");
+    V.cleanupMachine(m);
   });
 });
