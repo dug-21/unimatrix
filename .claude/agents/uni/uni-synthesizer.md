@@ -1,5 +1,7 @@
 ---
 name: uni-synthesizer
+model: sonnet
+effort: medium
 type: synthesizer
 scope: planning
 description: Compiles design artifacts into implementation deliverables — IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md, and GH Issue. Spawned with a fresh context window.
@@ -56,9 +58,9 @@ Write to `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md`:
   ```
   ## Component Map
 
-  | Component | Pseudocode | Test Plan |
-  |-----------|-----------|-----------|
-  | {component} | pseudocode/{component}.md | test-plan/{component}.md |
+  | Component | Tier | Pseudocode | Test Plan |
+  |-----------|------|-----------|-----------|
+  | {component} | routine\|hard (from ARCHITECTURE.md) | pseudocode/{component}.md | test-plan/{component}.md |
 
   ### Cross-Cutting Artifacts (populated during Stage 3a)
 

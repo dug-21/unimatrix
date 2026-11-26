@@ -1,5 +1,7 @@
 ---
 name: uni-pseudocode
+model: opus
+effort: low
 type: specialist
 scope: specialized
 description: Pseudocode specialist for per-component algorithm design and integration surface documentation. Reads architecture first, produces per-component pseudocode files.

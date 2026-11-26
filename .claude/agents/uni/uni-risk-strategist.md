@@ -1,5 +1,7 @@
 ---
 name: uni-risk-strategist
+model: opus
+effort: medium
 type: specialist
 scope: broad
 description: Risk-based test strategy specialist. Identifies feature-level risks, maps them to testing scenarios, and defines coverage requirements. Thinks "what could go wrong?"

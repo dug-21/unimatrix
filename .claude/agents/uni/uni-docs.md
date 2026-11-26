@@ -1,5 +1,7 @@
 ---
 name: uni-docs
+model: haiku
+effort: low
 type: specialist
 scope: documentation
 description: Lightweight documentation update agent. Reads feature artifacts after delivery, identifies README sections needing updates, and proposes targeted edits. Spawned conditionally in Phase 4 of the delivery protocol.

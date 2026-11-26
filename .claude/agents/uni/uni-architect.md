@@ -1,5 +1,7 @@
 ---
 name: uni-architect
+model: opus
+effort: high
 type: specialist
 scope: broad
 description: Architecture specialist. ADR authority — creates, stores, and manages architectural decision records in Unimatrix (the only ADR repository), indexed by ADR-INDEX.md. Design decisions and cross-cutting concerns.
@@ -52,7 +54,7 @@ From the Design Leader's spawn prompt:
 Write to `product/features/{feature-id}/architecture/ARCHITECTURE.md`:
 
 - **System Overview** — How this feature fits into the larger Unimatrix system
-- **Component Breakdown** — What components are involved, their responsibilities
+- **Component Breakdown** — What components are involved, their responsibilities; mark each component's **Tier**: `routine` or `hard` (see Component Tier below)
 - **Component Interactions** — Interfaces, contracts, data flow between components
 - **Technology Decisions** — Stack choices with rationale (reference ADRs)
 - **Integration Points** — Dependencies, external services, existing components
@@ -83,6 +85,10 @@ Only uni-architect creates, corrects, or deprecates ADRs, or edits this file. If
 | ADR-001 | 1234 | ... | ... | active |
 | ADR-002 | 1235 | ... | ... | superseded → ADR-005 |
 ```
+
+### Component Tier (drives developer model selection)
+
+Mark each component `routine` ONLY if all of these hold: no security surface (auth, TLS/pinning, credentials, trust checks, secrets), no wire or config contract (MCP wire, hook command strings, files written into host repos), no cross-platform path or quoting logic, and no integrity-bearing state (hash chain, audit, schema). Typical routine work: test fixtures, reference-config/doc updates, mechanical refactors. Everything else is `hard`. When in doubt, choose `hard`.
 
 ## ADR Authority (Your Unique Responsibility)
 

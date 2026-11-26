@@ -1,5 +1,7 @@
 ---
 name: uni-external-researcher
+model: opus
+effort: medium
 type: specialist
 scope: broad
 description: External research specialist for ecosystem evaluation, library landscape analysis, proof-of-concept validation, and literature review. Brings expansive vision unconstrained by current project choices. Never accesses Unimatrix. Produces {ass-NNN}-findings.md.

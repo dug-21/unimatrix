@@ -1,5 +1,7 @@
 ---
 name: uni-security-reviewer
+model: opus
+effort: high
 type: specialist
 scope: narrow
 description: Reviews code changes for security risks, blast radius, and regression potential with fresh context

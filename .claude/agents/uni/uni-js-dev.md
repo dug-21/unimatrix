@@ -1,5 +1,7 @@
 ---
 name: uni-js-dev
+model: opus
+effort: low
 type: developer
 scope: specialized
 description: JS/TS developer for the Unimatrix edge client (hook client + Node tooling). Implements code from validated pseudocode in Session 2 Stage 3b.

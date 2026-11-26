@@ -1,5 +1,7 @@
 ---
 name: uni-specification
+model: opus
+effort: medium
 type: specialist
 scope: planning
 description: Specification writer. Produces SPECIFICATION.md from SCOPE.md — functional/non-functional requirements, acceptance criteria, domain models.

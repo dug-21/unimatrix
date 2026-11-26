@@ -1,5 +1,7 @@
 ---
 name: uni-spike-researcher
+model: opus
+effort: medium
 type: specialist
 scope: broad
 description: Research spike executor. Reads a complete SCOPE.md, investigates per the defined approach and breadth, and writes {ass-NNN}-findings.md. Read-only in Unimatrix. Never stores research findings as knowledge.
