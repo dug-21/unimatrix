@@ -265,13 +265,10 @@ impl TranscriptHold {
             let mut guard = self.lock_held();
             // Determine match/mismatch under a scoped read, then remove — avoids
             // holding an immutable borrow across the mutating `remove`.
-            let cycle_matches = match guard.get(session_id) {
-                None => return None,
-                Some(held) => {
-                    !registering_feature_cycle.is_empty()
-                        && held.feature_cycle == registering_feature_cycle
-                }
-            };
+            let cycle_matches = guard.get(session_id).map(|held| {
+                !registering_feature_cycle.is_empty()
+                    && held.feature_cycle == registering_feature_cycle
+            })?;
             if cycle_matches {
                 // MATCH — hand the live buffer back to the registry.
                 let held = guard.remove(session_id).expect("present: just matched");

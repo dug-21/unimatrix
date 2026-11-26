@@ -189,7 +189,7 @@ mod tests {
         // 129 × é (2 bytes each) = 258 bytes. Char boundaries fall on every even offset, so
         // byte 256 is a clean boundary between char 128 and char 129; end stays at 256.
         let two_byte = char::from_u32(0xE9).unwrap();
-        let input: String = std::iter::repeat(two_byte).take(129).collect();
+        let input: String = std::iter::repeat_n(two_byte, 129).collect();
         assert_eq!(input.len(), 258);
         assert!(input.is_char_boundary(CONTENT_PREVIEW_BYTES));
 
@@ -205,7 +205,7 @@ mod tests {
     fn test_content_preview_all_multibyte_long_floors_to_whole_char() {
         // 200 × é = 400 bytes. Byte 256 is an even offset => clean boundary; floors to 256.
         let two_byte = char::from_u32(0xE9).unwrap();
-        let input: String = std::iter::repeat(two_byte).take(200).collect();
+        let input: String = std::iter::repeat_n(two_byte, 200).collect();
         assert_eq!(input.len(), 400);
 
         let (preview, truncated) = content_preview(&input);
