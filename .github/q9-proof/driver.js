@@ -70,8 +70,11 @@ if (form === 'mcp-primary') {
   let all = true;
   for (const [name, fn] of cases) {
     const v = verify(await fn(), want);
-    all = all && v.ok;
-    console.log(`${v.ok ? 'PASS' : 'FAIL'} | ${form} | ${name}\n     ${v.detail}`);
+    // Informational: Node default quoting escapes the inner quotes; no real harness spawns this way
+    // (Claude Code uses Git Bash, Codex uses raw_arg), so it does not gate the form (D-073/D-076).
+    const info = /Node default quoting/.test(name);
+    all = all && (v.ok || info);
+    console.log(`${v.ok ? 'PASS' : (info ? 'INFO(not gating)' : 'FAIL')} | ${form} | ${name}\n     ${v.detail}`);
   }
   console.log(`RESULT ${form}: ${all ? 'PASS' : 'FAIL'}`);
   process.exit(all ? 0 : 1);

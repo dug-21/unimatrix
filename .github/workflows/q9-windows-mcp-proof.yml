@@ -41,6 +41,19 @@ jobs:
           MSYS_NO_PATHCONV=1 openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 2 \
             -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
           echo "E2E_CERT_DIR=$(pwd -W 2>/dev/null || pwd)" >> "$GITHUB_ENV"
+      - name: ACL diagnostic (icacls /save format, whoami)
+        if: always()
+        shell: pwsh
+        run: |
+          $d = Join-Path $env:RUNNER_TEMP 'acl diag'
+          New-Item -ItemType Directory -Force -Path $d | Out-Null
+          icacls $d /save "$env:RUNNER_TEMP\acl.txt"
+          Write-Host "--- icacls /save output (hex) ---"
+          Format-Hex -Path "$env:RUNNER_TEMP\acl.txt" | Select-Object -First 30 | Out-String | Write-Host
+          Write-Host "--- as text ---"
+          Get-Content "$env:RUNNER_TEMP\acl.txt" -Encoding Unicode | Write-Host
+          whoami /user /fo csv /nh
+          (Get-Acl $d).Owner
       - name: REAL init output - MCP D-047 fallback form + .cmd hook via cmd /C and Git Bash (D-072, D-073)
         if: always()
         run: node .github/q9-proof/real.js

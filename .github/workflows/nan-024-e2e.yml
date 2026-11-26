@@ -38,11 +38,8 @@ jobs:
             target
           key: linux-x64-release-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: linux-x64-release-
-      - name: Install ONNX Runtime
-        run: |
-          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
-          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
-          sudo ldconfig
+      - name: Install ONNX Runtime (PyPI wheel; the GitHub release asset 404s)
+        run: bash .github/scripts/install-ort-linux.sh
       - name: cargo build --release
         run: cargo build --release
         env:
@@ -99,11 +96,8 @@ jobs:
         with:
           name: unimatrix-server-linux
           path: ${{ runner.temp }}/server
-      - name: Install ONNX Runtime
-        run: |
-          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
-          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
-          sudo ldconfig
+      - name: Install ONNX Runtime (PyPI wheel; the GitHub release asset 404s)
+        run: bash .github/scripts/install-ort-linux.sh
       - name: wiring-e2e set against the built server
         run: |
           chmod +x "$RUNNER_TEMP/server/unimatrix"
@@ -125,11 +119,8 @@ jobs:
         with:
           name: unimatrix-server-linux
           path: ${{ github.workspace }}/target/release
-      - name: Install ONNX Runtime
-        run: |
-          curl -sL "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-x64-${ORT_VERSION}.tgz" | tar xz
-          sudo cp onnxruntime-linux-x64-${ORT_VERSION}/lib/libonnxruntime.so* /usr/local/lib/
-          sudo ldconfig
+      - name: Install ONNX Runtime (PyPI wheel; the GitHub release asset 404s)
+        run: bash .github/scripts/install-ort-linux.sh
       - name: Layer 2 suites (parity-layer2*)
         run: |
           chmod +x "$GITHUB_WORKSPACE/target/release/unimatrix"
