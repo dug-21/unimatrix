@@ -154,7 +154,8 @@ function readSddl(run, sys32, p) {
     let text = "";
     try {
       const b = fs.readFileSync(tmp);
-      text = b.length > 1 && b[0] === 0xff && b[1] === 0xfe ? b.toString("utf16le") : b.toString("utf8");
+      // icacls writes UTF-16LE with no BOM (captured: 61 00 63 00 ...)
+      text = b.length > 1 && ((b[0] === 0xff && b[1] === 0xfe) || b[1] === 0) ? b.toString("utf16le") : b.toString("utf8");
     } catch (_) {}
     text = String(text || r.stdout || "").replace(/^\uFEFF/, "");
     // icacls /save emits the DACL only (no O:); the owner comes from ownersOf.

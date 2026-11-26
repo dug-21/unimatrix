@@ -149,6 +149,19 @@ test("win: real DACL-only icacls output + PowerShell owner SID passes; one owner
   assert.strictEqual(sp.calls.length, n); // matching per-event path spawns nothing
 });
 
+test("win: readSddl decodes BOM-less UTF-16LE icacls file (captured bytes)", () => {
+  const h = mkHome();
+  const sp = fakeSpawn({ owner: () => "S-1-5-32-544" });
+  const inner = (exe, a, e) => {
+    if (/icacls/i.test(exe)) {
+      fs.writeFileSync(a[2], Buffer.from(PROTECTED, "utf16le")); // no BOM, as on windows-latest
+      return { status: 0, stdout: "processed file: x\r\nSuccessfully processed 1 files; Failed processing 0 files\r\n" };
+    }
+    return sp(exe, a, e);
+  };
+  checkTrust(set(h, "win32"), "win32", w(h, inner));
+});
+
 test("win: DACL-only + foreign owner SID refused; missing owner refused", () => {
   const h = mkHome();
   assert.throws(() => checkTrust(set(h, "win32"), "win32", w(h, fakeSpawn({ daclOnly: PROTECTED, owner: () => "S-1-5-21-7-7-7-1001" }))), /owner is not current user/);
