@@ -230,7 +230,7 @@ Agent(subagent_type: "uni-specification", prompt: "Your agent ID: ... <full prom
 - Sequential Agent calls across messages = sequential execution
 - The protocol defines WHICH agents to spawn and WHEN — follow it
 - You provide the HOW: multiple tool calls in a single response
-- Wait for all parallel agents to complete before moving to the next phase
+- Wait for all parallel agents to complete before moving to the next phase — wait for the completion notification; never `sleep`, poll, or check output before it arrives
 
 ---
 

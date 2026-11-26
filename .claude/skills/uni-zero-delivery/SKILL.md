@@ -19,7 +19,7 @@ Run the goal-scoped orientation. Read the brief and the register. Do not re-open
 
 ## 2. Kick Off the Delivery Leader
 
-Spawn `uni-scrum-master`, session type `delivery`, per `.claude/protocols/uni/uni-delivery-protocol.md`, passing the brief path **and the register path**. Record its agent ID. Never re-spawn — resume via `SendMessage`.
+Spawn `uni-scrum-master`, session type `delivery`, per `.claude/protocols/uni/uni-delivery-protocol.md`, passing the brief path **and the register path**. Record its agent ID. Never re-spawn — resume via `SendMessage`. Wait for the SM's completion notification; never `sleep`, poll, or check its output before it arrives.
 
 ## 3. Triage
 
