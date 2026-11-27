@@ -112,7 +112,31 @@ function seedSymlinked(file, kind) {
   return target;
 }
 
+/**
+ * Spawnable CLI entry for real `init` subprocess tests. Stages the published files into a
+ * tmp package root with a fixture platform package beside it, so init's required
+ * binary-package copy resolves even where the optional @dug-21 platform package is absent (CI).
+ */
+let stagedRoot = null;
+function stagedCli() {
+  if (!stagedRoot) {
+    const src = path.join(__dirname, "..", "..");
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "unimatrix-staged-pkg-")));
+    for (const n of ["bin", "lib", "skills", "protocols", "package.json"]) if (fs.existsSync(path.join(src, n))) fs.cpSync(path.join(src, n), path.join(root, n), { recursive: true, dereference: true });
+    const { PLATFORMS } = require("../../lib/resolve-runtime.js");
+    for (const name of Object.values(PLATFORMS)) {
+      const d = path.join(root, "node_modules", ...name.split("/"));
+      fs.mkdirSync(path.join(d, "bin"), { recursive: true });
+      fs.writeFileSync(path.join(d, "package.json"), JSON.stringify({ name, version: "0.0.0-fixture" }));
+      fs.writeFileSync(path.join(d, "bin", "unimatrix"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    }
+    process.on("exit", () => { try { fs.rmSync(root, { recursive: true, force: true }); } catch (_) {} });
+    stagedRoot = root;
+  }
+  return path.join(stagedRoot, "bin", "unimatrix.js");
+}
+
 module.exports = {
-  makeProject, makeHome, wireOpts, listTree, readJson,
+  stagedCli, makeProject, makeHome, wireOpts, listTree, readJson,
   makeGitProject, gitEnv, ownedHooks, seedLegacy, seedSymlinked, writeJsonAt,
 };

@@ -915,7 +915,7 @@ describe("1036 AC-3 project-file links via spawned init", () => {
   const os = require("os");
   const { makeGitProject, gitEnv } = require("./helpers/wire-fixture.js");
   const { assertTmpHome } = require("./helpers/home-guard.js");
-  const BIN = path.join(__dirname, "..", "bin", "unimatrix.js");
+  const BIN = require("./helpers/wire-fixture.js").stagedCli();
   const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
   const SETTINGS = path.join(".claude", "settings.local.json");
   const tmpFiles = (d) => { const o = []; const w = (x) => { for (const e of fs.readdirSync(x, { withFileTypes: true })) { const p = path.join(x, e.name); if (/\.tmp-[0-9a-f]{16}$/.test(e.name)) o.push(p); if (e.isDirectory() && !e.isSymbolicLink()) w(p); } }; try { w(d); } catch (_) {} return o; };
@@ -1059,7 +1059,7 @@ describe("1036 S-3 D-025 enforced modes via spawned init", () => {
   const os = require("os");
   const { makeGitProject, gitEnv } = require("./helpers/wire-fixture.js");
   const { assertTmpHome } = require("./helpers/home-guard.js");
-  const BIN = path.join(__dirname, "..", "bin", "unimatrix.js");
+  const BIN = require("./helpers/wire-fixture.js").stagedCli();
   const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
   const mode = (p) => fs.statSync(p).mode & 0o777;
   const fakeBin = () => {
@@ -1134,7 +1134,7 @@ describe("1036 C17-A gap close via spawned init", () => {
   const os = require("os");
   const { makeGitProject, gitEnv, ownedHooks } = require("./helpers/wire-fixture.js");
   const { assertTmpHome } = require("./helpers/home-guard.js");
-  const BIN = path.join(__dirname, "..", "bin", "unimatrix.js");
+  const BIN = require("./helpers/wire-fixture.js").stagedCli();
   const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
   const mode = (p) => fs.statSync(p).mode & 0o777;
   const tmpFiles = (d) => { const o = []; const w = (x) => { for (const e of fs.readdirSync(x, { withFileTypes: true })) { const p = path.join(x, e.name); if (/\.tmp-[0-9a-f]{16}$/.test(e.name)) o.push(p); if (e.isDirectory() && !e.isSymbolicLink()) w(p); } }; try { w(d); } catch (_) {} return o; };

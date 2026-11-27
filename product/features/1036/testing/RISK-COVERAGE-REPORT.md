@@ -62,12 +62,12 @@ Skips: `test_root_walk_windows_separators` (win32), Codex real-binary (D-012, #1
 | mcp-stdio NOT-A-PROJECT | 50 | 73.2 / 71.9 | 70.1 |
 | `node -e 0` baseline | - | 57.6 / 58.6 | 58.9 |
 
-Every row breaches its absolute budget on this host for both the branch and main. The baseline (`node -e 0`) p95 alone exceeds the 50 ms budget. The branch is within noise of main, so this feature adds no regression. The breach is pre-existing and comes from the host. CI's latency gate reports only (D-096).
+Every row breaches its absolute budget on this host for both the branch and main. The baseline (`node -e 0`) p95 alone exceeds the 50 ms budget. The branch is within noise of main, so this feature adds no regression. The breach is pre-existing and comes from the host. CI's latency gate reports only (D-096). Per D-039 these numbers are report-only: recorded here, no gate impact.
 
 ## Gaps
 - R-01/S-3: no spawned `init --bundle` check of remote.json mode repair (D-036, #1053). The credstore unit test and the write-before-ping order test cover it.
 - R-25: Codex real-binary check not covered (D-012, #1053).
-- Latency budget: breaches on this devcontainer for both main and the branch. Not caused by this feature.
+- Latency budget: breaches on this devcontainer for both main and the branch. Not caused by this feature. Report-only per D-039; not a gap against any gate.
 
 ## Acceptance Criteria Verification
 | AC | Status | Evidence |
@@ -88,6 +88,23 @@ Every row breaches its absolute budget on this host for both the branch and main
 | S-4 | PASS | check-zero-deps OK; trust-selfcontained pass |
 | S-5 | PASS | grep of lib/test clean (conformance test only); `lib/atomic-write.js` absent |
 | S-6 | PASS | S-6 tests (2) |
+
+## D-038 clean-checkout verification
+
+Detached worktree of `fbdbf47e`; `npm install --omit=optional` (no lockfile; `node_modules/@dug-21/` empty, no platform binary). Tmp HOME for every run. `target/release/unimatrix` symlinked from the main checkout (built 2026-11-26; no crates change on this branch since).
+
+| Set | Tests | Pass | Fail | Cancelled | Skipped |
+|-----|-------|------|------|-----------|---------|
+| wiring-e2e (`E2E_REQUIRE_LOCAL=1`) | 45 | 45 | 0 | 0 | 0 |
+| hook-client | 979 | 978 | 0 | 0 | 1 |
+| parity-layer2 | 24 | 24 | 0 | 0 | 0 |
+| package | 973 | 942 | **29** | 0 | 2 |
+| opencode-plugin | 37 | 37 | 0 | 0 | 0 |
+| audit | PASS | | | | |
+
+- wiring-e2e: D-038 met (45/45). The 3 earlier cancellations were #1055 (local node_modules).
+- `resolve-binary`: passes in package set (D-037 failures environmental).
+- **package: 29 failures = #1036 test defect.** All from 4 new #1036 groups: `init-integration.test.js:482` "init 1036 spawned acceptance" (14), `wire.test.js:913` AC-3 links (8), `wire.test.js:1057` S-3 modes (4), `wire.test.js:1132` C17-A (3). Each spawns real `init` with a fake `UNIMATRIX_BINARY`; local transport on linux defaults `requireBinary` true (`lib/wire.js:165`, same as main), so `copyBinaryPackage` (`lib/install-store.js:101-110`) throws `BinaryPackageMissingError` without `@dug-21/unimatrix-linux-x64` installed. The tests only passed locally because that package was installed. CI (`ci.yml`, no `npm ci`) will fail the same way. Fix is in the tests (pass `requireBinary` off / supply a fixture platform package via `sourcePackageRoot`), not lib.
 
 ## Real-config hygiene (D-035)
 - `~/.unimatrix/install.json` mtime: 02:00:30.748 before and after. Unchanged.

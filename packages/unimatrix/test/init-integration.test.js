@@ -483,7 +483,7 @@ describe("init 1036 spawned acceptance", () => {
   const { spawnSync } = require("child_process");
   const { makeGitProject, gitEnv, writeJsonAt, readJson } = require("./helpers/wire-fixture.js");
   const { buildMcpArgv } = require("../lib/mcp-entry.js");
-  const BIN = path.join(__dirname, "..", "bin", "unimatrix.js");
+  const BIN = require("./helpers/wire-fixture.js").stagedCli();
   const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p || "unimatrix-1036-")));
   const onPath = (b) => spawnSync("sh", ["-c", "command -v " + b], { encoding: "utf8" }).status === 0;
   const fakeBin = () => {
