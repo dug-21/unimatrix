@@ -599,6 +599,35 @@ describe("AC-01 — per-machine stdio MCP entry (~/.claude.json)", () => {
   });
 });
 
+// D-036 (#1036, gap tracked #1053): the 0600 credential-store write/mode repair
+// must complete BEFORE the network Ping, so a ping failure never skips it.
+describe("D-036 — credential store mode repair precedes the Ping", () => {
+  it("test_initBundle_storeModeRepairedBeforePing", async () => {
+    const dir = makeTempProject();
+    const p = storePath(dir);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, "{}\n", { mode: 0o644 });
+    fs.chmodSync(p, 0o644);
+    const order = [];
+    const origWrite = credstore.write;
+    credstore.write = (...a) => { order.push("store"); return origWrite(...a); };
+    let modeAtPing = null;
+    stubPing(() => {
+      order.push("ping");
+      modeAtPing = fs.statSync(p).mode & 0o777;
+      return Promise.resolve({ ok: false, message: "unreachable" });
+    });
+    try {
+      await assert.rejects(initRemote({ bundle: makeBundle(), projectDir: dir }));
+    } finally {
+      credstore.write = origWrite;
+    }
+    assert.deepStrictEqual(order, ["store", "ping"]);
+    if (process.platform !== "win32") assert.strictEqual(modeAtPing, 0o600);
+    assert.strictEqual(readStore(dir).token, BUNDLE_TOKEN);
+  });
+});
+
 // ── AC-07 — idempotent + merge-preserving + dry-run (R-10) ──────────
 
 describe("AC-07 — ~/.claude.json idempotent + merge-preserving + dry-run", () => {
