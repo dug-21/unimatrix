@@ -93,10 +93,9 @@ function installSkills(projectRoot, opts) {
     return actions;
   }
 
-  if (!dryRun) {
-    fs.mkdirSync(targetDir, { recursive: true });
-  }
-
+  // No eager mkdir: the writer creates parents only after the containment
+  // check on the real parent (D-026), so an out-of-root .claude link is refused
+  // before anything is created through it.
   const skillDirs = fs
     .readdirSync(sourceDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
@@ -105,10 +104,6 @@ function installSkills(projectRoot, opts) {
   for (const skillDir of skillDirs) {
     const src = path.join(sourceDir, skillDir);
     const dst = path.join(targetDir, skillDir);
-
-    if (!dryRun) {
-      fs.mkdirSync(dst, { recursive: true });
-    }
 
     const files = fs.readdirSync(src);
     for (const file of files) {

@@ -20,3 +20,16 @@ Files (not committed): packages/unimatrix/test/wire.test.js (+16 tests, appended
 ## Knowledge Stewardship
 - Queried: mcp__unimatrix__context_briefing -- #5911 (temp-home/assertTmpHome rule), #5776 (wire orchestrator traps), #5777 (hook commandSource by transport), #5768 (ADR-006 C14 spine). No new info beyond the plan.
 - Stored: nothing novel to store -- the parent-dir mkdir leak is a single lib bug for the fixer, not yet a generalized pattern.
+
+## Gap closure (follow-up request from a3fa272a2556986c3)
+- AC-4 RT-07 Codex project (.codex/hooks.json, .codex/config.toml) and user ($CODEX_HOME hooks.json, config.toml) owned removal with foreign siblings via spawned init: `test_ac4_rt07_codex_project_and_user_owned_removed_foreign_kept` PASS. Project owned removed; user foreign kept.
+- S-3 remote.json drift: NOT exercised. Bundle `init --bundle` pings observe_url over pinned TLS (lib/init.js Step 6) with no test seam, so remote.json cannot be written offline. Needs a seam or a local TLS fixture (follow-up).
+- S-3 keep-mode controls (~/.claude.json, project opencode.json, .claude/skills/*): `test_s3_keep_mode_controls_unchanged_under_store_drift` PASS; install.json and root drift repaired to 0600.
+- AC-10 spawned rename failure: `test_ac10_spawned_rename_failure_settings_local_no_temp_exit1_names_file` PASS. Injection: NODE_OPTIONS=--require preload that throws EIO from fs.renameSync when target equals UNI_FAIL_RENAME (same mechanism class as R-12 in-process mock). No .tmp- left, exit 1 names file.
+- Before-rename spawned case skipped per request; covered by safe-write unit S-case and wire.test.js AC-7 in-process test.
+- Parent-dir-link test kept strict; still FAILS (lib bug, below).
+
+Counts: wire + install-store + safe-write = 142 tests, 141 pass, 1 fail (the parent-dir bug).
+
+## Lib bug (unchanged)
+- init creates `skills/` through an out-of-root `.claude -> outside` parent link before refusing. Expected no writes outside root.

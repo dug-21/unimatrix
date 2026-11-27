@@ -1127,3 +1127,114 @@ describe("1036 S-3 D-025 enforced modes via spawned init", () => {
     });
   }
 });
+
+// ── 1036 C17-A gap close: AC-4 Codex RT-07, S-3 remote.json + keep-mode, AC-10 spawned rename ──
+describe("1036 C17-A gap close via spawned init", () => {
+  const { spawnSync } = require("child_process");
+  const os = require("os");
+  const { makeGitProject, gitEnv, ownedHooks } = require("./helpers/wire-fixture.js");
+  const { assertTmpHome } = require("./helpers/home-guard.js");
+  const BIN = path.join(__dirname, "..", "bin", "unimatrix.js");
+  const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
+  const mode = (p) => fs.statSync(p).mode & 0o777;
+  const tmpFiles = (d) => { const o = []; const w = (x) => { for (const e of fs.readdirSync(x, { withFileTypes: true })) { const p = path.join(x, e.name); if (/\.tmp-[0-9a-f]{16}$/.test(e.name)) o.push(p); if (e.isDirectory() && !e.isSymbolicLink()) w(p); } }; try { w(d); } catch (_) {} return o; };
+  function fakeBin() {
+    const f = path.join(tmp("unimatrix-fakebin-"), "unimatrix");
+    fs.writeFileSync(f, '#!/bin/sh\necho "unimatrix 0.5.0"\n');
+    fs.chmodSync(f, 0o755);
+    return f;
+  }
+  function init(cwd, home, opts) {
+    assertTmpHome(home);
+    const o = opts || {};
+    const env = gitEnv(Object.assign({ HOME: home, UNIMATRIX_BINARY: fakeBin() }, o.env || {}));
+    const argv = [process.execPath, BIN, "init"].concat(o.args || []);
+    const r = spawnSync(argv[0], argv.slice(1), { cwd, env, encoding: "utf8", timeout: 60000 });
+    return { status: r.status, out: (r.stdout || "") + (r.stderr || "") };
+  }
+
+  it("test_ac4_rt07_codex_project_and_user_owned_removed_foreign_kept", () => {
+    const dir = makeGitProject("unimatrix-rt07-");
+    const home = tmp("unimatrix-rt07-home-");
+    const C = tmp("unimatrix-rt07-codex-");
+    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
+    assert.strictEqual(init(dir, home, { env: { CODEX_HOME: C }, args: ["--harness", "codex-cli"] }).status, 0);
+    const userHooks = path.join(C, "hooks.json");
+    const userCfg = path.join(C, "config.toml");
+    const owned = readJsonSafe(userHooks);
+    assert.ok(owned && owned.hooks, "init wrote owned user hooks");
+    const foreign = { hooks: [{ type: "command", command: "echo foreign" }] };
+    const ownedGroup = owned.hooks.SessionStart;
+    const seedHooks = (file, src) => fs.writeFileSync(file, JSON.stringify({ hooks: { SessionStart: ownedGroup.concat([foreign]) }, extra: src || 1 }, null, 2) + "\n");
+    seedHooks(path.join(dir, ".codex", "hooks.json"));
+    seedHooks(userHooks);
+    const ownedToml = fs.readFileSync(userCfg, "utf8");
+    const mcpTable = ownedToml.slice(ownedToml.indexOf("[mcp_servers.unimatrix]"));
+    const projToml = mcpTable.split(/\n(?=\[(?!mcp_servers\.unimatrix\.))/)[0] + "\n[mcp_servers.other]\ncommand = \"y\"\n";
+    fs.writeFileSync(path.join(dir, ".codex", "config.toml"), projToml);
+    fs.writeFileSync(userCfg, ownedToml + "\n[mcp_servers.other]\ncommand = \"y\"\n");
+    const r = init(dir, home, { env: { CODEX_HOME: C }, args: ["--harness", "codex-cli"] });
+    assert.strictEqual(r.status, 0, r.out);
+    const projJson = readJsonSafe(path.join(dir, ".codex", "hooks.json"));
+    const cmds = (j) => JSON.stringify(j).match(/"command":"[^"]*"/g) || [];
+    assert.ok(!cmds(projJson).some((c) => /unimatrix/.test(c)), "project owned hooks removed: " + cmds(projJson));
+    assert.ok(cmds(projJson).some((c) => /echo foreign/.test(c)), "project foreign hook kept");
+    const userJson = readJsonSafe(userHooks);
+    assert.ok(cmds(userJson).some((c) => /echo foreign/.test(c)), "user foreign hook kept");
+    const projCfg = fs.readFileSync(path.join(dir, ".codex", "config.toml"), "utf8");
+    assert.ok(!/\[mcp_servers\.unimatrix\]/.test(projCfg), "project owned mcp table removed");
+    assert.ok(/\[mcp_servers\.other\]/.test(projCfg), "project foreign mcp kept");
+    assert.ok(/\[mcp_servers\.other\]/.test(fs.readFileSync(userCfg, "utf8")), "user foreign mcp kept");
+    assert.deepStrictEqual(tmpFiles(dir).concat(tmpFiles(C)), []);
+  });
+
+  it("test_s3_keep_mode_controls_unchanged_under_store_drift", () => {
+    // remote.json drift cannot be exercised: bundle init pings the observe_url over pinned TLS
+    // (init.js Step 6) with no test seam, so the file is never written offline.
+    const dir = makeGitProject("unimatrix-s3r-");
+    const home = tmp("unimatrix-s3r-home-");
+    assert.strictEqual(init(dir, home).status, 0);
+    const sd = path.join(home, ".unimatrix");
+    const hd = fs.readdirSync(sd).find((n) => /^[0-9a-f]{16}$/.test(n));
+    fs.chmodSync(path.join(sd, "install.json"), 0o664);
+    fs.chmodSync(path.join(sd, hd, "root"), 0o644);
+    const claudeJson = path.join(home, ".claude.json");
+    const ocJson = path.join(dir, "opencode.json");
+    const skill = path.join(dir, ".claude", "skills", "uni-init", "SKILL.md");
+    fs.writeFileSync(ocJson, "{}\n");
+    fs.writeFileSync(claudeJson, "{}\n");
+    for (const p of [claudeJson, ocJson, skill]) fs.chmodSync(p, 0o664);
+    const r = init(dir, home);
+    assert.strictEqual(r.status, 0, r.out);
+    assert.strictEqual(mode(path.join(sd, "install.json")), 0o600);
+    assert.strictEqual(mode(path.join(sd, hd, "root")), 0o600);
+    assert.match(r.out, /install\.json/);
+    for (const p of [claudeJson, ocJson, skill]) assert.strictEqual(mode(p), 0o664, "keeps drifted mode: " + p);
+  });
+
+  it("test_ac10_spawned_rename_failure_settings_local_no_temp_exit1_names_file", () => {
+    const dir = makeGitProject("unimatrix-ac10-");
+    const home = tmp("unimatrix-ac10-home-");
+    const target = path.join(dir, ".claude", "settings.local.json");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, "{}\n");
+    const preload = path.join(tmp("unimatrix-ac10-pre-"), "fail-rename.js");
+    fs.writeFileSync(preload, [
+      "const fs = require('fs');",
+      "const orig = fs.renameSync;",
+      "fs.renameSync = function (from, to) {",
+      "  if (to === process.env.UNI_FAIL_RENAME) { const e = new Error('EIO: injected'); e.code = 'EIO'; throw e; }",
+      "  return orig.apply(fs, arguments);",
+      "};",
+    ].join("\n"));
+    const r = init(dir, home, { env: { NODE_OPTIONS: "--require " + preload, UNI_FAIL_RENAME: target } });
+    assert.strictEqual(r.status, 1, r.out);
+    assert.ok(r.out.includes(target), r.out);
+    assert.strictEqual(fs.readFileSync(target, "utf8"), "{}\n");
+    assert.deepStrictEqual(tmpFiles(dir), []);
+  });
+});
+
+function readJsonSafe(p) {
+  try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch (_) { return null; }
+}

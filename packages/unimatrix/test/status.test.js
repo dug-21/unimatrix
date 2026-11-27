@@ -190,3 +190,92 @@ test("FR-01 grep: no private codexHome or home/.claude.json path in status.js", 
   assert.ok(!/\.claude\.json/.test(src));
   assert.ok(!/CODEX_HOME|CLAUDE_CONFIG_DIR|OPENCODE_CONFIG_DIR|XDG_CONFIG_HOME/.test(src));
 });
+
+// ── S-1 spawned cases (AC-S-1): real bin/unimatrix.js status in an isolated tmp HOME, env scrubbed ──
+const { spawnSync } = require("child_process");
+const { scrubbedEnv } = require("./helpers/home-guard.js");
+const BIN = path.join(__dirname, "..", "bin", "unimatrix.js");
+function spawnCli(f, args, extra) {
+  const env = scrubbedEnv(Object.assign({ HOME: f.home, USERPROFILE: f.home, PATH: process.env.PATH }, extra || {}));
+  return spawnSync(process.execPath, [BIN].concat(args), { cwd: f.proj, env, encoding: "utf8", timeout: 30000 });
+}
+const fakeBinary = (f) => {
+  const p = path.join(f.base, "fake-unimatrix");
+  w(p, '#!/bin/sh\necho "unimatrix 0.5.0"\n', 0o755);
+  return p;
+};
+
+test("S-1 spawned: missing local-scope entry prints MISSING line, exit 0, json status missing", posix, () => {
+  const f = fixture();
+  w(path.join(f.home, ".claude.json"), JSON.stringify({ projects: {} }));
+  const t = spawnCli(f, ["status"]);
+  assert.equal(t.status, 0, t.stderr);
+  assert.ok(t.stdout.includes(`mcp claude-code: MISSING projects["${f.proj}"].mcpServers.unimatrix in ${path.join(f.home, ".claude.json")}; run 'npx unimatrix init'`), t.stdout);
+  const j = spawnCli(f, ["status", "--json"]);
+  assert.equal(j.status, 0, j.stderr);
+  assert.equal(JSON.parse(j.stdout).claudeMcp.status, "missing");
+});
+
+test("S-1 spawned --json: all five claudeMcp.status values reachable", posix, () => {
+  const seen = new Set();
+  const cjf = (f) => path.join(f.home, ".claude.json");
+  const probe = (f) => JSON.parse(spawnCli(f, ["status", "--json"]).stdout).claudeMcp.status;
+
+  const f = fixture();
+  claudeJson(cjf(f), f.proj, OWNED); seen.add(probe(f));
+  w(cjf(f), JSON.stringify({ projects: {} })); seen.add(probe(f));
+  claudeJson(cjf(f), f.proj, FOREIGN); seen.add(probe(f));
+  w(cjf(f), "{not json"); seen.add(probe(f));
+
+  const g = fixture({ noStore: true, noInstall: true });
+  seen.add(probe(g));
+
+  assert.deepEqual([...seen].sort(), ["foreign", "missing", "n/a", "unreadable", "wired"]);
+});
+
+test("S-1 spawned: twin-only owned hook is stale under CLAUDE_CONFIG_DIR, exit 0", posix, () => {
+  const f = fixture();
+  w(path.join(f.home, ".claude", "settings.json"), JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "unimatrix hook Stop" }] }] } }));
+  const env = { CLAUDE_CONFIG_DIR: path.join(f.base, "cfg") };
+  const r = spawnCli(f, ["status"], env);
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(r.stdout.includes(`stale: ${path.join(f.home, ".claude", "settings.json")} hooks holds an owned Unimatrix entry`), r.stdout);
+  const j = JSON.parse(spawnCli(f, ["status", "--json"], env).stdout);
+  assert.ok(j.staleLegacy.some((s) => s.harness === "claude-code" && s.key === "hooks"), JSON.stringify(j.staleLegacy));
+});
+
+test("S-1 spawned: unparseable resolved opencode.json named, exit 0", posix, () => {
+  const f = fixture();
+  const oc = path.join(f.home, ".config", "opencode", "opencode.json");
+  w(oc, "{ // broken");
+  const r = spawnCli(f, ["status"]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(r.stdout.includes(`opencode mcp: ${oc} is not valid JSON; OpenCode is left without Unimatrix wiring until it is fixed`), r.stdout);
+});
+
+test("S-1 parity: spawned init 'resolved:' paths equal collect().configDirs per override set", posix, () => {
+  const sets = [
+    {},
+    { CLAUDE_CONFIG_DIR: null },
+    { OPENCODE_CONFIG_DIR: null, XDG_CONFIG_HOME: null },
+  ];
+  for (const set of sets) {
+    const f = fixture();
+    fs.mkdirSync(path.join(f.proj, ".opencode"), { recursive: true });
+    const extra = {};
+    for (const [k, v] of Object.entries(set)) extra[k] = v === null ? path.join(f.base, k.toLowerCase()) : v;
+    const bin = fakeBinary(f);
+    const env = Object.assign({ UNIMATRIX_BINARY: bin }, extra);
+    const init = spawnCli(f, ["init", "--dry-run"], env);
+    assert.equal(init.status, 0, init.stderr);
+    const resolved = {};
+    for (const line of init.stdout.split("\n")) {
+      const m = /resolved: (claude-code mcp|claude-code hooks|opencode mcp) -> (\S+) /.exec(line.trim());
+      if (m) resolved[m[1]] = m[2];
+    }
+    const cd = status.collect(ctx(f, extra)).configDirs;
+    assert.equal(resolved["claude-code mcp"], cd.claude.claudeJson, JSON.stringify(set));
+    assert.equal(resolved["claude-code hooks"], cd.claude.userSettings, JSON.stringify(set));
+    assert.equal(resolved["opencode mcp"], cd.opencode.configJson, JSON.stringify(set));
+  }
+});

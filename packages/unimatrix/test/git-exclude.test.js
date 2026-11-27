@@ -191,3 +191,27 @@ test("dryRun: reports created/updated, writes nothing, read-only git only", need
     for (const a of rec.calls) assert.ok(["rev-parse", "ls-files", "check-ignore"].includes(a[0]), a.join(" "));
   }
 });
+
+test("already listed in existing exclude: unchanged, bytes and mtime equal, git diff clean", needGit, () => {
+  const d = repo(); putLocal(d);
+  const x = excl(d); fs.writeFileSync(x, "*.o\n" + ENTRY + "\n");
+  const before = read(x); const m = fs.statSync(x).mtimeMs;
+  const r = ensureSettingsLocalIgnored(d, {});
+  assert.strictEqual(r.action, "unchanged"); assert.strictEqual(read(x), before); assert.strictEqual(fs.statSync(x).mtimeMs, m);
+  cleanDiff(d);
+});
+
+test("linked worktree and submodule: entry in git-reported file and git diff clean", needGit, () => {
+  const d = repo(); commitAll(d); const wt = path.join(tmpd(), "wt");
+  git(d, "worktree", "add", "-q", wt);
+  const r = ensureSettingsLocalIgnored(wt, {});
+  assert.ok(["created", "updated"].includes(r.action)); assert.ok(read(r.path).split("\n").includes(ENTRY));
+  cleanDiff(wt); cleanDiff(d);
+  const sub = repo(); commitAll(sub); const sup = repo(); commitAll(sup);
+  git(sup, "-c", "protocol.file.allow=always", "submodule", "add", "-q", sub, "mod");
+  const root = path.join(sup, "mod");
+  git(root, "config", "core.excludesFile", path.join(sup, ".no-global-excludes"));
+  const s = ensureSettingsLocalIgnored(root, {});
+  assert.ok(["created", "updated"].includes(s.action), JSON.stringify(s)); assert.ok(ignored(root));
+  cleanDiff(root);
+});

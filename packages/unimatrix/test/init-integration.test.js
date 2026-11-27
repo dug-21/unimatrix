@@ -6,6 +6,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { describe, it, beforeEach, afterEach, mock } = require("node:test");
+const { assertTmpHome } = require("./helpers/home-guard.js");
 
 // Integration tests for copySkills and the full init() flow.
 // Core unit tests (detectProjectRoot, per-machine MCP wiring, printSummary) are in
@@ -664,5 +665,242 @@ describe("init 1036 spawned acceptance", () => {
     assert.strictEqual(r.status, 0, r.stderr);
     assert.ok(r.stderr.includes("CLAUDE_CONFIG_DIR"), r.stderr);
     assert.ok(r.stdout.includes("resolved: claude-code mcp -> " + path.join(home, ".claude.json") + " (default)"), r.stdout);
+  });
+
+  // ── AC-5 / AC-8 / AC-9 extended: twins, bundle, mode drift, FR-42 rows, dry-run parity ──
+  const bin = fakeBin();
+  const ri = (dir, home, extra, args) => runInit(dir, assertTmpHome(home), Object.assign({ UNIMATRIX_BINARY: bin }, extra || {}), args);
+  const exclOf = (dir) => path.resolve(dir, git(dir, ["rev-parse", "--git-path", "info/exclude"]).stdout.trim());
+  const ENTRY = "/.claude/settings.local.json";
+  const seedOwnedTwins = (home, dir) => {
+    writeJsonAt(path.join(home, ".claude", "settings.json"), { hooks: { Stop: [{ hooks: [{ type: "command", command: "unimatrix hook Stop" }] }] } });
+    writeJsonAt(path.join(home, ".config", "opencode", "opencode.json"), { mcp: { unimatrix: { type: "local", command: buildMcpArgv("linux", home) } } });
+    writeJsonAt(path.join(home, ".claude.json"), { projects: { [dir]: { mcpServers: { unimatrix: { command: "sh", args: ["-c", "old"], env: {} } } } } });
+  };
+  const changedKeys = (a, b) => Object.keys(Object.assign({}, a, b))
+    .filter((k) => a[k] !== b[k] && !/\.db(-wal|-shm)?$/.test(k) && !k.endsWith(path.join(".git", "index")));
+  const assertNoChange = (a, b) => assert.deepStrictEqual(changedKeys(a, b), []);
+  const manifestOf = (out) => out.split("\n").map((l) => l.trim())
+    .filter((l) => /^(\[dry-run\] )?(resolved:|note:|If Claude Code|(unimatrix|claude-code|codex-cli|opencode) [a-z-]+: )/.test(l))
+    .map((l) => l.replace(/^\[dry-run\] /, ""));
+
+  it("test_ac5_run_twice_overrides_and_twins_all_unchanged", linuxLocal, () => {
+    const variants = [{}, { CLAUDE_CONFIG_DIR: tmp() }, { OPENCODE_CONFIG_DIR: tmp(), XDG_CONFIG_HOME: tmp() }];
+    for (const extra of variants) {
+      const dir = makeGitProject();
+      const home = makeHome();
+      seedOwnedTwins(home, dir);
+      const r1 = ri(dir, home, extra);
+      assert.strictEqual(r1.status, 0, r1.stderr);
+      const roots = [dir, home].concat(Object.values(extra));
+      const before = treeState(roots);
+      const r2 = ri(dir, home, extra);
+      assert.strictEqual(r2.status, 0, r2.stderr);
+      for (const l of legLines(r2.stdout)) assert.ok(/: (unchanged|skipped[a-z-]*) /.test(l), l);
+      assert.ok(!r2.stdout.includes("If Claude Code was running"), "no notice on run 2");
+      assertNoChange(before, treeState(roots));
+    }
+  });
+
+  it("test_ac5_bundle_run_twice_all_unchanged", linuxLocal, async (t) => {
+    const H = require("./helpers/e2e-harness.js");
+    const cert = H.loadCert();
+    if (!cert) return t.skip("no TLS cert material (openssl); bundle run needs a live stub");
+    const stub = await H.startStub(cert);
+    try {
+      for (const overrideDir of [null, tmp()]) {
+        const dir = makeGitProject();
+        const home = makeHome();
+        seedOwnedTwins(home, dir);
+        const extra = overrideDir ? { CLAUDE_CONFIG_DIR: overrideDir } : {};
+        const env = gitEnv(Object.assign({ HOME: home, UNIMATRIX_BINARY: bin, NODE_EXTRA_CA_CERTS: cert.certPath }, extra));
+        const argv = [BIN, "init", "--bundle", H.bundleFor(stub, cert)];
+        const r1 = await H.run(process.execPath, argv, { spawn: { cwd: dir, env }, timeoutMs: 120000 });
+        assert.strictEqual(r1.code, 0, r1.out + r1.err);
+        const roots = [dir, home].concat(overrideDir ? [overrideDir] : []);
+        const before = treeState(roots);
+        const r2 = await H.run(process.execPath, argv, { spawn: { cwd: dir, env }, timeoutMs: 120000 });
+        assert.strictEqual(r2.code, 0, r2.out + r2.err);
+        for (const l of legLines(r2.out)) assert.ok(/: (unchanged|skipped[a-z-]*) /.test(l), l);
+        assert.ok(!r2.out.includes("If Claude Code was running"), "no notice on run 2");
+        assertNoChange(before, treeState(roots));
+      }
+    } finally {
+      await stub.close();
+    }
+  });
+
+  it("test_ac5_mode_drift_repaired_then_converges_unchanged", linuxLocal, () => {
+    const dir = makeGitProject();
+    const home = makeHome();
+    const r1 = ri(dir, home);
+    assert.strictEqual(r1.status, 0, r1.stderr);
+    const inst = path.join(home, ".unimatrix", "install.json");
+    fs.chmodSync(inst, 0o644);
+    const r2 = ri(dir, home);
+    assert.strictEqual(r2.status, 0, r2.stderr);
+    assert.ok(/unimatrix store: updated .*install\.json/.test(r2.stdout), r2.stdout);
+    assert.strictEqual(fs.statSync(inst).mode & 0o777, 0o600);
+    const before = treeState([dir, home]);
+    const r3 = ri(dir, home);
+    assert.strictEqual(r3.status, 0, r3.stderr);
+    for (const l of legLines(r3.stdout)) assert.ok(/: (unchanged|skipped[a-z-]*) /.test(l), l);
+    assertNoChange(before, treeState([dir, home]));
+  });
+
+  // FR-42 fixtures shared by the AC-8 row assertions and the AC-9 parity harness.
+  const FIXTURES = [
+    { name: "fresh-repo", make: () => ({ dir: makeGitProject(), home: makeHome(), expect: /claude-code git-exclude: (created|updated) / }) },
+    { name: "ac1-claude-config-dir-twin", make: () => {
+      const dir = makeGitProject(); const home = makeHome(); const D = tmp();
+      seedOwnedTwins(home, dir);
+      return { dir, home, extra: { CLAUDE_CONFIG_DIR: D }, roots: [D], expect: /claude-code git-exclude: (created|updated) / };
+    } },
+    { name: "ac2-opencode-xdg-twin", make: () => {
+      const dir = makeGitProject(); const home = makeHome(); const X = tmp();
+      seedOwnedTwins(home, dir);
+      return { dir, home, extra: { XDG_CONFIG_HOME: X }, roots: [X], expect: /claude-code git-exclude: (created|updated) / };
+    } },
+    { name: "ac3-outside-root-link", exitOnly: true, make: () => {
+      const dir = makeGitProject(); const home = makeHome(); const out = tmp("unimatrix-outside-");
+      writeJsonAt(path.join(out, "settings.local.json"), { victim: true });
+      fs.symlinkSync(out, path.join(dir, ".claude"));
+      return { dir, home, roots: [out] };
+    } },
+    { name: "ac8-gitignored-gitignore", make: () => {
+      const dir = makeGitProject(); fs.writeFileSync(path.join(dir, ".gitignore"), ".claude/\n");
+      return { dir, home: makeHome(), expect: /claude-code git-exclude: unchanged / };
+    } },
+    { name: "ac8-core-excludesfile", make: () => {
+      const dir = makeGitProject(); const cfg = path.join(tmp(), "global-ignore");
+      fs.writeFileSync(cfg, "settings.local.json\n");
+      git(dir, ["config", "core.excludesFile", cfg]);
+      return { dir, home: makeHome(), expect: /claude-code git-exclude: unchanged / };
+    } },
+    { name: "ac8-existing-exclude-entry", make: () => {
+      const dir = makeGitProject(); fs.writeFileSync(exclOf(dir), ENTRY + "\n");
+      return { dir, home: makeHome(), expect: /claude-code git-exclude: unchanged / };
+    } },
+    { name: "ac8-tracked", gitClean: false, make: () => {
+      const dir = makeGitProject(); fs.mkdirSync(path.join(dir, ".claude"));
+      fs.writeFileSync(path.join(dir, ".claude", "settings.local.json"), "{}\n");
+      git(dir, ["add", "-f", ".claude/settings.local.json"]);
+      git(dir, ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "c"]);
+      const ex = exclOf(dir);
+      return { dir, home: makeHome(), expect: /claude-code git-exclude: skipped-tracked /,
+        check: (s) => {
+          assert.ok(!fs.existsSync(ex) || !fs.readFileSync(ex, "utf8").includes(ENTRY), "exclude not appended for tracked file");
+          assert.strictEqual(git(s.dir, ["ls-files", "--stage"]).status, 0);
+        } };
+    } },
+    { name: "ac8-bang-override", make: () => {
+      const dir = makeGitProject(); fs.writeFileSync(path.join(dir, ".gitignore"), "!" + ENTRY + "\n");
+      return { dir, home: makeHome(), dryExpect: /claude-code git-exclude: updated /, expect: /appended-not-effective /,
+        check: (s) => {
+          const again = ri(s.dir, s.home, s.extra);
+          assert.strictEqual(again.status, 0, again.stderr);
+          assert.strictEqual(fs.readFileSync(exclOf(s.dir), "utf8").split("\n").filter((l) => l === ENTRY).length, 1);
+        } };
+    } },
+    { name: "ac8-path-without-git", make: () => {
+      const dir = makeGitProject(); const emptyPath = tmp("unimatrix-nogit-");
+      return { dir, home: makeHome(), extra: { PATH: emptyPath }, expect: /claude-code git-exclude: skipped-no-git / };
+    } },
+    { name: "ac8-linked-worktree", make: () => {
+      const dir = makeGitProject(); git(dir, ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "c"]);
+      const wt = path.join(tmp(), "wt");
+      git(dir, ["worktree", "add", "-q", wt]);
+      return { dir: wt, home: makeHome(), roots: [dir], args: ["--project-dir", wt], expect: /claude-code git-exclude: (created|updated) /,
+        check: (s) => assert.ok(fs.readFileSync(exclOf(s.dir), "utf8").split("\n").includes(ENTRY)) };
+    } },
+    { name: "ac8-submodule", make: () => {
+      const sub = makeGitProject(); git(sub, ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "c"]);
+      const sup = makeGitProject(); git(sup, ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "c"]);
+      git(sup, ["-c", "protocol.file.allow=always", "submodule", "add", "-q", sub, "mod"]);
+      const dir = path.join(sup, "mod");
+      return { dir, home: makeHome(), roots: [sup], args: ["--project-dir", dir], expect: /claude-code git-exclude: (created|updated) /,
+        check: (s) => assert.ok(fs.readFileSync(path.join(sup, ".git", "modules", "mod", "info", "exclude"), "utf8").includes(ENTRY)) };
+    } },
+    { name: "ac8-subdir-escaped-entry", make: () => {
+      const dir = makeGitProject(); const sub = path.join(dir, "x", "a*b[1]!");
+      fs.mkdirSync(sub, { recursive: true });
+      return { dir: sub, home: makeHome(), roots: [dir], args: ["--project-dir", sub], expect: /claude-code git-exclude: (created|updated) /,
+        check: (s) => assert.ok(fs.readFileSync(exclOf(dir), "utf8").split("\n").includes("/x/a\\*b\\[1]\\!" + ENTRY)) };
+    } },
+    { name: "ac8-missing-info-dir", make: () => {
+      const dir = makeGitProject(); fs.rmSync(path.join(dir, ".git", "info"), { recursive: true, force: true });
+      return { dir, home: makeHome(), expect: /claude-code git-exclude: created / };
+    } },
+    { name: "ac8-symlinked-exclude", make: () => {
+      const dir = makeGitProject(); const tgtDir = tmp(); const tgt = path.join(tgtDir, "real-exclude");
+      fs.writeFileSync(tgt, "*.o\n");
+      fs.rmSync(exclOf(dir), { force: true }); fs.symlinkSync(tgt, exclOf(dir));
+      return { dir, home: makeHome(), roots: [tgtDir], expect: /claude-code git-exclude: (created|updated) /,
+        check: () => { assert.ok(fs.lstatSync(exclOf(dir)).isSymbolicLink()); assert.ok(fs.readFileSync(tgt, "utf8").includes(ENTRY)); } };
+    } },
+    { name: "ac8-git-dir-env-ignored", make: () => {
+      const dir = makeGitProject(); const other = makeGitProject();
+      return { dir, home: makeHome(), extra: { GIT_DIR: path.join(other, ".git") }, roots: [other], expect: /claude-code git-exclude: (created|updated) / };
+    } },
+    { name: "ac9-mode-drift", make: () => {
+      const dir = makeGitProject(); const home = makeHome();
+      const pre = ri(dir, home); assert.strictEqual(pre.status, 0, pre.stderr);
+      fs.chmodSync(path.join(home, ".unimatrix", "install.json"), 0o644);
+      return { dir, home, expect: /unimatrix store: updated .*install\.json/ };
+    } },
+  ];
+
+  it("test_ac8_fr42_fixtures_expected_action_and_clean_diff", linuxLocal, () => {
+    for (const fx of FIXTURES.filter((f) => !f.exitOnly && !/^ac9-/.test(f.name))) {
+      const s = fx.make();
+      const dry = ri(s.dir, s.home, s.extra, ["--dry-run"].concat(s.args || []));
+      assert.strictEqual(dry.status, 0, fx.name + ": " + dry.stderr);
+      if (s.dryExpect || s.expect) assert.match(dry.stdout, s.dryExpect || s.expect, fx.name + " dry-run");
+      const real = ri(s.dir, s.home, s.extra, s.args || []);
+      assert.strictEqual(real.status, 0, fx.name + ": " + real.stderr);
+      if (s.expect) assert.match(real.stdout, s.expect, fx.name + " real");
+      if (fx.gitClean !== false) {
+        assert.strictEqual(git(s.dir, ["diff", "--exit-code"]).status, 0, fx.name + ": git diff");
+        assert.strictEqual(git(s.dir, ["diff", "--cached", "--exit-code"]).status, 0, fx.name + ": git diff --cached");
+      }
+      if (s.check) s.check(s);
+    }
+  });
+
+  it("test_ac9_parity_dry_run_matches_real_over_every_fixture", linuxLocal, () => {
+    for (const fx of FIXTURES) {
+      const s = fx.make();
+      const roots = [s.dir, s.home].concat(s.roots || []);
+      const before = treeState(roots);
+      const outBefore = treeState(s.roots || []);
+      const dry = ri(s.dir, s.home, s.extra, ["--dry-run"].concat(s.args || []));
+      assert.deepStrictEqual(treeState(roots), before, fx.name + ": dry-run wrote nothing (tree, modes, mtimes)");
+      const real = ri(s.dir, s.home, s.extra, s.args || []);
+      if (fx.exitOnly) {
+        assert.strictEqual(dry.status, 1, fx.name + " dry-run must exit 1");
+        assert.strictEqual(real.status, 1, fx.name + " real must exit 1");
+        assert.ok(/outside project root/.test(dry.stderr) && /outside project root/.test(real.stderr), fx.name);
+        assert.deepStrictEqual(treeState(s.roots), outBefore, fx.name + ": outside target untouched");
+        continue;
+      }
+      assert.strictEqual(dry.status, 0, fx.name + ": " + dry.stderr);
+      assert.strictEqual(real.status, 0, fx.name + ": " + real.stderr);
+      // FR-42 step 7 is the one allowed dry/real difference: dry-run cannot yet see the effective check.
+      const norm = (out) => manifestOf(out).map((l) => l.replace(/git-exclude: (appended-not-effective|updated) (\S+).*$/, "git-exclude: WRITE $2"));
+      assert.deepStrictEqual(norm(real.stdout), norm(dry.stdout), fx.name + ": manifest parity");
+      const after = treeState(roots);
+      const diffKeys = Object.keys(Object.assign({}, before, after))
+        .filter((k) => before[k] !== after[k] && !/\.db(-wal|-shm)?$/.test(k) && !k.endsWith(path.join(".git", "index")));
+      const changed = diffKeys.filter((k) => !k.endsWith("/"));
+      const planned = dry.stdout.split("\n")
+        .map((l) => /: (created|updated|removed) (\S+)/.exec(l) || /skill file: (\S+)/.exec(l))
+        .filter(Boolean)
+        .map((m) => (m[0].includes("skill file") ? path.join(s.dir, ".claude", "skills", m[1]) : path.resolve(s.dir, m[2])));
+      // A planned path that is a symlink is written through: its real target is the changed file.
+      // A planned symlink path is written through: its real target is the changed file.
+      const linkTarget = (p) => { try { return fs.realpathSync(p); } catch (_e) { return null; } };
+      for (const k of changed) assert.ok(planned.some((p) => k === p || k.startsWith(p + path.sep) || k === linkTarget(p)), fx.name + ": unplanned change " + k);
+      for (const p of planned) assert.ok(diffKeys.some((k) => k === p || k === p + path.sep || k.startsWith(p + path.sep) || k === linkTarget(p)), fx.name + ": planned but unchanged " + p);
+    }
   });
 });
