@@ -145,6 +145,22 @@ assert_json_only_accept_fails_framing() {
   esac
 }
 
+# read_back_project_hash <cred_root> [fail_prefix] (#1060) — the ONE projectHash read-back
+# shared by Gate 6 (smoke), Gate 8 (cloud_cycle_gates) and Gate 9 (client_works_gate).
+# Selects by the credstore MARKER <projectHash>/remote.json (vnc-039 layout), never by
+# counting dirs: nan-024 install puts bin/, pkg/, install.json beside the hash dir. ONE
+# find capture; count + derive from it. Sets PROJECT_HASH; any miss -> fail() (exit 1).
+read_back_project_hash() {
+  local cred_root="$1" pfx="${2:-}" matches n
+  matches="$(find "$cred_root" -mindepth 2 -maxdepth 2 -type f -name remote.json 2>/dev/null)"
+  n="$(printf '%s' "$matches" | grep -c . || true)"
+  [ "$n" -ge 1 ] \
+    || fail "${pfx}credstore root $cred_root has no <projectHash>/remote.json — credstore absent (init.js contract drift)"
+  [ "$n" -eq 1 ] \
+    || fail "${pfx}projectHash read-back ambiguous: expected exactly 1 <projectHash>/remote.json under $cred_root, found $n (init.js contract drift)"
+  PROJECT_HASH="$(basename "$(dirname "$matches")")"
+}
+
 cloud_cycle_gates() {
   # ---- preconditions from the orchestrator ----
   [ -n "${MANIFEST_PATH:-}" ] || fail "cloud_cycle_gates: MANIFEST_PATH unset (C4 manifest required)"
@@ -153,14 +169,10 @@ cloud_cycle_gates() {
   [ -f "$MANIFEST_PATH" ]     || fail "cloud_cycle_gates: manifest $MANIFEST_PATH not found"
 
   # ---- 1. read projectHash BACK (OQ1/R-11 — never recompute) ----
-  local cred_root="$SANDBOX/home/.unimatrix" project_hash hash_count cred_file
+  local cred_root="$SANDBOX/home/.unimatrix" project_hash
   [ -d "$cred_root" ] || fail "credstore root $cred_root absent — C1 standup incomplete (C1->C2)"
-  hash_count="$(find "$cred_root" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
-  [ "$hash_count" = "1" ] \
-    || fail "projectHash read-back ambiguous: expected 1 dir under $cred_root, found $hash_count (init.js drift)"
-  project_hash="$(find "$cred_root" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)"
-  cred_file="$cred_root/$project_hash/remote.json"
-  [ -f "$cred_file" ] || fail "credstore $cred_file absent — bridge cannot attach (C1->C2)"
+  read_back_project_hash "$cred_root"
+  project_hash="$PROJECT_HASH"
   log "projectHash read back as $project_hash (credstore present)"
 
   # Expected observe count from the C4 manifest (single source of truth) — drives

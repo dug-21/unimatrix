@@ -28,6 +28,12 @@
 
 REPO_ROOT_DEFAULT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# read_back_project_hash lives in cloud-cycle-lib.sh (#1060); source it when absent so a
+# caller sourcing only this lib stays self-contained (guard: no double-source).
+if ! declare -F read_back_project_hash >/dev/null; then
+  # shellcheck source=product/test/infra-001/scripts/cloud-cycle-lib.sh
+  . "$SCRIPTS_DIR/cloud-cycle-lib.sh"
+fi
 BRIDGE_JS="$REPO_ROOT_DEFAULT/packages/unimatrix/lib/hook-client/mcp-bridge.js"
 SINGLE_DRIVER_JS="$SCRIPTS_DIR/bridge-single-call-driver.js"
 
@@ -97,16 +103,11 @@ drive_client_call() {
 
 client_works_gate() {
   # ---- read the projectHash BACK from the Gate-6 credstore (OQ1/R-11 — never recompute) ----
-  local cred_root="$SANDBOX/home/.unimatrix" project_hash hash_count cred_file
+  local cred_root="$SANDBOX/home/.unimatrix" project_hash
   [ -d "$cred_root" ] \
     || fail "client-works: credstore root $cred_root absent — bundle attach (Gate 6) incomplete"
-  hash_count="$(find "$cred_root" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
-  [ "$hash_count" = "1" ] \
-    || fail "client-works: projectHash read-back ambiguous: expected 1 dir under $cred_root, found $hash_count (init.js contract drift)"
-  project_hash="$(find "$cred_root" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)"
-  cred_file="$cred_root/$project_hash/remote.json"
-  [ -f "$cred_file" ] \
-    || fail "client-works: credstore $cred_file absent — the bridge cannot attach"
+  read_back_project_hash "$cred_root" "client-works: "
+  project_hash="$PROJECT_HASH"
 
   # ---- drive ONE stateless context_* op THROUGH the shipped bridge (bounded) ----
   local CALL_OUT="$SANDBOX/client_call.json" CALL_ERR="$SANDBOX/client_call.stderr" call_rc

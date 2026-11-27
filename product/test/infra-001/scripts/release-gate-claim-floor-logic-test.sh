@@ -121,6 +121,39 @@ test_gate9_missing_credstore_red() {
 }
 test_gate9_missing_credstore_red
 
+# #1060: post-nan-024 layout (bin/, pkg/<ver>/, install.json beside <hash>/remote.json) must
+# NOT trip the read-back; the gate resolves the hash from the remote.json marker and goes green.
+test_gate9_install_siblings_green() {
+  local sb out rc stub root
+  sb="$(mktemp -d)"; root="$sb/home/.unimatrix"
+  mkdir -p "$root/bin" "$root/pkg/0.12.0" "$root/deadbeefcafe1234"
+  printf '{}\n' > "$root/install.json"
+  printf '{"observe_url":"x","token":"t","fingerprint":"sha256:x"}\n' > "$root/deadbeefcafe1234/remote.json"
+  stub="$sb/s.sh"; make_call_stub "$stub"
+  out="$(
+    env SANDBOX="$sb" SMOKE_CLIENT_CALL_CMD="bash $stub" \
+      bash -c 'set -uo pipefail; source "'"$SMOKE"'" >/dev/null 2>&1 || true; compose_teardown(){ :; }; client_works_gate' 2>&1
+  )"
+  rc=$?
+  rm -rf "$sb"
+  if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -qF "PASS gate 9"; then
+    pass "test_gate9_install_siblings_green (bin/pkg/install.json siblings ignored)"
+  else
+    oops "test_gate9_install_siblings_green" "expected rc=0 + PASS gate 9; rc=$rc out=$out"
+  fi
+}
+test_gate9_install_siblings_green
+
+# #1060: claim-floor-lib.sh sourced ALONE must still define read_back_project_hash.
+test_claim_floor_lib_self_contained() {
+  if bash -c 'source "'"$CLAIM_LIB"'" >/dev/null 2>&1; declare -F read_back_project_hash >/dev/null'; then
+    pass "test_claim_floor_lib_self_contained (sources cloud-cycle-lib.sh for the shared read-back)"
+  else
+    oops "test_claim_floor_lib_self_contained" "read_back_project_hash undefined after sourcing only $CLAIM_LIB"
+  fi
+}
+test_claim_floor_lib_self_contained
+
 # node-absent on the REAL path (SMOKE_CLIENT_CALL_CMD unset) => HARD fail exit 1, NOT a
 # self-skip (mirrors the bundle-gate node-absence backstop).
 test_gate9_node_absent_hard_fails() {

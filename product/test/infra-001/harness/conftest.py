@@ -19,6 +19,7 @@ import pytest
 from pathlib import Path
 
 from harness.client import UnimatrixClient
+from harness.daemon_readiness import readiness_rust_log, require_embed_ready
 from harness.generators import make_entries
 
 logger = logging.getLogger("unimatrix.fixtures")
@@ -335,7 +336,7 @@ def daemon_server(tmp_path):
     project_dir.mkdir(parents=True, exist_ok=True)
 
     env = os.environ.copy()
-    env.setdefault("RUST_LOG", "info")
+    readiness_rust_log(env)  # an inherited RUST_LOG must not hide the readiness line (#1060)
 
     stderr_lines: list[str] = []
     stderr_lock = threading.Lock()
@@ -357,8 +358,7 @@ def daemon_server(tmp_path):
             return "\n".join(stderr_lines[-n:])
 
     # The daemon derives its data dir from the project hash; we discover the data
-    # dir (and both socket paths) by polling for the MCP socket to appear. The
-    # hook socket is a sibling in the same data dir.
+    # dir (and both socket paths) by polling for the MCP socket (hook socket is a sibling).
     mcp_socket: Path | None = None
     hook_socket: Path | None = None
     store_dir: Path | None = None
@@ -385,6 +385,7 @@ def daemon_server(tmp_path):
             f"daemon sockets did not appear within {_DAEMON_SOCKET_DEADLINE_S}s.\n"
             f"--- daemon stderr ---\n{_stderr_tail()}"
         )
+    require_embed_ready(stderr_lines, stderr_lock, proc, _kill)  # sockets bind before embed loads (#1060)
 
     try:
         yield {

@@ -404,6 +404,37 @@ test_c5_cloud_cycle_missing_credstore_red() {
 }
 test_c5_cloud_cycle_missing_credstore_red
 
+# #1060: read_back_project_hash selects by the <projectHash>/remote.json marker, never by
+# counting dirs (nan-024 install writes bin/, pkg/<ver>/, install.json beside the hash dir).
+# rb_case <name> <want_rc> <want_sub> <layout: siblings|two|nocred>
+rb_case() {
+  local name="$1" want_rc="$2" want_sub="$3" layout="$4" sb root out rc
+  sb="$(mktemp -d)"; root="$sb/.unimatrix"
+  mkdir -p "$root/bin" "$root/pkg/0.12.0"; printf '{}\n' > "$root/install.json"
+  case "$layout" in
+    siblings) mkdir -p "$root/deadbeefhash"; printf '{}\n' > "$root/deadbeefhash/remote.json" ;;
+    two) mkdir -p "$root/aaaa" "$root/bbbb"
+         printf '{}\n' > "$root/aaaa/remote.json"; printf '{}\n' > "$root/bbbb/remote.json" ;;
+    nocred) mkdir -p "$root/deadbeefhash" ;;
+  esac
+  out="$(bash -c '
+      set -uo pipefail
+      source "'"$CLOUD_LIB"'" >/dev/null 2>&1 || true
+      fail() { printf "[c5-logic] FAIL: %s\n" "$*" >&2; exit 1; }
+      read_back_project_hash "$1" && printf "hash=%s\n" "$PROJECT_HASH"
+    ' _ "$root" 2>&1)"
+  rc=$?
+  rm -rf "$sb"
+  if [ "$rc" -eq "$want_rc" ] && printf '%s' "$out" | grep -qF -- "$want_sub"; then
+    pass "$name"
+  else
+    oops "$name" "want rc=$want_rc sub='$want_sub'; got rc=$rc out=$out"
+  fi
+}
+rb_case test_read_back_project_hash_ignores_install_siblings 0 "hash=deadbeefhash" siblings
+rb_case test_read_back_project_hash_two_markers_ambiguous_red 1 "read-back ambiguous" two
+rb_case test_read_back_project_hash_no_marker_absent_red 1 "credstore absent" nocred
+
 # Missing C2 contract env (MANIFEST_PATH) => RED precondition.
 test_c5_cloud_cycle_requires_manifest_env() {
   local sb out rc
