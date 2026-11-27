@@ -42,4 +42,13 @@ function scrubbedEnv(extra = {}) {
   return env;
 }
 
-module.exports = { assertTmpHome, assertUnderTmp, scrubbedEnv, OVERRIDE_VARS };
+// R-09 central isolation: loading this guard removes ambient overrides from process.env
+// (CI runners set XDG_CONFIG_HOME etc.). Tests that need one set it explicitly, under tmp, after load.
+function clearAmbientOverrides(env = process.env) {
+  const cleared = [];
+  for (const v of OVERRIDE_VARS) if (v in env) { delete env[v]; cleared.push(v); }
+  return cleared;
+}
+const AMBIENT_CLEARED = clearAmbientOverrides();
+
+module.exports = { assertTmpHome, assertUnderTmp, scrubbedEnv, clearAmbientOverrides, AMBIENT_CLEARED, OVERRIDE_VARS };

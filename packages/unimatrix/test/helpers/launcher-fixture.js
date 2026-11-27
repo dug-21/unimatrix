@@ -4,7 +4,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { assertTmpHome } = require("./home-guard");
+const { assertTmpHome, scrubbedEnv } = require("./home-guard");
 const { spawnSync, spawn } = require("child_process");
 const { computeProjectHash, walkToProjectRoot } = require("../../lib/hook-client/config.js");
 
@@ -49,8 +49,9 @@ function fixture(o) {
   return { base, home, uh, pkg, proj, hash, marker, stub, stubLog };
 }
 
+// R-09: ambient config-dir overrides (CI sets XDG_CONFIG_HOME) are scrubbed; tests pass them explicitly under tmp.
 function envFor(f, extra) {
-  const env = Object.assign({}, process.env, { HOME: f.home, USERPROFILE: f.home }, extra || {});
+  const env = scrubbedEnv(Object.assign({ HOME: f.home, USERPROFILE: f.home }, extra || {}));
   for (const k of Object.keys(env)) if (k.startsWith("UNIMATRIX_") && !(extra && k in extra)) delete env[k];
   return env;
 }

@@ -56,6 +56,8 @@
 // Exit code mirrors `node --test` (non-zero on any failure) so CI fails honestly.
 
 const { spawnSync } = require("child_process");
+// R-09: clear ambient config-dir overrides once; every spawned set inherits the scrubbed env.
+require("./helpers/home-guard");
 const fs = require("fs");
 const path = require("path");
 

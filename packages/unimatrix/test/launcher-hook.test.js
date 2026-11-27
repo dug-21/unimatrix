@@ -1,5 +1,6 @@
 "use strict";
 // Launcher: `hook`, `mcp-stdio`, pass-through (nan-024 ADR-004, D-077, D-086).
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");

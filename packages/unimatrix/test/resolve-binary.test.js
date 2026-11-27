@@ -1,5 +1,6 @@
 "use strict";
 
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const assert = require("assert");
 const { linuxLocal } = require("./helpers/linux-local.js");
 const fs = require("fs");

@@ -285,3 +285,44 @@ test("symlinked bin/trust.js: TrustError rewrapped with symlink fix message", po
   assert.throws(() => S.installStore(opts(home, src, proj)), (e) =>
     e.message === `unimatrix: ${p} is a symlink (-> ${real}); trust files must be regular files. Remove it ('rm "${p}"') and re-run 'npx unimatrix init'`);
 });
+
+// D-040 / F4: on win32 a trust.json write that did not happen must never be reported `updated`.
+function withTrustStubs(stubs, fn) {
+  const trust = require("../lib/trust.js");
+  const saved = {};
+  for (const k of Object.keys(stubs)) { saved[k] = trust[k]; trust[k] = stubs[k]; }
+  try { return fn(); } finally { Object.assign(trust, saved); }
+}
+
+test("F4: win32 failed trust.json write fails init naming the file", () => {
+  const home = tmp("is-home-");
+  const tj = path.join(home, ".unimatrix", "trust.json");
+  withTrustStubs({ fullCheckWindows: () => {}, recordTrustIdentity: () => undefined }, () => {
+    assert.throws(
+      () => S.installStore(opts(home, mkSource("1.0.0"), mkProject(), { platform: "win32", arch: "x64", spawn: () => ({ status: 0, stdout: "", stderr: "" }) })),
+      (e) => e.message.includes(tj) && /trust state was not recorded/.test(e.message) && !/updated/.test(e.message));
+  });
+  assert.ok(!fs.existsSync(tj));
+});
+
+test("F4: win32 successful trust write reports the writer's action", () => {
+  for (const act of ["created", "updated", "unchanged"]) {
+    const home = tmp("is-home-");
+    const r = withTrustStubs({ fullCheckWindows: () => {}, recordTrustIdentity: () => act }, () =>
+      S.installStore(opts(home, mkSource("1.0.0"), mkProject(), { platform: "win32", arch: "x64", spawn: () => ({ status: 0, stdout: "", stderr: "" }) })));
+    const leg = r.legs.find((l) => l.path === path.join(home, ".unimatrix", "trust.json"));
+    assert.ok(leg, "trust.json leg present");
+    assert.equal(leg.action, act);
+  }
+});
+
+test("F4: real recordTrustIdentity returns undefined when the write fails (win32 swallow)", posixOnly, () => {
+  const trust = require("../lib/trust.js");
+  const home = tmp("is-home-");
+  fs.mkdirSync(path.join(home, ".unimatrix"));
+  fs.chmodSync(path.join(home, ".unimatrix"), 0o500);
+  try {
+    if (process.getuid && process.getuid() === 0) return; // root ignores dir modes
+    assert.equal(trust.recordTrustIdentity([], home), undefined);
+  } finally { fs.chmodSync(path.join(home, ".unimatrix"), 0o700); }
+});

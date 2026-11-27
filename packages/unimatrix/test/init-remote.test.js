@@ -16,6 +16,7 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 
 const {
   mergeSettings,

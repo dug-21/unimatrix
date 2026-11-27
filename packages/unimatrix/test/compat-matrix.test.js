@@ -8,6 +8,7 @@
 // N/A cells (stated, not tested): old × UNIMATRIX_BUNDLE (variable unknown to
 // 0.11.3); new × scoped UNIMATRIX_BUNDLE (bridge-transports + headless-smoke).
 
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { spawn } = require("child_process");

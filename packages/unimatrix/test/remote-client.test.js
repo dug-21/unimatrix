@@ -14,6 +14,7 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 
 // NOTE (vnc-038 / ADR-002 / ADR-001): the v:2 bundle decoder parity, guard-
 // ordering, strict-schema, and v:1-hard-cut suites now live in the focused

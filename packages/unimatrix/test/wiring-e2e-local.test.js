@@ -3,6 +3,7 @@
 // literal written hook command through the harness shells and read the stored observation from the
 // server's own SQLite store. A stub binary cannot store an observation, so this needs the real build.
 // Skips when no built binary exists unless E2E_REQUIRE_LOCAL=1 (set by CI) -- then a missing binary fails.
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");

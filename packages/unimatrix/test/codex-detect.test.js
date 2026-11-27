@@ -7,6 +7,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const H = require("./helpers/e2e-harness.js");
+const { scrubbedEnv } = require("./helpers/home-guard.js"); // R-09: no ambient config-dir overrides
 const { makeCache, supported } = require("./helpers/fake-package.js");
 
 describe("D-081 Codex detection matrix (init CLI)", { skip: !supported && "linux only (local init needs the platform binary package)" }, () => {
@@ -20,8 +21,8 @@ describe("D-081 Codex detection matrix (init CLI)", { skip: !supported && "linux
   afterEach(() => f.cleanup());
 
   async function init(row) {
-    const env = Object.assign({}, process.env, { HOME: f.home, USERPROFILE: f.home, PATH: row.path || bare });
-    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k) || k === "CODEX_HOME") delete env[k];
+    const env = scrubbedEnv({ HOME: f.home, USERPROFILE: f.home, PATH: row.path || bare });
+    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k)) delete env[k];
     if (row.codexHome) env.CODEX_HOME = row.codexHome;
     const r = await H.run(process.execPath, [pk.cliBin, "init"].concat(row.args || []), { spawn: { cwd: f.proj, env }, timeoutMs: 120000 });
     assert.equal(r.code, 0, r.out + r.err);
@@ -53,8 +54,8 @@ describe("D-081 Codex detection matrix (init CLI)", { skip: !supported && "linux
   it("row 4: wire --harness codex-cli -> written, ~/.codex created", async () => {
     await init({});
     assert.ok(!fs.existsSync(dflt()));
-    const env = Object.assign({}, process.env, { HOME: f.home, USERPROFILE: f.home, PATH: bare });
-    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k) || k === "CODEX_HOME") delete env[k];
+    const env = scrubbedEnv({ HOME: f.home, USERPROFILE: f.home, PATH: bare });
+    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k)) delete env[k];
     const r = await H.run(process.execPath, [pk.cliBin, "wire", "--harness", "codex-cli"], { spawn: { cwd: f.proj, env }, timeoutMs: 60000 });
     assert.equal(r.code, 0, r.out + r.err);
     assert.deepEqual(has(dflt()), { hooks: true, mcp: true });

@@ -6,7 +6,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { assertTmpHome } = require("./home-guard");
+const { assertTmpHome, scrubbedEnv } = require("./home-guard");
 const https = require("https");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
@@ -93,8 +93,8 @@ function makeFixture() {
 }
 
 function baseEnv(f, cert, extra) {
-  const env = Object.assign({}, process.env);
-  for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k) || k === "CODEX_HOME") delete env[k];
+  const env = scrubbedEnv(); // R-09: ambient config-dir overrides never reach the child
+  for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k)) delete env[k];
   assertTmpHome(f.home);
   Object.assign(env, { HOME: f.home, USERPROFILE: f.home, NODE_EXTRA_CA_CERTS: cert.certPath }, extra || {});
   return env;

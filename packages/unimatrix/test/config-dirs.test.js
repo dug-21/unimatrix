@@ -1,4 +1,5 @@
 "use strict";
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");

@@ -1,6 +1,7 @@
 "use strict";
 // ADR-004 fire-time order parity: shim-entry.js and the legacy PATH `unimatrix hook`
 // (bin/unimatrix.js -> hook-route) must give identical exit/stdout/stderr.
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");

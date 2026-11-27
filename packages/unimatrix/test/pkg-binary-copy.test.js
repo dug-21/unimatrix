@@ -9,6 +9,7 @@ const fs = require("node:fs");
 const net = require("node:net");
 const path = require("node:path");
 const H = require("./helpers/e2e-harness.js");
+const { scrubbedEnv } = require("./helpers/home-guard.js"); // R-09: no ambient config-dir overrides
 const { resolveRuntime } = require("./../lib/resolve-runtime.js");
 const { makeCache, plat, supported } = require("./helpers/fake-package.js");
 const { computeProjectHash } = require("./../lib/hook-client/config.js");
@@ -21,8 +22,8 @@ describe("D-078 pkg-binary-copy: binary resolves from pkg/<version> after the ca
     f = H.makeFixture();
     const pk = makeCache(f.root);
     cache = pk.cache;
-    env = Object.assign({}, process.env, { HOME: f.home, USERPROFILE: f.home });
-    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k) || k === "CODEX_HOME") delete env[k];
+    env = scrubbedEnv({ HOME: f.home, USERPROFILE: f.home });
+    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k)) delete env[k];
     const r = await H.run(process.execPath, [pk.cliBin, "init"], { spawn: { cwd: f.proj, env }, timeoutMs: 120000 });
     assert.equal(r.code, 0, r.out + r.err);
     fs.rmSync(pk.cacheRoot, { recursive: true, force: true });

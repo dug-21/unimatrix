@@ -337,7 +337,9 @@ function installStore(o) {
       if (dryRun) a = plannedTrustAction(set, o.home);
       else {
         trust.fullCheckWindows(set, { home: o.home, spawn: o.spawn });
-        a = trust.recordTrustIdentity(set, o.home) || "updated";
+        a = trust.recordTrustIdentity(set, o.home);
+        // D-040/FR-53: a trust write that did not happen is a hard failure, never `updated`.
+        if (!a) throw new Error(`unimatrix: failed to write ${tj}; trust state was not recorded. Check permissions on ${path.dirname(tj)} and re-run 'npx unimatrix init'`);
       }
       legs.push(legFor(tj, a));
     } else if (!dryRun) trust.checkTrust(set, platform, { home: o.home });
