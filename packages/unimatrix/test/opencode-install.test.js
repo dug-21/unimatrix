@@ -16,7 +16,6 @@ const {
   removeOwnedOpencodeProjectMcp,
   buildOpencodeEntry,
   opencodeLeg,
-  isWithinProject,
   detectIndent,
   readJsonSafe,
 } = require("../lib/opencode-install.js");
@@ -429,11 +428,6 @@ describe("removeOwnedOpencodeProjectMcp (D-064)", () => {
 });
 
 describe("helpers", () => {
-  it("test_within_project_guard_rejects_traversal", () => {
-    const dir = makeTempProject();
-    assert.strictEqual(isWithinProject(dir, path.join(dir, "opencode.json")), true);
-    assert.strictEqual(isWithinProject(dir, path.join(dir, "..", "evil")), false);
-  });
   it("test_detect_indent_defaults_and_tab", () => {
     assert.strictEqual(detectIndent("{}"), 2);
     assert.strictEqual(detectIndent('{\n\t"a": 1\n}'), "\t");

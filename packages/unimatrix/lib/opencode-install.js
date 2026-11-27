@@ -40,22 +40,6 @@ function exists(p) {
 }
 
 /**
- * R-15 containment guard: resolve `target` and assert it lives inside `dir`.
- * Blocks a symlinked or traversal-crafted path from escaping the project. The
- * installer only ever writes to fixed constant subpaths, so a failure here is a
- * hostile/misconfigured tree — skip that write, never follow it.
- *
- * @param {string} dir - Absolute project root.
- * @param {string} target - Path to be written.
- * @returns {boolean} true iff `target` is within `dir`.
- */
-function isWithinProject(dir, target) {
-  const root = path.resolve(dir);
-  const resolved = path.resolve(target);
-  return resolved === root || resolved.startsWith(root + path.sep);
-}
-
-/**
  * Detect the indentation of an existing JSON document so re-serialization does
  * not reformat preserved stanzas (ADR-006: mutate minimally). Defaults to two
  * spaces — the formatting the rest of init writes.
@@ -318,7 +302,6 @@ module.exports = {
   computeProjectRemoval,
   buildOpencodeEntry,
   opencodeLeg,
-  isWithinProject,
   detectIndent,
   readJsonSafe,
   parseJsonRaw,

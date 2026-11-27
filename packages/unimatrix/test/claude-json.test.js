@@ -131,10 +131,8 @@ describe("C7 claude-json pure mutates", function () {
     assert.strictEqual(r.status, "wired");
     assert.strictEqual(r.key, "c:/Users/a");
   });
-  it("atomicWriteText re-export, mtime CAS and removeOwnedClaudeLegacy gone", function () {
-    assert.strictEqual(cj.atomicWriteText, undefined);
-    assert.strictEqual(cj.removeOwnedClaudeLegacy, undefined);
+  it("legacy exports and mtime CAS gone (names: contract-conformance.test.js)", function () {
     const src = fs.readFileSync(path.join(__dirname, "../lib/claude-json.js"), "utf8");
-    assert.ok(!/mtimeMs|statSync|atomic-write|o\.home/.test(src));
+    assert.ok(!/mtimeMs|statSync|o\.home/.test(src));
   });
 });
