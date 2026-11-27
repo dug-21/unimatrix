@@ -661,3 +661,100 @@ describe("codex user-level file modes", { skip: process.platform === "win32" }, 
     assert.strictEqual(modeOf(hooksOf(path.join(g.home, ".codex"))), 0o600);
   });
 });
+
+// 1036 C9: hardened writer (updateFileSync), resolver-delegated codexHome, FR-31.
+describe("codex hardened writer (1036 C9)", () => {
+  const { SafeWriteError } = require("../lib/safe-write.js");
+  const cfgDirs = require("../lib/config-dirs.js");
+  const { upsertTomlTable } = require("../lib/codex-install.js");
+  const posix = { skip: process.platform === "win32" };
+  const opts = (g, extra) => Object.assign({ home: g.home, projectRoot: g.root, env: {}, platform: PLAT, harnessSel: "codex-cli" }, extra);
+
+  it("codexHome is the resolver's codexHome", () => {
+    const home = "/h";
+    for (const env of [{}, { CODEX_HOME: "/c" }, { CODEX_HOME: "rel" }]) {
+      assert.deepStrictEqual(codexHome(env, home), cfgDirs.codexHome(env, home));
+    }
+  });
+
+  it("SafeWriteError from a writer propagates out of maybeWireCodex", () => {
+    const g = fixture();
+    fs.mkdirSync(path.join(g.home, ".codex", "hooks.json"), { recursive: true });
+    assert.throws(() => quiet(() => maybeWireCodex(opts(g))), (e) => e instanceof SafeWriteError && e.code === "not-regular");
+  });
+
+  it("malformed hooks.json / config.toml -> skipped-malformed, bytes intact, no throw", () => {
+    const g = fixture();
+    const d = path.join(g.home, ".codex");
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, "hooks.json"), "{nope");
+    fs.writeFileSync(path.join(d, "config.toml"), "[a\nx=1\n");
+    const legs = quiet(() => maybeWireCodex(opts(g))).result;
+    assert.ok(legs.some((l) => l.surface === "hooks" && l.action === "skipped-malformed"));
+    assert.ok(legs.some((l) => l.surface === "mcp" && l.action === "skipped-malformed"));
+    assert.strictEqual(fs.readFileSync(path.join(d, "hooks.json"), "utf8"), "{nope");
+    assert.strictEqual(fs.readFileSync(path.join(d, "config.toml"), "utf8"), "[a\nx=1\n");
+  });
+
+  it("TOML with comments/odd spacing: bytes outside owned table identical; re-mutate is a fixpoint", () => {
+    const g = fixture();
+    const d = path.join(g.home, ".codex");
+    fs.mkdirSync(d, { recursive: true });
+    const head = "# top comment\nmodel   =  \"x\"  # trailing\n\n[profiles.a]\n  key = 1\n";
+    fs.writeFileSync(path.join(d, "config.toml"), head);
+    assert.strictEqual(writeCodexMcpToml(opts(g)).action, "created");
+    const after = fs.readFileSync(path.join(d, "config.toml"), "utf8");
+    assert.ok(after.startsWith(head));
+    assert.strictEqual(writeCodexMcpToml(opts(g)).action, "unchanged");
+    const body = after.slice(after.indexOf("[mcp_servers.unimatrix]")).split("\n").slice(1).filter(Boolean);
+    assert.strictEqual(upsertTomlTable(after, "mcp_servers.unimatrix", body).changed, false);
+  });
+
+  it("dryRun writes nothing and reports created", () => {
+    const g = fixture();
+    const legs = quiet(() => maybeWireCodex(opts(g, { dryRun: true }))).result;
+    assert.ok(legs.filter((l) => l.surface === "hooks").every((l) => l.action === "created"));
+    assert.ok(!fs.existsSync(path.join(g.home, ".codex", "hooks.json")));
+    assert.ok(!fs.existsSync(path.join(g.home, ".codex", "config.toml")));
+  });
+
+  it("o.dirs paths are used; CODEX_HOME set leaves ~/.codex untouched", () => {
+    const g = fixture();
+    const ch = path.join(g.home, "alt");
+    fs.mkdirSync(ch);
+    const env = { CODEX_HOME: ch };
+    const dirs = cfgDirs.resolveConfigDirs({ env, home: g.home, platform: PLAT });
+    quiet(() => maybeWireCodex(opts(g, { env, dirs })));
+    assert.ok(fs.existsSync(path.join(ch, "hooks.json")));
+    assert.ok(fs.existsSync(path.join(ch, "config.toml")));
+    assert.ok(!fs.existsSync(path.join(g.home, ".codex")));
+  });
+
+  it("project .codex/config.toml symlinked outside root -> outside-project, target intact", posix, () => {
+    const g = fixture();
+    const outside = path.join(path.dirname(g.root), "outside.toml");
+    const owned = "[mcp_servers.unimatrix]\ncommand = \"node\"\nargs = [\"/x/mcp-bridge.js\", \"h\"]\n";
+    fs.writeFileSync(outside, owned);
+    fs.mkdirSync(path.join(g.root, ".codex"), { recursive: true });
+    fs.symlinkSync(outside, path.join(g.root, ".codex", "config.toml"));
+    assert.throws(() => removeOwnedCodexProjectMcp(g.root, false, path.join(g.home, ".codex", "config.toml")),
+      (e) => e instanceof SafeWriteError && e.code === "outside-project");
+    assert.throws(() => quiet(() => maybeWireCodex(opts(g))), (e) => e instanceof SafeWriteError && e.code === "outside-project");
+    assert.strictEqual(fs.readFileSync(outside, "utf8"), owned);
+  });
+
+  it("$CODEX_HOME hooks.json symlinked outside home is followed", posix, () => {
+    const g = fixture();
+    const ch = path.join(g.home, "alt");
+    fs.mkdirSync(ch);
+    const real = path.join(path.dirname(g.root), "real-hooks.json");
+    fs.writeFileSync(real, "{}\n");
+    fs.symlinkSync(real, path.join(ch, "hooks.json"));
+    const legs = writeCodexHooks(opts(g, { env: { CODEX_HOME: ch } }));
+    assert.ok(legs.every((l) => l.action === "updated"));
+    assert.ok(fs.lstatSync(path.join(ch, "hooks.json")).isSymbolicLink());
+    assert.ok(JSON.parse(fs.readFileSync(real, "utf8")).hooks.SessionStart);
+  });
+
+  it("real-binary Codex check not run (D-012)", { skip: "file-level only; real-binary Codex check tracked in #1053" }, () => {});
+});

@@ -219,6 +219,43 @@ describe("credstore.write", function () {
     }
   });
 
+  it("test_write_equalContentDriftedMode_chmodOnly", function () {
+    credstore.write(HASH_A, cred());
+    const p = expectedPath(HASH_A);
+    const before = fs.readFileSync(p);
+    if (process.platform === "win32") return;
+    fs.chmodSync(p, 0o644);
+    credstore.write(HASH_A, cred());
+    assert.strictEqual(fs.statSync(p).mode & 0o777, 0o600);
+    assert.ok(fs.readFileSync(p).equals(before));
+  });
+
+  it("test_write_symlinkedStore_followedLinkKept", function () {
+    if (process.platform === "win32") return;
+    const p = expectedPath(HASH_A);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    const real = path.join(tmpHome, "real-remote.json");
+    fs.writeFileSync(real, "{}\n", { mode: 0o644 });
+    fs.symlinkSync(real, p);
+    credstore.write(HASH_A, cred());
+    assert.ok(fs.lstatSync(p).isSymbolicLink());
+    assert.strictEqual(JSON.parse(fs.readFileSync(real, "utf8")).mcp_url, cred().mcp_url);
+    assert.strictEqual(fs.statSync(real).mode & 0o777, 0o600);
+  });
+
+  it("test_read_doesNotLoadSafeWrite_writeDoes", function () {
+    const { execFileSync } = require("child_process");
+    const mod = path.join(__dirname, "..", "..", "lib", "hook-client", "credstore.js");
+    const src =
+      "const os=require('os');os.homedir=()=>process.argv[1];const c=require(" + JSON.stringify(mod) + ");" +
+      "const has=()=>Object.keys(require.cache).some(k=>k.endsWith('safe-write.js'));" +
+      "c.read('0123456789abcdef');const a=has();" +
+      "c.write('0123456789abcdef',{mcp_url:'https://x/m',observe_url:'https://x/o',token:'t',fingerprint:null});" +
+      "process.stdout.write(JSON.stringify([a,has()]));";
+    const out = execFileSync(process.execPath, ["-e", src, tmpHome], { encoding: "utf8" });
+    assert.deepStrictEqual(JSON.parse(out), [false, true]);
+  });
+
   it("test_write_fingerprintNull_persistsNullNotOmitted", function () {
     credstore.write(HASH_A, cred({ fingerprint: null }));
     const obj = JSON.parse(fs.readFileSync(expectedPath(HASH_A), "utf8"));

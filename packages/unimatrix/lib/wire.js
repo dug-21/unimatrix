@@ -100,7 +100,7 @@ function dispatchClaude(root, c, manifest) {
   }
   if (!c.writeMcp) return;
   const entry = buildMcpEntry(c.platform, c.home, c.node);
-  const w = writeClaudeMcp({ home: c.home, projectRoot: root, entry, dryRun: c.dryRun, platform: c.platform });
+  const w = writeClaudeMcp({ file: path.join(c.home, ".claude.json"), projectRoot: root, entry, dryRun: c.dryRun, platform: c.platform });
   if (w.action === "skipped-foreign") {
     c.warnings.push(w.warning);
     manifest.push({ harness: "claude-code", surface: "mcp", action: "skipped-foreign", path: w.file, reason: w.warning });

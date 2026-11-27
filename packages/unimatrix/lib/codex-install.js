@@ -5,13 +5,13 @@
  * Hooks -> `$CODEX_HOME/hooks.json` (default ~/.codex), MCP ->
  * `$CODEX_HOME/config.toml [mcp_servers.unimatrix]`; owned entries are removed
  * from the project `.codex/` files and `$CODEX_HOME/config.toml [hooks]`.
- * Fail-safe: nothing throws out of `maybeWireCodex`; malformed files are left
- * byte-intact. Surgical TOML helpers live in `codex-toml.js` (re-exported).
+ * Writes go through safe-write `updateFileSync`; only `SafeWriteError` escapes
+ * `maybeWireCodex` (FR-31); malformed files are left byte-intact. Surgical TOML helpers live in `codex-toml.js` (re-exported).
  */
 
 const fs = require("fs");
 const path = require("path");
-const { isWithinProject, readJsonSafe, detectIndent } = require("./opencode-install.js");
+const { detectIndent } = require("./opencode-install.js");
 const {
   buildShimCommand,
   isUnimatrixHook,
@@ -20,7 +20,8 @@ const {
 } = require("./merge-settings.js");
 const { isUnimatrixCommand, isUnimatrixMcpEntry } = require("./hook-ownership.js");
 const { buildMcpEntry } = require("./mcp-entry.js");
-const { atomicWriteText } = require("./claude-json.js");
+const { updateFileSync, SafeWriteError } = require("./safe-write.js");
+const { codexHome, sameRealFile } = require("./config-dirs.js");
 const toml = require("./codex-toml.js");
 
 const {
@@ -45,12 +46,15 @@ const CODEX_EVENTS = [
   "PreCompact", "SubagentStart", "Stop",
 ];
 
-function readTextSafe(p) {
+/** Parse JSON object text like opencode readJsonSafe (null = absent, blank = {}). */
+function parseJsonObj(raw) {
+  if (raw === null) return { present: false, parsed: {} };
+  if (raw.trim() === "") return { present: true, parsed: {} };
   try {
-    return fs.readFileSync(p, "utf8");
-  } catch (_) {
-    return "";
-  }
+    const v = JSON.parse(raw);
+    if (v && typeof v === "object" && !Array.isArray(v)) return { present: true, parsed: v };
+  } catch (_) { /* malformed */ }
+  return { present: true, malformed: true };
 }
 
 function isDir(p) {
@@ -69,6 +73,8 @@ function isFile(p) {
   }
 }
 
+const orNull = (t) => (typeof t === "string" ? t : null);
+
 function leg(surface, action, legPath, extra) {
   return Object.assign({ harness: CODEX_HARNESS, surface, action, path: legPath }, extra || {});
 }
@@ -76,19 +82,6 @@ function leg(surface, action, legPath, extra) {
 /** Constant text printed by init and status (no trust hash is ever written). */
 function codexApprovalStep() {
   return "Codex: run /hooks in Codex and approve the Unimatrix hooks (they stay inactive until approved)";
-}
-
-/** D-081/D-085: the Codex home dir; invalid/relative $CODEX_HOME is ignored with a warning. */
-function codexHome(env, home) {
-  const c = env && env.CODEX_HOME;
-  if (typeof c === "string" && c !== "") {
-    if (path.isAbsolute(c) && !c.includes("\0")) return { dir: c };
-    return {
-      dir: path.join(home, ".codex"),
-      warning: "unimatrix: CODEX_HOME is not an absolute path; ignoring it and using ~/.codex",
-    };
-  }
-  return { dir: path.join(home, ".codex") };
 }
 
 function onPath(name, pathVar, platform) {
@@ -162,30 +155,35 @@ function upsertHookEntry(hooksObj, event, matcher, command) {
   return true;
 }
 
+function codexPaths(o) {
+  if (o.dirs && o.dirs.codex) return { hooks: o.dirs.codex.hooksJson, cfg: o.dirs.codex.configToml };
+  const d = codexHome(o.env || {}, o.home).dir;
+  return { hooks: path.join(d, "hooks.json"), cfg: path.join(d, "config.toml") };
+}
+
 /** One WireLeg per event; hooks only ever land in `<codexHome>/hooks.json`. */
 function writeCodexHooks(o) {
-  const { home, env, platform, dryRun } = o;
-  const hooksPath = path.join(codexHome(env || {}, home).dir, "hooks.json");
-  const skip = (reason) => [leg("hooks", "skipped-malformed", hooksPath, { reason })];
-  const read = readJsonSafe(hooksPath);
-  if (read.malformed) return skip("hooks.json is not valid JSON - preserved unchanged");
-  const content = read.parsed || {};
-  if (content.hooks !== undefined && (typeof content.hooks !== "object" || content.hooks === null || Array.isArray(content.hooks))) {
-    return skip("`hooks` key is not an object - preserved unchanged");
-  }
-  if (content.hooks === undefined) content.hooks = {};
-  let changed = false;
-  const commands = [];
-  for (const event of CODEX_EVENTS) {
-    const command = requireProviderFlag(buildShimCommand(event, CODEX_PROVIDER, platform, home));
-    commands.push(command);
-    if (upsertHookEntry(content.hooks, event, EVENT_MATCHERS[event], command)) changed = true;
-  }
-  const action = read.present ? (changed ? "updated" : "unchanged") : "created";
-  if (!dryRun && action !== "unchanged") {
-    atomicWriteText(hooksPath, JSON.stringify(content, null, detectIndent(read.raw || "")) + "\n", 0o600);
-  }
-  return commands.map((command) => leg("hooks", action, hooksPath, { command }));
+  const { home, platform, dryRun } = o;
+  const hooksPath = codexPaths(o).hooks;
+  const commands = CODEX_EVENTS.map((ev) => requireProviderFlag(buildShimCommand(ev, CODEX_PROVIDER, platform, home)));
+  const compute = (raw) => {
+    const read = parseJsonObj(raw);
+    if (read.malformed) return { skip: "hooks.json is not valid JSON - preserved unchanged" };
+    const content = read.parsed;
+    if (content.hooks !== undefined && (typeof content.hooks !== "object" || content.hooks === null || Array.isArray(content.hooks))) {
+      return { skip: "`hooks` key is not an object - preserved unchanged" };
+    }
+    if (content.hooks === undefined) content.hooks = {};
+    let changed = false;
+    CODEX_EVENTS.forEach((ev, i) => {
+      if (upsertHookEntry(content.hooks, ev, EVENT_MATCHERS[ev], commands[i])) changed = true;
+    });
+    return { text: changed || !read.present ? JSON.stringify(content, null, detectIndent(raw || "")) + "\n" : null };
+  };
+  const res = updateFileSync(hooksPath, (raw) => orNull(compute(raw).text), { dryRun, newMode: 0o600 });
+  const d = compute(res.before);
+  if (d.skip) return [leg("hooks", "skipped-malformed", hooksPath, { reason: d.skip })];
+  return commands.map((command) => leg("hooks", res.action, hooksPath, { command }));
 }
 
 /**
@@ -238,33 +236,34 @@ function pre(dryRun, s) {
 
 /** Remove owned hooks from project `.codex/hooks.json` and `<codexHome>/config.toml [hooks]`. */
 function removeOwnedCodexHooks(o) {
-  const { home, env, projectRoot, dryRun } = o;
+  const { projectRoot, dryRun } = o;
   const actions = [];
   const legs = [];
-  const homeDir = codexHome(env || {}, home).dir;
-  const userHooks = path.join(homeDir, "hooks.json");
+  const p = codexPaths(o);
   const projHooks = path.join(projectRoot, ".codex", "hooks.json");
   // Never strip the user-level file we just wrote (project root == home).
-  if (path.resolve(projHooks) !== path.resolve(userHooks) && isWithinProject(projectRoot, projHooks)) {
+  if (!sameRealFile(projHooks, p.hooks)) {
     try {
-      const r = removeOwnedHooks(projHooks, { dryRun });
+      const r = removeOwnedHooks(projHooks, { dryRun, containWithin: projectRoot });
       for (const a of r.actions) actions.push(pre(dryRun, a));
       if (r.changed) legs.push(leg("hooks", "removed", projHooks, { reason: "owned project hooks removed" }));
     } catch (e) {
+      if (e instanceof SafeWriteError) throw e;
       legs.push(leg("hooks", "skipped-malformed", projHooks, { reason: "hooks.json is not valid JSON - preserved unchanged" }));
     }
   }
-  const cfg = path.join(homeDir, "config.toml");
-  const raw = readTextSafe(cfg);
-  if (raw) {
-    const r = removeOwnedHooksToml(raw);
-    if (r.malformed) {
-      legs.push(leg("hooks", "skipped-malformed", cfg, { reason: TOML_MALFORMED_REASON }));
-    } else if (r.changed) {
-      if (!dryRun) atomicWriteText(cfg, r.text);
-      actions.push(pre(dryRun, "Removed unimatrix hooks from " + cfg + " [hooks]"));
-      legs.push(leg("hooks", "removed", cfg, { reason: "owned [hooks] tables removed" }));
-    }
+  const cfg = p.cfg;
+  const compute = (raw) => (raw ? removeOwnedHooksToml(raw) : { changed: false });
+  const res = updateFileSync(cfg, (raw) => {
+    const r = compute(raw);
+    return r.changed ? r.text : null;
+  }, { dryRun, newMode: 0o600 });
+  const r = compute(res.before);
+  if (r.malformed) {
+    legs.push(leg("hooks", "skipped-malformed", cfg, { reason: TOML_MALFORMED_REASON }));
+  } else if (r.changed) {
+    actions.push(pre(dryRun, "Removed unimatrix hooks from " + cfg + " [hooks]"));
+    legs.push(leg("hooks", "removed", cfg, { reason: "owned [hooks] tables removed" }));
   }
   return { actions, legs };
 }
@@ -275,59 +274,58 @@ function foreignWarning(cfg) {
 
 /** MCP at `<codexHome>/config.toml`; written whenever Codex is detected (D-084). */
 function writeCodexMcpToml(o) {
-  const { home, env, platform, node, dryRun } = o;
-  const cfg = path.join(codexHome(env || {}, home).dir, "config.toml");
-  const raw = readTextSafe(cfg);
-  const existing = readTomlTable(raw, OWNED_TABLE);
-  if (existing.malformed) return leg("mcp", "skipped-malformed", cfg, { reason: TOML_MALFORMED_REASON });
-  if (existing.present) {
-    const cur = tomlTableToEntry(existing.body);
-    if (!cur || !isUnimatrixMcpEntry("unimatrix", cur)) {
-      return leg("mcp", "skipped-foreign", cfg, { reason: foreignWarning(cfg) });
-    }
-  }
+  const { home, platform, node, dryRun } = o;
+  const cfg = codexPaths(o).cfg;
   const e = buildMcpEntry(platform, home, node);
   const entry = { command: e.command, args: e.args };
   const body = [
     "command = " + tomlString(entry.command),
     "args = [" + entry.args.map(tomlString).join(", ") + "]",
   ];
-  const result = upsertTomlTable(raw, OWNED_TABLE, body);
-  if (result.malformed) return leg("mcp", "skipped-malformed", cfg, { reason: TOML_MALFORMED_REASON });
-  if (!result.changed) return leg("mcp", "unchanged", cfg, { entry });
-  if (!dryRun) atomicWriteText(cfg, result.text, 0o600);
-  return leg("mcp", existing.present ? "updated" : "created", cfg, { entry });
+  const compute = (rawIn) => {
+    const raw = rawIn || "";
+    const existing = readTomlTable(raw, OWNED_TABLE);
+    if (existing.malformed) return { skip: ["skipped-malformed", TOML_MALFORMED_REASON] };
+    if (existing.present) {
+      const cur = tomlTableToEntry(existing.body);
+      if (!cur || !isUnimatrixMcpEntry("unimatrix", cur)) return { skip: ["skipped-foreign", foreignWarning(cfg)] };
+    }
+    const result = upsertTomlTable(raw, OWNED_TABLE, body);
+    if (result.malformed) return { skip: ["skipped-malformed", TOML_MALFORMED_REASON] };
+    return { text: result.changed ? result.text : null, tablePresent: existing.present };
+  };
+  const res = updateFileSync(cfg, (raw) => orNull(compute(raw).text), { dryRun, newMode: 0o600 });
+  const d = compute(res.before);
+  if (d.skip) return leg("mcp", d.skip[0], cfg, { reason: d.skip[1] });
+  const action = res.action === "unchanged" ? "unchanged" : d.tablePresent ? "updated" : "created";
+  return leg("mcp", action, cfg, { entry });
 }
 
 /** Remove an owned `[mcp_servers.unimatrix]` from project `.codex/config.toml`. */
 function removeOwnedCodexProjectMcp(projectRoot, dryRun, userCfg) {
   const out = { actions: [], warnings: [] };
   const cfg = path.join(projectRoot, ".codex", "config.toml");
-  if (userCfg && path.resolve(cfg) === path.resolve(userCfg)) return out;
-  if (!isWithinProject(projectRoot, cfg)) return out;
-  const raw = readTextSafe(cfg);
-  if (!raw) return out;
-  const existing = readTomlTable(raw, OWNED_TABLE);
-  if (existing.malformed) {
-    out.warnings.push("unimatrix: " + cfg + " is not parseable TOML; left unchanged");
-    return out;
-  }
-  if (!existing.present) return out;
-  const cur = tomlTableToEntry(existing.body);
-  if (!cur || !isUnimatrixMcpEntry("unimatrix", cur)) {
-    out.warnings.push(foreignWarning(cfg));
-    return out;
-  }
-  const r = removeTomlTable(raw, OWNED_TABLE);
-  if (!r.changed) return out;
-  if (!dryRun) atomicWriteText(cfg, r.text);
-  out.actions.push(pre(dryRun, "Removed unimatrix MCP entry from " + cfg));
+  if (userCfg && sameRealFile(cfg, userCfg)) return out;
+  const compute = (raw) => {
+    if (!raw) return {};
+    const existing = readTomlTable(raw, OWNED_TABLE);
+    if (existing.malformed) return { warn: "unimatrix: " + cfg + " is not parseable TOML; left unchanged" };
+    if (!existing.present) return {};
+    const cur = tomlTableToEntry(existing.body);
+    if (!cur || !isUnimatrixMcpEntry("unimatrix", cur)) return { warn: foreignWarning(cfg) };
+    const r = removeTomlTable(raw, OWNED_TABLE);
+    return r.changed ? { text: r.text } : {};
+  };
+  const res = updateFileSync(cfg, (raw) => orNull(compute(raw).text), { dryRun, containWithin: projectRoot });
+  const d = compute(res.before);
+  if (d.warn) out.warnings.push(d.warn);
+  else if (d.text !== undefined) out.actions.push(pre(dryRun, "Removed unimatrix MCP entry from " + cfg));
   return out;
 }
 
 /**
  * Top-level Codex fan-out. Not detected -> one skipped-not-detected leg and no
- * file touched. Never throws; warnings go to stderr once and onto leg reasons.
+ * file touched. Throws only SafeWriteError; warnings go to stderr once and onto leg reasons.
  * @returns {object[]} WireLeg[]
  */
 function maybeWireCodex(opts) {
@@ -339,23 +337,24 @@ function maybeWireCodex(opts) {
   let legs = [];
   const warnings = [];
   const ch = codexHome(env, home);
-  if (ch.warning) warnings.push(ch.warning);
+  if (ch.warning && !o.dirs) warnings.push(ch.warning); // with o.dirs, wire.js reports dirs.warnings
   try {
     if (!detectsCodex({ root: o.projectRoot, env, home, harnessSel: o.harnessSel, platform, pathLookup: o.pathLookup })) {
       legs.push(leg("codex", "skipped-not-detected", ch.dir, {
         reason: "no Codex signal (.codex/, $CODEX_HOME dir, codex on PATH, --harness codex-cli)",
       }));
     } else {
-      const base = { home, env, platform, node: o.node, dryRun };
+      const base = { home, env, platform, node: o.node, dryRun, dirs: o.dirs };
       legs = legs.concat(writeCodexHooks(base));
       legs.push(writeCodexMcpToml(base));
-      const rh = removeOwnedCodexHooks({ home, env, projectRoot: o.projectRoot, dryRun });
+      const rh = removeOwnedCodexHooks({ home, env, dirs: o.dirs, projectRoot: o.projectRoot, dryRun });
       legs = legs.concat(rh.legs);
-      const pm = removeOwnedCodexProjectMcp(o.projectRoot, dryRun, path.join(ch.dir, "config.toml"));
+      const pm = removeOwnedCodexProjectMcp(o.projectRoot, dryRun, codexPaths(base).cfg);
       for (const a of pm.actions) legs.push(leg("mcp", "removed", path.join(o.projectRoot, ".codex", "config.toml"), { reason: a }));
       for (const w of pm.warnings) warnings.push(w);
     }
   } catch (e) {
+    if (e instanceof SafeWriteError) throw e; // FR-31: hardened-writer failure ends the run
     legs.push(leg("mcp", "skipped-malformed", path.join(ch.dir, "config.toml"), { reason: "codex wiring error: " + e.message }));
   }
   for (const l of legs) if (l.action === "skipped-foreign" && l.reason) warnings.push(l.reason);

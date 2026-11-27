@@ -211,3 +211,77 @@ test("stress: 12 concurrent inits + reader never observe a missing pkg dir", pos
     });
   });
 });
+
+const storeLegs = (r) => r.legs.filter((l) => l.surface === "store").map((l) => l.action);
+
+test("FR-26a legs: first run created, second run all unchanged, no mtime churn", () => {
+  const home = tmp("is-home-"), src = mkSource("1.0.0"), proj = mkProject();
+  const a = S.installStore(opts(home, src, proj));
+  assert.ok(storeLegs(a).every((x) => x === "created"), JSON.stringify(a.legs));
+  const ijp = path.join(home, ".unimatrix", "install.json");
+  const m0 = fs.statSync(ijp).mtimeMs;
+  const d = S.installStore(opts(home, src, proj, { dryRun: true }));
+  const b = S.installStore(opts(home, src, proj));
+  assert.ok(storeLegs(b).every((x) => x === "unchanged"), JSON.stringify(b.legs));
+  assert.deepEqual(storeLegs(d), storeLegs(b));
+  assert.equal(fs.statSync(ijp).mtimeMs, m0);
+});
+
+test("D-025: drifted modes re-tightened, reported updated, then unchanged", posixOnly, () => {
+  const home = tmp("is-home-"), src = mkSource("1.0.0"), proj = mkProject();
+  const r0 = S.installStore(opts(home, src, proj));
+  const marker = r0.legs.find((l) => l.path.endsWith(path.sep + "root")).path;
+  const u = path.join(home, ".unimatrix");
+  const want = { [path.join(u, "install.json")]: 0o600, [marker]: 0o600 };
+  for (const f of ["unimatrix", "shim-entry.js", "trust.js"]) want[path.join(u, "bin", f)] = 0o700;
+  for (const [f, m] of Object.entries(want)) fs.chmodSync(f, m === 0o600 ? 0o664 : 0o775);
+  const r = S.installStore(opts(home, src, proj));
+  for (const [f, m] of Object.entries(want)) {
+    assert.equal(fs.statSync(f).mode & 0o777, m, f);
+    assert.equal(r.legs.find((l) => l.path === f).action, "updated", f);
+  }
+  assert.ok(storeLegs(S.installStore(opts(home, src, proj))).every((x) => x === "unchanged"));
+});
+
+test("writeRootMarker returns {file, action}", () => {
+  const home = tmp("is-home-"), proj = mkProject();
+  const d = S.writeRootMarker(home, proj, true);
+  assert.equal(d.action, "created");
+  assert.equal(fs.existsSync(path.join(home, ".unimatrix")), false);
+  assert.deepEqual(S.writeRootMarker(home, proj, false), d);
+  assert.equal(S.writeRootMarker(home, proj, false).action, "unchanged");
+});
+
+test("fault before package rename: no partial pkg dir, temp removed", () => {
+  const home = tmp("is-home-"), proj = mkProject();
+  assert.throws(() => S.installStore(opts(home, mkSource("1.0.0"), proj, { _fault: (s) => { if (s === "before-pkg-rename") throw new Error("boom"); } })), /boom/);
+  assert.deepEqual(fs.readdirSync(path.join(home, ".unimatrix", "pkg")), []);
+  assert.equal(fs.existsSync(path.join(home, ".unimatrix", "install.json")), false);
+});
+
+test("symlinked trust.json (live and dangling) refused with fix message, link untouched", posixOnly, () => {
+  for (const live of [true, false]) {
+    const home = tmp("is-home-"), src = mkSource("1.0.0"), proj = mkProject();
+    S.installStore(opts(home, src, proj));
+    const tj = path.join(home, ".unimatrix", "trust.json");
+    const target = path.join(home, "elsewhere.json");
+    if (live) fs.writeFileSync(target, "T");
+    try { fs.unlinkSync(tj); } catch (_) {}
+    fs.symlinkSync(target, tj);
+    const msg = `unimatrix: ${tj} is a symlink (-> ${target}); trust state is never written through a symlink. Remove it ('rm "${tj}"') and re-run 'npx unimatrix init'`;
+    assert.throws(() => S.installStore(opts(home, src, proj)), (e) => e.message === msg);
+    assert.equal(fs.readlinkSync(tj), target);
+    if (live) assert.equal(fs.readFileSync(target, "utf8"), "T");
+  }
+});
+
+test("symlinked bin/trust.js: TrustError rewrapped with symlink fix message", posixOnly, () => {
+  const home = tmp("is-home-"), src = mkSource("1.0.0"), proj = mkProject();
+  S.installStore(opts(home, src, proj));
+  const p = path.join(home, ".unimatrix", "bin", "trust.js");
+  const real = path.join(home, "real-trust.js");
+  fs.renameSync(p, real);
+  fs.symlinkSync(real, p);
+  assert.throws(() => S.installStore(opts(home, src, proj)), (e) =>
+    e.message === `unimatrix: ${p} is a symlink (-> ${real}); trust files must be regular files. Remove it ('rm "${p}"') and re-run 'npx unimatrix init'`);
+});

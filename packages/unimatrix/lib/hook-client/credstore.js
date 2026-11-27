@@ -125,8 +125,7 @@ function read(projectHash) {
  * { mcp_url, observe_url, token, fingerprint, timeouts? } (fingerprint may be
  * null for legacy). Returns an actions array (mirrors init.js action strings;
  * NEVER carries token/fingerprint — NFR-06). THROWS on no-homedir or write
- * failure: credentials must persist (init exits 1, R-12). chmod failure is
- * swallowed (best-effort; Windows/unsupported fs).
+ * failure: credentials must persist (init exits 1, R-12).
  *
  * Merge posture (ADR-003 / ADR-004): the four canonical content fields plus
  * schema_version are always (over)written; unknown future fields in a readable
@@ -171,17 +170,12 @@ function write(projectHash, cred, opts) {
     return actions;
   }
 
-  // Write at 0600, then re-assert mode (the 0600-write-then-chmod pattern):
-  // guarantees 0600 even if the file pre-existed with looser perms.
+  // Hardened writer, lazy so the hook hot path never loads it (D-020/D-025).
   fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(merged, null, 2) + "\n", {
-    mode: STORE_MODE,
+  require("../safe-write.js").writeFileSync(p, JSON.stringify(merged, null, 2) + "\n", {
+    enforceMode: STORE_MODE,
+    newMode: STORE_MODE,
   });
-  try {
-    fs.chmodSync(p, STORE_MODE);
-  } catch (_err) {
-    // best-effort (Windows / unsupported fs); must not abort the write.
-  }
 
   actions.push("Wrote credential store " + p + " (mode 0600)");
   return actions;

@@ -5,7 +5,7 @@ const os = require("os");
 const path = require("path");
 const { isUnimatrixCommand } = require("./hook-ownership.js");
 const { detectIndent } = require("./opencode-install.js");
-const { atomicWriteText } = require("./claude-json.js");
+const { updateFileSync } = require("./safe-write.js");
 
 const HOOK_EVENTS = [
   "SessionStart",
@@ -151,12 +151,15 @@ function isUnimatrixHook(hookEntry) {
  * @returns {boolean} true iff unimatrix.hooks.subagent_stop === true.
  */
 function subagentStopEnabled(optInFile) {
-  let parsed;
   try {
-    parsed = JSON.parse(fs.readFileSync(optInFile, "utf8"));
+    return subagentStopEnabledFromContent(JSON.parse(fs.readFileSync(optInFile, "utf8")));
   } catch (readOrParseError) {
     return false;
   }
+}
+
+/** Pure key lookup on parsed settings (same bytes as the CAS decision). */
+function subagentStopEnabledFromContent(parsed) {
   const hooks =
     parsed && typeof parsed === "object" && parsed.unimatrix && typeof parsed.unimatrix === "object"
       ? parsed.unimatrix.hooks
@@ -200,21 +203,9 @@ function pruneUnimatrixEvent(content, event, actions) {
   }
 }
 
-/**
- * Remove every Unimatrix-owned hook entry from a cross-scope settings file
- * (all event keys). Foreign entries untouched; unchanged file is not rewritten.
- * @returns {{ actions: string[], changed: boolean }}
- */
-function removeOwnedHooks(file, opts) {
-  const dryRun = !!(opts && opts.dryRun);
-  const none = { actions: [], changed: false };
-  let raw;
-  try {
-    raw = fs.readFileSync(file, "utf8");
-  } catch (_) {
-    return none;
-  }
-  if (raw.trim() === "") return none;
+function computeRemoveOwned(raw, file) {
+  const none = { text: null, actions: [], changed: false };
+  if (raw === null || raw.trim() === "") return none;
   let parsed;
   try {
     parsed = JSON.parse(raw);
@@ -240,28 +231,25 @@ function removeOwnedHooks(file, opts) {
     actions.push("Removed unimatrix hook from " + file + ": " + event);
   }
   if (actions.length === 0) return none;
-  if (!dryRun) {
-    atomicWriteText(file, JSON.stringify(parsed, null, detectIndent(raw)) + "\n");
-  }
-  return { actions, changed: true };
+  return { text: JSON.stringify(parsed, null, detectIndent(raw)) + "\n", actions, changed: true };
 }
 
-/**
- * Merge Unimatrix hook configuration into .claude/settings.local.json.
- *
- * Implements ADR-004 prefix-match identification. Preserves all non-unimatrix
- * hooks, permissions, and other top-level keys. Idempotent: running twice
- * produces the same result.
- *
- * @param {string} filePath - Path to .claude/settings.json
- * @param {object|string} commandSource - Either { events, commandForEvent } or,
- *   for back-compat, the legacy local binaryPath string.
- * @param {object} options - { dryRun: boolean }
- * @returns {{ actions: string[], content: object }}
- */
-function mergeSettings(filePath, commandSource, options) {
-  const dryRun = (options && options.dryRun) || false;
-  const source = normalizeCommandSource(commandSource);
+/** Remove every owned hook entry (all events); foreign kept; unchanged file not rewritten. */
+function removeOwnedHooks(file, opts) {
+  const o = opts || {};
+  const res = updateFileSync(file, (raw) => computeRemoveOwned(raw, file).text, { dryRun: !!o.dryRun, containWithin: o.containWithin });
+  const d = computeRemoveOwned(res.before, file);
+  return { actions: d.actions, changed: d.changed };
+}
+
+/** R2/R3/R4 step body: WireLeg[] for one cross-scope settings file. */
+function removeOwnedHooksLeg(file, { dryRun, containWithin, reason } = {}) {
+  const r = removeOwnedHooks(file, { dryRun, containWithin });
+  return r.changed ? [{ harness: "claude-code", surface: "hooks", action: "removed", path: file, reason }] : [];
+}
+
+/** Steps 1-3b on raw bytes -> {text|null, actions, content, commands}. */
+function computeMerged(rawExisting, filePath, source) {
   const actions = [];
   let content = {};
 
@@ -271,19 +259,9 @@ function mergeSettings(filePath, commandSource, options) {
   // the load-bearing keep test — a command compare is forbidden (SR-01 / R-01).
   const keptEntryByEvent = {};
 
-  // ADR-004 §2: SubagentStop is opt-in. Resolve the durable key from the
-  // settings.local.json sibling of filePath (dirname(filePath) is {root}/.claude)
-  // and filter it out of the registered event list unless explicitly enabled.
-  const optInFile = filePath; // subagent_stop key lives in settings.local.json itself
-  let events = source.events;
-  if (events.includes(SUBAGENT_STOP_EVENT) && !subagentStopEnabled(optInFile)) {
-    events = events.filter((event) => event !== SUBAGENT_STOP_EVENT);
-  }
-
-  // Step 1: Read existing file
-  let rawExisting = null;
-  if (fs.existsSync(filePath)) {
-    rawExisting = fs.readFileSync(filePath, "utf8");
+  // Step 1: parse the bytes updateFileSync read (no second read).
+  let original = null;
+  if (rawExisting !== null) {
     const raw = rawExisting.trim();
 
     if (raw === "") {
@@ -302,8 +280,14 @@ function mergeSettings(filePath, commandSource, options) {
         );
       }
     }
+    if (raw !== "") original = JSON.stringify(content);
   } else {
     actions.push("Created .claude/settings.local.json");
+  }
+  // ADR-004 §2: SubagentStop opt-in, read from the same parsed bytes.
+  let events = source.events;
+  if (events.includes(SUBAGENT_STOP_EVENT) && !subagentStopEnabledFromContent(content)) {
+    events = events.filter((event) => event !== SUBAGENT_STOP_EVENT);
   }
 
   // Step 2: Ensure hooks key exists
@@ -445,23 +429,36 @@ function mergeSettings(filePath, commandSource, options) {
     }
   }
 
-  // Step 4: Write file (or prefix actions with [dry-run])
-  const serialized =
-    JSON.stringify(content, null, rawExisting ? detectIndent(rawExisting) : 2) + "\n";
-  if (!dryRun && serialized !== rawExisting) {
-    atomicWriteText(filePath, serialized);
-  }
-
-  // Cross-scope removal of owned entries (D-010, AC-13).
-  const crossFiles = (options && options.crossScopeFiles) || [];
-  for (const file of crossFiles) {
-    actions.push(...removeOwnedHooks(file, { dryRun }).actions);
-  }
-
-  const finalActions = dryRun ? actions.map((a) => "[dry-run] " + a) : actions;
+  // Step 4 (FR-16 / D-022): rewrite only on a semantic (order-sensitive) change;
+  // a correct file in non-canonical form (CRLF, compact, no newline) stays as is.
+  const changed = original === null || original !== JSON.stringify(content);
+  const text = changed ? JSON.stringify(content, null, rawExisting ? detectIndent(rawExisting) : 2) + "\n" : null;
   const commands = events.map((event) => ({ event, command: keptEntryByEvent[event].command }));
+  return { text, actions, content, commands };
+}
 
-  return { actions: finalActions, content, commands };
+/**
+ * Merge Unimatrix hook configuration into .claude/settings.local.json via
+ * updateFileSync (ADR-004 prefix-match; foreign hooks and keys preserved).
+ * @param {object} options - { dryRun, containWithin, crossScopeFiles }
+ * @returns {{ actions: string[], content: object, commands: object[], action: string }}
+ */
+function mergeSettings(filePath, commandSource, options) {
+  const o = options || {};
+  const dryRun = !!o.dryRun;
+  const source = normalizeCommandSource(commandSource);
+  const res = updateFileSync(filePath, (raw) => computeMerged(raw, filePath, source).text, { dryRun, newMode: 0o600, containWithin: o.containWithin, ...(o.fault && { fault: o.fault }) });
+  const d = computeMerged(res.before, filePath, source);
+  const actions = d.actions;
+  for (const file of o.crossScopeFiles || []) actions.push(...removeOwnedHooks(file, { dryRun }).actions);
+  return { actions: dryRun ? actions.map((a) => "[dry-run] " + a) : actions, content: d.content, commands: d.commands, action: res.action };
+}
+
+/** W1 step body (called by wire-plan). */
+function wireProjectHooks({ root, platform, home, dryRun }) {
+  const file = path.join(root, ".claude", "settings.local.json");
+  const r = mergeSettings(file, { events: HOOK_EVENTS, commandForEvent: (e) => buildShimCommand(e, undefined, platform, home) }, { dryRun, containWithin: root });
+  return r.commands.map(({ command }) => ({ harness: "claude-code", surface: "hooks", action: r.action, path: file, command }));
 }
 
 module.exports = {
@@ -474,5 +471,8 @@ module.exports = {
   EVENT_MATCHERS,
   buildShimCommand,
   removeOwnedHooks,
+  removeOwnedHooksLeg,
+  wireProjectHooks,
+  subagentStopEnabledFromContent,
   PRETOOLUSE_CYCLE_MATCHER,
 };
