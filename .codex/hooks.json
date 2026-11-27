@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook PreToolUse --provider codex-cli"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PreToolUse --provider codex-cli"
           }
         ]
       }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook PostToolUse --provider codex-cli"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PostToolUse --provider codex-cli"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook UserPromptSubmit --provider codex-cli"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js UserPromptSubmit --provider codex-cli"
           }
         ]
       }
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook SubagentStart --provider codex-cli"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js SubagentStart --provider codex-cli"
           }
         ]
       }
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook PreCompact --provider codex-cli"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js PreCompact --provider codex-cli"
           }
         ]
       }
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook SessionStart --provider codex-cli"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js SessionStart --provider codex-cli"
           }
         ]
       }
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "unimatrix hook Stop --provider codex-cli"
+            "command": "node /home/vscode/.unimatrix/dogfood-client/lib/hook-client/index.js Stop --provider codex-cli"
           }
         ]
       }
