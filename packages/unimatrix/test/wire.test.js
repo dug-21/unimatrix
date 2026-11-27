@@ -1,4 +1,7 @@
 "use strict";
+const { winSymlink, winModes, anySkip } = require("./helpers/linux-local.js");
+const H = require("./helpers/e2e-harness.js");
+const { certSkip } = H;
 
 const assert = require("assert");
 const fs = require("fs");
@@ -910,25 +913,16 @@ describe("1036 acceptance via wire()", () => {
 });
 
 // ── 1036 C17-A: AC-3 project-file containment through spawned `init` (D-026) ──
-describe("1036 AC-3 project-file links via spawned init", () => {
-  const { spawnSync } = require("child_process");
+// Driven through `init --bundle` (D-042): shared wiring, so it runs on every OS that can make symlinks.
+describe("1036 AC-3 project-file links via spawned init", anySkip(certSkip(), winSymlink), () => {
   const os = require("os");
-  const { makeGitProject, gitEnv } = require("./helpers/wire-fixture.js");
-  const { assertTmpHome } = require("./helpers/home-guard.js");
+  const { makeGitProject } = require("./helpers/wire-fixture.js");
   const BIN = require("./helpers/wire-fixture.js").stagedCli();
+  const S = H.useStub();
   const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
   const SETTINGS = path.join(".claude", "settings.local.json");
   const tmpFiles = (d) => { const o = []; const w = (x) => { for (const e of fs.readdirSync(x, { withFileTypes: true })) { const p = path.join(x, e.name); if (/\.tmp-[0-9a-f]{16}$/.test(e.name)) o.push(p); if (e.isDirectory() && !e.isSymbolicLink()) w(p); } }; try { w(d); } catch (_) {} return o; };
-  function init(cwd, home, args) {
-    const fakeDir = tmp("unimatrix-fakebin-");
-    const f = path.join(fakeDir, "unimatrix");
-    fs.writeFileSync(f, '#!/bin/sh\necho "unimatrix 0.5.0"\n');
-    fs.chmodSync(f, 0o755);
-    assertTmpHome(home);
-    const env = gitEnv({ HOME: home, UNIMATRIX_BINARY: f });
-    const r = spawnSync(process.execPath, [BIN, "init"].concat(args || []), { cwd, env, encoding: "utf8", timeout: 60000 });
-    return { status: r.status, out: (r.stdout || "") + (r.stderr || "") };
-  }
+  const init = (cwd, home, args) => H.initBundle(BIN, S, cwd, home, { args });
   const linkAt = (dir, rel, target) => {
     const p = path.join(dir, rel);
     fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -939,7 +933,7 @@ describe("1036 AC-3 project-file links via spawned init", () => {
   for (const args of [[], ["--dry-run"]]) {
     const label = args.length ? "dry-run" : "real";
     for (const form of ["relative", "absolute", "2-hop"]) {
-      it(`test_ac3_project_link_inside_root_${form}_written_through_${label}`, () => {
+      it(`test_ac3_project_link_inside_root_${form}_written_through_${label}`, async () => {
         const dir = makeGitProject("unimatrix-ac3-");
         const home = tmp("unimatrix-ac3-home-");
         fs.mkdirSync(path.join(dir, "cfg"), { recursive: true });
@@ -955,7 +949,7 @@ describe("1036 AC-3 project-file links via spawned init", () => {
           fs.symlinkSync(path.relative(path.dirname(link), hop), link);
         }
         const before = fs.readlinkSync(link);
-        const r = init(dir, home, args);
+        const r = await init(dir, home, args);
         assert.strictEqual(r.status, 0, r.out);
         assert.ok(fs.lstatSync(link).isSymbolicLink(), "link kept");
         assert.strictEqual(fs.readlinkSync(link), before);
@@ -965,7 +959,7 @@ describe("1036 AC-3 project-file links via spawned init", () => {
     }
   }
 
-  it("test_ac3_project_link_outside_root_refused_real_and_dry_run", () => {
+  it("test_ac3_project_link_outside_root_refused_real_and_dry_run", async () => {
     for (const args of [[], ["--dry-run"]]) {
       const dir = makeGitProject("unimatrix-ac3-");
       const home = tmp("unimatrix-ac3-home-");
@@ -973,7 +967,7 @@ describe("1036 AC-3 project-file links via spawned init", () => {
       const target = path.join(outside, "settings.local.json");
       fs.writeFileSync(target, "{}\n");
       const link = linkAt(dir, SETTINGS, target);
-      const r = init(dir, home, args);
+      const r = await init(dir, home, args);
       assert.strictEqual(r.status, 1, r.out);
       assert.match(r.out, /outside project root/);
       assert.match(r.out, new RegExp(link.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -983,41 +977,41 @@ describe("1036 AC-3 project-file links via spawned init", () => {
     }
   });
 
-  it("test_ac3_parent_dir_link_outside_root_refused", () => {
+  it("test_ac3_parent_dir_link_outside_root_refused", async () => {
     const dir = makeGitProject("unimatrix-ac3-");
     const home = tmp("unimatrix-ac3-home-");
     const outside = tmp("unimatrix-ac3-out-");
     fs.symlinkSync(outside, path.join(dir, ".claude"));
-    const r = init(dir, home);
+    const r = await init(dir, home);
     assert.strictEqual(r.status, 1, r.out);
     assert.match(r.out, /outside project root/);
     assert.deepStrictEqual(fs.readdirSync(outside), []);
   });
 
-  it("test_ac3_prefix_sibling_of_root_refused", () => {
+  it("test_ac3_prefix_sibling_of_root_refused", async () => {
     const dir = makeGitProject("unimatrix-ac3-");
     const home = tmp("unimatrix-ac3-home-");
     const sib = dir + "-x";
     fs.mkdirSync(sib);
     fs.writeFileSync(path.join(sib, "settings.local.json"), "{}\n");
     linkAt(dir, SETTINGS, path.join(sib, "settings.local.json"));
-    const r = init(dir, home);
+    const r = await init(dir, home);
     assert.strictEqual(r.status, 1, r.out);
     assert.match(r.out, /outside project root/);
     assert.strictEqual(fs.readFileSync(path.join(sib, "settings.local.json"), "utf8"), "{}\n");
   });
 
-  it("test_ac3_dangling_project_link_refused_dangling_symlink", () => {
+  it("test_ac3_dangling_project_link_refused_dangling_symlink", async () => {
     const dir = makeGitProject("unimatrix-ac3-");
     const home = tmp("unimatrix-ac3-home-");
     const link = linkAt(dir, SETTINGS, path.join(dir, "missing", "settings.local.json"));
-    const r = init(dir, home);
+    const r = await init(dir, home);
     assert.strictEqual(r.status, 1, r.out);
     assert.match(r.out, /is a dangling symlink/);
     assert.strictEqual(fs.readlinkSync(link), path.join(dir, "missing", "settings.local.json"));
   });
 
-  it("test_ac3_root_reached_via_symlink_inside_target_followed", () => {
+  it("test_ac3_root_reached_via_symlink_inside_target_followed", async () => {
     const dir = makeGitProject("unimatrix-ac3-");
     const home = tmp("unimatrix-ac3-home-");
     const rootLink = path.join(tmp("unimatrix-ac3-rl-"), "proj");
@@ -1028,23 +1022,23 @@ describe("1036 AC-3 project-file links via spawned init", () => {
     fs.mkdirSync(path.join(dir, ".claude"), { recursive: true });
     const link = path.join(dir, SETTINGS);
     fs.symlinkSync(path.relative(path.dirname(link), real), link);
-    const r = init(rootLink, home);
+    const r = await init(rootLink, home);
     assert.strictEqual(r.status, 0, r.out);
     assert.ok(fs.lstatSync(link).isSymbolicLink());
     assert.match(fs.readFileSync(real, "utf8"), /unimatrix/);
   });
 
-  it("test_ac3_trust_json_symlink_live_and_dangling_exact_message", () => {
+  it("test_ac3_trust_json_symlink_live_and_dangling_exact_message", async () => {
     for (const live of [true, false]) {
       const dir = makeGitProject("unimatrix-ac3-");
       const home = tmp("unimatrix-ac3-home-");
-      assert.strictEqual(init(dir, home).status, 0);
+      assert.strictEqual((await init(dir, home)).status, 0);
       const tj = path.join(home, ".unimatrix", "trust.json");
       const target = path.join(tmp("unimatrix-ac3-t-"), "trust.real.json");
       if (live) fs.writeFileSync(target, "T");
       fs.rmSync(tj, { force: true });
       fs.symlinkSync(target, tj);
-      const r = init(dir, home);
+      const r = await init(dir, home);
       assert.strictEqual(r.status, 1, r.out);
       assert.ok(r.out.includes(`unimatrix: ${tj} is a symlink (-> ${target}); trust state is never written through a symlink. Remove it ('rm "${tj}"') and re-run 'npx unimatrix init'`), r.out);
       assert.strictEqual(fs.readlinkSync(tj), target);
@@ -1054,35 +1048,22 @@ describe("1036 AC-3 project-file links via spawned init", () => {
 });
 
 // ── 1036 C17-A: S-3 D-025 enforced modes through spawned init ──
-describe("1036 S-3 D-025 enforced modes via spawned init", () => {
-  const { spawnSync } = require("child_process");
+// Driven through `init --bundle` (D-042): the store and its D-025 modes are shared by local and cloud.
+describe("1036 S-3 D-025 enforced modes via spawned init", anySkip(certSkip(), winModes), () => {
   const os = require("os");
-  const { makeGitProject, gitEnv } = require("./helpers/wire-fixture.js");
-  const { assertTmpHome } = require("./helpers/home-guard.js");
+  const { makeGitProject } = require("./helpers/wire-fixture.js");
   const BIN = require("./helpers/wire-fixture.js").stagedCli();
+  const S = H.useStub();
   const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
   const mode = (p) => fs.statSync(p).mode & 0o777;
-  const fakeBin = () => {
-    const f = path.join(tmp("unimatrix-fakebin-"), "unimatrix");
-    fs.writeFileSync(f, '#!/bin/sh\necho "unimatrix 0.5.0"\n');
-    fs.chmodSync(f, 0o755);
-    return f;
-  };
-  function init(cwd, home, umask) {
-    assertTmpHome(home);
-    const env = gitEnv({ HOME: home, UNIMATRIX_BINARY: fakeBin() });
-    const argv = [process.execPath, BIN, "init"];
-    const cmd = umask ? "umask " + umask + "; exec \"$@\"" : "exec \"$@\"";
-    const r = spawnSync("sh", ["-c", cmd, "sh"].concat(argv), { cwd, env, encoding: "utf8", timeout: 60000 });
-    return { status: r.status, out: (r.stdout || "") + (r.stderr || "") };
-  }
+  const init = (cwd, home, umask) => H.initBundle(BIN, S, cwd, home, { umask });
   const storeDir = (home) => path.join(home, ".unimatrix");
   const hashDir = (home) => fs.readdirSync(storeDir(home)).find((n) => /^[0-9a-f]{16}$/.test(n));
 
-  it("test_s3_drifted_store_modes_repaired_reported_updated_and_trust_check_passes", () => {
+  it("test_s3_drifted_store_modes_repaired_reported_updated_and_trust_check_passes", async () => {
     const dir = makeGitProject("unimatrix-s3-");
     const home = tmp("unimatrix-s3-home-");
-    assert.strictEqual(init(dir, home).status, 0);
+    assert.strictEqual((await init(dir, home)).status, 0);
     const sd = storeDir(home);
     const hd = hashDir(home);
     const drift = [
@@ -1097,7 +1078,7 @@ describe("1036 S-3 D-025 enforced modes via spawned init", () => {
     const keep = [path.join(dir, ".claude", "settings.local.json")];
     for (const [p, m] of drift) if (fs.existsSync(p)) fs.chmodSync(p, m);
     for (const p of keep) if (fs.existsSync(p)) fs.chmodSync(p, 0o664);
-    const r = init(dir, home);
+    const r = await init(dir, home);
     assert.strictEqual(r.status, 0, r.out);
     const want = { "install.json": 0o600, "trust.json": 0o600, "root": 0o600, "remote.json": 0o600 };
     for (const [p] of drift) {
@@ -1105,18 +1086,20 @@ describe("1036 S-3 D-025 enforced modes via spawned init", () => {
       const base = path.basename(p);
       const expected = want[base] !== undefined ? want[base] : (p.includes(path.sep + "bin" + path.sep) ? 0o700 : 0o600);
       assert.strictEqual(mode(p), expected, p);
-      assert.match(r.out, new RegExp("store: updated " + p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+      const q = p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // remote.json is rewritten by the credential store (cloud path), which reports its own line.
+      assert.match(r.out, new RegExp(base === "remote.json" ? "Wrote credential store " + q + " \\(mode 0600\\)" : "store: updated " + q));
     }
     for (const p of keep) if (fs.existsSync(p)) assert.strictEqual(mode(p), 0o664, "keeps mode: " + p);
-    const again = init(dir, home);
+    const again = await init(dir, home);
     assert.strictEqual(again.status, 0, again.out);
   });
 
   for (const um of ["000", "002", "022"]) {
-    it(`test_s3_new_install_modes_under_umask_${um}`, () => {
+    it(`test_s3_new_install_modes_under_umask_${um}`, async () => {
       const dir = makeGitProject("unimatrix-s3-");
       const home = tmp("unimatrix-s3-home-");
-      const r = init(dir, home, um);
+      const r = await init(dir, home, um);
       assert.strictEqual(r.status, 0, r.out);
       const sd = storeDir(home);
       const hd = hashDir(home);
@@ -1129,36 +1112,23 @@ describe("1036 S-3 D-025 enforced modes via spawned init", () => {
 });
 
 // ── 1036 C17-A gap close: AC-4 Codex RT-07, S-3 remote.json + keep-mode, AC-10 spawned rename ──
-describe("1036 C17-A gap close via spawned init", () => {
-  const { spawnSync } = require("child_process");
+// Driven through `init --bundle` (D-042): removal set, keep-mode and atomic rename are shared wiring.
+describe("1036 C17-A gap close via spawned init", certSkip(), () => {
   const os = require("os");
-  const { makeGitProject, gitEnv, ownedHooks } = require("./helpers/wire-fixture.js");
-  const { assertTmpHome } = require("./helpers/home-guard.js");
+  const { makeGitProject } = require("./helpers/wire-fixture.js");
   const BIN = require("./helpers/wire-fixture.js").stagedCli();
+  const S = H.useStub();
   const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
   const mode = (p) => fs.statSync(p).mode & 0o777;
   const tmpFiles = (d) => { const o = []; const w = (x) => { for (const e of fs.readdirSync(x, { withFileTypes: true })) { const p = path.join(x, e.name); if (/\.tmp-[0-9a-f]{16}$/.test(e.name)) o.push(p); if (e.isDirectory() && !e.isSymbolicLink()) w(p); } }; try { w(d); } catch (_) {} return o; };
-  function fakeBin() {
-    const f = path.join(tmp("unimatrix-fakebin-"), "unimatrix");
-    fs.writeFileSync(f, '#!/bin/sh\necho "unimatrix 0.5.0"\n');
-    fs.chmodSync(f, 0o755);
-    return f;
-  }
-  function init(cwd, home, opts) {
-    assertTmpHome(home);
-    const o = opts || {};
-    const env = gitEnv(Object.assign({ HOME: home, UNIMATRIX_BINARY: fakeBin() }, o.env || {}));
-    const argv = [process.execPath, BIN, "init"].concat(o.args || []);
-    const r = spawnSync(argv[0], argv.slice(1), { cwd, env, encoding: "utf8", timeout: 60000 });
-    return { status: r.status, out: (r.stdout || "") + (r.stderr || "") };
-  }
+  const init = (cwd, home, opts) => H.initBundle(BIN, S, cwd, home, opts);
 
-  it("test_ac4_rt07_codex_project_and_user_owned_removed_foreign_kept", () => {
+  it("test_ac4_rt07_codex_project_and_user_owned_removed_foreign_kept", async () => {
     const dir = makeGitProject("unimatrix-rt07-");
     const home = tmp("unimatrix-rt07-home-");
     const C = tmp("unimatrix-rt07-codex-");
     fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
-    assert.strictEqual(init(dir, home, { env: { CODEX_HOME: C }, args: ["--harness", "codex-cli"] }).status, 0);
+    assert.strictEqual((await init(dir, home, { env: { CODEX_HOME: C }, args: ["--harness", "codex-cli"] })).status, 0);
     const userHooks = path.join(C, "hooks.json");
     const userCfg = path.join(C, "config.toml");
     const owned = readJsonSafe(userHooks);
@@ -1173,7 +1143,7 @@ describe("1036 C17-A gap close via spawned init", () => {
     const projToml = mcpTable.split(/\n(?=\[(?!mcp_servers\.unimatrix\.))/)[0] + "\n[mcp_servers.other]\ncommand = \"y\"\n";
     fs.writeFileSync(path.join(dir, ".codex", "config.toml"), projToml);
     fs.writeFileSync(userCfg, ownedToml + "\n[mcp_servers.other]\ncommand = \"y\"\n");
-    const r = init(dir, home, { env: { CODEX_HOME: C }, args: ["--harness", "codex-cli"] });
+    const r = await init(dir, home, { env: { CODEX_HOME: C }, args: ["--harness", "codex-cli"] });
     assert.strictEqual(r.status, 0, r.out);
     const projJson = readJsonSafe(path.join(dir, ".codex", "hooks.json"));
     const cmds = (j) => JSON.stringify(j).match(/"command":"[^"]*"/g) || [];
@@ -1188,12 +1158,11 @@ describe("1036 C17-A gap close via spawned init", () => {
     assert.deepStrictEqual(tmpFiles(dir).concat(tmpFiles(C)), []);
   });
 
-  it("test_s3_keep_mode_controls_unchanged_under_store_drift", () => {
-    // remote.json drift cannot be exercised: bundle init pings the observe_url over pinned TLS
-    // (init.js Step 6) with no test seam, so the file is never written offline.
+  it("test_s3_keep_mode_controls_unchanged_under_store_drift", winModes, async () => {
+    // remote.json drift is covered by test_s3_drifted_store_modes_* (bundle init against the stub).
     const dir = makeGitProject("unimatrix-s3r-");
     const home = tmp("unimatrix-s3r-home-");
-    assert.strictEqual(init(dir, home).status, 0);
+    assert.strictEqual((await init(dir, home)).status, 0);
     const sd = path.join(home, ".unimatrix");
     const hd = fs.readdirSync(sd).find((n) => /^[0-9a-f]{16}$/.test(n));
     fs.chmodSync(path.join(sd, "install.json"), 0o664);
@@ -1204,7 +1173,7 @@ describe("1036 C17-A gap close via spawned init", () => {
     fs.writeFileSync(ocJson, "{}\n");
     fs.writeFileSync(claudeJson, "{}\n");
     for (const p of [claudeJson, ocJson, skill]) fs.chmodSync(p, 0o664);
-    const r = init(dir, home);
+    const r = await init(dir, home);
     assert.strictEqual(r.status, 0, r.out);
     assert.strictEqual(mode(path.join(sd, "install.json")), 0o600);
     assert.strictEqual(mode(path.join(sd, hd, "root")), 0o600);
@@ -1212,7 +1181,7 @@ describe("1036 C17-A gap close via spawned init", () => {
     for (const p of [claudeJson, ocJson, skill]) assert.strictEqual(mode(p), 0o664, "keeps drifted mode: " + p);
   });
 
-  it("test_ac10_spawned_rename_failure_settings_local_no_temp_exit1_names_file", () => {
+  it("test_ac10_spawned_rename_failure_settings_local_no_temp_exit1_names_file", async () => {
     const dir = makeGitProject("unimatrix-ac10-");
     const home = tmp("unimatrix-ac10-home-");
     const target = path.join(dir, ".claude", "settings.local.json");
@@ -1227,7 +1196,7 @@ describe("1036 C17-A gap close via spawned init", () => {
       "  return orig.apply(fs, arguments);",
       "};",
     ].join("\n"));
-    const r = init(dir, home, { env: { NODE_OPTIONS: "--require " + preload, UNI_FAIL_RENAME: target } });
+    const r = await init(dir, home, { env: { NODE_OPTIONS: "--require " + preload.replace(/\\/g, "/"), UNI_FAIL_RENAME: target } });
     assert.strictEqual(r.status, 1, r.out);
     assert.ok(r.out.includes(target), r.out);
     assert.strictEqual(fs.readFileSync(target, "utf8"), "{}\n");

@@ -199,11 +199,6 @@ function spawnCli(f, args, extra) {
   const env = scrubbedEnv(Object.assign({ HOME: f.home, USERPROFILE: f.home, PATH: process.env.PATH }, extra || {}));
   return spawnSync(process.execPath, [BIN].concat(args), { cwd: f.proj, env, encoding: "utf8", timeout: 30000 });
 }
-const fakeBinary = (f) => {
-  const p = path.join(f.base, "fake-unimatrix");
-  w(p, '#!/bin/sh\necho "unimatrix 0.5.0"\n', 0o755);
-  return p;
-};
 
 test("S-1 spawned: missing local-scope entry prints MISSING line, exit 0, json status missing", posix, () => {
   const f = fixture();
@@ -254,6 +249,8 @@ test("S-1 spawned: unparseable resolved opencode.json named, exit 0", posix, () 
 });
 
 test("S-1 parity: spawned init 'resolved:' paths equal collect().configDirs per override set", posix, () => {
+  // D-042: `init --bundle --dry-run` (shared wiring, never connects) so macOS runs it too.
+  const { offlineBundle } = require("./helpers/e2e-harness.js");
   const sets = [
     {},
     { CLAUDE_CONFIG_DIR: null },
@@ -264,9 +261,7 @@ test("S-1 parity: spawned init 'resolved:' paths equal collect().configDirs per 
     fs.mkdirSync(path.join(f.proj, ".opencode"), { recursive: true });
     const extra = {};
     for (const [k, v] of Object.entries(set)) extra[k] = v === null ? path.join(f.base, k.toLowerCase()) : v;
-    const bin = fakeBinary(f);
-    const env = Object.assign({ UNIMATRIX_BINARY: bin }, extra);
-    const init = spawnCli(f, ["init", "--dry-run"], env);
+    const init = spawnCli(f, ["init", "--bundle", offlineBundle(), "--dry-run"], extra);
     assert.equal(init.status, 0, init.stderr);
     const resolved = {};
     for (const line of init.stdout.split("\n")) {
