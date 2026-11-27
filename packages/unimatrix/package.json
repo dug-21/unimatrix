@@ -1,6 +1,6 @@
 {
   "name": "@dug-21/unimatrix",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Unimatrix knowledge engine for multi-agent development",
   "bin": {
     "unimatrix": "bin/unimatrix.js"
@@ -16,8 +16,8 @@
     "test:audit-suites": "node test/run-hook-client.js --set audit"
   },
   "optionalDependencies": {
-    "@dug-21/unimatrix-linux-x64": "0.12.0",
-    "@dug-21/unimatrix-linux-arm64": "0.12.0"
+    "@dug-21/unimatrix-linux-x64": "0.12.1",
+    "@dug-21/unimatrix-linux-arm64": "0.12.1"
   },
   "files": [
     "bin/",

@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.12.1] - 2026-11-27
+
+### Fixes
+- smoke gates select projectHash by remote.json; wait for embed readiness (#1060) (#1061)
+
 ## [0.12.0] - 2026-11-27
 
 ### Breaking changes (nan-024, #1023)
