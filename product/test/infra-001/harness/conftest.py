@@ -385,9 +385,9 @@ def daemon_server(tmp_path):
             f"daemon sockets did not appear within {_DAEMON_SOCKET_DEADLINE_S}s.\n"
             f"--- daemon stderr ---\n{_stderr_tail()}"
         )
-    require_embed_ready(stderr_lines, stderr_lock, proc, _kill)  # sockets bind before embed loads (#1060)
 
     try:
+        require_embed_ready(stderr_lines, stderr_lock, proc, _kill)  # inside try: finally cleans up on failure (#1060)
         yield {
             "mcp_socket_path": str(mcp_socket),
             "socket_path": str(hook_socket),
