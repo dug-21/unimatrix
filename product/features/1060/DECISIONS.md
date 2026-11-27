@@ -8,3 +8,7 @@
 | D-004 | review | release.yml workflow_dispatch dry-run before v0.12.1 tag | Run it | human | — | :latest-<arch> overwrite low cost; avoids second failed release over unconfirmed rc=1 |
 | D-005 | review | Security F1 (readiness wait before try/finally leaks store dir) | Apply: move require_embed_ready into try | human | H1 | — |
 | D-006 | review | Security F2 (16-hex check in read_back_project_hash) | Decline | human | H1 | Fixtures use non-hex names |
+| D-007 | merge | Gap: Gate 6 real path has no direct logic-test seam (covered via helper tests) | Accept | human | H4 | Dry-run exercised Gate 6 on both arches |
+| D-008 | merge | Gap: test_daemon_readiness.py ran locally only with --noconftest (stale local binary) | Accept | human | H4 | Dry-run parity job exercised fixture |
+| D-009 | merge | Gap: Gate 10 absent from dry-run log, unconfirmed | Accept | human | H4 | Not a regression vs v0.12.0 |
+| D-010 | merge | Merge PR #1061 | Approved | human | H6 | — |
