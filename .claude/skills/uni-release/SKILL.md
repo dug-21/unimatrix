@@ -149,7 +149,7 @@ If this fails, stop with: **"Build check failed after version update. Review cha
 
 ## Step 7a: Sync protocols/ Distribution Copies
 
-Copy the four protocol files from the internal `.claude/protocols/uni/` directory
+Copy the six protocol files from the internal `.claude/protocols/uni/` directory
 to two locations: the repo-root `protocols/` (for repo users) and
 `packages/unimatrix/protocols/` (for npm — npm resolves `files` relative to the
 package directory, not the repo root):
@@ -160,6 +160,8 @@ cp .claude/protocols/uni/uni-design-protocol.md protocols/uni-design-protocol.md
 cp .claude/protocols/uni/uni-delivery-protocol.md protocols/uni-delivery-protocol.md
 cp .claude/protocols/uni/uni-bugfix-protocol.md protocols/uni-bugfix-protocol.md
 cp .claude/protocols/uni/uni-agent-routing.md protocols/uni-agent-routing.md
+cp .claude/protocols/uni/uni-primary-authority.md protocols/uni-primary-authority.md
+cp .claude/protocols/uni/uni-research-protocol.md protocols/uni-research-protocol.md
 cp protocols/README.md protocols/README.md  # already exists; update if changed
 
 # npm package copy (what npm pack actually includes)
@@ -167,6 +169,8 @@ cp .claude/protocols/uni/uni-design-protocol.md packages/unimatrix/protocols/uni
 cp .claude/protocols/uni/uni-delivery-protocol.md packages/unimatrix/protocols/uni-delivery-protocol.md
 cp .claude/protocols/uni/uni-bugfix-protocol.md packages/unimatrix/protocols/uni-bugfix-protocol.md
 cp .claude/protocols/uni/uni-agent-routing.md packages/unimatrix/protocols/uni-agent-routing.md
+cp .claude/protocols/uni/uni-primary-authority.md packages/unimatrix/protocols/uni-primary-authority.md
+cp .claude/protocols/uni/uni-research-protocol.md packages/unimatrix/protocols/uni-research-protocol.md
 cp protocols/README.md packages/unimatrix/protocols/README.md
 ```
 
@@ -177,10 +181,14 @@ diff .claude/protocols/uni/uni-design-protocol.md protocols/uni-design-protocol.
 diff .claude/protocols/uni/uni-delivery-protocol.md protocols/uni-delivery-protocol.md
 diff .claude/protocols/uni/uni-bugfix-protocol.md protocols/uni-bugfix-protocol.md
 diff .claude/protocols/uni/uni-agent-routing.md protocols/uni-agent-routing.md
+diff .claude/protocols/uni/uni-primary-authority.md protocols/uni-primary-authority.md
+diff .claude/protocols/uni/uni-research-protocol.md protocols/uni-research-protocol.md
 diff protocols/uni-design-protocol.md packages/unimatrix/protocols/uni-design-protocol.md
 diff protocols/uni-delivery-protocol.md packages/unimatrix/protocols/uni-delivery-protocol.md
 diff protocols/uni-bugfix-protocol.md packages/unimatrix/protocols/uni-bugfix-protocol.md
 diff protocols/uni-agent-routing.md packages/unimatrix/protocols/uni-agent-routing.md
+diff protocols/uni-primary-authority.md packages/unimatrix/protocols/uni-primary-authority.md
+diff protocols/uni-research-protocol.md packages/unimatrix/protocols/uni-research-protocol.md
 diff protocols/README.md packages/unimatrix/protocols/README.md
 ```
 
@@ -239,7 +247,7 @@ git push origin HEAD
 git push origin "v{new_version}"
 ```
 
-The tag push triggers the release pipeline defined in `.github/workflows/uni-release.yml`.
+The tag push triggers the release pipeline defined in `.github/workflows/release.yml`.
 
 ---
 
