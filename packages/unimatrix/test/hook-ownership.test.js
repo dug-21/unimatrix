@@ -3,6 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 const {
   OWNED_FORMS, KNOWN_EVENTS, isUnimatrixCommand, isUnimatrixMcpEntry, normalizeMcpArgv,
+  isLegacyOpencodePlugin,
 } = require("../lib/hook-ownership");
 
 function tryShim() {
@@ -123,4 +124,15 @@ test("normalizeMcpArgv", () => {
 test("KNOWN_EVENTS superset of codex-install CODEX_EVENTS", () => {
   const { CODEX_EVENTS } = require("../lib/codex-install");
   for (const e of CODEX_EVENTS) assert.ok(KNOWN_EVENTS.includes(e), e);
+});
+
+test("isLegacyOpencodePlugin", () => {
+  const P = "@dug-21/unimatrix-opencode-plugin";
+  for (const v of [P, P + "@1.2.3", P + "@latest", P + "@^0.4"]) {
+    assert.equal(isLegacyOpencodePlugin(v), true, v);
+  }
+  for (const v of [P + "-extra", "@other/unimatrix-opencode-plugin", "unimatrix-opencode-plugin",
+    "file:./x/unimatrix-opencode-plugin", P + "@", P + "@a/b", null, undefined, 1, 42, {}, [P]]) {
+    assert.equal(isLegacyOpencodePlugin(v), false, String(v));
+  }
 });

@@ -6,6 +6,7 @@
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const crypto = require("node:crypto");
 
 class TrustError extends Error {
   constructor(p, reason) {
@@ -95,32 +96,193 @@ function sleepMs(ms) {
   } catch (_) {}
 }
 
-// Identity of every checked path (trust.json itself excluded) -> trust.json,
-// tmp + rename. A failed write is not fatal: the next event re-checks.
-function recordTrustIdentity(paths, home) {
-  const tjKey = normalizeKey(path.join(udir(home), "trust.json"));
-  const rec = {};
-  try {
-    for (const p of paths) {
-      const k = normalizeKey(p);
-      if (k !== tjKey) rec[k] = statIdentity(p);
+// ---- Hardened writer core (ADR-003, ADR-005). lib/safe-write.js is the API. ----
+class SafeWriteError extends Error {
+  constructor(code, file, msg) {
+    super(msg);
+    this.name = "SafeWriteError";
+    this.code = code;
+    this.file = file;
+  }
+}
+
+const sha256 = (b) => crypto.createHash("sha256").update(b).digest("hex");
+const tempPath = (dest) => path.join(path.dirname(dest), `.${path.basename(dest)}.tmp-${crypto.randomBytes(8).toString("hex")}`);
+const RETRY_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
+
+function renameWithRetry(from, to, platform, retry) {
+  const r = retry || { count: 10, delayMs: 25 };
+  const max = platform === "win32" ? r.count : 1;
+  for (let i = 1; ; i++) {
+    try {
+      return fs.renameSync(from, to);
+    } catch (e) {
+      if (i < max && e && RETRY_CODES.has(e.code)) sleepMs(r.delayMs);
+      else throw e;
     }
-    const dest = path.join(udir(home), "trust.json");
-    const tmp = `${dest}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}`;
-    fs.writeFileSync(tmp, JSON.stringify(rec), { mode: 0o600 });
-    for (let i = 0; i < 4; i++) {
+  }
+}
+
+// realpath of the deepest existing ancestor + the remaining components.
+function realPathForm(p) {
+  let cur = path.resolve(p);
+  const rest = [];
+  for (;;) {
+    try {
+      return path.join(fs.realpathSync.native(cur), ...rest.reverse());
+    } catch (_) {
+      const up = path.dirname(cur);
+      if (up === cur) return path.join(cur, ...rest.reverse());
+      rest.push(path.basename(cur));
+      cur = up;
+    }
+  }
+}
+
+function resolveTarget(file) {
+  const loop = () => new SafeWriteError("not-regular", file, `${file}: symlink loop`);
+  let lst;
+  try {
+    lst = fs.lstatSync(file);
+  } catch (e) {
+    if (e && e.code === "ENOENT") return { target: realPathForm(file), isLink: false };
+    if (e && e.code === "ELOOP") throw loop();
+    throw new SafeWriteError("io", file, `${file}: ${e && e.message}`);
+  }
+  if (lst.isSymbolicLink()) {
+    const linkText = fs.readlinkSync(file);
+    let target;
+    try {
+      target = fs.realpathSync.native(file);
+    } catch (e) {
+      if (e && e.code === "ENOENT") throw new SafeWriteError("dangling-symlink", file, `${file} is a dangling symlink (-> ${linkText}); not written`);
+      if (e && e.code === "ELOOP") throw loop();
+      throw new SafeWriteError("io", file, `${file}: ${e && e.message}`);
+    }
+    if (!fs.statSync(target).isFile()) throw new SafeWriteError("not-regular", file, `${file} -> ${target} is not a regular file`);
+    return { target, isLink: true, linkText };
+  }
+  if (!lst.isFile()) throw new SafeWriteError("not-regular", file, `${file} is not a regular file`);
+  return { target: fs.realpathSync.native(file), isLink: false };
+}
+
+function checkContained(file, target, containWithin, platform) {
+  if (!containWithin) return;
+  const root = realPathForm(containWithin);
+  const ci = platform === "win32" || platform === "darwin";
+  const n = (s) => (ci ? s.replace(/\\/g, "/").toLowerCase() : s);
+  const t = n(target);
+  const r = n(root).replace(/[\\/]+$/, "");
+  if (t === r || t.startsWith(r + (ci ? "/" : path.sep))) return;
+  throw new SafeWriteError("outside-project", file, `${file} resolves to ${target}, outside project root ${containWithin}; not written`);
+}
+
+function readState(target) {
+  try {
+    const bytes = fs.readFileSync(target);
+    return { bytes, hash: sha256(bytes), mode: fs.statSync(target).mode & 0o777 };
+  } catch (e) {
+    if (e && e.code === "ENOENT") return { bytes: null, hash: "absent", mode: null };
+    throw new SafeWriteError("io", target, `${target}: ${e && e.message}`);
+  }
+}
+
+// One attempt: write `data` to the resolved target of `file` iff it still
+// matches opts.expect {target, hash}. Throws SafeWriteError("conflict") on CAS
+// mismatch (the caller retries). The temp file never survives a failure.
+function hardenedWriteSync(file, data, opts) {
+  const o = opts;
+  const dest = o.expect.target;
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(String(data), "utf8");
+  const mode = o.mode === undefined || o.mode === null ? 0o600 : o.mode;
+  const fault = o.fault || (() => {});
+  let tmp = null;
+  let fd = null;
+  try {
+    const dir = path.dirname(dest);
+    fs.mkdirSync(dir, { recursive: true });
+    for (let k = 0; fd === null; k++) {
+      tmp = tempPath(dest);
       try {
-        fs.renameSync(tmp, dest);
-        return;
+        fd = fs.openSync(tmp, "wx", mode);
       } catch (e) {
-        if (i < 3 && e && (e.code === "EPERM" || e.code === "EBUSY")) sleepMs(10);
-        else break;
+        tmp = null;
+        if (e && e.code === "EEXIST" && k < 4) continue;
+        if (e && e.code === "EEXIST") throw new SafeWriteError("io", file, `${file}: could not create temp file`);
+        throw new SafeWriteError("io", dest, `${dest}: ${e && e.message}`);
       }
     }
+    for (let off = 0; off < buf.length; ) off += fs.writeSync(fd, buf, off, buf.length - off);
+    if (o.platform !== "win32") fs.fchmodSync(fd, mode);
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = null;
+    fault("before-rename");
+    const now = resolveTarget(file);
+    checkContained(file, now.target, o.containWithin, o.platform);
+    if (now.target !== dest || readState(now.target).hash !== o.expect.hash) throw new SafeWriteError("conflict", file, `${file} changed while writing`);
+    renameWithRetry(tmp, dest, o.platform, o.retry);
+    tmp = null;
+    if (o.platform !== "win32") {
+      try {
+        const dfd = fs.openSync(dir, "r");
+        try {
+          fs.fsyncSync(dfd);
+        } finally {
+          fs.closeSync(dfd);
+        }
+      } catch (_) {}
+    }
+    return "written";
+  } catch (e) {
+    if (fd !== null) {
+      try {
+        fs.closeSync(fd);
+      } catch (_) {}
+    }
+    if (tmp !== null) {
+      try {
+        fs.unlinkSync(tmp);
+      } catch (_) {}
+    }
+    throw e instanceof SafeWriteError ? e : new SafeWriteError("io", file, `${file}: ${e && e.message}`);
+  }
+}
+
+// Identity of every checked path (trust.json itself excluded), serialised once.
+function trustRecordFor(paths, home) {
+  const tjKey = normalizeKey(path.join(udir(home), "trust.json"));
+  const rec = {};
+  for (const p of paths) {
+    const k = normalizeKey(p);
+    if (k !== tjKey) rec[k] = statIdentity(p);
+  }
+  return JSON.stringify(rec);
+}
+
+// Hook-time trust.json rewrite through the hardened core. A trust.json symlink
+// is skipped (never followed); any failure is non-fatal: the next event re-checks.
+function recordTrustIdentity(paths, home) {
+  try {
+    const dest = path.join(udir(home), "trust.json");
+    let lst = null;
     try {
-      fs.unlinkSync(tmp);
+      lst = fs.lstatSync(dest);
     } catch (_) {}
-  } catch (_) {}
+    if (lst && lst.isSymbolicLink()) return "unchanged";
+    const data = Buffer.from(trustRecordFor(paths, home), "utf8");
+    const r = resolveTarget(dest);
+    const cur = readState(r.target);
+    if (cur.bytes !== null && cur.bytes.equals(data)) {
+      if (cur.mode === 0o600 || process.platform === "win32") return "unchanged";
+      fs.chmodSync(r.target, 0o600);
+      return "updated";
+    }
+    hardenedWriteSync(dest, data, { expect: { target: r.target, hash: cur.hash }, mode: 0o600, platform: process.platform, retry: { count: 4, delayMs: 10 } });
+    return cur.bytes === null ? "created" : "updated";
+  } catch (_) {
+    return undefined;
+  }
 }
 
 const SID_ALLOW_BASE = ["S-1-5-18", "S-1-5-32-544", "S-1-3-0", "SY", "BA", "CO", "OW"];
@@ -259,4 +421,23 @@ function checkTrust(paths, platform, opts) {
   return checkPosix(paths, opts);
 }
 
-module.exports = { TrustError, checkTrust, trustSet, fullCheckWindows, recordTrustIdentity, statIdentity, normalizeKey, rightsGrantWrite };
+module.exports = {
+  TrustError,
+  checkTrust,
+  trustSet,
+  fullCheckWindows,
+  recordTrustIdentity,
+  statIdentity,
+  normalizeKey,
+  rightsGrantWrite,
+  SafeWriteError,
+  hardenedWriteSync,
+  renameWithRetry,
+  tempPath,
+  resolveTarget,
+  checkContained,
+  readState,
+  sha256,
+  trustRecordFor,
+  realPathForm,
+};

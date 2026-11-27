@@ -113,6 +113,18 @@ function isUnimatrixMcpEntry(name, entry) {
   }
 }
 
+const LEGACY_OC_PLUGIN = "@dug-21/unimatrix-opencode-plugin";
+
+// Matches the retired OpenCode plugin by exact name or name@<version-spec> (FR-15).
+function isLegacyOpencodePlugin(el) {
+  if (typeof el !== "string") return false;
+  if (el === LEGACY_OC_PLUGIN) return true;
+  if (!el.startsWith(LEGACY_OC_PLUGIN + "@")) return false;
+  const spec = el.slice(LEGACY_OC_PLUGIN.length + 1);
+  return spec.length > 0 && !spec.includes("/");
+}
+
 module.exports = {
   OWNED_FORMS, KNOWN_EVENTS, isUnimatrixCommand, isUnimatrixMcpEntry, normalizeMcpArgv,
+  isLegacyOpencodePlugin,
 };
