@@ -244,9 +244,10 @@ bundle_attach_gates() {
   # actually landed at the expected path/mode — credstore.js can null-out on no-homedir. This gate makes
   # the standup VERIFIABLY produce the artifact the Wave-2 cloud_cycle_gates() reads back.
   #
-  # projectHash is READ BACK by listing the single dir under $SANDBOX/home/.unimatrix/ — NEVER recomputed,
-  # NO hashing primitive in this path (OQ1/R-11; init.js writes exactly one <projectHash>/ here, a 16-hex
-  # SHA-256). If a future init.js change writes zero or >1 dirs, this read-back fails LOUD (contract drift
+  # projectHash is READ BACK by selecting the one <projectHash>/remote.json credstore marker under
+  # $SANDBOX/home/.unimatrix/ (siblings like bin/, pkg/ ignored; #1060) — NEVER recomputed, NO hashing
+  # primitive in this path (OQ1/R-11; the hash dir is a 16-hex SHA-256). If a future init.js change
+  # writes zero or >1 remote.json markers, this read-back fails LOUD (contract drift
   # surfaced, not silently miscomputed). All inspection is host-side under the hermetic sandbox (R-14) —
   # no busybox/docker, no real ~/.unimatrix touched.
   #
@@ -256,16 +257,11 @@ bundle_attach_gates() {
   # spuriously fail the C5 logic-test happy path. The stub's credstore-absence is already covered at Gate 7
   # (STUB_INIT_WRITE_CRED=0 → "observe did not land"). On the live tag run this gate always runs.
   if [ -z "${SMOKE_INIT_CMD:-}" ]; then
-    local cred_root="$SANDBOX/home/.unimatrix" project_hash hash_count cred_file cred_mode
+    local cred_root="$SANDBOX/home/.unimatrix" project_hash cred_file cred_mode
     [ -d "$cred_root" ] \
       || fail "credstore root $cred_root absent after init --bundle — hermetic HOME not populated (R-14/C1->C2)"
-    hash_count="$(find "$cred_root" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
-    [ "$hash_count" = "1" ] \
-      || fail "projectHash read-back ambiguous: expected exactly 1 dir under $cred_root, found $hash_count (init.js contract drift)"
-    project_hash="$(find "$cred_root" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)"
-    cred_file="$cred_root/$project_hash/remote.json"
-    [ -f "$cred_file" ] \
-      || fail "credstore $cred_file absent after init --bundle — bridge cannot attach (C1->C2 boundary)"
+    read_back_project_hash "$cred_root"
+    project_hash="$PROJECT_HASH" cred_file="$cred_root/$PROJECT_HASH/remote.json"
     # Mode 0600 is the trust boundary (credstore.js STORE_MODE 0o600): the bearer must not be world/group
     # readable. stat -c works on GNU coreutils (CI ubuntu lanes); -f %Lp is the BSD/macOS dev-box fallback.
     cred_mode="$(stat -c '%a' "$cred_file" 2>/dev/null || stat -f '%Lp' "$cred_file" 2>/dev/null)"
