@@ -28,4 +28,4 @@ Same as `/uni-zero-delivery` §3. Apply the stall backstop.
 
 ## 4. Merge Recommendation
 
-Run the pre-merge verification from `/uni-zero-delivery` §4, minus the ACCEPTANCE-MAP line. Use its report format, and add `Diagnosis: decided-by {human|uni-zero-bugfix} (D-id)`. Merging is H6. Afterwards: `/uni-retro`.
+Run the pre-merge verification from `/uni-zero-delivery` §4, minus the ACCEPTANCE-MAP line. Use its report format, and add `Diagnosis: decided-by {human|uni-zero-bugfix} (D-id)`. Merging is H6. Afterwards: `/uni-retro` — the cycle name for bugfixes is `bugfix-{issue-number}` (not the issue number alone or a feature id).
