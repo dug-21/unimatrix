@@ -45,14 +45,14 @@ Keep nan-024's wiring destinations (D-001, D-003) and harden them. `init` / `ini
 | C16 removed (`lib/atomic-write.js`) | hard | pseudocode/atomic-write-removal.md | test-plan/atomic-write-removal.md |
 | C17 test infrastructure (`test/helpers/*`, existing suites) | routine | pseudocode/test-infrastructure.md | test-plan/test-infrastructure.md |
 
-Component file names are expected names; Stage 3a finalizes them. Tier comes from ARCHITECTURE §2.
+Component file names confirmed by Stage 3a (all 17 pseudocode + test-plan files exist at the listed paths). Stage 3a open items: git-exclude leg named `claude-code`/`git-exclude` per SPEC FR-40/46 (ARCH §6 says `git`/`exclude`; to be reconciled by architect); `updateFileSync` also returns `before`; `ConfigDirs` carries per-harness `value`. Tier comes from ARCHITECTURE §2.
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview (actual, Stage 3a done) | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan (actual, Stage 3a done) | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ## Resolved Decisions
 
