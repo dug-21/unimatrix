@@ -8,6 +8,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const H = require("./helpers/e2e-harness.js");
+const { scrubbedEnv } = require("./helpers/home-guard.js"); // R-09: no ambient config-dir overrides
 const { makeCache, supported } = require("./helpers/fake-package.js");
 
 function tree(dir) {
@@ -28,8 +29,8 @@ describe("D-082 init/wire preflight via CLI", { skip: !supported && "linux only 
   beforeEach(() => {
     f = H.makeFixture();
     pk = makeCache(f.root);
-    env = Object.assign({}, process.env, { HOME: f.home, USERPROFILE: f.home });
-    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k) || k === "CODEX_HOME") delete env[k];
+    env = scrubbedEnv({ HOME: f.home, USERPROFILE: f.home });
+    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k)) delete env[k];
   });
   afterEach(() => f.cleanup());
 

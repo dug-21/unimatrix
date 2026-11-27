@@ -3,6 +3,7 @@
 // nan-024 D-052/D-053: headless env tier honoured only with UNIMATRIX_PROJECT_ROOT
 // containing cwd. Real entry point; a plain TCP listener counts connection attempts.
 
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const net = require("node:net");

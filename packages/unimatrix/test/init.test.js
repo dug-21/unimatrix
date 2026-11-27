@@ -15,6 +15,7 @@ const {
   detectProjectRoot,
   printSummary,
   installSkills,
+  cleanStaleRemoteSubtree,
 } = require("../lib/init.js");
 
 const BINARY = "/abs/path/to/node_modules/@dug-21/unimatrix-linux-x64/bin/unimatrix";
@@ -498,5 +499,63 @@ describe("installSkills", () => {
         "Definition scope: skills only (protocols/agents not installed)"
       );
     });
+  });
+});
+
+describe("C13 writer migration (#1036)", () => {
+  it("test_installSkills_symlinkOutsideProject_throwsOutsideProject_dryRunAndReal", () => {
+    if (process.platform === "win32") return;
+    const dir = makeTempProject();
+    const outside = makeTempDir();
+    const victim = path.join(outside, "victim.txt");
+    fs.writeFileSync(victim, "VICTIM");
+    withShippedSkills({ "c13-link": { "SKILL.md": "SHIPPED" } }, () => {
+      const dst = path.join(dir, ".claude", "skills", "c13-link");
+      fs.mkdirSync(dst, { recursive: true });
+      fs.symlinkSync(victim, path.join(dst, "SKILL.md"));
+      for (const dryRun of [true, false]) {
+        assert.throws(
+          () => installSkills(dir, { force: true, dryRun }),
+          (e) => e.code === "outside-project"
+        );
+      }
+      assert.strictEqual(fs.readFileSync(victim, "utf8"), "VICTIM");
+    });
+  });
+
+  it("test_cleanStaleRemoteSubtree_removesRemote_keepsTabIndent", () => {
+    const dir = makeTempProject();
+    const sl = path.join(dir, ".claude", "settings.local.json");
+    fs.mkdirSync(path.dirname(sl), { recursive: true });
+    fs.writeFileSync(sl, JSON.stringify({ a: 1, unimatrix: { remote: { token: "t" }, keep: 2 } }, null, "\t") + "\n");
+    const dry = cleanStaleRemoteSubtree(dir, true);
+    assert.ok(dry[0].startsWith("[dry-run] Would remove"));
+    assert.ok(fs.readFileSync(sl, "utf8").includes("remote"));
+    const real = cleanStaleRemoteSubtree(dir, false);
+    assert.ok(real[0].startsWith("Removed stale unimatrix.remote"));
+    const raw = fs.readFileSync(sl, "utf8");
+    assert.strictEqual(raw, JSON.stringify({ a: 1, unimatrix: { keep: 2 } }, null, "\t") + "\n");
+    assert.deepStrictEqual(cleanStaleRemoteSubtree(dir, false), []);
+  });
+
+  it("test_cleanStaleRemoteSubtree_malformed_isNoteNotThrow", () => {
+    const dir = makeTempProject();
+    const sl = path.join(dir, ".claude", "settings.local.json");
+    fs.mkdirSync(path.dirname(sl), { recursive: true });
+    fs.writeFileSync(sl, "{not json");
+    const a = cleanStaleRemoteSubtree(dir, false);
+    assert.ok(a[0].startsWith("Note: could not clean"));
+  });
+
+  it("test_cleanStaleRemoteSubtree_symlinkOutside_rethrowsSafeWriteError", () => {
+    if (process.platform === "win32") return;
+    const dir = makeTempProject();
+    const outside = makeTempDir();
+    const victim = path.join(outside, "sl.json");
+    fs.writeFileSync(victim, JSON.stringify({ unimatrix: { remote: {} } }));
+    fs.mkdirSync(path.join(dir, ".claude"), { recursive: true });
+    fs.symlinkSync(victim, path.join(dir, ".claude", "settings.local.json"));
+    assert.throws(() => cleanStaleRemoteSubtree(dir, false), (e) => e.code === "outside-project");
+    assert.ok(fs.readFileSync(victim, "utf8").includes("remote"));
   });
 });

@@ -6,7 +6,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { assertTmpHome } = require("./home-guard");
+const { assertTmpHome, scrubbedEnv } = require("./home-guard");
 const https = require("https");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
@@ -74,6 +74,11 @@ function startStub(cert) {
   }));
 }
 
+/** Offline v:2 bundle (fp:null) for `init --bundle --dry-run`: dry-run never connects. */
+function offlineBundle() {
+  return bundleFor({ base: "https://127.0.0.1:9" }, { fp: null });
+}
+
 function bundleFor(stub, cert) {
   const j = { v: 2, mcp_url: stub.base + "/v1/s", observe_url: stub.base + "/v1/s/observe", token: "a".repeat(64), fp: cert.fp };
   return "unimatrix-bundle:" + Buffer.from(JSON.stringify(j)).toString("base64url");
@@ -93,8 +98,8 @@ function makeFixture() {
 }
 
 function baseEnv(f, cert, extra) {
-  const env = Object.assign({}, process.env);
-  for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k) || k === "CODEX_HOME") delete env[k];
+  const env = scrubbedEnv(); // R-09: ambient config-dir overrides never reach the child
+  for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k)) delete env[k];
   assertTmpHome(f.home);
   Object.assign(env, { HOME: f.home, USERPROFILE: f.home, NODE_EXTRA_CA_CERTS: cert.certPath }, extra || {});
   return env;
@@ -121,6 +126,36 @@ function run(cmd, args, o) {
 function runInit(f, env, args) {
   return run(process.execPath, [BIN, "init"].concat(args || []), { spawn: { cwd: f.proj, env }, timeoutMs: 120000 });
 }
+
+/**
+ * Spawned `init --bundle` against a live stub (D-042: macOS/Windows reach shared wiring only
+ * via the cloud path, #5957). `cli` is the CLI entry (e.g. wire-fixture stagedCli()).
+ * o: { args, env, umask }. Resolves { status, out } (stdout + stderr).
+ */
+function initBundle(cli, s, cwd, home, o) {
+  o = o || {};
+  assertTmpHome(home);
+  const env = require("./wire-fixture.js").gitEnv({ HOME: home, USERPROFILE: home, NODE_EXTRA_CA_CERTS: s.cert.certPath });
+  for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k)) delete env[k];
+  Object.assign(env, o.env || {});
+  const argv = [cli, "init", "--bundle", bundleFor(s.stub, s.cert)].concat(o.args || []);
+  const p = o.umask
+    ? run("sh", ["-c", "umask " + o.umask + '; exec "$@"', "sh", process.execPath].concat(argv), { spawn: { cwd, env }, timeoutMs: 120000 })
+    : run(process.execPath, argv, { spawn: { cwd, env }, timeoutMs: 120000 });
+  return p.then((r) => ({ status: r.code, out: r.out + r.err }));
+}
+
+/** describe-scoped live stub: call inside describe(); returns { cert, stub } filled by before(). */
+function useStub() {
+  const { before, after } = require("node:test");
+  const s = { cert: loadCert(), stub: null };
+  before(async () => { if (s.cert) s.stub = await startStub(s.cert); });
+  after(async () => { if (s.stub) await s.stub.close(); });
+  return s;
+}
+
+/** Skip option when no TLS cert material exists (same condition as wiring-e2e). */
+const certSkip = () => (loadCert() ? {} : { skip: "openssl unavailable and E2E_CERT_DIR unset" });
 
 function findBash() {
   const c = WIN
@@ -178,4 +213,4 @@ function mcpInitialize(entry, cwd, env) {
   });
 }
 
-module.exports = { BIN, WIN, loadCert, startStub, bundleFor, makeFixture, baseEnv, run, runInit, shells, runLine, event, hookCommand, mcpInitialize, findBash };
+module.exports = { BIN, WIN, loadCert, startStub, bundleFor, offlineBundle, initBundle, useStub, certSkip, makeFixture, baseEnv, run, runInit, shells, runLine, event, hookCommand, mcpInitialize, findBash };

@@ -2,16 +2,17 @@
 
 const fs = require("fs");
 const path = require("path");
-const { isUnimatrixMcpEntry } = require("./hook-ownership.js");
+const { isUnimatrixMcpEntry, isLegacyOpencodePlugin } = require("./hook-ownership.js");
 const { buildMcpArgv } = require("./mcp-entry.js");
-const { atomicWrite } = require("./atomic-write.js");
+const { updateFileSync } = require("./safe-write.js");
 
 /**
- * OpenCode MCP wiring (nan-024 ADR-006). `init` provisions no OpenCode plugin;
- * `wire --harness opencode` writes `mcp.unimatrix` to the per-machine
- * ~/.config/opencode/opencode.json and removes an owned project entry (D-064).
- * Fail-safe legs: malformed/foreign/fs errors are skipped, never thrown (the
- * sole exception is a malformed project opencode.json during removal).
+ * OpenCode MCP wiring (nan-024 ADR-006, 1036 C10). Writes `mcp.unimatrix` to the
+ * resolved user opencode.json (caller passes it from config-dirs), removes an
+ * owned twin at the legacy ~/.config/opencode location, and removes an owned
+ * project entry plus the legacy plugin (G3) in one mutate. Malformed user files
+ * skip with a warning; a malformed project file throws (D-029); SafeWriteError
+ * propagates.
  */
 
 /**
@@ -39,22 +40,6 @@ function exists(p) {
 }
 
 /**
- * R-15 containment guard: resolve `target` and assert it lives inside `dir`.
- * Blocks a symlinked or traversal-crafted path from escaping the project. The
- * installer only ever writes to fixed constant subpaths, so a failure here is a
- * hostile/misconfigured tree — skip that write, never follow it.
- *
- * @param {string} dir - Absolute project root.
- * @param {string} target - Path to be written.
- * @returns {boolean} true iff `target` is within `dir`.
- */
-function isWithinProject(dir, target) {
-  const root = path.resolve(dir);
-  const resolved = path.resolve(target);
-  return resolved === root || resolved.startsWith(root + path.sep);
-}
-
-/**
  * Detect the indentation of an existing JSON document so re-serialization does
  * not reformat preserved stanzas (ADR-006: mutate minimally). Defaults to two
  * spaces — the formatting the rest of init writes.
@@ -71,32 +56,34 @@ function detectIndent(raw) {
 }
 
 /**
- * Read + parse a JSON file WITHOUT throwing (best-effort). Distinguishes
- * absent (ok, empty) from malformed (skip that leg, preserve the file).
+ * Parse raw JSON text WITHOUT throwing. null = absent; "" = empty object;
+ * non-object or invalid = malformed.
  *
- * @param {string} filePath
+ * @param {string|null} raw
  * @returns {{ present:boolean, parsed:(object|null), raw:string, malformed:boolean }}
  */
+function parseJsonRaw(raw) {
+  if (raw === null || raw === undefined) return { present: false, parsed: null, raw: "", malformed: false };
+  const trimmed = raw.trim();
+  if (trimmed === "") return { present: true, parsed: {}, raw, malformed: false };
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!isPlainObject(parsed)) return { present: true, parsed: null, raw, malformed: true };
+    return { present: true, parsed, raw, malformed: false };
+  } catch (_err) {
+    return { present: true, parsed: null, raw, malformed: true };
+  }
+}
+
+/** Read + parse a JSON file WITHOUT throwing (read-only callers). */
 function readJsonSafe(filePath) {
   let raw;
   try {
     raw = fs.readFileSync(filePath, "utf8");
   } catch (_err) {
-    return { present: false, parsed: null, raw: "", malformed: false };
+    raw = null;
   }
-  const trimmed = raw.trim();
-  if (trimmed === "") {
-    return { present: true, parsed: {}, raw: raw, malformed: false };
-  }
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return { present: true, parsed: null, raw: raw, malformed: true };
-    }
-    return { present: true, parsed: parsed, raw: raw, malformed: false };
-  } catch (_err) {
-    return { present: true, parsed: null, raw: raw, malformed: true };
-  }
+  return parseJsonRaw(raw);
 }
 
 /**
@@ -182,88 +169,140 @@ function buildOpencodeEntry(o) {
   return { type: "local", command: buildMcpArgv(o.platform, o.home, o.node) };
 }
 
-function atomicWriteJson(file, obj, indent, newMode) {
-  atomicWrite(file, JSON.stringify(obj, null, indent) + "\n", newMode);
-}
+const MALFORMED_REASON = "opencode.json is not valid JSON — preserved unchanged";
+const foreignWarning = (file) =>
+  "unimatrix: " + file + ' has a non-Unimatrix mcp entry named "unimatrix"; left unchanged';
+const ser = (obj, raw) => JSON.stringify(obj, null, raw ? detectIndent(raw) : 2) + "\n";
+const pre = (dryRun, msg) => (dryRun ? "[dry-run] " + msg : msg);
 
-/** Per-machine writer: ~/.config/opencode/opencode.json mcp.unimatrix only. */
-function writeOpencodeMcp(o) {
-  const cfgPath = path.join(o.home, ".config", "opencode", "opencode.json");
-  const read = readJsonSafe(cfgPath);
-  if (read.malformed) {
-    return opencodeLeg("skipped-malformed", cfgPath, {
-      reason: "opencode.json is not valid JSON — preserved unchanged",
-    });
-  }
+/** Pure W5 decision over the user file's raw text. */
+function computeUserMcp(raw, o) {
+  const read = parseJsonRaw(raw);
+  const skip = (action, reason, warning) => ({ text: null, detail: { skip: { action, reason, warning } } });
+  const badWarn = "unimatrix: " + o.file + " is not valid JSON; OpenCode left without Unimatrix wiring until it is fixed";
+  if (read.malformed) return skip("skipped-malformed", MALFORMED_REASON, badWarn);
   const cfg = read.parsed || {};
   if (cfg.mcp !== undefined && !isPlainObject(cfg.mcp)) {
-    return opencodeLeg("skipped-malformed", cfgPath, {
-      reason: "`mcp` key is not an object — preserved unchanged",
-    });
+    return skip("skipped-malformed", "`mcp` key is not an object — preserved unchanged", badWarn);
   }
   const existing = cfg.mcp ? cfg.mcp.unimatrix : undefined;
-  if (existing !== undefined) {
-    if (!isUnimatrixMcpEntry("unimatrix", existing)) {
-      return opencodeLeg("skipped-foreign", cfgPath, {
-        reason: "mcp.unimatrix holds a non-Unimatrix entry; left unchanged",
-        warning:
-          "unimatrix: " + cfgPath +
-          " key mcp.unimatrix holds a non-Unimatrix entry; left unchanged, Unimatrix MCP not written",
-      });
-    }
-  } else if (o.harnessSelected !== true) {
-    return opencodeLeg("skipped-intent", cfgPath, {
-      reason: "new mcp.unimatrix entry requires explicit --harness opencode opt-in",
-    });
+  if (existing !== undefined && !isUnimatrixMcpEntry("unimatrix", existing)) {
+    return skip("skipped-foreign", "mcp.unimatrix holds a non-Unimatrix entry; left unchanged",
+      "unimatrix: " + o.file + " key mcp.unimatrix holds a non-Unimatrix entry; left unchanged, Unimatrix MCP not written");
+  }
+  if (existing === undefined && o.harnessSelected !== true && !o.priorOptIn) {
+    return skip("skipped-intent", "new mcp.unimatrix entry requires explicit --harness opencode opt-in");
   }
   const entry = buildOpencodeEntry(o);
-  if (existing !== undefined && deepEqual(existing, entry)) {
-    return opencodeLeg("unchanged", cfgPath, { entry });
-  }
-  const action = existing !== undefined ? "updated" : "created";
-  if (o.dryRun) return opencodeLeg(action, cfgPath, { entry });
+  if (existing !== undefined && deepEqual(existing, entry)) return { text: null, detail: { entry, entryAction: "unchanged" } };
   cfg.mcp = cfg.mcp || {};
   cfg.mcp.unimatrix = entry;
-  try {
-    atomicWriteJson(cfgPath, cfg, read.present ? detectIndent(read.raw) : 2, 0o600);
-  } catch (e) {
-    return opencodeLeg("skipped", cfgPath, { reason: "write failed: " + e.message });
-  }
-  return opencodeLeg(action, cfgPath, { entry });
+  return { text: ser(cfg, read.present ? raw : ""), detail: { entry, entryAction: existing !== undefined ? "updated" : "created" } };
 }
 
-/** Remove an owned mcp.unimatrix from the project opencode.json (D-064). */
+/** Read-only: does `file` hold an owned mcp.unimatrix? Never throws. */
+function ownedAt(file) {
+  const r = readJsonSafe(file);
+  return !!(r.parsed && isPlainObject(r.parsed.mcp) && isUnimatrixMcpEntry("unimatrix", r.parsed.mcp.unimatrix));
+}
+
+/**
+ * W5. o: {file, legacyFile?, platform, home, node, harnessSelected, dryRun}.
+ * `file` is the resolved user opencode.json (config-dirs); an owned entry at
+ * `legacyFile` counts as prior opt-in (D-015). SafeWriteError propagates.
+ */
+function writeOpencodeMcp(o) {
+  const opts = Object.assign({}, o, { priorOptIn: o.legacyFile ? ownedAt(o.legacyFile) : false });
+  const res = updateFileSync(opts.file, (raw) => computeUserMcp(raw, opts).text,
+    { dryRun: !!opts.dryRun, newMode: 0o600, platform: opts.platform });
+  const d = computeUserMcp(res.before, opts).detail;
+  if (d.skip) return opencodeLeg(d.skip.action, opts.file, { reason: d.skip.reason, warning: d.skip.warning });
+  return opencodeLeg(d.entryAction, opts.file, { entry: d.entry });
+}
+
+/** Pure R10 decision over the legacy user file's raw text. */
+function computeLegacyRemoval(raw, file) {
+  const read = parseJsonRaw(raw);
+  if (!read.present) return { text: null, detail: {} };
+  if (read.malformed) {
+    return { text: null, detail: { skip: { reason: MALFORMED_REASON,
+      warning: "unimatrix: " + file + " is not valid JSON; owned entry (if any) not removed" } } };
+  }
+  const mcp = read.parsed.mcp;
+  if (!isPlainObject(mcp) || mcp.unimatrix === undefined) return { text: null, detail: {} };
+  if (!isUnimatrixMcpEntry("unimatrix", mcp.unimatrix)) return { text: null, detail: { warning: foreignWarning(file) } };
+  delete mcp.unimatrix;
+  return { text: ser(read.parsed, raw), detail: { changed: true } };
+}
+
+/** R10 step body: remove an owned entry from the legacy ~/.config/opencode file. */
+function removeOwnedOpencodeUserMcpLeg(file, dryRun) {
+  const res = updateFileSync(file, (raw) => computeLegacyRemoval(raw, file).text, { dryRun: !!dryRun });
+  const d = computeLegacyRemoval(res.before, file).detail;
+  if (d.skip) return [opencodeLeg("skipped-malformed", file, d.skip)];
+  if (d.changed) return [opencodeLeg("removed", file, { reason: "owned MCP entry removed (legacy location)" })];
+  return Object.assign([], { warnings: d.warning ? [d.warning] : [] });
+}
+
+/** Pure R11+R12 decision over the project file's raw text. Malformed throws (D-029). */
+function computeProjectRemoval(raw, file) {
+  const detail = { mcpRemoved: false, removedPlugin: false, warnings: [] };
+  const read = parseJsonRaw(raw);
+  if (!read.present) return { text: null, detail };
+  if (read.malformed) throw new Error(file + " is not valid JSON; fix it manually (not modified)");
+  const p = read.parsed;
+  if (isPlainObject(p.mcp) && p.mcp.unimatrix !== undefined) {
+    if (isUnimatrixMcpEntry("unimatrix", p.mcp.unimatrix)) {
+      delete p.mcp.unimatrix;
+      detail.mcpRemoved = true;
+    } else {
+      detail.warnings.push(foreignWarning(file));
+    }
+  }
+  if (Array.isArray(p.plugin)) {
+    const kept = p.plugin.filter((el) => !isLegacyOpencodePlugin(el));
+    if (kept.length !== p.plugin.length) {
+      p.plugin = kept;
+      detail.removedPlugin = true;
+    }
+  }
+  return { text: detail.mcpRemoved || detail.removedPlugin ? ser(p, raw) : null, detail };
+}
+
+/** Remove owned mcp.unimatrix and legacy plugin[] entries from the project opencode.json (D-064, G3). */
 function removeOwnedOpencodeProjectMcp(projectRoot, dryRun) {
   const file = path.join(projectRoot, "opencode.json");
-  const none = { actions: [], warnings: [], changed: false };
-  if (!isWithinProject(projectRoot, file)) return none;
-  const read = readJsonSafe(file);
-  if (!read.present) return none;
-  if (read.malformed) {
-    throw new Error(file + " is not valid JSON; fix it manually (not modified)");
-  }
-  const mcp = read.parsed && read.parsed.mcp;
-  if (!isPlainObject(mcp) || mcp.unimatrix === undefined) return none;
-  if (!isUnimatrixMcpEntry("unimatrix", mcp.unimatrix)) {
-    return {
-      actions: [],
-      warnings: ["unimatrix: " + file + ' has a non-Unimatrix mcp entry named "unimatrix"; left unchanged'],
-      changed: false,
-    };
-  }
-  delete mcp.unimatrix;
-  if (!dryRun) atomicWriteJson(file, read.parsed, detectIndent(read.raw));
-  const msg = "Removed Unimatrix MCP entry from opencode.json";
-  return { actions: [dryRun ? "[dry-run] " + msg : msg], warnings: [], changed: true };
+  const res = updateFileSync(file, (raw) => computeProjectRemoval(raw, file).text,
+    { dryRun: !!dryRun, containWithin: projectRoot });
+  const d = computeProjectRemoval(res.before, file).detail;
+  const actions = [];
+  if (d.mcpRemoved) actions.push(pre(dryRun, "Removed Unimatrix MCP entry from opencode.json"));
+  if (d.removedPlugin) actions.push(pre(dryRun, "Removed legacy Unimatrix plugin entry from opencode.json"));
+  return { actions, warnings: d.warnings, changed: d.mcpRemoved, removedPlugin: d.removedPlugin };
+}
+
+/** R11+R12 step body. */
+function removeOwnedOpencodeProjectLegs(projectRoot, dryRun) {
+  const r = removeOwnedOpencodeProjectMcp(projectRoot, dryRun);
+  const f = path.join(projectRoot, "opencode.json");
+  const legs = [];
+  if (r.changed) legs.push({ harness: "opencode", surface: "mcp", action: "removed", path: f, reason: "owned project MCP entry removed" });
+  if (r.removedPlugin) legs.push({ harness: "opencode", surface: "mcp", action: "removed", path: f, reason: "legacy Unimatrix plugin entry removed" });
+  return Object.assign(legs, { warnings: r.warnings });
 }
 
 module.exports = {
   detectsOpenCode,
   writeOpencodeMcp,
   removeOwnedOpencodeProjectMcp,
+  removeOwnedOpencodeProjectLegs,
+  removeOwnedOpencodeUserMcpLeg,
+  computeUserMcp,
+  computeLegacyRemoval,
+  computeProjectRemoval,
   buildOpencodeEntry,
   opencodeLeg,
-  isWithinProject,
   detectIndent,
   readJsonSafe,
+  parseJsonRaw,
 };

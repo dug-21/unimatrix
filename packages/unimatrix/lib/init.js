@@ -11,6 +11,8 @@ const credstore = require("./hook-client/credstore.js");
 const { parseExtraHeaders } = require("./hook-client/remote-resolve.js");
 const { codexApprovalStep } = require("./codex-install.js");
 const { wire } = require("./wire.js");
+const safeWrite = require("./safe-write.js");
+const { detectIndent } = require("./opencode-install.js");
 
 /**
  * Loud, deterministic message emitted on the legacy `--remote`/`--token` path:
@@ -91,10 +93,9 @@ function installSkills(projectRoot, opts) {
     return actions;
   }
 
-  if (!dryRun) {
-    fs.mkdirSync(targetDir, { recursive: true });
-  }
-
+  // No eager mkdir: the writer creates parents only after the containment
+  // check on the real parent (D-026), so an out-of-root .claude link is refused
+  // before anything is created through it.
   const skillDirs = fs
     .readdirSync(sourceDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
@@ -103,10 +104,6 @@ function installSkills(projectRoot, opts) {
   for (const skillDir of skillDirs) {
     const src = path.join(sourceDir, skillDir);
     const dst = path.join(targetDir, skillDir);
-
-    if (!dryRun) {
-      fs.mkdirSync(dst, { recursive: true });
-    }
 
     const files = fs.readdirSync(src);
     for (const file of files) {
@@ -139,10 +136,11 @@ function installSkills(projectRoot, opts) {
       // Write path: absent (install) OR force (overwrite Unimatrix-owned).
       const pastVerb = destExists ? "Overwrote (--force)" : "Installed";
       const willVerb = destExists ? "overwrite (--force)" : "install";
+      // Writer with project containment; dry-run runs the same check (FR-22a).
+      safeWrite.writeFileSync(dstFile, fs.readFileSync(srcFile), { newMode: 0o600, containWithin: projectRoot, dryRun });
       if (dryRun) {
         actions.push("[dry-run] Would " + willVerb + " skill file: " + rel);
       } else {
-        fs.copyFileSync(srcFile, dstFile);
         actions.push(pastVerb + " skill file: " + rel);
       }
     }
@@ -220,31 +218,27 @@ function cleanStaleRemoteSubtree(projectRoot, dryRun) {
     return actions;
   }
   try {
-    const parsed = readJsonOrEmpty(slPath, ".claude/settings.local.json");
-    if (
-      parsed.unimatrix &&
-      typeof parsed.unimatrix === "object" &&
-      Object.prototype.hasOwnProperty.call(parsed.unimatrix, "remote")
-    ) {
-      if (dryRun) {
-        actions.push(
-          "[dry-run] Would remove stale unimatrix.remote from " +
-            ".claude/settings.local.json"
-        );
-      } else {
-        delete parsed.unimatrix.remote;
-        fs.writeFileSync(
-          slPath,
-          JSON.stringify(parsed, null, 2) + "\n",
-          "utf8"
-        );
-        actions.push(
-          "Removed stale unimatrix.remote credential from " +
-            ".claude/settings.local.json"
-        );
-      }
+    const res = safeWrite.updateFileSync(
+      slPath,
+      (raw) => {
+        if (raw === null) return null;
+        const parsed = JSON.parse(raw);
+        const u = parsed && parsed.unimatrix;
+        if (!u || typeof u !== "object" || Array.isArray(u) || !Object.prototype.hasOwnProperty.call(u, "remote")) return null;
+        delete u.remote;
+        return JSON.stringify(parsed, null, detectIndent(raw)) + "\n";
+      },
+      { dryRun, containWithin: projectRoot }
+    );
+    if (res.action !== "unchanged") {
+      actions.push(
+        dryRun
+          ? "[dry-run] Would remove stale unimatrix.remote from .claude/settings.local.json"
+          : "Removed stale unimatrix.remote credential from .claude/settings.local.json"
+      );
     }
   } catch (e) {
+    if (e instanceof safeWrite.SafeWriteError) throw e;
     // Best-effort: a malformed settings.local.json must not block relocation.
     actions.push(
       "Note: could not clean stale .claude/settings.local.json (" +

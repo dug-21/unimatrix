@@ -1,5 +1,6 @@
 "use strict";
 
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
@@ -16,11 +17,13 @@ const {
   removeOwnedOpencodeProjectMcp,
   buildOpencodeEntry,
   opencodeLeg,
-  isWithinProject,
   detectIndent,
   readJsonSafe,
 } = require("../lib/opencode-install.js");
 const lib = require("../lib/opencode-install.js");
+const { removeOwnedOpencodeUserMcpLeg, removeOwnedOpencodeProjectLegs } = lib;
+const { resolveConfigDirs, sameRealFile } = require("../lib/config-dirs.js");
+const { SafeWriteError } = require("../lib/safe-write.js");
 
 const NODE = "/usr/bin/node";
 const UNIX_ARGV = ["sh", "-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio'];
@@ -47,8 +50,19 @@ function readUser(home) {
 function rawUser(home) {
   return fs.readFileSync(cfgPathOf(home), "utf8");
 }
-function wr(home, extra) {
-  return writeOpencodeMcp(Object.assign({ home, platform: "linux", node: NODE }, extra));
+function wr(home, extra, env) {
+  const file = resolveConfigDirs({ env: env || {}, home, platform: "linux" }).opencode.configJson;
+  return writeOpencodeMcp(Object.assign({ home, file, platform: "linux", node: NODE }, extra));
+}
+/** Install-shaped run: W5, then R10 only if the destination is wired and is not the same real file (D-007, R-11). */
+function install(home, env, extra) {
+  const dirs = resolveConfigDirs({ env, home, platform: "linux" });
+  const file = dirs.opencode.configJson;
+  const legacy = dirs.legacy.opencodeJson;
+  const w = writeOpencodeMcp(Object.assign({ home, file, legacyFile: legacy, platform: "linux", node: NODE }, extra));
+  const wired = ["created", "updated", "unchanged"].includes(w.action);
+  const r = sameRealFile(file, legacy, "linux") ? null : wired ? removeOwnedOpencodeUserMcpLeg(legacy, false) : "skipped-dest-unwired";
+  return { w, r, file, legacy };
 }
 function writeProjectJson(dir, obj, indent) {
   fs.writeFileSync(path.join(dir, "opencode.json"), JSON.stringify(obj, null, indent || 2) + "\n", "utf8");
@@ -183,7 +197,7 @@ describe("writeOpencodeMcp — per-machine target", () => {
     wr(home, { harnessSelected: true });
     assert.strictEqual(projectRaw(proj), before);
   });
-  it("test_write_ignores_xdg_config_home", () => {
+  it("test_write_targets_resolved_file_not_process_env", () => {
     const home = tmp("uni-oc-home-");
     const old = process.env.XDG_CONFIG_HOME;
     process.env.XDG_CONFIG_HOME = tmp("uni-oc-xdg-");
@@ -324,12 +338,10 @@ describe("writeOpencodeMcp — malformed / fail-safe", () => {
     assert.strictEqual(leg.action, "skipped-malformed");
     assert.strictEqual(rawUser(home), before);
   });
-  it("test_write_fs_error_is_skipped_not_thrown", () => {
+  it("test_write_fs_error_propagates", () => {
     const home = tmp("uni-oc-home-");
     fs.writeFileSync(path.join(home, ".config"), "i am a file", "utf8");
-    let leg;
-    assert.doesNotThrow(() => { leg = wr(home, { harnessSelected: true }); });
-    assert.strictEqual(leg.action, "skipped");
+    assert.throws(() => wr(home, { harnessSelected: true }));
   });
   it("test_write_dry_run_writes_nothing", () => {
     const home = tmp("uni-oc-home-");
@@ -382,7 +394,7 @@ describe("removeOwnedOpencodeProjectMcp (D-064)", () => {
     writeProjectJson(proj, sentinelConfig());
     const before = projectRaw(proj);
     const r = removeOwnedOpencodeProjectMcp(proj, false);
-    assert.deepStrictEqual(r, { actions: [], warnings: [], changed: false });
+    assert.deepStrictEqual(r, { actions: [], warnings: [], changed: false, removedPlugin: false });
     assert.strictEqual(projectRaw(proj), before);
   });
   it("test_remove_absent_file_noop", () => {
@@ -417,11 +429,6 @@ describe("removeOwnedOpencodeProjectMcp (D-064)", () => {
 });
 
 describe("helpers", () => {
-  it("test_within_project_guard_rejects_traversal", () => {
-    const dir = makeTempProject();
-    assert.strictEqual(isWithinProject(dir, path.join(dir, "opencode.json")), true);
-    assert.strictEqual(isWithinProject(dir, path.join(dir, "..", "evil")), false);
-  });
   it("test_detect_indent_defaults_and_tab", () => {
     assert.strictEqual(detectIndent("{}"), 2);
     assert.strictEqual(detectIndent('{\n\t"a": 1\n}'), "\t");
@@ -453,5 +460,133 @@ describe("opencode user-level file modes (F1)", { skip: process.platform === "wi
     const home = tmp("unimatrix-opencode-mode-");
     assert.strictEqual(wr(home, { harnessSelected: true }).action, "created");
     assert.strictEqual(modeOf(cfgPathOf(home)), 0o600);
+  });
+});
+
+describe("1036 C10 — resolved path, legacy twin, G3", () => {
+  const owned = () => ({ theme: "t", mcp: { other: { type: "local", command: ["o"] }, unimatrix: unixEntry() } });
+  const writeAt = (f, obj, indent) => {
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify(obj, null, indent || 2) + "\n", "utf8");
+  };
+  const readAt = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
+
+  it("OPENCODE_CONFIG_DIR: entry at C, owned twin removed, foreign keys deep-equal", () => {
+    const home = tmp("uni-oc-home-");
+    const C = tmp("uni-oc-c-");
+    writeAt(cfgPathOf(home), owned());
+    const r = install(home, { OPENCODE_CONFIG_DIR: C }, { harnessSelected: true });
+    assert.strictEqual(r.w.action, "created");
+    assert.strictEqual(r.w.path, path.join(C, "opencode.json"));
+    assert.deepStrictEqual(readAt(r.file).mcp.unimatrix, unixEntry());
+    assert.strictEqual(r.r[0].action, "removed");
+    assert.deepStrictEqual(readAt(cfgPathOf(home)), { theme: "t", mcp: { other: { type: "local", command: ["o"] } } });
+  });
+  it("XDG_CONFIG_HOME → X/opencode; both set → OPENCODE_CONFIG_DIR wins, X untouched", () => {
+    const home = tmp("uni-oc-home-");
+    const X = tmp("uni-oc-x-");
+    const a = install(home, { XDG_CONFIG_HOME: X }, { harnessSelected: true });
+    assert.strictEqual(a.w.path, path.join(X, "opencode", "opencode.json"));
+    const home2 = tmp("uni-oc-home-");
+    const X2 = tmp("uni-oc-x-");
+    const C = tmp("uni-oc-c-");
+    const b = install(home2, { XDG_CONFIG_HOME: X2, OPENCODE_CONFIG_DIR: C }, { harnessSelected: true });
+    assert.strictEqual(b.w.path, path.join(C, "opencode.json"));
+    assert.ok(!fs.existsSync(path.join(X2, "opencode")));
+  });
+  it("D-015: owned twin only, no --harness → resolved file written, twin removed", () => {
+    const home = tmp("uni-oc-home-");
+    const X = tmp("uni-oc-x-");
+    writeAt(cfgPathOf(home), owned());
+    const r = install(home, { XDG_CONFIG_HOME: X }, {});
+    assert.strictEqual(r.w.action, "created");
+    assert.strictEqual(r.r[0].action, "removed");
+    assert.strictEqual(readAt(cfgPathOf(home)).mcp.unimatrix, undefined);
+  });
+  it("no opt-in anywhere → skipped-intent, no removal leg", () => {
+    const home = tmp("uni-oc-home-");
+    const r = install(home, { XDG_CONFIG_HOME: tmp("uni-oc-x-") }, {});
+    assert.strictEqual(r.w.action, "skipped-intent");
+    assert.strictEqual(r.r, "skipped-dest-unwired");
+  });
+  it("same file (XDG=H/.config, OPENCODE_CONFIG_DIR=H/.config/opencode) → entry survives, no R10", () => {
+    const home = tmp("uni-oc-home-");
+    writeAt(cfgPathOf(home), owned());
+    const r = install(home, { XDG_CONFIG_HOME: path.join(home, ".config"), OPENCODE_CONFIG_DIR: path.join(home, ".config", "opencode") }, {});
+    assert.strictEqual(r.r, null);
+    assert.deepStrictEqual(readAt(cfgPathOf(home)).mcp.unimatrix, unixEntry());
+    assert.strictEqual(r.w.action, "unchanged");
+  });
+  it("unparseable user file → skipped-malformed + warning, bytes unchanged, twin kept", () => {
+    const home = tmp("uni-oc-home-");
+    const C = tmp("uni-oc-c-");
+    const f = path.join(C, "opencode.json");
+    fs.writeFileSync(f, '{ // jsonc\n "a": 1 }', "utf8");
+    writeAt(cfgPathOf(home), owned());
+    const r = install(home, { OPENCODE_CONFIG_DIR: C }, { harnessSelected: true });
+    assert.strictEqual(r.w.action, "skipped-malformed");
+    assert.match(r.w.warning, /not valid JSON/);
+    assert.strictEqual(fs.readFileSync(f, "utf8"), '{ // jsonc\n "a": 1 }');
+    assert.strictEqual(r.r, "skipped-dest-unwired");
+    assert.deepStrictEqual(readAt(cfgPathOf(home)), owned(), "twin kept");
+  });
+  it("unparseable legacy twin → skipped-malformed with warning, untouched, no throw", () => {
+    const home = tmp("uni-oc-home-");
+    fs.mkdirSync(path.dirname(cfgPathOf(home)), { recursive: true });
+    fs.writeFileSync(cfgPathOf(home), "{ bad", "utf8");
+    const legs = removeOwnedOpencodeUserMcpLeg(cfgPathOf(home), false);
+    assert.strictEqual(legs[0].action, "skipped-malformed");
+    assert.match(legs[0].warning, /not valid JSON/);
+    assert.strictEqual(rawUser(home), "{ bad");
+  });
+  it("foreign legacy twin → kept + warning", () => {
+    const home = tmp("uni-oc-home-");
+    writeUser(home, { mcp: { unimatrix: { type: "local", command: ["my-server"] } } });
+    const before = rawUser(home);
+    const legs = removeOwnedOpencodeUserMcpLeg(cfgPathOf(home), false);
+    assert.strictEqual(legs.length, 0);
+    assert.strictEqual(legs.warnings.length, 1);
+    assert.strictEqual(rawUser(home), before);
+  });
+  it("G3: legacy plugin removed with mcp.unimatrix in one mutate, order kept", () => {
+    const proj = makeTempProject();
+    writeProjectJson(proj, { plugin: ["x", "@dug-21/unimatrix-opencode-plugin@1.2.3", "y"], mcp: { unimatrix: unixEntry() } }, 4);
+    const legs = removeOwnedOpencodeProjectLegs(proj, false);
+    assert.strictEqual(legs.length, 2);
+    const after = JSON.parse(projectRaw(proj));
+    assert.deepStrictEqual(after, { plugin: ["x", "y"], mcp: {} });
+    assert.ok(/\n {4}"plugin"/.test(projectRaw(proj)));
+    assert.strictEqual(lib.computeProjectRemoval(projectRaw(proj), "f").text, null, "re-mutate is a no-op");
+  });
+  it("G3: single legacy entry → []; non-array plugin → no leg", () => {
+    const proj = makeTempProject();
+    writeProjectJson(proj, { plugin: ["@dug-21/unimatrix-opencode-plugin"] });
+    const legs = removeOwnedOpencodeProjectLegs(proj, false);
+    assert.strictEqual(legs.length, 1);
+    assert.deepStrictEqual(JSON.parse(projectRaw(proj)).plugin, []);
+    const p2 = makeTempProject();
+    writeProjectJson(p2, { plugin: "@dug-21/unimatrix-opencode-plugin" });
+    const before = projectRaw(p2);
+    assert.strictEqual(removeOwnedOpencodeProjectLegs(p2, false).length, 0);
+    assert.strictEqual(projectRaw(p2), before);
+  });
+  it("D-029: unparseable project opencode.json during removal throws naming file", () => {
+    const proj = makeTempProject();
+    fs.writeFileSync(path.join(proj, "opencode.json"), "{ bad", "utf8");
+    assert.throws(() => removeOwnedOpencodeProjectLegs(proj, false), (e) => e.message.includes(path.join(proj, "opencode.json")));
+    assert.strictEqual(projectRaw(proj), "{ bad");
+  });
+  it("R-12: rename fault rethrows SafeWriteError, file untouched", () => {
+    const home = tmp("uni-oc-home-");
+    writeUser(home, { theme: "t" });
+    const before = rawUser(home);
+    const origFs = fs.renameSync;
+    fs.renameSync = () => { const e = new Error("EPERM"); e.code = "EPERM"; throw e; };
+    try {
+      assert.throws(() => wr(home, { harnessSelected: true }), (e) => e instanceof SafeWriteError || e.code === "EPERM");
+    } finally {
+      fs.renameSync = origFs;
+    }
+    assert.strictEqual(rawUser(home), before);
   });
 });

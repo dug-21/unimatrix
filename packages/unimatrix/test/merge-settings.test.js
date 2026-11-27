@@ -1586,16 +1586,16 @@ describe("nan-024 per-machine Claude MCP (claude-json, mcp-entry)", function () 
     const file = path.join(home, ".claude.json");
     const other = { projects: { "/other": { mcpServers: { x: { command: "y" } }, allowedTools: [] } }, theme: "dark" };
     fs.writeFileSync(file, JSON.stringify(other, null, 4));
-    assert.strictEqual(writeClaudeMcp({ home, projectRoot: root, entry }).action, "created");
+    assert.strictEqual(writeClaudeMcp({ home, file: path.join(home, ".claude.json"), projectRoot: root, entry }).action, "created");
     const j = JSON.parse(fs.readFileSync(file, "utf8"));
     assert.deepStrictEqual(j.projects["/other"], other.projects["/other"]);
     assert.strictEqual(j.theme, "dark");
     assert.deepStrictEqual(j.projects[fs.realpathSync(root)].mcpServers.unimatrix, entry);
     const old = new Date(2020, 1, 1);
     fs.utimesSync(file, old, old);
-    assert.strictEqual(writeClaudeMcp({ home, projectRoot: root, entry }).action, "unchanged");
+    assert.strictEqual(writeClaudeMcp({ home, file: path.join(home, ".claude.json"), projectRoot: root, entry }).action, "unchanged");
     assert.strictEqual(fs.statSync(file).mtimeMs, old.getTime());
-    assert.strictEqual(writeClaudeMcp({ home, projectRoot: root, entry: { ...entry, args: ["-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio '] } }).action, "updated");
+    assert.strictEqual(writeClaudeMcp({ home, file: path.join(home, ".claude.json"), projectRoot: root, entry: { ...entry, args: ["-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio '] } }).action, "updated");
     assert.deepStrictEqual(fs.readdirSync(home).filter((n) => n.endsWith(".tmp")), []);
   });
   it("foreign entry left with warning; malformed aborts byte-equal", function () {
@@ -1604,12 +1604,12 @@ describe("nan-024 per-machine Claude MCP (claude-json, mcp-entry)", function () 
     const key = fs.realpathSync(root);
     fs.writeFileSync(file, JSON.stringify({ projects: { [key]: { mcpServers: { unimatrix: { command: "mine" } } } } }));
     const before = fs.readFileSync(file);
-    const r = writeClaudeMcp({ home, projectRoot: root, entry });
+    const r = writeClaudeMcp({ home, file: path.join(home, ".claude.json"), projectRoot: root, entry });
     assert.strictEqual(r.action, "skipped-foreign");
     assert.ok(/non-Unimatrix/.test(r.warning));
     assert.ok(before.equals(fs.readFileSync(file)));
     fs.writeFileSync(file, "{oops");
-    assert.throws(() => writeClaudeMcp({ home, projectRoot: root, entry }), ClaudeJsonError);
+    assert.throws(() => writeClaudeMcp({ home, file: path.join(home, ".claude.json"), projectRoot: root, entry }), ClaudeJsonError);
     assert.strictEqual(fs.readFileSync(file, "utf8"), "{oops");
     assert.deepStrictEqual(fs.readdirSync(home).filter((n) => n.endsWith(".tmp")), []);
   });
@@ -1625,7 +1625,7 @@ describe("nan-024 per-machine Claude MCP (claude-json, mcp-entry)", function () 
   });
   it("dry-run writes nothing", function () {
     const home = mk(), root = mk();
-    assert.strictEqual(writeClaudeMcp({ home, projectRoot: root, entry, dryRun: true }).action, "created");
+    assert.strictEqual(writeClaudeMcp({ home, file: path.join(home, ".claude.json"), projectRoot: root, entry, dryRun: true }).action, "created");
     assert.ok(!fs.existsSync(path.join(home, ".claude.json")));
   });
   it("concurrent writer: result stays valid JSON", function () {
@@ -1633,7 +1633,7 @@ describe("nan-024 per-machine Claude MCP (claude-json, mcp-entry)", function () 
     const file = path.join(home, ".claude.json");
     fs.writeFileSync(file, JSON.stringify({ n: 0 }));
     for (let i = 1; i <= 50; i++) {
-      writeClaudeMcp({ home, projectRoot: root, entry: { ...entry, env: { i: String(i) } } });
+      writeClaudeMcp({ home, file: path.join(home, ".claude.json"), projectRoot: root, entry: { ...entry, env: { i: String(i) } } });
       const j = JSON.parse(fs.readFileSync(file, "utf8"));
       j.n = i;
       fs.writeFileSync(file, JSON.stringify(j));
@@ -1684,12 +1684,91 @@ describe("file-mode preservation (F1)", { skip: process.platform === "win32" }, 
     const file = path.join(home, ".claude.json");
     fs.writeFileSync(file, "{}\n");
     fs.chmodSync(file, 0o600);
-    writeClaudeMcp({ home, projectRoot: root, entry: { command: "sh", args: ["-c", "x"], env: {} } });
+    writeClaudeMcp({ home, file: path.join(home, ".claude.json"), projectRoot: root, entry: { command: "sh", args: ["-c", "x"], env: {} } });
     assert.strictEqual(modeOf(file), 0o600);
     const mcp = path.join(root, ".mcp.json");
     fs.writeFileSync(mcp, JSON.stringify({ mcpServers: { unimatrix: { command: "sh", args: ["-c", 'exec "$HOME/.unimatrix/bin/unimatrix" mcp-stdio'], env: {} } } }));
     fs.chmodSync(mcp, 0o640);
     removeOwnedMcpJson(root, false);
     assert.strictEqual(modeOf(mcp), 0o640);
+  });
+});
+
+describe("1036 C8 updateFileSync + semantic unchanged (FR-16/D-022)", function () {
+  const ms = require("../lib/merge-settings");
+  const root = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "c8-")));
+  const local = (r) => { fs.mkdirSync(path.join(r, ".claude"), { recursive: true }); return path.join(r, ".claude", "settings.local.json"); };
+  const canon = (r) => { const f = local(r); ms.mergeSettings(f, SRC, { containWithin: r }); return JSON.parse(fs.readFileSync(f, "utf8")); };
+
+  it("created then unchanged with equal mtime", function () {
+    const r = root(); const f = local(r);
+    assert.strictEqual(ms.mergeSettings(f, SRC, { containWithin: r }).action, "created");
+    const m = fs.statSync(f).mtimeMs;
+    assert.strictEqual(ms.mergeSettings(f, SRC, { containWithin: r }).action, "unchanged");
+    assert.strictEqual(fs.statSync(f).mtimeMs, m);
+  });
+  for (const [name, fmt] of [
+    ["no trailing newline", (j) => JSON.stringify(j, null, 2)],
+    ["CRLF", (j) => JSON.stringify(j, null, 2).replace(/\n/g, "\r\n") + "\r\n"],
+    ["compact", (j) => JSON.stringify(j)],
+    ["tab indent", (j) => JSON.stringify(j, null, "\t") + "\n"],
+  ]) {
+    it("non-canonical correct file is unchanged, bytes+inode kept: " + name, function () {
+      const r = root(); const f = local(r);
+      const bytes = fmt(canon(r)); fs.writeFileSync(f, bytes);
+      const ino = fs.statSync(f).ino;
+      assert.strictEqual(ms.mergeSettings(f, SRC, { containWithin: r }).action, "unchanged");
+      assert.strictEqual(fs.readFileSync(f, "utf8"), bytes);
+      assert.strictEqual(fs.statSync(f).ino, ino);
+    });
+  }
+  it("update keeps existing 0644 mode and reuses indent", function () {
+    const r = root(); const f = local(r);
+    fs.writeFileSync(f, JSON.stringify({ hooks: { Stop: [{ matcher: "", hooks: [{ type: "command", command: "foreign" }] }] } }, null, 4) + "\n", { mode: 0o644 });
+    fs.chmodSync(f, 0o644);
+    assert.strictEqual(ms.mergeSettings(f, SRC, { containWithin: r }).action, "updated");
+    assert.strictEqual(fs.statSync(f).mode & 0o777, 0o644);
+    assert.match(fs.readFileSync(f, "utf8"), /^\{\n {4}"hooks"/);
+    assert.strictEqual(JSON.parse(fs.readFileSync(f, "utf8")).hooks.Stop[0].hooks[0].command, "foreign");
+  });
+  it("symlink outside root -> outside-project; inside root -> written through", function () {
+    const r = root(); const f = local(r); const out = root();
+    const tgt = path.join(out, "x.json"); fs.writeFileSync(tgt, "{}");
+    fs.symlinkSync(tgt, f);
+    assert.throws(() => ms.mergeSettings(f, SRC, { containWithin: r }), (e) => e.code === "outside-project");
+    assert.strictEqual(fs.readFileSync(tgt, "utf8"), "{}");
+    fs.unlinkSync(f); const inTgt = path.join(r, "real.json"); fs.writeFileSync(inTgt, "{}"); fs.symlinkSync(inTgt, f);
+    ms.mergeSettings(f, SRC, { containWithin: r });
+    assert.ok(fs.lstatSync(f).isSymbolicLink());
+    assert.ok(JSON.parse(fs.readFileSync(inTgt, "utf8")).hooks.Stop);
+  });
+  it("malformed file throws and is untouched", function () {
+    const r = root(); const f = local(r); fs.writeFileSync(f, "{bad");
+    assert.throws(() => ms.mergeSettings(f, SRC, { containWithin: r }), /Malformed/);
+    assert.strictEqual(fs.readFileSync(f, "utf8"), "{bad");
+  });
+  it("SubagentStop opt-in decided on the same bytes (fault flips opt-in, retry recomputes)", function () {
+    const r = root(); const f = local(r); fs.writeFileSync(f, "{}\n"); let once = false;
+    const fault = (pt) => { if (pt === "after-read" && !once) { once = true; writeOptIn(f, true); } };
+    const out = ms.mergeSettings(f, SRC, { containWithin: r, fault });
+    assert.ok(out.commands.some((c) => c.event === "SubagentStop"));
+    assert.ok(JSON.parse(fs.readFileSync(f, "utf8")).hooks.SubagentStop);
+  });
+  it("removeOwnedHooks: absent unchanged; foreign order kept; leg reports removed", function () {
+    const r = root(); const f = path.join(r, "settings.json");
+    assert.deepStrictEqual(ms.removeOwnedHooksLeg(f, { reason: "x" }), []);
+    assert.strictEqual(fs.existsSync(f), false);
+    writeSettings(f, { hooks: { Stop: [{ matcher: "", hooks: [{ type: "command", command: "a" }, { type: "command", command: "unimatrix hook Stop" }, { type: "command", command: "b" }] }] } });
+    const leg = ms.removeOwnedHooksLeg(f, { reason: "legacy" });
+    assert.deepStrictEqual(leg, [{ harness: "claude-code", surface: "hooks", action: "removed", path: f, reason: "legacy" }]);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(f, "utf8")).hooks.Stop[0].hooks.map((h) => h.command), ["a", "b"]);
+    assert.deepStrictEqual(ms.removeOwnedHooksLeg(f, {}), []);
+  });
+  it("wireProjectHooks returns one leg per event with writer action", function () {
+    const r = root();
+    const legs = ms.wireProjectHooks({ root: r, platform: "linux", home: "/h" });
+    assert.strictEqual(legs.length, DEFAULT_EVENTS.length);
+    assert.ok(legs.every((l) => l.action === "created" && l.surface === "hooks"));
+    assert.ok(ms.wireProjectHooks({ root: r, platform: "linux", home: "/h" }).every((l) => l.action === "unchanged"));
   });
 });

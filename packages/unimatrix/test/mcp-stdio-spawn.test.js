@@ -8,6 +8,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const H = require("./helpers/e2e-harness.js");
+const { scrubbedEnv } = require("./helpers/home-guard.js"); // R-09: no ambient config-dir overrides
 const { makeCache, supported } = require("./helpers/fake-package.js");
 
 const STUB = `#!${process.execPath}
@@ -23,8 +24,8 @@ describe("D-077 mcp-stdio spawn through the written MCP entry", { skip: !support
   before(async () => {
     f = H.makeFixture();
     const pk = makeCache(f.root, STUB);
-    env = Object.assign({}, process.env, { HOME: f.home, USERPROFILE: f.home });
-    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k) || k === "CODEX_HOME") delete env[k];
+    env = scrubbedEnv({ HOME: f.home, USERPROFILE: f.home });
+    for (const k of Object.keys(env)) if (/^UNIMATRIX_/.test(k)) delete env[k];
     const r = await H.run(process.execPath, [pk.cliBin, "init"], { spawn: { cwd: f.proj, env }, timeoutMs: 120000 });
     assert.equal(r.code, 0, r.out + r.err);
     const j = JSON.parse(fs.readFileSync(path.join(f.home, ".claude.json"), "utf8"));

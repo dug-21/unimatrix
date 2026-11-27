@@ -11,6 +11,7 @@
 // which predates this build; the smoke puts a temp `npx` shim first on PATH
 // that drops `-y @dug-21/unimatrix` and runs THIS checkout's bin/unimatrix.js.
 
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const { describe, it, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { spawn, execFileSync } = require("child_process");

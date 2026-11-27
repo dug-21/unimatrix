@@ -13,6 +13,7 @@
 // its store read are never exercised — pure routing) and resolve-binary.js (to
 // prove the Rust path is never reached even when the binary is absent).
 
+require("./helpers/home-guard"); // R-09: clears ambient config-dir overrides at load
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { linuxLocal } = require("./helpers/linux-local.js");

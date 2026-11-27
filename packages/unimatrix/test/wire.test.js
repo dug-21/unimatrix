@@ -1,4 +1,7 @@
 "use strict";
+const { winSymlink, winModes, anySkip } = require("./helpers/linux-local.js");
+const H = require("./helpers/e2e-harness.js");
+const { certSkip } = H;
 
 const assert = require("assert");
 const fs = require("fs");
@@ -35,10 +38,11 @@ const SKIP_ACTIONS = /^skipped/;
 function assertWellFormedLeg(leg) {
   assert.ok(leg && typeof leg === "object", "leg is an object");
   assert.ok(["unimatrix", "claude-code", "opencode", "codex-cli"].includes(leg.harness), "harness: " + leg.harness);
-  assert.ok(["store", "mcp", "retrieval", "hooks", "codex"].includes(leg.surface), "surface: " + leg.surface);
+  assert.ok(["store", "mcp", "retrieval", "hooks", "codex", "git-exclude"].includes(leg.surface), "surface: " + leg.surface);
   assert.ok(
     ["written", "created", "updated", "unchanged", "removed", "skipped-undetected", "skipped-not-detected",
-      "skipped-malformed", "skipped-intent", "skipped-foreign", "skipped"].includes(leg.action),
+      "skipped-malformed", "skipped-intent", "skipped-foreign", "skipped", "skipped-no-git", "skipped-not-repo",
+      "skipped-git-error", "skipped-tracked", "skipped-dest-unwired", "appended-not-effective"].includes(leg.action),
     "action: " + leg.action
   );
   assert.strictEqual(typeof leg.path, "string", "path is a string");
@@ -133,9 +137,10 @@ describe("manifest contract", () => {
   it("test_wire_actions_and_manifest_consistent", () => {
     const { dir, home } = multiHarnessFixture();
     const res = wire(dir, local(home));
-    // one action line per leg, plus warnings (gitignore) appended after
-    assert.ok(res.actions.length >= res.manifest.length);
-    res.manifest.forEach((leg, i) => assert.ok(res.actions[i].includes(leg.harness + " " + leg.surface + ": " + leg.action)));
+    // resolved:/note: header lines, then one action line per leg, then notice + warnings
+    const legLines = res.actions.filter((a) => !/^(resolved:|note:|If Claude Code)/.test(a));
+    assert.ok(legLines.length >= res.manifest.length);
+    res.manifest.forEach((leg, i) => assert.ok(legLines[i].includes(leg.harness + " " + leg.surface + ": " + leg.action)));
   });
 
   it("test_wire_codex_harness_writes_user_level_hooks_and_mcp", () => {
@@ -357,18 +362,26 @@ describe("warnings and preflight", () => {
     }
   };
 
-  it("test_wire_gitignore_warning_only_and_gitignore_untouched", () => {
+  // AC-8 (D-011): the exclude file replaces the old warning; .gitignore is never edited.
+  it("test_wire_ac8_not_ignored_appends_exclude_and_gitignore_untouched", () => {
     const dir = makeTempProject();
     gitInit(dir);
     const home = makeHome();
     writeFile(dir, ".gitignore", "node_modules\n");
     const before = read(dir, ".gitignore");
-    const res = hermeticGit(() => wire(dir, local(home, { dryRun: true })));
-    assert.ok(res.actions.some((a) => a.includes(".claude/settings.local.json is not git-ignored")));
-    assert.ok(read(dir, ".gitignore").equals(before));
-    const res2 = hermeticGit(() => wire(dir, local(home)));
-    assert.ok(res2.actions.some((a) => a.includes("not git-ignored")));
+    const ex = path.join(dir, ".git", "info", "exclude");
+    const exBefore = fs.existsSync(ex) ? fs.readFileSync(ex, "utf8") : null;
+    const dry = hermeticGit(() => wire(dir, local(home, { dryRun: true })));
+    const dl = dry.manifest.find((l) => l.surface === "git-exclude");
+    assert.ok(["created", "updated"].includes(dl.action), dl.action);
+    assert.strictEqual(fs.existsSync(ex) ? fs.readFileSync(ex, "utf8") : null, exBefore, "dry-run writes no exclude");
+    const res = hermeticGit(() => wire(dir, local(home)));
+    assert.strictEqual(res.manifest.find((l) => l.surface === "git-exclude").action, dl.action);
+    assert.ok(fs.readFileSync(ex, "utf8").split("\n").includes("/.claude/settings.local.json"));
+    assert.ok(!res.actions.some((a) => a.includes("not git-ignored")), "no legacy warning");
     assert.ok(read(dir, ".gitignore").equals(before), ".gitignore never edited");
+    const again = hermeticGit(() => wire(dir, local(home)));
+    assert.strictEqual(again.manifest.find((l) => l.surface === "git-exclude").action, "unchanged");
   });
 
   it("test_wire_no_gitignore_warning_when_ignored", () => {
@@ -376,8 +389,9 @@ describe("warnings and preflight", () => {
     gitInit(dir);
     const home = makeHome();
     writeFile(dir, ".gitignore", ".claude/settings.local.json\n");
-    const res = wire(dir, local(home));
+    const res = hermeticGit(() => wire(dir, local(home)));
     assert.ok(!res.actions.some((a) => a.includes("not git-ignored")));
+    assert.strictEqual(res.manifest.find((l) => l.surface === "git-exclude").action, "unchanged");
   });
 
   it("test_wire_preflight_missing_recorded_node_no_path_node_exits", () => {
@@ -429,3 +443,767 @@ describe("warnings and preflight", () => {
     assert.ok(!fs.existsSync(path.join(dir, ".claude")));
   });
 });
+
+// ── 1036 acceptance (assembled wire(): real plan + real writer, injected env/home) ──
+describe("1036 acceptance via wire()", () => {
+  const { mock } = require("node:test");
+  const os = require("os");
+  const { HOOK_EVENTS } = require("../lib/merge-settings.js");
+  const { isUnimatrixCommand, isUnimatrixMcpEntry } = require("../lib/hook-ownership.js");
+  const { seedLegacy, seedSymlinked, writeJsonAt, ownedHooks } = require("./helpers/wire-fixture.js");
+  const tmpDir = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p || "unimatrix-cfg-")));
+  const envOf = (home, extra) => Object.assign({ PATH: process.env.PATH, HOME: home }, extra || {});
+  const lw = (home, env, extra) => local(home, Object.assign({ env: envOf(home, env) }, extra || {}));
+  const entryFor = (home) => buildMcpEntry("linux", home, process.execPath);
+  const stat = (p) => { const s = fs.statSync(p); return { m: s.mtimeMs, b: fs.readFileSync(p).toString("hex") }; };
+  const project = (proj, extra) => Object.assign({}, ...[proj].map((l) => {
+    const o = { harness: l.harness, surface: l.surface, action: l.action, path: l.path, reason: l.reason };
+    if (l.entry) o.entry = l.entry;
+    if (l.command) o.command = l.command;
+    return o;
+  }), extra || {});
+  const quiet = (fn) => {
+    const m = mock.method(process.stderr, "write", () => true);
+    try { return fn(); } finally { m.mock.restore(); }
+  };
+  const noTemps = (dir) => listTree(dir).filter((f) => /\.tmp-[0-9a-f]{16}$/.test(f));
+
+  /** Hash every file (bytes + mtime + mode) under each root, links reported as links. */
+  function treeState(roots) {
+    const out = {};
+    const walk = (d) => {
+      let es = [];
+      try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (_) { return; }
+      for (const e of es) {
+        const p = path.join(d, e.name);
+        if (e.isSymbolicLink()) out[p] = "link:" + fs.readlinkSync(p);
+        else if (e.isDirectory()) { out[p + "/"] = "dir"; walk(p); }
+        else { const s = fs.statSync(p); out[p] = s.mtimeMs + ":" + s.mode + ":" + fs.readFileSync(p).toString("base64"); }
+      }
+    };
+    for (const r of roots) walk(r);
+    return out;
+  }
+
+  /** AC-9 parity: dry-run writes nothing, equals real manifest + lines, predicts the changed-file set. */
+  function parity(dir, home, opts, roots) {
+    const all = [dir, home].concat(roots || []);
+    const before = treeState(all);
+    const dry = quiet(() => wire(dir, Object.assign({}, opts, { dryRun: true })));
+    assert.deepStrictEqual(treeState(all), before, "dry-run writes nothing (FR-62)");
+    const real = quiet(() => wire(dir, Object.assign({}, opts, { dryRun: false })));
+    assert.deepStrictEqual(real.manifest.map((l) => project(l)), dry.manifest.map((l) => project(l)), "FR-61 manifest");
+    assert.deepStrictEqual(dry.actions, real.actions.map((a) => (a.startsWith("warning") ? a : "[dry-run] " + a)).map((a, i) =>
+      dry.actions[i] && !dry.actions[i].startsWith("[dry-run] ") ? dry.actions[i] : a), "action lines equal apart from prefix");
+    const after = treeState(all);
+    const changed = new Set(Object.keys(after).filter((k) => after[k] !== before[k] && !k.endsWith("/")).map((k) => {
+      try { return fs.realpathSync(k); } catch (_) { return k; }
+    }));
+    const predicted = new Set();
+    for (const l of dry.manifest) {
+      if (l.action === "unchanged" || /^skipped/.test(l.action)) continue;
+      try {
+        const st = fs.statSync(l.path);
+        if (st.isDirectory()) {
+          for (const k of changed) if (k.startsWith(fs.realpathSync(l.path) + path.sep)) predicted.add(k);
+          continue;
+        }
+      } catch (_) { /* removed */ }
+      try { predicted.add(fs.realpathSync(l.path)); } catch (_) { predicted.add(l.path); }
+    }
+    assert.deepStrictEqual([...changed].sort(), [...predicted].sort(), "FR-63 changed-file set");
+    return { dry, real };
+  }
+
+  it("test_ac1a_claude_config_dir_writes_only_resolved_and_keeps_default_profile", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const D = tmpDir();
+    const entry = entryFor(home);
+    const def = path.join(home, ".claude.json");
+    writeJsonAt(def, { mcpServers: { unimatrix: entry }, projects: { [dir]: { mcpServers: { unimatrix: entry } } } });
+    const before = stat(def);
+    const res = quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: D })));
+    const cj = readJson(path.join(D, ".claude.json"));
+    assert.deepStrictEqual(cj.projects[dir].mcpServers.unimatrix, entry);
+    assert.deepStrictEqual(stat(def), before, "default ~/.claude.json bytes + mtime unchanged (D-028)");
+    assert.ok(!res.manifest.some((l) => l.path === def), "no leg names the default ~/.claude.json");
+    assert.ok(res.actions.includes("resolved: claude-code mcp -> " + path.join(D, ".claude.json") + " (CLAUDE_CONFIG_DIR=" + D + ")"));
+    assert.strictEqual(res.actions.filter((a) => a.startsWith("note: start each harness with the same CLAUDE_CONFIG_DIR")).length, 1);
+  });
+
+  for (const [name, mk] of [
+    ["exact", (h) => h],
+    ["trailing-slash", (h) => h + "/"],
+    ["symlink", (h) => { const l = path.join(tmpDir(), "link"); fs.symlinkSync(h, l); return l; }],
+  ]) {
+    it("test_ac1b_same_file_claude_config_dir_" + name + "_one_entry", () => {
+      const dir = makeTempProject();
+      const home = makeHome();
+      const res = quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: mk(home) })));
+      const cj = readJson(path.join(home, ".claude.json"));
+      assert.deepStrictEqual(cj.projects[dir].mcpServers.unimatrix, entryFor(home));
+      assert.ok(!cj.mcpServers || !cj.mcpServers.unimatrix, "no user-scope duplicate");
+      assert.ok(!res.manifest.some((l) => l.action === "removed" && /\.claude\.json$/.test(l.path)), "no wrongful removal");
+    });
+  }
+
+  for (const [name, env, resolvedDir] of [
+    ["opencode_config_dir", (t) => ({ OPENCODE_CONFIG_DIR: t }), (t) => t],
+    ["xdg_only", (t) => ({ XDG_CONFIG_HOME: t }), (t) => path.join(t, "opencode")],
+  ]) {
+    it("test_ac2a_" + name + "_writes_resolved_and_removes_owned_twin", () => {
+      const dir = makeTempProject();
+      touchDir(dir, ".opencode");
+      const home = makeHome();
+      const t = tmpDir();
+      const twin = path.join(home, ".config", "opencode", "opencode.json");
+      writeJsonAt(twin, { theme: "x", mcp: { unimatrix: { type: "local", command: require("../lib/mcp-entry.js").buildMcpArgv("linux", home) }, other: { type: "local", command: ["o"] } } });
+      quiet(() => wire(dir, lw(home, env(t))));
+      const got = readJson(path.join(resolvedDir(t), "opencode.json"));
+      assert.ok(got.mcp && got.mcp.unimatrix, "resolved file holds the entry (FR-13 migration, no --harness)");
+      const tw = readJson(twin);
+      assert.ok(!tw.mcp.unimatrix, "owned twin removed");
+      assert.deepStrictEqual(tw.mcp.other, { type: "local", command: ["o"] });
+      assert.strictEqual(tw.theme, "x");
+    });
+  }
+
+  it("test_ac2a_both_set_opencode_config_dir_wins_xdg_untouched", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const O = tmpDir();
+    const X = tmpDir();
+    const xf = path.join(X, "opencode", "opencode.json");
+    writeJsonAt(xf, { mcp: { unimatrix: { type: "local", command: ["keep"] } } });
+    const before = stat(xf);
+    quiet(() => wire(dir, lw(home, { OPENCODE_CONFIG_DIR: O, XDG_CONFIG_HOME: X }, { harness: "opencode" })));
+    assert.ok(readJson(path.join(O, "opencode.json")).mcp.unimatrix);
+    assert.deepStrictEqual(stat(xf), before, "AP-1 untouched");
+  });
+
+  for (const kind of ["absolute", "relative", "chain"]) {
+    it("test_ac3_user_global_symlinks_kept_target_changed_" + kind, () => {
+      const dir = makeTempProject();
+      const home = makeHome();
+      const C = tmpDir();
+      const files = [path.join(home, ".claude.json"), path.join(C, "hooks.json"), path.join(C, "config.toml"),
+        path.join(home, ".config", "opencode", "opencode.json")];
+      const targets = files.map((f) => {
+        if (/\.toml$/.test(f)) fs.writeFileSync(f, "");
+        return seedSymlinked(f, kind);
+      });
+      const links = files.map((f) => fs.readlinkSync(f));
+      for (const h of ["claude-code", "codex-cli", "opencode"]) quiet(() => wire(dir, lw(home, { CODEX_HOME: C }, { harness: h })));
+      files.forEach((f, i) => {
+        assert.ok(fs.lstatSync(f).isSymbolicLink(), f + " still a link");
+        assert.strictEqual(fs.readlinkSync(f), links[i]);
+        assert.ok(/unimatrix/.test(fs.readFileSync(targets[i], "utf8")), "target holds change: " + f);
+        assert.deepStrictEqual(noTemps(path.dirname(f)).concat(noTemps(path.dirname(targets[i]))), []);
+      });
+    });
+  }
+
+  function rtFixture() {
+    const dir = makeTempProject();
+    touchDir(dir, ".opencode");
+    const home = makeHome();
+    const D = tmpDir();
+    const seeded = seedLegacy(home, dir, { claudeConfigDir: D });
+    return { dir, home, D, seeded };
+  }
+
+  it("test_ac4_rt_table_owned_removed_foreign_kept_byte_equal", () => {
+    const { dir, home, D, seeded } = rtFixture();
+    quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: D })));
+    // RT-01/02/03: owned hooks gone, foreign hook + siblings identical, key order kept.
+    for (const f of [path.join(dir, ".claude", "settings.json"), path.join(D, "settings.json"), path.join(home, ".claude", "settings.json")]) {
+      const got = readJson(f);
+      assert.deepStrictEqual(got, { theme: "dark", hooks: { Notification: seeded[f].hooks.Notification } }, f);
+      assert.deepStrictEqual(Object.keys(got), ["theme", "hooks"]);
+      assert.ok(fs.readFileSync(f, "utf8").includes('\n  "theme"'), "2-space indent reused");
+    }
+    // RT-04: user-scope removed from resolved .claude.json, siblings kept; local-scope written.
+    const cj = readJson(path.join(D, ".claude.json"));
+    assert.strictEqual(cj.numStartups, 3);
+    assert.deepStrictEqual(cj.mcpServers, { other: { command: "y" } });
+    assert.ok(cj.projects[dir].mcpServers.unimatrix);
+    // RT-06
+    assert.deepStrictEqual(readJson(path.join(dir, ".mcp.json")), { mcpServers: { other: { command: "x" } } });
+    // RT-08/RT-09
+    const oc = readJson(path.join(dir, "opencode.json"));
+    assert.ok(!oc.mcp || !oc.mcp.unimatrix, "RT-08 owned project mcp removed");
+    assert.deepStrictEqual(oc.plugin, ["foreign-plugin"], "RT-09 legacy plugin removed, foreign kept");
+    assert.strictEqual(oc.$schema, "https://opencode.ai/config.json");
+  });
+
+  it("test_ac4_foreign_value_at_unimatrix_key_kept_with_warning", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const D = tmpDir();
+    const f = path.join(D, ".claude.json");
+    writeJsonAt(f, { mcpServers: { unimatrix: { command: "mine" } } });
+    writeJsonAt(path.join(dir, ".mcp.json"), { mcpServers: { unimatrix: { command: "mine2" } } });
+    const res = quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: D })));
+    assert.deepStrictEqual(readJson(f).mcpServers.unimatrix, { command: "mine" });
+    assert.deepStrictEqual(readJson(path.join(dir, ".mcp.json")).mcpServers.unimatrix, { command: "mine2" });
+    assert.ok(res.warnings.some((w) => w.includes(f) && w.includes("unimatrix")), "warning names file and key: " + res.warnings.join("|"));
+    for (const w of res.warnings) assert.ok(res.actions.includes(w), "warning in actions (FR-53): " + w);
+  });
+
+  it("test_ac4_tab_indent_reused_on_removal", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const f = path.join(dir, ".claude", "settings.json");
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify({ a: 1, hooks: ownedHooks(home, "linux", ["Stop"]) }, null, "\t") + "\n");
+    quiet(() => wire(dir, lw(home)));
+    assert.strictEqual(fs.readFileSync(f, "utf8"), JSON.stringify({ a: 1, hooks: {} }, null, "\t") + "\n");
+  });
+
+  it("test_ac6_at_most_one_owned_entry_per_event_and_key", () => {
+    const { dir, home, D } = rtFixture();
+    // duplicate owned hooks pre-seeded in the destination too
+    const sl = path.join(dir, ".claude", "settings.local.json");
+    const dup = ownedHooks(home, "linux");
+    for (const e of Object.keys(dup)) dup[e] = dup[e].concat(dup[e]);
+    writeJsonAt(sl, { hooks: dup });
+    quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: D })));
+    const hookFiles = [sl, path.join(dir, ".claude", "settings.json"), path.join(D, "settings.json"), path.join(home, ".claude", "settings.json")];
+    for (const e of HOOK_EVENTS) {
+      let n = 0;
+      for (const f of hookFiles) {
+        const h = (readJson(f).hooks || {})[e] || [];
+        for (const g of h) for (const c of g.hooks || []) if (isUnimatrixCommand(c.command)) n++;
+      }
+      assert.ok(n <= 1, e + " owned count " + n);
+    }
+    let mcp = 0;
+    const cj = readJson(path.join(D, ".claude.json"));
+    for (const m of [cj.mcpServers || {}, (cj.projects[dir] || {}).mcpServers || {}, readJson(path.join(dir, ".mcp.json")).mcpServers || {}]) {
+      for (const [k, v] of Object.entries(m)) if (isUnimatrixMcpEntry(k, v)) mcp++;
+    }
+    assert.strictEqual(mcp, 1, "exactly one Claude MCP entry (local scope)");
+  });
+
+  it("test_ac5_second_wire_all_unchanged_no_mtime_change_no_notice", () => {
+    for (const env of [{}, { CLAUDE_CONFIG_DIR: tmpDir() }]) {
+      const { dir, home } = rtFixture();
+      const D = env.CLAUDE_CONFIG_DIR;
+      const opts = lw(home, env);
+      const first = quiet(() => wire(dir, opts));
+      assert.strictEqual(first.actions.filter((a) => a.startsWith("If Claude Code was running")).length, 1, "D-013 notice once");
+      const roots = [dir, home].concat(D ? [D] : []);
+      const before = treeState(roots);
+      const second = quiet(() => wire(dir, opts));
+      for (const l of second.manifest) assert.ok(l.action === "unchanged" || /^skipped/.test(l.action), JSON.stringify(l));
+      assert.deepStrictEqual(treeState(roots), before, "no file touched on run 2");
+      assert.ok(!second.actions.some((a) => a.startsWith("If Claude Code was running")), "no notice on run 2");
+    }
+  });
+
+  it("test_ac7_conflict_once_retries_and_keeps_concurrent_change", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const cjf = path.join(home, ".claude.json");
+    writeJsonAt(cjf, { a: 1 });
+    const orig = fs.openSync;
+    let fired = false;
+    const m = mock.method(fs, "openSync", function (p, flags, mode) {
+      if (!fired && flags === "wx" && String(p).includes(".claude.json.tmp-")) {
+        fired = true;
+        fs.writeFileSync(cjf, JSON.stringify({ a: 1, concurrent: true }));
+      }
+      return orig.call(fs, p, flags, mode);
+    });
+    let res;
+    try { res = quiet(() => wire(dir, lw(home))); } finally { m.mock.restore(); }
+    assert.ok(fired);
+    const leg = res.manifest.find((l) => l.path === cjf && l.surface === "mcp");
+    assert.ok(["created", "updated"].includes(leg.action), leg.action);
+    const cj = readJson(cjf);
+    assert.strictEqual(cj.concurrent, true);
+    assert.ok(cj.projects[dir].mcpServers.unimatrix);
+  });
+
+  it("test_ac7_conflict_every_attempt_throws_conflict_naming_file", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const cjf = path.join(home, ".claude.json");
+    writeJsonAt(cjf, { a: 1 });
+    const orig = fs.openSync;
+    let n = 0;
+    const m = mock.method(fs, "openSync", function (p, flags, mode) {
+      if (flags === "wx" && String(p).includes(".claude.json.tmp-")) fs.writeFileSync(cjf, JSON.stringify({ a: ++n }));
+      return orig.call(fs, p, flags, mode);
+    });
+    try {
+      assert.throws(() => quiet(() => wire(dir, lw(home))), (e) => e.name === "SafeWriteError" && e.code === "conflict" && e.message.includes(cjf));
+    } finally { m.mock.restore(); }
+    assert.deepStrictEqual(noTemps(home), []);
+  });
+
+  it("test_ac7_verify_failed_on_w1_aborts_before_r4", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const D = tmpDir();
+    const legacy = path.join(home, ".claude", "settings.json");
+    writeJsonAt(legacy, { hooks: ownedHooks(home, "linux") });
+    const legacyBefore = stat(legacy);
+    const sl = path.join(dir, ".claude", "settings.local.json");
+    const orig = fs.renameSync;
+    const m = mock.method(fs, "renameSync", function (from, to) {
+      const r = orig.call(fs, from, to);
+      if (to === sl) fs.writeFileSync(sl, "{}\n");
+      return r;
+    });
+    try {
+      assert.throws(() => quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: D }))),
+        (e) => e.name === "SafeWriteError" && e.code === "verify-failed" && e.message.includes(sl));
+    } finally { m.mock.restore(); }
+    assert.deepStrictEqual(stat(legacy), legacyBefore, "R4 not run: legacy owned hooks still present");
+    assert.deepStrictEqual(noTemps(path.dirname(sl)), []);
+  });
+
+  it("test_ac7_verify_failed_on_w2_keeps_default_claude_json", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const D = tmpDir();
+    const def = path.join(home, ".claude.json");
+    writeJsonAt(def, { projects: { [dir]: { mcpServers: { unimatrix: entryFor(home) } } } });
+    const before = stat(def);
+    const target = path.join(D, ".claude.json");
+    const orig = fs.renameSync;
+    const m = mock.method(fs, "renameSync", function (from, to) {
+      const r = orig.call(fs, from, to);
+      if (to === target) fs.writeFileSync(target, "{}\n");
+      return r;
+    });
+    try {
+      assert.throws(() => quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: D }))), (e) => e.code === "verify-failed" && e.message.includes(target));
+    } finally { m.mock.restore(); }
+    assert.deepStrictEqual(stat(def), before);
+  });
+
+  it("test_r11_w2_skipped_foreign_leaves_user_scope_untouched", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const cjf = path.join(home, ".claude.json");
+    const entry = entryFor(home);
+    writeJsonAt(cjf, { mcpServers: { unimatrix: entry }, projects: { [dir]: { mcpServers: { unimatrix: { command: "foreign" } } } } });
+    const res = quiet(() => wire(dir, lw(home)));
+    assert.ok(res.manifest.some((l) => l.path === cjf && l.action === "skipped-foreign"));
+    assert.deepStrictEqual(readJson(cjf).mcpServers.unimatrix, entry, "R1 not run");
+  });
+
+  it("test_r11_w5_skipped_malformed_keeps_twin", () => {
+    const dir = makeTempProject();
+    touchDir(dir, ".opencode");
+    const home = makeHome();
+    const O = tmpDir();
+    fs.writeFileSync(path.join(O, "opencode.json"), "{ not json");
+    const twin = path.join(home, ".config", "opencode", "opencode.json");
+    writeJsonAt(twin, { mcp: { unimatrix: { type: "local", command: require("../lib/mcp-entry.js").buildMcpArgv("linux", home) } } });
+    const before = stat(twin);
+    const res = quiet(() => wire(dir, lw(home, { OPENCODE_CONFIG_DIR: O })));
+    assert.ok(res.manifest.some((l) => l.action === "skipped-malformed"));
+    assert.deepStrictEqual(stat(twin), before, "R10 not run");
+  });
+
+  for (const [name, harness, file] of [
+    ["codex_hooks", "codex-cli", (h, C) => path.join(C, "hooks.json")],
+    ["codex_config", "codex-cli", (h, C) => path.join(C, "config.toml")],
+    ["opencode", "opencode", (h) => path.join(h, ".config", "opencode", "opencode.json")],
+  ]) {
+    it("test_r12_rename_failure_" + name + "_throws_naming_file_never_skipped", () => {
+      const dir = makeTempProject();
+      const home = makeHome();
+      const C = tmpDir();
+      const f = file(home, C);
+      const orig = fs.renameSync;
+      const m = mock.method(fs, "renameSync", function (from, to) {
+        if (to === f) { const e = new Error("EIO: injected"); e.code = "EIO"; throw e; }
+        return orig.call(fs, from, to);
+      });
+      try {
+        assert.throws(() => quiet(() => wire(dir, lw(home, { CODEX_HOME: C }, { harness }))), (e) => e.name === "SafeWriteError" && e.message.includes(f));
+      } finally { m.mock.restore(); }
+      assert.deepStrictEqual(noTemps(path.dirname(f)), []);
+    });
+  }
+
+  it("test_fr52_notice_once_and_dry_run_prefixed", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const dry = quiet(() => wire(dir, lw(home, {}, { dryRun: true })));
+    const cj = path.join(home, ".claude.json");
+    const text = "If Claude Code was running during this install, it may overwrite " + cj + "; re-run 'npx unimatrix init' or check 'npx unimatrix status'";
+    assert.deepStrictEqual(dry.actions.filter((a) => a.includes("If Claude Code")), ["[dry-run] " + text]);
+    const real = quiet(() => wire(dir, lw(home)));
+    assert.deepStrictEqual(real.actions.filter((a) => a.includes("If Claude Code")), [text]);
+    assert.ok(real.actions.includes("resolved: claude-code mcp -> " + cj + " (default)"));
+    assert.ok(!real.actions.some((a) => a.startsWith("note:")), "no note without overrides");
+  });
+
+  it("test_no_transport_leg_uses_resolved_claude_json", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const D = tmpDir();
+    const res = wire(dir, wireOpts(home, { platform: "linux", env: envOf(home, { CLAUDE_CONFIG_DIR: D }) }));
+    assert.strictEqual(res.manifest[0].path, path.join(D, ".claude.json"));
+  });
+
+  it("test_ac9_parity_default_override_and_twins", () => {
+    { const dir = makeTempProject(); const home = makeHome(); parity(dir, home, lw(home)); }
+    { const { dir, home, D } = rtFixture(); parity(dir, home, lw(home, { CLAUDE_CONFIG_DIR: D }), [D]); }
+    {
+      const dir = makeTempProject(); touchDir(dir, ".opencode"); const home = makeHome(); const O = tmpDir(); const C = tmpDir();
+      writeJsonAt(path.join(home, ".config", "opencode", "opencode.json"), { mcp: { unimatrix: { type: "local", command: require("../lib/mcp-entry.js").buildMcpArgv("linux", home) } } });
+      parity(dir, home, lw(home, { OPENCODE_CONFIG_DIR: O, CODEX_HOME: C }, { harness: undefined }), [O, C]);
+    }
+  });
+
+  // S-2: invalid overrides warn once (naming the var) and resolve exactly as no override.
+  const norm = (res, home, dir) => res.manifest.map((l) => JSON.stringify(project(l)).split(home).join("<H>").split(dir).join("<R>").replace(/\/[0-9a-f]{16}\//g, "/<hash>/"));
+  for (const v of ["CLAUDE_CONFIG_DIR", "OPENCODE_CONFIG_DIR", "XDG_CONFIG_HOME", "CODEX_HOME"]) {
+    for (const [label, val] of [["empty", ""], ["blank", "  "], ["tilde", "~/x"], ["relative", "cfg"], ["nul", "/tmp/a\u0000b"]]) {
+      it("test_s2_" + v.toLowerCase() + "_" + label + "_falls_back_with_one_warning", () => {
+        const run = (env) => {
+          const dir = makeTempProject();
+          touchDir(dir, ".opencode");
+          const home = makeHome();
+          const lines = [];
+          const m = mock.method(process.stderr, "write", (s) => { lines.push(String(s)); return true; });
+          let res;
+          try { res = wire(dir, lw(home, env, { dryRun: true })); } finally { m.mock.restore(); }
+          return { res, lines, home, dir };
+        };
+        const base = run({});
+        const bad = run({ [v]: val });
+        assert.deepStrictEqual(norm(bad.res, bad.home, bad.dir), norm(base.res, base.home, base.dir), "manifest == no-override");
+        const named = bad.lines.filter((l) => l.includes(v));
+        assert.strictEqual(named.length, val === "" ? 0 : 1, "warnings: " + bad.lines.join("|"));
+        if (val !== "") assert.ok(bad.res.actions.some((a) => a.includes(v)), "warning also in actions");
+      });
+    }
+  }
+
+  // S-6 / D-030: R4 removes owned hooks from the default settings.json under an override.
+  it("test_s6_r4_removes_owned_legacy_hooks_keeps_foreign", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const D = tmpDir();
+    const legacy = path.join(home, ".claude", "settings.json");
+    const foreign = { hooks: [{ type: "command", command: "echo mine" }] };
+    writeJsonAt(legacy, { hooks: Object.assign(ownedHooks(home, "linux", ["Stop"]), { PreCompact: [foreign] }) });
+    const res = quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: D })));
+    assert.deepStrictEqual(readJson(legacy), { hooks: { PreCompact: [foreign] } });
+    assert.ok(res.manifest.some((l) => l.path === legacy && l.action === "removed" && /legacy location/.test(l.reason)));
+  });
+
+  it("test_s6_same_file_override_no_legacy_step", () => {
+    const dir = makeTempProject();
+    const home = makeHome();
+    const legacy = path.join(home, ".claude", "settings.json");
+    writeJsonAt(legacy, { hooks: ownedHooks(home, "linux", ["Stop"]) });
+    const res = quiet(() => wire(dir, lw(home, { CLAUDE_CONFIG_DIR: path.join(home, ".claude") })));
+    assert.ok(!res.manifest.some((l) => /legacy location/.test(l.reason || "")), "R4 dropped for same file");
+    assert.strictEqual(res.manifest.filter((l) => l.path === legacy && l.action === "removed").length, 1);
+  });
+});
+
+// ── 1036 C17-A: AC-3 project-file containment through spawned `init` (D-026) ──
+// Driven through `init --bundle` (D-042): shared wiring, so it runs on every OS that can make symlinks.
+describe("1036 AC-3 project-file links via spawned init", anySkip(certSkip(), winSymlink), () => {
+  const os = require("os");
+  const { makeGitProject } = require("./helpers/wire-fixture.js");
+  const BIN = require("./helpers/wire-fixture.js").stagedCli();
+  const S = H.useStub();
+  const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
+  const SETTINGS = path.join(".claude", "settings.local.json");
+  const tmpFiles = (d) => { const o = []; const w = (x) => { for (const e of fs.readdirSync(x, { withFileTypes: true })) { const p = path.join(x, e.name); if (/\.tmp-[0-9a-f]{16}$/.test(e.name)) o.push(p); if (e.isDirectory() && !e.isSymbolicLink()) w(p); } }; try { w(d); } catch (_) {} return o; };
+  const init = (cwd, home, args) => H.initBundle(BIN, S, cwd, home, { args });
+  const linkAt = (dir, rel, target) => {
+    const p = path.join(dir, rel);
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.symlinkSync(target, p);
+    return p;
+  };
+
+  for (const args of [[], ["--dry-run"]]) {
+    const label = args.length ? "dry-run" : "real";
+    for (const form of ["relative", "absolute", "2-hop"]) {
+      it(`test_ac3_project_link_inside_root_${form}_written_through_${label}`, async () => {
+        const dir = makeGitProject("unimatrix-ac3-");
+        const home = tmp("unimatrix-ac3-home-");
+        fs.mkdirSync(path.join(dir, "cfg"), { recursive: true });
+        const real = path.join(dir, "cfg", "settings.local.json");
+        fs.writeFileSync(real, "{}\n");
+        const link = path.join(dir, SETTINGS);
+        fs.mkdirSync(path.dirname(link), { recursive: true });
+        if (form === "relative") fs.symlinkSync(path.relative(path.dirname(link), real), link);
+        else if (form === "absolute") fs.symlinkSync(real, link);
+        else {
+          const hop = path.join(dir, "cfg", "hop.json");
+          fs.symlinkSync(real, hop);
+          fs.symlinkSync(path.relative(path.dirname(link), hop), link);
+        }
+        const before = fs.readlinkSync(link);
+        const r = await init(dir, home, args);
+        assert.strictEqual(r.status, 0, r.out);
+        assert.ok(fs.lstatSync(link).isSymbolicLink(), "link kept");
+        assert.strictEqual(fs.readlinkSync(link), before);
+        if (!args.length) assert.match(fs.readFileSync(real, "utf8"), /unimatrix/);
+        assert.deepStrictEqual(tmpFiles(dir), []);
+      });
+    }
+  }
+
+  it("test_ac3_project_link_outside_root_refused_real_and_dry_run", async () => {
+    for (const args of [[], ["--dry-run"]]) {
+      const dir = makeGitProject("unimatrix-ac3-");
+      const home = tmp("unimatrix-ac3-home-");
+      const outside = tmp("unimatrix-ac3-out-");
+      const target = path.join(outside, "settings.local.json");
+      fs.writeFileSync(target, "{}\n");
+      const link = linkAt(dir, SETTINGS, target);
+      const r = await init(dir, home, args);
+      assert.strictEqual(r.status, 1, r.out);
+      assert.match(r.out, /outside project root/);
+      assert.match(r.out, new RegExp(link.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+      assert.strictEqual(fs.readlinkSync(link), target);
+      assert.strictEqual(fs.readFileSync(target, "utf8"), "{}\n");
+      assert.deepStrictEqual(tmpFiles(dir).concat(tmpFiles(outside)), []);
+    }
+  });
+
+  it("test_ac3_parent_dir_link_outside_root_refused", async () => {
+    const dir = makeGitProject("unimatrix-ac3-");
+    const home = tmp("unimatrix-ac3-home-");
+    const outside = tmp("unimatrix-ac3-out-");
+    fs.symlinkSync(outside, path.join(dir, ".claude"));
+    const r = await init(dir, home);
+    assert.strictEqual(r.status, 1, r.out);
+    assert.match(r.out, /outside project root/);
+    assert.deepStrictEqual(fs.readdirSync(outside), []);
+  });
+
+  it("test_ac3_prefix_sibling_of_root_refused", async () => {
+    const dir = makeGitProject("unimatrix-ac3-");
+    const home = tmp("unimatrix-ac3-home-");
+    const sib = dir + "-x";
+    fs.mkdirSync(sib);
+    fs.writeFileSync(path.join(sib, "settings.local.json"), "{}\n");
+    linkAt(dir, SETTINGS, path.join(sib, "settings.local.json"));
+    const r = await init(dir, home);
+    assert.strictEqual(r.status, 1, r.out);
+    assert.match(r.out, /outside project root/);
+    assert.strictEqual(fs.readFileSync(path.join(sib, "settings.local.json"), "utf8"), "{}\n");
+  });
+
+  it("test_ac3_dangling_project_link_refused_dangling_symlink", async () => {
+    const dir = makeGitProject("unimatrix-ac3-");
+    const home = tmp("unimatrix-ac3-home-");
+    const link = linkAt(dir, SETTINGS, path.join(dir, "missing", "settings.local.json"));
+    const r = await init(dir, home);
+    assert.strictEqual(r.status, 1, r.out);
+    assert.match(r.out, /is a dangling symlink/);
+    assert.strictEqual(fs.readlinkSync(link), path.join(dir, "missing", "settings.local.json"));
+  });
+
+  it("test_ac3_root_reached_via_symlink_inside_target_followed", async () => {
+    const dir = makeGitProject("unimatrix-ac3-");
+    const home = tmp("unimatrix-ac3-home-");
+    const rootLink = path.join(tmp("unimatrix-ac3-rl-"), "proj");
+    fs.symlinkSync(dir, rootLink);
+    fs.mkdirSync(path.join(dir, "cfg"), { recursive: true });
+    const real = path.join(dir, "cfg", "settings.local.json");
+    fs.writeFileSync(real, "{}\n");
+    fs.mkdirSync(path.join(dir, ".claude"), { recursive: true });
+    const link = path.join(dir, SETTINGS);
+    fs.symlinkSync(path.relative(path.dirname(link), real), link);
+    const r = await init(rootLink, home);
+    assert.strictEqual(r.status, 0, r.out);
+    assert.ok(fs.lstatSync(link).isSymbolicLink());
+    assert.match(fs.readFileSync(real, "utf8"), /unimatrix/);
+  });
+
+  it("test_ac3_trust_json_symlink_live_and_dangling_exact_message", async () => {
+    for (const live of [true, false]) {
+      const dir = makeGitProject("unimatrix-ac3-");
+      const home = tmp("unimatrix-ac3-home-");
+      assert.strictEqual((await init(dir, home)).status, 0);
+      const tj = path.join(home, ".unimatrix", "trust.json");
+      const target = path.join(tmp("unimatrix-ac3-t-"), "trust.real.json");
+      if (live) fs.writeFileSync(target, "T");
+      fs.rmSync(tj, { force: true });
+      fs.symlinkSync(target, tj);
+      const r = await init(dir, home);
+      assert.strictEqual(r.status, 1, r.out);
+      assert.ok(r.out.includes(`unimatrix: ${tj} is a symlink (-> ${target}); trust state is never written through a symlink. Remove it ('rm "${tj}"') and re-run 'npx unimatrix init'`), r.out);
+      assert.strictEqual(fs.readlinkSync(tj), target);
+      if (live) assert.strictEqual(fs.readFileSync(target, "utf8"), "T");
+    }
+  });
+});
+
+// ── 1036 C17-A: S-3 D-025 enforced modes through spawned init ──
+// Driven through `init --bundle` (D-042): the store and its D-025 modes are shared by local and cloud.
+describe("1036 S-3 D-025 enforced modes via spawned init", anySkip(certSkip(), winModes), () => {
+  const os = require("os");
+  const { makeGitProject } = require("./helpers/wire-fixture.js");
+  const BIN = require("./helpers/wire-fixture.js").stagedCli();
+  const S = H.useStub();
+  const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
+  const mode = (p) => fs.statSync(p).mode & 0o777;
+  const init = (cwd, home, umask) => H.initBundle(BIN, S, cwd, home, { umask });
+  const storeDir = (home) => path.join(home, ".unimatrix");
+  const hashDir = (home) => fs.readdirSync(storeDir(home)).find((n) => /^[0-9a-f]{16}$/.test(n));
+
+  it("test_s3_drifted_store_modes_repaired_reported_updated_and_trust_check_passes", async () => {
+    const dir = makeGitProject("unimatrix-s3-");
+    const home = tmp("unimatrix-s3-home-");
+    assert.strictEqual((await init(dir, home)).status, 0);
+    const sd = storeDir(home);
+    const hd = hashDir(home);
+    const drift = [
+      [path.join(sd, "install.json"), 0o664],
+      [path.join(sd, "trust.json"), 0o644],
+      [path.join(sd, hd, "root"), 0o644],
+      [path.join(sd, hd, "remote.json"), 0o644],
+      [path.join(sd, "bin", "unimatrix"), 0o775],
+      [path.join(sd, "bin", "shim-entry.js"), 0o775],
+      [path.join(sd, "bin", "trust.js"), 0o775],
+    ];
+    const keep = [path.join(dir, ".claude", "settings.local.json")];
+    for (const [p, m] of drift) if (fs.existsSync(p)) fs.chmodSync(p, m);
+    for (const p of keep) if (fs.existsSync(p)) fs.chmodSync(p, 0o664);
+    const r = await init(dir, home);
+    assert.strictEqual(r.status, 0, r.out);
+    const want = { "install.json": 0o600, "trust.json": 0o600, "root": 0o600, "remote.json": 0o600 };
+    for (const [p] of drift) {
+      if (!fs.existsSync(p)) continue;
+      const base = path.basename(p);
+      const expected = want[base] !== undefined ? want[base] : (p.includes(path.sep + "bin" + path.sep) ? 0o700 : 0o600);
+      assert.strictEqual(mode(p), expected, p);
+      const q = p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // remote.json is rewritten by the credential store (cloud path), which reports its own line.
+      assert.match(r.out, new RegExp(base === "remote.json" ? "Wrote credential store " + q + " \\(mode 0600\\)" : "store: updated " + q));
+    }
+    for (const p of keep) if (fs.existsSync(p)) assert.strictEqual(mode(p), 0o664, "keeps mode: " + p);
+    const again = await init(dir, home);
+    assert.strictEqual(again.status, 0, again.out);
+  });
+
+  for (const um of ["000", "002", "022"]) {
+    it(`test_s3_new_install_modes_under_umask_${um}`, async () => {
+      const dir = makeGitProject("unimatrix-s3-");
+      const home = tmp("unimatrix-s3-home-");
+      const r = await init(dir, home, um);
+      assert.strictEqual(r.status, 0, r.out);
+      const sd = storeDir(home);
+      const hd = hashDir(home);
+      for (const p of [path.join(sd, "install.json"), path.join(sd, "trust.json"), path.join(sd, hd, "root")]) {
+        if (fs.existsSync(p)) assert.strictEqual(mode(p), 0o600, p);
+      }
+      for (const b of ["unimatrix", "shim-entry.js", "trust.js"]) assert.strictEqual(mode(path.join(sd, "bin", b)), 0o700, b);
+    });
+  }
+});
+
+// ── 1036 C17-A gap close: AC-4 Codex RT-07, S-3 remote.json + keep-mode, AC-10 spawned rename ──
+// Driven through `init --bundle` (D-042): removal set, keep-mode and atomic rename are shared wiring.
+describe("1036 C17-A gap close via spawned init", certSkip(), () => {
+  const os = require("os");
+  const { makeGitProject } = require("./helpers/wire-fixture.js");
+  const BIN = require("./helpers/wire-fixture.js").stagedCli();
+  const S = H.useStub();
+  const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p)));
+  const mode = (p) => fs.statSync(p).mode & 0o777;
+  const tmpFiles = (d) => { const o = []; const w = (x) => { for (const e of fs.readdirSync(x, { withFileTypes: true })) { const p = path.join(x, e.name); if (/\.tmp-[0-9a-f]{16}$/.test(e.name)) o.push(p); if (e.isDirectory() && !e.isSymbolicLink()) w(p); } }; try { w(d); } catch (_) {} return o; };
+  const init = (cwd, home, opts) => H.initBundle(BIN, S, cwd, home, opts);
+
+  it("test_ac4_rt07_codex_project_and_user_owned_removed_foreign_kept", async () => {
+    const dir = makeGitProject("unimatrix-rt07-");
+    const home = tmp("unimatrix-rt07-home-");
+    const C = tmp("unimatrix-rt07-codex-");
+    fs.mkdirSync(path.join(dir, ".codex"), { recursive: true });
+    assert.strictEqual((await init(dir, home, { env: { CODEX_HOME: C }, args: ["--harness", "codex-cli"] })).status, 0);
+    const userHooks = path.join(C, "hooks.json");
+    const userCfg = path.join(C, "config.toml");
+    const owned = readJsonSafe(userHooks);
+    assert.ok(owned && owned.hooks, "init wrote owned user hooks");
+    const foreign = { hooks: [{ type: "command", command: "echo foreign" }] };
+    const ownedGroup = owned.hooks.SessionStart;
+    const seedHooks = (file, src) => fs.writeFileSync(file, JSON.stringify({ hooks: { SessionStart: ownedGroup.concat([foreign]) }, extra: src || 1 }, null, 2) + "\n");
+    seedHooks(path.join(dir, ".codex", "hooks.json"));
+    seedHooks(userHooks);
+    const ownedToml = fs.readFileSync(userCfg, "utf8");
+    const mcpTable = ownedToml.slice(ownedToml.indexOf("[mcp_servers.unimatrix]"));
+    const projToml = mcpTable.split(/\n(?=\[(?!mcp_servers\.unimatrix\.))/)[0] + "\n[mcp_servers.other]\ncommand = \"y\"\n";
+    fs.writeFileSync(path.join(dir, ".codex", "config.toml"), projToml);
+    fs.writeFileSync(userCfg, ownedToml + "\n[mcp_servers.other]\ncommand = \"y\"\n");
+    const r = await init(dir, home, { env: { CODEX_HOME: C }, args: ["--harness", "codex-cli"] });
+    assert.strictEqual(r.status, 0, r.out);
+    const projJson = readJsonSafe(path.join(dir, ".codex", "hooks.json"));
+    const cmds = (j) => JSON.stringify(j).match(/"command":"[^"]*"/g) || [];
+    assert.ok(!cmds(projJson).some((c) => /unimatrix/.test(c)), "project owned hooks removed: " + cmds(projJson));
+    assert.ok(cmds(projJson).some((c) => /echo foreign/.test(c)), "project foreign hook kept");
+    const userJson = readJsonSafe(userHooks);
+    assert.ok(cmds(userJson).some((c) => /echo foreign/.test(c)), "user foreign hook kept");
+    const projCfg = fs.readFileSync(path.join(dir, ".codex", "config.toml"), "utf8");
+    assert.ok(!/\[mcp_servers\.unimatrix\]/.test(projCfg), "project owned mcp table removed");
+    assert.ok(/\[mcp_servers\.other\]/.test(projCfg), "project foreign mcp kept");
+    assert.ok(/\[mcp_servers\.other\]/.test(fs.readFileSync(userCfg, "utf8")), "user foreign mcp kept");
+    assert.deepStrictEqual(tmpFiles(dir).concat(tmpFiles(C)), []);
+  });
+
+  it("test_s3_keep_mode_controls_unchanged_under_store_drift", winModes, async () => {
+    // remote.json drift is covered by test_s3_drifted_store_modes_* (bundle init against the stub).
+    const dir = makeGitProject("unimatrix-s3r-");
+    const home = tmp("unimatrix-s3r-home-");
+    assert.strictEqual((await init(dir, home)).status, 0);
+    const sd = path.join(home, ".unimatrix");
+    const hd = fs.readdirSync(sd).find((n) => /^[0-9a-f]{16}$/.test(n));
+    fs.chmodSync(path.join(sd, "install.json"), 0o664);
+    fs.chmodSync(path.join(sd, hd, "root"), 0o644);
+    const claudeJson = path.join(home, ".claude.json");
+    const ocJson = path.join(dir, "opencode.json");
+    const skill = path.join(dir, ".claude", "skills", "uni-init", "SKILL.md");
+    fs.writeFileSync(ocJson, "{}\n");
+    fs.writeFileSync(claudeJson, "{}\n");
+    for (const p of [claudeJson, ocJson, skill]) fs.chmodSync(p, 0o664);
+    const r = await init(dir, home);
+    assert.strictEqual(r.status, 0, r.out);
+    assert.strictEqual(mode(path.join(sd, "install.json")), 0o600);
+    assert.strictEqual(mode(path.join(sd, hd, "root")), 0o600);
+    assert.match(r.out, /install\.json/);
+    for (const p of [claudeJson, ocJson, skill]) assert.strictEqual(mode(p), 0o664, "keeps drifted mode: " + p);
+  });
+
+  it("test_ac10_spawned_rename_failure_settings_local_no_temp_exit1_names_file", async () => {
+    const dir = makeGitProject("unimatrix-ac10-");
+    const home = tmp("unimatrix-ac10-home-");
+    const target = path.join(dir, ".claude", "settings.local.json");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, "{}\n");
+    const preload = path.join(tmp("unimatrix-ac10-pre-"), "fail-rename.js");
+    fs.writeFileSync(preload, [
+      "const fs = require('fs');",
+      "const orig = fs.renameSync;",
+      "fs.renameSync = function (from, to) {",
+      "  if (to === process.env.UNI_FAIL_RENAME) { const e = new Error('EIO: injected'); e.code = 'EIO'; throw e; }",
+      "  return orig.apply(fs, arguments);",
+      "};",
+    ].join("\n"));
+    const r = await init(dir, home, { env: { NODE_OPTIONS: "--require " + preload.replace(/\\/g, "/"), UNI_FAIL_RENAME: target } });
+    assert.strictEqual(r.status, 1, r.out);
+    assert.ok(r.out.includes(target), r.out);
+    assert.strictEqual(fs.readFileSync(target, "utf8"), "{}\n");
+    assert.deepStrictEqual(tmpFiles(dir), []);
+  });
+});
+
+function readJsonSafe(p) {
+  try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch (_) { return null; }
+}

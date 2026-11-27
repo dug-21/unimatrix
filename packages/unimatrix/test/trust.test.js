@@ -298,3 +298,64 @@ test("trustSet always lists install.json; missing member is a TrustError (caller
   assert.ok(set(h).includes(path.join(h.u, "install.json")));
   assert.throws(() => checkTrust(set(h), "linux", { home: h.home }), (e) => e instanceof TrustError && /install\.json$/.test(e.path) && e.reason === "missing");
 });
+
+// ---- 1036 C2: hook-time trust.json via the hardened core (FR-33 port) ----
+const core = require("../lib/trust.js");
+
+test("recordTrustIdentity: 0600, created/unchanged/updated, no .tmp- left", posixOnly, () => {
+  const h = mkHome();
+  const s = set(h, "win32").filter((p) => p !== h.u); // dir mtime moves on every rewrite
+  const tj = path.join(h.u, "trust.json");
+  const old = process.umask(0o000);
+  try { assert.strictEqual(recordTrustIdentity(s, h.home), "created"); } finally { process.umask(old); }
+  assert.strictEqual(fs.statSync(tj).mode & 0o777, 0o600);
+  assert.strictEqual(recordTrustIdentity(s, h.home), "unchanged");
+  fs.chmodSync(tj, 0o644);
+  assert.strictEqual(recordTrustIdentity(s, h.home), "updated");
+  assert.strictEqual(fs.statSync(tj).mode & 0o777, 0o600);
+  assert.strictEqual(fs.readFileSync(tj, "utf8"), core.trustRecordFor(s, h.home));
+  assert.deepStrictEqual(fs.readdirSync(h.u).filter((n) => n.includes(".tmp")), []);
+});
+
+test("recordTrustIdentity: trust.json symlink (live, dangling) skipped, link intact, no throw", posixOnly, () => {
+  for (const live of [true, false]) {
+    const h = mkHome();
+    const tgt = path.join(h.home, "elsewhere.json");
+    if (live) fs.writeFileSync(tgt, "orig");
+    fs.symlinkSync(tgt, path.join(h.u, "trust.json"));
+    assert.doesNotThrow(() => recordTrustIdentity(set(h, "win32"), h.home));
+    assert.ok(fs.lstatSync(path.join(h.u, "trust.json")).isSymbolicLink());
+    assert.strictEqual(fs.existsSync(tgt) ? fs.readFileSync(tgt, "utf8") : null, live ? "orig" : null);
+  }
+});
+
+test("recordTrustIdentity: rename failure is swallowed and temp removed", () => {
+  const h = mkHome();
+  const orig = fs.renameSync;
+  fs.renameSync = () => { const e = new Error("EIO"); e.code = "EIO"; throw e; };
+  try { assert.doesNotThrow(() => recordTrustIdentity(set(h, "win32"), h.home)); } finally { fs.renameSync = orig; }
+  assert.deepStrictEqual(fs.readdirSync(h.u).filter((n) => n.includes(".tmp")), []);
+});
+
+test("core: hardenedWriteSync fault before-rename leaves no temp; dir fsync failure non-fatal", posixOnly, () => {
+  const h = mkHome();
+  const f = path.join(h.u, "x.json");
+  const r = core.resolveTarget(f);
+  assert.throws(() => core.hardenedWriteSync(f, "a", { expect: { target: r.target, hash: "absent" }, mode: 0o600, platform: "linux", fault: (s) => { if (s === "before-rename") throw new Error("boom"); } }), (e) => e instanceof core.SafeWriteError && e.code === "io");
+  assert.deepStrictEqual(fs.readdirSync(h.u).filter((n) => n.includes(".tmp")), []);
+  const orig = fs.openSync;
+  fs.openSync = (p, fl, m) => { if (fl === "r" && p === h.u) throw new Error("nope"); return orig(p, fl, m); };
+  try { assert.strictEqual(core.hardenedWriteSync(f, "a", { expect: { target: r.target, hash: "absent" }, mode: 0o600, platform: "linux" }), "written"); } finally { fs.openSync = orig; }
+  assert.strictEqual(fs.statSync(f).mode & 0o777, 0o600);
+  assert.throws(() => core.hardenedWriteSync(f, "b", { expect: { target: r.target, hash: "absent" }, mode: 0o600, platform: "linux" }), (e) => e.code === "conflict");
+  assert.strictEqual(fs.readFileSync(f, "utf8"), "a");
+});
+
+test("core: tempPath pattern; renameWithRetry win32 EPERM x3 then ok, posix no retry", () => {
+  assert.match(path.basename(core.tempPath("/a/trust.json")), /^\..+\.tmp-[0-9a-f]{16}$/);
+  const orig = fs.renameSync;
+  let n = 0;
+  fs.renameSync = () => { if (n++ < 3) { const e = new Error("EPERM"); e.code = "EPERM"; throw e; } };
+  try { core.renameWithRetry("a", "b", "win32", { count: 10, delayMs: 0 }); n = 0; assert.throws(() => core.renameWithRetry("a", "b", "linux")); } finally { fs.renameSync = orig; }
+  assert.strictEqual(n, 1);
+});

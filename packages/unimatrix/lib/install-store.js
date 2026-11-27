@@ -9,7 +9,9 @@ const path = require("path");
 const { walkToProjectRoot, computeProjectHash } = require("./hook-client/config.js");
 const { PLATFORMS } = require("./resolve-runtime.js");
 const { VARS } = require("./hook-client/remote-resolve.js");
+const crypto = require("crypto");
 const trust = require("./trust.js");
+const sw = require("./safe-write.js");
 
 // Flip to true iff the ADR-005 not-a-project benchmark breaches on any OS (D-025).
 const PRENODE_ENABLED = false;
@@ -45,39 +47,8 @@ function checkShimPathSafe(p, platform) {
   for (const ch of bad) if (String(p).includes(ch)) throw new UnsafeShimPathError(p, ch);
 }
 
-function sleepMs(ms) {
-  try {
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-  } catch (_) {}
-}
-
-function renameWithRetry(from, to, platform) {
-  const max = platform === "win32" ? 10 : 1;
-  for (let i = 1; ; i++) {
-    try {
-      return fs.renameSync(from, to);
-    } catch (e) {
-      if (i < max && e && (e.code === "EPERM" || e.code === "EBUSY" || e.code === "EACCES")) sleepMs(25);
-      else throw e;
-    }
-  }
-}
-
-const tmpName = (dest) => `${dest}.tmp-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
-
-function atomicWrite(dest, data, mode, platform) {
-  const tmp = tmpName(dest);
-  try {
-    fs.writeFileSync(tmp, data, { mode });
-    fs.chmodSync(tmp, mode);
-    renameWithRetry(tmp, dest, platform);
-  } catch (e) {
-    try {
-      fs.unlinkSync(tmp);
-    } catch (_) {}
-    throw e;
-  }
-}
+const legFor = (file, action) => ({ harness: "unimatrix", surface: "store", action, path: file });
+const tmpDirName = (dest) => path.join(path.dirname(dest), `.${path.basename(dest)}.tmp-${crypto.randomBytes(8).toString("hex")}`);
 
 function isFile(p) {
   try {
@@ -147,10 +118,22 @@ function isCompleteCopy(dest) {
   return isFile(path.join(dest, ".complete"));
 }
 
+function mkTmpDir(dest) {
+  for (let i = 0; ; i++) {
+    const t = tmpDirName(dest);
+    try {
+      fs.mkdirSync(t);
+      return t;
+    } catch (e) {
+      if (i >= 4 || !e || e.code !== "EEXIST") throw e;
+    }
+  }
+}
+
+// Stage in an exclusive sibling dir, then one atomic dir rename (D-020, §3.8).
 function copyPackage(o, dest, platform, fault) {
-  const tmp = tmpName(dest);
+  const tmp = mkTmpDir(dest);
   try {
-    fs.mkdirSync(tmp, { recursive: true });
     for (const name of ["bin", "lib", "package.json"]) {
       const from = path.join(o.sourcePackageRoot, name);
       if (!fs.existsSync(from)) continue;
@@ -163,18 +146,34 @@ function copyPackage(o, dest, platform, fault) {
     fault("copy-mid");
     copyBinaryPackage(o.sourcePackageRoot, tmp, platform, o.arch || process.arch, o.requireBinary);
     if (platform !== "win32") chmodTree(tmp);
-    fs.writeFileSync(path.join(tmp, ".complete"), "");
+    const fd = fs.openSync(path.join(tmp, ".complete"), "wx", 0o600);
+    try {
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    try {
+      const dfd = fs.openSync(tmp, "r");
+      try {
+        fs.fsyncSync(dfd);
+      } finally {
+        fs.closeSync(dfd);
+      }
+    } catch (_) {}
+    fault("before-pkg-rename");
     // Never delete a valid dest (install.json may point at it): keep it, drop ours.
     for (let i = 0; i < 5 && !isCompleteCopy(dest); i++) {
       try {
-        renameWithRetry(tmp, dest, platform);
+        sw.renameWithRetry(tmp, dest, platform);
         return;
       } catch (e) {
         if (isCompleteCopy(dest)) break; // concurrent run won; its copy is identical
-        if (!fs.existsSync(dest)) continue; // dest vanished mid-race; retry
+        if (!fs.existsSync(dest)) continue;
         // invalid dest: atomically move it aside (never rm in place), then retry
+        const aside = tmpDirName(dest);
         try {
-          fs.renameSync(dest, tmpName(dest));
+          fs.renameSync(dest, aside);
+          rmrf(aside);
         } catch (_) {}
       }
     }
@@ -202,7 +201,7 @@ function prune(pkgDir, keep) {
       try {
         old = now - fs.statSync(p).mtimeMs > TMP_AGE_MS;
       } catch (_) {}
-      if (old && !n.endsWith(`.tmp-${process.pid}`)) rmrf(p);
+      if (old) rmrf(p);
     } else if (!keep.has(n)) {
       rmrf(p);
       pruned.push(n);
@@ -211,15 +210,48 @@ function prune(pkgDir, keep) {
   return pruned;
 }
 
+function refuseSymlinkedTrustJson(tj) {
+  let lst;
+  try {
+    lst = fs.lstatSync(tj);
+  } catch (_) {
+    return;
+  }
+  if (lst.isSymbolicLink()) {
+    const link = safeReadlink(tj);
+    throw new Error(`unimatrix: ${tj} is a symlink (-> ${link}); trust state is never written through a symlink. Remove it ('rm "${tj}"') and re-run 'npx unimatrix init'`);
+  }
+}
+
+function safeReadlink(p) {
+  try {
+    return fs.readlinkSync(p);
+  } catch (_) {
+    return "?";
+  }
+}
+
+function plannedTrustAction(set, home) {
+  const tj = path.join(home, ".unimatrix", "trust.json");
+  let cur = null;
+  try {
+    cur = fs.readFileSync(tj, "utf8");
+  } catch (_) {}
+  if (cur === null) return "created";
+  try {
+    return trust.trustRecordFor(set, home) === cur ? "unchanged" : "updated";
+  } catch (_) {
+    return "updated";
+  }
+}
+
 function writeRootMarker(home, projectRoot, dryRun) {
   const root = walkToProjectRoot(projectRoot);
   const dir = path.join(home, ".unimatrix", computeProjectHash(root));
   const file = path.join(dir, "root");
-  if (!dryRun) {
-    mkdir0700(dir);
-    atomicWrite(file, root + "\n", 0o600, process.platform);
-  }
-  return file;
+  if (!dryRun) mkdir0700(dir);
+  const r = sw.writeFileSync(file, root + "\n", { dryRun: !!dryRun, enforceMode: 0o600, newMode: 0o600 });
+  return { file, action: r.action };
 }
 
 function render(template, o, uh, platform) {
@@ -256,51 +288,69 @@ function installStore(o) {
   const prev = readInstallJson(o.home);
   const rerecordedNode = prev === null || prev.node !== o.nodePath;
   const installJson = path.join(uh, "install.json");
-  const marker = writeRootMarker(o.home, o.projectRoot, true);
+  const dryRun = !!o.dryRun;
+  const mode = platform === "win32" ? 0o600 : 0o700;
+  const legs = [];
+  const put = (file, data, m) => legs.push(legFor(file, sw.writeFileSync(file, data, { dryRun, enforceMode: m, newMode: m, platform }).action));
 
-  const files = [];
-  if (!isCompleteCopy(dest)) files.push(dest);
-  files.push(shim, path.join(bin, "shim-entry.js"), path.join(bin, "trust.js"), installJson, marker);
-  if (o.dryRun) {
-    return { actions: files.map((f) => `[dry-run] would write ${f}`), shimPath: shim, version, prunedVersions: [], rerecordedNode };
-  }
-
-  // 1. directories
-  for (const d of [uh, bin, pkgDir]) mkdir0700(d);
-  if (platform === "win32") {
-    lockdownWindows(uh, o.spawn);
-    lockdownWindows(bin, o.spawn);
+  // 1. directories (none in dry-run, FR-62)
+  if (!dryRun) {
+    for (const d of [uh, bin, pkgDir]) mkdir0700(d);
+    if (platform === "win32") {
+      lockdownWindows(uh, o.spawn);
+      lockdownWindows(bin, o.spawn);
+    }
   }
   // 2. stable package copy
-  if (!isCompleteCopy(dest)) copyPackage(o, dest, platform, fault);
+  const pkgAction = isCompleteCopy(dest) ? "unchanged" : "created";
+  if (!dryRun && pkgAction === "created") copyPackage(o, dest, platform, fault);
+  legs.push(legFor(dest, pkgAction));
   // 3. shim
   const tplName = platform === "win32" ? "unimatrix.cmd" : "unimatrix.sh";
   const template = fs.readFileSync(path.join(libDir, "shim", tplName), "utf8");
-  const mode = platform === "win32" ? 0o600 : 0o700;
-  atomicWrite(shim, render(template, o, uh, platform), mode, platform);
+  put(shim, render(template, o, uh, platform), mode);
   // 4. shim-entry.js + trust.js siblings
   for (const f of ["shim-entry.js", "trust.js"]) {
     fault("sibling-" + f);
-    atomicWrite(path.join(bin, f), fs.readFileSync(path.join(libDir, f)), mode, platform);
+    put(path.join(bin, f), fs.readFileSync(path.join(libDir, f)), mode);
   }
   // 5. install.json swap
   fault("install-json");
-  atomicWrite(installJson, JSON.stringify({ version, packageRoot: dest, node: o.nodePath }), 0o600, platform);
+  put(installJson, JSON.stringify({ version, packageRoot: dest, node: o.nodePath }), 0o600);
   // 6. prune
-  const keep = new Set([version]);
-  if (prev && typeof prev.version === "string") keep.add(prev.version);
-  const prunedVersions = prune(pkgDir, keep);
-  // 7. root marker
-  writeRootMarker(o.home, o.projectRoot, false);
-  // 8. trust
-  const set = trust.trustSet(o.home, { platform, installJson: { packageRoot: dest } });
-  if (platform === "win32") {
-    trust.fullCheckWindows(set, { home: o.home, spawn: o.spawn });
-    trust.recordTrustIdentity(set, o.home);
-  } else {
-    trust.checkTrust(set, platform, { home: o.home });
+  let prunedVersions = [];
+  if (!dryRun) {
+    const keep = new Set([version]);
+    if (prev && typeof prev.version === "string") keep.add(prev.version);
+    prunedVersions = prune(pkgDir, keep);
   }
-  return { actions: files.map((f) => `wrote ${f}`), shimPath: shim, version, prunedVersions, rerecordedNode };
+  // 7. root marker
+  const rm = writeRootMarker(o.home, o.projectRoot, dryRun);
+  legs.push(legFor(rm.file, rm.action));
+  // 8. trust
+  const tj = path.join(uh, "trust.json");
+  refuseSymlinkedTrustJson(tj);
+  const set = trust.trustSet(o.home, { platform, installJson: { packageRoot: dest } });
+  try {
+    if (platform === "win32") {
+      let a;
+      if (dryRun) a = plannedTrustAction(set, o.home);
+      else {
+        trust.fullCheckWindows(set, { home: o.home, spawn: o.spawn });
+        a = trust.recordTrustIdentity(set, o.home);
+        // D-040/FR-53: a trust write that did not happen is a hard failure, never `updated`.
+        if (!a) throw new Error(`unimatrix: failed to write ${tj}; trust state was not recorded. Check permissions on ${path.dirname(tj)} and re-run 'npx unimatrix init'`);
+      }
+      legs.push(legFor(tj, a));
+    } else if (!dryRun) trust.checkTrust(set, platform, { home: o.home });
+  } catch (e) {
+    if (e instanceof trust.TrustError && /symlink not allowed/.test(e.reason || e.message) && e.path) {
+      throw new Error(`unimatrix: ${e.path} is a symlink (-> ${safeReadlink(e.path)}); trust files must be regular files. Remove it ('rm "${e.path}"') and re-run 'npx unimatrix init'`);
+    }
+    throw e;
+  }
+  const pre = dryRun ? "[dry-run] would write " : "wrote ";
+  return { legs, actions: legs.map((l) => pre + l.path), shimPath: shim, version, prunedVersions, rerecordedNode };
 }
 
 module.exports = {
@@ -308,6 +358,7 @@ module.exports = {
   checkShimPathSafe,
   readInstallJson,
   writeRootMarker,
+  refuseSymlinkedTrustJson,
   UnsafeShimPathError,
   NodeNotRecordableError,
   BinaryPackageMissingError,
