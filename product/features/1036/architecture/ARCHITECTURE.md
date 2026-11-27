@@ -1,7 +1,7 @@
 # Architecture — 1036: Harden per-machine harness wiring placement
 
 Inputs: `SCOPE.md` (approved, D-005), `DECISIONS.md` D-001..D-032, `SCOPE-RISK-ASSESSMENT.md`, `product/research/ass-110/ass-110-findings.md`, `packages/unimatrix/lib/`.
-ADRs: `ADR-INDEX.md` (Unimatrix #5937, #5960, #5962, #5959, #5955, #5943, #5961). Reconciled with D-001..D-032.
+ADRs: `ADR-INDEX.md` (Unimatrix #5937, #5960, #5962, #5959, #5955, #5963, #5961). Reconciled with D-001..D-032.
 
 ## 1. System Overview
 
@@ -126,7 +126,7 @@ The full contract is in ADR-003 (#5962). What callers rely on:
 | R10 | opencode | remove legacy | `L ~/.config/opencode/opencode.json` | owned `mcp.unimatrix` | override in effect, `!same(W5)` | W5 ok |
 | R11 | opencode | remove project | `<root>/opencode.json` | owned `mcp.unimatrix` | `!hooksOnly` | none (D-064) |
 | R12 | opencode | remove project (G3) | same file as R11, **same mutate** | owned `plugin[]` entries (`isLegacyOpencodePlugin`) | `!hooksOnly` | none (legacy) |
-| X1 | git | ensure | resolved `info/exclude` | `/.claude/settings.local.json` | claude-code wired | W1 ok |
+| X1 | claude-code | ensure (surface `git-exclude`) | resolved `info/exclude` | `/.claude/settings.local.json` | claude-code wired | W1 ok |
 
 "ok" means the leg action is `created`, `updated` or `unchanged`. If the gate fails, the leg is `skipped-dest-unwired`. A thrown error (`SafeWriteError`, parse abort) ends the run, so no later step runs (write-before-remove, SR-11). Steps that resolve to the same real file are merged or deduplicated. A legacy location that is the same real file as the destination produces no step and no leg (D-007). `alternates` never produce a step (D-019). D-014: the pre-nan-024 `.opencode/plugins/` shim and the `.opencode/package.json` dep are out of scope.
 
@@ -145,7 +145,7 @@ Order: store, W1, W2(+R1), R2-R4, R6, then Codex W3, W4, R7-R9, then OpenCode W5
 
 ### 3.5 Git exclude (C5)
 
-See ADR-006 (#5943). Every git call runs with `cwd = <root>`, the same root `wire()` uses. Each outcome is a WireLeg: `unchanged`, `created`/`updated` (append), `skipped-no-git`, `skipped-not-repo`, `skipped-tracked`, `skipped-git-error`, `appended-not-effective`. The append goes through C3. Dry-run runs the read-only git calls and the mutate. Edge cases (D-008): the spec.
+See ADR-006 (#5963). Every git call runs with `cwd = <root>`, the same root `wire()` uses. Each outcome is a WireLeg: `unchanged`, `created`/`updated` (append), `skipped-no-git`, `skipped-not-repo`, `skipped-tracked`, `skipped-git-error`, `appended-not-effective`. The append goes through C3. Dry-run runs the read-only git calls and the mutate. Edge cases (D-008): the spec.
 
 ### 3.6 Status (C15)
 
@@ -213,7 +213,7 @@ Downstream: the spec, RTS, brief and ACCEPTANCE-MAP need no AC or test change. T
 | ADR-003 | #5962 | One hardened synchronous writer; coverage set; enforced modes (D-025); project-file containment (D-026); fixpoint verify; errors exit 1 |
 | ADR-004 | #5959 | Plan table drives writes/removals/dry-run; gating; nan-024 legacy removal limited to `~/.claude/settings.json` and `~/.config/opencode` (D-019, D-028); D-015 opt-in; D-022 AC-4; D-029; G3 ownership |
 | ADR-005 | #5955 | One writer core inside trust.js (D-021); symlinked trust.json fails with fix message; trust check unchanged |
-| ADR-006 | #5943 | Exclude-file ensure mechanism |
+| ADR-006 | #5963 | Exclude-file ensure mechanism |
 | ADR-007 | #5961 | status/init resolved-file reporting; Claude local-scope check; stale legacy; alternate profiles listed; unparseable opencode.json named |
 
 Amended nan-024 ADRs (rationale/paths only, decisions kept): #5896→#5945, #5897→#5956, #5894→#5947, #5901→#5948. Only Node built-ins (`fs`, `path`, `crypto`, `child_process`) are used, so `check-zero-deps.js` passes.
@@ -231,10 +231,10 @@ Amended nan-024 ADRs (rationale/paths only, decisions kept): #5896→#5945, #589
 | Integration point | Type / signature | Source |
 |---|---|---|
 | `resolveConfigDirs` | `({env: object, home: string, platform: string}) -> ConfigDirs` | new `lib/config-dirs.js` |
-| `ConfigDirs` | `{claude: {dir, claudeJson, userSettings, source}, opencode: {dir, configJson, source}, codex: {dir, hooksJson, configToml, source}, legacy: {userSettings, opencodeJson}, alternates: {harness, file, key, var}[], warnings: string[]}`; `source` ∈ `"CLAUDE_CONFIG_DIR" \| "OPENCODE_CONFIG_DIR" \| "XDG_CONFIG_HOME" \| "CODEX_HOME" \| "default"` | new |
+| `ConfigDirs` | `{claude: {dir, claudeJson, userSettings, source, value}, opencode: {dir, configJson, source, value}, codex: {dir, hooksJson, configToml, source, value}, legacy: {userSettings, opencodeJson}, alternates: {harness, file, key, var}[], warnings: string[]}`; `source` ∈ `"CLAUDE_CONFIG_DIR" \| "OPENCODE_CONFIG_DIR" \| "XDG_CONFIG_HOME" \| "CODEX_HOME" \| "default"`; `value` = the raw env value used (null when `source` is `"default"`), for `<VAR>=<value>` output (FR-34, FR-50); not in `status --json` | new |
 | `codexHome` | `(env, home) -> {dir, warning?}` (kept signature; delegates to C1) | `lib/codex-install.js` re-export |
 | `sameRealFile` | `(a: string, b: string) -> boolean` (D-007 identity) | new `lib/config-dirs.js` |
-| `updateFileSync` | `(file: string, mutate: (raw: string\|null) => string\|null, opts?: {dryRun?: boolean, newMode?: number = 0o600, enforceMode?: number, containWithin?: string, verify?: boolean = true, attempts?: number = 3, retry?: {count, delayMs}, platform?: string, fault?: (stage) => void}) -> {action: "created"\|"updated"\|"unchanged", file: string, target: string}` | new `lib/safe-write.js` |
+| `updateFileSync` | `(file: string, mutate: (raw: string\|null) => string\|null, opts?: {dryRun?: boolean, newMode?: number = 0o600, enforceMode?: number, containWithin?: string, verify?: boolean = true, attempts?: number = 3, retry?: {count, delayMs}, platform?: string, fault?: (stage) => void}) -> {action: "created"\|"updated"\|"unchanged", file: string, target: string, before: string\|null}`; `before` = the raw passed to mutate on the deciding call of the successful attempt (leg detail is derived from it, not from the verify re-run) | new `lib/safe-write.js` |
 | `writeFileSync` | `(file, data: string\|Buffer, opts?) -> {action, file, target}` (whole-file replace; byte-equal verify; no CAS unless `opts.expectHash`) | new `lib/safe-write.js` |
 | `SafeWriteError` | `extends Error {file: string, code: "dangling-symlink"\|"not-regular"\|"outside-project"\|"conflict"\|"verify-failed"\|"io"}`; message names the file (and link target for `dangling-symlink` / `outside-project`) | new `lib/safe-write.js` |
 | `tempPath` | `(dest: string) -> string` = `<dir>/.<base>.tmp-<16hex>` | new `lib/safe-write.js` (from core) |
@@ -244,7 +244,7 @@ Amended nan-024 ADRs (rationale/paths only, decisions kept): #5896→#5945, #589
 | `Step` | `{id: "W1"\|..., harness, surface, file, source, gate?: string, run: (dryRun) -> WireLeg[]}` | new |
 | `runWirePlan` | `(steps: Step[], {dryRun}) -> {manifest: WireLeg[], warnings: string[]}` | new |
 | `WireLeg` (extended) | `{harness, surface, action, path, command?, entry?, reason?, warning?, source?}`; new actions `removed` (existing), `skipped-dest-unwired`, `skipped-no-git`, `skipped-not-repo`, `skipped-tracked`, `skipped-git-error`, `appended-not-effective` | nan-023 ADR-001 #5763 |
-| `ensureSettingsLocalIgnored` | `(root: string, {dryRun, run?: (args) => {status, stdout}}) -> WireLeg` (harness `"git"`, surface `"exclude"`) | new `lib/git-exclude.js` |
+| `ensureSettingsLocalIgnored` | `(root: string, {dryRun, run?: (args) => {status, stdout}}) -> WireLeg` (harness `"claude-code"`, surface `"git-exclude"`) | new `lib/git-exclude.js` |
 | `isLegacyOpencodePlugin` | `(el: unknown) -> boolean`; true iff `el` is the string `@dug-21/unimatrix-opencode-plugin`, or that name + `@` + a non-empty version spec containing no `/` | `lib/hook-ownership.js` |
 | `writeClaudeMcp` | `(o: {file, projectRoot, entry, platform, dryRun}) -> {action, file, key, warning?, removedUserScope: boolean}`; `file` from C1, no `home` path building | `lib/claude-json.js` |
 | `readClaudeMcpState` | `(file, projectRoot, platform) -> {status, file, key}` (read-only) | `lib/claude-json.js` (new fn) |
@@ -269,6 +269,7 @@ Where the spec and this document differed, this document is the authority (R-10)
 | Other symlinked trust-set file (rewrapped TrustError) | `unimatrix: <path> is a symlink (-> <link text>); trust files must be regular files. Remove it ('rm "<path>"') and re-run 'npx unimatrix init'` | — |
 | Dangling-link / writer errors | One class, `SafeWriteError extends Error`, with `{file, code}`. `code` ∈ `"dangling-symlink"` \| `"not-regular"` \| `"conflict"` \| `"verify-failed"` \| `"io"` \| `"outside-project"` (D-026, spec FR-22a). The message names the link and its target for `dangling-symlink` and `outside-project`. There are no subclasses, so wrappers rethrow one type (R-12) | `DanglingSymlinkError` |
 | Writer fault seam stages | `opts.fault(stage)`, where `stage` ∈ `"after-read"` \| `"before-rename"` \| `"after-rename"` | — |
+| Git-exclude leg (X1) | harness `"claude-code"`, surface `"git-exclude"` (SPEC FR-40, FR-46) | harness `git` / surface `exclude` |
 | New wire leg actions | `skipped-dest-unwired`, `skipped-no-git`, `skipped-not-repo`, `skipped-tracked`, `skipped-git-error`, `appended-not-effective` | — |
 | Enforced modes (D-025) | `enforceMode`: `remote.json`, `install.json`, `trust.json`, `<hash>/root` 0600; `bin/*` 0700, re-tightened on every write. All other existing files keep their mode; new files per D-023 | D-023-only wording |
 

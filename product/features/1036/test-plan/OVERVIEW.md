@@ -20,7 +20,7 @@ Env hygiene (R-09): every test uses `scrubbedEnv(extra)`; `assertTmpHome` reject
 | Risk | Pri | Primary plan file(s) | Key tests |
 |---|---|---|---|
 | R-01 modes | Med | safe-write, install-store, credstore, init | `mode-only drift repaired reports updated` (named per scenario 1-6), umask 000/002/022, mode-keep control |
-| R-02 fixpoint | High | wire-plan, merge-settings, claude-json, codex-install, opencode-install, git-exclude | every mutate twice → `null`; indent/CRLF/no-newline fixtures; double init zero renames |
+| R-02 fixpoint (incl. non-canonical owned `settings.local.json` → `unchanged`, FR-16) | High | wire-plan, merge-settings, claude-json, codex-install, opencode-install, git-exclude | every mutate twice → `null`; indent/CRLF/no-newline fixtures; double init zero renames |
 | R-03 containment | High | safe-write, init, wire | S-cases + spawned init outside/inside/prefix-sibling/parent-dir/swap/case/dangling; exclude exempt |
 | R-04 path divergence | High | config-dirs, status | `collect(ctx).configDirs` == init `resolved:`; grep FR-01 |
 | R-05 same-file | High | config-dirs, wire-plan | XDG/OPENCODE/trailing slash/symlink/`CLAUDE_CONFIG_DIR=<home>`; win32 drive case |
@@ -41,7 +41,7 @@ Env hygiene (R-09): every test uses `scrubbedEnv(extra)`; `assertTmpHome` reject
 | R-20 plugin predicate | Low | hook-ownership | FR-15 positives/negatives |
 | R-21 pkg swap | Low | install-store | fault between staging and rename |
 | R-22 temp | Low | safe-write | `wx` spy, name regex, collision cap 5 |
-| R-23 trust hot path | Low | trust-writer-core, credstore | selfcontained, byte-identical copy, require cache |
+| R-23 trust hot path | Low | trust-writer-core, credstore | selfcontained, byte-identical copy, require cache; Stage 3c compares hook-path latency to nan-024 ADR-005 budget |
 | R-24 win32 | Med | safe-write, config-dirs | injected platform/fs: retry ×10, dir fsync skip, case-insensitive compare |
 | R-25 real-binary | Med | init (real-binary section) | AC-1c, AC-2b with skip reason |
 
@@ -61,7 +61,7 @@ The feature's integration layer is the Node package's own spawned-CLI suites:
 |---|---|
 | `test/init-integration.test.js` | AC-1c, AC-2b real binaries; AC-5 double init; AC-8 real git; AC-9 parity harness; D-025 mode fixtures via real shim; D-026 spawned outside-root |
 | `test/wire.test.js` | AC-1a/b, AC-3, AC-4 RT table, AC-6 scanner, AC-7 fault seam, R-11 gating |
-| `test/status` coverage (existing status suite / `launcher-status.test.js` per SPEC NFR-07) | S-1, R-18, SR-09 parity |
+| `test/status.test.js` (new; new-module coverage permitted) | S-1, R-18, SR-09 parity |
 | `wiring-e2e*.test.js`, `c14-*.test.js` | existing; must stay green (manifest shape changes: store leg actions, new skip actions) |
 
 Real-binary checks (devcontainer has both binaries; CI skips):

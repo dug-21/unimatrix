@@ -14,8 +14,13 @@ function computeMerged(raw, filePath, source) -> {text, detail:{content, command
   // subagentStopEnabled(optInFile) currently reads the file separately: replace with
   // subagentStopEnabledFromContent(content) evaluated on the parsed `raw` (same key lookup),
   // so the decision is made on the same bytes as the CAS (no second read).
-  serialized = JSON.stringify(content, null, raw ? detectIndent(raw) : 2) + "\n"
-  return {text: serialized === raw ? null : serialized, detail:{content, commands, actions}}
+  // Semantic decision (FR-16 / D-022): rewrite only when the merge made an owned change.
+  before = raw === null || raw.trim() === "" ? null : JSON.parse(raw)   // already parsed above; reuse that value
+  changed = raw === null || !isDeepStrictEqual(before, content)        // deep-equal incl. key order: compare JSON.stringify(before) === JSON.stringify(content)
+  text = changed ? JSON.stringify(content, null, raw ? detectIndent(raw) : 2) + "\n" : null
+  return {text, detail:{content, commands, actions}}
+  // Non-canonical but correct file (no trailing newline, CRLF, compact) -> text null -> `unchanged`, bytes + mtime kept.
+  // Empty file (raw.trim()==="") counts as changed (it gains entries).
   // parse failure -> throw Error("Malformed " + filePath + ...)  (unchanged text)
 
 function mergeSettings(filePath, commandSource, options) -> {actions, content, commands, action}
@@ -36,7 +41,7 @@ function wireProjectHooks({root, platform, home, dryRun}) -> WireLeg[]
                     {dryRun, containWithin: root})
   return r.commands.map(({command}) => ({harness:"claude-code", surface:"hooks", action:r.action, path:file, command}))
 ```
-`r.action` from the writer replaces wire.js's deep-equal before/after compare (old code compared parsed JSON; new compares bytes — a whitespace-only difference now yields `updated` with a rewrite. Acceptable: FR-16 untouched-file rule is about files with no owned change; a reformat-only diff can only arise from hand edits). Flagged Q6.
+`r.action` from the writer replaces wire.js's before/after compare. Because `computeMerged` decides semantically (parsed deep-equal, order-sensitive), a correct file in non-canonical form is `unchanged` and never rewritten (FR-16). Fixpoint verify holds: re-running on written bytes gives deep-equal content -> null. Same rule in `computeRemoveOwned` (text null unless an owned entry was removed).
 
 ```
 function computeRemoveOwned(raw, file) -> {text, detail:{changed, actions}}
@@ -61,6 +66,7 @@ Malformed JSON → Error propagates (exit 1, existing text). `SafeWriteError` pr
 ## Key tests
 - Existing merge-settings.test.js suite green unchanged (behaviour).
 - Second run: `action:"unchanged"`, mtime equal.
+- File with correct owned entries but no trailing newline / CRLF / compact JSON -> `unchanged`, bytes and mtime equal.
 - SubagentStop opt-in read from same bytes (fault("after-read") flips opt-in → retry recomputes).
 - Symlinked `settings.local.json` → outside root: `outside-project`; inside: written through.
 - `removeOwnedHooks` foreign hooks deep-equal + order kept; indent reused.

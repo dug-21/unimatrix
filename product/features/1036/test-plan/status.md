@@ -1,4 +1,4 @@
-# Test Plan — C15 status (`lib/status.js`) — extend status / `launcher-status.test.js` suites
+# Test Plan — C15 status (`lib/status.js`) — new `test/status.test.js`
 
 Risks: R-04, R-10, R-18, R-16. S-1, AC-1(a) status part.
 

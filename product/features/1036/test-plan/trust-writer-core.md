@@ -16,4 +16,4 @@ Risks: R-06, R-23, R-01, R-24.
 ## Self-containment (R-23)
 - `trust-selfcontained.test.js`: only built-in requires.
 - After `init`, installed `~/.unimatrix/bin/trust.js` byte-identical to `lib/trust.js`.
-- Hook-path latency re-measured against nan-024 ADR-005 budget (record number in 3c report).
+- Stage 3c measures hook-path latency and compares it to the nan-024 ADR-005 budget; result recorded in RISK-COVERAGE-REPORT.

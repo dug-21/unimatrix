@@ -8,7 +8,7 @@ One ordered step table drives writes, removals, gating and dry-run (ADR-004 #595
 
 ## Types
 `ctx = {root, home, platform, env, node, dirs: ConfigDirs, harnessSel, writeMcp, hooksOnly, dryRun}`
-`Step = {id, harness, surface, file, source, gate?, run(dryRun, results) -> WireLeg[]}` — `results` is the map of prior step legs (needed for gates); passed by the executor.
+`Step = {id, harness, surface, file, source, gate?, run(dryRun) -> WireLeg[]}` (§6 signature). Gates are evaluated by the executor from prior legs; `run` never sees them.
 
 ## buildWirePlan
 
@@ -26,11 +26,11 @@ if want("claude-code"):
             // emits mcp leg + (R1) removed leg reason "owned user-scope MCP entry removed" from the same mutate
   add R2 {surface:"hooks", file: root/.claude/settings.json, gate:"W1",
           run: dr => C8.removeOwnedHooksLeg(file, {dryRun:dr, containWithin:root, reason:"owned hooks removed (cross-scope)"})}
-  add R3 {file:d.claude.userSettings, gate:"W1", run: removeOwnedHooksLeg(file, {dryRun})}
+  add R3 {file:d.claude.userSettings, gate:"W1", run: dr => C8.removeOwnedHooksLeg(d.claude.userSettings, {dryRun:dr, reason:"owned hooks removed (cross-scope)"})}
   if overrideClaude and !sameRealFile(d.legacy.userSettings, d.claude.userSettings):
-    add R4 {file:d.legacy.userSettings, gate:"W1", run: removeOwnedHooksLeg(..., reason:"owned hooks removed (legacy location)")}
+    add R4 {file:d.legacy.userSettings, gate:"W1", run: dr => C8.removeOwnedHooksLeg(d.legacy.userSettings, {dryRun:dr, reason:"owned hooks removed (legacy location)"})}
   if !ctx.hooksOnly:
-    add R6 {surface:"mcp", file:root/.mcp.json, run: C7.removeOwnedMcpJsonLeg(root, dr)}    // no gate (D-060)
+    add R6 {surface:"mcp", file:root/.mcp.json, run: dr => C7.removeOwnedMcpJsonLeg(root, dr)}    // no gate (D-060)
 
 if !ctx.hooksOnly and want("codex-cli"):
   add CX {harness:"codex-cli", file:d.codex.dir, run: dr => C9.maybeWireCodex({home, env, platform, node, projectRoot:root, harnessSel, dryRun:dr, dirs:d})}
@@ -38,14 +38,14 @@ if !ctx.hooksOnly and want("codex-cli"):
   // One step keeps Codex's never-throw-except-SafeWriteError wrapper intact.
 
 if !ctx.hooksOnly and want("opencode") and (harnessSel === "opencode" or detectsOpenCode(root)):
+  legacyOc = d.opencode.source !== "default" and !sameRealFile(d.legacy.opencodeJson, d.opencode.configJson) ? d.legacy.opencodeJson : null
   add W5 {harness:"opencode", surface:"retrieval", file:d.opencode.configJson, source:d.opencode.source,
           run: dr => [C10.writeOpencodeMcp({file:d.opencode.configJson, legacyFile: legacyOc, platform, home, node, harnessSelected: harnessSel==="opencode", dryRun:dr})]}
-  legacyOc = d.opencode.source !== "default" and !sameRealFile(d.legacy.opencodeJson, d.opencode.configJson) ? d.legacy.opencodeJson : null
-  if legacyOc: add R10 {file:legacyOc, gate:"W5", run: C10.removeOwnedOpencodeUserMcpLeg(legacyOc, dr)}
+  if legacyOc: add R10 {file:legacyOc, gate:"W5", run: dr => C10.removeOwnedOpencodeUserMcpLeg(legacyOc, dr)}
 
 if !ctx.hooksOnly:
   // R11+R12: project opencode.json, regardless of opencode detection (today's removeProjectFileMcp behaviour)
-  add R11 {harness:"opencode", surface:"mcp", file:root/opencode.json, run: C10.removeOwnedOpencodeProjectLegs(root, dr)}
+  add R11 {harness:"opencode", surface:"mcp", file:root/opencode.json, run: dr => C10.removeOwnedOpencodeProjectLegs(root, dr)}
 
 if want("claude-code"):
   add X1 {harness:"claude-code", surface:"git-exclude", gate:"W1", file:root,

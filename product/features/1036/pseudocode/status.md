@@ -17,13 +17,15 @@ function collect(ctx = {}) -> Info
     hooks["codex-cli"] uses dirs.codex.hooksJson
     mcpNode(dirs, root, platform)   // reads dirs.claude.claudeJson, dirs.codex.configToml
   configDirs = {claude:{claudeJson, userSettings, source}, opencode:{configJson, source}, codex:{hooksJson, configToml, source}, warnings:dirs.warnings}
-     // plus `value` per harness kept internal as `_values` for text rendering (not in JSON unless Q3 resolves otherwise)
+     // per-harness `value` stays on the internal `_dirs` (= ConfigDirs incl. `value`); configDirs JSON carries exactly the §6a field set, no `value`
   claudeMcp = project ? safe(() => C7.readClaudeMcpState(dirs.claude.claudeJson, root, platform), {status:"unreadable", file:dirs.claude.claudeJson, key:null})
                       : {status:"n/a", file:null, key:null}
   opencodeConfig = ocState(dirs.opencode.configJson)       // {status:"ok"|"absent"|"unreadable", file}
   staleLegacy = safe(() => findStale(dirs, root, platform), [])
   alternateProfiles = safe(() => findAlternates(dirs, root, platform), [])
   return {...existing, configDirs, claudeMcp, opencodeConfig, staleLegacy, alternateProfiles, _dirs: dirs}
+  // One internal name only: `_dirs`. `run()` already drops every `_`-prefixed key from --json output; add a test asserting
+  // JSON keys of configDirs.{claude,opencode,codex} equal the §6a sets and that `_dirs` / `value` never appear.
 
 function ocState(file)
   raw = readText(file); if raw === null: return {status:"absent", file}
@@ -62,11 +64,11 @@ function findAlternates(dirs, root, platform) -> {harness, file, key, var}[]
 ## renderText additions (FR-34/35/38, order after existing lines)
 
 ```
-src = (b, v) => b.source === "default" ? "default" : `${b.source}=${v}`
-L.push(`config claude-code mcp: ${cd.claude.claudeJson} (${src})`)
-L.push(`config claude-code user hooks: ${cd.claude.userSettings} (${src})`)
-L.push(`config codex-cli: ${cd.codex.hooksJson}, ${cd.codex.configToml} (${src})`)
-L.push(`config opencode mcp: ${cd.opencode.configJson} (${src})`)
+src = h => i._dirs[h].source === "default" ? "default" : `${i._dirs[h].source}=${i._dirs[h].value}`   // h ∈ claude|codex|opencode
+L.push(`config claude-code mcp: ${cd.claude.claudeJson} (${src("claude")})`)
+L.push(`config claude-code user hooks: ${cd.claude.userSettings} (${src("claude")})`)
+L.push(`config codex-cli: ${cd.codex.hooksJson}, ${cd.codex.configToml} (${src("codex")})`)
+L.push(`config opencode mcp: ${cd.opencode.configJson} (${src("opencode")})`)
 for w in cd.warnings: L.push("warning: " + w)
 L.push(claudeMcpLine(i.claudeMcp))      // n/a | wired (<file>) | MISSING projects["<key>"].mcpServers.unimatrix in <file>; run 'npx unimatrix init' | foreign entry at ... ; not managed by Unimatrix | unreadable (<file> is not valid JSON)
 if i.opencodeConfig.status === "unreadable": L.push(`opencode mcp: ${file} is not valid JSON; OpenCode is left without Unimatrix wiring until it is fixed`)

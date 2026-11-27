@@ -11,3 +11,9 @@ Unimatrix entries consulted: #5763, #5767, #5803 (briefing). ADR content taken f
 ## Knowledge Stewardship
 - Queried: mcp__unimatrix__context_briefing -- returned nan-023 ADR-001/005 (wire manifest, wire verb), lesson #5803 (dogfood tooling wrote tracked settings.json; informs scrubbedEnv/test isolation)
 - Deviations from established patterns: `updateFileSync` result gains additive `before` field (Q1); `ConfigDirs` gains per-harness `value` (Q3)
+
+## Gate 3a rework
+- merge-settings.md: `computeMerged` decides semantically (parsed deep-equal); non-canonical correct file -> `unchanged` (FR-16/D-022). Q6 resolved.
+- wire-plan.md: `legacyOc` assigned before W5; `Step.run(dryRun)` per §6; all `run` fields are `dr => ...` closures.
+- status.md: single internal `_dirs` (ConfigDirs incl. `value`); JSON excludes `_`-keys and `value`; test noted.
+- safe-write.md / OVERVIEW.md: `before` in return types.

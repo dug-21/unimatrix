@@ -41,7 +41,7 @@ status.collect(ctx) -> C1 + C7.readClaudeMcpState + read-only scans (no C3)
 
 - `ConfigDirs = {claude:{dir, claudeJson, userSettings, source}, opencode:{dir, configJson, source}, codex:{dir, hooksJson, configToml, source}, legacy:{userSettings, opencodeJson}, alternates:{harness, file, key, var}[], warnings:string[]}`; `source` ∈ `CLAUDE_CONFIG_DIR|OPENCODE_CONFIG_DIR|XDG_CONFIG_HOME|CODEX_HOME|default`. Each harness block additionally carries `value` (the env value used, or null) so renderers can print `<VAR>=<value>` (FR-34, FR-50) — see Open Question Q3.
 - `Mutate = (raw: string|null) => string|null` — sync, pure, `null` = no change.
-- `WriteResult = {action: "created"|"updated"|"unchanged", file, target}`.
+- `WriteResult = {action: "created"|"updated"|"unchanged", file, target, before}` (`before` = raw the decision used; Q1, accepted at Gate 3a).
 - `SafeWriteError extends Error {file, code}`; code ∈ `dangling-symlink|not-regular|outside-project|conflict|verify-failed|io`. No subclasses.
 - `WireLeg = {harness, surface, action, path, command?, entry?, reason?, warning?, source?}`. New actions: `skipped-dest-unwired`, `skipped-no-git`, `skipped-not-repo`, `skipped-tracked`, `skipped-git-error`, `appended-not-effective`.
 - `Step = {id, harness, surface, file, source, gate?, run: (dryRun) => WireLeg[]}`.
@@ -73,5 +73,5 @@ All new files < 250 lines; `trust.js` ~375, `codex-install.js` ~337 after change
 - **Q3** `ConfigDirs` per-harness `value` field (env value used) is needed to print `<VAR>=<value>` (FR-34, FR-50); not listed in §6. Additive.
 - **Q4** FR-05 keeps the D-085 `CODEX_HOME` warning text; FR-06 defines a generic text for all vars. Pseudocode keeps the legacy text for `CODEX_HOME` only.
 - **Q5** Symlink loop (S6) and non-regular target share code `not-regular`; spec only says "throws naming the path". Confirm vs `io`.
-- **Q6** W1 `unchanged` now means byte-equal (writer) rather than parsed deep-equal (old wire.js). Reformat-only hand edits now yield `updated` + rewrite.
+- **Q6** Resolved at Gate 3a: W1 decides semantically (parsed deep-equal); a correct non-canonical file is `unchanged`, never rewritten (FR-16).
 - **Q7** `install-store.writeRootMarker` return changes from path to `{file, action}`; tests adjusted.

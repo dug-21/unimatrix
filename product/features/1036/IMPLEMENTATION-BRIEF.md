@@ -45,7 +45,7 @@ Keep nan-024's wiring destinations (D-001, D-003) and harden them. `init` / `ini
 | C16 removed (`lib/atomic-write.js`) | hard | pseudocode/atomic-write-removal.md | test-plan/atomic-write-removal.md |
 | C17 test infrastructure (`test/helpers/*`, existing suites) | routine | pseudocode/test-infrastructure.md | test-plan/test-infrastructure.md |
 
-Component file names confirmed by Stage 3a (all 17 pseudocode + test-plan files exist at the listed paths). Stage 3a open items: git-exclude leg named `claude-code`/`git-exclude` per SPEC FR-40/46 (ARCH §6 says `git`/`exclude`; to be reconciled by architect); `updateFileSync` also returns `before`; `ConfigDirs` carries per-harness `value`. Tier comes from ARCHITECTURE §2.
+Component file names confirmed by Stage 3a (all 17 pseudocode + test-plan files exist at the listed paths). Stage 3a items, now in ARCH §3.3/§6/§6a: git-exclude leg is harness `claude-code`, surface `git-exclude` (SPEC FR-40/46); `updateFileSync` also returns `before`; `ConfigDirs` carries per-harness `value`. Tier comes from ARCHITECTURE §2.
 
 ### Cross-Cutting Artifacts (populated during Stage 3a)
 
@@ -56,7 +56,7 @@ Component file names confirmed by Stage 3a (all 17 pseudocode + test-plan files 
 
 ## Resolved Decisions
 
-ADRs: ADR-001 (#5937), ADR-002 (#5960), ADR-003 (#5962), ADR-004 (#5959), ADR-005 (#5955), ADR-006 (#5943), ADR-007 (#5961). nan-024 amendments: ADR-001 (#5945), ADR-003 (#5956), ADR-006 (#5947), ADR-004 (#5948).
+ADRs: ADR-001 (#5937), ADR-002 (#5960), ADR-003 (#5962), ADR-004 (#5959), ADR-005 (#5955), ADR-006 (#5963), ADR-007 (#5961). nan-024 amendments: ADR-001 (#5945), ADR-003 (#5956), ADR-006 (#5947), ADR-004 (#5948).
 
 | Decision | Resolution | Source | ADR (Unimatrix ID) |
 |----------|------------|--------|--------------------|
@@ -65,7 +65,7 @@ ADRs: ADR-001 (#5937), ADR-002 (#5960), ADR-003 (#5962), ADR-004 (#5959), ADR-00
 | One hardened synchronous writer | `lib/safe-write.js` API over a core in `trust.js`: realpath-follow, `wx` random temp, fsync, sha256 CAS, fixpoint verify, win32 retry, 3 attempts then exit 1; `enforceMode` (D-025); `containWithin` (D-026); `atomic-write.js` deleted | D-010, D-013, D-020, D-025, D-026 | ADR-003 (#5962) |
 | Writer core in `trust.js` | Single core, no second copy; symlinked `trust.json` exits 1 with canonical message | D-021 | ADR-005 (#5955) |
 | Wiring plan table | `lib/wire-plan.js` W/R/X steps identical in both modes; write-before-remove; legacy removal only `~/.claude/settings.json` hooks and `~/.config/opencode` MCP; default `~/.claude.json` kept; same-real-file rule | D-007, D-015, D-019, D-022, D-028, D-029 | ADR-004 (#5959) |
-| Git-ignore ensure | Per-repo exclude file via `git rev-parse --git-path info/exclude`; check-ignore first; branches reported; append via writer; re-check | D-011 | ADR-006 (#5943) |
+| Git-ignore ensure | Per-repo exclude file via `git rev-parse --git-path info/exclude`; check-ignore first; branches reported; append via writer; re-check | D-011 | ADR-006 (#5963) |
 | status and init reporting | Resolved files and sources; local-scope check on resolved `.claude.json` only; `staleLegacy`; `alternateProfiles` incl. default `~/.claude.json`; `opencodeConfig` unreadable; init `[VAR]` and D-013 note | D-013, D-019, D-024, D-028 | ADR-007 (#5961) |
 
 ### Decision Traceability (every D-entry)
@@ -82,7 +82,7 @@ ADRs: ADR-001 (#5937), ADR-002 (#5960), ADR-003 (#5962), ADR-004 (#5959), ADR-00
 | D-008 | Spec defines AC-8 edge cases | SPEC FR-40..FR-46; C5 |
 | D-009 | context_cycle topic `1036-harness-wiring` | Tracking label only |
 | D-010 | Every file Unimatrix writes uses the one hardened writer; weak path removed | C3, C2; ADR-003 (#5962) |
-| D-011 | Ignore via `git rev-parse --git-path info/exclude`; skip and report outside git; supersedes D-004 | C5; ADR-006 (#5943); AC-8 |
+| D-011 | Ignore via `git rev-parse --git-path info/exclude`; skip and report outside git; supersedes D-004 | C5; ADR-006 (#5963); AC-8 |
 | D-012 | File-level Codex/Claude checks accepted; follow-up #1053 | Test plan; skip messages name #1053 |
 | D-013 | Lost-update window accepted; synchronous read-modify-rename; init notice; status backstop | FR-21, FR-52, FR-35; ADR-003 (#5962) |
 | D-014 | Pre-nan-024 `.opencode/plugins/` shim and package.json dep out of scope | NOT in Scope; C10 |
@@ -134,14 +134,15 @@ All under `packages/unimatrix/`.
 
 ```
 ConfigDirs = {
-  claude:   {dir, claudeJson, userSettings, source},
-  opencode: {dir, configJson, source},
-  codex:    {dir, hooksJson, configToml, source},
+  claude:   {dir, claudeJson, userSettings, source, value},
+  opencode: {dir, configJson, source, value},
+  codex:    {dir, hooksJson, configToml, source, value},
   legacy:   {userSettings, opencodeJson},                       // removal candidates (D-019, D-028)
   alternates: [{harness, file, key, var}],                      // status-only; incl. default ~/.claude.json
   warnings: string[]
 }
 source in "CLAUDE_CONFIG_DIR" | "OPENCODE_CONFIG_DIR" | "XDG_CONFIG_HOME" | "CODEX_HOME" | "default"
+value  = raw env value used, null when source is "default"; for <VAR>=<value> output (FR-34, FR-50); not in status --json
 
 SafeWriteError extends Error {file, code}   // single class, no subclasses
 code in "dangling-symlink" | "not-regular" | "outside-project" | "conflict" | "verify-failed" | "io"
@@ -170,7 +171,7 @@ codexHome(env, home) -> {dir, warning?}                          // kept signatu
 updateFileSync(file, mutate:(raw|null)=>string|null,
   opts?:{dryRun, newMode=0o600, enforceMode, containWithin, verify=true, attempts=3,
          retry:{count,delayMs}, platform, fault})
-  -> {action:"created"|"updated"|"unchanged", file, target}
+  -> {action:"created"|"updated"|"unchanged", file, target, before}   // before: raw the deciding mutate call saw
 writeFileSync(file, data, opts?) -> {action, file, target}
 tempPath(dest) -> "<dir>/.<base>.tmp-<16hex>"
 renameWithRetry(from, to, platform, retry?) -> void
@@ -178,7 +179,7 @@ hardenedWriteSync(file, data, opts)                              // trust.js cor
 
 buildWirePlan({root, home, platform, env, node, dirs, harnessSel, writeMcp, hooksOnly, dryRun}) -> Step[]
 runWirePlan(steps, {dryRun}) -> {manifest: WireLeg[], warnings: string[]}
-ensureSettingsLocalIgnored(root, {dryRun, run?}) -> WireLeg      // harness "git", surface "exclude"
+ensureSettingsLocalIgnored(root, {dryRun, run?}) -> WireLeg      // harness "claude-code", surface "git-exclude"
 isLegacyOpencodePlugin(el) -> boolean
 writeClaudeMcp({file, projectRoot, entry, platform, dryRun}) -> {action, file, key, warning?, removedUserScope}
 readClaudeMcpState(file, projectRoot, platform) -> {status, file, key}

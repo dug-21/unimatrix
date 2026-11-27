@@ -11,7 +11,7 @@ Return type: `{action, file, target, before}` (`before` additive, Q1).
 ## updateFileSync
 
 ```
-function updateFileSync(file, mutate, opts = {}) -> {action, file, target}
+function updateFileSync(file, mutate, opts = {}) -> {action, file, target, before}
   o = {dryRun:false, newMode:0o600, enforceMode:undefined, containWithin:undefined,
        verify:true, attempts:3, retry:undefined, platform:process.platform, fault:noop, ...opts}
   lastCode = "conflict"
@@ -54,7 +54,7 @@ Leg detail (skip reasons, key, commands, removedUserScope) must come from the ra
 ## writeFileSync
 
 ```
-function writeFileSync(file, data, opts={}) -> {action, file, target}
+function writeFileSync(file, data, opts={}) -> {action, file, target, before}
   // whole-file replace; content-equality short-circuit; byte-equal verify
   bytes = Buffer.isBuffer(data) ? data : Buffer.from(data, "utf8")
   mutate = raw => (raw !== null and Buffer.from(raw,"utf8").equals(bytes)) ? null : bytes.toString(binary-safe)
