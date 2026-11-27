@@ -43,6 +43,8 @@ If any gate report is missing or shows FAIL, **stop and report** — delivery is
 
 Spawn `uni-security-reviewer` as a subagent for fresh-context review:
 
+> **Reviewers are always freshly spawned (PR review).** Every PR review — including a re-review after rework — spawns a NEW `uni-security-reviewer` / `uni-zero-reviewer`. Never resume a prior reviewer via `SendMessage`, even one from this same session. The new reviewer MAY read prior review comments on the PR (`gh pr view --comments`) to check whether earlier findings were addressed; the spawn prompt states only that prior reviews exist, never what they concluded.
+
 ```
 Agent(uni-security-reviewer, "
   Your agent ID: {feature-id}-security-reviewer

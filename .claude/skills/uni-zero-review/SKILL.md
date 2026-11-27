@@ -59,7 +59,7 @@ Task(subagent_type: "uni-zero-reviewer",
 
 ## Re-Review Convention
 
-For a repeat review at the same gate, the reviewer posts a new comment (comments are append-only history). Note in the spawn prompt only that a prior review comment exists — not what it said.
+For a repeat review at the same gate, always spawn a NEW reviewer — never resume a prior one via `SendMessage`. The reviewer posts a new comment (comments are append-only history). Note in the spawn prompt only that a prior review comment exists — not what it said.
 
 ---
 

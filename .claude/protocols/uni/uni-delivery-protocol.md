@@ -517,6 +517,7 @@ Task(subagent_type: "uni-zero-reviewer",
 ```
 
 **Product Review Rules:**
+- **Reviewers are always freshly spawned (PR review).** Every PR review — including a re-review after rework — spawns a NEW `uni-security-reviewer` / `uni-zero-reviewer`. Never resume a prior reviewer via `SendMessage`, even one from this same session. The new reviewer MAY read prior review comments on the PR (`gh pr view --comments`) to check whether earlier findings were addressed; the spawn prompt states only that prior reviews exist, never what they concluded.
 - The spawn prompt carries ONLY agent ID, gate, IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
 - The reviewer posts an advisory comment on the PR (pr-review gate target) with recommended actions. The Delivery Leader returns stance + comment URL unaltered and NEVER acts on or gates on it. The primary may use it for its merge recommendation. Advisory — does not block delivery.
 - Reviewer failure → note "product review failed" in the return and proceed.

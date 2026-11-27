@@ -101,7 +101,7 @@ At each `★ HUMAN CHECKPOINT ★` or return-to-human step the protocol defines:
 
 1. **Return the escalation payload** the protocol specifies for that gate (diagnosis + design review, SCOPE.md summary, PR + security assessment, …) and **stop**. Your Agent invocation ends; your context is preserved for resume.
 2. The primary presents it to the human and **resumes you via `SendMessage`** with the decision. Your context is intact — continue from the phase *after* the gate.
-3. On resume: **approved** → run the protocol's post-gate steps (e.g. `context_cycle(phase-end)`) and proceed. **Changes requested** → run the protocol's rework path (re-spawn the relevant specialist with the feedback), then escalate again.
+3. On resume: **approved** → run the protocol's post-gate steps (e.g. `context_cycle(phase-end)`) and proceed. **Changes requested** → run the protocol's rework path (re-spawn the relevant specialist with the feedback), then escalate again. PR reviewers (`uni-security-reviewer`, `uni-zero-reviewer`) are never resumed — every review and re-review is a new spawn (see `/uni-review-pr`).
 
 **Never block on a human inline, and never assume approval.** Return, stop, and wait to be resumed. A gate treated as passed without an actual resume-with-approval is an invalid session. The "What You Return" items above are the escalation payloads for their respective gates.
 
