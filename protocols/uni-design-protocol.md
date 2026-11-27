@@ -8,7 +8,20 @@ Triggers on: specification, architecture, design, research, scope, risk strategy
 
 Session 1 produces three sacred source-of-truth documents, a scope risk assessment, a vision alignment report, an implementation brief, and an acceptance map. All artifacts land in `product/features/{feature-id}/` as untracked files — no git operations occur during design. Session 2 (Delivery) creates the feature branch, commits the design artifacts, and continues from there.
 
-**You are the Design Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work.
+**This protocol is executed by a dedicated `uni-scrum-master` subagent — the Design Leader — not by the primary agent.**
+
+**Primary agent** (runs as `/uni-zero-design`): you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the high-level intent (or existing SCOPE.md path) and session type `design`, recording its agent ID; (2) triage each escalation it returns under `.claude/protocols/uni/uni-primary-authority.md` — decide and record routine items in `DECISIONS.md`, take H-items to the human — and resume the SM via `SendMessage` (to that agent ID) with the decision — never re-spawn; (3) present the final artifact set to the human. Kickoff spawn:
+
+```
+Task(subagent_type: "uni-scrum-master",
+  prompt: "You are the Design Leader. Session type: design.
+    Execute .claude/protocols/uni/uni-design-protocol.md end to end.
+    High-level intent: {human's description}   (or: SCOPE.md path: {path})
+    Escalate at each human gate per the Escalation Handshake and stop;
+    I will resume you via SendMessage with the human's decision.")
+```
+
+**Design Leader (the spawned uni-scrum-master, referred to as "you" below)**: read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and the Escalation Handshake. You orchestrate — you NEVER generate content. Spawn specialist agents for all work. You cannot talk to the human — every checkpoint below is an escalation-and-resume, not a live prompt.
 
 ```
 Design Leader (you)                                  Design Agents
@@ -62,7 +75,7 @@ context_cycle(
   type: "start",
   topic: "{feature-id}",
   next_phase: "scope",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 
@@ -121,13 +134,13 @@ Task(
 )
 ```
 
-Then the Design Leader presents SCOPE.md to the human together with the product review's stance and location. **Do not proceed to Phase 1b until the human approves SCOPE.md.**
+Then the Design Leader **returns a SCOPE.md escalation to the primary agent and stops** (Escalation Handshake — the primary presents SCOPE.md together with the product review's stance and location to the human, and resumes you via `SendMessage` with the decision). **Do not proceed to Phase 1b until you are resumed with the human's approval of SCOPE.md.**
 
-**On approval — issue body sync**: if a feature issue exists, the Design Leader updates its body to mirror the approved SCOPE.md (summary, scope/goals, non-goals, dependencies, open questions, scope doc link) via `gh issue edit {n} --body`. The issue body is the single current picture; planning-era content is superseded.
+**On resume with approval — issue body sync**: if a feature issue exists, the Design Leader updates its body to mirror the approved SCOPE.md (summary, scope/goals, non-goals, dependencies, open questions, scope doc link) via `gh issue edit {n} --body`. The issue body is the single current picture; planning-era content is superseded.
 
 **Product Review Rules** (apply at every `uni-zero-reviewer` spawn):
 - The spawn prompt carries ONLY agent ID, gate, feature/issue IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
-- The review is advisory input to the human gate. The Design Leader relays the stance and location verbatim and NEVER parses, acts on, or gates on it.
+- The review is advisory input to the human gate. The Design Leader returns the stance and location unaltered in its escalation and NEVER acts on or gates on it. The primary may use it to form its recommendation; the human decides the gate.
 - At `scope-review` and `design-review`, the review includes a **capability-coverage verdict** — whole vs. visible-partial against the target capability's `done_when` (pulled from the corpus; design-review is authorized to verify against code) **— including whether the acceptance test mapped to each `done_when` drives the real assembled path, not a proxy / tautology / injected-dependency (a passing proxy yields a proven-but-holed cap: #917 / #918 / #930)**. The reviewer reads but never mutates the map; any status implication is relayed to the human for uni-zero to apply.
 
 ### Phase 1b: Scope Risk Assessment
@@ -162,7 +175,7 @@ context_cycle(
   phase: "scope",
   outcome: "SCOPE.md approved. Scope risk assessment complete.",
   next_phase: "design",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 
@@ -174,14 +187,15 @@ Phase 2 has five sequential steps: 2a (architect + spec parallel) → 2a+ (risk 
 
 The Design Leader spawns two specialists in parallel:
 
-**uni-architect → Architecture** (`architecture/ARCHITECTURE.md` + `ADR-NNN-{name}.md`)
+**uni-architect → Architecture** (`architecture/ARCHITECTURE.md` + `architecture/ADR-INDEX.md`; ADR content in Unimatrix only)
 
 - High-level system design, component breakdown and boundaries
 - How components interact (interfaces, contracts, data flow)
 - Technology decisions with rationale
 - Integration points and dependencies
-- ADRs as individual files in `architecture/`
-- **Store each ADR in Unimatrix** immediately after writing the file — `context_store(category: "decision", topic: "{feature-id}", feature_cycle: "{feature-id}", title: "{ADR title}", tags: ["adr", "{feature-id}"])` — so delivery agents can retrieve decisions via search without reading every ADR file
+- ADRs stored **only in Unimatrix**, with no ADR files. `ADR-INDEX.md` lists each ADR's Unimatrix ID and one-line decision, and explains how to retrieve them.
+- **Store each ADR in Unimatrix** — `context_store(category: "decision", topic: "{feature-id}", feature_cycle: "{feature-id}", title: "{ADR title}", tags: ["adr", "{feature-id}"])` — then add its row to `ADR-INDEX.md`
+- **Modularity accounting (capability PL-10, standard #693)** — identify any source file this design will push over the **1,000 code-line cap** (tests excluded), and any already-over-cap file the feature modifies. Account for each in ARCHITECTURE.md: new logic goes in a new focused module with thin wiring at the host call site; if a host file must itself be decomposed, schedule it as a tracked `refactor(...)` feature with a test plan (reference or open its `tech-debt, goal:platform` issue) — never an ad-hoc mid-delivery split.
 
 **uni-specification → Specification** (`specification/SPECIFICATION.md`)
 
@@ -207,7 +221,13 @@ Task(subagent_type: "uni-architect", prompt: "Your agent ID: {id}-agent-1-archit
     internal seam. Address SR-XX risks (incl. Path-Divergence) in your decisions; an
     entry point that accepts input it will not honor must fail loud, never silently no-op.
 
-    After writing each ADR file, store it in Unimatrix:
+    Apply the modularity standard (#693, capability PL-10): flag any file this
+    design pushes over the 1,000 code-line cap (tests excluded), or any over-cap
+    file you modify, and account for it in ARCHITECTURE.md — new-module wiring, or
+    a scheduled decomposition with a test plan. Never plan an ad-hoc mid-delivery
+    refactor of a monolith.
+
+    Store each ADR in Unimatrix only (no ADR files), then add its row to architecture/ADR-INDEX.md:
     context_store(category: 'decision', topic: '{feature-id}', feature_cycle: '{feature-id}',
       title: '{ADR title}', tags: ['adr', '{feature-id}'], content: '{full ADR content}')
     ...")
@@ -246,7 +266,7 @@ Task(
     Read these artifacts for context:
     - SCOPE.md: product/features/{id}/SCOPE.md
     - Architecture: product/features/{id}/architecture/ARCHITECTURE.md
-    - ADRs: {list ADR file paths from architect's return}
+    - ADRs: product/features/{id}/architecture/ADR-INDEX.md (context_get the IDs it lists)
     - Specification: product/features/{id}/specification/SPECIFICATION.md
     - Scope Risk Assessment: product/features/{id}/SCOPE-RISK-ASSESSMENT.md
 
@@ -271,7 +291,7 @@ context_cycle(
   phase: "design",
   outcome: "Architecture, specification, and risk strategy complete.",
   next_phase: "design-review",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 
@@ -313,11 +333,11 @@ Task(
     - product/features/{id}/SCOPE-RISK-ASSESSMENT.md
     - product/features/{id}/specification/SPECIFICATION.md
     - product/features/{id}/architecture/ARCHITECTURE.md
-    - product/features/{id}/architecture/ADR-*.md (all ADR files)
+    - product/features/{id}/architecture/ADR-INDEX.md (context_get every ADR it lists)
     - product/features/{id}/RISK-TEST-STRATEGY.md
     - product/features/{id}/ALIGNMENT-REPORT.md
 
-    ADR file paths from architect: {list from architect's return}
+    ADR Unimatrix IDs from architect: {list from architect's return}
     Vision variances: {from vision guardian's return}
 
     Produce: IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md, GH Issue.
@@ -345,7 +365,7 @@ Task(
     - product/features/{id}/SCOPE.md
     - product/features/{id}/SCOPE-RISK-ASSESSMENT.md
     - product/features/{id}/architecture/ARCHITECTURE.md
-    - product/features/{id}/architecture/ADR-*.md
+    - product/features/{id}/architecture/ADR-INDEX.md (context_get every ADR it lists)
     - product/features/{id}/specification/SPECIFICATION.md
     - product/features/{id}/RISK-TEST-STRATEGY.md
     - product/features/{id}/ALIGNMENT-REPORT.md
@@ -364,11 +384,11 @@ context_cycle(
   phase: "design-review",
   outcome: "Vision aligned. Synthesis complete.",
   next_phase: "spec",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 
-Then returns to the human:
+Then **returns this escalation to the primary agent** (which presents it to the human):
 
 ```
 SESSION 1 COMPLETE — Design artifacts ready for review.
@@ -393,7 +413,7 @@ Open questions: {list or "none"}
 Human action required: Review design artifacts. Then start Session 2 to deliver.
 ```
 
-**Handling human-requested changes**: If the human requests changes after reviewing artifacts:
+**Handling human-requested changes** (delivered when the primary resumes you with the human's feedback): If the human requests changes after reviewing artifacts:
 - **Technical changes** (architecture decisions, requirements, risk coverage) → update the relevant source document(s) first, then re-run the synthesizer to regenerate the Implementation Brief and Acceptance Map from the updated sources.
 - **Coordination changes only** (wave ordering, component naming, delivery notes) → update the Implementation Brief directly.
 
@@ -417,7 +437,7 @@ Do NOT paste full documents into agent prompts. Agents read files themselves.
 
 ```
 DESIGN LEADER (you):
-  Init:       context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "{feature-id}-design-leader")
+  Init:       context_cycle(type: "start", topic: "{feature-id}", next_phase: "scope", agent_id: "uni-scrum-master")
   Phase 1:    Task(uni-researcher) — scope exploration with human
               Task(uni-zero-reviewer, GATE: scope-review) — advisory review (comment on existing issue; file if none)
               ...on approval: sync existing issue body to approved SCOPE.md...
@@ -450,7 +470,7 @@ context_cycle(
   phase: "design-review",
   outcome: "Vision aligned. Synthesis complete.",
   next_phase: "spec",
-  agent_id: "{feature-id}-design-leader"
+  agent_id: "uni-scrum-master"
 )
 ```
 

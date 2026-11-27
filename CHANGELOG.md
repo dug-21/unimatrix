@@ -3,7 +3,7 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.12.0] - 2026-11-27
 
 ### Breaking changes (nan-024, #1023)
 - **Hooks run through a user-level shim**: the Rust `unimatrix hook` client is retired from shipped wiring. `init` writes `.claude/settings.local.json` (not committed) hooks that call `~/.unimatrix/bin/unimatrix` by absolute path, routed to the Node hook client. `.codex` hooks go to `$CODEX_HOME/hooks.json`. Re-run `npx unimatrix init` on every machine to migrate.
@@ -12,6 +12,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 - **Headless contract**: any headless variable (`UNIMATRIX_BUNDLE`, `UNIMATRIX_REMOTE_*`) now requires `UNIMATRIX_PROJECT_ROOT`; without it hooks and the MCP bridge exit 0 silently.
 - **Platforms**: macOS and Windows are cloud-only; PowerShell is unsupported as a hook shell.
 - `.gemini/settings.json` reference config now uses the absolute shim form.
+
+### Features
+- per-harness idempotent wiring + non-destructive definition install (C14 parity) (#990)
+
+### Fixes
+- source ONNX Runtime from hash-pinned PyPI wheel (#1031) (#1049)
+- await UDS transcript delta in parity-layer2-uds test (#1032) (#1043)
+- resolve 5 pre-existing clippy lints in unimatrix-server (#1027) (#1045)
+- stdio server no longer aborts on shutdown when stderr is closed (#1028) (#1048)
+- audit event_id allocator reconciles counter against MAX(event_id) (#1003)
+- bridge EOF drain + deterministic TLS-fail exit (#1021), https-only env URLs (F1) (#1010)
+- exclude quarantined entries from graph reads and filtered lookup (#1009) (#1018)
+- point Claude MCP at repo-built cargo binary (#1005)
+- run top-level + opencode-plugin JS suites in CI with orphan-suite guard (#995) (#1001)
+- restore JS dogfood hook client (switchover promote)
+- ORT builder-stage link (#975) + skip root-perm fail-loud tests (#978) (#980)
+- membership-filter IdMap at load to detect graph-under-counts-DB after DB copy (#972) (#974)
+- id-prefix findings files to clear Claude Code's subagent report-file block
 
 ## [0.11.3] - 2026-07-10
 

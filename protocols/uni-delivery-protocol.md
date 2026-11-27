@@ -28,7 +28,20 @@ Phase 4: Delivery
 
 **Critical sequence**: Stage 3a produces pseudocode + test plans → Delivery Leader updates the Component Map → Gate 3a validates designs → ONLY THEN does Stage 3b begin. Stage 3b agents each receive their specific component's validated pseudocode and test plan.
 
-**You are the Delivery Leader.** Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries. You orchestrate — you NEVER generate content. Spawn specialist agents for all work. Run all stages autonomously. Human re-enters only on scope/feasibility failures or when rework iterations are exhausted.
+**This protocol is executed by a dedicated `uni-scrum-master` subagent — the Delivery Leader — not by the primary agent.**
+
+**Primary agent** (runs as `/uni-zero-delivery`): you do NOT run this protocol. You (1) spawn `uni-scrum-master` with the IMPLEMENTATION-BRIEF.md path (or GH Issue number) and session type `delivery`, recording its agent ID; (2) triage each escalation it returns under `.claude/protocols/uni/uni-primary-authority.md` — decide and record routine items in `DECISIONS.md`, take H-items to the human — and resume the SM via `SendMessage` (to that agent ID) with the decision — never re-spawn; (3) present the final PR + assessment to the human. Delivery is autonomous, so the SM escalates only at the final PR/merge gate and on scope/feasibility failures. Kickoff spawn:
+
+```
+Task(subagent_type: "uni-scrum-master",
+  prompt: "You are the Delivery Leader. Session type: delivery.
+    Execute .claude/protocols/uni/uni-delivery-protocol.md end to end.
+    Implementation brief: {IMPLEMENTATION-BRIEF.md path or GH Issue number}
+    Escalate at the PR/merge gate (and any scope/feasibility failure) per the
+    Escalation Handshake and stop; I will resume you via SendMessage.")
+```
+
+**Delivery Leader (the spawned uni-scrum-master, referred to as "you" below)**: read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and the Escalation Handshake. You orchestrate — you NEVER generate content. Spawn specialist agents for all work. Run all stages autonomously. You cannot talk to the human — the human re-enters (via the primary resuming you) only at the PR/merge gate, on scope/feasibility failures, or when rework iterations are exhausted.
 
 ### Concurrency Rules
 
@@ -69,7 +82,7 @@ The Delivery Leader:
      type: "start",
      topic: "{feature-id}",
      next_phase: "spec",
-     agent_id: "{feature-id}-delivery-leader"
+     agent_id: "uni-scrum-master"
    )
    ```
    > **Resuming an interrupted session**: On re-entering a broken or resumed session, the leader's FIRST action is to re-issue `context_cycle(type:"start", topic:"{feature-id}")` (idempotent server-side — `AlreadyMatches`; recreates the client tracker).
@@ -90,7 +103,7 @@ Task(subagent_type: "uni-pseudocode",
     Before starting, search Unimatrix for relevant patterns and this feature's ADRs:
     - context_search(query: '{feature area} patterns conventions', category: 'pattern')
     - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
-    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
+    Also read product/features/{id}/architecture/ADR-INDEX.md and context_get the ADRs it lists.
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md
@@ -115,7 +128,7 @@ Task(subagent_type: "uni-tester",
     Before starting, search Unimatrix for this feature's ADRs and relevant test patterns:
     - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
     - context_search(query: '{feature area} testing patterns edge cases')
-    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
+    Also read product/features/{id}/architecture/ADR-INDEX.md and context_get the ADRs it lists.
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md
@@ -138,7 +151,7 @@ Task(subagent_type: "uni-tester",
 Wait for both agents to complete.
 
 ```
-context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", agent_id: "{feature-id}-delivery-leader")
+context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", agent_id: "uni-scrum-master")
 ```
 
 ### Component Map Update (MANDATORY — between Stage 3a and Gate 3a)
@@ -148,10 +161,10 @@ After Stage 3a agents return, the Delivery Leader MUST update the IMPLEMENTATION
 1. Collect component lists and file paths from both agents' returns
 2. Update the **Component Map** table in `product/features/{id}/IMPLEMENTATION-BRIEF.md`:
    ```
-   | Component | Pseudocode | Test Plan |
-   |-----------|-----------|-----------|
-   | {component-1} | pseudocode/{component-1}.md | test-plan/{component-1}.md |
-   | {component-2} | pseudocode/{component-2}.md | test-plan/{component-2}.md |
+   | Component | Tier | Pseudocode | Test Plan |
+   |-----------|------|-----------|-----------|
+   | {component-1} | hard | pseudocode/{component-1}.md | test-plan/{component-1}.md |
+   | {component-2} | routine | pseudocode/{component-2}.md | test-plan/{component-2}.md |
    ```
 3. Update the **Cross-Cutting Artifacts** section with actual paths:
    ```
@@ -196,7 +209,7 @@ Task(subagent_type: "uni-validator",
 
 **Gate results:**
 - **PASS** →
-  1. `context_cycle(type: "phase-end", phase: "spec-review", next_phase: "develop", agent_id: "{feature-id}-delivery-leader")`
+  1. `context_cycle(type: "phase-end", phase: "spec-review", next_phase: "develop", agent_id: "uni-scrum-master")`
   2. Commit pseudocode + test plans + updated brief (`pseudocode: component design + test plans (#{issue})`), then proceed to Stage 3b
 - **REWORKABLE FAIL** → Loop back to Stage 3a agents (max 2 iterations). Include failure details in re-spawn prompt.
 - **SCOPE FAIL** → Session stops. Return to human with recommendation.
@@ -217,6 +230,15 @@ Each component's target files are listed in the IMPLEMENTATION-BRIEF Component M
 |------------------|-------|
 | Rust source (`crates/**/*.rs`) | `uni-rust-dev` |
 | JS/TS edge client + Node tooling (`packages/unimatrix/**/*.{js,mjs,cjs,ts}`) | `uni-js-dev` |
+
+**Model by tier.** Each agent's definition sets its default model/effort, and you use that default unless the table below overrides it:
+
+| Agent | Tier `hard` | Tier `routine` |
+|-------|-------------|----------------|
+| `uni-rust-dev` | definition default (Opus, low) | definition default (Opus, low). Rust never downgrades. |
+| `uni-js-dev` | definition default (Opus, low) | spawn with `model: "haiku"`, `effort: "low"` |
+
+Tier comes from the Component Map, which takes it from ARCHITECTURE.md. A missing tier means `hard`. Never mark a component `routine` yourself; only the architect assigns tiers.
 
 A single wave commonly mixes both (e.g., a server-side `.rs` component and a hook-client `.js` component): spawn the matching agent type per component in the **same** message. A well-formed component is single-language (one-component-one-concern); if a component genuinely spans both `crates/` and `packages/`, that is a Stage 3a split defect — flag it rather than routing one agent across both.
 
@@ -244,7 +266,7 @@ Task(subagent_type: "uni-rust-dev",      ← Rust component (crates/**/*.rs)
     Before implementing, search Unimatrix for relevant patterns and this feature's ADRs:
     - context_search(query: '{component area} implementation patterns', category: 'pattern')
     - context_search(query: '{feature-id} architectural decisions', category: 'decision', topic: '{feature-id}')
-    Fall back to reading ADR files in product/features/{id}/architecture/ if results are insufficient.
+    Also read product/features/{id}/architecture/ADR-INDEX.md and context_get the ADRs it lists.
 
     Read these files before starting:
     - product/features/{id}/IMPLEMENTATION-BRIEF.md
@@ -271,6 +293,7 @@ Task(subagent_type: "uni-js-dev",        ← JS component (packages/unimatrix/**
 ```
 
 2. **Wait for all agents in the wave to complete.**
+2a. **Verify each agent's report on return (MANDATORY, per-agent).** As each Stage 3b agent returns, confirm its `product/features/{id}/agents/{agent-id}-report.md` exists and includes the required Report + Knowledge Stewardship blocks. If a report is missing or incomplete, resume that one agent via `SendMessage` to produce it **now** — before committing the wave and before Gate 3b. Catching the gap at return costs one targeted resume; letting it reach Gate 3b turns it into a full rework loop (lesson from vnc-049).
 3. **Commit the wave**: `git add -p && git commit -m "impl: wave {N} — {component list} (#{issue})"`
 4. **Spawn the next wave**, which now builds on the committed state.
 
@@ -296,6 +319,7 @@ Task(subagent_type: "uni-validator",
     - Do test cases match component test plans?
     - Do test cases cover risks from the Risk-Based Test Strategy?
     - Does code compile? Are there stubs or placeholders?
+    - Modularity (capability PL-10 / #693) — NON-BLOCKING: for each production file changed vs the base branch, is its code-line count (tests excluded) <= 1,000 OR no higher than base? A NEW module over cap, or an over-cap file that GREW, is a WARN, never a blocking FAIL on its own.
 
     Source documents:
     - product/features/{id}/architecture/ARCHITECTURE.md
@@ -310,9 +334,11 @@ Task(subagent_type: "uni-validator",
 
 **Gate results:**
 - **PASS** →
-  1. `context_cycle(type: "phase-end", phase: "develop", next_phase: "test", agent_id: "{feature-id}-delivery-leader")`
+  1. `context_cycle(type: "phase-end", phase: "develop", next_phase: "test", agent_id: "uni-scrum-master")`
   2. Commit all implementation code (`impl: Stage 3b complete (#{issue})`), then proceed to Stage 3c
 - **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gate 3a
+
+**Modularity WARN handling (non-blocking, capability PL-10 / #693):** On a Gate 3b modularity WARN, the Delivery Leader — before committing PASS — files or comments a `refactor(...)` issue for each flagged file (`tech-debt, goal:platform`, parent #693). If the growth was already accounted for in ARCHITECTURE.md (design-time), reference that plan instead. The WARN converts silent monolith growth into tracked debt; it does not block the gate.
 
 ---
 
@@ -390,7 +416,7 @@ Task(subagent_type: "uni-validator",
 
 **Gate results:**
 - **PASS** →
-  1. `context_cycle(type: "phase-end", phase: "test", next_phase: "pr-review", agent_id: "{feature-id}-delivery-leader")`
+  1. `context_cycle(type: "phase-end", phase: "test", next_phase: "pr-review", agent_id: "uni-scrum-master")`
   2. Proceed to Phase 4
 - **REWORKABLE FAIL** / **SCOPE FAIL** → Same as Gates 3a/3b.
 
@@ -491,11 +517,12 @@ Task(subagent_type: "uni-zero-reviewer",
 ```
 
 **Product Review Rules:**
+- **Reviewers are always freshly spawned (PR review).** Every PR review — including a re-review after rework — spawns a NEW `uni-security-reviewer` / `uni-zero-reviewer`. Never resume a prior reviewer via `SendMessage`, even one from this same session. The new reviewer MAY read prior review comments on the PR (`gh pr view --comments`) to check whether earlier findings were addressed; the spawn prompt states only that prior reviews exist, never what they concluded.
 - The spawn prompt carries ONLY agent ID, gate, IDs, and artifact paths — never summaries, conclusions, or framing from this session. The fresh, disconnected context is the point.
-- The reviewer posts an advisory comment on the PR (pr-review gate target) with recommended actions. The Delivery Leader relays stance + comment URL verbatim in the return and NEVER parses, acts on, or gates on it. Advisory — does not block delivery.
+- The reviewer posts an advisory comment on the PR (pr-review gate target) with recommended actions. The Delivery Leader returns stance + comment URL unaltered and NEVER acts on or gates on it. The primary may use it for its merge recommendation. Advisory — does not block delivery.
 - Reviewer failure → note "product review failed" in the return and proceed.
 
-**Return format:**
+**Escalation payload** — return this to the primary agent and stop (the primary presents it to the human and resumes you via `SendMessage` once the human decides):
 ```
 SESSION 2 COMPLETE — Feature delivered.
 
@@ -513,14 +540,15 @@ GH Issue: {URL} (updated)
 Human action required: {Approve and merge | Address blocking items}.
 ```
 
-After returning to the human, **KEEP the pr-review phase OPEN. Do NOT stop the cycle yet.** The human
-merge gate is unchanged — the merge/rework activity must be attributed to the still-open cycle.
+After returning this escalation to the primary, **KEEP the pr-review phase OPEN. Do NOT stop the cycle yet.**
+The human merge gate is unchanged — the merge/rework activity must be attributed to the still-open cycle.
+You will be resumed via `SendMessage` once the human acts.
 
-**ONCE THE HUMAN MERGES** (strict order — **merge → close → retro**):
+**ONCE THE PRIMARY RESUMES YOU WITH "MERGED"** (strict order — **merge → close → retro**):
 
 ```
-1. context_cycle(type: "phase-end", phase: "pr-review", agent_id: "{feature-id}-delivery-leader")
-2. context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 2 complete. Merged. PR: {url}", agent_id: "{feature-id}-delivery-leader")
+1. context_cycle(type: "phase-end", phase: "pr-review", agent_id: "uni-scrum-master")
+2. context_cycle(type: "stop", topic: "{feature-id}", outcome: "Session 2 complete. Merged. PR: {url}", agent_id: "uni-scrum-master")
 3. /uni-retro   # post-close verbatim-candidate harvest; retrieval is repeatable + non-destructive
 ```
 
@@ -590,7 +618,7 @@ NEVER pipe full cargo output into context.
 ```
 DELIVERY LEADER (you):
   Init:       Read IMPLEMENTATION-BRIEF.md + ACCEPTANCE-MAP.md
-              context_cycle(type: "start", topic: "{feature-id}", next_phase: "spec", agent_id: "{feature-id}-delivery-leader")
+              context_cycle(type: "start", topic: "{feature-id}", next_phase: "spec", agent_id: "uni-scrum-master")
   Stage 3a:   Task(uni-pseudocode) + Task(uni-tester) — parallel, ONE message
               ...wait for both to complete...
               context_cycle(type: "phase-end", phase: "spec", next_phase: "spec-review", ...)
@@ -619,11 +647,11 @@ DELIVERY LEADER (you):
               [CONDITIONAL] uni-docs — documentation update (if trigger criteria met)
               /uni-review-pr — security review + merge readiness
               Task(uni-zero-reviewer, GATE: pr-review) — advisory product review → PR comment
-              Combined return — pr-review phase stays OPEN through the human merge decision
-              ★ HUMAN MERGE GATE (unchanged) ★
-              ...ONCE HUMAN MERGES (strict order — merge → close → retro):
+              Escalate combined payload to primary; STOP — pr-review phase stays OPEN
+              ★ HUMAN MERGE GATE (via primary) — resume via SendMessage once merged ★
+              ...ONCE RESUMED WITH 'MERGED' (strict order — merge → close → retro):
                 context_cycle(type: "phase-end", phase: "pr-review", ...)
-                context_cycle(type: "stop", topic: "{feature-id}", outcome: "...Merged...", agent_id: "{feature-id}-delivery-leader")
+                context_cycle(type: "stop", topic: "{feature-id}", outcome: "...Merged...", agent_id: "uni-scrum-master")
                 /uni-retro — post-close verbatim-candidate harvest (repeatable, non-destructive)
 ```
 
@@ -651,14 +679,14 @@ then — close the feature cycle, then run the retro. Strict order: **merge → 
 1. context_cycle(
      type: "phase-end",
      phase: "pr-review",
-     agent_id: "{feature-id}-delivery-leader"
+     agent_id: "uni-scrum-master"
    )
 
 2. context_cycle(
      type: "stop",
      topic: "{feature-id}",
      outcome: "Session 2 complete. Merged. PR: {url}",
-     agent_id: "{feature-id}-delivery-leader"
+     agent_id: "uni-scrum-master"
    )
 
 3. /uni-retro   # post-close verbatim-candidate harvest; buffer intact, retrieval repeatable + non-destructive
