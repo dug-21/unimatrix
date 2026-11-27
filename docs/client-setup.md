@@ -32,7 +32,7 @@ Stdout is a single opaque `unimatrix-bundle:` (`v:2`) blob — it carries the se
 npx @dug-21/unimatrix init --bundle <blob>
 ```
 
-The bundle path takes **no `--slug`** — the blob already encodes the slug, and the client composes no paths. `init` wires the pure-JS HTTP hook client into `.claude/settings.json` and registers a `stdio` `unimatrix` MCP server in `.mcp.json` (a fingerprint-pinned stdio→HTTPS bridge), so a bundle attach gives the full `context_*` MCP tool set over HTTPS, not just telemetry. The bearer credential (token, `observe_url`, `mcp_url`, and the certificate fingerprint) is written out-of-tree to `~/.unimatrix/<projectHash>/remote.json` (mode 0600) — never inside the repo working tree — so a stray `git add -A` cannot commit a live credential. `init` validates connectivity with a pinned `Ping` over fingerprint-pinned HTTPS before writing config.
+The bundle path takes **no `--slug`** — the blob already encodes the slug, and the client composes no paths. `init` wires the pure-JS HTTP hook client into `.claude/settings.local.json` (via the per-machine shim `~/.unimatrix/bin/unimatrix`) and registers a `stdio` `unimatrix` MCP server per machine in `~/.claude.json` under `projects[<root>]` (a fingerprint-pinned stdio→HTTPS bridge; owned entries in project `.mcp.json` are removed), so a bundle attach gives the full `context_*` MCP tool set over HTTPS, not just telemetry. The bearer credential (token, `observe_url`, `mcp_url`, and the certificate fingerprint) is written out-of-tree to `~/.unimatrix/<projectHash>/remote.json` (mode 0600) — never inside the repo working tree — so a stray `git add -A` cannot commit a live credential. `init` validates connectivity with a pinned `Ping` over fingerprint-pinned HTTPS before writing config.
 
 **3. Telemetry flows automatically.** The wired hook client reads `observe_url` and the certificate fingerprint from the credential store and POSTs `HookRequest` frames to the server-composed `POST /v1/{slug}/observe` route over fingerprint-pinned HTTPS. The client posts to the finished URL verbatim, so it can never mis-target another project's store.
 
@@ -109,7 +109,7 @@ unimatrix client-bundle alpha --revoke ci-read
 
 | Mode | Capabilities | Observe / telemetry | Learning signals |
 |---|---|---|---|
-| `read` | Read + Search | rejected `403`; the client logs one warning and the job does **not** fail | none recorded |
+| `read` | Read + Search | rejected `403`; the client logs one warning, latches observe off for that token (no further posts), and the job does **not** fail | none recorded |
 | `read-write` | Read + Search + Write + SessionWrite | accepted | recorded |
 
 Neither mode ever grants Admin. A token bound to `alpha` gets `403` on every `/v1/<other-slug>/…` route.
@@ -260,17 +260,18 @@ that the server is *up* — not that *your client works*. For that, do step 2.
 
 ### 2. Client works (a real authenticated `context_*` op over the pinned-TLS bundle)
 
-After `unimatrix init --bundle …` writes `.mcp.json`, confirm the attached client can
+After `unimatrix init --bundle …` writes the MCP entry to `~/.claude.json`, confirm the attached client can
 perform a real operation over the pinned-TLS bundle path — not just reach `/health`. This
-reads the bridge command your `init --bundle` wrote into `.mcp.json` and drives one
-stateless `context_status` call through it (requires `jq`):
+reads the bridge command your `init --bundle` wrote into `~/.claude.json` (under
+`projects[<root>]`; `$CLAUDE_CONFIG_DIR/.claude.json` if set) and drives one stateless
+`context_status` call through it. Run it from the project root (requires `jq`):
 
 ```bash
 printf '%s\n%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"verify","version":"1.0.0"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"context_status","arguments":{}}}' \
-  | node "$(jq -r '.mcpServers.unimatrix.args[0]' .mcp.json)" \
-         "$(jq -r '.mcpServers.unimatrix.args[1]' .mcp.json)"
+  | node "$(jq -r --arg p "$PWD" '.projects[$p].mcpServers.unimatrix.args[0]' ~/.claude.json)" \
+         "$(jq -r --arg p "$PWD" '.projects[$p].mcpServers.unimatrix.args[1]' ~/.claude.json)"
 ```
 
 A non-error JSON-RPC result (no `"error"` field, no `"isError": true`) confirms the client
@@ -279,4 +280,4 @@ release smoke's client-works gate runs (`docker-http-posture-smoke.sh`, Gate 9).
 
 ---
 
-_Verified on v0.x.y_
+_Verified on v0.12.0_
