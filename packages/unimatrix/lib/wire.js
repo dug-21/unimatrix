@@ -1,31 +1,28 @@
 "use strict";
 
 /**
- * Wire orchestrator (nan-024). The single flow shared by local init, cloud
- * attach and the `wire` verb (D-040): install store -> Claude hooks + MCP ->
- * Codex -> OpenCode -> removal of owned project-file MCP entries -> warnings.
- * Every writer takes `dryRun` and returns the same legs as a real run, so the
- * dry-run action list equals the real changes (FR-12d). No harness file-format
- * logic lives here. Hard failures (unsafe shim path, unparseable config) throw
- * to the caller (exit 1); warnings go to stderr and never change the exit code.
+ * Wire orchestrator (nan-024, 1036 C6). The single flow shared by local init,
+ * cloud attach and the `wire` verb (D-040): transport -> preflight -> store
+ * install -> resolve config dirs once -> wiring plan (wire-plan.js) -> render.
+ * No harness file-format logic and no user/global paths are built here (FR-01).
+ * Dry-run and real runs share one plan, so their legs and lines match
+ * (FR-12d, FR-60..63). Hard failures (SafeWriteError, unparseable config,
+ * unsafe shim path) throw to the caller (exit 1, FR-53); warnings go to stderr
+ * and the actions list and never change the exit code.
  */
 
 const path = require("path");
 const fs = require("fs");
-const { isDeepStrictEqual } = require("util");
-const { execFileSync } = require("child_process");
+const os = require("os");
 
-const { mergeSettings, HOOK_EVENTS, buildShimCommand, removeOwnedHooks } = require("./merge-settings.js");
 const { installStore } = require("./install-store.js");
 const { preflightRecordedNode } = require("./wire-preflight.js");
-const { buildMcpEntry } = require("./mcp-entry.js");
-const { writeClaudeMcp, removeOwnedMcpJson } = require("./claude-json.js");
-const { writeOpencodeMcp, removeOwnedOpencodeProjectMcp, detectsOpenCode } = require("./opencode-install.js");
-const { maybeWireCodex } = require("./codex-install.js");
+const { detectsOpenCode } = require("./opencode-install.js");
+const { resolveConfigDirs } = require("./config-dirs.js");
+const { buildWirePlan, runWirePlan } = require("./wire-plan.js");
 
 const HARNESSES = ["claude-code", "opencode", "codex-cli"];
-const GITIGNORE_WARNING =
-  "warning: .claude/settings.local.json is not git-ignored; add it to .gitignore so local hook wiring is not committed";
+const NOTICE_ACTIONS = new Set(["created", "updated", "removed"]);
 
 function existsSafe(p) {
   try {
@@ -54,106 +51,74 @@ function skippedLeg(surface, legPath, reason) {
   return { harness: "claude-code", surface, action: "skipped-undetected", path: legPath, reason };
 }
 
-/** git check-ignore: 0 ignored, 1 not ignored (warn); anything else => no warning. */
-function gitIgnored(root, rel) {
-  try {
-    execFileSync("git", ["check-ignore", "-q", rel], { cwd: root, stdio: "ignore" });
-    return true;
-  } catch (e) {
-    return !(e && e.status === 1);
-  }
-}
-
-function storeLegs(result) {
-  return result.actions.map((a) => {
-    const m = /(?:would write|wrote) (.*)$/.exec(a);
-    return { harness: "unimatrix", surface: "store", action: "written", path: m ? m[1] : a };
-  });
-}
-
-function dispatchClaude(root, c, manifest) {
-  const settings = path.join(root, ".claude", "settings.local.json");
-  let before = null;
-  try {
-    before = fs.readFileSync(settings, "utf8");
-  } catch (_) { /* absent */ }
-  const r = mergeSettings(
-    settings,
-    { events: HOOK_EVENTS, commandForEvent: (e) => buildShimCommand(e, undefined, c.platform, c.home) },
-    { dryRun: c.dryRun }
-  );
-  let unchanged = false;
-  if (before !== null) {
-    try {
-      unchanged = isDeepStrictEqual(JSON.parse(before), r.content);
-    } catch (_) { /* treated as changed */ }
-  }
-  const action = before === null ? "created" : unchanged ? "unchanged" : "updated";
-  for (const { command } of r.commands) {
-    manifest.push({ harness: "claude-code", surface: "hooks", action, path: settings, command });
-  }
-  for (const file of [path.join(root, ".claude", "settings.json"), path.join(c.home, ".claude", "settings.json")]) {
-    const rm = removeOwnedHooks(file, { dryRun: c.dryRun });
-    if (rm.changed) {
-      manifest.push({ harness: "claude-code", surface: "hooks", action: "removed", path: file, reason: "owned hooks removed (cross-scope)" });
-    }
-  }
-  if (!c.writeMcp) return;
-  const entry = buildMcpEntry(c.platform, c.home, c.node);
-  const w = writeClaudeMcp({ file: path.join(c.home, ".claude.json"), projectRoot: root, entry, dryRun: c.dryRun, platform: c.platform });
-  if (w.action === "skipped-foreign") {
-    c.warnings.push(w.warning);
-    manifest.push({ harness: "claude-code", surface: "mcp", action: "skipped-foreign", path: w.file, reason: w.warning });
-  } else {
-    manifest.push({ harness: "claude-code", surface: "mcp", action: w.action, path: w.file, entry });
-  }
-}
-
-function dispatchOpencode(root, c, manifest) {
-  try {
-    const l = writeOpencodeMcp({
-      home: c.home, platform: c.platform, node: c.node,
-      harnessSelected: c.harnessSel === "opencode", dryRun: c.dryRun,
-    });
-    if (l.warning) c.warnings.push(l.warning);
-    manifest.push(l);
-  } catch (e) {
-    manifest.push({
-      harness: "opencode", surface: "retrieval", action: "skipped-malformed",
-      path: path.join(c.home, ".config", "opencode", "opencode.json"),
-      reason: "opencode wiring error: " + e.message,
-    });
-  }
-}
-
-function dispatchCodex(root, c, manifest) {
-  const legs = maybeWireCodex({
-    home: c.home, env: c.env, platform: c.platform, node: c.node,
-    projectRoot: root, harnessSel: c.harnessSel, dryRun: c.dryRun,
-  });
-  for (const l of legs) manifest.push(l);
-}
-
-/** Owned project-file MCP entries are always migrated away (D-060/D-062/D-064). */
-function removeProjectFileMcp(root, c, manifest) {
-  const rm = [
-    ["claude-code", path.join(root, ".mcp.json"), () => removeOwnedMcpJson(root, c.dryRun)],
-    ["opencode", path.join(root, "opencode.json"), () => removeOwnedOpencodeProjectMcp(root, c.dryRun)],
-  ];
-  for (const [harness, file, fn] of rm) {
-    const r = fn();
-    for (const w of r.warnings) c.warnings.push(w);
-    if (r.changed) manifest.push({ harness, surface: "mcp", action: "removed", path: file, reason: "owned project MCP entry removed" });
-  }
-}
-
 /** Render one manifest leg into a human summary line. */
 function legToActionLine(root, leg, dryRun) {
   const rel = path.relative(root, leg.path);
   const loc = rel && !rel.startsWith("..") && !path.isAbsolute(rel) ? rel : leg.path;
   let s = leg.harness + " " + leg.surface + ": " + leg.action + " " + loc;
   if (leg.reason) s += " (" + leg.reason + ")";
+  return pre(dryRun, s);
+}
+
+function pre(dryRun, s) {
   return dryRun ? "[dry-run] " + s : s;
+}
+
+function srcTag(b) {
+  return b.source === "default" ? "default" : b.source + "=" + b.value;
+}
+
+/** Codex counts as processed only when its step did not report it undetected. */
+function codexProcessed(steps, manifest) {
+  return steps.some((s) => s.harness === "codex-cli") &&
+    manifest.some((l) => l.harness === "codex-cli" && l.action !== "skipped-not-detected");
+}
+
+/** FR-50: one `resolved:` line per destination of each harness processed (selected or detected). */
+function resolvedLines(dirs, steps, codex) {
+  const has = (h) => steps.some((s) => s.harness === h);
+  const L = [];
+  const line = (h, surf, file, b) => L.push("resolved: " + h + " " + surf + " -> " + file + " (" + srcTag(b) + ")");
+  if (has("claude-code")) {
+    if (steps.some((s) => s.id === "W2")) line("claude-code", "mcp", dirs.claude.claudeJson, dirs.claude);
+    line("claude-code", "hooks", dirs.claude.userSettings, dirs.claude);
+  }
+  if (codex) {
+    line("codex-cli", "hooks", dirs.codex.hooksJson, dirs.codex);
+    line("codex-cli", "mcp", dirs.codex.configToml, dirs.codex);
+  }
+  if (steps.some((s) => s.id === "W5")) line("opencode", "mcp", dirs.opencode.configJson, dirs.opencode);
+  return L;
+}
+
+/** FR-51: once, when any harness in the plan resolves through an override. */
+function sameEnvNote(dirs, steps, codex) {
+  const vars = [];
+  const add = (b) => { if (b.source !== "default" && vars.indexOf(b.source) < 0) vars.push(b.source); };
+  if (steps.some((s) => s.harness === "claude-code")) add(dirs.claude);
+  if (codex) add(dirs.codex);
+  if (steps.some((s) => s.id === "W5")) add(dirs.opencode);
+  return vars.length
+    ? "note: start each harness with the same " + vars.join(", ") +
+      " so it reads the files above; a harness started without them reads the default location"
+    : null;
+}
+
+/** FR-52 / D-013: once, when the resolved .claude.json is written or changed. */
+function claudeRunningNotice(manifest, claudeJson) {
+  const hit = manifest.some((l) => l.harness === "claude-code" && l.path === claudeJson && NOTICE_ACTIONS.has(l.action));
+  return hit
+    ? "If Claude Code was running during this install, it may overwrite " + claudeJson +
+      "; re-run 'npx unimatrix init' or check 'npx unimatrix status'"
+    : null;
+}
+
+function emitWarnings(warnings) {
+  for (const w of warnings) {
+    try {
+      process.stderr.write(w + "\n");
+    } catch (_) { /* best effort */ }
+  }
 }
 
 /**
@@ -165,7 +130,6 @@ function legToActionLine(root, leg, dryRun) {
  */
 function wire(projectRoot, opts) {
   const o = opts || {};
-  const os = require("os");
   const home = o.home || os.homedir();
   const platform = o.platform || process.platform;
   const env = o.env || process.env;
@@ -174,16 +138,18 @@ function wire(projectRoot, opts) {
   if (harnessSel && HARNESSES.indexOf(harnessSel) < 0) {
     return { actions: ["unknown --harness: " + harnessSel], manifest: [], warnings: [] };
   }
+  const dirs = resolveConfigDirs({ env, home, platform });
+  const warnings = dirs.warnings.slice();
   const transport = resolveTransport(projectRoot, o);
   const manifest = [];
-  const warnings = [];
-  const settings = path.join(projectRoot, ".claude", "settings.local.json");
 
   if (transport.kind === "none") {
     const reason = "no transport (binaryPath/credential absent)";
-    manifest.push(skippedLeg("mcp", path.join(home, ".claude.json"), reason));
-    manifest.push(skippedLeg("hooks", settings, reason));
-    return { actions: manifest.map((l) => legToActionLine(projectRoot, l, dryRun)), manifest, warnings };
+    manifest.push(skippedLeg("mcp", dirs.claude.claudeJson, reason));
+    manifest.push(skippedLeg("hooks", path.join(projectRoot, ".claude", "settings.local.json"), reason));
+    const actions = manifest.map((l) => legToActionLine(projectRoot, l, dryRun)).concat(warnings);
+    emitWarnings(warnings);
+    return { actions, manifest, warnings };
   }
 
   let node = o.node || process.execPath;
@@ -198,29 +164,26 @@ function wire(projectRoot, opts) {
     projectRoot, dryRun,
     requireBinary: o.requireBinary !== undefined ? o.requireBinary : transport.kind === "local" && platform === "linux",
   }, o.installStoreOpts || {}));
-  manifest.push(...storeLegs(store));
+  manifest.push(...store.legs);
 
-  const c = { home, platform, env, node, dryRun, harnessSel, warnings, writeMcp: o.mcp !== false && !o.hooksOnly };
-  const want = (h) => !harnessSel || harnessSel === h;
-  if (want("claude-code")) dispatchClaude(projectRoot, c, manifest);
-  if (!o.hooksOnly) {
-    if (want("codex-cli")) dispatchCodex(projectRoot, c, manifest);
-    if (want("opencode") && (harnessSel === "opencode" || detectsOpenCode(projectRoot))) {
-      dispatchOpencode(projectRoot, c, manifest);
-    }
-    removeProjectFileMcp(projectRoot, c, manifest);
-  }
-  const actions = manifest.map((l) => legToActionLine(projectRoot, l, dryRun));
-  for (const w of warnings) {
-    try {
-      process.stderr.write(w + "\n");
-    } catch (_) { /* best effort */ }
-  }
-  if (want("claude-code") && !gitIgnored(projectRoot, ".claude/settings.local.json")) {
-    warnings.push(GITIGNORE_WARNING);
-    actions.push(GITIGNORE_WARNING);
-  }
+  const steps = buildWirePlan({
+    root: projectRoot, home, platform, env, node, dirs, harnessSel,
+    writeMcp: o.mcp !== false && !o.hooksOnly, hooksOnly: !!o.hooksOnly,
+  });
+  const r = runWirePlan(steps, { dryRun });
+  manifest.push(...r.manifest);
+  warnings.push(...r.warnings);
+
+  const codex = codexProcessed(steps, r.manifest);
+  const actions = resolvedLines(dirs, steps, codex).map((s) => pre(dryRun, s));
+  const note = sameEnvNote(dirs, steps, codex);
+  if (note) actions.push(pre(dryRun, note));
+  actions.push(...manifest.map((l) => legToActionLine(projectRoot, l, dryRun)));
+  const notice = claudeRunningNotice(manifest, dirs.claude.claudeJson);
+  if (notice) actions.push(pre(dryRun, notice));
+  actions.push(...warnings);
+  emitWarnings(warnings);
   return { actions, manifest, warnings };
 }
 
-module.exports = { wire, detectHarnesses, resolveTransport, legToActionLine, HARNESSES, GITIGNORE_WARNING };
+module.exports = { wire, detectHarnesses, resolveTransport, legToActionLine, HARNESSES };

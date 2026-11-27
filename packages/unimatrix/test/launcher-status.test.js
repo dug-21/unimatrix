@@ -29,7 +29,8 @@ test("status: installed local project, field order exact, exit 0, no writes", po
   const r = run(f, ["status"]);
   assert.equal(r.status, 0, r.stderr);
   const keys = r.stdout.split("\n").filter(Boolean).map((l) => l.split(":")[0]);
-  assert.deepEqual(keys, ["project", "installed", "transport", "cloud env", "trust", "mcp node", "hook claude-code", "hook codex-cli"]);
+  assert.deepEqual(keys, ["project", "installed", "transport", "cloud env", "trust", "mcp node", "hook claude-code", "hook codex-cli",
+    "config claude-code mcp", "config claude-code user hooks", "config codex-cli", "config opencode mcp", "mcp claude-code"]);
   assert.match(r.stdout, new RegExp("^project: " + KIND + " [0-9a-f]{16}$", "m"));
   assert.match(r.stdout, /^installed: yes$/m);
   assert.match(r.stdout, new RegExp("^transport: " + KIND + "$", "m"));
@@ -106,7 +107,9 @@ test("status: Windows fallback node missing -> mcp node: MISSING", posix, () => 
   const entry = { command: missing, args: [path.join(f.home, ".unimatrix", "bin", "shim-entry.js"), "mcp-stdio"] };
   const projects = {};
   projects[f.proj] = { mcpServers: { unimatrix: entry } };
-  w(path.join(f.home, ".claude.json"), JSON.stringify({ projects }));
+  // Pretend-win32 resolver builds path.win32.join(<posix home>, ".claude.json"): on a POSIX host
+  // that is a backslash-named file relative to cwd (f.proj), so place the fixture there.
+  w(path.join(f.proj, path.win32.join(f.home, ".claude.json")), JSON.stringify({ projects }));
   const r = runAs(f, "win32", ["status"]);
   assert.equal(r.status, 0, r.stderr);
   assert.ok(r.stdout.includes(`mcp node: MISSING ${missing}; run 'npx unimatrix init'`));
@@ -124,7 +127,8 @@ test("status: everything broken still exits 0", posix, () => {
 test("status --json: key order and shape", posix, () => {
   const f = fixture();
   const j = JSON.parse(run(f, ["status", "--json"]).stdout);
-  assert.deepEqual(Object.keys(j), ["project", "legacyProjectMcp", "installed", "reason", "transport", "cloudEnv", "trust", "mcpNode", "hooks"]);
+  assert.deepEqual(Object.keys(j), ["project", "legacyProjectMcp", "installed", "reason", "transport", "cloudEnv", "trust", "mcpNode", "hooks",
+    "configDirs", "claudeMcp", "opencodeConfig", "staleLegacy", "alternateProfiles"]);
   assert.deepEqual(Object.keys(j.hooks), ["claude-code", "codex-cli"]);
   assert.equal(j.transport, KIND);
 });

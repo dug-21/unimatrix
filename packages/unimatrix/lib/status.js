@@ -9,6 +9,8 @@ const ps = require("./project-state.js");
 const own = require("./hook-ownership.js");
 const trustMod = require("./trust.js");
 const { walkToProjectRoot } = require("./hook-client/config.js");
+const { resolveConfigDirs, sameRealFile } = require("./config-dirs.js");
+const cj = require("./claude-json.js");
 
 const INIT_HINT = "run 'npx unimatrix init'";
 const FALLBACK_APPROVAL =
@@ -18,12 +20,6 @@ const nz = (v) => typeof v === "string" && v.trim() !== "";
 const readText = (f) => { try { return fs.readFileSync(f, "utf8"); } catch (_e) { return null; } };
 const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch (_e) { return null; } };
 const safe = (fn, dflt) => { try { return fn(); } catch (_e) { return dflt; } };
-
-function codexHome(env, home) {
-  const ci = safe(() => require("./codex-install.js"), {});
-  if (typeof ci.codexHome === "function") { const h = safe(() => ci.codexHome(env, home), null); if (h && h.dir) return h.dir; }
-  return nz(env.CODEX_HOME) ? env.CODEX_HOME : path.join(home, ".codex");
-}
 
 function approvalStep() {
   const ci = safe(() => require("./codex-install.js"), {});
@@ -86,18 +82,18 @@ function trustStatus(home, platform) {
   }
 }
 
-function mcpNode(env, home, root, platform) {
+function mcpNode(dirs, root, platform) {
   if (platform !== "win32") return { status: "n/a", path: null };
   let entry = null;
-  const cj = readJson(path.join(home, ".claude.json"));
-  const projects = cj && cj.projects;
+  const j = readJson(dirs.claude.claudeJson);
+  const projects = j && j.projects;
   if (projects && typeof projects === "object") {
-    const key = require("./claude-json.js").resolveProjectKey(projects, root, platform);
+    const key = cj.resolveProjectKey(projects, root, platform);
     const e = projects[key] && projects[key].mcpServers && projects[key].mcpServers.unimatrix;
     if (own.isUnimatrixMcpEntry("unimatrix", e)) entry = e;
   }
   if (!entry) {
-    const raw = readText(path.join(codexHome(env, home), "config.toml"));
+    const raw = readText(dirs.codex.configToml);
     const ci = safe(() => require("./codex-install.js"), {});
     const e = raw !== null ? safe(() => tomlEntry(ci, raw), null) : null;
     if (e && own.isUnimatrixMcpEntry("unimatrix", e)) entry = e;
@@ -123,11 +119,84 @@ function hookState(file, lastHook, provider) {
   return { wired, lastFired: t };
 }
 
+const owned = (e) => safe(() => own.isUnimatrixMcpEntry("unimatrix", ocEntry(e)), false);
+const get = (o, ks) => ks.reduce((a, k) => (a && typeof a === "object" ? a[k] : undefined), o);
+
+function readJsonOr(f) {
+  const raw = readText(f);
+  if (raw === null) return { absent: true };
+  try { return { json: JSON.parse(raw), raw }; } catch (_e) { return { unreadable: true, raw }; }
+}
+
+function ocState(file) {
+  const r = readJsonOr(file);
+  return { status: r.absent ? "absent" : r.unreadable ? "unreadable" : "ok", file };
+}
+
+function findStale(dirs, platform) {
+  const out = [];
+  const legs = [
+    ["claude-code", dirs.claude, dirs.legacy.userSettings, dirs.claude.userSettings, "hooks", (j) => hasOwnedCommand(j && j.hooks)],
+    ["opencode", dirs.opencode, dirs.legacy.opencodeJson, dirs.opencode.configJson, "mcp.unimatrix", (j) => owned(get(j, ["mcp", "unimatrix"]))],
+  ];
+  for (const [harness, d, file, live, key, test] of legs) {
+    if (d.source === "default" || sameRealFile(file, live, platform)) continue;
+    const r = readJsonOr(file);
+    if (r.unreadable) out.push({ harness, file, key: null, unreadable: true });
+    else if (r.json && test(r.json)) out.push({ harness, file, key });
+  }
+  return out;
+}
+
+function findAlternates(dirs, root, platform) {
+  const out = [];
+  const P = platform === "win32" ? path.win32 : path.posix;
+  for (const a of dirs.alternates) {
+    const dest = a.harness === "claude-code" ? dirs.claude.claudeJson
+      : a.harness === "opencode" ? dirs.opencode.configJson : P.join(dirs.codex.dir, P.basename(a.file));
+    if (sameRealFile(a.file, dest, platform)) continue;
+    const hit = { harness: a.harness, file: a.file, key: a.key, var: a.var };
+    if (a.harness === "codex-cli" && a.key !== "hooks") {
+      const raw = readText(a.file);
+      const ci = safe(() => require("./codex-install.js"), {});
+      if (raw !== null && safe(() => tomlOwned(ci, raw), false)) out.push(hit);
+      continue;
+    }
+    const r = readJsonOr(a.file);
+    if (r.absent) continue;
+    if (r.unreadable) {
+      if (!out.some((x) => x.file === a.file && x.unreadable)) out.push(Object.assign(hit, { key: null, unreadable: true }));
+      continue;
+    }
+    const j = r.json;
+    if (a.harness === "claude-code" && a.key.startsWith("projects")) {
+      const k = cj.resolveProjectKey(j && j.projects, root, platform);
+      if (owned(get(j, ["projects", k, "mcpServers", "unimatrix"]))) out.push(Object.assign(hit, { key: `projects["${k}"].mcpServers.unimatrix` }));
+    } else if (a.harness === "claude-code") {
+      if (owned(get(j, ["mcpServers", "unimatrix"]))) out.push(hit);
+    } else if (a.harness === "opencode") {
+      if (owned(get(j, ["mcp", "unimatrix"]))) out.push(hit);
+    } else if (hasOwnedCommand(j)) out.push(hit);
+  }
+  return out;
+}
+
+function configDirsOf(d) {
+  return {
+    claude: { claudeJson: d.claude.claudeJson, userSettings: d.claude.userSettings, source: d.claude.source },
+    opencode: { configJson: d.opencode.configJson, source: d.opencode.source },
+    codex: { hooksJson: d.codex.hooksJson, configToml: d.codex.configToml, source: d.codex.source },
+    warnings: d.warnings.slice(),
+  };
+}
+
 function collect(ctx) {
-  const env = process.env;
-  const home = os.homedir();
-  const platform = process.platform;
-  const cwd = process.cwd();
+  const c = ctx || {};
+  const env = c.env || process.env;
+  const home = c.home || os.homedir();
+  const platform = c.platform || process.platform;
+  const cwd = c.cwd || process.cwd();
+  const dirs = resolveConfigDirs({ env, home, platform });
   const root = safe(() => walkToProjectRoot(cwd), cwd);
   const project = safe(() => ps.isUnimatrixProject(cwd, env, home), null);
   const d = safe(() => ps.isInstalled(project, platform, { env, home }),
@@ -145,7 +214,7 @@ function collect(ctx) {
   const hooks = {
     "claude-code": safe(() => hookState(path.join(root, ".claude", "settings.local.json"), lastHook, "claude-code"),
       { wired: false, lastFired: null }),
-    "codex-cli": safe(() => hookState(path.join(codexHome(env, home), "hooks.json"), lastHook, "codex-cli"),
+    "codex-cli": safe(() => hookState(dirs.codex.hooksJson, lastHook, "codex-cli"),
       { wired: false, lastFired: null }),
   };
   return {
@@ -157,8 +226,17 @@ function collect(ctx) {
     cloudEnv: safe(() => cloudEnvStatus(env, cwd),
       { status: "unset", vars: [], reason: null, projectRoot: null }),
     trust: safe(() => trustStatus(home, platform), { ok: false, reason: "unknown" }),
-    mcpNode: safe(() => mcpNode(env, home, root, platform), { status: "n/a", path: null }),
+    mcpNode: safe(() => mcpNode(dirs, root, platform), { status: "n/a", path: null }),
     hooks,
+    configDirs: configDirsOf(dirs),
+    claudeMcp: project
+      ? safe(() => cj.readClaudeMcpState(dirs.claude.claudeJson, root, platform),
+        { status: "unreadable", file: dirs.claude.claudeJson, key: null })
+      : { status: "n/a", file: null, key: null },
+    opencodeConfig: safe(() => ocState(dirs.opencode.configJson), { status: "unreadable", file: dirs.opencode.configJson }),
+    staleLegacy: safe(() => findStale(dirs, platform), []),
+    alternateProfiles: safe(() => findAlternates(dirs, root, platform), []),
+    _dirs: dirs,
     _root: root,
     _lastHookCorrupt: lastHookCorrupt,
   };
@@ -179,6 +257,15 @@ function hookLine(name, h, corrupt) {
   return h.lastFired ? `hook ${name}: wired, last fired ${h.lastFired}` : `hook ${name}: wired, never fired`;
 }
 
+function claudeMcpLine(m) {
+  const at = `projects["${m.key}"].mcpServers.unimatrix`;
+  if (m.status === "wired") return `mcp claude-code: wired (${m.file})`;
+  if (m.status === "missing") return `mcp claude-code: MISSING ${at} in ${m.file}; ${INIT_HINT}`;
+  if (m.status === "foreign") return `mcp claude-code: foreign entry at ${at} in ${m.file}; not managed by Unimatrix`;
+  if (m.status === "unreadable") return `mcp claude-code: unreadable (${m.file} is not valid JSON)`;
+  return "mcp claude-code: n/a";
+}
+
 function renderText(i) {
   const L = [];
   L.push("project: " + (i.project
@@ -197,6 +284,25 @@ function renderText(i) {
   const cx = i.hooks["codex-cli"];
   L.push(hookLine("codex-cli", cx, i._lastHookCorrupt));
   if (cx.wired && !cx.lastFired && !i._lastHookCorrupt) L.push(approvalStep());
+  const cd = i.configDirs;
+  const src = (h) => (i._dirs[h].source === "default" ? "default" : `${i._dirs[h].source}=${i._dirs[h].value}`);
+  L.push(`config claude-code mcp: ${cd.claude.claudeJson} (${src("claude")})`);
+  L.push(`config claude-code user hooks: ${cd.claude.userSettings} (${src("claude")})`);
+  L.push(`config codex-cli: ${cd.codex.hooksJson}, ${cd.codex.configToml} (${src("codex")})`);
+  L.push(`config opencode mcp: ${cd.opencode.configJson} (${src("opencode")})`);
+  for (const w of cd.warnings) L.push("warning: " + w);
+  L.push(claudeMcpLine(i.claudeMcp));
+  if (i.opencodeConfig.status === "unreadable") {
+    L.push(`opencode mcp: ${i.opencodeConfig.file} is not valid JSON; OpenCode is left without Unimatrix wiring until it is fixed`);
+  }
+  for (const s of i.staleLegacy) {
+    L.push(s.unreadable ? `stale: ${s.file} unreadable (not valid JSON)`
+      : `stale: ${s.file} ${s.key} holds an owned Unimatrix entry the harness no longer reads; re-run 'npx unimatrix init' to remove it`);
+  }
+  for (const a of i.alternateProfiles) {
+    L.push(a.unreadable ? `other profile: ${a.file} unreadable (not valid JSON)`
+      : `other profile: ${a.file} ${a.key} (${a.var} points elsewhere; separate ${a.harness} config profile, init leaves it in place)`);
+  }
   return L.join("\n") + "\n";
 }
 

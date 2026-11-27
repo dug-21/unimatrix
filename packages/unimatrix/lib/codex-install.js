@@ -358,7 +358,7 @@ function maybeWireCodex(opts) {
     legs.push(leg("mcp", "skipped-malformed", path.join(ch.dir, "config.toml"), { reason: "codex wiring error: " + e.message }));
   }
   for (const l of legs) if (l.action === "skipped-foreign" && l.reason) warnings.push(l.reason);
-  if (ch.warning) for (const l of legs) l.reason = l.reason ? l.reason + "; " + ch.warning : ch.warning;
+  if (ch.warning && !o.dirs) for (const l of legs) l.reason = l.reason ? l.reason + "; " + ch.warning : ch.warning;
   for (const w of warnings) {
     try { process.stderr.write(w + "\n"); } catch (_) { /* best effort */ }
   }

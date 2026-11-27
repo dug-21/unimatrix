@@ -476,3 +476,193 @@ describe("init (nan-024 wiring)", () => {
     });
   });
 });
+
+// ── 1036: spawned `init` (process boundary, real git, real harness binaries) ──
+describe("init 1036 spawned acceptance", () => {
+  const { spawnSync } = require("child_process");
+  const { makeGitProject, gitEnv, writeJsonAt, readJson } = require("./helpers/wire-fixture.js");
+  const { buildMcpArgv } = require("../lib/mcp-entry.js");
+  const BIN = path.join(__dirname, "..", "bin", "unimatrix.js");
+  const tmp = (p) => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), p || "unimatrix-1036-")));
+  const onPath = (b) => spawnSync("sh", ["-c", "command -v " + b], { encoding: "utf8" }).status === 0;
+  const fakeBin = () => {
+    const f = path.join(tmp("unimatrix-fakebin-"), "unimatrix");
+    fs.writeFileSync(f, '#!/bin/sh\necho "unimatrix 0.5.0"\n');
+    fs.chmodSync(f, 0o755);
+    return f;
+  };
+  function runInit(dir, home, extraEnv, args) {
+    const env = gitEnv(Object.assign({ HOME: home, UNIMATRIX_BINARY: fakeBin() }, extraEnv || {}));
+    const r = spawnSync(process.execPath, [BIN, "init"].concat(args || []), { cwd: dir, env, encoding: "utf8", timeout: 60000 });
+    return { status: r.status, stdout: r.stdout || "", stderr: r.stderr || "" };
+  }
+  const legLines = (out) => out.split("\n").map((l) => l.trim()).filter((l) => /^(\[dry-run\] )?(unimatrix|claude-code|codex-cli|opencode) [a-z-]+: /.test(l));
+  const git = (dir, args) => spawnSync("git", args, { cwd: dir, env: gitEnv(), encoding: "utf8" });
+  function treeState(roots) {
+    const out = {};
+    const walk = (d) => {
+      let es = [];
+      try { es = fs.readdirSync(d, { withFileTypes: true }); } catch (_) { return; }
+      for (const e of es) {
+        const p = path.join(d, e.name);
+        if (e.isSymbolicLink()) out[p] = "link:" + fs.readlinkSync(p);
+        else if (e.isDirectory()) { if (e.name !== "objects") walk(p); out[p + "/"] = "dir"; }
+        else { const s = fs.statSync(p); out[p] = s.mtimeMs + ":" + s.mode + ":" + fs.readFileSync(p).toString("base64"); }
+      }
+    };
+    for (const r of roots) walk(r);
+    return out;
+  }
+
+  it("test_ac1c_real_claude_mcp_get_reads_resolved_entry", linuxLocal, (t) => {
+    if (!onPath("claude")) return t.skip("claude not on PATH; real-binary check tracked in #1053");
+    const dir = makeGitProject();
+    const home = makeHome();
+    const D = tmp();
+    const def = path.join(home, ".claude.json");
+    writeJsonAt(def, { projects: { [dir]: { mcpServers: { unimatrix: { command: "sh", args: ["-c", "old"], env: {} } } } } });
+    const before = fs.readFileSync(def);
+    const r = runInit(dir, home, { CLAUDE_CONFIG_DIR: D });
+    assert.strictEqual(r.status, 0, r.stderr);
+    const g = spawnSync("claude", ["mcp", "get", "unimatrix"], {
+      cwd: dir, encoding: "utf8", timeout: 30000, env: gitEnv({ HOME: home, CLAUDE_CONFIG_DIR: D }),
+    });
+    assert.strictEqual(g.status, 0, g.stdout + g.stderr);
+    assert.ok(/unimatrix/.test(g.stdout), g.stdout);
+    assert.ok(g.stdout.includes(".unimatrix/bin/unimatrix"), "reads the entry init wrote: " + g.stdout);
+    assert.ok(fs.readFileSync(def).equals(before), "default profile kept (D-028)");
+  });
+
+  function runOpencodeDebugConfig(dir, home, env) {
+    const argv = ["debug", "config", "--standalone"];
+    assert.ok(argv.includes("--standalone"), "--standalone is mandatory");
+    const r = spawnSync("opencode", argv, { cwd: dir, encoding: "utf8", timeout: 20000, env: gitEnv(Object.assign({ HOME: home }, env)) });
+    let docs;
+    try { docs = JSON.parse(r.stdout); } catch (e) { assert.fail("opencode debug config output not JSON: " + r.stdout + r.stderr); }
+    return docs;
+  }
+  const ocEntry = (doc) => doc && ((doc.mcp && doc.mcp.servers && doc.mcp.servers.unimatrix) || (doc.mcp && doc.mcp.unimatrix));
+
+  for (const [name, mkEnv, resolved] of [
+    ["opencode_config_dir", (t) => ({ OPENCODE_CONFIG_DIR: t }), (t) => path.join(t, "opencode.json")],
+    ["xdg_only", (t) => ({ XDG_CONFIG_HOME: t }), (t) => path.join(t, "opencode", "opencode.json")],
+    ["both_set_precedence", (t, x) => ({ OPENCODE_CONFIG_DIR: t, XDG_CONFIG_HOME: x }), (t) => path.join(t, "opencode.json")],
+  ]) {
+    it("test_ac2b_real_opencode_debug_config_" + name, linuxLocal, (t) => {
+      if (!onPath("opencode")) return t.skip("opencode not on PATH; real-binary check tracked in #1053");
+      const dir = makeGitProject();
+      fs.mkdirSync(path.join(dir, ".opencode"));
+      const home = makeHome();
+      const O = tmp();
+      const X = tmp();
+      const twin = path.join(home, ".config", "opencode", "opencode.json");
+      writeJsonAt(twin, { mcp: { unimatrix: { type: "local", command: buildMcpArgv("linux", home) } } });
+      const env = mkEnv(O, X);
+      const r = runInit(dir, home, env);
+      assert.strictEqual(r.status, 0, r.stderr);
+      const file = resolved(O);
+      const written = readJson(file).mcp.unimatrix;
+      const docs = runOpencodeDebugConfig(dir, home, env);
+      const body = (d) => d.info || d.content || d;
+      const doc = docs.find((d) => d.path === file && d.type !== "directory");
+      assert.ok(doc, "resolved file loaded by opencode: " + JSON.stringify(docs));
+      assert.deepStrictEqual(ocEntry(body(doc)), written);
+      const twinDoc = docs.find((d) => d.path === twin && d.type !== "directory");
+      assert.ok(!twinDoc || !ocEntry(body(twinDoc)), "no owned entry at default location");
+      assert.ok(!(readJson(twin).mcp || {}).unimatrix, "owned twin removed");
+      if (env.XDG_CONFIG_HOME && env.OPENCODE_CONFIG_DIR) {
+        assert.ok(!fs.existsSync(path.join(X, "opencode", "opencode.json")), "XDG location untouched when OPENCODE_CONFIG_DIR wins");
+      }
+    });
+  }
+
+  it("test_ac8_spawned_init_appends_exclude_and_rerun_adds_nothing", linuxLocal, () => {
+    const dir = makeGitProject();
+    const home = makeHome();
+    const ex = path.join(dir, ".git", "info", "exclude");
+    const dry = runInit(dir, home, {}, ["--dry-run"]);
+    assert.strictEqual(dry.status, 0, dry.stderr);
+    assert.ok(/\[dry-run\] claude-code git-exclude: (created|updated) /.test(dry.stdout), dry.stdout);
+    assert.ok(!(fs.existsSync(ex) && fs.readFileSync(ex, "utf8").includes("/.claude/settings.local.json")), "dry-run wrote nothing");
+    const r = runInit(dir, home);
+    assert.strictEqual(r.status, 0, r.stderr);
+    const lines = fs.readFileSync(ex, "utf8").split("\n").filter((l) => l === "/.claude/settings.local.json");
+    assert.strictEqual(lines.length, 1);
+    assert.ok(!git(dir, ["status", "--porcelain"]).stdout.includes("settings.local.json"), "file ignored");
+    assert.strictEqual(git(dir, ["diff", "--exit-code"]).status, 0);
+    assert.strictEqual(git(dir, ["diff", "--cached", "--exit-code"]).status, 0);
+    const exBefore = fs.statSync(ex).mtimeMs;
+    const r2 = runInit(dir, home);
+    assert.ok(/claude-code git-exclude: unchanged /.test(r2.stdout), r2.stdout);
+    assert.strictEqual(fs.statSync(ex).mtimeMs, exBefore);
+  });
+
+  it("test_ac8_spawned_init_outside_repo_skips_and_reports", linuxLocal, () => {
+    const dir = tmp("unimatrix-norepo-");
+    fs.mkdirSync(path.join(dir, ".git"));
+    const r = runInit(dir, makeHome(), {}, ["--project-dir", dir]);
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.ok(/claude-code git-exclude: skipped-not-repo /.test(r.stdout), r.stdout);
+  });
+
+  it("test_ac5_spawned_double_init_all_unchanged_no_mtime_no_notice", linuxLocal, () => {
+    for (const extra of [{}, { CLAUDE_CONFIG_DIR: tmp() }]) {
+      const dir = makeGitProject();
+      const home = makeHome();
+      const r1 = runInit(dir, home, extra);
+      assert.strictEqual(r1.status, 0, r1.stderr);
+      assert.strictEqual(r1.stdout.split("If Claude Code was running").length - 1, 1, "D-013 notice once on run 1");
+      const roots = [dir, home].concat(extra.CLAUDE_CONFIG_DIR ? [extra.CLAUDE_CONFIG_DIR] : []);
+      const before = treeState(roots);
+      const r2 = runInit(dir, home, extra);
+      assert.strictEqual(r2.status, 0, r2.stderr);
+      for (const l of legLines(r2.stdout)) assert.ok(/: (unchanged|skipped[a-z-]*) /.test(l), l);
+      assert.ok(!r2.stdout.includes("If Claude Code was running"), "no notice on run 2");
+      const after = treeState(roots);
+      const diff = Object.keys(after).filter((k) => after[k] !== before[k] && !k.includes(path.sep + ".git" + path.sep) && !/\.db(-wal|-shm)?$/.test(k));
+      assert.deepStrictEqual(diff, [], "no file touched on run 2");
+    }
+  });
+
+  it("test_ac9_spawned_dry_run_lines_match_real_and_write_nothing", linuxLocal, () => {
+    const dir = makeGitProject();
+    const home = makeHome();
+    const D = tmp();
+    writeJsonAt(path.join(dir, ".mcp.json"), { mcpServers: { other: { command: "x" } } });
+    const roots = [dir, home, D];
+    const before = treeState(roots);
+    const dry = runInit(dir, home, { CLAUDE_CONFIG_DIR: D }, ["--dry-run"]);
+    assert.strictEqual(dry.status, 0, dry.stderr);
+    assert.deepStrictEqual(treeState(roots), before, "dry-run writes nothing (FR-62)");
+    const real = runInit(dir, home, { CLAUDE_CONFIG_DIR: D });
+    assert.strictEqual(real.status, 0, real.stderr);
+    const strip = (out) => out.split("\n").map((l) => l.trim())
+      .filter((l) => /^(\[dry-run\] )?(resolved:|note:|If Claude Code|(unimatrix|claude-code|codex-cli|opencode) [a-z-]+: )/.test(l))
+      .map((l) => l.replace(/^\[dry-run\] /, ""));
+    assert.deepStrictEqual(strip(dry.stdout), strip(real.stdout));
+    assert.ok(strip(real.stdout).some((l) => l.startsWith("resolved: claude-code mcp -> " + path.join(D, ".claude.json") + " (CLAUDE_CONFIG_DIR=")));
+  });
+
+  it("test_fr53_unparseable_resolved_claude_json_exits_1_naming_file", linuxLocal, () => {
+    const dir = makeGitProject();
+    const home = makeHome();
+    const D = tmp();
+    const f = path.join(D, ".claude.json");
+    fs.writeFileSync(f, "{ nope");
+    const r = runInit(dir, home, { CLAUDE_CONFIG_DIR: D });
+    assert.strictEqual(r.status, 1);
+    assert.ok(r.stderr.includes(f), r.stderr);
+    assert.strictEqual(fs.readFileSync(f, "utf8"), "{ nope");
+  });
+
+  it("test_fr53_invalid_override_warns_exit_0", linuxLocal, () => {
+    const dir = makeGitProject();
+    const home = makeHome();
+    // invalid value passed directly: scrubbedEnv only accepts tmp paths for overrides
+    const env = Object.assign(gitEnv({ HOME: home, UNIMATRIX_BINARY: fakeBin() }), { CLAUDE_CONFIG_DIR: "relative/cfg" });
+    const r = spawnSync(process.execPath, [BIN, "init"], { cwd: dir, env, encoding: "utf8", timeout: 60000 });
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.ok(r.stderr.includes("CLAUDE_CONFIG_DIR"), r.stderr);
+    assert.ok(r.stdout.includes("resolved: claude-code mcp -> " + path.join(home, ".claude.json") + " (default)"), r.stdout);
+  });
+});
